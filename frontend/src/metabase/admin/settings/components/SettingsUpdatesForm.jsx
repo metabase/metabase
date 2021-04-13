@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
@@ -45,7 +46,11 @@ export default class SettingsUpdatesForm extends Component {
                 "Updates Settings; Update link clicked; " + latestVersion
               }
               className="Button Button--white Button--medium borderless"
-              href="https://metabase.com/start/"
+              href={
+                "https://www.metabase.com/docs/" +
+                latestVersion +
+                "/operations-guide/upgrading-metabase.html"
+              }
               target="_blank"
             >
               {t`Update`}
@@ -69,7 +74,8 @@ export default class SettingsUpdatesForm extends Component {
       );
     } else {
       return (
-        <div>{t`Sorry, we were unable to check for updates at this time.`}</div>
+        <div>{t`Sorry, we were unable to check for updates at this time. Last successful check was
+         ${MetabaseSettings.versionInfoLastChecked()}.`}</div>
       );
     }
   }

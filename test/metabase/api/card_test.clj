@@ -345,7 +345,7 @@
       (let [metadata  [{:base_type    :type/Integer
                         :display_name "Count Chocula"
                         :name         "count_chocula"
-                        :special_type :type/Number}]
+                        :semantic_type :type/Number}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -359,16 +359,21 @@
             (is (= [{:base_type    :type/Integer
                      :display_name "Count Chocula"
                      :name         "count_chocula"
-                     :special_type :type/Number}]
+                     :semantic_type :type/Number}]
                    (db/select-one-field :result_metadata Card :name card-name)))))))))
 
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [Card]
-      (= :wow
-         (mt/user-http-request :rasta :post 202 "card" (assoc (card-with-name-and-query)
-                                                              :result_metadata    []
-                                                              :metadata_checksum  (#'results-metadata/metadata-checksum [])))))))
+      (let [card        (card-with-name-and-query)
+            md-checksum (#'results-metadata/metadata-checksum [])]
+        (is (schema= {:id su/IntGreaterThanZero, s/Keyword s/Any}
+                     (mt/user-http-request :rasta
+                                           :post
+                                           202
+                                           "card"
+                                           (assoc card :result_metadata   []
+                                                       :metadata_checksum md-checksum))))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -386,7 +391,7 @@
     (let [metadata  [{:base_type    :type/Integer
                       :display_name "Count Chocula"
                       :name         "count_chocula"
-                      :special_type :type/Number
+                      :semantic_type :type/Number
                       :fingerprint  {:global {:distinct-count 285},
                                      :type {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
           card-name (mt/random-name)]
@@ -404,7 +409,7 @@
               (is (= [{:base_type    :type/Integer
                        :display_name "Count Chocula"
                        :name         "count_chocula"
-                       :special_type :type/Number
+                       :semantic_type :type/Number
                        :fingerprint  {:global {:distinct-count 285},
                                       :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
@@ -415,7 +420,7 @@
       (let [metadata  [{:base_type    :type/BigInteger
                         :display_name "Count Chocula"
                         :name         "count_chocula"
-                        :special_type :type/Quantity}]
+                        :semantic_type :type/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -430,7 +435,7 @@
               (is (= [{:base_type    :type/BigInteger
                        :display_name "Count"
                        :name         "count"
-                       :special_type :type/Quantity
+                       :semantic_type :type/Quantity
                        :fingerprint  {:global {:distinct-count 1
                                                :nil%           0.0},
                                       :type   {:type/Number {:min 100.0
@@ -448,18 +453,18 @@
       (let [metadata  [{:base_type    :type/Integer
                         :display_name "Count Chocula"
                         :name         "count_chocula"
-                        :special_type :type/Quantity}]
+                        :semantic_type :type/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
-            ;; Rebind the `prepared-statement` function so that we can capture the generated SQL and inspect it
-            (let [orig       (var-get #'sql-jdbc.execute/prepared-statement)
+            ;; Rebind the `execute-statement!` function so that we can capture the generated SQL and inspect it
+            (let [orig       (var-get #'sql-jdbc.execute/execute-statement!)
                   sql-result (atom nil)]
-              (with-redefs [sql-jdbc.execute/prepared-statement
-                            (fn [driver conn sql params]
+              (with-redefs [sql-jdbc.execute/execute-statement!
+                            (fn [driver stmt sql]
                               (reset! sql-result sql)
-                              (orig driver conn sql params))]
+                              (orig driver stmt sql))]
                 ;; create a card with the metadata
                 (mt/user-http-request :rasta :post 202 "card"
                                       (assoc (card-with-name-and-query card-name)
@@ -470,7 +475,7 @@
                 (is (= [{:base_type    (count-base-type)
                          :display_name "Count"
                          :name         "count"
-                         :special_type :type/Quantity
+                         :semantic_type :type/Quantity
                          :fingerprint  {:global {:distinct-count 1
                                                  :nil%           0.0},
                                         :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
@@ -660,7 +665,7 @@
   (let [metadata [{:base_type    :type/Integer
                    :display_name "Count Chocula"
                    :name         "count_chocula"
-                   :special_type :type/Number}]]
+                   :semantic_type :type/Number}]]
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
@@ -672,14 +677,14 @@
         (is (= [{:base_type    :type/Integer
                  :display_name "Count Chocula"
                  :name         "count_chocula"
-                 :special_type :type/Number}]
+                 :semantic_type :type/Number}]
                (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
 
 (deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
   (let [metadata [{:base_type    :type/BigInteger
                    :display_name "Count Chocula"
                    :name         "count_chocula"
-                   :special_type :type/Quantity}]]
+                   :semantic_type :type/Quantity}]]
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
@@ -691,7 +696,7 @@
         (is (= [{:base_type    :type/BigInteger
                  :display_name "Count"
                  :name         "count"
-                 :special_type :type/Quantity
+                 :semantic_type :type/Quantity
                  :fingerprint  {:global {:distinct-count 1
                                          :nil%           0.0},
                                 :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
@@ -1042,9 +1047,9 @@
                              :dataset_query          (assoc-in
                                                       (mbql-count-query (mt/id) (mt/id :checkins))
                                                       [:query :breakout]
-                                                      [["datetime-field"
+                                                      [[:field
                                                         (mt/id :checkins :date)
-                                                        "hour"]])}
+                                                        {:temporal-unit :hour}]])}
             :expected-email "the question was edited by Crowberto Corv"
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
@@ -1277,8 +1282,8 @@
         (let [card (mt/user-http-request :rasta :post 202 "card"
                                          (assoc (card-with-name-and-query)
                                                 :collection_id (u/the-id collection)))]
-          (= (db/select-one-field :collection_id Card :id (u/the-id card))
-             (u/the-id collection)))))))
+          (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
+                 (u/the-id collection))))))))
 
 (deftest make-sure-we-card-creation-fails-if-we-try-to-set-a--collection-id--we-don-t-have-permissions-for
   (testing "POST /api/card"
@@ -1295,8 +1300,8 @@
     (mt/with-temp* [Card       [card]
                     Collection [collection]]
       (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card)) {:collection_id (u/the-id collection)})
-      (= (db/select-one-field :collection_id Card :id (u/the-id card))
-         (u/the-id collection)))))
+      (is (= (db/select-one-field :collection_id Card :id (u/the-id card))
+             (u/the-id collection))))))
 
 (deftest update-card-require-parent-perms-test
   (testing "Should require perms for the parent collection to change a Card's properties"
@@ -1508,8 +1513,10 @@
     (testing "Attempting to share a Card that's already shared should return the existing public UUID"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp Card [card (shared-card)]
-          (= (:public_uuid card)
-             (:uuid (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card))))))))))
+          (is (= (:public_uuid card)
+                 (:uuid (mt/user-http-request :crowberto :post 200 (format
+                                                                    "card/%d/public_link"
+                                                                    (u/the-id card)))))))))))
 
 (deftest unshare-card-test
   (testing "DELETE /api/card/:id/public_link"

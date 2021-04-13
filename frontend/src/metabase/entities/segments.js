@@ -1,5 +1,3 @@
-/* @flow */
-
 import { createEntity } from "metabase/lib/entities";
 
 import { SegmentSchema } from "metabase/schema";

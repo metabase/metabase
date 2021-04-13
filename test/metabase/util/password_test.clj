@@ -1,6 +1,5 @@
 (ns metabase.util.password-test
-  (:require [expectations :refer [expect]]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.util.password :as pwu]))
 
 ;; Password Complexity testing

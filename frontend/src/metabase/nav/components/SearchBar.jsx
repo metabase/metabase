@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import ReactDOM from "react-dom";
 import { Flex } from "grid-styled";
@@ -7,14 +8,20 @@ import { t } from "ttag";
 
 import { color, lighten } from "metabase/lib/colors";
 
+import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
+import SearchResult from "metabase/search/components/SearchResult";
 
 import { DefaultSearchColor } from "metabase/nav/constants";
+import MetabaseSettings from "metabase/lib/settings";
 
 const ActiveSearchColor = lighten(color("nav"), 0.1);
 
+import Search from "metabase/entities/search";
+
 const SearchWrapper = Flex.extend`
+  position: relative;
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
@@ -29,7 +36,8 @@ const SearchWrapper = Flex.extend`
 `;
 
 const SearchInput = styled.input`
-  ${space} background-color: transparent;
+  ${space};
+  background-color: transparent;
   width: 100%;
   border: none;
   color: white;
@@ -51,16 +59,20 @@ export default class SearchBar extends React.Component {
     searchText: "",
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateSearchTextFromUrl(this.props);
     window.addEventListener("keyup", this.handleKeyUp);
   }
   componentWillUnmount() {
     window.removeEventListener("keyup", this.handleKeyUp);
   }
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.location.pathname !== nextProps.location.pathname) {
       this._updateSearchTextFromUrl(nextProps);
+    }
+    // deactivate search on navigation
+    if (this.props.location !== nextProps.location) {
+      this.setState({ active: false });
     }
   }
   _updateSearchTextFromUrl(props) {
@@ -78,8 +90,28 @@ export default class SearchBar extends React.Component {
       ALLOWED_SEARCH_FOCUS_ELEMENTS.has(document.activeElement.tagName)
     ) {
       ReactDOM.findDOMNode(this.searchInput).focus();
+      this.setState({ active: true });
     }
   };
+
+  renderResults(results) {
+    if (results.length === 0) {
+      return (
+        <li className="flex flex-column align-center justify-center p4 text-medium text-centered">
+          <div className="my3">
+            <Icon name="search" mb={1} size={24} />
+            <h3 className="text-light">{t`Didn't find anything`}</h3>
+          </div>
+        </li>
+      );
+    } else {
+      return results.map(l => (
+        <li key={`${l.model}:${l.id}`}>
+          <SearchResult result={l} compact={true} />
+        </li>
+      ));
+    }
+  }
 
   render() {
     const { active, searchText } = this.state;
@@ -98,6 +130,7 @@ export default class SearchBar extends React.Component {
             pl={1}
             ref={ref => (this.searchInput = ref)}
             value={searchText}
+            maxLength={200}
             placeholder={t`Search` + "…"}
             onClick={() => this.setState({ active: true })}
             onChange={e => this.setState({ searchText: e.target.value })}
@@ -110,6 +143,28 @@ export default class SearchBar extends React.Component {
               }
             }}
           />
+          {active && MetabaseSettings.searchTypeaheadEnabled() && (
+            <div className="absolute left right text-dark" style={{ top: 60 }}>
+              {searchText.length > 0 ? (
+                <Card
+                  className="overflow-y-auto"
+                  style={{ maxHeight: 400 }}
+                  py={1}
+                >
+                  <Search.ListLoader
+                    query={{ q: searchText }}
+                    wrapped
+                    reload
+                    debounced
+                  >
+                    {({ list }) => {
+                      return <ol>{this.renderResults(list)}</ol>;
+                    }}
+                  </Search.ListLoader>
+                </Card>
+              ) : null}
+            </div>
+          )}
         </SearchWrapper>
       </OnClickOutsideWrapper>
     );

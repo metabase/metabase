@@ -102,7 +102,7 @@ describe("scenarios > visualizations > maps", () => {
         query: {
           "source-table": PEOPLE_ID,
           aggregation: [["count"]],
-          breakout: [["field-id", PEOPLE.STATE]],
+          breakout: [["field", PEOPLE.STATE, null]],
         },
         type: "query",
       },

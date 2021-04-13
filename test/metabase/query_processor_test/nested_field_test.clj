@@ -96,7 +96,17 @@
                (mt/formatted-rows [str int]
                  (mt/run-mbql-query tips
                    {:aggregation [[:count]]
-                    :breakout    [$tips.source.service]}))))))))
+                    :breakout    [$tips.source.service]}))))
+
+        (is (= [[nil 297]
+                ["amy" 20]
+                ["biggie" 11]
+                ["bob" 20]]
+               (mt/formatted-rows [str int]
+                 (mt/run-mbql-query tips
+                   {:aggregation [[:count]]
+                    :breakout    [$tips.source.username]
+                    :limit       4}))))))))
 
 (deftest fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)

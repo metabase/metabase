@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -82,8 +81,7 @@ export default class PublicQuestion extends Component {
     };
   }
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       setErrorPage,
       params: { uuid, token },

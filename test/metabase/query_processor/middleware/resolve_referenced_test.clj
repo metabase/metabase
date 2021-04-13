@@ -25,7 +25,7 @@
 (deftest resolve-card-resources-test
   (testing "resolve stores source table from referenced card"
     (mt/with-temp Card [mbql-card {:dataset_query (mt/mbql-query venues
-                                                    {:filter [:< [:field-id $price] 3]})}]
+                                                    {:filter [:< $price 3]})}]
       (let [query {:database (mt/id)
                    :native   {:template-tags
                               {"tag-name-not-important1" {:type    :card
@@ -80,7 +80,7 @@
   (testing "fails on query that references an MBQL query from a different database"
     (mt/with-temp* [Database [outer-query-db]
                     Card     [card {:dataset_query (mt/mbql-query venues
-                                                     {:filter [:< [:field-id $price] 3]})}]]
+                                                     {:filter [:< $price 3]})}]]
       (let [card-id     (:id card)
             card-query  (:dataset_query card)
             tag-name    (str "#" card-id)

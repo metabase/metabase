@@ -1,0 +1,26 @@
+{{> metabase/email/_header }}
+<div style="margin: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); text-align: center;">
+  <h2 style="font-weight: normal; color: #4C545B;line-height: 1.65rem;">
+    We've noticed a new login on your {{applicationName}} account.
+  </h2>
+  <p style="margin-top: 1em">
+    Hi {{first-name}},
+  </p>
+  <p style="margin-top: 1em">
+    We noticed a login on your {{applicationName}} account from a new device.
+  </p>
+
+  <p style="margin-top: 1em;">
+    {{device}} - {{location}}
+  </p>
+
+  <p style="margin-top: 1em;">
+    {{timestamp}}
+  </p>
+
+  <p style="margin-top: 1em;">
+    If this was you, you can safely disregard this email. If this wasn't you, you should change your password
+    immediately.
+  </p>
+</div>
+{{> metabase/email/_footer }}

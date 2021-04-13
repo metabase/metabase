@@ -2,6 +2,7 @@ import {
   restore,
   openOrdersTable,
   openProductsTable,
+  openReviewsTable,
   popover,
   visitQuestionAdhoc,
 } from "__support__/cypress";
@@ -82,7 +83,7 @@ describe("scenarios > question > filter", () => {
                           card_id: Q2_ID,
                           target: [
                             "dimension",
-                            ["field-id", PRODUCTS.CREATED_AT],
+                            ["field", PRODUCTS.CREATED_AT, null],
                           ],
                         },
                         {
@@ -90,7 +91,7 @@ describe("scenarios > question > filter", () => {
                           card_id: Q2_ID,
                           target: [
                             "dimension",
-                            ["field-id", PRODUCTS.CATEGORY],
+                            ["field", PRODUCTS.CATEGORY, null],
                           ],
                         },
                       ],
@@ -125,9 +126,9 @@ describe("scenarios > question > filter", () => {
           "source-query": {
             "source-table": PRODUCTS_ID,
             aggregation: [["count"]],
-            breakout: [["field-id", PRODUCTS.CATEGORY]],
+            breakout: [["field", PRODUCTS.CATEGORY, null]],
           },
-          filter: [">", ["field-literal", "count", "type/Integer"], 1],
+          filter: [">", ["field", "count", { "base-type": "type/Integer" }], 1],
         },
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.createDashboard("12985-v2D").then(
@@ -170,7 +171,7 @@ describe("scenarios > question > filter", () => {
                         card_id: QUESTION_ID,
                         target: [
                           "dimension",
-                          ["field-literal", "CATEGORY", "type/Text"],
+                          ["field", "CATEGORY", { "base-type": "type/Text" }],
                         ],
                       },
                     ],
@@ -237,13 +238,13 @@ describe("scenarios > question > filter", () => {
           "and",
           [
             "between",
-            ["field-id", PRODUCTS.CREATED_AT],
+            ["field", PRODUCTS.CREATED_AT, null],
             "2019-04-15",
             "2019-04-15",
           ],
           [
             "between",
-            ["joined-field", "Products", ["field-id", PRODUCTS.CREATED_AT]],
+            ["field", PRODUCTS.CREATED_AT, { "join-alias": "Products" }],
             "2019-04-15",
             "2019-04-15",
           ],
@@ -253,8 +254,8 @@ describe("scenarios > question > filter", () => {
             alias: "Products",
             condition: [
               "=",
-              ["field-id", PRODUCTS.ID],
-              ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+              ["field", PRODUCTS.ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
             ],
             fields: "all",
             "source-table": PRODUCTS_ID,
@@ -305,12 +306,12 @@ describe("scenarios > question > filter", () => {
     cy.createQuestion({
       name: "12839",
       query: {
-        filter: [">", ["field-literal", CE_NAME, "type/Float"], 0],
+        filter: [">", ["field", CE_NAME, { "base-type": "type/Float" }], 0],
         "source-query": {
           aggregation: [
             ["aggregation-options", ["+", 1, 1], { "display-name": CE_NAME }],
           ],
-          breakout: [["field-id", PRODUCTS.CATEGORY]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
           "source-table": PRODUCTS_ID,
         },
       },
@@ -334,7 +335,7 @@ describe("scenarios > question > filter", () => {
       query: {
         "source-table": PRODUCTS_ID,
         aggregation: [["count"]],
-        breakout: [["field-id", PRODUCTS.CATEGORY]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
       },
       display: "pie",
     }).then(({ body: { id: QUESTION_ID } }) => {
@@ -379,12 +380,12 @@ describe("scenarios > question > filter", () => {
                   {
                     parameter_id: "c32a49e1",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
+                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
                   },
                   {
                     parameter_id: "f2bf003c",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.ID]],
+                    target: ["dimension", ["field", PRODUCTS.ID, null]],
                   },
                 ],
               },
@@ -445,7 +446,7 @@ describe("scenarios > question > filter", () => {
             "display-name": CATEGORY_FILTER.display_name,
             type: CATEGORY_FILTER.type,
             default: "Doohickey",
-            dimension: ["field-id", PRODUCTS.CATEGORY],
+            dimension: ["field", PRODUCTS.CATEGORY, null],
             "widget-type": "category",
           },
           [ID_FILTER.name]: {
@@ -496,13 +497,11 @@ describe("scenarios > question > filter", () => {
       query: {
         "source-query": {
           "source-table": ORDERS_ID,
-          filter: [">", ["field-id", ORDERS.CREATED_AT], "2020-01-01"],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
           aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }]],
         },
-        filter: ["<=", ["field-literal", "count", "type/Integer"], 20],
+        filter: ["<=", ["field", "count", { "base-type": "type/Integer" }], 20],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
@@ -527,7 +526,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText(AGGREGATED_FILTER);
   });
 
-  it("in a simple question should display popup for custom expression options (metabase#14341)", () => {
+  it("in a simple question should display popup for custom expression options (metabase#14341) (metabase#15244)", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -544,6 +543,7 @@ describe("scenarios > question > filter", () => {
       .click()
       .type("contains(");
     cy.findByText(/Checks to see if string1 contains string2 within it./i);
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
     cy.get(".text-error").should("not.exist");
     cy.findAllByText(/Expected one of these possible Token sequences:/i).should(
       "not.exist",
@@ -576,11 +576,11 @@ describe("scenarios > question > filter", () => {
           "source-table": ORDERS_ID,
           filter: [
             ">",
-            ["field-id", ORDERS.CREATED_AT],
+            ["field", ORDERS.CREATED_AT, null],
             [
-              "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.CREATED_AT],
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "source-field": ORDERS.PRODUCT_ID },
             ],
           ],
         },
@@ -607,22 +607,18 @@ describe("scenarios > question > filter", () => {
           aggregation: [
             [
               "sum",
-              [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.PRICE],
-              ],
+              ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
             ],
           ],
           breakout: [
-            [
-              "fk->",
-              ["field-id", ORDERS.PRODUCT_ID],
-              ["field-id", PRODUCTS.CATEGORY],
-            ],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
         },
-        filter: ["=", ["field-literal", "CATEGORY", "type/Text"], "Widget"],
+        filter: [
+          "=",
+          ["field", "CATEGORY", { "base-type": "type/Text" }],
+          "Widget",
+        ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.server();
@@ -638,16 +634,27 @@ describe("scenarios > question > filter", () => {
     });
   });
 
+  it("should offer case expression in the auto-complete suggestions", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    popover().contains(/case/i);
+
+    // "case" is still there after typing a bit
+    cy.get("[contenteditable='true']")
+      .click()
+      .type("c");
+    popover().contains(/case/i);
+  });
+
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.createQuestion({
       name: "14776",
       query: {
         "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
-        breakout: [
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-        ],
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
@@ -675,7 +682,7 @@ describe("scenarios > question > filter", () => {
       name: "14843",
       query: {
         "source-table": PEOPLE_ID,
-        expressions: { [CC_NAME]: ["length", ["field-id", PEOPLE.CITY]] },
+        expressions: { [CC_NAME]: ["length", ["field", PEOPLE.CITY, null]] },
         filter: ["!=", ["expression", CC_NAME], 3],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
@@ -683,6 +690,110 @@ describe("scenarios > question > filter", () => {
     });
     cy.wait("@cardQuery");
     cy.findByText("Rye").should("not.exist");
+  });
+
+  it("should filter using IsNull() and IsEmpty()", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsNull([Rating])", { delay: 50 });
+    cy.findAllByRole("button")
+      .contains("Done")
+      .should("not.be.disabled")
+      .click();
+
+    cy.get(".QueryBuilder .Icon-add").click();
+
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+    cy.findAllByRole("button")
+      .contains("Done")
+      .should("not.be.disabled")
+      .click();
+
+    // check that filter is applied and rows displayed
+    cy.findByText("Visualize").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
+    openReviewsTable();
+    cy.contains("Reviewer").click();
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Is").click();
+    cy.findByText("Is empty").click();
+    cy.findByText("Update filter").click();
+
+    // filter out everything
+    cy.contains("Showing 0 rows");
+
+    // change the corresponding custom expression
+    cy.findByText("Reviewer is empty").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains("isempty([Reviewer])");
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+    cy.findByText("Done").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert 'is empty' on a numeric column to a custom expression using IsNull()", () => {
+    openReviewsTable();
+    cy.contains("Rating").click();
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Equal to").click();
+    cy.findByText("Is empty").click();
+    cy.findByText("Update filter").click();
+
+    // filter out everything
+    cy.contains("Showing 0 rows");
+
+    // change the corresponding custom expression
+    cy.findByText("Rating is empty").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains("isnull([Rating])");
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("NOT IsNull([Rating])", { delay: 50 });
+    cy.findByText("Done").click();
+    cy.contains("Showing 1,112 rows");
+  });
+
+  it("should convert negative filter to custom expression (metabase#14880)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          filter: [
+            "does-not-contain",
+            ["field", PRODUCTS.TITLE, null],
+            "Wallet",
+            { "case-sensitive": false },
+          ],
+        },
+        database: 1,
+      },
+      display: "table",
+    });
+    cy.findByText("Title does not contain Wallet").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']").contains(
+      'NOT contains([Title], "Wallet")',
+    );
   });
 
   it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
@@ -693,7 +804,7 @@ describe("scenarios > question > filter", () => {
           "source-table": PRODUCTS_ID,
           filter: [
             "does-not-contain",
-            ["field-id", PRODUCTS.TITLE],
+            ["field", PRODUCTS.TITLE, null],
             "Wallet",
             { "case-sensitive": false },
           ],
@@ -720,7 +831,7 @@ describe("scenarios > question > filter", () => {
           "source-table": REVIEWS_ID,
           filter: [
             "contains",
-            ["field-id", REVIEWS.REVIEWER],
+            ["field", REVIEWS.REVIEWER, null],
             "MULLER",
             { "case-sensitive": false },
           ],
@@ -742,6 +853,34 @@ describe("scenarios > question > filter", () => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
     });
     cy.findByText("wilma-muller");
+  });
+
+  it("should reject a number literal", () => {
+    openProductsTable();
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .type("3.14159");
+    cy.findAllByRole("button", { name: "Done" })
+      .should("not.be.disabled")
+      .click();
+    cy.findByText("Expecting boolean but found 3.14159");
+  });
+
+  it("should reject a string literal", () => {
+    openProductsTable();
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .type('"TheAnswer"');
+    cy.findAllByRole("button", { name: "Done" })
+      .should("not.be.disabled")
+      .click();
+    cy.findByText('Expecting boolean but found "TheAnswer"');
   });
 
   it.skip("column filters should work for metrics (metabase#15333)", () => {

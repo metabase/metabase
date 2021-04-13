@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt, ngettext, msgid } from "ttag";
@@ -89,7 +90,7 @@ export class CreateAlertModalContent extends Component {
     };
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     // NOTE Atte Keinänen 11/6/17: Don't fill in the card information yet
     // Because `onCreate` and `onSave` of QueryHeader mix Redux action dispatches and `setState` calls,
     // we don't have up-to-date card information in the constructor yet
@@ -104,7 +105,7 @@ export class CreateAlertModalContent extends Component {
     }
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // loads the channel information
     this.props.fetchPulseFormInput();
   }

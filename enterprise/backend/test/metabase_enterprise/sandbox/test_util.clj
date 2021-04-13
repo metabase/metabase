@@ -119,6 +119,6 @@
    :type     :query
    :query    (data/$ids venues
                {:source_table $$venues
-                :fields       [[:field-id $id]
-                               [:field-id $name]
-                               [:field-id $category_id]]})})
+                :fields       [$id
+                               $name
+                               $category_id]})})

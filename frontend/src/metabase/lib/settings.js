@@ -1,8 +1,8 @@
-/* @flow weak */
-
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
+import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
+import moment from "moment";
 
 // TODO: dump this from backend settings definitions
 export type SettingName =
@@ -25,11 +25,13 @@ export type SettingName =
   | "ldap-configured?"
   | "map-tile-server-url"
   | "password-complexity"
+  | "search-typeahead-enabled"
   | "setup-token"
   | "site-url"
   | "types"
   | "version"
-  | "version-info";
+  | "version-info"
+  | "version-info-last-checked";
 
 type SettingsMap = { [key: SettingName]: any };
 
@@ -92,10 +94,6 @@ class Settings {
     return /.+\.metabaseapp.com\/?$/i.test(this.get("site-url"));
   }
 
-  isTrackingEnabled() {
-    return this.get("anon-tracking-enabled") || false;
-  }
-
   googleAuthEnabled() {
     return this.get("google-auth-client-id") != null;
   }
@@ -104,16 +102,37 @@ class Settings {
     return this.get("setup-token") != null;
   }
 
-  ssoEnabled() {
-    return this.get("google-auth-client-id") != null;
+  hideEmbedBranding() {
+    return this.get("hide-embed-branding?");
   }
 
   ldapEnabled() {
     return this.get("ldap-configured?");
   }
 
-  hideEmbedBranding() {
-    return this.get("hide-embed-branding?");
+  searchTypeaheadEnabled() {
+    return this.get("search-typeahead-enabled");
+  }
+
+  ssoEnabled() {
+    return this.get("google-auth-client-id") != null;
+  }
+
+  trackingEnabled() {
+    return this.get("anon-tracking-enabled") || false;
+  }
+
+  versionInfoLastChecked() {
+    const ts = this.get("version-info-last-checked");
+    if (ts) {
+      // app DB stores this timestamp in UTC, so convert it to the local zone to render
+      return moment
+        .utc(parseTimestamp(ts))
+        .local()
+        .format("MMMM Do YYYY, h:mm:ss a");
+    } else {
+      return t`never`;
+    }
   }
 
   docsUrl(page = "", anchor = "") {

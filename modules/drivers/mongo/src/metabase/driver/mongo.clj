@@ -91,7 +91,7 @@
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
-(defn- val->special-type [field-value]
+(defn- val->semantic-type [field-value]
   (cond
     ;; 1. url?
     (and (string? field-value)
@@ -122,10 +122,10 @@
                       %))
       (update :types (fn [types]
                        (update types (type field-value) u/safe-inc)))
-      (update :special-types (fn [special-types]
-                               (if-let [st (val->special-type field-value)]
-                                 (update special-types st u/safe-inc)
-                                 special-types)))
+      (update :semantic-types (fn [semantic-types]
+                               (if-let [st (val->semantic-type field-value)]
+                                 (update semantic-types st u/safe-inc)
+                                 semantic-types)))
       (update :nested-fields (fn [nested-fields]
                                (if (map? field-value)
                                  (find-nested-fields field-value nested-fields)
@@ -164,7 +164,7 @@
               :base-type         (class->base-type most-common-object-type)
               :database-position idx}
        (= :_id field-kw)           (assoc :pk? true)
-       (:special-types field-info) (assoc :special-type (->> (:special-types field-info)
+       (:semantic-types field-info) (assoc :semantic-type (->> (:semantic-types field-info)
                                                              (filterv #(some? (first %)))
                                                              (sort-by second)
                                                              last
@@ -181,8 +181,8 @@
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
    sample. The results will look something like:
 
-      {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :special-types nil, :nested-fields nil},
-       :severity {:count 200, :len nil, :types {java.lang.Long 200}, :special-types nil, :nested-fields nil}}"
+      {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil},
+       :severity {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil}}"
   [^com.mongodb.DB conn, table]
   (try
     (->> (mc/find-maps conn (:name table))

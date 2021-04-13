@@ -1,5 +1,5 @@
 /*eslint-disable react/no-danger */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import styled from "styled-components";
 import { color, space, hover } from "styled-system";
@@ -91,7 +91,7 @@ class BaseIcon extends Component {
           src={icon.img}
           srcSet={`
           ${icon.img}    1x,
-          ${icon.img}@2x 2x
+          ${icon.img_2x} 2x
         `}
           {...rest}
         />

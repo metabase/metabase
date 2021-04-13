@@ -70,7 +70,7 @@ export default class Setup extends Component {
     );
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
     if (
       this.props.activeStep !== nextProps.activeStep &&
@@ -144,7 +144,7 @@ export default class Setup extends Component {
                 stepNumber={DATABASE_CONNECTION_STEP_NUMBER}
               />
 
-              {/* Have the ref for scrolling in componentWillReceiveProps */}
+              {/* Have the ref for scrolling in UNSAFE_componentWillReceiveProps */}
               <div ref="databaseSchedulingStepContainer">
                 {/* Show db scheduling step only if the user has explicitly set the "Let me choose when Metabase syncs and scans" toggle to true */}
                 {databaseDetails &&

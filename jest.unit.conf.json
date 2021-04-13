@@ -30,6 +30,7 @@
   "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
-    "/frontend/src/metabase/visualizations/lib/errors.js"
+    "/frontend/src/metabase/visualizations/lib/errors.js",
+    "/frontend/src/cljs/"
   ]
 }

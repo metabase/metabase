@@ -1,5 +1,3 @@
-/* eslint-disable flowtype/require-valid-file-annotation */
-
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 
@@ -31,7 +29,7 @@ describe("PivotByDrill", () => {
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
-            breakout: [["datetime-field", ["field-id", 1], "day"]],
+            breakout: [["field", 1, { "temporal-unit": "day" }]],
           },
           type: "query",
         },

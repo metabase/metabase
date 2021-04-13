@@ -16,7 +16,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 - Druid
 - Google Analytics (version 3; if you're interested in support for version 4, let us know by adding your [+1 to this issue (#12905)](https://github.com/metabase/metabase/issues/12905))
 - H2
-- [MongoDB (version 3.4 or higher)](databases/mongodb.md)
+- [MongoDB (version 3.6 or higher)](databases/mongodb.md) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
 - [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](databases/mysql.md)
 - [Oracle](databases/oracle.md)
 - PostgreSQL

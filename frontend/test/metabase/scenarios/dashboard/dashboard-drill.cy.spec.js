@@ -103,12 +103,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
                   "table.columns": [
                     {
                       name: "STATE",
-                      fieldRef: ["field-literal", "STATE", "type/Text"],
+                      fieldRef: [
+                        "field",
+                        "STATE",
+                        { "base-type": "type/Text" },
+                      ],
                       enabled: false,
                     },
                     {
                       name: "CITY",
-                      fieldRef: ["field-literal", "CITY", "type/Text"],
+                      fieldRef: ["field", "CITY", { "base-type": "type/Text" }],
                       enabled: true,
                     },
                   ],
@@ -258,7 +262,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     // 1. set "Rating" Field type to: "Category"
 
     cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
-      special_type: "type/Category",
+      semantic_type: "type/Category",
     });
     // 2. create a question based on Reviews
     cy.request("POST", `/api/card`, {
@@ -304,7 +308,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
                   {
                     parameter_id: "18024e69",
                     card_id: questionId,
-                    target: ["dimension", ["field-id", REVIEWS.RATING]],
+                    target: ["dimension", ["field", REVIEWS.RATING, null]],
                   },
                 ],
               },
@@ -373,9 +377,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
               target: [
                 "dimension",
                 [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CATEGORY],
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
             },
@@ -407,9 +411,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       query: {
         "source-table": REVIEWS_ID,
         aggregation: [["count"]],
-        breakout: [
-          ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "month"],
-        ],
+        breakout: [["field", REVIEWS.CREATED_AT, { "temporal-unit": "month" }]],
       },
       display: "bar",
     }).then(({ body: { id: QUESTION_ID } }) => {
@@ -468,7 +470,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
                   {
                     parameter_id: "4ff53514",
                     card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", REVIEWS.CREATED_AT]],
+                    target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
                   },
                 ],
               },
@@ -731,10 +733,7 @@ function createDashboard(
               {
                 parameter_id: "e8f79be9",
                 card_id: questionId,
-                target: [
-                  "dimension",
-                  ["fk->", ["field-id", 11], ["field-id", 22]],
-                ],
+                target: ["dimension", ["field", 22, { "source-field": 11 }]],
               },
             ],
             visualization_settings,

@@ -11,7 +11,7 @@ import { isa, TYPE } from "metabase/lib/types";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
-} from "metabase/meta/Dashboard";
+} from "metabase/meta/Parameter";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},

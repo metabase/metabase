@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import fitViewport from "metabase/hoc/FitViewPort";
 import Link from "metabase/components/Link";
@@ -21,6 +22,7 @@ export const CATEGORIES = {
   modal: "Modal",
   form: "Form",
   visualization: "Visualizations",
+  search: "Search",
 };
 
 import COMPONENTS from "../lib/components-webpack";

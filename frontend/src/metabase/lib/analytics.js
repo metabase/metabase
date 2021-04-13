@@ -1,5 +1,4 @@
 /*global ga*/
-/* @flow */
 
 import MetabaseSettings from "metabase/lib/settings";
 

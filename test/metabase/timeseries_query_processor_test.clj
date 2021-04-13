@@ -101,11 +101,11 @@
 
 (deftest sum-test
   (tqp.test/test-timeseries-drivers
-    (= {:columns ["sum"]
-        :rows    [[1992.0]]}
-       (mt/rows+column-names
-         (mt/run-mbql-query checkins
-           {:aggregation [[:sum $venue_price]]})))))
+    (is (= {:columns ["sum"]
+            :rows    [[1992.0]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:aggregation [[:sum $venue_price]]}))))))
 
 (deftest avg-test
   (tqp.test/test-timeseries-drivers

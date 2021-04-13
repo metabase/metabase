@@ -79,7 +79,7 @@ describe("scenarios > question > notebook", () => {
         database: 1,
         query: {
           "source-table": ORDERS_ID,
-          filter: ["between", ["field-id", ORDERS.ID], 96, 97],
+          filter: ["between", ["field", ORDERS.ID, null], 96, 97],
         },
         type: "query",
       },
@@ -89,6 +89,53 @@ describe("scenarios > question > notebook", () => {
     cy.wait("@dataset");
     cy.findByText("ID 96 97").click();
     cy.get("[contenteditable='true']").contains("between([ID], 96, 97)");
+  });
+
+  it("should show the correct number of function arguments in a custom expression", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("contains([Category])", { delay: 50 });
+    cy.findAllByRole("button", { name: "Done" })
+      .should("not.be.disabled")
+      .click();
+    cy.contains(/^Function contains expects 2 arguments/i);
+  });
+
+  it("should show the correct number of CASE arguments in a custom expression", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']").type("CASE([Price]>0)");
+      cy.findByPlaceholderText("Something nice and descriptive")
+        .click()
+        .type("Sum Divide");
+      cy.contains(/^CASE expects 2 arguments or more/i);
+    });
+  });
+
+  it("should process the updated expression when pressing Enter", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1");
+    cy.findAllByRole("button", { name: "Done" }).click();
+
+    // change the corresponding custom expression
+    cy.findByText("Price is greater than 1").click();
+    cy.get(".Icon-chevronleft").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable='true']")
+      .click()
+      .clear()
+      .type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.contains(/^Price is less than 5/i);
   });
 
   describe("joins", () => {
@@ -262,16 +309,16 @@ describe("scenarios > question > notebook", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
-            ["joined-field", "People - User", ["field-id", PEOPLE.SOURCE]],
+            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+            ["field", PEOPLE.SOURCE, { "join-alias": "People - User" }],
           ],
           joins: [
             {
               alias: "Products",
               condition: [
                 "=",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
               ],
               fields: "all",
               "source-table": PRODUCTS_ID,
@@ -280,8 +327,8 @@ describe("scenarios > question > notebook", () => {
               alias: "People - User",
               condition: [
                 "=",
-                ["field-id", ORDERS.USER_ID],
-                ["joined-field", "People - User", ["field-id", PEOPLE.ID]],
+                ["field", ORDERS.USER_ID, null],
+                ["field", PEOPLE.ID, { "join-alias": "People - User" }],
               ],
               fields: "all",
               "source-table": PEOPLE_ID,
@@ -295,17 +342,17 @@ describe("scenarios > question > notebook", () => {
         name: "12928_Q2",
         query: {
           "source-table": REVIEWS_ID,
-          aggregation: [["avg", ["field-id", REVIEWS.RATING]]],
+          aggregation: [["avg", ["field", REVIEWS.RATING, null]]],
           breakout: [
-            ["joined-field", "Products", ["field-id", PRODUCTS.CATEGORY]],
+            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
           ],
           joins: [
             {
               alias: "Products",
               condition: [
                 "=",
-                ["field-id", REVIEWS.PRODUCT_ID],
-                ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                ["field", REVIEWS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
               ],
               fields: "all",
               "source-table": PRODUCTS_ID,
@@ -351,7 +398,7 @@ describe("scenarios > question > notebook", () => {
         query: {
           "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
-          breakout: [["field-id", PRODUCTS.CATEGORY]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
           "order-by": [["asc", ["aggregation", 0]]],
         },
       }).then(({ body: { id: questionId } }) => {
@@ -367,11 +414,11 @@ describe("scenarios > question > notebook", () => {
                 fields: "all",
                 condition: [
                   "=",
-                  ["field-id", PRODUCTS.CATEGORY],
+                  ["field", PRODUCTS.CATEGORY, null],
                   [
-                    "joined-field",
-                    ALIAS,
-                    ["field-literal", "CATEGORY", "type/Text"],
+                    "field",
+                    "CATEGORY",
+                    { "base-type": "type/Text", "join-alias": ALIAS },
                   ],
                 ],
                 "source-table": `card__${questionId}`,
@@ -409,16 +456,19 @@ describe("scenarios > question > notebook", () => {
             aggregation: [
               [
                 "aggregation-options",
-                ["sum", ["field-id", ORDERS.SUBTOTAL]],
+                ["sum", ["field", ORDERS.SUBTOTAL, null]],
                 { "display-name": "Revenue" },
               ],
             ],
             breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
             ],
           },
-          aggregation: [["min", ["field-literal", "Revenue", "type/Float"]]],
+          aggregation: [
+            ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
+          ],
         },
+
         display: "scalar",
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.server();
@@ -449,20 +499,17 @@ describe("scenarios > question > notebook", () => {
                 "source-table": PRODUCTS_ID,
                 condition: [
                   "=",
-                  ["field-id", REVIEWS.PRODUCT_ID],
-                  ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
+                  ["field", REVIEWS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
                 ],
                 alias: "Products",
               },
             ],
             aggregation: [
-              [
-                "sum",
-                ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
-              ],
+              ["sum", ["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
             ],
             breakout: [
-              ["datetime-field", ["field-id", REVIEWS.CREATED_AT], "year"],
+              ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           database: 1,
@@ -486,6 +533,175 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("How this metric is distributed across different numbers");
       // Make sure at least one card is rendered
       cy.get(".DashCard");
+    });
+
+    it("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
+      cy.createQuestion({
+        name: "15446",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+              alias: "Products",
+            },
+          ],
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.visit(`/question/${QUESTION_ID}/notebook`);
+      });
+      cy.findByText("Pick a column to group by").click();
+      // In the first popover we'll choose the breakout method
+      popover().within(() => {
+        cy.findByText("User").click();
+        cy.findByPlaceholderText("Find...").type("cr");
+        cy.findByText("Created At")
+          .closest(".List-item")
+          .findByText("by month")
+          .click({ force: true });
+      });
+      // The second popover shows up and offers binning options
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("Hour of day").scrollIntoView();
+          // This is an implicit assertion - test fails when there is more than one string when using `findByText` instead of `findAllByText`
+          cy.findByText("Minute").click();
+        });
+      // Given that the previous step passes, we should now see this in the UI
+      cy.findByText("User → Created At: Minute");
+    });
+
+    it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["=", ["field-id", ORDERS.USER_ID], 1],
+          },
+          database: 1,
+        },
+      });
+
+      cy.findByText("User ID is 1");
+      cy.findByText("37.65");
+    });
+
+    it.skip("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
+      cy.visit("/question/1/notebook");
+      cy.findByText("Summarize").click();
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText("Created At")
+        .closest(".List-item")
+        .findByText("by month")
+        .click({ force: true });
+      // First a reality check - "Minute" is the only string visible in UI and this should pass
+      cy.findAllByText("Minute")
+        .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15570) gets fixed
+        .isVisibleInPopover();
+      // The actual check that will fail until this issue gets fixed
+      cy.findAllByText("Week")
+        .first()
+        .isVisibleInPopover();
+    });
+
+    it.skip("should add numeric filter on joined table (metabase#15570)", () => {
+      cy.createQuestion({
+        name: "15570",
+        query: {
+          "source-table": PRODUCTS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": ORDERS_ID,
+              condition: [
+                "=",
+                ["field", PRODUCTS.ID, null],
+                ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
+              ],
+              alias: "Orders",
+            },
+          ],
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.visit(`/question/${QUESTION_ID}/notebook`);
+      });
+      cy.findByText("Filter").click();
+      popover().within(() => {
+        cy.findByText(/Orders/i).click();
+        cy.findByText("Discount").click();
+      });
+      cy.get(".AdminSelect")
+        .contains("Equal to")
+        .click();
+      cy.findByText("Greater than").click();
+      cy.findByPlaceholderText("Enter a number").type(0);
+      cy.findByRole("button", { name: "Add filter" })
+        .should("not.be.disabled")
+        .click();
+    });
+
+    it.skip("should not render duplicated values in date binning popover (metabase#15574)", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Summarize").click();
+      cy.findByText("Pick a column to group by").click();
+      popover()
+        .findByText("Created At")
+        .closest(".List-item")
+        .findByText("by month")
+        .click({ force: true });
+      cy.findByText("Minute");
+    });
+  });
+
+  describe.skip("popover rendering issues (metabase#15502)", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      cy.viewport(1280, 720);
+      cy.visit("/question/new");
+      cy.findByText("Custom question").click();
+      cy.findByText("Sample Dataset").click();
+      cy.findByText("Orders").click();
+    });
+
+    it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {
+      // Initial filter popover usually renders correctly within the viewport
+      cy.findByText("Add filters to narrow your answer")
+        .as("filter")
+        .click();
+      popover().isInViewport();
+      // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
+      cy.icon("gear").click();
+      cy.get("@filter").click();
+      popover().isInViewport();
+    });
+
+    it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
+      // Initial summarize/metric popover usually renders initially without blocking the button
+      cy.findByText("Pick the metric you want to see")
+        .as("metric")
+        .click();
+      // Click outside to close this popover
+      cy.icon("gear").click();
+      // Popover invoked again blocks the button making it impossible to click the button for the third time
+      cy.get("@metric").click();
+      cy.get("@metric").click();
     });
   });
 
@@ -532,8 +748,7 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  // TODO: add positive assertions to all 4 tests when we figure out implementation details
-  describe.skip("arithmetic (metabase#13175)", () => {
+  describe("arithmetic (metabase#13175)", () => {
     beforeEach(() => {
       openOrdersTable({ mode: "notebook" });
     });
@@ -548,9 +763,14 @@ describe("scenarios > question > notebook", () => {
         .click()
         .type("Example", { delay: 100 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
-        .should("not.be.disabled");
+      cy.findAllByRole("button", { name: "Done" })
+        .should("not.be.disabled")
+        .click();
+
+      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.contains("Example");
+      cy.contains("Big");
+      cy.contains("Small");
     });
 
     it("should work on custom filter", () => {
@@ -560,22 +780,25 @@ describe("scenarios > question > notebook", () => {
       cy.get("[contenteditable='true']")
         .click()
         .clear()
-        .type("[Subtotal] - Tax > 20", { delay: 50 });
+        .type("[Subtotal] - Tax > 140", { delay: 50 });
 
-      cy.findAllByRole("button")
-        .contains("Done")
+      cy.contains(/^redundant input/i).should("not.exist");
+
+      cy.findAllByRole("button", { name: "Done" })
         .should("not.be.disabled")
         .click();
 
-      cy.contains(/^redundant input/i).should("not.exist");
+      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.contains("Showing 97 rows");
     });
 
     const CASES = {
-      CountIf: "CountIf(([Subtotal] + [Tax]) > 10)",
-      SumIf: "SumIf([Subtotal], ([Subtotal] + [Tax] > 20))",
+      CountIf: ["CountIf(([Subtotal] + [Tax]) > 10)", "18,760"],
+      SumIf: ["SumIf([Subtotal], ([Subtotal] + [Tax] > 20))", "1,447,850.28"],
     };
 
     Object.entries(CASES).forEach(([filter, formula]) => {
+      const [expression, result] = formula;
       it(`should work on custom aggregation with ${filter}`, () => {
         cy.findByText("Summarize").click();
         cy.findByText("Custom Expression").click();
@@ -583,14 +806,22 @@ describe("scenarios > question > notebook", () => {
         cy.get("[contenteditable='true']")
           .click()
           .clear()
-          .type(formula, { delay: 50 });
+          .type(expression, { delay: 50 });
 
         cy.findByPlaceholderText("Name (required)")
           .click()
-          .type("Ex", { delay: 100 });
+          .type(filter, { delay: 100 });
 
         cy.contains(/^expected closing parenthesis/i).should("not.exist");
         cy.contains(/^redundant input/i).should("not.exist");
+
+        cy.findAllByRole("button", { name: "Done" })
+          .should("not.be.disabled")
+          .click();
+
+        cy.findAllByRole("button", { name: "Visualize" }).click();
+        cy.contains(filter);
+        cy.contains(result);
       });
     });
   });
@@ -603,16 +834,16 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
   cy.createQuestion({
     name: "Q1",
     query: {
-      aggregation: ["sum", ["field-id", ORDERS.TOTAL]],
-      breakout: [["field-id", ORDERS.PRODUCT_ID]],
+      aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
+      breakout: [["field", ORDERS.PRODUCT_ID, null]],
       "source-table": ORDERS_ID,
     },
   }).then(({ body: { id: Q1_ID } }) => {
     cy.createQuestion({
       name: "Q2",
       query: {
-        aggregation: ["sum", ["field-id", PRODUCTS.RATING]],
-        breakout: [["field-id", PRODUCTS.ID]],
+        aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
+        breakout: [["field", PRODUCTS.ID, null]],
         "source-table": PRODUCTS_ID,
       },
     }).then(({ body: { id: Q2_ID } }) => {
@@ -625,11 +856,11 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
               alias: ALIAS,
               condition: [
                 "=",
-                ["field-literal", "PRODUCT_ID", "type/Integer"],
+                ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
                 [
-                  "joined-field",
-                  ALIAS,
-                  ["field-literal", "ID", "type/BigInteger"],
+                  "field",
+                  "ID",
+                  { "base-type": "type/BigInteger", "join-alias": ALIAS },
                 ],
               ],
               fields: "all",

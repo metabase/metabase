@@ -1,7 +1,7 @@
 import { TYPE } from "metabase/lib/types";
 import { t } from "ttag";
 
-export const field_special_types = [
+export const field_semantic_types = [
   /* Overall Row */
   {
     id: TYPE.PK,
@@ -311,7 +311,7 @@ export const field_special_types = [
   },
 ];
 
-export const field_special_types_map = field_special_types.reduce(
+export const field_semantic_types_map = field_semantic_types.reduce(
   (map, type) => Object.assign({}, map, { [type.id]: type }),
   {},
 );

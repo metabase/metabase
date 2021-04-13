@@ -12,7 +12,7 @@ const objectDetailCard = {
     cols: [
       {
         display_name: "Details",
-        special_type: TYPE.SerializedJSON,
+        semantic_type: TYPE.SerializedJSON,
       },
     ],
     columns: ["details"],
@@ -28,7 +28,7 @@ const invalidObjectDetailCard = {
     cols: [
       {
         display_name: "Details",
-        special_type: TYPE.SerializedJSON,
+        semantic_type: TYPE.SerializedJSON,
       },
     ],
     columns: ["details"],
@@ -38,7 +38,7 @@ const invalidObjectDetailCard = {
 
 describe("ObjectDetail", () => {
   describe("json field rendering", () => {
-    it("should properly display JSON special type data as JSON", () => {
+    it("should properly display JSON semantic type data as JSON", () => {
       render(
         <ObjectDetail
           data={objectDetailCard.data}

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 
 import Base from "./Base";

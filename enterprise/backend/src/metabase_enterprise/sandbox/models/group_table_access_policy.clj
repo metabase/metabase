@@ -3,7 +3,6 @@
   certain PermissionsGroup. Whenever a member of that group attempts to query the Table in question, a Saved Question
   specified by the GTAP is instead used as the source of the query."
   (:require [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.mbql.normalize :as normalize]
             [metabase.models.card :as card :refer [Card]]
@@ -23,10 +22,7 @@
 
 (defn- normalize-attribute-remapping-targets [attribute-remappings]
   (m/map-vals
-   (fn [target]
-     (if (map? target)
-       (normalize/normalize-tokens (walk/keywordize-keys target) [:parameters :metabase.mbql.normalize/sequence])
-       (normalize/normalize-tokens target :ignore-path)))
+   normalize/normalize
    attribute-remappings))
 
 ;; for GTAPs

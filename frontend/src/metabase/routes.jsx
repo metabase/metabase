@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React from "react";
 
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
@@ -257,6 +255,10 @@ export const getRoutes = store => (
         <IndexRedirect to="/reference/databases" />
         <Route path="metrics" component={MetricListContainer} />
         <Route path="metrics/:metricId" component={MetricDetailContainer} />
+        <Route
+          path="metrics/:metricId/edit"
+          component={MetricDetailContainer}
+        />
         <Route
           path="metrics/:metricId/questions"
           component={MetricQuestionsContainer}

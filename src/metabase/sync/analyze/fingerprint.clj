@@ -76,7 +76,7 @@
 ;; SELECT *
 ;; FROM metabase_field
 ;; WHERE active = true
-;;   AND (special_type NOT IN ('type/PK') OR special_type IS NULL)
+;;   AND (semantic_type NOT IN ('type/PK') OR semantic_type IS NULL)
 ;;   AND preview_display = true
 ;;   AND visibility_type <> 'retired'
 ;;   AND table_id = 1
@@ -139,8 +139,8 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb.u/isa :special_type :type/PK)]
-    [:= :special_type nil]]
+    [:not (mdb.u/isa :semantic_type :type/PK)]
+    [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
    [:not= :base_type "type/Structured"]])
 

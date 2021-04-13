@@ -1,4 +1,4 @@
-/* @flow */
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Box, Flex } from "grid-styled";
 
@@ -8,11 +8,11 @@ import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
 
 type EmptyStateProps = {
-  message?: React$Element<any>,
+  message?: React.Element,
   title?: string,
   action?: string,
   link?: string,
-  illustrationElement: React$Element<any>,
+  illustrationElement: React.Element,
   onActionClick?: () => void,
 };
 

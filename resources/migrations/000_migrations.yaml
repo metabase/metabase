@@ -1,10 +1,8 @@
 databaseChangeLog:
-# The quoting strategy decides when things like column names should be quoted.
-# This is in place to deal with Liquibase not knowing about all of the new
-# reserved words in MySQL 8+. Using a column name that is a reserved word
-# causes a failure. Quoting all objects breaks H2 support though as it will
-# quote table names but not quote that same table name in a foreign key reference
-# which will cause a failure when trying to initially setup the database.
+  # The quoting strategy decides when things like column names should be quoted. This is in place to deal with
+  # Liquibase not knowing about all of the new reserved words in MySQL 8+. Using a column name that is a reserved word
+  # causes a failure. Quoting all objects breaks H2 support though as it will quote table names but not quote that
+  # same table name in a foreign key reference which will cause a failure when trying to initially setup the database.
   - property:
       name: quote_strategy
       value: QUOTE_ALL_OBJECTS
@@ -7922,6 +7920,338 @@ databaseChangeLog:
             constraintName: fk_pulse_ref_dashboard_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: 281
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - rename special_type
+      changes:
+        - renameColumn:
+            tableName: metabase_field
+            oldColumnName: special_type
+            newColumnName: semantic_type
+            columnDataType: varchar(255)
+
+  # Change the TaskHistory timestamp columns to higher-resolution columns: on MySQL, they previously only had *second*
+  # resolution, which caused annoying test failures and made it hard to correctly sort tasks that happened in quick
+  # succession.
+  #
+  # We have to give these columns default values as well, or MySQL is going to be very fussy about having two
+  # NOT NULL timestamp columns without default values at the same time.
+  #
+  # This is done in raw SQL because AFAIK there's no way in Liquibase to change a column type and give it a default
+  # value in a single statement, which we have to do to make MySQL happy.
+  - changeSet:
+      id: 282
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN started_at timestamp with time zone DEFAULT current_timestamp NOT NULL;
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN started_at TYPE timestamp with time zone,
+              ALTER COLUMN started_at SET DEFAULT current_timestamp;
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE task_history
+              MODIFY started_at timestamp(6) DEFAULT current_timestamp(6) NOT NULL;
+
+  - changeSet:
+      id: 283
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - sql:
+            dbms: h2
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN ended_at timestamp with time zone DEFAULT current_timestamp NOT NULL;
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE task_history
+              ALTER COLUMN ended_at TYPE timestamp with time zone,
+              ALTER COLUMN ended_at SET DEFAULT current_timestamp;
+        - sql:
+            dbms: mysql,mariadb
+            sql: |
+              ALTER TABLE task_history
+              MODIFY ended_at timestamp(6) DEFAULT current_timestamp(6) NOT NULL;
+  - changeSet:
+      id: 284
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - add effective type
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: effective_type
+                  type: varchar(255)
+                  remarks: 'The effective type of the field after any coercions.'
+  - changeSet:
+      id: 285
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - add coercion column
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: coercion_strategy
+                  type: varchar(255)
+                  remarks: 'A strategy to coerce the base_type into the effective_type.'
+  - changeSet:
+      id: 286
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - set effective_type default
+      changes:
+        - sql:
+            sql: UPDATE metabase_field set effective_type = base_type
+  - changeSet:
+      id: 287
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - migrate ISO8601 strings
+      validCheckSum:
+        - 8:ed47b08ec425a34cf66bd1e96c7b2446
+        - 8:0679eedae767a8648383aac2f923e413
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET effective_type    = (CASE semantic_type
+                                         WHEN 'type/ISO8601DateTimeString' THEN 'type/DateTime'
+                                         WHEN 'type/ISO8601TimeString'     THEN 'type/Time'
+                                         WHEN 'type/ISO8601DateString'     THEN 'type/Date'
+                                       END),
+                  coercion_strategy = (CASE semantic_type
+                                        WHEN 'type/ISO8601DateTimeString' THEN 'Coercion/ISO8601->DateTime'
+                                        WHEN 'type/ISO8601TimeString'     THEN 'Coercion/ISO8601->Time'
+                                        WHEN 'type/ISO8601DateString'     THEN 'Coercion/ISO8601->Date'
+                                       END)
+              WHERE semantic_type IN ('type/ISO8601DateTimeString',
+                                      'type/ISO8601TimeString',
+                                      'type/ISO8601DateString');
+  - changeSet:
+      id: 288
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - migrate unix timestamps
+      validCheckSum:
+        - 8:4fa37c8edede4a10c39bf5aca13bd1b5
+        - 8:96af0fae84744857640d029cf4cd4bb6
+        - 8:8a8b10ff335892c18394a6e00676a446
+      changes:
+        - sql:
+              sql: >-
+                UPDATE metabase_field
+                set effective_type    = 'type/Instant',
+                    coercion_strategy = (case semantic_type
+                                          WHEN 'type/UNIXTimestampSeconds'      THEN 'Coercion/UNIXSeconds->DateTime'
+                                          WHEN 'type/UNIXTimestampMilliSeconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                          WHEN 'type/UNIXTimestampMicroSeconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
+                                         END)
+                WHERE semantic_type IN ('type/UNIXTimestampSeconds',
+                                        'type/UNIXTimestampMilliSeconds',
+                                        'type/UNIXTimestampMicroSeconds');
+
+  - changeSet:
+      id: 289
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - migrate unix timestamps (corrects typo- seconds was migrated correctly, not millis and micros)
+      validCheckSum:
+        - 8:c5398e06bc1bd497f9b56d3e8497b88a
+        - 8:9f7f2e9bbf3236f204c644dc8ea7abef
+      changes:
+        - sql:
+              sql: >-
+                UPDATE metabase_field
+                set effective_type    = 'type/Instant',
+                    coercion_strategy = (case semantic_type
+                                          WHEN 'type/UNIXTimestampMilliseconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                          WHEN 'type/UNIXTimestampMicroseconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
+                                         END)
+                WHERE semantic_type IN ('type/UNIXTimestampMilliseconds',
+                                        'type/UNIXTimestampMicroseconds')
+
+  - changeSet:
+      id: 290
+      author: dpsutton
+      comment: Added 0.39 - Semantic type system - Clobber semantic_type where there was a coercion
+      changes:
+        - sql:
+              sql: UPDATE metabase_field set semantic_type = null where coercion_strategy is not null
+
+# 291-297 create the new login history Table
+
+  - changeSet:
+      id: 291
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createTable:
+            tableName: login_history
+            remarks: "Keeps track of various logins for different users and additional info such as location and device"
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  remarks: "When this login occurred."
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: "ID of the User that logged in."
+                  constraints:
+                    foreignKeyName: fk_login_history_user_id
+                    references: core_user(id)
+                    nullable: false
+                    deleteCascade: true
+              # FK constraint is created later, because we can't create it inline with ON DELETE SET NULL
+              - column:
+                  name: session_id
+                  type: varchar(254)
+                  remarks: "ID of the Session created by this login if one is currently active. NULL if Session is no longer active."
+              - column:
+                  name: device_id
+                  type: char(36)
+                  remarks: "Cookie-based unique identifier for the device/browser the user logged in from."
+                  constraints:
+                    nullable: false
+              - column:
+                  name: device_description
+                  type: text
+                  remarks: "Description of the device that login happened from, for example a user-agent string, but this might be something different if we support alternative auth mechanisms in the future."
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ip_address
+                  type: text
+                  remarks: "IP address of the device that login happened from, so we can geocode it and determine approximate location."
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 292
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: 293
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: login_history
+            baseColumnNames: session_id
+            referencedTableName: core_session
+            referencedColumnNames: id
+            constraintName: fk_login_history_session_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: 294
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_session_id
+            columns:
+              - column:
+                  name: session_id
+
+  # index on login history timestamp -- so admin can see *all* recent logins, or we can delete login history after a certain age
+  - changeSet:
+      id: 295
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_timestamp
+            columns:
+              - column:
+                  name: timestamp
+
+  # index on login history user_id + device_id -- so we can easily see if this is the first time a device is used
+  - changeSet:
+      id: 296
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: session_id
+              - column:
+                  name: device_id
+
+  # index on login history user_id + timestamp -- so we can easily see recent logins for a user
+  - changeSet:
+      id: 297
+      author: camsaul
+      comment: Added 0.39.0
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_timestamp
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: timestamp
+
+  # Add parameter columns to pulses so that dashboard subscriptions can have their own filters
+  - changeSet:
+      id: 298
+      author: tsmacdonald
+      comment: Added 0.39.0
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: parameters
+                  type: text
+                  remarks: "Let dashboard subscriptions have their own filters"
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: 299
+      author: tsmacdonald
+      comment: Added 0.39.0
+      changes:
+        - addNotNullConstraint:
+            columnDataType: text
+            columnName: parameters
+            defaultNullValue: '[]'
+            tableName: pulse
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

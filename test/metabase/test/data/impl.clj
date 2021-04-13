@@ -1,6 +1,7 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
             [metabase.config :as config]
             [metabase.driver :as driver]
@@ -39,9 +40,12 @@
       (let [driver (driver/the-driver driver)]
         (or
          (@locks driver)
-         (do
-           (swap! locks update driver #(or % (Object.)))
-           (@locks driver)))))))
+         (locking driver->create-database-lock
+           (or
+            (@locks driver)
+            (do
+              (swap! locks update driver #(or % (Object.)))
+              (@locks driver)))))))))
 
 (defmulti get-or-create-database!
   "Create DBMS database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
@@ -62,18 +66,15 @@
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
                                                       (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
-      (doseq [{:keys [field-name visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
+      (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
         (let [field (delay (or (tx/metabase-instance field-definition @table)
-                               (throw (Exception. (format "Field '%s' not loaded from definition:\n"
+                               (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
                                                           field-name
                                                           (u/pprint-to-str field-definition))))))]
-          (when visibility-type
-            (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
-            (db/update! Field (:id @field) :visibility_type (name visibility-type)))
-          (when special-type
-            (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name
-                               special-type))
-            (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
+          (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
+            (when-let [v (get field-definition property)]
+              (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
+              (db/update! Field (:id @field) (keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."

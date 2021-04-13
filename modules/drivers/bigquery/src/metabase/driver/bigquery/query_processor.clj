@@ -147,13 +147,13 @@
     nil))
 
 (defmethod temporal-type (class Field)
-  [{base-type :base_type, database-type :database_type}]
+  [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
   (case database-type
     "TIMESTAMP" :timestamp
     "DATETIME"  :datetime
     "DATE"      :date
     "TIME"      :time
-    (base-type->temporal-type base-type)))
+    (base-type->temporal-type (or effective-type base-type))))
 
 (defmethod temporal-type :absolute-datetime
   [[_ t _]]
@@ -163,23 +163,28 @@
   [_]
   :time)
 
-(defmethod temporal-type :datetime-field
-  [[_ field unit]]
-  ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
-  ;;
-  ;; `:year` is both an extract unit and a truncate unit in terms of `u.date` capabilities, but in MBQL it should be a
-  ;; truncation operation
-  (if ((disj u.date/extract-units :year) unit)
+(defmethod temporal-type :field
+  [[_ id-or-name {:keys [base-type temporal-unit], :as opts} :as clause]]
+  (cond
+    (contains? (meta clause) :bigquery/temporal-type)
+    (:bigquery/temporal-type (meta clause))
+
+    ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
+    ;;
+    ;; `:year` is both an extract unit and a truncate unit in terms of `u.date` capabilities, but in MBQL it should be a
+    ;; truncation operation
+    ((disj u.date/extract-units :year) temporal-unit)
     nil
-    (temporal-type field)))
+
+    (integer? id-or-name)
+    (temporal-type (qp.store/field id-or-name))
+
+    base-type
+    (base-type->temporal-type base-type)))
 
 (defmethod temporal-type :default
   [x]
-  (if (contains? (meta x) :bigquery/temporal-type)
-    (:bigquery/temporal-type (meta x))
-    (mbql.u/match-one x
-      [:field-id id]               (temporal-type (qp.store/field id))
-      [:field-literal _ base-type] (base-type->temporal-type base-type))))
+  (:bigquery/temporal-type (meta x)))
 
 (defn- with-temporal-type {:style/indent 0} [x new-type]
   (if (= (temporal-type x) new-type)
@@ -253,7 +258,7 @@
         bigquery-type
         (do
           (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
-          (with-temporal-type (hx/cast bigquery-type (sql.qp/->honeysql :bigquery x)) target-type))
+          (with-temporal-type (hsql/call :cast (sql.qp/->honeysql :bigquery x) (hsql/raw (name bigquery-type))) target-type))
 
         :else
         x))))
@@ -447,11 +452,10 @@
                                     more)))
         (vary-meta assoc ::already-qualified? true))))
 
-(doseq [clause-type [:datetime-field :field-literal :field-id]]
-  (defmethod sql.qp/->honeysql [:bigquery clause-type]
-    [driver clause]
-    (let [hsql-form ((get-method sql.qp/->honeysql [:sql clause-type]) driver clause)]
-      (with-temporal-type hsql-form (temporal-type clause)))))
+(defmethod sql.qp/->honeysql [:bigquery :field]
+  [driver clause]
+  (let [hsql-form ((get-method sql.qp/->honeysql [:sql :field]) driver clause)]
+    (with-temporal-type hsql-form (temporal-type clause))))
 
 (defmethod sql.qp/->honeysql [:bigquery :relative-datetime]
   [driver clause]

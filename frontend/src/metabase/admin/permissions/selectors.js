@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import { createSelector } from "reselect";
 
 import { push } from "react-router-redux";

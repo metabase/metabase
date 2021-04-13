@@ -91,8 +91,6 @@
   "Add the grouping field and expression to the query"
   [query breakout bitmask]
   (as-> query query
-    ;;TODO: `pivot-grouping` is not "magic" enough to mark it as an internal thing
-    (update-in query [:query :fields] concat [[:expression "pivot-grouping"]])
     ;;TODO: replace this value with a bitmask or something to indicate the source better
     (update-in query [:query :expressions] assoc :pivot-grouping [:abs bitmask])
     ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot

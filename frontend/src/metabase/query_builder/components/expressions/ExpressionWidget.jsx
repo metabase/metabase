@@ -24,11 +24,11 @@ export default class ExpressionWidget extends Component {
     name: "",
   };
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     this.setState({
       name: newProps.name,
       expression: newProps.expression,

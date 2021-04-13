@@ -8,12 +8,12 @@
 
 ;; ## Helper Fns
 (defn- fetch-test-settings  []
-  (for [setting ((mt/user->client :crowberto) :get 200 "setting")
+  (for [setting (mt/user-http-request :crowberto :get 200 "setting")
         :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
     setting))
 
 (defn- fetch-setting [setting-name status]
-  ((mt/user->client :crowberto) :get status (format "setting/%s" (name setting-name))))
+  (mt/user-http-request :crowberto :get status (format "setting/%s" (name setting-name))))
 
 (deftest fetch-setting-test
   (testing "GET /api/setting"
@@ -37,7 +37,7 @@
 
     (testing "Check that non-superusers are denied access"
       (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta) :get 403 "setting")))))
+             (mt/user-http-request :rasta :get 403 "setting")))))
 
   (testing "GET /api/setting/:key"
     (testing "Test that we can fetch a single setting"
@@ -54,7 +54,7 @@
 
 (deftest update-settings-test
   (testing "PUT /api/setting/:key"
-    ((mt/user->client :crowberto) :put 204 "setting/test-setting-1" {:value "NICE!"})
+    (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value "NICE!"})
     (is (= "NICE!"
            (test-setting-1))
         "Updated setting should be visible from setting getter")
@@ -64,8 +64,8 @@
         "Updated setting should be visible from API endpoint")
 
     (testing "Check non-superuser can't set a Setting"
-      (= "You don't have permissions to do that."
-         ((mt/user->client :rasta) :put 403 "setting/test-setting-1" {:value "NICE!"})))))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 "setting/test-setting-1" {:value "NICE!"}))))))
 
 (deftest fetch-sensitive-setting-test
   (testing "Sensitive settings should always come back obfuscated"
@@ -85,12 +85,12 @@
              (some (fn [{setting-name :key, :as setting}]
                      (when (= setting-name "test-sensitive-setting")
                        setting))
-                   ((mt/user->client :crowberto) :get 200 "setting")))))))
+                   (mt/user-http-request :crowberto :get 200 "setting")))))))
 
 (deftest set-sensitive-setting-test
   (testing (str "Setting the Setting via an endpoint should still work as expected; the normal getter functions "
                 "should *not* obfuscate sensitive Setting values -- that should be done by the API")
-    ((mt/user->client :crowberto) :put 204 "setting/test-sensitive-setting" {:value "123456"})
+    (mt/user-http-request :crowberto :put 204 "setting/test-sensitive-setting" {:value "123456"})
     (is (= "123456"
            (test-sensitive-setting))))
 
@@ -98,14 +98,14 @@
     (testing "PUT /api/setting/:name"
       (test-sensitive-setting "123456")
       (is (= nil
-             ((mt/user->client :crowberto) :put 204 "setting/test-sensitive-setting" {:value "**********56"})))
+             (mt/user-http-request :crowberto :put 204 "setting/test-sensitive-setting" {:value "**********56"})))
       (is (= "123456"
              (test-sensitive-setting))))
 
     (testing "PUT /api/setting"
       (test-sensitive-setting "123456")
       (is (= nil
-             ((mt/user->client :crowberto) :put 204 "setting" {:test-sensitive-setting "**********56"})))
+             (mt/user-http-request :crowberto :put 204 "setting" {:test-sensitive-setting "**********56"})))
       (is (= "123456"
              (test-sensitive-setting))))))
 
@@ -115,7 +115,7 @@
   (testing "PUT /api/setting/"
     (testing "should be able to update multiple settings at once"
       (is (= nil
-             ((mt/user->client :crowberto) :put 204 "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"})))
+             (mt/user-http-request :crowberto :put 204 "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"})))
       (is (= "ABC"
              (test-setting-1)))
       (is (= "DEF"

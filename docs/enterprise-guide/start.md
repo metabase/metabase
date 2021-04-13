@@ -11,3 +11,4 @@ The Enterprise Edition of Metabase provides added functionality and solutions fo
 * [Copying contents of one Metabase instance to another (serialization)](serialization.md)
 * [Using the audit logs](audit.md)
 * [Organizing SQL snippets with folders and permissions](sql-snippets.md)
+* [Customizing filter values for each dashboard subscription](dashboard-subscriptions.md)

@@ -142,3 +142,19 @@
     (.init ssl-context nil (.getTrustManagers trust-manager-factory) nil)
 
     (.getSocketFactory ssl-context)))
+
+(def default-sensitive-fields
+  "Set of fields that should always be obfuscated in API responses, as they contain sensitive data."
+  #{:password :pass :tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase :access-token :refresh-token
+    :service-account-json})
+
+(defn sensitive-fields
+  "Returns all sensitive fields that should be redacted in API responses for a given database. Calls get-sensitive-fields
+  using the given database's driver, if that driver is valid and registered. Refer to get-sensitive-fields docstring
+  for full details."
+  [driver]
+  (if-some [conn-prop-fn (get-method driver/connection-properties driver)]
+    (let [all-fields      (conn-prop-fn driver)
+          password-fields (filter #(= (get % :type) :password) all-fields)]
+      (into default-sensitive-fields (map (comp keyword :name) password-fields)))
+    default-sensitive-fields))

@@ -2,9 +2,7 @@
   "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
   the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
-  (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [metabase.mbql.schema :as mbql.s]
+  (:require [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
@@ -44,7 +42,7 @@
 
 (s/defn ^:private resolve-fields! :- (s/eq nil)
   [joins :- Joins]
-  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field-id id] id)))
+  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field (id :guard integer?) _] id)))
 
 (s/defn ^:private resolve-tables! :- (s/eq nil)
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
@@ -66,9 +64,9 @@
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
   (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
-    [:joined-field alias (if field-id
-                           [:field-id field-id]
-                           [:field-literal field-name base-type])]))
+    (if field-id
+      [:field field-id   {:join-alias alias}]
+      [:field field-name {:base-type base-type, :join-alias alias}])))
 
 (s/defn ^:private handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
@@ -78,9 +76,8 @@
    (when (= fields :all)
      {:fields (if source-query
                (source-metadata->fields join source-metadata)
-               (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                 (mbql.u/->joined-field alias field)))})))
-
+               (for [[_ id-or-name opts] (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                 [:field id-or-name (assoc opts :join-alias alias)]))})))
 
 (s/defn ^:private resolve-references-and-deduplicate :- mbql.s/Joins
   [joins :- Joins]
@@ -171,8 +168,4 @@
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [qp]
   (fn [query rff context]
-    (let [query' (resolve-joins* query)]
-      (when-not (= query query')
-        (let [[before after] (data/diff query query')]
-          (log/tracef "Resolved joins: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
-      (qp query' rff context))))
+    (qp (resolve-joins* query) rff context)))

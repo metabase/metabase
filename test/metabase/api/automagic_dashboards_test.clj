@@ -36,8 +36,7 @@
                         (revoke-fn)
                         (let [result (mt/user-http-request :rasta :get 403 api-endpoint)]
                           (is (= "You don't have permissions to do that."
-                                 result))
-                          (= "You don't have permissions to do that." result)))
+                                 result))))
                       (finally
                         (perms/grant-permissions! (perms-group/all-users) (perms/object-path (mt/id))))))
            result))))))

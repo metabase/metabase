@@ -31,18 +31,19 @@
                      ["Asian"    4 2]]
               :cols [(-> (assoc (mt/col :categories :name) :display_name "Category ID")
                          (assoc :remapped_from (mt/format-name "category_id")
-                                :field_ref     [:fk-> [:field-id (mt/id :venues :category_id)]
-                                                [:field-id (mt/id :categories :name)]]
+                                :field_ref     [:field
+                                                (mt/id :categories :name)
+                                                {:source-field (mt/id :venues :category_id)}]
                                 :fk_field_id   (mt/id :venues :category_id)
                                 :source        :breakout))
                      (-> (mt/col :venues :category_id)
                          (assoc :remapped_to (mt/format-name "name")
                                 :source      :breakout))
-                     {:field_ref    [:aggregation 0]
-                      :source       :aggregation
-                      :display_name "Count"
-                      :name         "count"
-                      :special_type :type/Number}]}
+                     {:field_ref     [:aggregation 0]
+                      :source        :aggregation
+                      :display_name  "Count"
+                      :name          "count"
+                      :semantic_type :type/Number}]}
              (-> (mt/format-rows-by [str int int]
                    (mt/run-mbql-query venues
                      {:aggregation [[:count]]
@@ -65,9 +66,9 @@
                      (#'add-dimension-projections/create-remapped-col "Category ID" (mt/format-name "category_id") :type/Text)]}
              (->> (mt/run-mbql-query venues
                     {:source-query {:source-table (mt/id :venues)
-                                    :fields       [[:field-id (mt/id :venues :name)]
-                                                   [:field-id (mt/id :venues :category_id)]]
-                                    :order-by     [[:asc [:field-id (mt/id :venues :name)]]]
+                                    :fields       [[:field (mt/id :venues :name) nil]
+                                                   [:field (mt/id :venues :category_id) nil]]
+                                    :order-by     [[:asc [:field (mt/id :venues :name) nil]]]
                                     :limit        4}})
                   (mt/format-rows-by [str int str])
                   qp.test/rows-and-cols))))))

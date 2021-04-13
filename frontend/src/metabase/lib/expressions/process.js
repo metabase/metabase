@@ -16,14 +16,14 @@ export function processSource(options) {
   let compileError;
 
   // PARSE
-  const { cst, tokenVector, parserErrors } = parse({
+  const { cst, tokenVector, parserErrors, typeErrors } = parse({
     ...options,
     recover: true,
   });
 
   // COMPILE
-  if (parserErrors.length > 0) {
-    compileError = parserErrors;
+  if (typeErrors.length > 0 || parserErrors.length > 0) {
+    compileError = typeErrors.concat(parserErrors);
   } else {
     try {
       expression = compile({ cst, tokenVector, ...options });

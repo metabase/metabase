@@ -1,6 +1,5 @@
 (ns metabase.models.params.chain-filter-test
   (:require [clojure.test :refer :all]
-            [metabase.models :refer [Dimension FieldValues]]
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.test :as mt]))
 
@@ -162,11 +161,11 @@
                (chain-filter/filterable-field-ids %venues.price #{})))))))
 
 (deftest chain-filter-search-test
-  (testing "Show me categories starting with s (case-insensitive) that have expensive restaurants"
+  (testing "Show me categories containing 'eak' (case-insensitive) that have expensive restaurants"
     (is (= ["Steakhouse"]
-           (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "s")))))
-  (testing "Show me cheap restaurants starting with 'taco' (case-insensitive)"
-    (is (= ["Tacos Villa Corona"]
+           (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "eak")))))
+  (testing "Show me cheap restaurants including with 'taco' (case-insensitive)"
+    (is (= ["Tacos Villa Corona" "Tito's Tacos"]
            (mt/$ids (chain-filter/chain-filter-search %venues.name {%venues.price 1} "tAcO")))))
   (testing "search for something crazy = should return empty results"
     (is (= []
@@ -186,12 +185,8 @@
 ;;; --------------------------------------------------- Remapping ----------------------------------------------------
 
 (defn do-with-human-readable-values-remapping [thunk]
-  (let [ids-and-names (mt/rows (mt/run-mbql-query categories {:fields [$id $name], :order-by [[:asc $id]]}))]
-    (mt/with-temp FieldValues [_ {:field_id              (mt/id :venues :category_id)
-                                  :values                (map first ids-and-names)
-                                  :human_readable_values (map second ids-and-names)}]
-      (testing "\nvenues.category_id given human-readable values based on matching category name\n"
-        (thunk)))))
+  (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+    (thunk)))
 
 (defmacro with-human-readable-values-remapping {:style/indent 0} [& body]
   `(do-with-human-readable-values-remapping (fn [] ~@body)))
@@ -214,15 +209,15 @@
 
 (deftest human-readable-values-remapped-chain-filter-search-test
   (with-human-readable-values-remapping
-    (testing "Show me category IDs [whose name] starts with s"
+    (testing "Show me category IDs [whose name] contains 'bar'"
       (doseq [constraints [nil {}]]
         (testing (format "\nconstraints = %s" (pr-str constraints))
-          (is (= [[64 "Southern"]
-                  [67 "Steakhouse"]]
-                 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "s")))))))
-    (testing "Show me category IDs [whose name] starts with s that have expensive restaurants"
+          (is (= [[7 "Bar"]
+                  [74 "Wine Bar"]]
+                 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "bar")))))))
+    (testing "Show me category IDs [whose name] contains 'house' that have expensive restaurants"
       (is (= [[67 "Steakhouse"]]
-             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "s")))))
+             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "house")))))
     (testing "search for something crazy: should return empty results"
       (is (= []
              (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "zzzzz")))))))
@@ -246,31 +241,23 @@
 
 (deftest field-to-field-remapped-chain-filter-search-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
-    (testing "Show me venue IDs that [have a remapped name that] start with s"
-      (is (= [[90 "Señor Fish"]
-              [46 "Shanghai Dumpling King"]
-              [65 "Slate"]]
-             (take 3 (chain-filter/chain-filter-search (mt/id :venues :id) nil "s")))))
-    (testing "Show me venue IDs that [have a remapped name that] start with s that are expensive"
+    (testing "Show me venue IDs that [have a remapped name that] contains 'sushi'"
+      (is (= [[76 "Beyond Sushi"]
+              [80 "Blue Ribbon Sushi"]
+              [77 "Sushi Nakazawa"]]
+             (take 3 (chain-filter/chain-filter-search (mt/id :venues :id) nil "sushi")))))
+    (testing "Show me venue IDs that [have a remapped name that] contain 'sushi' that are expensive"
       (is (= [[77 "Sushi Nakazawa"]
-              [79 "Sushi Yasuda"]]
-             (mt/$ids (chain-filter/chain-filter-search %venues.id {%venues.price 4} "s")))))
+              [79 "Sushi Yasuda"]
+              [81 "Tanoshi Sushi & Sake Bar"]]
+             (mt/$ids (chain-filter/chain-filter-search %venues.id {%venues.price 4} "sushi")))))
     (testing "search for something crazy = should return empty results"
       (is (= []
              (mt/$ids (chain-filter/chain-filter-search %venues.id {%venues.price 4} "zzzzz")))))))
 
-(defn do-with-fk-field-to-field-remapping [thunk]
-  (mt/with-temp Dimension [_ {:field_id                (mt/id :venues :category_id)
-                              :type                    "external"
-                              :name                    "Category"
-                              :human_readable_field_id (mt/id :categories :name)}]
-    (testing (format "\nvenues.category_id FK Field %d -> Field remapped to categories.name %d\n"
-                     (mt/id :venues :category_id)
-                     (mt/id :categories :name))
-      (thunk))))
-
 (defmacro with-fk-field-to-field-remapping {:style/indent 0} [& body]
-  `(do-with-fk-field-to-field-remapping (fn [] ~@body)))
+  `(mt/with-column-remappings [~'venues.category_id ~'categories.name]
+     ~@body))
 
 (deftest fk-field-to-field-remapped-field-id-test
   (with-fk-field-to-field-remapping
@@ -295,15 +282,16 @@
 
 (deftest fk-field-to-field-remapped-chain-filter-search-test
   (with-fk-field-to-field-remapping
-    (testing "Show me categories starting with s"
+    (testing "Show me categories containing 'ar'"
       (doseq [constraints [nil {}]]
         (testing (format "\nconstraints = %s" (pr-str constraints))
-          (is (= [[64 "Southern"]
-                  [67 "Steakhouse"]]
-                 (take 3 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "s"))))))))
-    (testing "Show me categories starting with s that have expensive restaurants"
+          (is (= [[3 "Artisan"]
+                  [7 "Bar"]
+                  [14 "Caribbean"]]
+                 (take 3 (mt/$ids (chain-filter/chain-filter-search %venues.category_id constraints "ar"))))))))
+    (testing "Show me categories containing 'house' that have expensive restaurants"
       (is (= [[67 "Steakhouse"]]
-             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "s")))))
+             (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "house")))))
     (testing "search for something crazy = should return empty results"
       (is (= []
              (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "zzzzz")))))))

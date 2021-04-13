@@ -40,19 +40,14 @@
       mbql.normalize/normalize-tokens
       (mbql.util/replace
         ;; `integer?` guard is here to make the operation idempotent
-        [:field-id (id :guard integer?)]
-        [:field-id (fully-qualified-name Field id)]
+        [:field (id :guard integer?) opts]
+        [:field (fully-qualified-name Field id) opts]
 
         [:metric (id :guard integer?)]
         [:metric (fully-qualified-name Metric id)]
 
         [:segment (id :guard integer?)]
-        [:segment (fully-qualified-name Segment id)]
-
-        ;; Legacy form with raw IDs
-        [:fk-> (from :guard integer?) (to :guard integer?)]
-        [:fk-> [:field-id (fully-qualified-name Field from)]
-         [:field-id (fully-qualified-name Field to)]])))
+        [:segment (fully-qualified-name Segment id)])))
 
 (defn- ids->fully-qualified-names
   [entity]

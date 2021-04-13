@@ -151,6 +151,11 @@
   line-height: 1.5em;
 }
 
+.text-unspaced,
+:local(.text-unspaced) {
+  line-height: normal;
+}
+
 .text-small {
   font-size: 0.875em;
 }

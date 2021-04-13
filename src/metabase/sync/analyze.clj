@@ -2,7 +2,7 @@
   "Logic responsible for doing deep 'analysis' of the data inside a database.
    This is significantly more expensive than the basic sync-metadata step, and involves things
    like running MBQL queries and fetching values to do things like determine Table row counts
-   and infer field special types."
+   and infer field semantic types."
   (:require [clojure.tools.logging :as log]
             [metabase.models.field :refer [Field]]
             [metabase.sync.analyze.classify :as classify]
@@ -38,7 +38,7 @@
 ;; 3.  CLASSIFICATION
 ;;
 ;;     All Fields that have the latest fingerprint version but a `nil` `last_analyzed` time need to be re-classified.
-;;     Classification takes place for these Fields and special types and the like are updated as needed.
+;;     Classification takes place for these Fields and semantic types and the like are updated as needed.
 ;;
 ;; 4.  MARKING FIELDS AS RECENTLY ANALYZED
 ;;

@@ -1,6 +1,6 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
             [metabase.http-client :as http]
             [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms]
@@ -9,13 +9,10 @@
             [metabase.models.segment :as segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
             [metabase.server.middleware.util :as middleware.u]
-            [metabase.test.data :refer :all]
-            [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
+            [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]))
+            [toucan.hydrate :refer [hydrate]]))
 
 ;; ## Helper Fns
 
@@ -31,373 +28,401 @@
       (update :created_at some?)
       (update :updated_at some?)))
 
-
 ;; ## /api/segment/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "segment"))
-(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "segment/13"))
+(deftest authentication-test
+  (is (= (get middleware.u/response-unauthentic :body)
+         (http/client :get 401 "segment")))
 
+  (is (= (get middleware.u/response-unauthentic :body)
+         (http/client :put 401 "segment/13"))))
 
 ;; ## POST /api/segment
 
-;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :post 403 "segment" {:name       "abc"
-                                              :table_id   123
-                                              :definition {}}))
+(deftest create-segment-permissions-test
+  (testing "POST /api/segment"
+    (testing "Test security. Requires superuser perms."
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "segment" {:name       "abc"
+                                                               :table_id   123
+                                                               :definition {}}))))))
 
-;; test validations
-(expect {:errors {:name "value must be a non-blank string."}}
-  ((user->client :crowberto) :post 400 "segment" {}))
+(deftest create-segment-input-validation-test
+  (testing "POST /api/segment"
+    (is (= {:errors {:name "value must be a non-blank string."}}
+           (mt/user-http-request :crowberto :post 400 "segment" {})))
 
-(expect {:errors {:table_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "segment" {:name "abc"}))
+    (is (= {:errors {:table_id "value must be an integer greater than zero."}}
+           (mt/user-http-request :crowberto :post 400 "segment" {:name "abc"})))
 
-(expect {:errors {:table_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "segment" {:name     "abc"
-                                                  :table_id "foobar"}))
+    (is (= {:errors {:table_id "value must be an integer greater than zero."}}
+           (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
+                                                                 :table_id "foobar"})))
 
-(expect {:errors {:definition "value must be a map."}}
-  ((user->client :crowberto) :post 400 "segment" {:name     "abc"
-                                                  :table_id 123}))
+    (is (= {:errors {:definition "value must be a map."}}
+           (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
+                                                                 :table_id 123})))
 
-(expect {:errors {:definition "value must be a map."}}
-  ((user->client :crowberto) :post 400 "segment" {:name       "abc"
-                                                  :table_id   123
-                                                  :definition "foobar"}))
+    (is (= {:errors {:definition "value must be a map."}}
+           (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
+                                                                 :table_id   123
+                                                                 :definition "foobar"})))))
 
-(expect
-  {:name                    "A Segment"
-   :description             "I did it!"
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :creator_id              (user->id :crowberto)
-   :creator                 (user-details (fetch-user :crowberto))
-   :created_at              true
-   :updated_at              true
-   :archived                false
-   :definition              {:filter ["=" ["field-id" 10] 20]}}
-  (tt/with-temp* [Database [{database-id :id}]
+(deftest create-segment-test
+  (mt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]]
-    (segment-response ((user->client :crowberto) :post 200 "segment"
-                       {:name                    "A Segment"
-                        :description             "I did it!"
-                        :show_in_getting_started false
-                        :caveats                 nil
-                        :points_of_interest      nil
-                        :table_id                id
-                        :definition              {:filter [:= [:field-id 10] 20]}}))))
+    (is (= {:name                    "A Segment"
+            :description             "I did it!"
+            :show_in_getting_started false
+            :caveats                 nil
+            :points_of_interest      nil
+            :creator_id              (mt/user->id :crowberto)
+            :creator                 (user-details (mt/fetch-user :crowberto))
+            :created_at              true
+            :updated_at              true
+            :archived                false
+            :definition              {:filter ["=" ["field" 10 nil] 20]}}
+           (segment-response (mt/user-http-request :crowberto :post 200 "segment"
+                                                   {:name                    "A Segment"
+                                                    :description             "I did it!"
+                                                    :show_in_getting_started false
+                                                    :caveats                 nil
+                                                    :points_of_interest      nil
+                                                    :table_id                id
+                                                    :definition              {:filter [:= [:field-id 10] 20]}}))))))
 
 
 ;; ## PUT /api/segment
 
-;; test security.  requires superuser perms
-(expect
-  "You don't have permissions to do that."
-  (tt/with-temp Segment [segment]
-    ((user->client :rasta) :put 403 (str "segment/" (:id segment))
-     {:name             "abc"
-      :definition       {}
-      :revision_message "something different"})))
+(deftest update-permissions-test
+  (testing "PUT /api/segment/:id"
+    (testing "test security. requires superuser perms"
+      (mt/with-temp Segment [segment]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "segment/" (:id segment))
+                                     {:name             "abc"
+                                      :definition       {}
+                                      :revision_message "something different"})))))))
 
-;; test validations
-(expect {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
-  ((user->client :crowberto) :put 400 "segment/1" {:name ""}))
+(deftest update-input-validation-test
+  (testing "PUT /api/segment/:id"
+    (is (= {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
+           (mt/user-http-request :crowberto :put 400 "segment/1" {:name ""})))
 
-(expect {:errors {:revision_message "value must be a non-blank string."}}
-  ((user->client :crowberto) :put 400 "segment/1" {:name "abc"}))
+    (is (= {:errors {:revision_message "value must be a non-blank string."}}
+           (mt/user-http-request :crowberto :put 400 "segment/1" {:name "abc"})))
 
-(expect {:errors {:revision_message "value must be a non-blank string."}}
-  ((user->client :crowberto) :put 400 "segment/1" {:name             "abc"
-                                                   :revision_message ""}))
+    (is (= {:errors {:revision_message "value must be a non-blank string."}}
+           (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
+                                                                  :revision_message ""})))
 
-(expect {:errors {:definition "value may be nil, or if non-nil, value must be a map."}}
-  ((user->client :crowberto) :put 400 "segment/1" {:name             "abc"
-                                                   :revision_message "123"
-                                                   :definition       "foobar"}))
+    (is (= {:errors {:definition "value may be nil, or if non-nil, value must be a map."}}
+           (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
+                                                                  :revision_message "123"
+                                                                  :definition       "foobar"})))))
 
-(expect
-  {:name                    "Costa Rica"
-   :description             nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :creator_id              (user->id :rasta)
-   :creator                 (user-details (fetch-user :rasta))
-   :created_at              true
-   :updated_at              true
-   :archived                false
-   :definition              {:filter ["!=" ["field-id" 2] "cans"]}}
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Segment  [{:keys [id]}   {:table_id table-id}]]
-    (segment-response ((user->client :crowberto) :put 200 (format "segment/%d" id)
-                       {:id                      id
-                        :name                    "Costa Rica"
-                        :description             nil
-                        :show_in_getting_started false
-                        :caveats                 nil
-                        :points_of_interest      nil
-                        :table_id                456
-                        :revision_message        "I got me some revisions"
-                        :definition              {:filter [:!= [:field-id 2] "cans"]}}))))
+(deftest update-test
+  (testing "PUT /api/segment/:id"
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{table-id :id} {:db_id database-id}]
+                    Segment  [{:keys [id]}   {:table_id table-id}]]
+      (is (= {:name                    "Costa Rica"
+              :description             nil
+              :show_in_getting_started false
+              :caveats                 nil
+              :points_of_interest      nil
+              :creator_id              (mt/user->id :rasta)
+              :creator                 (user-details (mt/fetch-user :rasta))
+              :created_at              true
+              :updated_at              true
+              :archived                false
+              :definition              {:filter ["!=" ["field" 2 nil] "cans"]}}
+             (segment-response
+              (mt/user-http-request
+               :crowberto :put 200 (format "segment/%d" id)
+               {:id                      id
+                :name                    "Costa Rica"
+                :description             nil
+                :show_in_getting_started false
+                :caveats                 nil
+                :points_of_interest      nil
+                :table_id                456
+                :revision_message        "I got me some revisions"
+                :definition              {:filter [:!= [:field-id 2] "cans"]}})))))))
 
-;; Can we archive a Segment with the PUT endpoint?
+(deftest partial-update-test
+  (testing "PUT /api/segment/:id"
+    (testing "Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?"
+      (mt/with-temp Segment [segment]
+        ;; just make sure API call doesn't barf
+        (is (some? (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
+                                         {:name             "Cool name"
+                                          :revision_message "WOW HOW COOL"
+                                          :definition       {}})))))))
 
-(expect
-  true
-  (tt/with-temp Segment [{:keys [id]}]
-    ((user->client :crowberto) :put 200 (str "segment/" id)
-     {:archived true, :revision_message "Archive the Segment"})
-    (db/select-one-field :archived Segment :id id)))
+(deftest archive-test
+  (testing "PUT /api/segment/:id"
+    (testing "Can we archive a Segment with the PUT endpoint?"
+      (mt/with-temp Segment [{:keys [id]}]
+        (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
+                                        {:archived true, :revision_message "Archive the Segment"})))
+        (is (= true
+               (db/select-one-field :archived Segment :id id)))))))
 
-;; Can we unarchive a Segment with the PUT endpoint?
-(expect
-  false
-  (tt/with-temp Segment [{:keys [id]} {:archived true}]
-    ((user->client :crowberto) :put 200 (str "segment/" id)
-     {:archived false, :revision_message "Unarchive the Segment"})
-    (db/select-one-field :archived Segment :id id)))
+(deftest unarchive-test
+  (testing "PUT /api/segment/:id"
+    (testing "Can we unarchive a Segment with the PUT endpoint?"
+      (mt/with-temp Segment [{:keys [id]} {:archived true}]
+        (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
+                                        {:archived false, :revision_message "Unarchive the Segment"})))
+        (is (= false
+               (db/select-one-field :archived Segment :id id)))))))
 
 
 ;; ## DELETE /api/segment/:id
 
-;; test security.  requires superuser perms
-(expect
-  "You don't have permissions to do that."
-  (tt/with-temp Segment [{:keys [id]}]
-    ((user->client :rasta) :delete 403 (str "segment/" id) :revision_message "yeeeehaw!")))
+(deftest delete-permissions-test
+  (testing "DELETE /api/segment/:id"
+    (testing "test security. requires superuser perms"
+      (mt/with-temp Segment [{:keys [id]}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403 (str "segment/" id)
+                                     :revision_message "yeeeehaw!")))))))
 
+(deftest delete-input-validation-test
+  (testing "DELETE /api/segment/:id"
+    (is (= {:errors {:revision_message "value must be a non-blank string."}}
+           (mt/user-http-request :crowberto :delete 400 "segment/1" {:name "abc"})))
 
-;; test validations
-(expect {:errors {:revision_message "value must be a non-blank string."}}
-  ((user->client :crowberto) :delete 400 "segment/1" {:name "abc"}))
+    (is (= {:errors {:revision_message "value must be a non-blank string."}}
+           (mt/user-http-request :crowberto :delete 400 "segment/1" :revision_message "")))))
 
-(expect {:errors {:revision_message "value must be a non-blank string."}}
-  ((user->client :crowberto) :delete 400 "segment/1" :revision_message ""))
-
-(expect
-  {:name                    "Toucans in the rainforest"
-   :description             "Lookin' for a blueberry"
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :creator_id              (user->id :rasta)
-   :creator                 (user-details (fetch-user :rasta))
-   :created_at              true
-   :updated_at              true
-   :archived                true
-   :definition              nil}
-  (-> (tt/with-temp* [Database [{database-id :id}]
-                      Table    [{table-id :id} {:db_id database-id}]
-                      Segment  [{:keys [id]} {:table_id table-id}]]
-        ((user->client :crowberto) :delete 204 (format "segment/%d" id) :revision_message "carryon")
-        ;; should still be able to fetch the archived segment
-        (segment-response
-         ((user->client :crowberto) :get 200 (format "segment/%d" id))))
-      (dissoc :query_description)))
+(deftest delete-test
+  (testing "DELETE /api/segment/:id"
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{table-id :id} {:db_id database-id}]
+                    Segment  [{:keys [id]} {:table_id table-id}]]
+      (is (= nil
+             (mt/user-http-request :crowberto :delete 204 (format "segment/%d" id) :revision_message "carryon")))
+      (testing "should still be able to fetch the archived segment"
+        (is (= {:name                    "Toucans in the rainforest"
+                :description             "Lookin' for a blueberry"
+                :show_in_getting_started false
+                :caveats                 nil
+                :points_of_interest      nil
+                :creator_id              (mt/user->id :rasta)
+                :creator                 (user-details (mt/fetch-user :rasta))
+                :created_at              true
+                :updated_at              true
+                :archived                true
+                :definition              nil}
+               (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
+                   segment-response
+                   (dissoc :query_description))))))))
 
 
 ;; ## GET /api/segment/:id
 
-;; test security. Requires read perms for the Table it references
-(expect
-  "You don't have permissions to do that."
-  (tt/with-temp* [Database [db]
-                  Table    [table   {:db_id (u/get-id db)}]
-                  Segment  [segment {:table_id (u/get-id table)}]]
-    (perms/revoke-permissions! (group/all-users) db)
-    ((user->client :rasta) :get 403 (str "segment/" (u/get-id segment)))))
+(deftest fetch-segment-permissions-test
+  (testing "GET /api/segment/:id"
+    (testing "test security. Requires read perms for the Table it references"
+      (mt/with-temp* [Database [db]
+                      Table    [table   {:db_id (u/the-id db)}]
+                      Segment  [segment {:table_id (u/the-id table)}]]
+        (perms/revoke-permissions! (group/all-users) db)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (str "segment/" (u/the-id segment)))))))))
 
-(expect
-  {:name                    "Toucans in the rainforest"
-   :description             "Lookin' for a blueberry"
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :creator_id              (user->id :crowberto)
-   :creator                 (user-details (fetch-user :crowberto))
-   :created_at              true
-   :updated_at              true
-   :archived                false
-   :definition              {:filter ["=" ["field-id" 2] "cans"]}}
-  (-> (tt/with-temp* [Database [{database-id :id}]
-                      Table    [{table-id :id} {:db_id database-id}]
-                      Segment  [{:keys [id]}   {:creator_id (user->id :crowberto)
-                                                :table_id   table-id
-                                                :definition {:filter [:= [:field-id 2] "cans"]}}]]
-        (segment-response ((user->client :rasta) :get 200 (format "segment/%d" id))))
-      (dissoc :query_description)))
+(deftest fetch-segment-test
+  (testing "GET /api/segment/:id"
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{table-id :id} {:db_id database-id}]
+                    Segment  [{:keys [id]}   {:creator_id (mt/user->id :crowberto)
+                                              :table_id   table-id
+                                              :definition {:filter [:= [:field-id 2] "cans"]}}]]
+      (is (= {:name                    "Toucans in the rainforest"
+              :description             "Lookin' for a blueberry"
+              :show_in_getting_started false
+              :caveats                 nil
+              :points_of_interest      nil
+              :creator_id              (mt/user->id :crowberto)
+              :creator                 (user-details (mt/fetch-user :crowberto))
+              :created_at              true
+              :updated_at              true
+              :archived                false
+              :definition              {:filter ["=" ["field" 2 nil] "cans"]}}
+             (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
+                 segment-response
+                 (dissoc :query_description)))))))
 
 
 ;; ## GET /api/segment/:id/revisions
 
-;; test security. Requires read perms for the Table it references
-(expect
-  "You don't have permissions to do that."
-  (tt/with-temp* [Database [db]
-                  Table    [table   {:db_id (u/get-id db)}]
-                  Segment  [segment {:table_id (u/get-id table)}]]
-    (perms/revoke-permissions! (group/all-users) db)
-    ((user->client :rasta) :get 403 (format "segment/%d/revisions" (u/get-id segment)))))
+(deftest revisions-permissions-test
+  (testing "GET /api/segment/:id/revisions"
+    (testing "test security. Requires read perms for the Table it references"
+      (mt/with-temp* [Database [db]
+                      Table    [table   {:db_id (u/the-id db)}]
+                      Segment  [segment {:table_id (u/the-id table)}]]
+        (perms/revoke-permissions! (group/all-users) db)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (format "segment/%d/revisions" (u/the-id segment)))))))))
 
 
-(expect
-  [{:is_reversion false
-    :is_creation  false
-    :message      "updated"
-    :user         (-> (user-details (fetch-user :crowberto))
-                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-    :diff         {:name {:before "b" :after "c"}}
-    :description  "renamed this Segment from \"b\" to \"c\"."}
-   {:is_reversion false
-    :is_creation  true
-    :message      nil
-    :user         (-> (user-details (fetch-user :rasta))
-                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-    :diff         {:name       {:after "b"}
-                   :definition {:after {:filter [">" ["field-id" 1] 25]}}}
-    :description  nil}]
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Segment  [{:keys [id]} {:creator_id (user->id :crowberto)
-                                          :table_id   table-id
-                                          :definition {:database 123
-                                                       :query    {:filter [:= [:field-id 2] "cans"]}}}]
-                  Revision [_ {:model       "Segment"
-                               :model_id    id
-                               :object      {:name "b"
-                                             :definition {:filter [:and [:> 1 25]]}}
-                               :is_creation true}]
-                  Revision [_ {:model    "Segment"
-                               :model_id id
-                               :user_id  (user->id :crowberto)
-                               :object   {:name "c"
-                                          :definition {:filter [:and [:> 1 25]]}}
-                               :message  "updated"}]]
-    (vec
-     (for [revision ((user->client :rasta) :get 200 (format "segment/%d/revisions" id))]
-       (dissoc revision :timestamp :id)))))
+(deftest revisions-test
+  (testing "GET /api/segment/:id/revisions"
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{table-id :id} {:db_id database-id}]
+                    Segment  [{:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                            :table_id   table-id
+                                            :definition {:database 123
+                                                         :query    {:filter [:= [:field-id 2] "cans"]}}}]
+                    Revision [_ {:model       "Segment"
+                                 :model_id    id
+                                 :object      {:name       "b"
+                                               :definition {:filter [:and [:> 1 25]]}}
+                                 :is_creation true}]
+                    Revision [_ {:model    "Segment"
+                                 :model_id id
+                                 :user_id  (mt/user->id :crowberto)
+                                 :object   {:name       "c"
+                                            :definition {:filter [:and [:> 1 25]]}}
+                                 :message  "updated"}]]
+      (is (= [{:is_reversion false
+               :is_creation  false
+               :message      "updated"
+               :user         (-> (user-details (mt/fetch-user :crowberto))
+                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff         {:name {:before "b" :after "c"}}
+               :description  "renamed this Segment from \"b\" to \"c\"."}
+              {:is_reversion false
+               :is_creation  true
+               :message      nil
+               :user         (-> (user-details (mt/fetch-user :rasta))
+                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff         {:name       {:after "b"}
+                              :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
+               :description  nil}]
+             (for [revision (mt/user-http-request :rasta :get 200 (format "segment/%d/revisions" id))]
+               (dissoc revision :timestamp :id)))))))
 
 
 ;; ## POST /api/segment/:id/revert
 
-;; test security.  requires superuser perms
-(expect
-  "You don't have permissions to do that."
-  (tt/with-temp Segment [{:keys [id]}]
-    ((user->client :rasta) :post 403 (format "segment/%d/revert" id) {:revision_id 56})))
+(deftest revert-permissions-test
+  (testing "POST /api/segment/:id/revert"
+    (testing "test security.  requires superuser perms"
+      (mt/with-temp Segment [{:keys [id]}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 (format "segment/%d/revert" id) {:revision_id 56})))))))
 
+(deftest revert-input-validation-test
+  (testing "POST /api/segment/:id/revert"
+    (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
+           (mt/user-http-request :crowberto :post 400 "segment/1/revert" {})))
 
-(expect {:errors {:revision_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "segment/1/revert" {}))
+    (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
+           (mt/user-http-request :crowberto :post 400 "segment/1/revert" {:revision_id "foobar"})))))
 
-(expect {:errors {:revision_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "segment/1/revert" {:revision_id "foobar"}))
+(deftest revert-test
+  (testing "POST /api/segment/:id/revert"
+    (mt/with-temp* [Database [{database-id :id}]
+                    Table    [{table-id :id}    {:db_id database-id}]
+                    Segment  [{:keys [id]}      {:creator_id              (mt/user->id :crowberto)
+                                                 :table_id                table-id
+                                                 :name                    "One Segment to rule them all, one segment to define them"
+                                                 :description             "One segment to bring them all, and in the DataModel bind them"
+                                                 :show_in_getting_started false
+                                                 :caveats                 nil
+                                                 :points_of_interest      nil
+                                                 :definition              {:filter [:= [:field-id 2] "cans"]}}]
+                    Revision [{revision-id :id} {:model       "Segment"
+                                                 :model_id    id
+                                                 :object      {:creator_id              (mt/user->id :crowberto)
+                                                               :table_id                table-id
+                                                               :name                    "One Segment to rule them all, one segment to define them"
+                                                               :description             "One segment to bring them all, and in the DataModel bind them"
+                                                               :show_in_getting_started false
+                                                               :caveats                 nil
+                                                               :points_of_interest      nil
+                                                               :definition              {:filter [:= [:field-id 2] "cans"]}}
+                                                 :is_creation true}]
+                    Revision [_                 {:model    "Segment"
+                                                 :model_id id
+                                                 :user_id  (mt/user->id :crowberto)
+                                                 :object   {:creator_id              (mt/user->id :crowberto)
+                                                            :table_id                table-id
+                                                            :name                    "Changed Segment Name"
+                                                            :description             "One segment to bring them all, and in the DataModel bind them"
+                                                            :show_in_getting_started false
+                                                            :caveats                 nil
+                                                            :points_of_interest      nil
+                                                            :definition              {:filter [:= [:field-id 2] "cans"]}}
+                                                 :message  "updated"}]]
+      (testing "the api response"
+        (is (= {:is_reversion true
+                :is_creation  false
+                :message      nil
+                :user         (-> (user-details (mt/fetch-user :crowberto))
+                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff         {:name {:before "Changed Segment Name"
+                                      :after  "One Segment to rule them all, one segment to define them"}}
+                :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
+               (-> (mt/user-http-request :crowberto :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
+                   (dissoc :id :timestamp)))))
 
-
-(expect
-  [ ;; the api response
-   {:is_reversion true
-    :is_creation  false
-    :message      nil
-    :user         (-> (user-details (fetch-user :crowberto))
-                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-    :diff         {:name {:before "Changed Segment Name"
-                          :after  "One Segment to rule them all, one segment to define them"}}
-    :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
-   ;; full list of final revisions, first one should be same as the revision returned by the endpoint
-   [{:is_reversion true
-     :is_creation  false
-     :message      nil
-     :user         (-> (user-details (fetch-user :crowberto))
-                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-     :diff         {:name {:before "Changed Segment Name"
-                           :after  "One Segment to rule them all, one segment to define them"}}
-     :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
-    {:is_reversion false
-     :is_creation  false
-     :message      "updated"
-     :user         (-> (user-details (fetch-user :crowberto))
-                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-     :diff         {:name {:after  "Changed Segment Name"
-                           :before "One Segment to rule them all, one segment to define them"}}
-     :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
-    {:is_reversion false
-     :is_creation  true
-     :message      nil
-     :user         (-> (user-details (fetch-user :rasta))
-                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-     :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
-                    :description {:after "One segment to bring them all, and in the DataModel bind them"}
-                    :definition  {:after {:filter ["=" ["field-id" 2] "cans"]}}}
-     :description  nil}]]
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id}    {:db_id database-id}]
-                  Segment  [{:keys [id]}      {:creator_id              (user->id :crowberto)
-                                               :table_id                table-id
-                                               :name                    "One Segment to rule them all, one segment to define them"
-                                               :description             "One segment to bring them all, and in the DataModel bind them"
-                                               :show_in_getting_started false
-                                               :caveats                 nil
-                                               :points_of_interest      nil
-                                               :definition              {:filter [:= [:field-id 2] "cans"]}}]
-                  Revision [{revision-id :id} {:model       "Segment"
-                                               :model_id    id
-                                               :object      {:creator_id              (user->id :crowberto)
-                                                             :table_id                table-id
-                                                             :name                    "One Segment to rule them all, one segment to define them"
-                                                             :description             "One segment to bring them all, and in the DataModel bind them"
-                                                             :show_in_getting_started false
-                                                             :caveats                 nil
-                                                             :points_of_interest      nil
-                                                             :definition              {:filter [:= [:field-id 2] "cans"]}}
-                                               :is_creation true}]
-                  Revision [_                 {:model    "Segment"
-                                               :model_id id
-                                               :user_id  (user->id :crowberto)
-                                               :object   {:creator_id              (user->id :crowberto)
-                                                          :table_id                table-id
-                                                          :name                    "Changed Segment Name"
-                                                          :description             "One segment to bring them all, and in the DataModel bind them"
-                                                          :show_in_getting_started false
-                                                          :caveats                 nil
-                                                          :points_of_interest      nil
-                                                          :definition              {:filter [:= [:field-id 2] "cans"]}}
-                                               :message  "updated"}]]
-    [(dissoc ((user->client :crowberto) :post 200 (format "segment/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
-     (doall (for [revision ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))]
-              (dissoc revision :timestamp :id)))]))
+      (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
+        (is (= [{:is_reversion true
+                 :is_creation  false
+                 :message      nil
+                 :user         (-> (user-details (mt/fetch-user :crowberto))
+                                   (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                 :diff         {:name {:before "Changed Segment Name"
+                                       :after  "One Segment to rule them all, one segment to define them"}}
+                 :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
+                {:is_reversion false
+                 :is_creation  false
+                 :message      "updated"
+                 :user         (-> (user-details (mt/fetch-user :crowberto))
+                                   (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                 :diff         {:name {:after  "Changed Segment Name"
+                                       :before "One Segment to rule them all, one segment to define them"}}
+                 :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
+                {:is_reversion false
+                 :is_creation  true
+                 :message      nil
+                 :user         (-> (user-details (mt/fetch-user :rasta))
+                                   (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                 :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
+                                :description {:after "One segment to bring them all, and in the DataModel bind them"}
+                                :definition  {:after {:filter ["=" ["field" 2 nil] "cans"]}}}
+                 :description  nil}]
+               (for [revision (mt/user-http-request :crowberto :get 200 (format "segment/%d/revisions" id))]
+                 (dissoc revision :timestamp :id))))))))
 
 
 ;;; GET /api/segement/
-(tt/expect-with-temp [Segment [segment-1 {:name "Segment 1"}]
-                      Segment [segment-2 {:name "Segment 2"}]
-                      Segment [_         {:archived true}]] ; inactive segments shouldn't show up
-  (tu/mappify (hydrate [segment-1
-                        segment-2] :creator))
-  (map #(dissoc % :query_description) ((user->client :rasta) :get 200 "segment/")))
 
-(expect
-  []
-  ((user->client :rasta) :get 200 "segment/"))
+(deftest list-test
+  (testing "GET /api/segement/"
+    (mt/with-temp* [Segment [segment-1 {:name "Segment 1"}]
+                    Segment [segment-2 {:name "Segment 2"}]
+                    ;; inactive segments shouldn't show up
+                    Segment [_         {:archived true}]]
+      (is (= (mt/derecordize (hydrate [segment-1
+                                       segment-2] :creator))
+             (map #(dissoc % :query_description) (mt/user-http-request :rasta :get 200 "segment/")))))
 
+    (is (= []
+           (mt/user-http-request :rasta :get 200 "segment/")))))
 
-;;; PUT /api/segment/id. Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?
-(expect
-  (tt/with-temp Segment [segment]
-    ;; just make sure API call doesn't barf
-    ((user->client :crowberto) :put 200 (str "segment/" (u/get-id segment))
-     {:name             "Cool name"
-      :revision_message "WOW HOW COOL"
-      :definition       {}})
-    true))
-
-;; Test related/recommended entities
-(expect
-  #{:table :metrics :segments :linked-from}
-  (tt/with-temp* [Segment [{segment-id :id}]]
-    (-> ((user->client :crowberto) :get 200 (format "segment/%s/related" segment-id)) keys set)))
+(deftest related-entities-test
+  (testing "GET /api/segment/:id/related"
+    (testing "related/recommended entities"
+      (mt/with-temp Segment [{segment-id :id}]
+        (is (= #{:table :metrics :segments :linked-from}
+               (-> (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" segment-id))
+                   keys
+                   set)))))))

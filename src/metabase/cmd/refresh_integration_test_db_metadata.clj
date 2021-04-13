@@ -27,11 +27,11 @@
     (mdb/setup-db!)
     (sample-data/add-sample-dataset!)
     (sample-data/update-sample-dataset-if-needed!)
-    ;; clear out all Fingerprints so we force analysis to run again. Clear out special type and has_field_values as
+    ;; clear out all Fingerprints so we force analysis to run again. Clear out semantic type and has_field_values as
     ;; well so we can be sure those will be set to the correct values
     (db/debug-print-queries
       (db/update! Field {:set {:fingerprint_version 0
-                               :special_type        nil
+                               :semantic_type       nil
                                :has_field_values    nil
                                :fk_target_field_id  nil}}))
     ;; now re-run sync

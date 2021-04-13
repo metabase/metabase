@@ -39,7 +39,10 @@
   (memoize column-metadata))
 
 (defn- add-col-metadata [{database-id :database} col]
-  (merge col (memoized-column-metadata (u/get-id database-id) (:name col))))
+  (let [{:keys [base_type] :as metadata} (merge col (memoized-column-metadata (u/get-id database-id) (:name col)))]
+    (cond-> metadata
+      (and base_type (not (:effective_type metadata)))
+      (assoc :effective_type base_type))))
 
 (def ^:const ga-type->base-type
   "Map of Google Analytics field types to Metabase types."

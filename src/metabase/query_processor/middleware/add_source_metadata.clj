@@ -22,7 +22,8 @@
     (and (every? empty? [breakouts aggregations])
          (or (empty? fields)
              (and (= (count fields) (count nested-source-metadata))
-                  (every? #(mbql.u/is-clause? :field-literal (mbql.u/unwrap-field-clause %)) fields))))))
+                  (every? #(mbql.u/match-one % [:field (_ :guard string?) _])
+                          fields))))))
 
 (s/defn ^:private native-source-query->metadata :- (s/maybe [mbql.s/SourceQueryMetadata])
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
@@ -54,8 +55,8 @@
                    ;; to end up adding it again when the middleware runs at the top level
                    :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
       (for [col cols]
-        (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings
-                          :source_alias :field_ref :parent_id])))
+        (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
+                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :parent_id])))
     (catch Throwable e
       (log/error e (str (trs "Error determining expected columns for query")))
       nil)))

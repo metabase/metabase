@@ -3,7 +3,6 @@
   (:require [clojure.test :refer :all]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
-            [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -11,7 +10,6 @@
             [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
             [metabase.util :as u]))
 
 (deftest basic-test
@@ -88,10 +86,7 @@
 
 (deftest order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
-    (mt/with-temp Dimension [_ {:field_id                (mt/id :venues :category_id)
-                                :name                    "Category ID"
-                                :type                    :external
-                                :human_readable_field_id (mt/id :categories :name)}]
+    (mt/with-column-remappings [venues.category_id categories.name]
       (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"
                                             "Steakhouse" "Steakhouse" "Southern"]
                                      :asc  ["American" "American" "American" "American" "American" "American" "American"
@@ -112,50 +107,50 @@
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [[:binning-strategy $latitude :num-bins 20]]})))))
+                    :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 20}}]]})))))
 
       (testing "3 bins"
         (is (= [[0.0 1] [20.0 90] [40.0 9]]
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [[:binning-strategy $latitude :num-bins 3]]}))))))
+                    :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 3}}]]}))))))
 
     (testing "Bin two columns"
       (is (= [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
              (mt/formatted-rows [1.0 1.0 int]
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]
-                  :breakout    [[:binning-strategy $latitude :num-bins 20]
-                                [:binning-strategy $longitude :num-bins 20]]})))))
+                  :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 20}}]
+                                [:field %longitude {:binning {:strategy :num-bins, :num-bins 20}}]]})))))
 
     (testing "should default to 8 bins when number of bins isn't specified"
       (is (= [[10.0 1] [30.0 90] [40.0 9]]
              (mt/formatted-rows [1.0 int]
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]
-                  :breakout    [[:binning-strategy $latitude :default]]}))))
+                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))
 
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]
         (is (= [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [[:binning-strategy $latitude :default]]}))))))
+                    :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))))
 
     (testing "bin width"
       (is (= [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
              (mt/formatted-rows [1.0 int]
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]
-                  :breakout    [[:binning-strategy $latitude :bin-width 1]]}))))
+                  :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 1}}]]}))))
 
       (testing "using a float"
         (is (= [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
-                    :breakout    [[:binning-strategy $latitude :bin-width 2.5]]}))))
+                    :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 2.5}}]]}))))
 
         (mt/with-temporary-setting-values [breakout-bin-width 1.0]
           (is (= [[33.0 4] [34.0 57]]
@@ -165,7 +160,7 @@
                       :filter      [:and
                                     [:< $latitude 35]
                                     [:> $latitude 20]]
-                      :breakout    [[:binning-strategy $latitude :default]]})))))))))
+                      :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
 
 (defn- round-binning-decimals [result]
   (let [round-to-decimal #(u/round-to-decimals 4 %)]
@@ -182,11 +177,14 @@
         ;; base_type can differ slightly between drivers and it's really not important for the purposes of this test
         (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
                       :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
-                      :field_ref    [:binning-strategy (data/$ids venues $latitude) :bin-width 10.0
-                                     {:min-value 10.0, :max-value 50.0, :num-bins 4, :bin-width 10.0}])
+                      :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :bin-width
+                                                                                 :min-value 10.0
+                                                                                 :max-value 50.0
+                                                                                 :num-bins  4
+                                                                                 :bin-width 10.0}}])
                (-> (mt/run-mbql-query venues
                      {:aggregation [[:count]]
-                      :breakout    [[:binning-strategy $latitude :default]]})
+                      :breakout    [[:field %latitude {:binning {:strategy :default}}]]})
                    qp.test/cols
                    first
                    (dissoc :base_type)))))
@@ -194,11 +192,14 @@
       (testing "binning-strategy = num-bins: 5"
         (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
                       :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
-                      :field_ref    [:binning-strategy (data/$ids venues $latitude) :num-bins 5
-                                     {:min-value 7.5, :max-value 45.0, :num-bins 5, :bin-width 7.5}])
+                      :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :num-bins
+                                                                                 :min-value 7.5
+                                                                                 :max-value 45.0
+                                                                                 :num-bins  5
+                                                                                 :bin-width 7.5}}])
                (-> (mt/run-mbql-query venues
                      {:aggregation [[:count]]
-                      :breakout    [[:binning-strategy $latitude :num-bins 5]]})
+                      :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 5}}]]})
                    qp.test/cols
                    first
                    (dissoc :base_type))))))))
@@ -213,7 +214,7 @@
                (-> (qp/process-userland-query
                     (mt/mbql-query venues
                       {:aggregation [[:count]]
-                       :breakout    [[:binning-strategy $latitude :default]]}))
+                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
                    (select-keys [:status :class :error]))))))))
 
 (defn- nested-venues-query [card-or-card-id]
@@ -221,7 +222,9 @@
    :type     :query
    :query    {:source-table (str "card__" (u/the-id card-or-card-id))
               :aggregation  [[:count]]
-              :breakout     [[:binning-strategy [:field-literal (mt/format-name :latitude) :type/Float] :num-bins 20]]}})
+              :breakout     [[:field
+                              (mt/format-name :latitude)
+                              {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 20}}]]}})
 
 (deftest bin-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
@@ -241,7 +244,7 @@
                    {:source-query
                     {:source-table $$venues
                      :aggregation  [[:count]]
-                     :breakout     [[:binning-strategy $latitude :default]]}}))))))
+                     :breakout     [[:field %latitude {:binning {:strategy :default}}]]}}))))))
 
     (testing "Binning is not supported when there is no fingerprint to determine boundaries"
       ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in
@@ -250,12 +253,12 @@
       (with-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
         (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
           (mt/with-temp-vals-in-db Card (:id card) {:result_metadata nil}
-            (is (thrown?
+            (is (thrown-with-msg?
                  Exception
-                 (mt/suppress-output
-                  (qp.test/rows
+                 #"Cannot update binned field: query is missing source-metadata"
+                 (qp.test/rows
                    (qp/process-query
-                    (nested-venues-query card))))))))))))
+                    (nested-venues-query card)))))))))))
 
 (deftest field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)

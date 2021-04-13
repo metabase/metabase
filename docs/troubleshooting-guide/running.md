@@ -26,3 +26,7 @@ If the Metabase instance starts and runs for a significant amount of time before
     java -Xmx2g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/path/to/a/directory -jar metabase-jar
 
 The `-XX:HeapDumpPath` flag is optional, with the current directory being the default. When an `OutOfMemoryError` occurs, it will dump an `hprof` file to the directory specified. These can be large (i.e. the size of the `-Xmx` argument) so ensure your disk has enough space. These `hprof` files can be read with many different tools, such as `jhat` included with the JDK or the [Eclipse Memory Analyzer Tool](https://www.eclipse.org/mat/).
+
+### Metabase cannot read or write from a file or folder (IOError)
+
+If you find an error regarding file permissions, like Metabase being unable to read a SQLite database or a custom GeoJSON, check out the section "Metabase can't read to/from a file or directory" in our [Docker troubleshooting guide](docker.md).

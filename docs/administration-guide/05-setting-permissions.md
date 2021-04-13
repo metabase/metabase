@@ -57,7 +57,7 @@ At the database level, there are two different kinds of access you can set: data
 #### SQL (or native query) access
 
 - **Write raw queries:** can write new SQL/native queries using the SQL editor. This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
-- **No access**: can't write or edit SQL/native queries using the SQL editor. Users with this level of access will still be able to view questions created from SQL/native queries.
+- **No access**: can't view, write, or edit SQL/native queries. Users will still be able to view the results of questions created from SQL/native queries, but not the code itself. They also won't see the "View the SQL" button when composing custom questions in the notebook editor.
 
 If you select `Limit access` for one of your databases, your view will change to show the contents of that database. If the database utilizes namespaces or schemas, you’ll see a list of all the schemas in the database, and the level of data access each group has for them. Similarly, if you select `Limit access` on one of your schemas, you’ll drill down a level and see all the tables within it. From these views, you can navigate back by using the breadcrumb links in the top-left, and you can always drill down into a database or schema using the link under its name in the left column.
 

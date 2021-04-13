@@ -109,3 +109,87 @@
                 "division operation. The double itself should get converted to a numeric literal")
     (is (= ["SELECT 0.1 AS one_tenth"]
            (hsql/format {:select [[(/ 1 10) :one_tenth]]})))))
+
+(deftest maybe-cast-test
+  (testing "maybe-cast should only cast things that need to be cast"
+    (letfn [(->sql [expr]
+              (hsql/format {:select [expr]}))
+            (maybe-cast [expr]
+              (->sql (hx/maybe-cast "text" expr)))]
+      (is (= ["SELECT CAST(field AS text)"]
+             (maybe-cast :field)))
+      (testing "cast should return a typed form"
+        (is (= ["SELECT CAST(field AS text)"]
+               (maybe-cast (hx/cast "text" :field)))))
+      (testing "should not cast something that's already typed"
+        (let [typed-expr (hx/with-type-info :field {::hx/database-type "text"})]
+          (is (= ["SELECT field"]
+                 (maybe-cast typed-expr)))
+          (testing "should work with different string/keyword and case combos"
+            (is (= typed-expr
+                   (hx/maybe-cast :text typed-expr)
+                   (hx/maybe-cast "TEXT" typed-expr)
+                   (hx/maybe-cast :TEXT typed-expr)))))
+        (testing "multiple calls to maybe-cast should only cast at most once"
+          (is (= (hx/maybe-cast "text" :field)
+                 (hx/maybe-cast "text" (hx/maybe-cast "text" :field))))
+          (is (= ["SELECT CAST(field AS text)"]
+                 (maybe-cast (hx/maybe-cast "text" :field)))))))))
+
+(def ^:private typed-form (hx/with-type-info :field {::hx/database-type "text"}))
+
+(deftest TypedHoneySQLForm-test
+  (testing "should generate readable output"
+    (is (= (pr-str `(hx/with-type-info :field {::hx/database-type "text"}))
+           (pr-str typed-form)))))
+
+(deftest type-info-test
+  (testing "should let you get info"
+    (is (= {::hx/database-type "text"}
+           (hx/type-info typed-form)))
+    (is (= nil
+           (hx/type-info :field)
+           (hx/type-info nil)))))
+
+(deftest with-type-info-test
+  (testing "should let you update info"
+    (is (= (hx/with-type-info :field {::hx/database-type "date"})
+           (hx/with-type-info typed-form {::hx/database-type "date"})))
+    (testing "should normalize :database-type"
+      (is (= (hx/with-type-info :field {::hx/database-type "date"})
+             (hx/with-type-info typed-form {::hx/database-type "date"}))))))
+
+(deftest with-database-type-info-test
+  (testing "should be the same as calling `with-type-info` with `::hx/database-type`"
+    (is (= (hx/with-type-info :field {::hx/database-type "date"})
+           (hx/with-database-type-info :field "date"))))
+  (testing "Passing `nil` should"
+    (testing "return untyped clause as-is"
+      (is (= :field
+             (hx/with-database-type-info :field nil))))
+    (testing "unwrap a typed clause"
+      (is (= :field
+             (hx/with-database-type-info (hx/with-database-type-info :field "date") nil))))))
+
+(deftest is-of-type?-test
+  (mt/are+ [expr tyype expected] (= expected (hx/is-of-type? expr tyype))
+    typed-form     "text" true
+    typed-form     "TEXT" true
+    typed-form     :text  true
+    typed-form     :TEXT  true
+    typed-form     :te/xt false
+    typed-form     "date" false
+    typed-form     nil    false
+    nil            "date" false
+    :%current_date "date" false
+    ;; I guess this behavior makes sense? I guess untyped = "is of type nil"
+    nil            nil    true
+    :%current_date nil    true))
+
+(deftest unwrap-typed-honeysql-form-test
+  (testing "should be able to unwrap"
+    (is (= :field
+           (hx/unwrap-typed-honeysql-form typed-form)
+           (hx/unwrap-typed-honeysql-form :field)))
+    (is (= nil
+           (hx/unwrap-typed-honeysql-form nil)))))

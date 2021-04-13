@@ -1,5 +1,3 @@
-/* @flow */
-
 export const auditLog = (tableId: number) => ({
   card: {
     name: "Audit log",

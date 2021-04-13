@@ -4,11 +4,9 @@
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.scheduler :as qs]
             [clojurewerkz.quartzite.triggers :as triggers]
-            [expectations :refer [expect]]
             [metabase.task :as task]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
             [metabase.util.schema :as su]
             [schema.core :as s])
   (:import [org.quartz CronTrigger JobDetail]))
@@ -43,7 +41,7 @@
       (cron/with-misfire-handling-instruction-ignore-misfires)))))
 
 (defn- do-with-temp-scheduler-and-cleanup [f]
-  (tu/with-temp-scheduler
+  (mt/with-temp-scheduler
     (try
       (f)
       (finally
@@ -58,31 +56,31 @@
      {:cron-expression     (.getCronExpression trigger)
       :misfire-instruction (.getMisfireInstruction trigger)})))
 
-;; can we schedule a job?
-(expect
-  #{{:cron-expression     "0 0 * * * ? *"
-     :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}
-  (with-temp-scheduler-and-cleanup
-    (task/schedule-task! (job) (trigger-1))
-    (triggers)))
+(deftest schedule-job-test
+  (testing "can we schedule a job?"
+    (with-temp-scheduler-and-cleanup
+      (task/schedule-task! (job) (trigger-1))
+      (is (= #{{:cron-expression     "0 0 * * * ? *"
+                :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}
+             (triggers))))))
 
-;; does scheduling a job a second time work without throwing errors?
-(expect
-  #{{:cron-expression     "0 0 * * * ? *"
-     :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}
-  (with-temp-scheduler-and-cleanup
-    (task/schedule-task! (job) (trigger-1))
-    (task/schedule-task! (job) (trigger-1))
-    (triggers)))
+(deftest reschedule-job-test
+  (testing "does scheduling a job a second time work without throwing errors?"
+    (with-temp-scheduler-and-cleanup
+      (task/schedule-task! (job) (trigger-1))
+      (task/schedule-task! (job) (trigger-1))
+      (is (= #{{:cron-expression     "0 0 * * * ? *"
+                :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}
+             (triggers))))))
 
-;; does scheduling a job with a *new* trigger replace the original? (can we reschedule a job?)
-(expect
-  #{{:cron-expression     "0 0 6 * * ? *"
-     :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY}}
-  (with-temp-scheduler-and-cleanup
-    (task/schedule-task! (job) (trigger-1))
-    (task/schedule-task! (job) (trigger-2))
-    (triggers)))
+(deftest reschedule-and-replace-job-test
+  (testing "does scheduling a job with a *new* trigger replace the original? (can we reschedule a job?)"
+    (with-temp-scheduler-and-cleanup
+      (task/schedule-task! (job) (trigger-1))
+      (task/schedule-task! (job) (trigger-2))
+      (is (= #{{:cron-expression     "0 0 6 * * ? *"
+                :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY}}
+             (triggers))))))
 
 (deftest scheduler-info-test
   (testing "Make sure scheduler-info doesn't explode and returns info in the general shape we expect"

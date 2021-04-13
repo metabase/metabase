@@ -93,8 +93,8 @@
              (sut/generate-query-description (Table (mt/id :venues))
                                              {:aggregation [[:aggregation-options
                                                              [:sum [:*
-                                                                    [:field-id (mt/id :venues :latitude)]
-                                                                    [:field-id (mt/id :venues :longitude)]]]
+                                                                    [:field (mt/id :venues :latitude) nil]
+                                                                    [:field (mt/id :venues :longitude) nil]]]
                                                              {:display-name "Nonsensical named metric"}]]}))))
 
     (testing "with unnamed complex aggregation"
@@ -103,8 +103,8 @@
                              :arg  ["Latitude" "*" "Longitude"]}]}
              (sut/generate-query-description (Table (mt/id :venues))
                                              {:aggregation [[:sum [:*
-                                                                   [:field-id (mt/id :venues :latitude)]
-                                                                   [:field-id (mt/id :venues :longitude)]]]]}))))
+                                                                   [:field (mt/id :venues :latitude) nil]
+                                                                   [:field (mt/id :venues :longitude) nil]]]]}))))
 
     (testing "with unnamed complex aggregation with multiple arguments"
       (is (= {:table       "Venues"
@@ -112,6 +112,6 @@
                              :arg  ["Latitude" "+" "Longitude" "+" "ID"]}]}
              (sut/generate-query-description (Table (mt/id :venues))
                                              {:aggregation [[:sum [:+
-                                                                   [:field-id (mt/id :venues :latitude)]
-                                                                   [:field-id (mt/id :venues :longitude)]
-                                                                   [:field-id (mt/id :venues :id)]]]]}))))))
+                                                                   [:field (mt/id :venues :latitude) nil]
+                                                                   [:field (mt/id :venues :longitude) nil]
+                                                                   [:field (mt/id :venues :id) nil]]]]}))))))

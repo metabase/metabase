@@ -123,8 +123,9 @@ describe("getXValues", () => {
       "2019-08-13T00:00:00Z",
     ]);
   });
-  it("should include nulls by default", () => {
-    const xValues = getXValuesForRows([[["foo"], [null], ["bar"]]]);
+  it("should include nulls for ordinal", () => {
+    const settings = { "graph.x_axis.scale": "ordinal" };
+    const xValues = getXValuesForRows([[["foo"], [null], ["bar"]]], settings);
     expect(xValues).toEqual(["foo", "(empty)", "bar"]);
   });
   it("should exclude nulls for histograms", () => {
@@ -162,8 +163,8 @@ describe("parseXValue", () => {
 });
 
 describe("getDatas", () => {
-  it("should include rows with a null dimension by default", () => {
-    const settings = {};
+  it("should include rows with a null dimension for ordinal axis", () => {
+    const settings = { "graph.x_axis.scale": "ordinal" };
     const series = [{ data: { rows: [["foo"], [null], ["bar"]], cols: [{}] } }];
     const warn = jest.fn();
     const xValues = getDatas({ settings, series }, warn);

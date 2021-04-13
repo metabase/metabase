@@ -1,5 +1,3 @@
-/* @flow */
-
 import { t } from "ttag";
 
 import { isDate } from "metabase/lib/schema_metadata";

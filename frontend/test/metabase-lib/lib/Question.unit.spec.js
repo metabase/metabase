@@ -93,7 +93,7 @@ const orders_count_by_id_card = {
     query: {
       "source-table": ORDERS.id,
       aggregation: [["count"]],
-      breakout: [["field-id", ORDERS.ID.id]],
+      breakout: [["field", ORDERS.ID.id, null]],
     },
   },
 };
@@ -311,7 +311,7 @@ describe("Question", () => {
     })
       .query()
       .aggregate(["count"])
-      .breakout(["datetime-field", ["field-id", 1], "day"])
+      .breakout(["field", 1, { "temporal-unit": "day" }])
       .question()
       .setDisplay("table");
 
@@ -344,8 +344,9 @@ describe("Question", () => {
       it("works with a datetime field reference", () => {
         const ordersCountQuestion = new Question(orders_count_card, metadata);
         const brokenOutCard = ordersCountQuestion.breakout([
-          "field-id",
+          "field",
           ORDERS.CREATED_AT.id,
+          null,
         ]);
         expect(brokenOutCard.canRun()).toBe(true);
 
@@ -355,7 +356,7 @@ describe("Question", () => {
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
-            breakout: [["field-id", ORDERS.CREATED_AT.id]],
+            breakout: [["field", ORDERS.CREATED_AT.id, null]],
           },
         });
 
@@ -368,8 +369,9 @@ describe("Question", () => {
       it("works with a primary key field reference", () => {
         const ordersCountQuestion = new Question(orders_count_card, metadata);
         const brokenOutCard = ordersCountQuestion.breakout([
-          "field-id",
+          "field",
           ORDERS.ID.id,
+          null,
         ]);
         expect(brokenOutCard.canRun()).toBe(true);
         // This breaks because we're apparently modifying OrdersCountDataCard
@@ -379,7 +381,7 @@ describe("Question", () => {
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
-            breakout: [["field-id", ORDERS.ID.id]],
+            breakout: [["field", ORDERS.ID.id, null]],
           },
         });
 
@@ -395,7 +397,7 @@ describe("Question", () => {
       const ordersCountQuestion = new Question(orders_count_card, metadata);
       it("works with a datetime dimension ", () => {
         const pivoted = ordersCountQuestion.pivot([
-          ["field-id", ORDERS.CREATED_AT.id],
+          ["field", ORDERS.CREATED_AT.id, null],
         ]);
         expect(pivoted.canRun()).toBe(true);
 
@@ -406,7 +408,7 @@ describe("Question", () => {
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
-            breakout: [["field-id", ORDERS.CREATED_AT.id]],
+            breakout: [["field", ORDERS.CREATED_AT.id, null]],
           },
         });
         // Make sure we haven't mutated the underlying query
@@ -416,7 +418,9 @@ describe("Question", () => {
         });
       });
       it("works with PK dimension", () => {
-        const pivoted = ordersCountQuestion.pivot([["field-id", ORDERS.ID.id]]);
+        const pivoted = ordersCountQuestion.pivot([
+          ["field", ORDERS.ID.id, null],
+        ]);
         expect(pivoted.canRun()).toBe(true);
 
         // if I actually call the .query() method below, this blows up garbage collection =/
@@ -426,7 +430,7 @@ describe("Question", () => {
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
-            breakout: [["field-id", ORDERS.ID.id]],
+            breakout: [["field", ORDERS.ID.id, null]],
           },
         });
         // Make sure we haven't mutated the underlying query
@@ -452,7 +456,7 @@ describe("Question", () => {
           database: SAMPLE_DATASET.id,
           query: {
             "source-table": ORDERS.id,
-            filter: ["=", ["field-id", ORDERS.ID.id], 1],
+            filter: ["=", ["field", ORDERS.ID.id, null], 1],
           },
         });
       });
@@ -471,9 +475,9 @@ describe("Question", () => {
             filter: [
               "=",
               [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID.id],
-                ["field-id", PRODUCTS.CATEGORY.id],
+                "field",
+                PRODUCTS.CATEGORY.id,
+                { "source-field": ORDERS.PRODUCT_ID.id },
               ],
               "Doohickey",
             ],
@@ -493,7 +497,7 @@ describe("Question", () => {
           database: SAMPLE_DATASET.id,
           query: {
             "source-table": ORDERS.id,
-            filter: ["=", ["field-id", ORDERS.CREATED_AT.id], "12/12/2012"],
+            filter: ["=", ["field", ORDERS.CREATED_AT.id, null], "12/12/2012"],
           },
         });
       });
@@ -519,7 +523,7 @@ describe("Question", () => {
           database: SAMPLE_DATASET.id,
           query: {
             "source-table": ORDERS.id,
-            filter: ["=", ["field-id", ORDERS.ID.id], 1],
+            filter: ["=", ["field", ORDERS.ID.id, null], 1],
           },
         });
       });
@@ -591,7 +595,7 @@ describe("Question", () => {
           database: SAMPLE_DATASET.id,
           query: {
             "source-table": ORDERS.id,
-            filter: ["=", ["field-id", ORDERS.ID.id], 1],
+            filter: ["=", ["field", ORDERS.ID.id, null], 1],
           },
         });
       });

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
@@ -34,7 +35,7 @@ const withTransientSettingState = ComposedComponent =>
       };
     }
 
-    componentWillReceiveProps(nextProps) {
+    UNSAFE_componentWillReceiveProps(nextProps) {
       if (this.props.settings !== nextProps.settings) {
         this.setState({ settings: nextProps.settings });
       }

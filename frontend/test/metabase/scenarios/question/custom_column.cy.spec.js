@@ -31,7 +31,7 @@ describe("scenarios > question > custom columns", () => {
     cy.icon("add_data").click();
 
     popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1");
+      _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
       _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
       cy.findByText("Done").click();
@@ -52,7 +52,7 @@ describe("scenarios > question > custom columns", () => {
       cy.icon("add_data").click();
 
       popover().within(() => {
-        _typeUsingGet("[contenteditable='true']", customFormula);
+        _typeUsingGet("[contenteditable='true']", customFormula, 400);
         _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
         cy.findByText("Done").click();
@@ -122,7 +122,7 @@ describe("scenarios > question > custom columns", () => {
     // Add custom column that will be used later in summarize (group by)
     cy.findByText("Custom column").click();
     popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1");
+      _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
       _typeUsingPlaceholder("Something nice and descriptive", columnName);
 
       cy.findByText("Done").click();
@@ -422,15 +422,15 @@ describe("scenarios > question > custom columns", () => {
               "case",
               [
                 [
-                  [">", ["field-id", ORDERS.DISCOUNT], 0],
-                  ["field-id", ORDERS.CREATED_AT],
+                  [">", ["field", ORDERS.DISCOUNT, null], 0],
+                  ["field", ORDERS.CREATED_AT, null],
                 ],
               ],
               {
                 default: [
-                  "fk->",
-                  ["field-id", ORDERS.PRODUCT_ID],
-                  ["field-id", PRODUCTS.CREATED_AT],
+                  "field",
+                  PRODUCTS.CREATED_AT,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               },
             ],

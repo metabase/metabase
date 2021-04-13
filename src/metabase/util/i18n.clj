@@ -78,7 +78,7 @@
 
 (defn- localized-to-json
   "Write a UserLocalizedString or SiteLocalizedString to the `json-generator`. This is intended for
-  `json-gen/add-encoder`. Ideallys we'd implement those protocols directly as it's faster, but currently that doesn't
+  `json-gen/add-encoder`. Ideally we'd implement those protocols directly as it's faster, but currently that doesn't
   work with Cheshire"
   [localized-string json-generator]
   (json-gen/write-string json-generator (str localized-string)))

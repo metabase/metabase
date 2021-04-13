@@ -4,10 +4,11 @@
   (:require [clojure.string :as str]
             [java-time :as t]
             [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.i18n :as ui18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -21,17 +22,11 @@
 
 (defmethod ->rvalue Object [this] this)
 
-(defmethod ->rvalue :field-id
-  [[_ field-id]]
-  (:name (qp.store/field field-id)))
-
-(defmethod ->rvalue :field-literal
-  [[_ field-name]]
-  field-name)
-
-(defmethod ->rvalue :datetime-field
-  [[_ field]]
-  (->rvalue field))
+(defmethod ->rvalue :field
+  [[_ id-or-name options]]
+  (if (integer? id-or-name)
+    (:name (qp.store/field id-or-name))
+    id-or-name))
 
 ;; TODO - I think these next two methods are no longer used, since `->date-range` handles these clauses
 (defmethod ->rvalue :absolute-datetime
@@ -61,7 +56,9 @@
              {c (str "\\" c)})))
 
 (defn- escape-for-regex [s]
-  (str/escape s (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
+  ;; See https://support.google.com/analytics/answer/1034324?hl=en for list of regex special characters
+  ;; TODO -- I'm not sure we need to escape everything we're escaping here
+  (str/escape s (char-escape-map ".\\+*?[^]$(){}=!<>|:")))
 
 (defn- escape-for-filter-clause [s]
   (str/escape s (char-escape-map ",;\\")))
@@ -109,8 +106,11 @@
                  ""
                  (str/join "," (for [breakout-field breakout-clause]
                                  (mbql.u/match-one breakout-field
-                                   [:datetime-field _ unit] (unit->ga-dimension unit)
-                                   _                        (->rvalue &match)))))})
+                                   [:field _ (options :guard :temporal-unit)]
+                                   (unit->ga-dimension (:temporal-unit options))
+
+                                   _
+                                   (->rvalue &match)))))})
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -164,11 +164,11 @@
 
 (defmethod parse-filter :and
   [[_ & clauses]]
-  (str/join ";" (filter some? (map parse-filter clauses))))
+  (str/join ";" (remove str/blank? (map parse-filter clauses))))
 
 (defmethod parse-filter :or
   [[_ & clauses]]
-  (str/join "," (filter some? (map parse-filter clauses))))
+  (str/join "," (remove str/blank? (map parse-filter clauses))))
 
 (defmethod parse-filter :not
   [[_ clause]]
@@ -179,14 +179,16 @@
     ;; remove all clauses that operate on datetime fields or built-in segments because we don't want to handle them
     ;; here, we'll do that seperately with the filter:interval and handle-filter:built-in-segment stuff below
     ;;
-    ;; (Recall that `auto-bucket-datetimes` guarantees all datetime Fields will be wrapped by `:datetime-field`
+    ;; (Recall that `auto-bucket-datetimes` guarantees all datetime Fields will get `:temporal-unit`
     ;; clauses in a fully-preprocessed query.)
-    (let [filter (parse-filter (mbql.u/replace filter-clause
-                                 [:segment (_ :guard mbql.u/ga-id?)] nil
-                                 [_ [:datetime-field & _] & _] nil))]
+    (let [filter-str (parse-filter (mbql.u/replace filter-clause
+                                     [:segment (_ :guard mbql.u/ga-id?)]
+                                     nil
 
-      (when-not (str/blank? filter)
-        {:filters filter}))))
+                                     [_ [:field _ (_ :guard :temporal-unit)] & _]
+                                     nil))]
+      (when-not (str/blank? filter-str)
+        {:filters filter-str}))))
 
 ;;; ----------------------------------------------- filter (intervals) -----------------------------------------------
 
@@ -206,27 +208,50 @@
   [_ _ x]
   {:start-date (->rvalue x), :end-date (->rvalue x)})
 
+(s/defn ^:private day-date-range :- (s/maybe {(s/optional-key :start-date) s/Str, (s/optional-key :end-date) s/Str})
+  [comparison-type :- s/Keyword n :- s/Int]
+  ;; since GA is normally inclusive add 1 to `:<` or `:>` filters so it starts and ends on the correct date
+  ;; e.g
+  ;;
+  ;;    [:> ... [:relative-datetime -30 :day]]
+  ;;    => (day-date-range :> -30)
+  ;;    => include events whose day is > 30 days ago
+  ;;    => include events whose day is >= 29 days ago
+  ;;    => {:start-date "29daysAgo)}
+  ;;
+  ;;     (day-date-range :< 0)
+  ;;     => include events whose day is < 0 days ago
+  ;;     => include events whose day is < TODAY
+  ;;     => include events whose day is <= YESTERDAY
+  ;;     => {:end-date "yesterday"}
+  ;;
+  ;;     (day-date-range :> 0)
+  ;;     => include events whose day is > 0 days ago
+  ;;     => include events whose day is > TODAY
+  ;;     => include events whose day is >= TOMORROW
+  ;;     => nil (future dates aren't handled by this fn)
+  (let [n (case comparison-type
+            :< (dec n)
+            :> (inc n)
+            n)]
+    (when-not (pos? n)
+      (let [special-amount (cond
+                             (zero? n) "today"
+                             (= n -1)  "yesterday"
+                             (neg? n)  (format "%ddaysAgo" (- n)))]
+        (case comparison-type
+          (:< :<=) {:end-date special-amount}
+          (:> :>=) {:start-date special-amount}
+          :=       {:start-date special-amount, :end-date special-amount}
+          nil)))))
+
 (defmethod ->date-range :relative-datetime
-  [unit comparison-type [_ n relative-datetime-unit]]
+  [unit comparison-type [_ n relative-datetime-unit :as clause]]
   (or (when (= relative-datetime-unit :day)
-        ;; since GA is normally inclusive add 1 to `:<` or `:>` filters so it starts and ends on the correct date
-        ;; e.g [:> ... [:relative-datetime -30 :day]] -> {:start-date "29daysago)}
-        ;; (include events whose day is > 30 days ago, i.e., >= 29 days ago)
-        (let [n (case comparison-type
-                  (:< :>) (inc n)
-                  n)]
-          (when-not (pos? n)
-            (let [special-amount (cond
-                                   (zero? n) "today"
-                                   (= n -1)  "yesterday"
-                                   (neg? n)  (format "%ddaysAgo" (- n)))]
-              (case comparison-type
-                (:< :<=) {:end-date special-amount}
-                (:> :>=) {:start-date special-amount}
-                :=       {:start-date special-amount, :end-date special-amount}
-                nil)))))
+        (day-date-range comparison-type n))
       (let [now (qp.timezone/now :googleanalytics nil :use-report-timezone-id-if-unsupported? true)
-            t   (u.date/add now relative-datetime-unit n)]
+            t   (u.date/truncate now relative-datetime-unit)
+            t   (u.date/add t relative-datetime-unit n)]
         (format-range (u.date/comparison-range t unit comparison-type {:end :inclusive, :resolution :day})))))
 
 (defmethod ->date-range :absolute-datetime
@@ -235,7 +260,8 @@
 
 (defn- field->unit [field]
   (or (mbql.u/match-one field
-        [:datetime-field _ unit] unit)
+        [:field _ (options :guard :temporal-unit)]
+        (:temporal-unit options))
       :day))
 
 (defmulti ^:private parse-filter:interval
@@ -275,27 +301,24 @@
 
 ;;; Compound filters
 
-(defn- maybe-get-only-filter-or-throw [filters]
-  (when-let [filters (seq (filter some? filters))]
-    (when (> (count filters) 1)
-      (throw (Exception. (tru "Multiple date filters are not supported"))))
-    (first filters)))
-
-(defn- try-reduce-filters [[filter1 filter2]]
-  (merge-with
-    (fn [_ _] (throw (Exception. (str (deferred-tru "Multiple date filters are not supported in filters: ") filter1 filter2))))
-    filter1 filter2))
+(defn- merge-interval-filter-clauses [filters]
+  (let [filters   (filter seq filters)
+        key-count (fn [k]
+                    (count (filter some? (map k filters))))]
+    (if (and (< (key-count :start-date) 2)
+             (< (key-count :end-date) 2))
+      (reduce merge filters)
+      (throw (ex-info (tru "Multiple date filters are not supported.")
+                      {:type    qp.error-type/invalid-query
+                       :filters filters})))))
 
 (defmethod parse-filter:interval :and
   [[_ & subclauses]]
-  (let [filters (map parse-filter:interval subclauses)]
-    (if (= (count filters) 2)
-      (try-reduce-filters filters)
-      (maybe-get-only-filter-or-throw filters))))
+  (merge-interval-filter-clauses (map parse-filter:interval subclauses)))
 
 (defmethod parse-filter:interval :or
   [[_ & subclauses]]
-  (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
+  (merge-interval-filter-clauses (mapv parse-filter:interval subclauses)))
 
 (defmethod parse-filter:interval :not
   [[& _]]
@@ -309,7 +332,7 @@
     #{:!= :starts-with :ends-with :contains}
     nil
 
-    [(_ :guard #{:< :> :<= :>= :between :=}) [(_ :guard (partial not= :datetime-field)) & _] & _]
+    [(_ :guard #{:< :> :<= :>= :between :=}) [_ _ (_ :guard (complement :temporal-unit))] & _]
     nil))
 
 (defn- normalize-unit [unit]
@@ -319,9 +342,14 @@
   "Replace all unsupported datetime units with the default"
   [filter-clause]
   (mbql.u/replace filter-clause
-    [:datetime-field field unit]        [:datetime-field field (normalize-unit unit)]
-    [:absolute-datetime timestamp unit] [:absolute-datetime timestamp (normalize-unit unit)]
-    [:relative-datetime amount unit]    [:relative-datetime amount (normalize-unit unit)]))
+    [:field field (options :guard :temporal-unit)]
+    [:field field (update options :temporal-unit normalize-unit)]
+
+    [:absolute-datetime timestamp unit]
+    [:absolute-datetime timestamp (normalize-unit unit)]
+
+    [:relative-datetime amount unit]
+    [:relative-datetime amount (normalize-unit unit)]))
 
 (defn- add-start-end-dates [filter-clause]
   (merge {:start-date earliest-date, :end-date latest-date} filter-clause))
@@ -359,16 +387,22 @@
 
 (defn- handle-order-by [{:keys [order-by], :as query}]
   (when order-by
-    {:sort (str/join
-            ","
-            (for [[direction field] order-by]
-              (str (case direction
-                     :asc  ""
-                     :desc "-")
-                   (mbql.u/match-one field
-                     [:datetime-field _ unit] (unit->ga-dimension unit)
-                     [:aggregation index]     (mbql.u/aggregation-at-index query index)
-                     [& _]                    (->rvalue &match)))))}))
+    {:sort (->> order-by
+                (map (fn [[direction field]]
+                       (str (case direction
+                              :asc  ""
+                              :desc "-")
+                            (mbql.u/match-one field
+                              [:field _ (options :guard :temporal-unit)]
+                              (unit->ga-dimension (:temporal-unit options))
+
+                              [:aggregation index]
+                              (mbql.u/aggregation-at-index query index)
+
+                              [& _]
+                              (->rvalue &match)))))
+                (remove str/blank?)
+                (str/join ","))}))
 
 
 ;;; ----------------------------------------------------- limit ------------------------------------------------------

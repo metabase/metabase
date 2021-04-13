@@ -42,7 +42,7 @@
                                :last_name    last-name
                                :password     (str (UUID/randomUUID))
                                :is_superuser true)
-        user-id    (u/get-id new-user)]
+        user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
@@ -77,10 +77,7 @@
   ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
   ;; boolean string is specified
   (public-settings/anon-tracking-enabled (or (nil? allow-tracking?)
-                                             allow-tracking?))
-  ;; set `source-address-header` to "X-Forwarded-For" if such a header is present
-  (when (get-in request [:headers "x-forwarded-for"])
-    (public-settings/source-address-header "X-Forwarded-For")))
+                                             allow-tracking?)))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and

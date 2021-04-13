@@ -69,8 +69,8 @@
     (embed-test/with-embedding-enabled-and-new-secret-key
       (embed-test/with-temp-card [card]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
-          (is (= (embed-test/successful-query-results)
-                 (mt/user-http-request :crowberto :get 202 (card-query-url card)))))
+          (embed-test/test-query-results
+           (mt/user-http-request :crowberto :get 202 (card-query-url card))))
 
         (testing "if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
@@ -95,9 +95,9 @@
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:abc "locked"}})))))
 
           (testing "if `:locked` param is supplied, request should succeed"
-            (is (= (embed-test/successful-query-results)
-                   (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:abc "locked"}
-                                                                                   :params            {:abc 100}})))))
+            (embed-test/test-query-results
+             (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:abc "locked"}
+                                                                             :params            {:abc 100}}))))
 
           (testing "if `:locked` parameter is present in URL params, request should fail"
             (is (= "You can only specify a value for :abc in the JWT."
@@ -132,13 +132,13 @@
                                                                   "?abc=200")))))
 
           (testing "If an `:enabled` param is present in the JWT, that's ok"
-            (is (= (embed-test/successful-query-results)
-                   (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:abc "enabled"}
-                                                                                   :params            {:abc "enabled"}})))))
+            (embed-test/test-query-results
+             (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:abc "enabled"}
+                                                                             :params            {:abc "enabled"}}))))
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
-            (is (= (embed-test/successful-query-results)
-                   (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:abc "enabled"}})
-                                                                  "?abc=200"))))))))))
+            (embed-test/test-query-results
+             (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:abc "enabled"}})
+                                                            "?abc=200")))))))))
 
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
@@ -197,8 +197,8 @@
     (embed-test/with-embedding-enabled-and-new-secret-key
       (embed-test/with-temp-dashcard [dashcard]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
-          (is (= (embed-test/successful-query-results)
-                 (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard)))))
+          (embed-test/test-query-results
+           (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard))))
 
         (testing "...but if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
@@ -221,17 +221,17 @@
           (testing "check that if embedding is enabled globally fail if the token is missing a `:locked` parameter"
             (is (= "You must specify a value for :abc in the JWT."
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard
-                                                               {:_embedding_params {:abc "locked"}})))))
+                                                                           {:_embedding_params {:abc "locked"}})))))
 
           (testing "If `:locked` param is supplied, request should succeed"
-            (is (= (embed-test/successful-query-results)
-                   (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard
-                                                               {:_embedding_params {:abc "locked"}, :params {:abc 100}})))))
+            (embed-test/test-query-results
+             (mt/user-http-request :crowberto :get 202
+                                   (dashcard-url dashcard {:_embedding_params {:abc "locked"}, :params {:abc 100}}))))
 
           (testing "If `:locked` parameter is present in URL params, request should fail"
             (is (= "You can only specify a value for :abc in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard
-                                                                    {:_embedding_params {:abc "locked"}, :params {:abc 100}})
+                                                                                {:_embedding_params {:abc "locked"}, :params {:abc 100}})
                                                                   "?abc=200"))))))))))
 
 (deftest dashcard-disabled-params-test
@@ -261,14 +261,14 @@
                                                                   "?abc=200")))))
 
           (testing "If an `:enabled` param is present in the JWT, that's ok"
-            (is (= (embed-test/successful-query-results)
-                   (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard {:_embedding_params {:abc "enabled"}
-                                                                                     :params            {:abc 100}})))))
+            (embed-test/test-query-results
+             (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard {:_embedding_params {:abc "enabled"}
+                                                                               :params            {:abc 100}}))))
 
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
-            (is (= (embed-test/successful-query-results)
-                   (mt/user-http-request :crowberto :get 202 (str (dashcard-url dashcard {:_embedding_params {:abc "enabled"}})
-                                                                  "?abc=200"))))))))))
+            (embed-test/test-query-results
+             (mt/user-http-request :crowberto :get 202 (str (dashcard-url dashcard {:_embedding_params {:abc "enabled"}})
+                                                            "?abc=200")))))))))
 
 (deftest dashcard-editable-query-params-test
   (testing (str "Check that editable query params work correctly and keys get coverted from strings to keywords, even "

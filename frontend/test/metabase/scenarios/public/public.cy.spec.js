@@ -35,7 +35,7 @@ describe.skip("scenarios > public", () => {
             name: "c",
             "display-name": "Category",
             type: "dimension",
-            dimension: ["field-id", PRODUCTS.CATEGORY],
+            dimension: ["field", PRODUCTS.CATEGORY, null],
             default: null,
             "widget-type": "category",
           },

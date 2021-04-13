@@ -10,9 +10,10 @@ import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 describe("metabase/util/dataset", () => {
   describe("fieldRefForColumn", () => {
     it("should return field_ref from the column", () => {
-      expect(fieldRefForColumn({ field_ref: ["field-id", 42] })).toEqual([
-        "field-id",
+      expect(fieldRefForColumn({ field_ref: ["field", 42, null] })).toEqual([
+        "field",
         42,
+        null,
       ]);
     });
   });
@@ -21,12 +22,12 @@ describe("metabase/util/dataset", () => {
     it("should not modify `fields` if no `table.columns` setting preset", () => {
       const question = syncTableColumnsToQuery(
         ORDERS.query({
-          fields: [["field-id", ORDERS.TOTAL.id]],
+          fields: [["field", ORDERS.TOTAL.id, null]],
         }).question(),
       );
       expect(question.query().query()).toEqual({
         "source-table": ORDERS.id,
-        fields: [["field-id", ORDERS.TOTAL.id]],
+        fields: [["field", ORDERS.TOTAL.id, null]],
       });
     });
     it("should sync included `table.columns` by name", () => {
@@ -44,7 +45,7 @@ describe("metabase/util/dataset", () => {
       );
       expect(question.query().query()).toEqual({
         "source-table": ORDERS.id,
-        fields: [["field-id", ORDERS.TOTAL.id]],
+        fields: [["field", ORDERS.TOTAL.id, null]],
       });
     });
     it("should sync included `table.columns` by fieldRef", () => {
@@ -54,7 +55,7 @@ describe("metabase/util/dataset", () => {
           .setSettings({
             "table.columns": [
               {
-                fieldRef: ["field-id", ORDERS.TOTAL.id],
+                fieldRef: ["field", ORDERS.TOTAL.id, null],
                 enabled: true,
               },
             ],
@@ -62,7 +63,7 @@ describe("metabase/util/dataset", () => {
       );
       expect(question.query().query()).toEqual({
         "source-table": ORDERS.id,
-        fields: [["field-id", ORDERS.TOTAL.id]],
+        fields: [["field", ORDERS.TOTAL.id, null]],
       });
     });
     it("should not modify columns if all default columns are enabled", () => {
@@ -110,11 +111,11 @@ describe("metabase/util/dataset", () => {
               alias: "products",
               "source-table": PRODUCTS.id,
               fields: [
-                ["joined-field", "products", ["field-id", PRODUCTS.PRICE.id]],
+                ["field", PRODUCTS.PRICE.id, { "join-alias": "products" }],
               ],
             },
           ],
-          fields: [["field-id", ORDERS.TOTAL.id]],
+          fields: [["field", ORDERS.TOTAL.id, null]],
         });
       });
       it("should sync included `table.columns` by fieldRef to join clauses", () => {
@@ -129,14 +130,14 @@ describe("metabase/util/dataset", () => {
             .setSettings({
               "table.columns": [
                 {
-                  fieldRef: ["field-id", ORDERS.TOTAL.id],
+                  fieldRef: ["field", ORDERS.TOTAL.id, null],
                   enabled: true,
                 },
                 {
                   fieldRef: [
-                    "joined-field",
-                    "products",
-                    ["field-id", PRODUCTS.PRICE.id],
+                    "field",
+                    PRODUCTS.PRICE.id,
+                    { "join-alias": "products" },
                   ],
                   enabled: true,
                 },
@@ -150,11 +151,11 @@ describe("metabase/util/dataset", () => {
               alias: "products",
               "source-table": PRODUCTS.id,
               fields: [
-                ["joined-field", "products", ["field-id", PRODUCTS.PRICE.id]],
+                ["field", PRODUCTS.PRICE.id, { "join-alias": "products" }],
               ],
             },
           ],
-          fields: [["field-id", ORDERS.TOTAL.id]],
+          fields: [["field", ORDERS.TOTAL.id, null]],
         });
       });
     });
@@ -162,9 +163,9 @@ describe("metabase/util/dataset", () => {
 
   describe("findColumnForColumnSetting", () => {
     const columns = [
-      { name: "bar", field_ref: ["field-id", 42] },
-      { name: "foo", field_ref: ["fk->", ["field-id", 2], ["field-id", 1]] },
-      { name: "baz", field_ref: ["field-id", 43] },
+      { name: "bar", field_ref: ["field", 42, null] },
+      { name: "foo", field_ref: ["field", 1, { "source-field": 2 }] },
+      { name: "baz", field_ref: ["field", 43, null] },
     ];
     it("should find column with name", () => {
       const column = findColumnForColumnSetting(columns, { name: "foo" });
@@ -172,13 +173,7 @@ describe("metabase/util/dataset", () => {
     });
     it("should find column with normalized fieldRef", () => {
       const column = findColumnForColumnSetting(columns, {
-        fieldRef: ["fk->", ["field-id", 2], ["field-id", 1]],
-      });
-      expect(column).toBe(columns[1]);
-    });
-    it("should find column with non-normalized fieldRef", () => {
-      const column = findColumnForColumnSetting(columns, {
-        fieldRef: ["fk->", 2, 1], // deprecated
+        fieldRef: ["field", 1, { "source-field": 2 }],
       });
       expect(column).toBe(columns[1]);
     });
@@ -189,27 +184,27 @@ describe("metabase/util/dataset", () => {
     // field_ref, leaving test code in place to compare against older versions
     for (const fieldRefEnabled of [/*false,*/ true]) {
       describe(fieldRefEnabled ? "with field_ref" : "without field_ref", () => {
-        it("should return [ref [field-id ...]] for field", () => {
+        it("should return [ref [field ...]] for field", () => {
           expect(
             keyForColumn({
               name: "foo",
               id: 1,
-              field_ref: fieldRefEnabled ? ["field-id", 1] : undefined,
+              field_ref: fieldRefEnabled ? ["field", 1, null] : undefined,
             }),
-          ).toEqual(JSON.stringify(["ref", ["field-id", 1]]));
+          ).toEqual(JSON.stringify(["ref", ["field", 1, null]]));
         });
-        it("should return [ref [fk-> ...]] for foreign field", () => {
+        it("should return [ref [field ...]] for foreign field", () => {
           expect(
             keyForColumn({
               name: "foo",
               id: 1,
               fk_field_id: 2,
               field_ref: fieldRefEnabled
-                ? ["fk->", ["field-id", 2], ["field-id", 1]]
+                ? ["field", 1, { "source-field": 2 }]
                 : undefined,
             }),
           ).toEqual(
-            JSON.stringify(["ref", ["fk->", ["field-id", 2], ["field-id", 1]]]),
+            JSON.stringify(["ref", ["field", 1, { "source-field": 2 }]]),
           );
         });
         it("should return [ref [expression ...]] for expression", () => {
@@ -232,29 +227,29 @@ describe("metabase/util/dataset", () => {
             JSON.stringify(["name", "foo"]),
           );
         });
-        it("should return [name ...] for field-literal", () => {
+        it("should return [name ...] for aggregation", () => {
           const col = {
             name: "foo",
-            id: ["field-literal", "foo", "type/Integer"],
+            id: ["field", "foo", { "base-type": "type/Integer" }],
             field_ref: fieldRefEnabled
-              ? ["field-literal", "foo", "type/Integer"]
+              ? ["field", "foo", { "base-type": "type/Integer" }]
               : undefined,
           };
           expect(keyForColumn(col, [col])).toEqual(
-            // NOTE: not ideal, matches existing behavior, but should be ["field-literal", "foo", "type/Integer"]
+            // NOTE: not ideal, matches existing behavior, but should be ["field", "foo", {"base-type": "type/Integer"}]
             JSON.stringify(["name", "foo"]),
           );
         });
-        it("should return [name ...] for native query column", () => {
+        it("should return [field ...] for native query column", () => {
           expect(
             keyForColumn({
               name: "foo",
               field_ref: fieldRefEnabled
-                ? ["field-literal", "foo", "type/Integer"]
+                ? ["field", "foo", { "base-type": "type/Integer" }]
                 : undefined,
             }),
           ).toEqual(
-            // NOTE: not ideal, matches existing behavior, but should be ["field-literal", "foo", "type/Integer"]
+            // NOTE: not ideal, matches existing behavior, but should be ["field", "foo", {"base-type": "type/Integer"}]
             JSON.stringify(["name", "foo"]),
           );
         });
@@ -262,15 +257,15 @@ describe("metabase/util/dataset", () => {
     }
 
     describe("with field_ref", () => {
-      it("should return [ref [field-id ...]] for joined-field", () => {
+      it("should return [ref [field ...]] for joined field", () => {
         const col = {
           name: "foo",
           id: 1,
-          field_ref: ["joined-field", "x", ["field-id", 1]],
+          field_ref: ["field", 1, { "join-alias": "x" }],
         };
         expect(keyForColumn(col)).toEqual(
-          // NOTE: not ideal, matches existing behavior, but should be ["joined-field", "x", ["field-id", 1]]
-          JSON.stringify(["ref", ["field-id", 1]]),
+          // NOTE: not ideal, matches existing behavior, but should be ["field", 1, {"join-alias": "x"}]
+          JSON.stringify(["ref", ["field", 1, null]]),
         );
       });
     });

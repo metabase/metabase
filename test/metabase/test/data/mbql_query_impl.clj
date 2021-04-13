@@ -15,41 +15,39 @@
        [(keyword source-table-symb) (keyword (first parts))]
        (map keyword parts)))))
 
-
-(defn- clause-type-and-args
-  "Given a token string, return the matching Fieldclause "
+(defn- token->type+args
+  "Given a token string, return the matching Field clause "
   [token-str]
   (if-let [[_ source-token-str dest-token-str] (re-matches #"(^.*)->(.*$)" token-str)]
-    [:fk-> source-token-str dest-token-str]
-    [:field-id token-str]))
-
+    [:-> source-token-str dest-token-str]
+    [:normal token-str]))
 
 (defmulti ^:private mbql-field
   "Convert `token-str` to MBQL and `data/id` calls using `strategy` for producing the result.
 
-  *  `:wrap`    = wrap the clause in `:field-id` or `:fk->`
+  *  `:id`      = return `:field` with integer ID
   *  `:raw`     = return raw Integer Field ID
-  *  `:literal` = wrap the clause in `:field-literal`"
-  {:arglists '([strategy clause-type source-table-symb & tokens])}
-  (fn [strategy clause-type & _] [strategy clause-type]))
+  *  `:literal` = return `:field` with string name"
+  {:arglists '([strategy token-type source-table-symb & tokens])}
+  (fn [strategy token-type & _] [strategy token-type]))
 
-(defmethod mbql-field [:wrap :field-id]
+(defmethod mbql-field [:id :normal]
   [_ _ source-table-symb token-str]
-  [:field-id (field-id-call source-table-symb token-str)])
+  [:field (field-id-call source-table-symb token-str) nil])
 
-(defmethod mbql-field [:wrap :fk->]
+(defmethod mbql-field [:id :->]
   [_ _ source-table-symb source-token-str dest-token-str]
-  [:fk->
-   [:field-id (field-id-call source-table-symb source-token-str)]
-   [:field-id (field-id-call source-table-symb dest-token-str)]])
+  [:field
+   (field-id-call source-table-symb dest-token-str)
+   {:source-field (field-id-call source-table-symb source-token-str)}])
 
-(defmethod mbql-field [:raw :field-id]
+(defmethod mbql-field [:raw :normal]
   [_ _ source-table-symb token-str]
   (field-id-call source-table-symb token-str))
 
-(defmethod mbql-field [:raw :fk->]
+(defmethod mbql-field [:raw :->]
   [_ _ source-table-symb source-token-str dest-token-str]
-  (throw (ex-info "Error: It doesn't make sense to have an 'raw' fk-> form. (Don't know which ID to use.)"
+  (throw (ex-info "Error: It doesn't make sense to have an 'raw' -> form. (Don't know which ID to use.)"
            {:source-table-symb     source-table-symb
             :source-token-str source-token-str
             :dest-token-str   dest-token-str})))
@@ -63,25 +61,25 @@
 (defn- field-literal [source-table-symb token-str]
   (if (str/includes? token-str "/")
     (let [[field-name field-type] (str/split token-str #"/")]
-      [:field-literal field-name (keyword "type" field-type)])
-    [:field-literal
-     (list `field-name      (field-id-call source-table-symb token-str))
-     (list `field-base-type (field-id-call source-table-symb token-str))]))
+      [:field field-name {:base-type (keyword "type" field-type)}])
+    [:field
+     (list `field-name (field-id-call source-table-symb token-str))
+     {:base-type (list `field-base-type (field-id-call source-table-symb token-str))}]))
 
-(defmethod mbql-field [:literal :field-id]
+(defmethod mbql-field [:literal :normal]
   [_ _ source-table-symb token-str]
   (field-literal source-table-symb token-str))
 
-(defmethod mbql-field [:literal :fk->]
+(defmethod mbql-field [:literal :->]
   [_ _ source-table-symb source-token-str dest-token-str]
-  [:fk->
+  [:->
    (field-literal source-table-symb source-token-str)
    (field-literal source-table-symb dest-token-str)])
 
 
 (defn- mbql-field-with-strategy [strategy source-table-symb token-str]
-  (let [[clause-type & args] (clause-type-and-args token-str)]
-    (apply mbql-field strategy clause-type source-table-symb args)))
+  (let [[token-type & args] (token->type+args token-str)]
+    (apply mbql-field strategy token-type source-table-symb args)))
 
 (defn- token->sigil [token]
   (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
@@ -98,7 +96,7 @@
 ;; $ = wrapped Field ID
 (defmethod parse-token-by-sigil "$"
   [source-table-symb token]
-  (mbql-field-with-strategy :wrap source-table-symb (.substring (str token) 1)))
+  (mbql-field-with-strategy :id source-table-symb (.substring (str token) 1)))
 
 ;; % = raw Field ID
 (defmethod parse-token-by-sigil "%"
@@ -114,23 +112,22 @@
 (defmethod parse-token-by-sigil "&"
   [source-table-symb token]
   (if-let [[_ alias-name token] (re-matches #"^&([^.]+)\.(.+$)" (str token))]
-    [:joined-field alias-name (parse-token-by-sigil source-table-symb (if (token->sigil token)
+    (let [[_ id-or-name opts] (parse-token-by-sigil source-table-symb (if (token->sigil token)
                                                                         (symbol token)
                                                                         (symbol (str \$ token))))]
+      [:field id-or-name (assoc opts :join-alias alias-name)])
     (throw (ex-info "Error parsing token starting with '&'"
-             {:token token}))))
+                    {:token token}))))
 
 ;; `!unit.<field> = datetime field
 (defmethod parse-token-by-sigil "!"
   [source-table-symb token]
   (if-let [[_ unit token] (re-matches #"^!([^.]+)\.(.+$)" (str token))]
-    [:datetime-field
-     (parse-token-by-sigil source-table-symb (if (token->sigil token)
-                                               (symbol token)
-                                               (symbol (str \$ token))))
-     (keyword unit)]
-    (throw (ex-info "Error parsing token starting with '!!'"
-             {:token token}))))
+    (let [[_ id-or-name opts] (parse-token-by-sigil source-table-symb (if (token->sigil token)
+                                                                   (symbol token)
+                                                                   (symbol (str \$ token))))]
+      [:field id-or-name (assoc opts :temporal-unit (keyword unit))])
+    (throw (ex-info "Error parsing token starting with '!'" {:token token}))))
 
 ;; $$ = table ID.
 (defmethod parse-token-by-sigil "$$"
@@ -146,7 +143,6 @@
   something like a function call or dynamic variable."
   [source-table-symb-or-nil body]
   (walk/postwalk (partial parse-token-by-sigil source-table-symb-or-nil) body))
-
 
 (defn wrap-inner-query
   "Internal impl fn of `data/mbql-query` macro."

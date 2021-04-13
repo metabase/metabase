@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
 
@@ -14,7 +15,7 @@ const mapDispatchToProps = {
   mapDispatchToProps,
 )
 export default class LogoutApp extends Component {
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.logout();
   }
 

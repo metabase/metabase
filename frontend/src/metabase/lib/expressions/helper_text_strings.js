@@ -462,6 +462,30 @@ const helperTextStrings = [
     ],
   },
   {
+    name: "is-null",
+    structure: "isnull(" + t`column` + ")",
+    description: t`Checks if a column is null`,
+    example: "isnull([" + t`Discount` + '")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to check.`,
+      },
+    ],
+  },
+  {
+    name: "is-empty",
+    structure: "isempty(" + t`column` + ")",
+    description: t`Checks if a column is empty`,
+    example: "isempty([" + t`Name` + '")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to check.`,
+      },
+    ],
+  },
+  {
     name: "coalesce",
     structure: "coalesce(" + t`value1` + ", " + t`value2` + ", …)",
     description: t`Looks at the values in each argument in order and returns the first non-null value for each row.`,

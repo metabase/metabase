@@ -6,9 +6,10 @@ export const getScrollY = () =>
   typeof window.scrollY === "undefined" ? window.pageYOffset : window.scrollY;
 
 // denotes whether the current page is loaded in an iframe or not
+// Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
 export const IFRAMED = (function() {
   try {
-    return window.self !== window.top;
+    return !window.Cypress && window.self !== window.top;
   } catch (e) {
     return true;
   }

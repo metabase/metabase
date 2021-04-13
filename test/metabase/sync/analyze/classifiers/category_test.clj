@@ -1,11 +1,11 @@
 (ns metabase.sync.analyze.classifiers.category-test
   "Tests for the category classifier."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.sync.analyze.classifiers.category :as category-classifier]))
 
 (defn- field-with-distinct-count [distinct-count]
   {:database_type       "VARCHAR"
-   :special_type        :type/Name
+   :semantic_type       :type/Name
    :name                "NAME"
    :fingerprint_version 1
    :has_field_values    nil
@@ -22,13 +22,12 @@
                            :average-length 13.516}}}
    :base_type           :type/Text})
 
-;; make sure the logic for deciding whether a Field should be a list works as expected
-(expect
-  nil
-  (let [field (field-with-distinct-count 2500)]
-    (#'category-classifier/field-should-be-auto-list? (:fingerprint field) field)))
+(deftest should-be-auto-list?-test
+  (testing "make sure the logic for deciding whether a Field should be a list works as expected"
+    (let [field (field-with-distinct-count 2500)]
+      (is (= nil
+             (#'category-classifier/field-should-be-auto-list? (:fingerprint field) field))))
 
-(expect
-  true
-  (let [field (field-with-distinct-count 99)]
-    (#'category-classifier/field-should-be-auto-list? (:fingerprint field) field)))
+    (let [field (field-with-distinct-count 99)]
+      (is (= true
+             (#'category-classifier/field-should-be-auto-list? (:fingerprint field) field))))))

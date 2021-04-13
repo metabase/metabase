@@ -60,7 +60,7 @@ export default class AddSeriesModal extends Component {
   };
   static defaultProps = {};
 
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const { questions, loadMetadataForQueries } = this.props;
     try {
       await loadMetadataForQueries(questions.map(question => question.query()));

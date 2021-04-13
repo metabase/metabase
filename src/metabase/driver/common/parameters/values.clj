@@ -121,7 +121,8 @@
   (i/map->FieldFilter
    ;; TODO - shouldn't this use the QP Store?
    {:field (let [field-id (field-filter->field-id field-filter)]
-             (or (db/select-one [Field :name :parent_id :table_id :base_type :special_type] :id field-id)
+             (or (db/select-one [Field :name :parent_id :table_id :base_type :effective_type :coercion_strategy :semantic_type]
+                   :id field-id)
                  (throw (ex-info (str (deferred-tru "Can''t find field with ID: {0}" field-id))
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
     :value (or (when-let [value-info-or-infos (or
@@ -247,35 +248,34 @@
 
 (s/defn ^:private parse-value-for-field-type :- s/Any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
-  to parse it as appropriate based on the base type and special type of the Field associated with it). These are
+  to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
   special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
   UUID fields."
-  [base-type :- su/FieldType special-type :- (s/maybe su/FieldType) value]
+  [effective-type :- su/FieldType value]
   (cond
-    (isa? base-type :type/UUID)
+    (isa? effective-type :type/UUID)
     (UUID/fromString value)
 
-    (and (isa? base-type :type/Number)
-         (not (isa? special-type :type/Temporal)))
+    (isa? effective-type :type/Number)
     (value->number value)
 
     :else
     value))
 
 (s/defn ^:private update-filter-for-field-type :- ParsedParamValue
-  "Update a Field Filter with a textual, or sequence of textual, values. The base type and special type of the field
-  are used to determine what 'special' type interpretation is required (e.g. for UUID fields)."
-  [{{base-type :base_type, special-type :special_type} :field, {value :value} :value, :as field-filter} :- FieldFilter]
+  "Update a Field Filter with a textual, or sequence of textual, values. The base type and semantic type of the field
+  are used to determine what 'semantic' type interpretation is required (e.g. for UUID fields)."
+  [{{effective_type :effective_type, :as _field} :field, {value :value} :value, :as field-filter} :- FieldFilter]
   (let [new-value (cond
                     (string? value)
-                    (parse-value-for-field-type base-type special-type value)
+                    (parse-value-for-field-type effective_type value)
 
                     (and (sequential? value)
                          (every? string? value))
-                    (mapv (partial parse-value-for-field-type base-type special-type) value))]
+                    (mapv (partial parse-value-for-field-type effective_type) value))]
     (when (not= value new-value)
-      (log/tracef "update filter for base-type: %s special-type: %s value: %s -> %s"
-                  (pr-str base-type) (pr-str special-type) (pr-str value) (pr-str new-value)))
+      (log/tracef "update filter for base-type: %s value: %s -> %s"
+                  (pr-str effective_type) (pr-str value) (pr-str new-value)))
     (cond-> field-filter
       new-value (assoc-in [:value :value] new-value))))
 

@@ -1,5 +1,3 @@
-/* eslint-disable flowtype/require-valid-file-annotation */
-
 import { drillFilter } from "metabase/modes/lib/actions";
 import { ORDERS } from "__support__/sample_dataset_fixture";
 
@@ -17,7 +15,7 @@ describe("actions", () => {
         "source-table": ORDERS.id,
         filter: [
           "=",
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "day"],
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }],
           "2018-04-27T00:00:00+02:00",
         ],
       });

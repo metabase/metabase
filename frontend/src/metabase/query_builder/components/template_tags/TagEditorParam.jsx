@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -9,7 +10,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
-import { parameterOptionsForField } from "metabase/meta/Dashboard";
+import { parameterOptionsForField } from "metabase/meta/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
 import type { Database } from "metabase-types/types/Database";
 
@@ -38,7 +39,7 @@ type Props = {
 export default class TagEditorParam extends Component {
   props: Props;
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
@@ -81,7 +82,7 @@ export default class TagEditorParam extends Component {
 
   setDimension(fieldId) {
     const { tag, onUpdate, metadata } = this.props;
-    const dimension = ["field-id", fieldId];
+    const dimension = ["field", fieldId, null];
     if (!_.isEqual(tag.dimension !== dimension)) {
       const field = metadata.field(dimension[1]);
       if (!field) {
@@ -106,7 +107,7 @@ export default class TagEditorParam extends Component {
   }
 
   render() {
-    const { tag, database, databases, metadata } = this.props;
+    const { tag, database, databases, metadata, parameter } = this.props;
     let widgetOptions = [],
       table,
       fieldMetadataLoaded = false;
@@ -241,11 +242,20 @@ export default class TagEditorParam extends Component {
           <div className="pb3">
             <h4 className="text-medium pb1">{t`Default filter widget value`}</h4>
             <ParameterValueWidget
-              parameter={{
-                type:
-                  tag["widget-type"] ||
-                  (tag.type === "date" ? "date/single" : null),
-              }}
+              parameter={
+                tag.type === "dimension"
+                  ? parameter || {
+                      ...tag,
+                      type:
+                        tag["widget-type"] ||
+                        (tag.type === "date" ? "date/single" : null),
+                    }
+                  : {
+                      type:
+                        tag["widget-type"] ||
+                        (tag.type === "date" ? "date/single" : null),
+                    }
+              }
               value={tag.default}
               setValue={value => this.setParameterAttribute("default", value)}
               className="AdminSelect p1 text-bold text-medium bordered border-medium rounded bg-white"

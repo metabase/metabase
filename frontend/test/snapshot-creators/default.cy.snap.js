@@ -146,7 +146,7 @@ describe("snapshots", () => {
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
-        breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
       display: "line",
     });

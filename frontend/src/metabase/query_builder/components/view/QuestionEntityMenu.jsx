@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
@@ -35,6 +36,11 @@ export default function QuestionEntityMenu({
           icon: "move",
           title: t`Move`,
           action: () => onOpenModal("move"),
+        },
+        canWrite && {
+          icon: "clone",
+          title: t`Duplicate this question`,
+          action: () => onOpenModal("clone"),
         },
         canWrite && {
           icon: "archive",

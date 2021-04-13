@@ -10,18 +10,30 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.pulse.interface :as i]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as session]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ui-logic :as ui]
             [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
+
+
+(def ^:private parameters-impl
+  (u/prog1 (or (u/ignore-exceptions
+                 (classloader/require 'metabase-enterprise.pulse)
+                 (some-> (resolve 'metabase-enterprise.pulse/ee-strategy-parameters-impl)
+                         var-get))
+               i/default-parameters-impl)))
+
+
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -55,11 +67,11 @@
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
 
 (defn- execute-dashboard-subscription-card
-  [owner-id dashboard dashcard card-or-id]
+  [owner-id dashboard dashcard card-or-id parameters]
   (try
     (let [card-id         (u/the-id card-or-id)
           card            (Card :id card-id)
-          param-id->param (u/key-by :id (:parameters dashboard))
+          param-id->param (u/key-by :id parameters)
           params          (for [mapping (:parameter_mappings dashcard)
                                 :when   (= (:card_id mapping) card-id)
                                 :let    [param (get param-id->param (:parameter_id mapping))]
@@ -85,7 +97,7 @@
   (let [dashboard-id (u/the-id dashboard-or-id)
         dashboard (Dashboard :id dashboard-id)]
     (for [dashcard (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])]
-      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard)))))
+      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) (i/the-parameters parameters-impl pulse dashboard)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -142,19 +154,16 @@
   [results]
   (every? is-card-empty? results))
 
-(defn- goal-met? [{:keys [alert_above_goal] :as pulse} results]
-  (let [first-result         (first results)
-        goal-comparison      (if alert_above_goal <= >=)
+(defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
+  (let [goal-comparison      (if alert_above_goal <= >=)
         goal-val             (ui/find-goal-value first-result)
         comparison-col-rowfn (ui/make-goal-comparison-rowfn (:card first-result)
                                                             (get-in first-result [:result :data]))]
 
     (when-not (and goal-val comparison-col-rowfn)
-      (throw (Exception. (str (deferred-tru "Unable to compare results to goal for alert.")
-                              " "
-                              (deferred-tru "Question ID is ''{0}'' with visualization settings ''{1}''"
-                                        (get-in results [:card :id])
-                                        (pr-str (get-in results [:card :visualization_settings])))))))
+      (throw (ex-info (tru "Unable to compare results to goal for alert.")
+                      {:pulse  pulse
+                       :result first-result})))
     (some (fn [row]
             (goal-comparison goal-val (comparison-col-rowfn row)))
           (get-in first-result [:result :data :rows]))))

@@ -12,7 +12,7 @@ describe("Filter", () => {
   describe("displayName", () => {
     it("should return the correct string for an = filter", () => {
       expect(
-        filter(["=", ["field-id", ORDERS.TOTAL.id], 42]).displayName(),
+        filter(["=", ["field", ORDERS.TOTAL.id, null], 42]).displayName(),
       ).toEqual("Total is equal to 42");
     });
     it("should return the correct string for a segment filter", () => {
@@ -22,16 +22,18 @@ describe("Filter", () => {
   describe("isValid", () => {
     describe("with a field filter", () => {
       it("should return true for a field that exists", () => {
-        expect(filter(["=", ["field-id", ORDERS.TOTAL.id], 42]).isValid()).toBe(
-          true,
-        );
+        expect(
+          filter(["=", ["field", ORDERS.TOTAL.id, null], 42]).isValid(),
+        ).toBe(true);
       });
       it("should return false for a field that doesn't exists", () => {
-        expect(filter(["=", ["field-id", 12341234], 42]).isValid()).toBe(false);
+        expect(filter(["=", ["field", 12341234, null], 42]).isValid()).toBe(
+          false,
+        );
       });
       it("should return true for a filter with an expression for the field", () => {
         expect(
-          filter(["=", ["/", ["field-id", 12341234], 43], 42]).isValid(),
+          filter(["=", ["/", ["field", 12341234, null], 43], 42]).isValid(),
         ).toBe(true);
       });
     });
@@ -39,38 +41,37 @@ describe("Filter", () => {
   describe("operator", () => {
     it("should return the correct FilterOperator", () => {
       expect(
-        filter(["=", ["field-id", ORDERS.TOTAL.id], 42]).operator().name,
+        filter(["=", ["field", ORDERS.TOTAL.id, null], 42]).operator().name,
       ).toBe("=");
     });
   });
   describe("setDimension", () => {
     it("should set the dimension for existing filter clause", () => {
       expect(
-        filter(["=", ["field-id", ORDERS.SUBTOTAL.id], 42]).setDimension(
-          ["field-id", ORDERS.TOTAL.id],
+        filter(["=", ["field", ORDERS.SUBTOTAL.id, null], 42]).setDimension(
+          ["field", ORDERS.TOTAL.id, null],
           {
             useDefaultOperator: true,
           },
         ),
-      ).toEqual(["=", ["field-id", ORDERS.TOTAL.id], 42]);
+      ).toEqual(["=", ["field", ORDERS.TOTAL.id, null], 42]);
     });
     it("should set the dimension for new filter clause", () => {
-      expect(filter([]).setDimension(["field-id", ORDERS.TOTAL.id])).toEqual([
-        null,
-        ["field-id", ORDERS.TOTAL.id],
-      ]);
+      expect(filter([]).setDimension(["field", ORDERS.TOTAL.id, null])).toEqual(
+        [null, ["field", ORDERS.TOTAL.id, null]],
+      );
     });
     it("should set the dimension and default operator for empty filter clauses", () => {
       expect(
-        filter([]).setDimension(["field-id", ORDERS.TOTAL.id], {
+        filter([]).setDimension(["field", ORDERS.TOTAL.id, null], {
           useDefaultOperator: true,
         }),
-      ).toEqual(["=", ["field-id", ORDERS.TOTAL.id], undefined]);
+      ).toEqual(["=", ["field", ORDERS.TOTAL.id, null], undefined]);
     });
     it("should set the dimension correctly when changing from segment", () => {
       expect(
-        filter(["segment", 1]).setDimension(["field-id", ORDERS.TOTAL.id]),
-      ).toEqual([null, ["field-id", ORDERS.TOTAL.id]]);
+        filter(["segment", 1]).setDimension(["field", ORDERS.TOTAL.id, null]),
+      ).toEqual([null, ["field", ORDERS.TOTAL.id, null]]);
     });
     it("should set joined-field for new filter clause", () => {
       const q = ORDERS.query().join({
@@ -79,22 +80,22 @@ describe("Filter", () => {
       });
       const f = new Filter([], 0, q);
       expect(
-        f.setDimension(["joined-field", "foo", ["field-id", PEOPLE.EMAIL.id]], {
+        f.setDimension(["field", PEOPLE.EMAIL.id, { "join-alias": "foo" }], {
           useDefaultOperator: true,
         }),
       ).toEqual([
         "=",
-        ["joined-field", "foo", ["field-id", PEOPLE.EMAIL.id]],
+        ["field", PEOPLE.EMAIL.id, { "join-alias": "foo" }],
         undefined,
       ]);
     });
   });
 
   const CASES = [
-    ["isStandard", ["=", ["field-id", 1]]],
-    ["isStandard", [null, ["field-id", 1]]], // assume null operator is standard
+    ["isStandard", ["=", ["field", 1, null]]],
+    ["isStandard", [null, ["field", 1, null]]], // assume null operator is standard
     ["isSegment", ["segment", 1]],
-    ["isCustom", ["or", ["=", ["field-id", 1], 42]]],
+    ["isCustom", ["or", ["=", ["field", 1, null], 42]]],
   ];
   for (const method of ["isStandard", "isSegment", "isCustom"]) {
     describe(method, () => {

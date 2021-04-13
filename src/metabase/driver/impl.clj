@@ -9,7 +9,7 @@
 
 ;;; --------------------------------------------------- Hierarchy ----------------------------------------------------
 
-(defonce ^{:doc "Driver hierarchy. Used by driver multimethods for dispatch. Add new drivers with `regsiter!`."}
+(defonce ^{:doc "Driver hierarchy. Used by driver multimethods for dispatch. Add new drivers with `register!`."}
   hierarchy
   (make-hierarchy))
 

@@ -82,7 +82,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
   it.skip("should not include date when metric is binned by hour of day (metabase#14124)", () => {
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
-      special_type: null,
+      semantic_type: null,
     });
 
     cy.createQuestion({
@@ -91,7 +91,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         breakout: [
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT], "hour-of-day"],
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "hour-of-day" }],
         ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {

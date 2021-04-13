@@ -17,7 +17,7 @@
 
   * Update instance metadata -- logic is in `metabase.sync.sync-metadata.fields.sync-metadata`. Update metadata
     properties of `Field` instances in the application database as needed -- this includes the base type, database type,
-    special type, and comment/remark (description) properties. This primarily affects Fields that were not newly
+    semantic type, and comment/remark (description) properties. This primarily affects Fields that were not newly
     created; newly created Fields are given appropriate metadata when first synced (by `sync-instances`).
 
   A note on terminology used in `metabase.sync.sync-metadata.fields.*` namespaces:

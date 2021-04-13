@@ -81,7 +81,7 @@ describe("ChartSettingOrderedColumns", () => {
       expect(ADD_ICONS).toHaveLength(28);
       fireEvent.click(FIRST);
       expect(onChange.mock.calls).toEqual([
-        [[{ fieldRef: ["field-id", 1], enabled: true }]],
+        [[{ fieldRef: ["field", 1, null], enabled: true }]],
       ]);
     });
   });

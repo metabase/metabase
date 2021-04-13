@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { TableId } from "./Table";
 
 export type MetricId = number;

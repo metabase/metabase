@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import moment from "moment-timezone";
 import _ from "underscore";
 

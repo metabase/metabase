@@ -20,6 +20,17 @@ describe("scenarios > visualizations > object detail", () => {
       .contains("8");
   });
 
+  it("should show the correct filter when clicking through on a fk", () => {
+    cy.visit("/browse/1");
+    cy.findByText("Products").click();
+    cy.findByText("1").click();
+    cy.findByText("Orders")
+      .parent()
+      .findByText("93")
+      .click();
+    cy.findByText("Product ID is 1");
+  });
+
   it("should allow clicking the next arrow", () => {
     cy.visit("/browse/1");
     cy.findByText("Products").click();
