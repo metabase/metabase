@@ -21,19 +21,43 @@ describe("question action permissions", () => {
         });
 
         describe(`${user} user`, () => {
-          it("should be able to add question to dashboard", () => {
-            actionsMenuPopover()
-              .findByText("Add to dashboard")
-              .click();
-            cy.get(".Modal")
-              .as("modal")
-              .findByText("Orders in a dashboard")
-              .click();
+          describe("adding question to dashboard", () => {
+            onlyOn(permission === "curate", () => {
+              it("should list collections user has `write` access to", () => {
+                actionsMenuPopover()
+                  .findByText("Add to dashboard")
+                  .click();
+                cy.get(".Modal")
+                  .findByText("First collection")
+                  .should("exist");
+              });
+            });
 
-            cy.get("@modal").should("not.exist");
-            // By default, the dashboard contains one question
-            // After we add a new one, we check there are two questions now
-            cy.get(".DashCard").should("have.length", 2);
+            onlyOn(permission === "view", () => {
+              it("should hide collections user has only `read` access to", () => {
+                actionsMenuPopover()
+                  .findByText("Add to dashboard")
+                  .click();
+                cy.get(".Modal")
+                  .findByText("First collection")
+                  .should("not.exist");
+              });
+            });
+
+            it("should be able to add question to dashboard", () => {
+              actionsMenuPopover()
+                .findByText("Add to dashboard")
+                .click();
+              cy.get(".Modal")
+                .as("modal")
+                .findByText("Orders in a dashboard")
+                .click();
+
+              cy.get("@modal").should("not.exist");
+              // By default, the dashboard contains one question
+              // After we add a new one, we check there are two questions now
+              cy.get(".DashCard").should("have.length", 2);
+            });
           });
         });
       });
