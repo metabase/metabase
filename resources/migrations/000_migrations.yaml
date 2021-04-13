@@ -8050,6 +8050,7 @@ databaseChangeLog:
         - 8:4fa37c8edede4a10c39bf5aca13bd1b5
         - 8:96af0fae84744857640d029cf4cd4bb6
         - 8:8a8b10ff335892c18394a6e00676a446
+        - 8:943c6dd0c9339729fefcee9207227849
       changes:
         - sql:
               sql: >-
