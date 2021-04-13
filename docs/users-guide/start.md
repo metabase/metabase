@@ -33,5 +33,6 @@
 - [Referencing saved question in queries](referencing-saved-questions-in-queries.md)
 - [Getting automatic insights with X-rays](14-x-rays.md)
 - [Setting and getting alerts](15-alerts.md)
+- [Editing your account settings](account-settings.md)
 
 Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).
