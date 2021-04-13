@@ -160,7 +160,7 @@ describe("scenarios > question > new", () => {
             .click();
         });
       // this step is maybe redundant since it fails to even find "by month"
-      cy.findByText("Hour of day");
+      cy.findByText("Hour of Day");
     });
 
     it.skip("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
