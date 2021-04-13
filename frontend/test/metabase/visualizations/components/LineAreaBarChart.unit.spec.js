@@ -13,9 +13,10 @@ const millisecondCard = {
     result_metadata: [
       {
         base_type: "type/BigInteger",
+        coercion_strategy: "Coercion/UNIXMilliSeconds->DateTime",
+        effective_type: "type/DateTime",
         display_name: "Timestamp",
         name: "timestamp",
-        semantic_type: "type/UNIXTimestampMilliseconds",
         unit: "week",
       },
       {
@@ -84,7 +85,6 @@ const millisecondCard = {
         description: null,
         table_id: 1784,
         schema_name: "schema_126",
-        semantic_type: "type/UNIXTimestampMilliseconds",
         unit: "week",
         name: "timestamp",
         source: "breakout",
@@ -96,6 +96,8 @@ const millisecondCard = {
         target: null,
         display_name: "Timestamp",
         base_type: "type/BigInteger",
+        coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+        effective_type: "type/DateTime",
       },
       {
         description: null,
@@ -116,9 +118,10 @@ const millisecondCard = {
       columns: [
         {
           base_type: "type/BigInteger",
+          coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+          effective_type: "type/DateTime",
           display_name: "Timestamp",
           name: "timestamp",
-          semantic_type: "type/UNIXTimestampMilliseconds",
           unit: "week",
         },
         {
@@ -140,6 +143,7 @@ const dateTimeCard = {
     result_metadata: [
       {
         base_type: "type/DateTime",
+        effective_type: "type/DateTime",
         display_name: "Created At",
         name: "CREATED_AT",
         description: "The date and time an order was submitted.",

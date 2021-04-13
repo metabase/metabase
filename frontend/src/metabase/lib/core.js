@@ -224,21 +224,6 @@ export const field_semantic_types = [
     section: t`Date and Time`,
   },
   {
-    id: TYPE.ISO8601DateTimeString,
-    name: t`Text as a ISO-8601 timestamp`,
-    section: t`Date and Time`,
-  },
-  {
-    id: TYPE.ISO8601TimeString,
-    name: t`Text as a ISO-8601 time`,
-    section: t`Date and Time`,
-  },
-  {
-    id: TYPE.ISO8601DateString,
-    name: t`Text as a ISO-8601 date`,
-    section: t`Date and Time`,
-  },
-  {
     id: TYPE.JoinDate,
     name: t`Join date`,
     section: t`Date and Time`,
@@ -251,21 +236,6 @@ export const field_semantic_types = [
   {
     id: TYPE.JoinTimestamp,
     name: t`Join timestamp`,
-    section: t`Date and Time`,
-  },
-  {
-    id: TYPE.UNIXTimestampMilliseconds,
-    name: t`UNIX Timestamp (Milliseconds)`,
-    section: t`Date and Time`,
-  },
-  {
-    id: TYPE.UNIXTimestampMicroseconds,
-    name: t`UNIX Timestamp (Microseconds)`,
-    section: t`Date and Time`,
-  },
-  {
-    id: TYPE.UNIXTimestampSeconds,
-    name: t`UNIX Timestamp (Seconds)`,
     section: t`Date and Time`,
   },
 

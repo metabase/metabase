@@ -29,7 +29,9 @@ describe("Parameters", () => {
     it("should not parse date/numeric fields", () => {
       const dateField = new Field({
         ...ORDERS.QUANTITY, // some numeric field
-        semantic_type: "type/UNIXTimestampSeconds", // make it a date
+        // this test doesn't make as much sense now that coercions set effective_types
+        effective_type: "type/DateTime", // make it a date
+        coercion_strategy: "Coercion/UNIXSeconds->DateTime",
       });
       const result = parseQueryParam("past30days", [dateField]);
       expect(result).toBe("past30days");

@@ -135,8 +135,9 @@
   (testing "PUT /api/field/:id"
     (testing "check that you *can* set `:fk_target_field_id` if it *is* the proper base type"
       (mt/with-temp Field [{field-id :id} {:base_type :type/Integer}]
-        (mt/user-http-request :crowberto :put 200 (str "field/" field-id) {:semantic_type :type/UNIXTimestampSeconds})
-        (is (= :type/UNIXTimestampSeconds
+        (mt/user-http-request :crowberto :put 200 (str "field/" field-id)
+                              {:semantic_type :type/Quantity})
+        (is (= :type/Quantity
                (db/select-one-field :semantic_type Field, :id field-id)))))))
 
 (defn- field->field-values
