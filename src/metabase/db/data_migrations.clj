@@ -126,7 +126,7 @@
 ;;; |                                                NEW TYPE SYSTEM                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; this is the old new type system. as of v30 these are migrated from a field named semantic_type to
+;; this is the old new type system. as of v39 these are migrated from a field named special_type to
 ;; semantic_type. These migrations target the world before this migration so they are left as is. The migrations talk
 ;; about semantic_type as a column and a try/catch is introduced to the migration runner to allow migrations to
 ;; fail. It is opt in.
