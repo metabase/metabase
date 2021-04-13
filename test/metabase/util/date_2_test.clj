@@ -159,10 +159,11 @@
   ;; correct results, we'll use a set with all the possibilities below and check membership
   (doseq [[t expected] {#t "2021-04-02T14:42:09.524392-07:00[US/Pacific]" ; ZonedDateTime
                         {:en-US #{"April 2, 2021 2:42:09 PM (Pacific Daylight Time)"
-                                  "April 2, 2021 at 2:42:09 PM (Pacific Daylight Time)"}
+                                  "April 2, 2021, 2:42:09 PM (Pacific Daylight Time)"}
                          :es-MX #{"2 de abril de 2021 02:42:09 PM (Hora de verano del Pacífico)"
-                                  "2 de abril de 2021, 14:42:09 (Hora de verano del Pacífico)"
-                                  "2 de abril de 2021 a las 14:42:09 (Hora de verano del Pacífico)"}}
+                                  "2 de abril de 2021 14:42:09 (Hora de verano del Pacífico)"
+                                  "2 de abril de 2021 14:42:09 (hora de verano del Pacífico)"
+                                  "2 de abril de 2021, 14:42:09 (Hora de verano del Pacífico)"}}
 
                         #t "2021-04-02T14:42:09.524392-07:00" ; OffsetDateTime
                         {:en-US #{"April 2, 2021 2:42:09 PM (GMT-07:00)"

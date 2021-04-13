@@ -8,6 +8,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.server.request.util :as request.u]
             [metabase.test :as mt]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -68,7 +69,8 @@
                       (doseq [expected-str ["We've noticed a new login on your Metabase account."
                                             "We noticed a login on your Metabase account from a new device."
                                             "Browser (Chrome/Windows) - San Francisco, California, United States"
-                                            "April 2, 2021 3:52:00 PM (Pacific Daylight Time)"]]
+                                            ;; `format-human-readable` has slightly different output on different JVMs
+                                            (u.date/format-human-readable #t "2021-04-02T15:52:00-07:00[US/Pacific]")]]
                         (is (str/includes? message expected-str))))))
 
                 (testing "don't send email on subsequent login from same device"
