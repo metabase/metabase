@@ -2,10 +2,10 @@
   "Utility functions for Ring requests."
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.config :as config]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
@@ -84,6 +84,10 @@
   [{:keys [headers remote-addr]}]
   (some-> (or (some->> (public-settings/source-address-header) (get headers))
               remote-addr)
+          ;; first IP (if there are multiple) is the actual client -- see
+          ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
+          (str/split #"\s*,\s*")
+          first
           ;; strip out non-ip-address characters like square brackets which we get sometimes
           (str/replace #"[^0-9a-fA-F.:]" "")))
 
@@ -130,22 +134,35 @@
   (when-let [info (not-empty (remove str/blank? [city region country]))]
     (str/join ", " info)))
 
-;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
-(defn- geocode-ip-address* [ip-address]
-  (when-not (str/blank? ip-address)
-    (try
-      (let [url  (format "https://get.geojs.io/v1/ip/geo/%s.json" ip-address)
-            info (-> (http/get url)
-                     :body
-                     (json/parse-string true))]
-        {:description (or (describe-location info)
-                          "Unknown location")
-         :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))})
-      (catch Throwable e
-        (log/error e (trs "Error geocoding IP addresss"))
-        nil))))
+(def ^:private gecode-ip-address-timeout-ms
+  "Max amount of time to wait for a IP address geocoding request to complete. We send emails on the first login from a
+  new device using this information, so the timeout has to be fairly short in case the request is hanging for one
+  reason or another."
+  5000)
 
-(def ^{:arglists '([ip-address])} geocode-ip-address
-  "Geocode an IP address, returning a human-friendly `:description` of the location and a `java.time.ZoneId`
-  `:timezone`, if that information is available."
-  (memoize/ttl geocode-ip-address* :ttl/threshold (u/minutes->ms 30)))
+(def ^:private IPAddress
+  (s/constrained su/NonBlankString u/ip-address? "valid IP address string"))
+
+;; TODO -- replace with something better, like built-in database once we find one that's GPL compatible
+(s/defn geocode-ip-addresses :- (s/maybe {IPAddress {:description su/NonBlankString
+                                                     :timezone    (s/maybe java.time.ZoneId)}})
+  "Geocode multiple IP addresses, returning a map of IP address -> info, with each info map containing human-friendly
+  `:description` of the location and a `java.time.ZoneId` `:timezone`, if that information is available."
+  [ip-addresses :- [s/Str]]
+  (let [ip-addresses (set (filter u/ip-address? ip-addresses))]
+    (when (seq ip-addresses)
+      (try
+        (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
+          (try
+            (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+                                              :socket-timeout     gecode-ip-address-timeout-ms
+                                              :connection-timeout gecode-ip-address-timeout-ms})
+                               :body
+                               (json/parse-string true))]
+              (into {} (for [info response]
+                         [(:ip info) {:description (or (describe-location info)
+                                                       "Unknown location")
+                                      :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+            (catch Throwable e
+              (log/error e (trs "Error geocoding IP addresses") {:url url})
+              nil)))))))

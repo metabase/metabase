@@ -12,6 +12,7 @@ import {
   isEqualsOperator,
   doesOperatorExist,
   getOperatorByTypeAndName,
+  isFuzzyOperator,
 } from "metabase/lib/schema_metadata";
 
 import { TYPE } from "metabase/lib/types";
@@ -131,6 +132,18 @@ describe("schema_metadata", () => {
         validArgumentsFilters: [expect.any(Function), expect.any(Function)],
         verboseName: "Between",
       });
+    });
+  });
+
+  describe("isFuzzyOperator", () => {
+    it("should return false for operators that expect an exact match", () => {
+      expect(isFuzzyOperator({ name: "=" })).toBe(false);
+      expect(isFuzzyOperator({ name: "!=" })).toBe(false);
+    });
+
+    it("should return true for operators that are not exact", () => {
+      expect(isFuzzyOperator({ name: "contains" })).toBe(true);
+      expect(isFuzzyOperator({ name: "between" })).toBe(true);
     });
   });
 });

@@ -360,6 +360,25 @@
                 (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
                        (sql.qp/->honeysql :bigquery [:= [:field (:id field) {:temporal-unit :day-of-week}] 1])))))))))))
 
+(deftest reconcile-unix-timestamps-test
+  (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
+    (mt/test-driver :bigquery
+      (mt/dataset sample-dataset
+        (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                                                                 :effective_type    :type/Instant}
+          (let [query         (mt/mbql-query reviews
+                                {:filter   [:= $rating [:relative-datetime -30 :day]]
+                                 :order-by [[:asc $id]]
+                                 :limit    1})
+                filter-clause (get-in query [:query :filter])]
+            (mt/with-everything-store
+              (is (= [(str "timestamp_millis(v3_sample_dataset.reviews.rating)"
+                           " = "
+                           "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
+                     (hsql/format-predicate (sql.qp/->honeysql :bigquery filter-clause)))))
+            (is (= :completed
+                   (:status (qp/process-query query))))))))))
+
 (deftest reconcile-relative-datetimes-test
   (testing "relative-datetime clauses on their own"
     (doseq [[t [unit expected-sql]]

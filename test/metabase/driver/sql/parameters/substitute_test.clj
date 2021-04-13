@@ -114,53 +114,69 @@
                  2
                  [:string/contains         {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (NAME like ?)"
+                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" like ?)"
                                                        ["%foo%"]]}
                   :string/does-not-contain {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (NOT (NAME like ?) OR NAME IS NULL)"
+                                            :expected ["select * from venues where (NOT (\"PUBLIC\".\"VENUES\".\"NAME\" like ?) OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
                                                        ["%foo%"]]}
                   :string/starts-with      {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where (NAME like ?)"
+                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" like ?)"
                                                        ["foo%"]]}
                   :string/=                {:field    :name
                                             :value    ["foo"]
-                                            :expected ["select * from venues where NAME = ?"
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"NAME\" = ?"
                                                        ["foo"]]}
                   :string/=                {:field    :name
                                             :value    ["foo" "bar" "baz"]
-                                            :expected ["select * from venues where (NAME = ? OR NAME = ? OR NAME = ?)" ["foo" "bar" "baz"]]}
+                                            :expected [(str "select * from venues where (\"PUBLIC\".\"VENUES\".\"NAME\" = ? OR \"PUBLIC\".\"VENUES\".\"NAME\" = ? "
+                                                            "OR \"PUBLIC\".\"VENUES\".\"NAME\" = ?)")
+                                                       ["foo" "bar" "baz"]]}
                   :string/!=               {:field    :name
                                             :value    ["foo" "bar"]
-                                            :expected ["select * from venues where ((NAME <> ? OR NAME IS NULL) AND (NAME <> ? OR NAME IS NULL))"
+                                            :expected [(str "select * from venues where ((\"PUBLIC\".\"VENUES\".\"NAME\" <> ? OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL) "
+                                                            "AND (\"PUBLIC\".\"VENUES\".\"NAME\" <> ? OR \"PUBLIC\".\"VENUES\".\"NAME\" IS NULL))")
                                                        ["foo" "bar"]]}
                   :number/=                {:field    :price
                                             :value    [1]
-                                            :expected ["select * from venues where PRICE = 1" ()]}
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" = 1" ()]}
                   :number/=                {:field    :price
                                             :value    [1 2 3]
-                                            :expected ["select * from venues where (PRICE = 1 OR PRICE = 2 OR PRICE = 3)" ()]}
+                                            :expected [(str "select * from venues where (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 2 "
+                                                            "OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 3)")
+                                                       ()]}
                   :number/!=               {:field    :price
                                             :value    [1]
-                                            :expected ["select * from venues where (PRICE <> 1 OR PRICE IS NULL)" ()]}
+                                            :expected ["select * from venues where (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)" ()]}
                   :number/!=               {:field    :price
                                             :value    [1 2 3]
-                                            :expected [(str "select * from venues where ((PRICE <> 1 OR PRICE IS NULL) "
-                                                            "AND (PRICE <> 2 OR PRICE IS NULL) AND (PRICE <> 3 OR PRICE IS NULL))")
+                                            :expected [(str "select * from venues where ((\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL) "
+                                                            "AND (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 2 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL) "
+                                                            "AND (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL))")
                                                        ()]}
                   :number/>=               {:field    :price
                                             :value    [1]
-                                            :expected ["select * from venues where PRICE >= 1" ()]}
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" >= 1" ()]}
                   :number/between          {:field    :price
                                             :value    [1 3]
-                                            :expected ["select * from venues where PRICE BETWEEN 1 AND 3" ()]}])]
+                                            :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 1 AND 3" ()]}])]
           (testing operator
             (is (= expected
                    (substitute query {"param" (i/map->FieldFilter
                                                {:field (Field (mt/id :venues field))
                                                 :value {:type  operator
-                                                        :value value}})})))))))))
+                                                        :value value}})})))))))
+    (testing "Throws if not enabled (#15488)"
+      (with-redefs [i/field-filter-operators-enabled? (constantly false)]
+        (is (= :invalid-parameter
+               (try
+                 (substitute ["select * from venues where " (param "param")]
+                             {"param" (i/map->FieldFilter
+                                       {:field (Field (mt/id :venues :price))
+                                        :value {:type  :number/>=
+                                                :value [3]}})})
+                 (catch Exception e (:type (ex-data e))))))))))
 
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------

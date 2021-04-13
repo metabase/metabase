@@ -8045,11 +8045,12 @@ databaseChangeLog:
       validCheckSum:
         - 8:4fa37c8edede4a10c39bf5aca13bd1b5
         - 8:96af0fae84744857640d029cf4cd4bb6
+        - 8:8a8b10ff335892c18394a6e00676a446
       changes:
         - sql:
               sql: >-
                 UPDATE metabase_field
-                set effective_type    = 'type/DateTime',
+                set effective_type    = 'type/Instant',
                     coercion_strategy = (case semantic_type
                                           WHEN 'type/UNIXTimestampSeconds'      THEN 'Coercion/UNIXSeconds->DateTime'
                                           WHEN 'type/UNIXTimestampMilliSeconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
@@ -8063,11 +8064,14 @@ databaseChangeLog:
       id: 289
       author: dpsutton
       comment: Added 0.39 - Semantic type system - migrate unix timestamps (corrects typo- seconds was migrated correctly, not millis and micros)
+      validCheckSum:
+        - 8:c5398e06bc1bd497f9b56d3e8497b88a
+        - 8:9f7f2e9bbf3236f204c644dc8ea7abef
       changes:
         - sql:
               sql: >-
                 UPDATE metabase_field
-                set effective_type    = 'type/DateTime',
+                set effective_type    = 'type/Instant',
                     coercion_strategy = (case semantic_type
                                           WHEN 'type/UNIXTimestampMilliseconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
                                           WHEN 'type/UNIXTimestampMicroseconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
@@ -8220,6 +8224,34 @@ databaseChangeLog:
                   name: user_id
               - column:
                   name: timestamp
+
+  # Add parameter columns to pulses so that dashboard subscriptions can have their own filters
+  - changeSet:
+      id: 298
+      author: tsmacdonald
+      comment: Added 0.39.0
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: parameters
+                  type: text
+                  remarks: "Let dashboard subscriptions have their own filters"
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: 299
+      author: tsmacdonald
+      comment: Added 0.39.0
+      changes:
+        - addNotNullConstraint:
+            columnDataType: text
+            columnName: parameters
+            defaultNullValue: '[]'
+            tableName: pulse
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

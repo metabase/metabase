@@ -258,6 +258,18 @@
   (testing "failure"
     (is (nil? (u/or-with even? 1 3 5)))))
 
-;; Local Variables:
-;; eval: (add-to-list (make-local-variable 'clojure-align-cond-forms) "mt/are+")
-;; End:
+(deftest ip-address?-test
+  (mt/are+ [x expected] (= expected
+                           (u/ip-address? x))
+    "8.8.8.8"              true
+    "185.233.100.23"       true
+    "500.1.1.1"            false
+    "192.168.1.a"          false
+    "0:0:0:0:0:0:0:1"      true
+    "52.206.149.9"         true
+    "2001:4860:4860::8844" true
+    "wow"                  false
+    "   "                  false
+    ""                     false
+    nil                    false
+    100                    false))

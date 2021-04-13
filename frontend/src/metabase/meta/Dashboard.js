@@ -1,3 +1,4 @@
+import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
@@ -12,7 +13,9 @@ import type {
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
-  PARAMETER_OPTIONS,
+  getParameterOptions,
+  PARAMETER_OPERATOR_TYPES,
+  getOperatorDisplayName,
 } from "metabase/meta/Parameter";
 
 import { t } from "ttag";
@@ -27,49 +30,80 @@ export type ParameterSection = {
   options: ParameterOption[],
 };
 
-export const PARAMETER_SECTIONS: ParameterSection[] = [
-  {
-    id: "date",
-    name: t`Time`,
-    description: t`Date range, relative date, time of day, etc.`,
-    options: [],
-  },
-  {
-    id: "location",
-    name: t`Location`,
-    description: t`City, State, Country, ZIP code.`,
-    options: [],
-  },
-  {
-    id: "id",
-    name: t`ID`,
-    description: t`User ID, product ID, event ID, etc.`,
-    options: [],
-  },
-  {
-    id: "number",
-    name: t`Number`,
-    description: t`Subtotal, Age, Price, Quantity, etc.`,
-    options: [],
-  },
-  {
-    id: "category",
-    name: t`Other Categories`,
-    description: t`Category, Type, Model, Rating, etc.`,
-    options: [],
-  },
-];
+const areFieldFilterOperatorsEnabled = () =>
+  MetabaseSettings.get("field-filter-operators-enabled?");
 
-for (const option of PARAMETER_OPTIONS) {
-  const sectionId = option.type.split("/")[0];
-  let section = _.findWhere(PARAMETER_SECTIONS, { id: sectionId });
-  if (!section) {
-    section = _.findWhere(PARAMETER_SECTIONS, { id: "category" });
-  }
-  if (section) {
-    section.options = section.options || [];
-    section.options.push(option);
-  }
+export function getParameterSections(): ParameterSection[] {
+  const parameterOptions = getParameterOptions();
+  const LOCATION_OPTIONS = areFieldFilterOperatorsEnabled()
+    ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
+        return {
+          ...option,
+          sectionId: "location",
+          combinedName: getOperatorDisplayName(option, "string", t`Location`),
+        };
+      })
+    : parameterOptions.filter(option => option.type.startsWith("location"));
+
+  const CATEGORY_OPTIONS = areFieldFilterOperatorsEnabled()
+    ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
+        return {
+          ...option,
+          sectionId: "category",
+          combinedName: getOperatorDisplayName(option, "string", t`Category`),
+        };
+      })
+    : parameterOptions.filter(option => option.type.startsWith("category"));
+
+  return [
+    {
+      id: "date",
+      name: t`Time`,
+      description: t`Date range, relative date, time of day, etc.`,
+      options: PARAMETER_OPERATOR_TYPES["date"].map(option => {
+        return {
+          ...option,
+          sectionId: "date",
+          combinedName: getOperatorDisplayName(option, "date", t`Date`),
+        };
+      }),
+    },
+    {
+      id: "location",
+      name: t`Location`,
+      description: t`City, State, Country, ZIP code.`,
+      options: LOCATION_OPTIONS,
+    },
+    {
+      id: "id",
+      name: t`ID`,
+      description: t`User ID, product ID, event ID, etc.`,
+      options: [
+        {
+          ..._.findWhere(parameterOptions, { type: "id" }),
+          sectionId: "id",
+        },
+      ],
+    },
+    areFieldFilterOperatorsEnabled() && {
+      id: "number",
+      name: t`Number`,
+      description: t`Subtotal, Age, Price, Quantity, etc.`,
+      options: PARAMETER_OPERATOR_TYPES["number"].map(option => {
+        return {
+          ...option,
+          sectionId: "number",
+          combinedName: getOperatorDisplayName(option, "number", t`Number`),
+        };
+      }),
+    },
+    {
+      id: "category",
+      name: t`Other Categories`,
+      description: t`Category, Type, Model, Rating, etc.`,
+      options: CATEGORY_OPTIONS,
+    },
+  ].filter(Boolean);
 }
 
 export function getParameterMappingOptions(
@@ -147,13 +181,15 @@ export function createParameter(
   let nameIndex = 0;
   // get a unique name
   while (_.any(parameters, p => p.name === name)) {
-    name = option.name + " " + ++nameIndex;
+    name = (option.combinedName || option.name) + " " + ++nameIndex;
   }
+
   const parameter = {
     name: "",
     slug: "",
     id: Math.floor(Math.random() * Math.pow(2, 32)).toString(16),
     type: option.type,
+    sectionId: option.sectionId,
   };
   return setParameterName(parameter, name);
 }

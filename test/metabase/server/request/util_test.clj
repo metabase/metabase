@@ -2,7 +2,9 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.reader.edn :as edn]
             [java-time :as t]
-            [metabase.server.request.util :as request.u]))
+            [metabase.server.request.util :as request.u]
+            [metabase.test :as mt]
+            [ring.mock.request :as ring.mock]))
 
 (deftest https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
@@ -50,33 +52,56 @@
     nil
     nil))
 
-(deftest geocode-ip-address-test
-  (are [ip-address expected] (= expected (request.u/geocode-ip-address ip-address))
-    "8.8.8.8"
-    {:description "United States", :timezone (t/zone-id "America/Chicago")}
+(deftest ip-address-test
+  (let [request (ring.mock/request :get "api/session")]
+    (testing "request with no forwarding"
+      (is (= "127.0.0.1"
+             (request.u/ip-address request))))
+    (testing "request with forwarding"
+      (let [mock-request (-> (ring.mock/request :get "api/session")
+                             (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
+        (is (= "5.6.7.8"
+               (request.u/ip-address mock-request))))
+      (testing "multiple IP addresses"
+        (let [mock-request (-> (ring.mock/request :get "api/session")
+                               (ring.mock/header "X-Forwarded-For" "1.2.3.4, 5.6.7.8"))]
+          (is (= "1.2.3.4"
+                 (request.u/ip-address mock-request)))))
+      (testing "different header than default X-Forwarded-For"
+        (mt/with-temporary-setting-values [source-address-header "X-ProxyUser-Ip"]
+          (let [mock-request (-> (ring.mock/request :get "api/session")
+                                 (ring.mock/header "x-proxyuser-ip" "1.2.3.4"))]
+            (is (= "1.2.3.4"
+                   (request.u/ip-address mock-request)))))))))
+
+(deftest geocode-ip-addresses-test
+  (are [ip-addresses expected] (= expected (request.u/geocode-ip-addresses ip-addresses))
+    ["8.8.8.8"]
+    {"8.8.8.8" {:description "United States", :timezone (t/zone-id "America/Chicago")}}
 
     ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
-    "185.233.100.23"
-    {:description "Begles, Nouvelle-Aquitaine, France", :timezone (t/zone-id "Europe/Paris")}
+    ["185.233.100.23"]
+    {"185.233.100.23" {:description "Begles, Nouvelle-Aquitaine, France", :timezone (t/zone-id "Europe/Paris")}}
 
-    "127.0.0.1"
-    {:description "Unknown location", :timezone nil}
+    ["127.0.0.1"]
+    {"127.0.0.1" {:description "Unknown location", :timezone nil}}
 
-    "0:0:0:0:0:0:0:1"
-    {:description "Unknown location", :timezone nil}
+    ["0:0:0:0:0:0:0:1"]
+    {"0:0:0:0:0:0:0:1" {:description "Unknown location", :timezone nil}}
 
-    ;; store.metabase.com
-    "52.206.149.9"
-    {:description "Ashburn, Virginia, United States", :timezone (t/zone-id "America/New_York")}
+    ;; multiple addresses at once
+    ;; store.metabase.com, Google DNS
+    ["52.206.149.9" "2001:4860:4860::8844"]
+    {"52.206.149.9"         {:description "Ashburn, Virginia, United States", :timezone (t/zone-id "America/New_York")}
+     "2001:4860:4860::8844" {:description "United States", :timezone (t/zone-id "America/Chicago")}}
 
-    ;; Google DNS
-    "2001:4860:4860::8844"
-    {:description "United States", :timezone (t/zone-id "America/Chicago")}
-
-    "wow"
+    ["wow"]
     nil
 
-    "   "
+    ["   "]
+    nil
+
+    []
     nil
 
     nil

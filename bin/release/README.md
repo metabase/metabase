@@ -59,3 +59,11 @@ clojure -M -m release
 If you're running into issues running the release script, it's helpful to first check that you can run `./bin/build`
 -- this is the real meat and potatoes of the release process and more likely to be the cause of your issues. If you
 can run that but still need help, talk to Cam.
+
+To start an nREPL (ex: to run and debug tests), use:
+```
+clojure -MnREPL
+```
+
+Add any JVM options (individually) by prefixing each with `-J` before the `-M`, and any additional nREPL options after
+it as outlined [here](https://nrepl.org/nrepl/usage/server.html#using-clojure-cli-tools).

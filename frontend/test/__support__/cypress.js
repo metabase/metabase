@@ -166,6 +166,10 @@ export const describeWithToken = Cypress.env("HAS_ENTERPRISE_TOKEN")
   ? describe
   : describe.skip;
 
+export const describeOpenSourceOnly = Cypress.env("HAS_ENTERPRISE_TOKEN")
+  ? describe.skip
+  : describe;
+
 export const itOpenSourceOnly = Cypress.env("HAS_ENTERPRISE_TOKEN")
   ? it.skip
   : it;
@@ -310,4 +314,17 @@ export function getIframeBody(selector = "iframe") {
     .its("body")
     .should("not.be.null")
     .then(cy.wrap);
+}
+
+export function mockSessionProperty(propertyOrObject, value) {
+  cy.intercept("GET", "/api/session/properties", req => {
+    req.reply(res => {
+      if (typeof propertyOrObject === "object") {
+        Object.assign(res.body, propertyOrObject);
+      }
+      {
+        res.body[propertyOrObject] = value;
+      }
+    });
+  });
 }

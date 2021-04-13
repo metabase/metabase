@@ -149,7 +149,7 @@
   (apply search-request-with identity args))
 
 (deftest order-clause-test
-  (testing "it includes all columns"
+  (testing "it includes all columns and normalizes the query"
     (is (= (hsql/call
             :case
              [:like (hsql/call :lower :model) "%foo%"] 0
@@ -162,7 +162,7 @@
              [:like (hsql/call :lower :table_name) "%foo%"] 0
              [:like (hsql/call :lower :table_description) "%foo%"] 0
              :else 1)
-           (api.search/order-clause "foo")))))
+           (api.search/order-clause "Foo")))))
 
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"

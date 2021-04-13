@@ -1009,7 +1009,31 @@
               {:type       :query
                :query      {:source-table 1}
                :parameters [{:type "id", :target ["dimension" ["fk->" 3265 4575]], :value ["field-id"]}
-                            {:type "date/all-options", :target ["dimension" ["field-id" 3270]], :value "thismonth"}]})))))
+                            {:type "date/all-options", :target ["dimension" ["field-id" 3270]], :value "thismonth"}]}))))
+  (t/testing "Make sure default values do not get normalized"
+    (t/is (= {:database 1
+              ;;                       tag name not normalized
+              :native {:template-tags {"name" {:id "1f56330b-3dcb-75a3-8f3d-5c2c2792b749"
+                                               :name "name"
+                                               :display-name "Name"
+                                               :type :dimension
+                                               :dimension [:field 14 nil]  ;; field normalized
+                                               :widget-type :string/=      ;; widget-type normalize
+                                               :default ["Hudson Borer"]}} ;; default values not keyworded
+                       :query "select * from PEOPLE where {{name}}"}
+              :type :native}
+             (normalize/normalize
+              {:database 1
+               :native {:template-tags {"name" {:id "1f56330b-3dcb-75a3-8f3d-5c2c2792b749"
+                                               :name "name"
+                                               :display-name "Name"
+                                               :type "dimension"
+                                               :dimension ["field" 14 nil]
+                                               :widget-type "string/="
+                                               :default ["Hudson Borer"]}}
+                        :query "select * from PEOPLE where {{name}}"}
+               :type "native"
+               :parameters []})))))
 
 (t/deftest e2e-source-metadata-test
   (t/testing "make sure `:source-metadata` gets normalized the way we'd expect:"

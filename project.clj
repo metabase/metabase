@@ -107,7 +107,7 @@
    [hiccup "1.0.5"]                                                   ; HTML templating
    [honeysql "1.0.461" :exclusions [org.clojure/clojurescript]]       ; Transform Clojure data structures to SQL
    [instaparse "1.4.10"]                                              ; Make your own parser
-   [io.forward/yaml "1.0.9"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
+   [io.forward/yaml "1.0.9"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquibase)
     :exclusions [org.clojure/clojure
                  org.flatland/ordered
                  org.yaml/snakeyaml]]
@@ -237,6 +237,7 @@
 
     :env
     {:mb-run-mode       "dev"
+     :mb-field-filter-operators-enabled? "true"
      :mb-test-setting-1 "ABCDEFG"}
 
     :jvm-opts
@@ -330,6 +331,7 @@
     {:mb-run-mode     "test"
      :mb-db-in-memory "true"
      :mb-jetty-join   "false"
+     :mb-field-filter-operators-enabled? "true"
      :mb-api-key      "test-api-key"
      ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
      ;; they won't stomp on each other

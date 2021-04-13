@@ -39,6 +39,7 @@ import {
   hasHour,
 } from "metabase/lib/formatting/date";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
+import { NULL_NUMERIC_VALUE, NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase-types/types/Dataset";
@@ -737,7 +738,9 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     return remapped;
   }
 
-  if (value == null) {
+  if (value === NULL_NUMERIC_VALUE) {
+    return NULL_DISPLAY_VALUE;
+  } else if (value == null) {
     return null;
   } else if (
     options.click_behavior &&

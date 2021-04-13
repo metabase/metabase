@@ -527,7 +527,7 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it.skip("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
+  it("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     visitQuestionAdhoc({
       name: "15460",
@@ -563,6 +563,44 @@ describe("scenarios > question > native", () => {
     // Rerun the query
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.wait("@dataset").wait("@dataset");
+    cy.get(".Visualization").within(() => {
+      cy.findAllByText("Doohickey");
+      cy.findAllByText("Gizmo").should("not.exist");
+    });
+  });
+
+  it("should run with the default field filter set (metabase#15444)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.visit("/");
+    cy.icon("sql").click();
+    cy.get(".ace_content").type("select * from products where {{category}}", {
+      parseSpecialCharSequences: false,
+    });
+    // Change filter type from "Text" to Field Filter
+    cy.get(".AdminSelect")
+      .contains("Text")
+      .click();
+    popover()
+      .findByText("Field Filter")
+      .click();
+    popover()
+      .findByText("Products")
+      .click();
+    popover()
+      .findByText("Category")
+      .click();
+    cy.findByText("Required?").scrollIntoView();
+    // Add the default value
+    cy.findByText("Enter a default value...").click();
+    popover()
+      .findByText("Doohickey")
+      .click();
+    cy.findByRole("button", { name: "Add filter" }).click();
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
     cy.get(".Visualization").within(() => {
       cy.findAllByText("Doohickey");
       cy.findAllByText("Gizmo").should("not.exist");

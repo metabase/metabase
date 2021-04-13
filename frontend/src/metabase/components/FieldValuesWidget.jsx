@@ -84,6 +84,7 @@ type Props = {
   minWidth?: number,
   optionsMaxHeight?: Number,
   alwaysShowOptions?: boolean,
+  disableSearch?: boolean,
 
   dashboard?: DashboardWithCards,
   parameter?: Parameter,
@@ -121,6 +122,7 @@ export class FieldValuesWidget extends Component {
     style: {},
     formatOptions: {},
     maxWidth: 500,
+    disableSearch: false,
   };
 
   // if [dashboard] parameter ID is specified use the fancy new Chain Filter API endpoints to fetch parameter values.
@@ -173,7 +175,10 @@ export class FieldValuesWidget extends Component {
   }
 
   shouldList() {
-    return this.props.fields.every(field => field.has_field_values === "list");
+    return (
+      !this.props.disableSearch &&
+      this.props.fields.every(field => field.has_field_values === "list")
+    );
   }
 
   hasList() {
@@ -188,8 +193,9 @@ export class FieldValuesWidget extends Component {
   }
 
   isSearchable() {
-    const { fields } = this.props;
+    const { fields, disableSearch } = this.props;
     return (
+      !disableSearch &&
       // search is available if:
       // all fields have a valid search field
       fields.every(this.searchField) &&

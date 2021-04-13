@@ -243,12 +243,14 @@
     (cond
       (ops/operator? param-type)
       (let [[snippet & args]
-            (->> (ops/to-clause (assoc params :target
-                                       [:template-tag [:field (:name field)
-                                                       {:base-type (:base_type field)}]]))
+            (->> (assoc params :target
+                        [:template-tag [:field (field->identifier driver field param-type)
+                                        {:base-type (:base_type field)}]])
+                 i/throw-if-field-filter-operators-not-enabled
+                 ops/to-clause
                  mbql.u/desugar-filter-clause
                  wrap-value-literals/wrap-value-literals-in-mbql
-                 (sql.qp/->honeysql driver/*driver*)
+                 (sql.qp/->honeysql driver)
                  hsql/format-predicate)]
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
       ;; convert date ranges to DateRange record types

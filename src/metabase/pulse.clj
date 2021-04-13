@@ -10,6 +10,8 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.pulse.interface :as i]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -22,6 +24,16 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
+
+
+(def ^:private parameters-impl
+  (u/prog1 (or (u/ignore-exceptions
+                 (classloader/require 'metabase-enterprise.pulse)
+                 (some-> (resolve 'metabase-enterprise.pulse/ee-strategy-parameters-impl)
+                         var-get))
+               i/default-parameters-impl)))
+
+
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -55,11 +67,11 @@
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
 
 (defn- execute-dashboard-subscription-card
-  [owner-id dashboard dashcard card-or-id]
+  [owner-id dashboard dashcard card-or-id parameters]
   (try
     (let [card-id         (u/the-id card-or-id)
           card            (Card :id card-id)
-          param-id->param (u/key-by :id (:parameters dashboard))
+          param-id->param (u/key-by :id parameters)
           params          (for [mapping (:parameter_mappings dashcard)
                                 :when   (= (:card_id mapping) card-id)
                                 :let    [param (get param-id->param (:parameter_id mapping))]
@@ -85,7 +97,7 @@
   (let [dashboard-id (u/the-id dashboard-or-id)
         dashboard (Dashboard :id dashboard-id)]
     (for [dashcard (db/select DashboardCard :dashboard_id dashboard-id, :card_id [:not= nil])]
-      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard)))))
+      (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard (:card_id dashcard) (i/the-parameters parameters-impl pulse dashboard)))))
 
 (defn- database-id [card]
   (or (:database_id card)

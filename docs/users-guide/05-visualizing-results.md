@@ -33,8 +33,6 @@ Once a question returns results, you can save the question, download the results
 
 Each visualization type has its own advanced options. Click the **Settings** button next to the Visualization button to see your options. The options panel also automatically opens up whenever you pick a new visualization type. Here's an overview of what you can do:
 
-If you're not sure which visualization type to pick, check out [Which chart should you use?](https://www.metabase.com/learn/basics/visualizing-data/guide.html)
-
 ### Numbers
 
 The **Numbers** option is for displaying a single number, nice and big. The options for numbers include:
@@ -145,8 +143,6 @@ If your table is a result that contains one numeric column and two grouping colu
 ![Pivot table](images/visualizations/pivot.png)
 
 This auto-pivoting is distinct from the pivot table visualization, which we cover next.
-
-For a more in-depth article, check out [Everything you can do with the table visualization](https://www.metabase.com/learn/basics/visualizing-data/table.html).
 
 ### Pivot table
 

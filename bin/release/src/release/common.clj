@@ -42,6 +42,15 @@
   ;; strip off initial `v` if present
   (swap! build-options assoc :version (str/replace new-version #"^v" "")))
 
+(defn github-milestone
+  "Name of GitHub milestone to query for fixed issue descriptions. Same as version, except for enterprise edition, in
+  which case the leading 0 is replaced by 1."
+  []
+  (build-option-or-throw :github-milestone))
+
+(defn set-github-milestone! [new-github-milestone]
+  (swap! build-options assoc :github-milestone new-github-milestone))
+
 (defn branch
   "Branch we are building from, e.g. `release-0.36.x`"
   []
