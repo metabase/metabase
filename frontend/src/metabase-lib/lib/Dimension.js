@@ -767,7 +767,11 @@ export class FieldDimension extends Dimension {
     if (field && field.isDate()) {
       return this.withTemporalUnit(field.getDefaultDateTimeUnit());
     }
-    return super.defaultDimension(dimensionTypes);
+
+    const dimension = super.defaultDimension(dimensionTypes);
+    const joinAlias = this.joinAlias();
+
+    return joinAlias ? dimension.withJoinAlias(joinAlias) : dimension;
   }
 
   _dimensionForOption(option): FieldDimension {
