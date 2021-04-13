@@ -163,10 +163,13 @@
 
 (defn- text-score-with-match
   [raw-search-string result]
-  (when (seq raw-search-string)
+  (if (seq raw-search-string)
     (text-score-with match-based-scorers
                      (tokenize (normalize raw-search-string))
-                     result)))
+                     result)
+    {:text-score          0
+     :match               ""
+     :result              result}))
 
 (defn- pinned-score
   [{:keys [model collection_position]}]
@@ -213,7 +216,8 @@
                                  (nil? display_name))
                            name
                            display_name)
-         :context        (when-not (search-config/displayed-columns column)
+         :context        (when (and (not (search-config/displayed-columns column))
+                                    match-context-thunk)
                            (match-context-thunk))
          :collection     {:id   collection_id
                           :name collection_name}

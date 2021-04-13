@@ -162,7 +162,7 @@ describe("scenarios > collection_defaults", () => {
     });
 
     describe("archive", () => {
-      it.skip("should show archived items (metabase#15080)", () => {
+      it("should show archived items (metabase#15080)", () => {
         cy.visit("collection/root");
         openEllipsisMenuFor("Orders");
         cy.findByText("Archive this item").click();
