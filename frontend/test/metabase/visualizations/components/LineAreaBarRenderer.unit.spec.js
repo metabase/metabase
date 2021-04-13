@@ -156,7 +156,10 @@ describe("LineAreaBarRenderer", () => {
     // column settings are cached based on name.
     // we need something unique to not conflict with other tests.
     const columnName = Math.random().toString(36);
-    const dateColumn = DateTimeColumn({ unit: "month", name: columnName });
+    const dateColumn = DateTimeColumn({
+      unit: "month",
+      name: columnName,
+    });
 
     const cols = [dateColumn, NumberColumn()];
     const chartType = "line";
