@@ -397,6 +397,14 @@ describe("collection permissions", () => {
                 });
               });
             });
+
+            describe("managing dashboard from the dashboard's edit menu", () => {
+              it("should not be offered to duplicate dashboard in collections they have `read` access to", () => {
+                cy.visit("/dashboard/1");
+                cy.icon("ellipsis").click();
+                cy.findByText("Duplicate").should("not.exist");
+              });
+            });
           });
         });
       });
