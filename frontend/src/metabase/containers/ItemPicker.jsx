@@ -169,18 +169,11 @@ export default class ItemPicker extends React.Component {
                     // non-collection models are loaded on-demand so we don't know ahead of time
                     // if they have children, so we have to assume they do
                     modelsIncludeNonCollections;
-
                   // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
                   const canSelect =
                     models.has("collection") && collection.can_write;
-
-                  // if write permission is required explicitly,
-                  // we want to show only collections user has write access to
-                  const shouldDisplay = requireCollectionWritePermission
-                    ? collection.can_write
-                    : canSelect || hasChildren;
-
-                  return shouldDisplay ? (
+                  // only show if collection can be selected or has children
+                  return canSelect || hasChildren ? (
                     <Item
                       item={collection}
                       name={collection.name}
