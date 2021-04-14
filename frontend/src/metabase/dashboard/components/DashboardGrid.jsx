@@ -18,13 +18,14 @@ import {
   GRID_ASPECT_RATIO,
   GRID_MARGIN,
   DEFAULT_CARD_SIZE,
+  MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
 
 import _ from "underscore";
 import cx from "classnames";
 
 const MOBILE_ASPECT_RATIO = 3 / 2;
-const MOBILE_TEXT_CARD_ROW_HEIGHT = 40;
+const MOBILE_TEXT_CARD_ROW_HEIGHT = 60;
 
 @ExplicitSize()
 export default class DashboardGrid extends Component {
@@ -286,7 +287,10 @@ export default class DashboardGrid extends Component {
 
   renderGrid() {
     const { dashboard, width } = this.props;
-    const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
+    const rowHeight = Math.max(
+      Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO),
+      MIN_ROW_HEIGHT,
+    );
     return (
       <GridLayout
         className={cx("DashboardGrid", {
