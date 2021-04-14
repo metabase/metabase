@@ -177,9 +177,9 @@ describe("scenarios > question > notebook", () => {
     it("should allow post-join filters (metabase#12221)", () => {
       cy.log("Start a custom question with Orders");
       cy.visit("/question/new");
-      cy.contains("Custom question").click();
-      cy.contains("Sample Dataset").click();
-      cy.contains("Orders").click();
+      cy.findByText("Custom question").click();
+      cy.findByText("Sample Dataset").click();
+      cy.findByText("Orders").click();
 
       cy.log("Join to People table using default settings");
       cy.icon("join_left_outer ").click();
@@ -192,9 +192,19 @@ describe("scenarios > question > notebook", () => {
       cy.contains("Filter").click();
       cy.contains("Email").click();
       cy.contains("People – Email");
-      cy.get('[placeholder="Search by Email"]').type("wolf.");
-      cy.contains("wolf.dina@yahoo.com").click();
-      cy.contains("Add filter").click();
+      cy.findByPlaceholderText("Search by Email")
+        .type("wo")
+        .then($el => {
+          // This test was flaking due to a race condition with typing.
+          // We're ensuring that the value entered was correct and are retrying if it wasn't
+          const value = $el[0].value;
+          const input = cy.wrap($el);
+          if (value !== "wo") {
+            input.clear().type("wo");
+          }
+        });
+      cy.findByText("wolf.dina@yahoo.com").click();
+      cy.findByRole("button", { name: "Add filter" }).click();
       cy.contains("Showing 1 row");
     });
 
