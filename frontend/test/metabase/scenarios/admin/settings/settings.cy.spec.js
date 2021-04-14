@@ -326,6 +326,10 @@ describe("scenarios > admin > settings", () => {
   });
 
   it("should display the order of the settings items consistently between OSS/EE versions (metabase#15441)", () => {
+    const lastItem = Cypress.env("HAS_ENTERPRISE_TOKEN")
+      ? "Whitelabel"
+      : "Caching";
+
     cy.visit("/admin/settings/setup");
     cy.get(".AdminList .AdminList-item")
       .as("settingsOptions")
@@ -333,7 +337,7 @@ describe("scenarios > admin > settings", () => {
       .contains("Setup");
     cy.get("@settingsOptions")
       .last()
-      .contains("Whitelabel");
+      .contains(lastItem);
   });
 
   describe(" > email settings", () => {
