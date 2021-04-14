@@ -138,6 +138,9 @@ export class FullPageModal extends Component {
   }
 
   componentDidUpdate() {
+    if (!this.state.isOpen) {
+      document.body.style.overflow = "";
+    }
     this.setTopOfModalToBottomOfNav();
   }
 
