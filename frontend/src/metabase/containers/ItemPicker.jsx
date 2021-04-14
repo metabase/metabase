@@ -76,6 +76,32 @@ export default class ItemPicker extends React.Component {
     }
   }
 
+  _checkHasWritePermissionForItem(item, models) {
+    const { collectionsById } = this.props;
+
+    // if user is selecting a collection, they must have a `write` access to it
+    if (models.has("collection") && item.model === "collection") {
+      return item.can_write;
+    }
+
+    // if user is selecting something else (e.g. dashboard),
+    // they must have `write` access to a collection item belongs to
+    const collection = item.collection_id
+      ? collectionsById[item.collection_id]
+      : collectionsById["root"];
+    return collection.can_write;
+  }
+
+  _checkCollectionHasChildWithWritePermission(collection) {
+    const hasChildren = collection.children.length > 0;
+    if (!hasChildren) {
+      return collection.can_write;
+    }
+    return collection.children.some(child =>
+      this._checkCollectionHasChildWithWritePermission(child),
+    );
+  }
+
   render() {
     const {
       value,
@@ -101,6 +127,11 @@ export default class ItemPicker extends React.Component {
     if (collection && isRoot(collection) && models.has("collection")) {
       allCollections = [collection, ...allCollections];
     }
+
+    // ensure we only display collections a user can write to
+    allCollections = allCollections.filter(collection =>
+      this._checkCollectionHasChildWithWritePermission(collection),
+    );
 
     // code below assumes items have a "model" property
     allCollections = allCollections.map(collection => ({
@@ -205,34 +236,34 @@ export default class ItemPicker extends React.Component {
               >
                 {({ list }) => (
                   <div>
-                    {list
-                      .filter(item => {
-                        const collection =
-                          collectionsById[item.collection_id] ||
-                          collectionsById["root"];
+                    {list.map(item => {
+                      const hasPermission = this.checkHasWritePermissionForItem(
+                        item,
+                        models,
+                      );
+                      if (
+                        hasPermission &&
+                        // only include desired models (TODO: ideally the endpoint would handle this)
+                        models.has(item.model) &&
+                        // remove collections unless we're searching
+                        // (so a user can navigate through collections)
+                        (item.model !== "collection" || !!searchString)
+                      ) {
                         return (
-                          // remove collections unless we're searching
-                          (item.model !== "collection" || !!searchString) &&
-                          // only include desired models (TODO: ideally the endpoint would handle this)
-                          models.has(item.model) &&
-                          // remove models belonging to collections without `write` permission
-                          // if the permission is required explicitly
-                          (collection.can_write ||
-                            !requireCollectionWritePermission)
+                          <Item
+                            key={item.id}
+                            item={item}
+                            name={item.getName()}
+                            color={item.getColor()}
+                            icon={item.getIcon()}
+                            selected={isSelected(item)}
+                            canSelect={hasPermission}
+                            onChange={onChange}
+                          />
                         );
-                      })
-                      .map(item => (
-                        <Item
-                          key={item.id}
-                          item={item}
-                          name={item.getName()}
-                          color={item.getColor()}
-                          icon={item.getIcon()}
-                          selected={isSelected(item)}
-                          canSelect
-                          onChange={onChange}
-                        />
-                      ))}
+                      }
+                      return null;
+                    })}
                   </div>
                 )}
               </EntityListLoader>
