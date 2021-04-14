@@ -107,12 +107,6 @@ export class WindowModal extends Component {
 
 import routeless from "metabase/hoc/Routeless";
 
-export const resetScroll = () => {
-  // SandboxedPortal chomps on close events.
-  // This is mostly fine. However, the scrollability is global state,
-  // which needs to get restored somehow
-  document.body.style.overflow = "";
-};
 
 export class FullPageModal extends Component {
   constructor(props) {
@@ -149,11 +143,11 @@ export class FullPageModal extends Component {
 
   componentWillUnmount() {
     this._modalElement.parentNode.removeChild(this._modalElement);
+    document.body.style.overflow = "";
   }
 
   handleDismissal = () => {
     this.setState({ isOpen: false });
-    resetScroll();
 
     // wait for animations to complete before unmounting
     setTimeout(() => this.props.onClose && this.props.onClose(), 300);
