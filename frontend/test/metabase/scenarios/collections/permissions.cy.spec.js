@@ -432,15 +432,17 @@ describe("collection permissions", () => {
                 cy.findByLabelText("Name")
                   .click()
                   .type("Foo");
-                // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
-                cy.findByText(
-                  `${first_name} ${last_name}'s Personal Collection`,
-                ).click();
-                popover().within(() => {
-                  cy.findByText("My personal collection");
-                  // Test will fail on this step first
+                cy.get(".Modal").within(() => {
+                  const expectedDefaultCollection =
+                    route === "/"
+                      ? `${first_name} ${last_name}'s Personal Collection`
+                      : "Our analytics";
+                  cy.findByText(expectedDefaultCollection).click();
+
                   cy.findByText("First collection").should("not.exist");
-                  // This is the second step that makes sure not even search returns collections with read-only access
+                });
+                // This is the second step that makes sure not even search returns collections with read-only access
+                popover().within(() => {
                   cy.icon("search").click();
                   cy.findByPlaceholderText("Search")
                     .click()
