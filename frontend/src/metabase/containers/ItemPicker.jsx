@@ -209,13 +209,21 @@ export default class ItemPicker extends React.Component {
                 {({ list }) => (
                   <div>
                     {list
-                      .filter(
-                        item =>
+                      .filter(item => {
+                        const collection =
+                          collectionsById[item.collection_id] ||
+                          collectionsById["root"];
+                        return (
                           // remove collections unless we're searching
                           (item.model !== "collection" || !!searchString) &&
                           // only include desired models (TODO: ideally the endpoint would handle this)
-                          models.has(item.model),
-                      )
+                          models.has(item.model) &&
+                          // remove models belonging to collections without `write` permission
+                          // if the permission is required explicitly
+                          (collection.can_write ||
+                            !requireCollectionWritePermission)
+                        );
+                      })
                       .map(item => (
                         <Item
                           key={item.id}
