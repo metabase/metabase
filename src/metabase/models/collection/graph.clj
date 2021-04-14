@@ -2,7 +2,7 @@
   (:require [clojure.data :as data]
             [metabase.api.common :as api :refer [*current-user-id*]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.collection-permission-graph-revision :as collection.perms
+            [metabase.models.collection-permission-graph-revision :as c-perm-revision
              :refer [CollectionPermissionGraphRevision]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
@@ -85,7 +85,7 @@
   ([collection-namespace :- (s/maybe su/KeywordOrString)]
    (let [group-id->perms (group-id->permissions-set)
          collection-ids  (non-personal-collection-ids collection-namespace)]
-     {:revision (collection.perms/latest-id)
+     {:revision (c-perm-revision/latest-id)
       :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
                            {group-id (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)}))})))
 

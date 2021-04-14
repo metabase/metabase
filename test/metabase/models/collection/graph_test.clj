@@ -5,7 +5,7 @@
             [metabase.api.common :refer [*current-user-id*]]
             [metabase.models :refer [User]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.collection-permission-graph-revision :as collection.perms
+            [metabase.models.collection-permission-graph-revision :as c-perm-revision
              :refer [CollectionPermissionGraphRevision]]
             [metabase.models.collection.graph :as graph]
             [metabase.models.permissions :as perms]
@@ -292,7 +292,7 @@
 
         (testing "No revision should have been saved"
           (is (= 0
-                 (collection.perms/latest-id)))))))
+                 (c-perm-revision/latest-id)))))))
 
   (testing "Make sure you can't be sneaky and edit descendants of Personal Collections either."
     (mt/with-temp Collection [collection {:location (lucky-collection-children-location)}]
