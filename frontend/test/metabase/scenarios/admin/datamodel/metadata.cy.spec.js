@@ -121,7 +121,8 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.get(".List-section-header")
       .contains("Created At")
       .click();
-    // Implicit assertion - there should be only one "Created At" field in the expanded section
-    cy.get(".List-section--expanded .List-item-title").findByText("Created At");
+    cy.get(".List-section--expanded .List-item-title")
+      .contains("Created At")
+      .should("have.length", 1);
   });
 });
