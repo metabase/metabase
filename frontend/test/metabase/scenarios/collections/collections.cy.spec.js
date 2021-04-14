@@ -161,6 +161,20 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
+    describe("archive", () => {
+      it("should show archived items (metabase#15080)", () => {
+        cy.visit("collection/root");
+        openEllipsisMenuFor("Orders");
+        cy.findByText("Archive this item").click();
+        cy.findByText("Archived question")
+          .siblings(".Icon-close")
+          .click();
+        cy.findByText("View archive").click();
+        cy.location("pathname").should("eq", "/archive");
+        cy.findByText("Orders");
+      });
+    });
+
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
       it("should be in the root collection", () => {

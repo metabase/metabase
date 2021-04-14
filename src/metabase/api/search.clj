@@ -326,7 +326,7 @@
                                                        :let  [query (search-query-for-model model search-ctx)]
                                                        :when (seq query)]
                                                    query)} :alias_is_required_by_sql_but_not_needed_here]]
-                             :order-by [(order-clause (:search-string search-ctx))]}
+                             :order-by [((fnil order-clause "") (:search-string search-ctx))]}
           _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
           reducible-results (db/reducible-query search-query :max-rows search-config/db-max-results)
           xf                (comp
@@ -354,8 +354,6 @@
   [q archived]
   {q        (s/maybe su/NonBlankString)
    archived (s/maybe su/BooleanString)}
-  (if q
-    (search (search-context q archived))
-    []))
+  (search (search-context q archived)))
 
 (api/define-routes)
