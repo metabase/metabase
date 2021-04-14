@@ -87,8 +87,8 @@ function _init(reducers, getRoutes, callback) {
   );
 
   // listen for location changes and use that as a trigger for page view tracking
-  history.listen(location => {
-    MetabaseAnalytics.trackPageView(location.pathname);
+  history.listen((location, ...rest) => {
+    MetabaseAnalytics.trackPageView(location);
   });
 
   registerVisualizations();

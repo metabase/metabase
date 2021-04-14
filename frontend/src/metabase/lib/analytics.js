@@ -1,5 +1,8 @@
 /*global ga*/
+import KJUR from "jsrsasign";
 import {
+  setCustomUrl as setSnowplowCustomUrl,
+  setReferrerUrl as setSnowplowReferrerUrl,
   newTracker as newSnowplowTracker,
   trackStructEvent as trackSnowplowStructEvent,
   trackPageView as trackSnowplowPageView,
@@ -21,27 +24,39 @@ newSnowplowTracker("sp1", "sp.metabase.com", {
   },
 });
 
+let lastUrl = null;
+
 // Simple module for in-app analytics.  Sends data to GA and Snowplow.
 const MetabaseAnalytics = {
   // track a pageview (a.k.a. route change)
-  trackPageView: function(url: string) {
+  trackPageView: function(location) {
     if (!MetabaseSettings.get("anon-tracking-enabled")) {
       return;
     }
-    if (url) {
-      // scrub query builder urls to remove serialized json queries from path
-      url = url.lastIndexOf("/q/", 0) === 0 ? "/q/" : url;
-
-      const { tag } = MetabaseSettings.get("version") || {};
-
-      // $FlowFixMe
-      if (typeof ga === "function") {
-        ga("set", "dimension1", tag);
-        ga("set", "page", url);
-        ga("send", "pageview", url);
-      }
-      trackSnowplowPageView();
+    let url;
+    try {
+      url = new URL(window.location.href);
+      url.pathname = location.pathname; // should match, but trust react-router
+      cleanUrl(url);
+    } catch (e) {
+      console.error(e);
+      return;
     }
+
+    const { tag } = MetabaseSettings.get("version") || {};
+
+    // $FlowFixMe
+    if (typeof ga === "function") {
+      ga("set", "dimension1", tag);
+      ga("set", "page", url.pathname);
+      ga("send", "pageview", url.pathname);
+    }
+    setSnowplowCustomUrl(url.toString());
+    if (lastUrl !== null) {
+      setSnowplowReferrerUrl(lastUrl);
+    }
+    lastUrl = url.toString();
+    trackSnowplowPageView();
   },
 
   // track an event
@@ -92,4 +107,25 @@ export function registerAnalyticsClickListener() {
     },
     true,
   );
+}
+
+function cleanUrl(url) {
+  url.hash = ""; // scrub query builder urls to remove serialized json queries from path
+  url.hostname = hash(url.hostname);
+
+  // Remove public UUIDs from url
+  const publicMatch = url.pathname.match(
+    /^\/(public\/(?:dashboard|question)\/)(.*)$/i,
+  );
+  if (publicMatch) {
+    const [, front, back] = publicMatch;
+    url.pathname = front + hash(back);
+  }
+}
+
+function hash(string) {
+  return new KJUR.crypto.MessageDigest({
+    alg: "sha1",
+    prov: "cryptojs",
+  }).digestString(string);
 }
