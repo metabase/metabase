@@ -53,7 +53,6 @@ export default class ItemPicker extends React.Component {
     value: PropTypes.number,
     types: PropTypes.array,
     showSearch: PropTypes.boolean,
-    requireCollectionWritePermission: PropTypes.boolean,
   };
 
   // returns a list of "crumbs" starting with the "root" collection
@@ -86,7 +85,6 @@ export default class ItemPicker extends React.Component {
       style,
       className,
       showSearch = true,
-      requireCollectionWritePermission,
     } = this.props;
     const { parentId, searchMode, searchString } = this.state;
 
