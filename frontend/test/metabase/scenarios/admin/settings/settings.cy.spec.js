@@ -325,6 +325,17 @@ describe("scenarios > admin > settings", () => {
     cy.findByText(/Site URL/i);
   });
 
+  it("should display the order of the settings items consistently between OSS/EE versions (metabase#15441)", () => {
+    cy.visit("/admin/settings/setup");
+    cy.get(".AdminList .AdminList-item")
+      .as("settingsOptions")
+      .first()
+      .contains("Setup");
+    cy.get("@settingsOptions")
+      .last()
+      .contains("Whitelabel");
+  });
+
   describe(" > email settings", () => {
     it("should be able to save email settings", () => {
       cy.visit("/admin/settings/email");
