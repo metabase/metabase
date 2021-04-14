@@ -630,7 +630,7 @@ describe("scenarios > question > notebook", () => {
         .isVisibleInPopover();
     });
 
-    it.skip("should add numeric filter on joined table (metabase#15570)", () => {
+    it("should add numeric filter on joined table (metabase#15570)", () => {
       cy.createQuestion({
         name: "15570",
         query: {
