@@ -43,7 +43,6 @@ export default class ItemPicker extends React.Component {
       parentId: "root",
       searchMode: false,
       searchString: false,
-      requireCollectionWritePermission: false,
     };
   }
 
