@@ -35,17 +35,8 @@ function updateSectionsWithPlugins(sections) {
     // the update functions may change the key ordering inadvertently
     // see: https://github.com/aearly/icepick/issues/48
     // therefore, re-sort the reduced object according to the original key order
-    const reSortFn = (a, b) => {
-      if (sections[a[0]] !== undefined && sections[b[0]] !== undefined) {
-        const aMap = sections[a[0]];
-        const bMap = sections[b[0]];
-        if (aMap.order !== undefined && bMap.order !== undefined) {
-          return aMap.order - bMap.order;
-        }
-      }
-      // undefined relative ordering, so just sort these two arbitrarily
-      return 1;
-    };
+    const reSortFn = ([, aVal], [, bVal]) =>
+      aVal && bVal && aVal.order - bVal.order;
 
     return Object.fromEntries(Object.entries(reduced).sort(reSortFn));
   } else {
