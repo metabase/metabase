@@ -8270,9 +8270,8 @@ databaseChangeLog:
         - dbms:
             type: postgresql
       changes:
-        - renameSequence:
-            oldSequenceName: collection_revision_id_seq
-            newSequenceName: collection_permission_graph_revision_id_seq
+        - sql:
+            - sql: ALTER SEQUENCE collection_revision_id_seq RENAME TO collection_permission_graph_revision_id_seq
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
