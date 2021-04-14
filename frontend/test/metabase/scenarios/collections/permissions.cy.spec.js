@@ -17,7 +17,7 @@ import { USERS } from "__support__/e2e/cypress_data";
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
   view: ["readonly"],
-  no: ["nocollection", "nosql", "none"],
+  // no: ["nocollection", "nosql", "none"],
 };
 
 describe("collection permissions", () => {
@@ -297,6 +297,43 @@ describe("collection permissions", () => {
                   cy.location("pathname").should("eq", "/collection/root");
                   cy.findByText("Orders").should("not.exist");
                 });
+
+                describe("adding question to dashboard", () => {
+                  beforeEach(() => {
+                    cy.skipOn(user === "nodata");
+                    popover()
+                      .findByText("Add to dashboard")
+                      .click();
+                  });
+
+                  it("should list collections user has `write` access to", () => {
+                    cy.get(".Modal")
+                      .findByText("Orders in a dashboard")
+                      .should("exist");
+                  });
+
+                  it("should list dashboards user has `write` access to when using search", () => {
+                    cy.get(".Modal").within(() => {
+                      cy.icon("search").click();
+                      cy.findByPlaceholderText("Search").type(
+                        "Orders in{Enter}",
+                      );
+                      cy.findByText("Orders in a dashboard").should("exist");
+                    });
+                  });
+
+                  it("should be able to add question to dashboard", () => {
+                    cy.get(".Modal")
+                      .as("modal")
+                      .findByText("Orders in a dashboard")
+                      .click();
+
+                    cy.get("@modal").should("not.exist");
+                    // By default, the dashboard contains one question
+                    // After we add a new one, we check there are two questions now
+                    cy.get(".DashCard").should("have.length", 2);
+                  });
+                });
               });
 
               describe("managing dashboard from the dashboard's edit menu", () => {
@@ -409,6 +446,32 @@ describe("collection permissions", () => {
                     .click()
                     .type("third{Enter}");
                   cy.findByText("Third collection").should("not.exist");
+                });
+              });
+
+              describe("managing question from the question's edit dropdown", () => {
+                beforeEach(() => {
+                  cy.visit("/question/1");
+                  cy.icon("pencil").click();
+                  popover()
+                    .findByText("Add to dashboard")
+                    .click();
+                });
+
+                it("should not be offered to save question in collections they have `read` access to", () => {
+                  cy.get(".Modal")
+                    .findByText("Orders in a dashboard")
+                    .should("not.exist");
+                });
+
+                it("should not be offered to save question in collections they have `read` access to when using search", () => {
+                  cy.get(".Modal").within(() => {
+                    cy.icon("search").click();
+                    cy.findByPlaceholderText("Search").type(
+                      "Orders in a dashboard{Enter}",
+                    );
+                    cy.findByText("Orders in a dashboard").should("not.exist");
+                  });
                 });
               });
             });
