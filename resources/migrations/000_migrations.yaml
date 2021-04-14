@@ -8267,9 +8267,8 @@ databaseChangeLog:
       failOnError: false # mysql and h2 don't have this sequence
       preConditions:
         - onFail: MARK_RAN
-        - or:
-            - dbms:
-                type: postgresql
+        - dbms:
+            type: postgresql
       changes:
         - renameSequence:
             oldSequenceName: collection_revision_id_seq
