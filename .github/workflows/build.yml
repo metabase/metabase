@@ -1,0 +1,260 @@
+name: Build
+on: [push]
+     
+jobs:    
+  fe-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Node.js 
+        uses: actions/setup-node@v2
+        with:
+          node-version: 12
+      - name: Install deps
+        run: yarn install
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+      - uses: actions/cache@v2
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+  
+  be-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Java 11
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@3.2
+        with:
+          cli: 1.10.3.822
+          lein: latest
+      - name: Get project dependencies
+        run: lein deps :tree
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+    
+  check-migrations:
+    runs-on: ubuntu-latest
+    needs: be-deps
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Install Java 11
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@3.2
+        with:
+          cli: 1.10.3.822
+          lein: latest
+      - name: Get project dependencies
+        run: lein deps :tree
+      - name: Verify Liquibase migrations
+        run: ./bin/lint-migrations-file.sh
+
+  fe-tests:
+    runs-on: ubuntu-latest
+    needs: [fe-deps, be-deps]
+    strategy:
+      matrix:
+        tests: [test-timezones, test-unit, test-cljs]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Node.js 
+        uses: actions/setup-node@v2
+        with:
+          node-version: 12
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+      - uses: actions/cache@v2
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+      - name: Install deps
+        run: yarn install
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Install Java 11
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@3.2
+        with:
+          cli: 1.10.3.822
+          lein: latest
+      - name: Get project dependencies
+        run: lein deps :tree
+      - name: Run ${{ matrix.tests }}
+        run: yarn run ${{ matrix.tests }}
+
+  test-build-scripts:
+    runs-on: ubuntu-latest
+    needs: be-deps
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Install Java 11
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@3.2
+        with:
+          cli: 1.10.3.822
+          lein: latest
+      - name: Get project dependencies
+        run: lein deps :tree
+      - name: Run metabuild-common build script tests
+        run: cd /home/runner/work/metabase/metabase/bin/common/ && clojure -M:test
+      - name: Run build-drivers build script tests
+        run: cd /home/runner/work/metabase/metabase/bin/build-drivers/ && clojure -M:test
+      - name: Run i18n script tests
+        run: cd /home/runner/work/metabase/metabase/bin/i18n/ && clojure -M:test
+      - name: Run build-mb build script tests
+        run: cd /home/runner/work/metabase/metabase/bin/build-mb/ && clojure -M:test
+      - name: Run release script tests
+        run: cd /home/runner/work/metabase/metabase/bin/release/ && clojure -M:test
+      - name: Run Liquibase migrations linter tests
+        run: cd /home/runner/work/metabase/metabase/bin/lint-migrations-file/ && clojure -M:test
+  
+  be-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        versions: [+oss with-profile, +ee with-profile]
+        tests: [+junit test]
+    needs: be-deps
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Install Java 11
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@3.2
+        with:
+          cli: 1.10.3.822
+          lein: latest
+      - name: Get project dependencies
+        run: lein deps :tree
+      - name: Run backend tests in ${{ matrix.versions }}
+        run: lein with-profile +ci,${{ matrix.versions }} ${{ matrix.tests }}
+  
+  be-cloverage:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        versions: [+oss]
+        tests: [cloverage --codecov]
+    needs: be-deps
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Install Java 11
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@3.2
+        with:
+          cli: 1.10.3.822
+          lein: latest
+      - name: Get project dependencies
+        run: lein deps :tree
+      - name: Run backend tests in ${{ matrix.versions }}
+        run: lein with-profile +ci,${{ matrix.versions }} ${{ matrix.tests }}
+
+  be-tests-java-11:
+    runs-on: ubuntu-latest
+    env:
+      MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+    strategy:
+      matrix:
+        versions: [+oss with-profile, +ee with-profile]
+    needs: be-deps
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Install Java 11
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@3.2
+        with:
+          cli: 1.10.3.822
+          lein: latest
+      - name: Get project dependencies
+        run: lein deps :tree
+      - name: Run backend tests in ${{ matrix.versions }}
+        run: lein with-profile +ci,${{ matrix.versions }} +junit test
