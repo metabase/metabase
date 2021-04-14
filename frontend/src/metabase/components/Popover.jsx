@@ -55,6 +55,16 @@ export default class Popover extends Component {
     alignHorizontalEdge: PropTypes.bool,
     // don't wrap the popover in an OnClickOutsideWrapper
     noOnClickOutsideWrapper: PropTypes.bool,
+    targetOffsetX: PropTypes.number,
+    targetOffsetY: PropTypes.number,
+    onClose: PropTypes.func,
+    className: PropTypes.string,
+    style: PropTypes.object,
+    children: PropTypes.element,
+    dismissOnClickOutside: PropTypes.func,
+    dismissOnEscape: PropTypes.func,
+    target: PropTypes.object,
+    targetEvent: PropTypes.object,
   };
 
   static defaultProps = {
@@ -290,91 +300,92 @@ export default class Popover extends Component {
         this,
         <span>{isOpen ? this._popoverComponent() : null}</span>,
         popoverElement,
-      );
-
-      const tetherOptions = {
-        element: popoverElement,
-        target: this._getTargetElement(),
-      };
-
-      if (this.props.tetherOptions) {
-        this._setTetherOptions({
-          ...tetherOptions,
-          ...this.props.tetherOptions,
-        });
-      } else {
-        if (!this._best || !this.props.pinInitialAttachment) {
-          let best = {
-            attachmentX: "center",
-            attachmentY: "top",
-            targetAttachmentX: "center",
-            targetAttachmentY: "bottom",
-            offsetX: 0,
-            offsetY: 0,
+        () => {
+          const tetherOptions = {
+            element: popoverElement,
+            target: this._getTargetElement(),
           };
 
-          // horizontal
-          best = this._getBestAttachmentOptions(
-            tetherOptions,
-            best,
-            this.props.horizontalAttachments,
-            ["left", "right"],
-            (best, attachmentX) => ({
-              ...best,
-              attachmentX: attachmentX,
-              targetAttachmentX: this.props.alignHorizontalEdge
-                ? attachmentX
-                : "center",
-              offsetX: {
-                center: 0,
-                left: -this.props.targetOffsetX,
-                right: this.props.targetOffsetX,
-              }[attachmentX],
-            }),
-          );
+          if (this.props.tetherOptions) {
+            this._setTetherOptions({
+              ...tetherOptions,
+              ...this.props.tetherOptions,
+            });
+          } else {
+            if (!this._best || !this.props.pinInitialAttachment) {
+              let best = {
+                attachmentX: "center",
+                attachmentY: "top",
+                targetAttachmentX: "center",
+                targetAttachmentY: "bottom",
+                offsetX: 0,
+                offsetY: 0,
+              };
 
-          // vertical
-          best = this._getBestAttachmentOptions(
-            tetherOptions,
-            best,
-            this.props.verticalAttachments,
-            ["top", "bottom"],
-            (best, attachmentY) => ({
-              ...best,
-              attachmentY: attachmentY,
-              targetAttachmentY: (this.props.alignVerticalEdge
-              ? attachmentY === "bottom"
-              : attachmentY === "top")
-                ? "bottom"
-                : "top",
-              offsetY: {
-                top: this.props.targetOffsetY,
-                bottom: -this.props.targetOffsetY,
-              }[attachmentY],
-            }),
-          );
+              // horizontal
+              best = this._getBestAttachmentOptions(
+                tetherOptions,
+                best,
+                this.props.horizontalAttachments,
+                ["left", "right"],
+                (best, attachmentX) => ({
+                  ...best,
+                  attachmentX: attachmentX,
+                  targetAttachmentX: this.props.alignHorizontalEdge
+                    ? attachmentX
+                    : "center",
+                  offsetX: {
+                    center: 0,
+                    left: -this.props.targetOffsetX,
+                    right: this.props.targetOffsetX,
+                  }[attachmentX],
+                }),
+              );
 
-          this._best = best;
-        }
+              // vertical
+              best = this._getBestAttachmentOptions(
+                tetherOptions,
+                best,
+                this.props.verticalAttachments,
+                ["top", "bottom"],
+                (best, attachmentY) => ({
+                  ...best,
+                  attachmentY: attachmentY,
+                  targetAttachmentY: (this.props.alignVerticalEdge
+                  ? attachmentY === "bottom"
+                  : attachmentY === "top")
+                    ? "bottom"
+                    : "top",
+                  offsetY: {
+                    top: this.props.targetOffsetY,
+                    bottom: -this.props.targetOffsetY,
+                  }[attachmentY],
+                }),
+              );
 
-        // finally set the best options
-        this._setTetherOptions(tetherOptions, this._best);
-      }
+              this._best = best;
+            }
 
-      if (this.props.sizeToFit) {
-        const body = tetherOptions.element.querySelector(".PopoverBody");
-        if (this._tether.attachment.top === "top") {
-          if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
-            body.classList.add("scroll-y");
-            body.classList.add("scroll-show");
+            // finally set the best options
+            this._setTetherOptions(tetherOptions, this._best);
           }
-        } else if (this._tether.attachment.top === "bottom") {
-          if (constrainToScreen(body, "top", PAGE_PADDING)) {
-            body.classList.add("scroll-y");
-            body.classList.add("scroll-show");
+
+          if (this.props.sizeToFit) {
+            const body = tetherOptions.element.querySelector(".PopoverBody");
+            if (this._tether.attachment.top === "top") {
+              if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
+                body.classList.add("scroll-y");
+                body.classList.add("scroll-show");
+              }
+            } else if (this._tether.attachment.top === "bottom") {
+              if (constrainToScreen(body, "top", PAGE_PADDING)) {
+                body.classList.add("scroll-y");
+                body.classList.add("scroll-show");
+              }
+            }
           }
-        }
-      }
+        },
+      );
     } else {
       if (this._popoverElement) {
         ReactDOM.unmountComponentAtNode(this._popoverElement);
