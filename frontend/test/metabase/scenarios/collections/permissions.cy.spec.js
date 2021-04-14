@@ -1,3 +1,15 @@
+/**
+ * FYI, this test suite contains permission tests for different pages
+ *
+ * - Collections (/collection/root)
+ * - Dashboard (/dashboard/:id)
+ * - Question (/question/:id)
+ *
+ * It's a WIP and most likely it will be split later,
+ * when we're sure about our testing strategy for permissions
+ * See discussion: https://github.com/metabase/metabase/pull/15573
+ */
+
 import { onlyOn } from "@cypress/skip-test";
 import { restore, popover } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
