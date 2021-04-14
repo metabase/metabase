@@ -300,7 +300,6 @@ describe("collection permissions", () => {
 
                 describe("adding question to dashboard", () => {
                   beforeEach(() => {
-                    cy.skipOn(user === "nodata");
                     popover()
                       .findByText("Add to dashboard")
                       .click();
