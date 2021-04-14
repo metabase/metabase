@@ -173,6 +173,15 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: metabase/qa-databases:mysql-sample-8
+  
+  fe-maildev:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.9.5-node-browsers
+      - image: maildev/maildev
+        environment:
+          MB_EMAIL_SMTP_HOST: maildev
+          MB_EMAIL_SMTP_PORT: 25
 
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
@@ -1233,6 +1242,15 @@ workflows:
           before-steps:
             - wait-for-port:
                 port: 3306
+          <<: *Matrix
+      
+      - fe-tests-cypress:
+          name: fe-tests-cypress-maildev-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          e: fe-maildev
+          cypress-group: "maildev"
+          only-single-database: true
           <<: *Matrix
 
   nightly:
