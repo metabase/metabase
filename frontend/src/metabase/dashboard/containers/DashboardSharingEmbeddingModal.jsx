@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import cx from "classnames";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import { resetScroll } from "metabase/components/Modal";
 
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 
@@ -66,6 +67,7 @@ export default class DashboardSharingEmbeddingModal extends Component {
             {linkText}
           </a>
         }
+        onClose={resetScroll}
         triggerClasses={cx(className, "text-brand-hover")}
         className="scroll-y"
       >
@@ -84,7 +86,7 @@ export default class DashboardSharingEmbeddingModal extends Component {
             updateEmbeddingParams(dashboard, embeddingParams)
           }
           onClose={() => {
-            this._modal && this._modal.close();
+            this._modal && this._modal.onClose();
             additionalClickActions();
           }}
           getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
