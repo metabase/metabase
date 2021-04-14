@@ -104,7 +104,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
   });
 
-  it.skip("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
+  it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
     // Remap fields
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
       semantic_type: "type/PK",
