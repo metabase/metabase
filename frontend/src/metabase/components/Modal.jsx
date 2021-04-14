@@ -112,7 +112,7 @@ export const resetScroll = () => {
   // This is mostly fine. However, the scrollability is global state,
   // which needs to get restored somehow
   document.body.style.overflow = "";
-}
+};
 
 export class FullPageModal extends Component {
   constructor(props) {
