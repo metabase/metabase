@@ -107,7 +107,6 @@ export class WindowModal extends Component {
 
 import routeless from "metabase/hoc/Routeless";
 
-
 export class FullPageModal extends Component {
   constructor(props) {
     super(props);
