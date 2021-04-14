@@ -601,7 +601,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("37.65");
     });
 
-    it.skip("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
+    it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
       cy.visit("/question/1/notebook");
       cy.findByText("Summarize").click();
       cy.findByText("Count of rows").click();

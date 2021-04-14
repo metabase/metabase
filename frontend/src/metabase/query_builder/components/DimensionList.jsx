@@ -50,7 +50,7 @@ const SUBMENU_TETHER_OPTIONS = {
     {
       to: "window",
       attachment: "together",
-      pin: ["left", "right"],
+      pin: true,
     },
   ],
 };
@@ -127,7 +127,6 @@ export default class DimensionList extends Component {
               multiSelect,
             )}
             tetherOptions={multiSelect ? null : SUBMENU_TETHER_OPTIONS}
-            sizeToFit
           >
             {({ onClose }) => (
               <DimensionPicker
