@@ -176,7 +176,7 @@ describe("scenarios > question > custom columns", () => {
     // add custom column
     cy.findByText("Custom column").click();
     popover().within(() => {
-      // Double click at the end og this command is just an ugly hack that seems to reduce the flakiness of this test a lot!
+      // Double click at the end of this command is just an ugly hack that seems to reduce the flakiness of this test a lot!
       // TODO: investigate contenteditable element - it is losing input value and I could reproduce it even locally (outside of Cypress)
       cy.get("[contenteditable='true']")
         .type("1+1")
