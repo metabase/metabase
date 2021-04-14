@@ -35,15 +35,6 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Metabase Admin");
       cy.findByText("dashboard").should("not.exist");
 
-      // check that the order of items under Settings is consistent between OSS and EE (metabase#15441)
-      cy.get(".AdminList .AdminList-items").as("settingsMenuItems");
-      cy.get("@settingsMenuItems")
-        .first()
-        .contains("Setup");
-      cy.get("@settingsMenuItems")
-        .last()
-        .contains("Caching");
-
       cy.findByText("Databases").click();
 
       cy.findByText("Sample Dataset");
