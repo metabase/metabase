@@ -17,7 +17,7 @@ import { USERS } from "__support__/e2e/cypress_data";
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
   view: ["readonly"],
-  // no: ["nocollection", "nosql", "none"],
+  no: ["nocollection", "nosql", "none"],
 };
 
 describe("collection permissions", () => {
