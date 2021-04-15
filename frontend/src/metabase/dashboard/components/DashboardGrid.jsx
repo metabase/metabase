@@ -257,7 +257,6 @@ export default class DashboardGrid extends Component {
           "Dash--editing": this.isEditingLayout,
           "Dash--dragging": this.state.isDragging,
         })}
-        style={{ margin: 0 }}
       >
         {dashcards &&
           dashcards.map(dc => (

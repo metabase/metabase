@@ -301,6 +301,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
         cy.icon("pencil").click();
+        cy.get(".DashCard").trigger("mouseover");
         cy.get(".DashCard .Icon-click").click({ force: true });
         cy.findByText(/Ean/i).click();
         cy.findByText("Update a dashboard filter").click();

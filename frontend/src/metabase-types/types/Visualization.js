@@ -98,6 +98,7 @@ export type VisualizationProps = {
   isDashboard: boolean,
   isEditing: boolean,
   isSettings: boolean,
+  actionButtons: Node,
 
   onRender: ({
     yAxisSplit?: number[][],

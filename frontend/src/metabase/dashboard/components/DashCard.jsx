@@ -65,7 +65,6 @@ export default class DashCard extends Component {
     super(props);
 
     this.state = {
-      showActionsPanel: false,
       isPreviewingCard: false,
     };
   }
@@ -91,18 +90,6 @@ export default class DashCard extends Component {
     this.setState(prevState => ({
       isPreviewingCard: !prevState.isPreviewingCard,
     }));
-  };
-
-  handleMouseEnter = () => {
-    this.setState({
-      showActionsPanel: true,
-    });
-  };
-
-  handleMouseLeave = () => {
-    this.setState({
-      showActionsPanel: false,
-    });
   };
 
   render() {
@@ -176,15 +163,10 @@ export default class DashCard extends Component {
       isEditing &&
       !(clickBehaviorSidebarDashcard != null || isEditingParameter);
 
-    const showActionsPanel =
-      isEditingDashboardLayout && this.state.showActionsPanel;
-
     return (
       <div
-        onMouseEnter={this.handleMouseEnter}
-        onMouseLeave={this.handleMouseLeave}
         className={cx(
-          "Card relative bordered rounded flex flex-column hover-parent hover--visibility",
+          "Card bordered rounded flex flex-column hover-parent hover--visibility",
           {
             "Card--slow": isSlow === "usually-slow",
           },
@@ -195,7 +177,7 @@ export default class DashCard extends Component {
             : null
         }
       >
-        {showActionsPanel ? (
+        {isEditingDashboardLayout ? (
           <DashboardCardActionsPanel className="drag-disabled">
             <DashCardActionButtons
               series={series}
@@ -295,16 +277,24 @@ export default class DashCard extends Component {
 }
 
 const DashboardCardActionsPanel = styled.div`
-  padding: 0.25em;
+  padding: 0.125em 0.25em;
   position: absolute;
   background: white;
-  transform: translateY(-100%);
+  transform: translateY(-50%);
   top: 0;
-  right: 0;
+  right: 20px;
   border-radius: 8px;
   box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
   z-index: 3;
   cursor: default;
+  transition: opacity 200ms;
+  opacity: 0;
+  pointer-events: none;
+
+  .Card:hover & {
+    opacity: 1;
+    pointer-events: all;
+  }
 
   .Dash--dragging & {
     display: none;
@@ -349,7 +339,7 @@ const DashCardActionButtons = ({
       buttons.push(
         <Tooltip tooltip={t`Click behavior`}>
           <a
-            className="text-light text-medium-hover drag-disabled mr1"
+            className="text-dark-hover drag-disabled mr1"
             data-metabase-event="Dashboard;Open Click Behavior Sidebar"
             onClick={showClickBehaviorSidebar}
             style={HEADER_ACTION_STYLE}
@@ -368,10 +358,7 @@ const DashCardActionButtons = ({
   }
 
   return (
-    <span
-      className="DashCard-actions flex align-center"
-      style={{ lineHeight: 1 }}
-    >
+    <span className="flex align-center text-medium" style={{ lineHeight: 1 }}>
       {buttons}
       <Tooltip tooltip={t`Remove`}>
         <RemoveButton className="ml1" onRemove={onRemove} />
@@ -393,7 +380,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
         />
       </Tooltip>
     }
-    triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
+    triggerClasses="text-dark-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
   >
     <ChartSettingsWithState
       className="spread"
@@ -406,7 +393,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
 
 const RemoveButton = ({ onRemove }) => (
   <a
-    className="text-light text-medium-hover drag-disabled"
+    className="text-dark-hover drag-disabled"
     data-metabase-event="Dashboard;Remove Card Modal"
     onClick={onRemove}
     style={HEADER_ACTION_STYLE}
@@ -418,7 +405,7 @@ const RemoveButton = ({ onRemove }) => (
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
     data-metabase-event={"Dashboard;Edit Series Modal;open"}
-    className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
+    className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
   >
@@ -442,7 +429,7 @@ const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
   return (
     <a
       data-metabase-event={"Dashboard;Text;edit"}
-      className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
+      className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
       onClick={onPreviewToggle}
       style={HEADER_ACTION_STYLE}
     >

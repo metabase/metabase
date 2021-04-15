@@ -112,6 +112,10 @@
   margin-top: 1em;
 }
 
+.Dash--editing {
+  margin-top: 1.5em;
+}
+
 .DashCard {
   position: relative;
   z-index: 2;
@@ -133,6 +137,10 @@
 
 .Dash--editing .DashCard .Card {
   transition: border 0.3s, background-color 0.3s;
+}
+
+.Dash--editing .Card-title:first-of-type {
+  margin-top: 0.5rem;
 }
 
 .Dash--editing .DashCard:hover .Card .Card-heading {

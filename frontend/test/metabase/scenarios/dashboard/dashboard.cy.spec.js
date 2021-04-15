@@ -256,6 +256,7 @@ describe("scenarios > dashboard", () => {
 
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
+    cy.get(".DashCard").trigger("mouseover");
     cy.get(".DashCard .Icon-click").click({ force: true });
     cy.findByText("COUNT(*)").click();
     cy.findByText("Update a dashboard filter").click();

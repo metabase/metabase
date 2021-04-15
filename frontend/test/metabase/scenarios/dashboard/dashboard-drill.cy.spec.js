@@ -27,6 +27,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.visit(`/dashboard/${dashboardId}`),
     );
     cy.icon("pencil").click();
+    cy.get(".DashCard").trigger("mouseover");
     cy.icon("click").click({ force: true });
 
     // configure a URL click through on the  "MY_NUMBER" column
@@ -140,6 +141,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.visit(`/dashboard/${dashboardId}`),
     );
     cy.icon("pencil").click();
+    cy.get(".DashCard").trigger("mouseover");
     cy.icon("click").click({ force: true });
 
     // configure a dashboard target for the "MY_NUMBER" column
@@ -191,6 +193,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       );
     });
     cy.icon("pencil").click();
+    cy.get(".DashCard").trigger("mouseover");
     cy.icon("click").click({ force: true });
 
     // configure clicks on "MY_NUMBER to update the param
@@ -233,6 +236,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.visit(`/dashboard/${dashboardId}`),
     );
     cy.icon("pencil").click();
+    cy.get(".DashCard").trigger("mouseover");
     cy.icon("click").click({ force: true });
 
     // configure clicks on "MY_NUMBER to update the param
@@ -575,6 +579,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
         cy.icon("pencil").click();
+        cy.get(".DashCard").trigger("mouseover");
         // Edit "Visualization options"
         cy.get(".DashCard .Icon-palette").click({ force: true });
         cy.get(".Modal").within(() => {
