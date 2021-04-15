@@ -743,7 +743,7 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  it.skip("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
+  it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
     // Make this dashboard card extremely tall so that it spans outside of visible viewport
     cy.request("PUT", "/api/dashboard/1/cards", {
       cards: [

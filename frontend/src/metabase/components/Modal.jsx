@@ -137,22 +137,19 @@ export class FullPageModal extends Component {
   }
 
   componentDidUpdate() {
+    if (!this.state.isOpen) {
+      document.body.style.overflow = "";
+    }
     this.setTopOfModalToBottomOfNav();
   }
 
   componentWillUnmount() {
     this._modalElement.parentNode.removeChild(this._modalElement);
+    document.body.style.overflow = "";
   }
 
   handleDismissal = () => {
     this.setState({ isOpen: false });
-
-    // restore scroll position and scrolling
-    document.body.style.overflow = "";
-    // On IE11 a timeout is required for the scroll to happen after the change of overflow setting
-    setTimeout(() => {
-      window.scrollTo(this._scrollX, this._scrollY);
-    }, 0);
 
     // wait for animations to complete before unmounting
     setTimeout(() => this.props.onClose && this.props.onClose(), 300);
