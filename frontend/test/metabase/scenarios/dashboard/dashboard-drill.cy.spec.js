@@ -674,6 +674,65 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("37.65");
     cy.findByText("No relationships found.");
   });
+
+  it("should display correct tooltip value for multiple series charts on dashboard (metabase#15612)", () => {
+    cy.createNativeQuestion({
+      name: "15612_1",
+      native: { query: "select 1 as axis, 5 as value" },
+      display: "bar",
+      visualization_settings: {
+        "graph.dimensions": ["AXIS"],
+        "graph.metrics": ["VALUE"],
+      },
+    }).then(({ body: { id: QUESTION1_ID } }) => {
+      cy.createNativeQuestion({
+        name: "15612_2",
+        native: { query: "select 1 as axis, 10 as value" },
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["AXIS"],
+          "graph.metrics": ["VALUE"],
+        },
+      }).then(({ body: { id: QUESTION2_ID } }) => {
+        cy.createDashboard("15612D").then(({ body: { id: DASHBOARD_ID } }) => {
+          // Add the first question to the dashboard
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION1_ID,
+          }).then(({ body: { id: DASH_CARD1_ID } }) => {
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD1_ID,
+                  card_id: QUESTION1_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 12,
+                  sizeY: 8,
+                  series: [
+                    {
+                      id: QUESTION2_ID,
+                    },
+                  ],
+                  visualization_settings: {},
+                  parameter_mappings: [],
+                },
+              ],
+            });
+          });
+          cy.intercept("POST", `/api/card/${QUESTION2_ID}/query`).as(
+            "secondCardQuery",
+          );
+          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+          cy.wait("@secondCardQuery");
+          cy.get(".bar")
+            .last()
+            .trigger("mousemove");
+          popover().contains("10");
+        });
+      });
+    });
+  });
 });
 
 function createDashboardWithQuestion(
