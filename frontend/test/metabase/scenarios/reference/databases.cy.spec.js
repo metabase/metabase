@@ -52,4 +52,18 @@ describe("scenarios > reference > databases", () => {
     cy.contains("Save").click();
     cy.contains("My definitely profitable business");
   });
+
+  it.skip("should sort data reference database list (metabase#15598)", () => {
+    ["d", "b", "a", "c"].forEach(name => {
+      cy.addH2SampleDataset({ name });
+    });
+    cy.visit("/reference/databases/");
+    cy.get("[class*=Card]")
+      .as("databaseCard")
+      .first()
+      .should("have.text", "a");
+    cy.get("@databaseCard")
+      .last()
+      .should("have.text", "Sample Dataset");
+  });
 });
