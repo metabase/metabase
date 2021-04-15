@@ -31,7 +31,7 @@ export type ParameterSection = {
 };
 
 const areFieldFilterOperatorsEnabled = () =>
-  MetabaseSettings.get("field-filter-operators-enabled?");
+  MetabaseSettings.get("field-filter-operators-enabled");
 
 const LOCATION_OPTIONS = [
   {

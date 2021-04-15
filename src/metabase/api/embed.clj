@@ -136,7 +136,7 @@
                                            (or widget-type (not= tag-type :dimension)))]
     {:id      (:id tag)
      :type    (or widget-type (cond (= tag-type :date)                       :date/single
-                                    (params/field-filter-operators-enabled?) :string/=
+                                    (params/field-filter-operators-enabled)  :string/=
                                     :else                                    :category))
      :target  (if (= tag-type :dimension)
                 [:dimension [:template-tag (:name tag)]]

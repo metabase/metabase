@@ -168,7 +168,7 @@
                                                 :value {:type  operator
                                                         :value value}})})))))))
     (testing "Throws if not enabled (#15488)"
-      (with-redefs [i/field-filter-operators-enabled? (constantly false)]
+      (with-redefs [i/field-filter-operators-enabled (constantly false)]
         (is (= :invalid-parameter
                (try
                  (substitute ["select * from venues where " (param "param")]

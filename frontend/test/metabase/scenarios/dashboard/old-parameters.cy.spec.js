@@ -3,7 +3,7 @@ import { popover, restore, mockSessionProperty } from "__support__/cypress";
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", false);
+    mockSessionProperty("field-filter-operators-enabled", false);
     restore();
     cy.signInAsAdmin();
   });

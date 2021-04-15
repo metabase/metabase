@@ -8,7 +8,7 @@
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]))
 
-(defsetting field-filter-operators-enabled?
+(defsetting field-filter-operators-enabled
   (deferred-tru "Enable the new field-filter operators")
   :type       :boolean
   :visibility :public
@@ -20,7 +20,7 @@
   longer necessary; designed so it can be used in a threading context and just raised out."
   {:added "0.39.0"}
   [field-filter]
-  (if (field-filter-operators-enabled?)
+  (if (field-filter-operators-enabled)
     field-filter
     (throw (ex-info (tru "New field filter operators are not enabled")
                     {:type qp.error-type/invalid-parameter

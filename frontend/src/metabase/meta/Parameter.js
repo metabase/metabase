@@ -40,7 +40,7 @@ type FieldPredicate = (field: Field) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 
 const areFieldFilterOperatorsEnabled = () =>
-  MetabaseSettings.get("field-filter-operators-enabled?");
+  MetabaseSettings.get("field-filter-operators-enabled");
 
 export const PARAMETER_OPERATOR_TYPES = {
   number: [

@@ -162,7 +162,7 @@
                                      :type   :string/starts-with
                                      :target $name
                                      :value ["B"]}]})))))
-        (with-redefs [params/field-filter-operators-enabled? (constantly false)]
+        (with-redefs [params/field-filter-operators-enabled (constantly false)]
           (testing "Throws if not enabled (#15488)"
             (is (= {:type     qp.error-type/invalid-parameter
                     :operator :number/between}
