@@ -155,10 +155,10 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       it("should have a list of the default parameters applied to the subscription", () => {
         assignRecipient();
-        cy.findByText("Category is Corbin Mertz");
+        cy.findByText("Text is Corbin Mertz");
         clickButton("Done");
 
-        cy.findByText("Category is Corbin Mertz");
+        cy.findByText("Text is Corbin Mertz");
       });
     });
   });
@@ -189,7 +189,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         assignRecipient();
         clickButton("Done");
 
-        cy.findByText("Category is Corbin Mertz");
+        cy.findByText("Text is Corbin Mertz");
       });
 
       it("should allow for setting parameters in subscription", () => {
@@ -211,7 +211,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           .contains("Update filter")
           .click();
 
-        cy.findAllByText("Category 1")
+        cy.findAllByText("Text 1")
           .last()
           .click();
         popover()
@@ -225,7 +225,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         clickButton("Done");
         cy.wait("@pulsePut");
-        cy.findByText("Category is 2 selections and 1 more filter");
+        cy.findByText("Text is 2 selections and 1 more filter");
       });
     });
   });
@@ -265,7 +265,7 @@ function addParametersToDashboard() {
 
   // add Category > Dropdown "Name" filter
   cy.icon("filter").click();
-  cy.findByText("Other Categories").click();
+  cy.findByText("Text or Category").click();
   cy.findByText("Dropdown").click();
 
   cy.findByText("Select…").click();
@@ -287,7 +287,7 @@ function addParametersToDashboard() {
 
   // add Category > Dropdown "Category" filter
   cy.icon("filter").click();
-  cy.findByText("Other Categories").click();
+  cy.findByText("Text or Category").click();
   cy.findByText("Dropdown").click();
   cy.findByText("Select…").click();
   popover().within(() => {

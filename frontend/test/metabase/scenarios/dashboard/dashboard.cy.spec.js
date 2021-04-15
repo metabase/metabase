@@ -136,7 +136,7 @@ describe("scenarios > dashboard", () => {
     // add third filter
     cy.icon("filter").click();
     popover().within(() => {
-      cy.findByText("Other Categories").click();
+      cy.findByText("Text or Category").click();
       cy.findByText("Starts with").click();
     });
     // and connect it to the card
