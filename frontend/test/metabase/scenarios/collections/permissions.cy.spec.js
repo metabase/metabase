@@ -423,7 +423,7 @@ describe("collection permissions", () => {
             });
 
             ["/", "/collection/root"].forEach(route => {
-              it("should not be offered to save dashboard in collections they have `read` access to", () => {
+              it("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit(route);
                 cy.icon("add").click();
