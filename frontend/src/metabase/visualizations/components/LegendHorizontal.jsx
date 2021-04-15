@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
+/* eslint-disable react/no-string-refs */
 import React, { Component } from "react";
+import ReactDOM from "react-dom";
 import styles from "./Legend.css";
 
 import LegendItem from "./LegendItem";
@@ -7,13 +9,6 @@ import LegendItem from "./LegendItem";
 import cx from "classnames";
 
 export default class LegendHorizontal extends Component {
-  constructor(props) {
-    super(props);
-
-    props.titles.map((title, index) => {
-      this["legendItem" + index] = React.createRef();
-    });
-  }
   render() {
     const { className, titles, colors, hovered, onHoverChange } = this.props;
     return (
@@ -32,7 +27,9 @@ export default class LegendHorizontal extends Component {
                 onHoverChange &&
                 onHoverChange({
                   index,
-                  element: this["legendItem" + index].current,
+                  element: ReactDOM.findDOMNode(
+                    this.refs["legendItem" + index],
+                  ),
                 })
               }
               onMouseLeave={() => onHoverChange && onHoverChange(null)}

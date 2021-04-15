@@ -239,7 +239,7 @@ export default class FieldApp extends React.Component {
                 </div>
               )}
               <div className="absolute top right mt4 mr4">
-                <SaveStatus ref={ref => (this.saveStatus = ref)} />
+                <SaveStatus ref={this.saveStatus} />
               </div>
 
               {section == null || section === "general" ? (
