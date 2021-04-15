@@ -25,6 +25,8 @@ class CollectionsList extends React.Component {
         {collections.map(c => {
           const isOpen = openCollections.indexOf(c.id) >= 0;
           const action = isOpen ? this.props.onClose : this.props.onOpen;
+          const hasChildren =
+            Array.isArray(c.children) && c.children.length > 0;
           return (
             <Box key={c.id}>
               <CollectionDropTarget collection={c}>
@@ -48,7 +50,7 @@ class CollectionsList extends React.Component {
                           c.name.length > 25 ? "flex-start" : "center"
                         }
                       >
-                        {c.children && (
+                        {hasChildren && (
                           <Flex
                             className="absolute text-brand cursor-pointer"
                             align="center"
