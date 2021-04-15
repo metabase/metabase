@@ -461,7 +461,7 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("Orders");
     });
 
-    it("collections without sub-collections shouldn't have chevron icon", () => {
+    it("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection")
         .parent()
