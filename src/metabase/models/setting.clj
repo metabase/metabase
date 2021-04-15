@@ -454,7 +454,7 @@
   "Register a new Setting with a map of `SettingDefinition` attributes. Returns the map it was passed. This is used
   internally be `defsetting`; you shouldn't need to use it yourself."
   [{setting-name :name, setting-ns :namespace, setting-type :type, default :default, :as setting}]
-  (let [munged-name (munge-setting-name setting-name)]
+  (let [munged-name (munge-setting-name (name setting-name))]
     (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
                (merge
                 {:name        setting-name
@@ -477,11 +477,8 @@
         (when (not= setting-ns (:namespace registered-setting))
           (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
                           {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
-      (when-let [same-munge (and (not= (str setting-name) munged-name) ;; ensure no two things with different names
-                                 ;; collide in env var lookup. this is linear over the environment but only once per
-                                 ;; defsetting. Can create an index if we need.
-                                 (first (filter (comp #{munged-name} :munged-name)
-                                                (vals @registered-settings))))]
+      (when-let [same-munge (first (filter (comp #{munged-name} :munged-name)
+                                           (vals @registered-settings)))]
         (when (not= setting-name (:name same-munge)) ;; redefinitions are fine
           (throw (ex-info (tru "Setting names in would collide: {0} and {1}"
                                 setting-name (:name same-munge))

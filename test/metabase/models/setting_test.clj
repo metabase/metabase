@@ -567,6 +567,28 @@
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))
+  (testing "Munge collision on first definition"
+    (defsetting ^:private test-setting-normal
+      "Test setting - this only shows up in dev (6)"
+      :visibility :internal)
+    (is (= {:existing-setting {:name :test-setting-normal, :munged-name "test-setting-normal"},
+            :new-setting {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
+           (m/map-vals #(select-keys % [:name :munged-name])
+                       (try (defsetting ^:private test-setting-normal??
+                              "Test setting - this only shows up in dev (6)"
+                              :visibility :internal)
+                            (catch Exception e (ex-data e)))))))
+  (testing "Munge collision on second definition"
+    (defsetting ^:private test-setting-normal-1??
+      "Test setting - this only shows up in dev (6)"
+      :visibility :internal)
+    (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
+             :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
+           (m/map-vals #(select-keys % [:name :munged-name])
+                       (try (defsetting ^:private test-setting-normal-1
+                              "Test setting - this only shows up in dev (6)"
+                              :visibility :internal)
+                            (catch Exception e (ex-data e)))))))
   (testing "Removes characters not-compliant with shells"
-    (is (= "aaaa-bb-ccc"
-           (#'setting/munge-setting-name "aa'aa@#?-b@b-cc'?c?")))))
+    (is (= "aa1aa-b2b_cc3c"
+           (#'setting/munge-setting-name "aa1'aa@#?-b2@b_cc'3?c?")))))
