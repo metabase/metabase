@@ -2,8 +2,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import SandboxedPortal from "metabase/components/SandboxedPortal";
+import _ from "underscore";
 
+import SandboxedPortal from "metabase/components/SandboxedPortal";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
 
@@ -246,25 +247,30 @@ export default class Popover extends Component {
 
         this._best = best;
       }
-      if (this.props.sizeToFit) {
-        const body = tetherOptions.element.querySelector(".PopoverBody");
-        if (this._tether.attachment.top === "top") {
-          if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
-            body.classList.add("scroll-y");
-            body.classList.add("scroll-show");
-          }
-        } else if (this._tether.attachment.top === "bottom") {
-          if (constrainToScreen(body, "top", PAGE_PADDING)) {
-            body.classList.add("scroll-y");
-            body.classList.add("scroll-show");
-          }
-        }
-      }
 
       // finally set the best options
       this._setTetherOptions(tetherOptions, this._best);
+
+      if (this.props.sizeToFit) {
+        this.resizePopoverToFitWindow(tetherOptions);
+      }
     }
   }
+
+  resizePopoverToFitWindow = _.debounce(tetherOptions => {
+    const body = tetherOptions.element.querySelector(".PopoverBody");
+    if (this._tether.attachment.top === "top") {
+      if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
+        body.classList.add("scroll-y");
+        body.classList.add("scroll-show");
+      }
+    } else if (this._tether.attachment.top === "bottom") {
+      if (constrainToScreen(body, "top", PAGE_PADDING)) {
+        body.classList.add("scroll-y");
+        body.classList.add("scroll-show");
+      }
+    }
+  }, 50);
 
   _setTetherOptions(tetherOptions, o) {
     if (o) {
@@ -277,6 +283,8 @@ export default class Popover extends Component {
     }
     if (this._tether) {
       this._tether.setOptions(tetherOptions);
+
+      this._tether.enable();
       // tether keeps a 3-member history.
       // it seems to mutate viewport and page settings
       // it keeps in its history to be wrong.
