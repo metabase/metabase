@@ -77,6 +77,7 @@
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
+   :munged-name s/Str
    :namespace   s/Symbol
    :description s/Any            ; description is validated via the macro, not schema
    :default     s/Any
@@ -148,18 +149,28 @@
   (setting-name [this]
     (name this)))
 
+(defn- munge-setting-name
+  "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
+  [setting-nm]
+  (str/replace (name setting-nm) #"[^a-zA-Z0-9_-]*" ""))
+
 (defn- env-var-name
   "Get the env var corresponding to `setting-definition-or-name`.
    (This is used primarily for documentation purposes)."
   ^String [setting-definition-or-name]
-  (str "MB_" (str/upper-case (str/replace (setting-name setting-definition-or-name) "-" "_"))))
+  (str "MB_" (-> (setting-name setting-definition-or-name)
+                 munge-setting-name
+                 (str/replace "-" "_")
+                 str/upper-case)))
 
 (defn env-var-value
   "Get the value of `setting-definition-or-name` from the corresponding env var, if any.
-   The name of the Setting is converted to uppercase and dashes to underscores;
-   for example, a setting named `default-domain` can be set with the env var `MB_DEFAULT_DOMAIN`."
+   The name of the Setting is converted to uppercase and dashes to underscores; for example, a setting named
+  `default-domain` can be set with the env var `MB_DEFAULT_DOMAIN`. Note that this strips out characters that are not
+  legal for shells. Setting `foo-bar?` will expect to find the key `:mb-foo-bar` which will be sourced from the
+  environment variable `MB_FOO_BAR`."
   ^String [setting-definition-or-name]
-  (let [v (env/env (keyword (str "mb-" (setting-name setting-definition-or-name))))]
+  (let [v (env/env (keyword (str "mb-" (munge-setting-name (setting-name setting-definition-or-name)))))]
     (when (seq v)
       v)))
 
@@ -443,28 +454,40 @@
   "Register a new Setting with a map of `SettingDefinition` attributes. Returns the map it was passed. This is used
   internally be `defsetting`; you shouldn't need to use it yourself."
   [{setting-name :name, setting-ns :namespace, setting-type :type, default :default, :as setting}]
-  (u/prog1 (let [setting-type         (s/validate Type (or setting-type :string))]
-             (merge
-              {:name        setting-name
-               :namespace   setting-ns
-               :description nil
-               :type        setting-type
-               :default     default
-               :on-change   nil
-               :getter      (partial (default-getter-for-type setting-type) setting-name)
-               :setter      (partial (default-setter-for-type setting-type) setting-name)
-               :tag         (default-tag-for-type setting-type)
-               :visibility  :admin
-               :sensitive?  false
-               :cache?      true}
-              (dissoc setting :name :type :default)))
-    (s/validate SettingDefinition <>)
-    ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
-    (when-let [registered-setting (clojure.core/get @registered-settings setting-name)]
-      (when (not= setting-ns (:namespace registered-setting))
-        (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
-                        {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
-    (swap! registered-settings assoc setting-name <>)))
+  (let [munged-name (munge-setting-name setting-name)]
+    (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
+               (merge
+                {:name        setting-name
+                 :munged-name munged-name
+                 :namespace   setting-ns
+                 :description nil
+                 :type        setting-type
+                 :default     default
+                 :on-change   nil
+                 :getter      (partial (default-getter-for-type setting-type) setting-name)
+                 :setter      (partial (default-setter-for-type setting-type) setting-name)
+                 :tag         (default-tag-for-type setting-type)
+                 :visibility  :admin
+                 :sensitive?  false
+                 :cache?      true}
+                (dissoc setting :name :type :default)))
+      (s/validate SettingDefinition <>)
+      ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
+      (when-let [registered-setting (clojure.core/get @registered-settings setting-name)]
+        (when (not= setting-ns (:namespace registered-setting))
+          (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
+                          {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
+      (when-let [same-munge (and (not= (str setting-name) munged-name) ;; ensure no two things with different names
+                                 ;; collide in env var lookup. this is linear over the environment but only once per
+                                 ;; defsetting. Can create an index if we need.
+                                 (first (filter (comp #{munged-name} :munged-name)
+                                                (vals @registered-settings))))]
+        (when (not= setting-name (:name same-munge)) ;; redefinitions are fine
+          (throw (ex-info (tru "Setting names in would collide: {0} and {1}"
+                                setting-name (:name same-munge))
+                          {:existing-setting (dissoc same-munge :on-change :getter :setter)
+                           :new-setting      (dissoc <> :on-change :getter :setter)}))))
+      (swap! registered-settings assoc setting-name <>))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                defsetting macro                                                |

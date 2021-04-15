@@ -1,5 +1,6 @@
 (ns metabase.models.setting-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
             [metabase.test :as mt]
@@ -532,6 +533,7 @@
                    :cache? true,
                    :default nil,
                    :name :foo,
+                   :munged-name "foo"
                    :type :string,
                    :sensitive? false,
                    :tag 'java.lang.String,
@@ -541,3 +543,30 @@
           (is (= (str "Setting :foo already registered in " current-ns)
                  (ex-message e))))
         (finally (in-ns current-ns))))))
+
+(defsetting ^:private test-setting-with-question-mark?
+  "Test setting - this only shows up in dev (6)"
+  :visibility :internal)
+
+(deftest munged-setting-name-test
+  (testing "Only valid characters used for environment lookup"
+    (is (nil? (test-setting-with-question-mark?)))
+    ;; note now question mark on the environmental setting
+    (with-redefs [environ.core/env {:mb-test-setting-with-question-mark "resolved"}]
+      (binding [setting/*disable-cache* false]
+        (is (= "resolved" (test-setting-with-question-mark?))))))
+  (testing "Setting a setting that would munge the same throws an error"
+    (is (= {:existing-setting
+            {:name :test-setting-with-question-mark?
+             :munged-name "test-setting-with-question-mark"}
+            :new-setting
+            {:name :test-setting-with-question-mark????
+             :munged-name "test-setting-with-question-mark"}}
+           (m/map-vals #(select-keys % [:name :munged-name])
+                       (try (defsetting ^:private test-setting-with-question-mark????
+                              "Test setting - this only shows up in dev (6)"
+                              :visibility :internal)
+                            (catch Exception e (ex-data e)))))))
+  (testing "Removes characters not-compliant with shells"
+    (is (= "aaaa-bb-ccc"
+           (#'setting/munge-setting-name "aa'aa@#?-b@b-cc'?c?")))))
