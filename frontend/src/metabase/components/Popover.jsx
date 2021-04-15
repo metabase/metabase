@@ -250,10 +250,10 @@ export default class Popover extends Component {
 
       // finally set the best options
       this._setTetherOptions(tetherOptions, this._best);
+    }
 
-      if (this.props.sizeToFit) {
-        this.resizePopoverToFitWindow(tetherOptions);
-      }
+    if (this.props.sizeToFit) {
+      this.resizePopoverToFitWindow(tetherOptions);
     }
   }
 
