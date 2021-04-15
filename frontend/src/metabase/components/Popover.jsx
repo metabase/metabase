@@ -5,8 +5,6 @@ import ReactDOM from "react-dom";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
 
-import { constrainToScreen } from "metabase/lib/dom";
-
 import cx from "classnames";
 
 import "./Popover.css";
@@ -306,13 +304,20 @@ export default class Popover extends Component {
             target: this._getTargetElement(),
           };
           if (this.props.tetherOptions) {
-            if (
-              this.props.sizeToFit &&
-              this.props.tetherOptions.targetAttachment.includes("top")
-            ) {
-              this.constrainPopoverToBetweenViewportTopAndTargetTop(
-                tetherOptions,
-              );
+            if (this.props.sizeToFit) {
+              if (this.props.tetherOptions.targetAttachment.includes("top")) {
+                this.constrainPopoverToBetweenViewportAndTarget(
+                  tetherOptions,
+                  "top",
+                );
+              } else if (
+                this.props.tetherOptions.targetAttachment.includes("bottom")
+              ) {
+                this.constrainPopoverToBetweenViewportAndTarget(
+                  tetherOptions,
+                  "bottom",
+                );
+              }
             }
 
             this._setTetherOptions({
@@ -374,23 +379,22 @@ export default class Popover extends Component {
               this._best = best;
             }
 
-            if (
-              this.props.sizeToFit &&
-              this._best.targetAttachmentY === "top"
-            ) {
-              this.constrainPopoverToBetweenViewportTopAndTargetTop(
-                tetherOptions,
-              );
+            if (this.props.sizeToFit) {
+              if (this._best.targetAttachmentY === "top") {
+                this.constrainPopoverToBetweenViewportAndTarget(
+                  tetherOptions,
+                  "top",
+                );
+              } else if (this._best.targetAttachmentY === "bottom") {
+                this.constrainPopoverToBetweenViewportAndTarget(
+                  tetherOptions,
+                  "bottom",
+                );
+              }
             }
 
             // finally set the best options
             this._setTetherOptions(tetherOptions, this._best);
-          }
-
-          if (this.props.sizeToFit && this._tether.attachment.top === "top") {
-            this.constrainPopoverToBetweenViewportBottomAndTargetBottom(
-              tetherOptions,
-            );
           }
         },
       );
@@ -401,19 +405,17 @@ export default class Popover extends Component {
     }
   }
 
-  constrainPopoverToBetweenViewportTopAndTargetTop(tetherOptions) {
+  constrainPopoverToBetweenViewportAndTarget(tetherOptions, direction) {
     const body = tetherOptions.element.querySelector(".PopoverBody");
     const target = this._getTargetElement();
-    const top = target.getBoundingClientRect().top;
-    body.style.maxHeight = top - PAGE_PADDING + "px";
-    body.classList.add("scroll-y");
-    body.classList.add("scroll-show");
-  }
-
-  constrainPopoverToBetweenViewportBottomAndTargetBottom(tetherOptions) {
-    const body = tetherOptions.element.querySelector(".PopoverBody");
-    // contrainToScreen may mutate body.style.maxHeight
-    if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
+    const bodyHeight = body.getBoundingClientRect().height;
+    const space =
+      direction === "top"
+        ? target.getBoundingClientRect().top
+        : window.innerHeight - target.getBoundingClientRect().bottom;
+    const maxHeight = space - PAGE_PADDING;
+    if (bodyHeight > maxHeight) {
+      body.style.maxHeight = maxHeight + "px";
       body.classList.add("scroll-y");
       body.classList.add("scroll-show");
     }
