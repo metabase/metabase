@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import _ from "underscore";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
@@ -306,8 +305,16 @@ export default class Popover extends Component {
             element: popoverElement,
             target: this._getTargetElement(),
           };
-
           if (this.props.tetherOptions) {
+            if (
+              this.props.sizeToFit &&
+              this.props.tetherOptions.targetAttachment.includes("top")
+            ) {
+              this.constrainPopoverToBetweenViewportTopAndTargetTop(
+                tetherOptions,
+              );
+            }
+
             this._setTetherOptions({
               ...tetherOptions,
               ...this.props.tetherOptions,
@@ -367,12 +374,23 @@ export default class Popover extends Component {
               this._best = best;
             }
 
+            if (
+              this.props.sizeToFit &&
+              this._best.targetAttachmentY === "top"
+            ) {
+              this.constrainPopoverToBetweenViewportTopAndTargetTop(
+                tetherOptions,
+              );
+            }
+
             // finally set the best options
             this._setTetherOptions(tetherOptions, this._best);
           }
 
-          if (this.props.sizeToFit) {
-            this.resizePopoverToFitWindow(tetherOptions);
+          if (this.props.sizeToFit && this._tether.attachment.top === "top") {
+            this.constrainPopoverToBetweenViewportBottomAndTargetBottom(
+              tetherOptions,
+            );
           }
         },
       );
@@ -383,20 +401,23 @@ export default class Popover extends Component {
     }
   }
 
-  resizePopoverToFitWindow = _.debounce(tetherOptions => {
+  constrainPopoverToBetweenViewportTopAndTargetTop(tetherOptions) {
     const body = tetherOptions.element.querySelector(".PopoverBody");
-    if (this._tether.attachment.top === "top") {
-      if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
-        body.classList.add("scroll-y");
-        body.classList.add("scroll-show");
-      }
-    } else if (this._tether.attachment.top === "bottom") {
-      if (constrainToScreen(body, "top", PAGE_PADDING)) {
-        body.classList.add("scroll-y");
-        body.classList.add("scroll-show");
-      }
+    const target = this._getTargetElement();
+    const top = target.getBoundingClientRect().top;
+    body.style.maxHeight = top - PAGE_PADDING + "px";
+    body.classList.add("scroll-y");
+    body.classList.add("scroll-show");
+  }
+
+  constrainPopoverToBetweenViewportBottomAndTargetBottom(tetherOptions) {
+    const body = tetherOptions.element.querySelector(".PopoverBody");
+    // contrainToScreen may mutate body.style.maxHeight
+    if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
+      body.classList.add("scroll-y");
+      body.classList.add("scroll-show");
     }
-  }, 50);
+  }
 
   render() {
     return <span className="hide" />;
