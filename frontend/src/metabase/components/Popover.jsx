@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+import _ from "underscore";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
@@ -371,18 +372,7 @@ export default class Popover extends Component {
           }
 
           if (this.props.sizeToFit) {
-            const body = tetherOptions.element.querySelector(".PopoverBody");
-            if (this._tether.attachment.top === "top") {
-              if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
-                body.classList.add("scroll-y");
-                body.classList.add("scroll-show");
-              }
-            } else if (this._tether.attachment.top === "bottom") {
-              if (constrainToScreen(body, "top", PAGE_PADDING)) {
-                body.classList.add("scroll-y");
-                body.classList.add("scroll-show");
-              }
-            }
+            this.resizePopoverToFitWindow(tetherOptions);
           }
         },
       );
@@ -392,6 +382,21 @@ export default class Popover extends Component {
       }
     }
   }
+
+  resizePopoverToFitWindow = _.debounce(tetherOptions => {
+    const body = tetherOptions.element.querySelector(".PopoverBody");
+    if (this._tether.attachment.top === "top") {
+      if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
+        body.classList.add("scroll-y");
+        body.classList.add("scroll-show");
+      }
+    } else if (this._tether.attachment.top === "bottom") {
+      if (constrainToScreen(body, "top", PAGE_PADDING)) {
+        body.classList.add("scroll-y");
+        body.classList.add("scroll-show");
+      }
+    }
+  }, 50);
 
   render() {
     return <span className="hide" />;
