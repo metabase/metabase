@@ -303,99 +303,77 @@ export default class Popover extends Component {
             element: popoverElement,
             target: this._getTargetElement(),
           };
-          if (this.props.tetherOptions) {
-            if (this.props.sizeToFit) {
-              if (this.props.tetherOptions.targetAttachment.includes("top")) {
-                this.constrainPopoverToBetweenViewportAndTarget(
-                  tetherOptions,
-                  "top",
-                );
-              } else if (
-                this.props.tetherOptions.targetAttachment.includes("bottom")
-              ) {
-                this.constrainPopoverToBetweenViewportAndTarget(
-                  tetherOptions,
-                  "bottom",
-                );
-              }
-            }
 
-            this._setTetherOptions({
-              ...tetherOptions,
-              ...this.props.tetherOptions,
-            });
-          } else {
-            if (!this._best || !this.props.pinInitialAttachment) {
-              let best = {
-                attachmentX: "center",
-                attachmentY: "top",
-                targetAttachmentX: "center",
-                targetAttachmentY: "bottom",
-                offsetX: 0,
-                offsetY: 0,
-              };
+          if (!this._best || !this.props.pinInitialAttachment) {
+            let best = {
+              attachmentX: "center",
+              attachmentY: "top",
+              targetAttachmentX: "center",
+              targetAttachmentY: "bottom",
+              offsetX: 0,
+              offsetY: 0,
+            };
 
-              // horizontal
-              best = this._getBestAttachmentOptions(
-                tetherOptions,
-                best,
-                this.props.horizontalAttachments,
-                ["left", "right"],
-                (best, attachmentX) => ({
-                  ...best,
-                  attachmentX: attachmentX,
-                  targetAttachmentX: this.props.alignHorizontalEdge
-                    ? attachmentX
-                    : "center",
-                  offsetX: {
-                    center: 0,
-                    left: -this.props.targetOffsetX,
-                    right: this.props.targetOffsetX,
-                  }[attachmentX],
-                }),
-              );
+            // horizontal
+            best = this._getBestAttachmentOptions(
+              tetherOptions,
+              best,
+              this.props.horizontalAttachments,
+              ["left", "right"],
+              (best, attachmentX) => ({
+                ...best,
+                attachmentX: attachmentX,
+                targetAttachmentX: this.props.alignHorizontalEdge
+                  ? attachmentX
+                  : "center",
+                offsetX: {
+                  center: 0,
+                  left: -this.props.targetOffsetX,
+                  right: this.props.targetOffsetX,
+                }[attachmentX],
+              }),
+            );
 
-              // vertical
-              best = this._getBestAttachmentOptions(
-                tetherOptions,
-                best,
-                this.props.verticalAttachments,
-                ["top", "bottom"],
-                (best, attachmentY) => ({
-                  ...best,
-                  attachmentY: attachmentY,
-                  targetAttachmentY: (this.props.alignVerticalEdge
-                  ? attachmentY === "bottom"
-                  : attachmentY === "top")
-                    ? "bottom"
-                    : "top",
-                  offsetY: {
-                    top: this.props.targetOffsetY,
-                    bottom: -this.props.targetOffsetY,
-                  }[attachmentY],
-                }),
-              );
+            // vertical
+            best = this._getBestAttachmentOptions(
+              tetherOptions,
+              best,
+              this.props.verticalAttachments,
+              ["top", "bottom"],
+              (best, attachmentY) => ({
+                ...best,
+                attachmentY: attachmentY,
+                targetAttachmentY: (this.props.alignVerticalEdge
+                ? attachmentY === "bottom"
+                : attachmentY === "top")
+                  ? "bottom"
+                  : "top",
+                offsetY: {
+                  top: this.props.targetOffsetY,
+                  bottom: -this.props.targetOffsetY,
+                }[attachmentY],
+              }),
+            );
 
-              this._best = best;
-            }
-
-            if (this.props.sizeToFit) {
-              if (this._best.targetAttachmentY === "top") {
-                this.constrainPopoverToBetweenViewportAndTarget(
-                  tetherOptions,
-                  "top",
-                );
-              } else if (this._best.targetAttachmentY === "bottom") {
-                this.constrainPopoverToBetweenViewportAndTarget(
-                  tetherOptions,
-                  "bottom",
-                );
-              }
-            }
-
-            // finally set the best options
-            this._setTetherOptions(tetherOptions, this._best);
+            this._best = best;
           }
+
+          if (this.props.sizeToFit) {
+            if (this._best.targetAttachmentY === "top") {
+              this.constrainPopoverToBetweenViewportAndTarget(
+                tetherOptions,
+                "top",
+              );
+            } else if (this._best.targetAttachmentY === "bottom") {
+              this.constrainPopoverToBetweenViewportAndTarget(
+                tetherOptions,
+                "bottom",
+              );
+            }
+          }
+
+          // finally set the best options
+          this._setTetherOptions(tetherOptions, this._best);
         },
       );
     } else {
