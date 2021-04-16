@@ -464,30 +464,30 @@ describe("collection permissions", () => {
                   cy.findByText("Third collection").should("not.exist");
                 });
               });
+            });
 
-              describe("managing question from the question's edit dropdown", () => {
-                beforeEach(() => {
-                  cy.visit("/question/1");
-                  cy.icon("pencil").click();
-                  popover()
-                    .findByText("Add to dashboard")
-                    .click();
-                });
+            describe("managing question from the question's edit dropdown", () => {
+              beforeEach(() => {
+                cy.visit("/question/1");
+                cy.icon("pencil").click();
+                popover()
+                  .findByText("Add to dashboard")
+                  .click();
+              });
 
-                it("should not be offered to save question in collections they have `read` access to", () => {
-                  cy.get(".Modal")
-                    .findByText("Orders in a dashboard")
-                    .should("not.exist");
-                });
+              it("should not be offered to save question in collections they have `read` access to", () => {
+                cy.get(".Modal")
+                  .findByText("Orders in a dashboard")
+                  .should("not.exist");
+              });
 
-                it("should not be offered to save question in collections they have `read` access to when using search", () => {
-                  cy.get(".Modal").within(() => {
-                    cy.icon("search").click();
-                    cy.findByPlaceholderText("Search").type(
-                      "Orders in a dashboard{Enter}",
-                    );
-                    cy.findByText("Orders in a dashboard").should("not.exist");
-                  });
+              it("should not be offered to save question in collections they have `read` access to when using search", () => {
+                cy.get(".Modal").within(() => {
+                  cy.icon("search").click();
+                  cy.findByPlaceholderText("Search").type(
+                    "Orders in a dashboard{Enter}",
+                  );
+                  cy.findByText("Orders in a dashboard").should("not.exist");
                 });
               });
             });
