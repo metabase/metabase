@@ -399,6 +399,14 @@ describe("collection permissions", () => {
             });
 
             describe("managing dashboard from the dashboard's edit menu", () => {
+              it("should not be offered to change title and description for dashboard in collections they have `read` access to (metabase#15280)", () => {
+                cy.visit("/dashboard/1");
+                cy.icon("ellipsis").click();
+                popover()
+                  .findByText("Change title and description")
+                  .should("not.exist");
+              });
+
               it("should not be offered to duplicate dashboard in collections they have `read` access to", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
