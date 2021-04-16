@@ -329,15 +329,17 @@ export default class DashboardHeader extends Component {
           </Link>,
         );
       }
-      extraButtons.push(
-        <Link
-          className={extraButtonClassNames}
-          to={location.pathname + "/archive"}
-          data-metabase-event={"Dashboard;Archive"}
-        >
-          {t`Archive`}
-        </Link>,
-      );
+      if (canEdit) {
+        extraButtons.push(
+          <Link
+            className={extraButtonClassNames}
+            to={location.pathname + "/archive"}
+            data-metabase-event={"Dashboard;Archive"}
+          >
+            {t`Archive`}
+          </Link>,
+        );
+      }
     }
 
     buttons.push(...getDashboardActions(this, this.props));

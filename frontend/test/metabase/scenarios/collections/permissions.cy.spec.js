@@ -407,6 +407,14 @@ describe("collection permissions", () => {
                   .should("not.exist");
               });
 
+              it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
+                cy.visit("/dashboard/1");
+                cy.icon("ellipsis").click();
+                popover()
+                  .findByText("Archive")
+                  .should("not.exist");
+              });
+
               it("should not be offered to duplicate dashboard in collections they have `read` access to", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
