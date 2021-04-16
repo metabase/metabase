@@ -56,7 +56,7 @@ export default class ItemPicker extends React.Component {
   };
 
   // returns a list of "crumbs" starting with the "root" collection
-  _getCrumbs(collection, collectionsById) {
+  getCrumbs(collection, collectionsById) {
     if (collection && collection.path) {
       return [
         ...collection.path.map(id => [
@@ -76,7 +76,7 @@ export default class ItemPicker extends React.Component {
     }
   }
 
-  _checkHasWritePermissionForItem(item, models) {
+  checkHasWritePermissionForItem(item, models) {
     const { collectionsById } = this.props;
 
     // if user is selecting a collection, they must have a `write` access to it
@@ -92,13 +92,13 @@ export default class ItemPicker extends React.Component {
     return collection.can_write;
   }
 
-  _checkCollectionHasChildWithWritePermission(collection) {
+  checkCollectionHasChildWithWritePermission(collection) {
     const hasChildren = collection.children.length > 0;
     if (!hasChildren) {
       return collection.can_write;
     }
     return collection.children.some(child =>
-      this._checkCollectionHasChildWithWritePermission(child),
+      this.checkCollectionHasChildWithWritePermission(child),
     );
   }
 
@@ -119,7 +119,7 @@ export default class ItemPicker extends React.Component {
       this.props.models.filter(model => model !== "collection").length > 0;
 
     const collection = collectionsById[parentId];
-    const crumbs = this._getCrumbs(collection, collectionsById);
+    const crumbs = this.getCrumbs(collection, collectionsById);
 
     let allCollections = (collection && collection.children) || [];
 
@@ -130,7 +130,7 @@ export default class ItemPicker extends React.Component {
 
     // ensure we only display collections a user can write to
     allCollections = allCollections.filter(collection =>
-      this._checkCollectionHasChildWithWritePermission(collection),
+      this.checkCollectionHasChildWithWritePermission(collection),
     );
 
     // code below assumes items have a "model" property
