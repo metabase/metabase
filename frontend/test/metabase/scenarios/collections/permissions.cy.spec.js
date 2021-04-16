@@ -542,6 +542,16 @@ describe("collection permissions", () => {
                   "not.exist",
                 );
               });
+
+              it("should not see question revert buttons (metabase#13229)", () => {
+                cy.signIn(user);
+                cy.visit("/question/1");
+                cy.icon("pencil").click();
+                cy.findByText("View revision history").click();
+                cy.findAllByRole("button", { name: "Revert" }).should(
+                  "not.exist",
+                );
+              });
             });
           });
         });
