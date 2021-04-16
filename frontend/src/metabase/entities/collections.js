@@ -81,15 +81,17 @@ const Collections = createEntity({
     getInitialCollectionId: createSelector(
       [
         // these are listed in order of priority
+        state => state.entities.collections,
         (state, { collectionId }) => collectionId,
         (state, { params }) => (params ? params.collectionId : undefined),
         (state, { location }) =>
           location && location.query ? location.query.collectionId : undefined,
         getUserDefaultCollectionId,
       ],
-      (...collectionIds) => {
+      (collections, ...collectionIds) => {
         for (const collectionId of collectionIds) {
-          if (collectionId !== undefined) {
+          const collection = collections[collectionId];
+          if (collection && collection.can_write) {
             return canonicalCollectionId(collectionId);
           }
         }
