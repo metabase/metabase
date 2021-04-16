@@ -36,6 +36,21 @@ describe("collection permissions", () => {
                 cy.signIn(user);
               });
 
+              describe("create dashboard", () => {
+                it("should offer to save dashboard to a currently opened collection", () => {
+                  cy.visit("/collection/root");
+                  cy.get("[class*=CollectionSidebar]").within(() => {
+                    cy.findByText("First collection").click();
+                    cy.findByText("Second collection").click();
+                  });
+                  cy.icon("add").click();
+                  cy.findByText("New dashboard").click();
+                  cy.get(".Modal")
+                    .findByText("Second collection")
+                    .should("exist");
+                });
+              });
+
               describe("pin", () => {
                 it("pinning should work properly for both questions and dashboards", () => {
                   cy.visit("/collection/root");
