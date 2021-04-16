@@ -366,11 +366,6 @@ describe("collection permissions", () => {
               cy.signIn(user);
             });
 
-            it("should not be offered to duplicate dashboard in collections they have `read` access to", () => {
-              cy.visit("/collection/root");
-              findEllipsisMenuFor("Orders in a dashboard").should("not.exist");
-            });
-
             ["/", "/collection/root"].forEach(route => {
               it.skip("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
                 const { first_name, last_name } = USERS[user];
