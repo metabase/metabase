@@ -7,6 +7,7 @@ export default function QuestionDataSelector({ query, triggerElement }) {
   return (
     <DatabaseSchemaAndTableDataSelector
       hasTableSearch
+      query={query}
       databaseQuery={{ saved: true }}
       selectedDatabaseId={query.databaseId()}
       selectedTableId={query.tableId()}

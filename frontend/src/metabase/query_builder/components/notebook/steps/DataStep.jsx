@@ -14,6 +14,7 @@ function DataStep({ color, query, databases, updateQuery }) {
     <NotebookCell color={color}>
       <DatabaseSchemaAndTableDataSelector
         hasTableSearch
+        query={query}
         databaseQuery={{ saved: true }}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={query.tableId()}
