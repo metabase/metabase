@@ -92,13 +92,12 @@ export default class ItemPicker extends React.Component {
     return collection.can_write;
   }
 
-  checkCollectionHasChildWithWritePermission(collection) {
-    const hasChildren = collection.children.length > 0;
-    if (!hasChildren) {
-      return collection.can_write;
-    }
-    return collection.children.some(child =>
-      this.checkCollectionHasChildWithWritePermission(child),
+  checkCanWriteToCollectionOrItsChildren(collection) {
+    return (
+      collection.can_write ||
+      collection.children.some(child =>
+        this.checkCanWriteToCollectionOrItsChildren(child),
+      )
     );
   }
 
@@ -130,7 +129,7 @@ export default class ItemPicker extends React.Component {
 
     // ensure we only display collections a user can write to
     allCollections = allCollections.filter(collection =>
-      this.checkCollectionHasChildWithWritePermission(collection),
+      this.checkCanWriteToCollectionOrItsChildren(collection),
     );
 
     // code below assumes items have a "model" property
