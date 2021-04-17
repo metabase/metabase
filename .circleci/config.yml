@@ -20,7 +20,7 @@ executors:
       - image: maildev/maildev
         environment:
           MB_EMAIL_SMTP_HOST: maildev
-          MB_EMAIL_SMTP_PORT: 1025
+          MB_EMAIL_SMTP_PORT: 25
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of

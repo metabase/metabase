@@ -373,10 +373,10 @@ describe("scenarios > admin > settings", () => {
 
     it("should send a test email for a valid SMTP configuration", () => {
       // We must clear maildev inbox before each run - this will be extracted and automated
-      cy.request("DELETE", "http://localhost:1080/email/all");
+      cy.request("DELETE", "http://localhost:80/email/all");
       cy.request("PUT", "/api/setting", {
         "email-smtp-host": "localhost",
-        "email-smtp-port": "1025",
+        "email-smtp-port": "25",
         "email-smtp-username": "admin",
         "email-smtp-password": "admin",
         "email-smtp-security": "none",
@@ -385,7 +385,7 @@ describe("scenarios > admin > settings", () => {
       cy.visit("/admin/settings/email");
       cy.findByText("Send test email").click();
       cy.findByText("Sent!");
-      cy.request("GET", "http://localhost:1080/email").then(({ body }) => {
+      cy.request("GET", "http://localhost:80/email").then(({ body }) => {
         const EMAIL_BODY = body[0].text;
         expect(EMAIL_BODY).to.include("Your Metabase emails are working");
       });
