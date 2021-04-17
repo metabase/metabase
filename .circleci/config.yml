@@ -12,10 +12,15 @@ executors:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
 
   # CircleCI base (Lein 2.9.5) + Node + Headless browsers + Clojure CLI - big one
+  # Maildev runs by default with all Cypress tests
   clojure-and-node-and-browsers:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
+      - image: maildev/maildev
+        environment:
+          MB_EMAIL_SMTP_HOST: maildev
+          MB_EMAIL_SMTP_PORT: 1025
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
@@ -173,15 +178,6 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: metabase/qa-databases:mysql-sample-8
-  
-  fe-maildev:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.9.5-node-browsers
-      - image: maildev/maildev
-        environment:
-          MB_EMAIL_SMTP_HOST: maildev
-          MB_EMAIL_SMTP_PORT: 25
 
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
@@ -1233,15 +1229,6 @@ workflows:
           before-steps:
             - wait-for-port:
                 port: 3306
-          <<: *Matrix
-      
-      - fe-tests-cypress:
-          name: fe-tests-cypress-maildev-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          e: fe-maildev
-          cypress-group: "maildev"
-          only-single-database: true
           <<: *Matrix
 
   nightly:
