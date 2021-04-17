@@ -110,13 +110,13 @@ Once your application is working properly over HTTPS, we recommend setting an ad
 
 # RAM usage monitoring
 
-Starting from release 39, Metabase installs the CloudWatch agent into the Elastic Beanstalk deployment. You can now control the RAM usage among many other metrics of your Metabase instance by sending all data about your deployment into CloudWatch. 
+Metabase installs the CloudWatch agent into the Elastic Beanstalk deployment, which sends data about your deployment to CloudWatch, allowing you to track your Metabase's RAM usage and other metrics.
 
-To make this happen you need to allow your Elastic Beanstalk environment to send the metrics to Cloudwatch by following the steps in [this section of the AWS documentation](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/customize-containers-cw.html#customize-containers-cw-policy)
+To set up CloudWatch for your Elastic Beanstalk environment, follow the steps in the AWS documentation to [grant permissions to publish CloudWatch metrics](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/customize-containers-cw.html#customize-containers-cw-policy).
 
 # Automated security assessment
 
-Also, starting from release 39, Metabase installs the AWS Inspector into the Elastic Beanstalk deployment, so you can have real time assessments about your instance's security that you can integrate into other AWS products. You only need to enable inspector in AWS's console to start the automated checks on your instance.
+Metabase installs the AWS Inspector into the Elastic Beanstalk deployment, so you can have real-time assessments about your instance's security that you can integrate into other AWS products. To start the automated checks on your instance, you only need to enable the Inspector in AWS's console.
 
 # About NGINX configs inside Elastic Beanstalk deployments
 
