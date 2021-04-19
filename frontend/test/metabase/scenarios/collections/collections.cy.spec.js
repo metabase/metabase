@@ -486,6 +486,18 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("4 items selected");
     });
 
+    it("should be possible to deselect all items using checkbox (metabase#14705)", () => {
+      cy.visit("/collection/root");
+      selectItemUsingCheckbox("Orders");
+      cy.findByText("1 item selected").should("be.visible");
+      cy.icon("dash").click();
+      bulkActionsPanel().within(() => {
+        cy.icon("check").click();
+      });
+      cy.icon("check").should("not.exist");
+      bulkActionsPanel().should("not.be.visible");
+    });
+
     it.skip("should be possible to select pinned item using checkbox (metabase#15338)", () => {
       cy.visit("/collection/root");
       openEllipsisMenuFor("Orders");
@@ -539,4 +551,8 @@ function selectItemUsingCheckbox(item, icon = "table") {
         .should("be.visible")
         .click();
     });
+}
+
+function bulkActionsPanel() {
+  return cy.get("[class*=Card]");
 }
