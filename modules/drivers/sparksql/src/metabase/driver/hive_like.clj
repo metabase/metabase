@@ -26,11 +26,11 @@
   :sunday)
 
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :hive-like
-  [driver]
+  [driver database]
   ;; The Hive JDBC driver doesn't support `Connection.isValid()`, so we need to supply a test query for c3p0 to use to
   ;; validate connections upon checkout.
   (merge
-   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver)
+   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
    {"preferredTestQuery" "SELECT 1"}))
 
 (defmethod sql-jdbc.sync/database-type->base-type :hive-like
