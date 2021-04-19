@@ -80,8 +80,8 @@ const Collections = createEntity({
     ),
     getInitialCollectionId: createSelector(
       [
-        // these are listed in order of priority
         state => state.entities.collections,
+        // these are listed in order of priority
         (state, { collectionId }) => collectionId,
         (state, { params }) => (params ? params.collectionId : undefined),
         (state, { location }) =>
