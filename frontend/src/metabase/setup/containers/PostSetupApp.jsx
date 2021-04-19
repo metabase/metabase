@@ -40,9 +40,8 @@ export default class PostSetupApp extends Component {
           style={{ maxWidth: 587 }}
           className="ml-auto mr-auto mt-auto mb-auto py2"
         >
-          <CandidateListLoader
-            databaseId={this.props.params.databaseId}
-            children={({ candidates, sampleCandidates, isSample }) => {
+          <CandidateListLoader databaseId={this.props.params.databaseId}>
+            {({ candidates, sampleCandidates, isSample }) => {
               if (!candidates) {
                 return (
                   <div>
@@ -87,7 +86,7 @@ export default class PostSetupApp extends Component {
                 </Card>
               );
             }}
-          />
+          </CandidateListLoader>
           <div className="m4 text-centered">
             <Link
               to="/"
