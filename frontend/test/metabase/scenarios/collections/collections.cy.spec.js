@@ -491,13 +491,20 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("First Collection");
     });
 
-    it.skip("should let be possible to select all items using checkbox (metabase#14705)", () => {
+    it("should be possible to apply bulk selection to items (metabase#14705)", () => {
       cy.visit("/collection/root");
       selectItemUsingCheckbox("Orders");
       cy.findByText("1 item selected").should("be.visible");
+      // Select all
       cy.icon("dash").click();
       cy.icon("dash").should("not.exist");
       cy.findByText("4 items selected");
+      // Deselect all
+      cy.findByTestId("bulk-action-bar").within(() => {
+        cy.icon("check").click();
+      });
+      cy.icon("check").should("not.exist");
+      cy.findByTestId("bulk-action-bar").should("not.be.visible");
     });
 
     it.skip("should be possible to select pinned item using checkbox (metabase#15338)", () => {
