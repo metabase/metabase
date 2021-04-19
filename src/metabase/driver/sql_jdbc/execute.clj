@@ -10,6 +10,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
             [metabase.driver.sql-jdbc.execute.old-impl :as execute.old]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
             [metabase.mbql.util :as mbql.u]
@@ -133,6 +134,15 @@
   ^DataSource [database]
   (:datasource (sql-jdbc.conn/db->pooled-connection-spec database)))
 
+(defn datasource-with-diagnostic-info!
+  "Fetch the connection pool `DataSource` associated with `database`, while also recording diagnostic info for the
+  pool. To be used in conjunction with `sql-jdbc.execute.diagnostic/capturing-diagnostic-info`."
+  {:added "0.40.0"}
+  ^DataSource [driver database]
+  (let [ds (datasource database)]
+    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool driver (u/the-id database) ds)
+    ds))
+
 (defn set-time-zone-if-supported!
   "Execute `set-timezone-sql`, if implemented by driver, to set the session time zone. This way of setting the time zone
   should be considered deprecated in favor of implementing `connection-with-time-zone` directly."
@@ -177,7 +187,7 @@
 
 (defmethod connection-with-timezone :sql-jdbc
   [driver database ^String timezone-id]
-  (let [conn (.getConnection (datasource database))]
+  (let [conn (.getConnection (datasource-with-diagnostic-info! driver database))]
     (try
       (set-best-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn timezone-id)
