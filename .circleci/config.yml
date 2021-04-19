@@ -12,10 +12,12 @@ executors:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
 
   # CircleCI base (Lein 2.9.5) + Node + Headless browsers + Clojure CLI - big one
+  # Maildev runs by default with all Cypress tests
   clojure-and-node-and-browsers:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
+      - image: maildev/maildev
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
