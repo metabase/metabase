@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-// return collections that aren't personal and aren't archived
 export function nonPersonalCollection(collection) {
   // @TODO - should this be an API thing?
   return !collection.personal_owner_id && !collection.archived;
