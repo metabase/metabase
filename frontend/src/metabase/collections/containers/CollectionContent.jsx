@@ -180,6 +180,8 @@ export default class CollectionContent extends React.Component {
         </Box>
         <BulkActions
           selected={selected}
+          onSelectAll={this.props.onSelectAll}
+          onSelectNone={this.props.onSelectNone}
           handleBulkArchive={this.handleBulkArchive}
           handleBulkMoveStart={this.handleBulkMoveStart}
           handleBulkMove={this.handleBulkMove}
