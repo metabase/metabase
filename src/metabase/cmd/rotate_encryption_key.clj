@@ -19,7 +19,7 @@
     (jdbc/with-db-transaction [t-conn (mdb.conn/jdbc-spec)]
       (doseq [[key value] (db/select-field->field :key :value Setting)]
         (when (encrypt/possibly-encrypted-string? value)
-          (throw (Exception. "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt files")))
+          (throw (Exception. "MB_ENCRYPTION_SECRET_KEY does not correctly decrypt files")))
         (if (= key "settings-last-updated")
           (cache/update-settings-last-updated!)
           (jdbc/update! t-conn
@@ -32,4 +32,4 @@
                       {:details (encrypt-fn (json/encode details))}
                       ["metabase_database.id = ?" id])
         (when (encrypt/possibly-encrypted-string? details)
-          (throw (Exception. "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt files")))))))
+          (throw (Exception. "MB_ENCRYPTION_SECRET_KEY does not correctly decrypt files")))))))
