@@ -74,7 +74,7 @@ class CollectionSidebar extends React.Component {
   render() {
     const { currentUser, isRoot, collectionId, list } = this.props;
     return (
-      <Sidebar w={340} pt={3}>
+      <Sidebar w={340} pt={3} data-testid="sidebar">
         <CollectionLink
           to={Urls.collection("root")}
           selected={isRoot}
