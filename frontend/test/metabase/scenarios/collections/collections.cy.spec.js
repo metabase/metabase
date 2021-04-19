@@ -463,9 +463,30 @@ describe("scenarios > collection_defaults", () => {
 
     it("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
       cy.visit("/collection/root");
-      cy.findByText("Your personal collection")
+      cy.findByTestId("sidebar")
+        .as("sidebar")
+        .findByText("Your personal collection")
         .parent()
         .find(".Icon-chevronright")
+        .should("not.exist");
+
+      // Ensure if sub-collection is archived, the chevron is not displayed
+      cy.get("@sidebar")
+        .findByText("First collection")
+        .click()
+        .findByText("Second collection")
+        .click();
+      cy.icon("pencil").click();
+      popover()
+        .findByText("Archive this collection")
+        .click();
+      cy.get(".Modal")
+        .findByRole("button", { name: "Archive" })
+        .click();
+      cy.get("@sidebar")
+        .findByText("First collection")
+        .parent()
+        .find(".Icon-chevrondown")
         .should("not.exist");
     });
 
