@@ -67,6 +67,10 @@ class CollectionSidebar extends React.Component {
       }),
     });
   };
+
+  // TODO Should we update the API to filter archived collections?
+  filterPersonalCollections = collection => !collection.archived;
+
   render() {
     const { currentUser, isRoot, collectionId, list } = this.props;
     return (
@@ -97,6 +101,7 @@ class CollectionSidebar extends React.Component {
               onOpen={this.onOpen}
               collections={currentUserPersonalCollections(list, currentUser.id)}
               initialIcon="person"
+              filter={this.filterPersonalCollections}
               currentCollection={collectionId}
             />
           </Box>
