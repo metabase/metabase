@@ -76,30 +76,6 @@ export default class Tooltip extends Component {
         `Tooltip::componentDidMount: no DOM node for tooltip ${this.props.tooltip}`,
       );
     }
-
-    this._element = document.createElement("div");
-    this.componentDidUpdate();
-  }
-
-  componentDidUpdate() {
-    const { isEnabled, tooltip } = this.props;
-    const isOpen =
-      this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
-    if (tooltip && isEnabled && isOpen) {
-      ReactDOM.unstable_renderSubtreeIntoContainer(
-        this,
-        <TooltipPopover
-          isOpen={true}
-          target={this}
-          hasArrow
-          {...this.props}
-          children={this.props.tooltip}
-        />,
-        this._element,
-      );
-    } else {
-      ReactDOM.unmountComponentAtNode(this._element);
-    }
   }
 
   componentWillUnmount() {
@@ -114,9 +90,6 @@ export default class Tooltip extends Component {
       console.warn(
         `Tooltip::componentWillUnmount: no DOM node for tooltip ${this.props.tooltip}`,
       );
-    }
-    if (this._element) {
-      ReactDOM.unmountComponentAtNode(this._element);
     }
     clearTimeout(this.timer);
   }
@@ -144,6 +117,22 @@ export default class Tooltip extends Component {
   };
 
   render() {
-    return React.Children.only(this.props.children);
+    const { isEnabled, tooltip } = this.props;
+    const isOpen =
+      this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
+    return (
+      <React.Fragment>
+        {React.Children.only(this.props.children)}
+        {tooltip && isEnabled && isOpen && (
+          <TooltipPopover
+            isOpen={true}
+            target={this}
+            hasArrow
+            {...this.props}
+            children={this.props.tooltip}
+          />
+        )}
+      </React.Fragment>
+    );
   }
 }

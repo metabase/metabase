@@ -53,11 +53,11 @@ export default class MetricQuestionsContainer extends Component {
     await actions.wrappedFetchMetricQuestions(this.props, this.props.metricId);
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }

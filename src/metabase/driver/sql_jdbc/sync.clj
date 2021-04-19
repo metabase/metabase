@@ -10,12 +10,13 @@
 (p/import-vars
  [i
   active-tables
-  column->special-type
+  column->semantic-type
   database-type->base-type
   db-default-timezone
   excluded-schemas
   fallback-metadata-query
-  have-select-privilege?]
+  have-select-privilege?
+  syncable-schemas]
 
  [sync.describe-table
   add-table-pks

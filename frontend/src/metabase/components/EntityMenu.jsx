@@ -19,7 +19,7 @@ type Props = {
   triggerIcon: string,
   className?: string,
   tooltip?: string,
-  triggerProps: object,
+  triggerProps: Object,
 };
 
 class EntityMenu extends Component {

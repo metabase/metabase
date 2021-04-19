@@ -39,14 +39,15 @@
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:parameter_mappings :parameter-mappings, :visualization_settings :json})
+          :types       (constantly {:parameter_mappings     :parameter-mappings
+                                    :visualization_settings :visualization-settings})
           :pre-insert  pre-insert
           :post-select #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY})})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:perms-objects-set  perms-objects-set
-          :can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         (partial i/current-user-has-full-permissions? :write)}))
+         {:perms-objects-set perms-objects-set
+          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------

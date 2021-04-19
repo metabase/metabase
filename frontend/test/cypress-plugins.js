@@ -26,4 +26,17 @@ module.exports = (on, config) => {
   };
 
   on("file:preprocessor", webpack(options));
+
+  /********************************************************************
+   **                         BROWSERS                               **
+   ********************************************************************/
+
+  //  Open dev tools in Chrome by default
+  on("before:browser:launch", (browser = {}, launchOptions) => {
+    if (browser.name === "chrome") {
+      launchOptions.args.push("--auto-open-devtools-for-tabs");
+
+      return launchOptions;
+    }
+  });
 };

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question";
 

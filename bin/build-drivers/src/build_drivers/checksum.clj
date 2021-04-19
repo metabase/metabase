@@ -29,12 +29,14 @@
     (u/filename u/project-root-directory "project.clj")
     (mapcat (fn [dir]
               (try
-                (u/find-files dir #(str/ends-with? % ".clj"))
+                (u/find-files dir (fn [s]
+                                    (or (str/ends-with? s ".clj")
+                                        (str/ends-with? s ".cljc"))))
                 (catch Throwable _
                   [])))
             [(u/filename u/project-root-directory "src")
              (u/filename u/project-root-directory "enterprise" "backend" "src")
-             (u/filename u/project-root-directory "backend" "mbql")]))))
+             (u/filename u/project-root-directory "shared" "src")]))))
 
 (defn metabase-source-checksum
   "Checksum of Metabase backend source files and `project.clj`."

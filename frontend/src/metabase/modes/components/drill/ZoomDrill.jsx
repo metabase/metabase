@@ -1,5 +1,3 @@
-/* @flow */
-
 import { drillDownForDimensions } from "metabase/modes/lib/actions";
 
 import type {

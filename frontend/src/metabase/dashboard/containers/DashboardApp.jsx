@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -85,7 +84,7 @@ export default class DashboardApp extends Component {
     addCardOnLoad: null,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const options = parseHashOptions(window.location.hash);
     if (options.add) {
       this.setState({ addCardOnLoad: parseInt(options.add) });

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 import d3 from "d3";
 import { t } from "ttag";

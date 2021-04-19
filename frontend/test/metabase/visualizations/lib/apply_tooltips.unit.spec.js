@@ -158,7 +158,13 @@ describe("getClickHoverObject", () => {
     const cols = [StringColumn(), NumberColumn()];
     const rows = [["foobar", 1], [null, 2], ["barfoo", 3]];
     const otherArgs = {
-      ...seriesAndData({ cols, rows }),
+      ...seriesAndData({
+        cols,
+        rows,
+        settings: {
+          "graph.x_axis.scale": "ordinal",
+        },
+      }),
       seriesIndex: 0,
       classList: [],
       event: {},
@@ -169,9 +175,9 @@ describe("getClickHoverObject", () => {
   });
 });
 
-function seriesAndData({ cols, rows }) {
+function seriesAndData({ cols, rows, settings = {} }) {
   const series = [{ data: { cols, rows }, card: {} }];
-  const datas = getDatas({ series, settings: {} });
+  const datas = getDatas({ series, settings });
   const groups = [
     [
       {

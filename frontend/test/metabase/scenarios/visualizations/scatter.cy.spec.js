@@ -1,14 +1,20 @@
 import { restore, visitQuestionAdhoc, popover } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
 
 const testQuery = {
   database: 1,
   query: {
     "source-table": ORDERS_ID,
-    aggregation: [["count"], ["distinct", ["field-id", ORDERS.PRODUCT_ID]]],
-    breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"]],
+    aggregation: [
+      ["count"],
+      [
+        "distinct",
+        ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
+      ],
+    ],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
   },
   type: "query",
 };
@@ -31,16 +37,11 @@ describe("scenarios > visualizations > scatter", () => {
       },
     });
 
-    cy.wait("@dataset");
-
-    cy.get(".bubble")
-      .last()
-      .trigger("mousemove");
-
+    triggerPopoverForBubble();
     popover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Count:");
-      cy.findByText("Distinct values of Product ID:");
+      cy.findByText(/Distinct values of Products? → ID:/);
     });
   });
 
@@ -62,12 +63,7 @@ describe("scenarios > visualizations > scatter", () => {
       },
     });
 
-    cy.wait("@dataset");
-
-    cy.get(".bubble")
-      .last()
-      .trigger("mousemove");
-
+    triggerPopoverForBubble();
     popover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Orders count:");
@@ -75,3 +71,17 @@ describe("scenarios > visualizations > scatter", () => {
     });
   });
 });
+
+function triggerPopoverForBubble(index = 13) {
+  cy.wait("@dataset");
+  // Hack that is needed because of the flakiness caused by adding throttle to the ExplicitSize component
+  // See: https://github.com/metabase/metabase/pull/15235
+  cy.get("[class*=ViewFooter]").within(() => {
+    cy.icon("table2").click(); // Switch to the tabular view...
+    cy.icon("bubble").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
+  });
+
+  cy.get(".bubble")
+    .eq(index) // Random bubble
+    .trigger("mousemove");
+}

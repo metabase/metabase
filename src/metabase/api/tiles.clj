@@ -52,8 +52,8 @@
   (let [top-left      (x+y+zoom->lat-lon      x       y  zoom)
         bottom-right  (x+y+zoom->lat-lon (inc x) (inc y) zoom)
         inside-filter [:inside
-                       [:field-id lat-field-id]
-                       [:field-id lon-field-id]
+                       [:field lat-field-id nil]
+                       [:field lon-field-id nil]
                        (top-left :lat)
                        (top-left :lon)
                        (bottom-right :lat)

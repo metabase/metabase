@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import d3 from "d3";
 import _ from "underscore";
 
@@ -487,7 +485,14 @@ function computeXAxisMargin(chart) {
 export function checkXAxisLabelOverlap(chart, selector = "g.x text") {
   const rects = [];
   for (const elem of chart.selectAll(selector)[0]) {
-    rects.push(elem.getBoundingClientRect());
+    const rect = elem.getBoundingClientRect();
+
+    // Skip empty ticks because of their wrong positioning in Firefox
+    if (rect.width === 0 && rect.height === 0) {
+      continue;
+    }
+
+    rects.push(rect);
     if (
       rects.length > 1 &&
       rects[rects.length - 2].right + X_LABEL_MIN_SPACING >

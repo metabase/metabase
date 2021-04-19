@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
 import { Box } from "grid-styled";
@@ -45,16 +46,7 @@ class CollectionSidebar extends React.Component {
   state = {
     openCollections: [],
   };
-  onOpen = id => {
-    this.setState({ openCollections: this.state.openCollections.concat(id) });
-  };
-  onClose = id => {
-    this.setState({
-      openCollections: this.state.openCollections.filter(c => {
-        return c !== id;
-      }),
-    });
-  };
+
   componentDidMount() {
     // an array to store the ancestors
     const { collectionId, collections, loading } = this.props;
@@ -63,10 +55,26 @@ class CollectionSidebar extends React.Component {
       this.setState({ openCollections: ancestors });
     }
   }
+
+  onOpen = id => {
+    this.setState({ openCollections: this.state.openCollections.concat(id) });
+  };
+
+  onClose = id => {
+    this.setState({
+      openCollections: this.state.openCollections.filter(c => {
+        return c !== id;
+      }),
+    });
+  };
+
+  // TODO Should we update the API to filter archived collections?
+  filterPersonalCollections = collection => !collection.archived;
+
   render() {
     const { currentUser, isRoot, collectionId, list } = this.props;
     return (
-      <Sidebar w={340} pt={3}>
+      <Sidebar w={340} pt={3} data-testid="sidebar">
         <CollectionLink
           to={Urls.collection("root")}
           selected={isRoot}
@@ -93,6 +101,7 @@ class CollectionSidebar extends React.Component {
               onOpen={this.onOpen}
               collections={currentUserPersonalCollections(list, currentUser.id)}
               initialIcon="person"
+              filter={this.filterPersonalCollections}
               currentCollection={collectionId}
             />
           </Box>

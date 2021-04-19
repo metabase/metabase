@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -65,7 +66,7 @@ export default class DashboardGrid extends Component {
     isEditingParameter: false,
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
       dashcards: this.getSortedDashcards(nextProps),
       layout: this.getLayout(nextProps),

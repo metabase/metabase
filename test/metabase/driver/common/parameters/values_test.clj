@@ -29,149 +29,165 @@
            (#'values/value-for-tag
             {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil)))))
 
+(defn- extra-field-info
+  "Add extra field information like coercion_strategy, semantic_type, and effective_type."
+  [{:keys [base_type] :as field}]
+  (merge {:coercion_strategy nil, :effective_type base_type, :semantic_type nil}
+         field))
+
+(defn value-for-tag
+  "Call the private function and de-recordize the field"
+  [field-info info]
+  (mt/derecordize (#'values/value-for-tag field-info info)))
+
+(defn parse-tag
+  [field-info info]
+  (mt/derecordize (#'values/parse-tag field-info info)))
+
 (deftest field-filter-test
   (testing "specified"
     (testing "date range for a normal :type/Temporal field"
-      (is (= {:field (map->FieldInstance
-                      {:name         "DATE"
-                       :parent_id    nil
-                       :table_id     (mt/id :checkins)
-                       :base_type    :type/Date
-                       :special_type nil})
+      (is (= {:field (extra-field-info
+                      {:name          "DATE"
+                       :parent_id     nil
+                       :table_id      (mt/id :checkins)
+                       :base_type     :type/Date
+                       :semantic_type nil})
               :value {:type  :date/range
                       :value "2015-04-01~2015-05-01"}}
-             (into {} (#'values/value-for-tag
-                       {:name         "checkin_date"
-                        :display-name "Checkin Date"
-                        :type         :dimension
-                        :dimension    [:field-id (mt/id :checkins :date)]}
-                       [{:type   :date/range
-                         :target [:dimension [:template-tag "checkin_date"]]
-                         :value  "2015-04-01~2015-05-01"}])))))
+             (value-for-tag
+              {:name         "checkin_date"
+               :display-name "Checkin Date"
+               :type         :dimension
+               :dimension    [:field-id (mt/id :checkins :date)]}
+              [{:type   :date/range
+                :target [:dimension [:template-tag "checkin_date"]]
+                :value  "2015-04-01~2015-05-01"}]))))
 
     (testing "date range for a UNIX timestamp field should work just like a :type/Temporal field (#11934)"
       (mt/dataset tupac-sightings
         (mt/$ids sightings
-          (is (= {:field (map->FieldInstance
-                          {:name         "TIMESTAMP"
-                           :parent_id    nil
-                           :table_id     $$sightings
-                           :base_type    :type/BigInteger
-                           :special_type :type/UNIXTimestampSeconds})
+          (is (= {:field (extra-field-info
+                          {:name              "TIMESTAMP"
+                           :parent_id         nil
+                           :table_id          $$sightings
+                           :base_type         :type/BigInteger
+                           :effective_type    :type/Instant
+                           :coercion_strategy :Coercion/UNIXSeconds->DateTime})
                   :value {:type  :date/range
                           :value "2020-02-01~2020-02-29"}}
-                 (into {} (#'values/value-for-tag
-                           {:name         "timestamp"
-                            :display-name "Sighting Timestamp"
-                            :type         :dimension
-                            :dimension    $timestamp
-                            :widget-type  :date/range}
-                           [{:type   :date/range
-                             :target [:dimension [:template-tag "timestamp"]]
-                             :value  "2020-02-01~2020-02-29"}]))))))))
+                 (value-for-tag
+                   {:name         "timestamp"
+                    :display-name "Sighting Timestamp"
+                    :type         :dimension
+                    :dimension    $timestamp
+                    :widget-type  :date/range}
+                   [{:type   :date/range
+                     :target [:dimension [:template-tag "timestamp"]]
+                     :value  "2020-02-01~2020-02-29"}])))))))
 
   (testing "unspecified"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value i/no-value}
-           (into {} (#'values/value-for-tag
-                     {:name         "checkin_date"
-                      :display-name "Checkin Date"
-                      :type         :dimension
-                      :dimension    [:field-id (mt/id :checkins :date)]}
-                     nil)))))
+           (value-for-tag
+             {:name         "checkin_date"
+              :display-name "Checkin Date"
+              :type         :dimension
+              :dimension    [:field-id (mt/id :checkins :date)]}
+             nil))))
 
   (testing "id requiring casting"
-    (is (= {:field (map->FieldInstance
-                    {:name         "ID"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/BigInteger
-                     :special_type :type/PK})
+    (is (= {:field (extra-field-info
+                    {:name          "ID"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/BigInteger
+                     :semantic_type :type/PK})
             :value {:type  :id
                     :value 5}}
-           (into {} (#'values/value-for-tag
-                     {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (mt/id :checkins :id)]}
-                     [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}])))))
+           (value-for-tag
+             {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (mt/id :checkins :id)]}
+             [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}]))))
 
   (testing "required but unspecified"
     (is (thrown? Exception
-                 (into {} (#'values/value-for-tag
-                           {:name      "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
-                            :dimension ["field-id" (mt/id :checkins :date)]}
-                           nil)))))
+                 (value-for-tag
+                   {:name      "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
+                    :dimension [:field (mt/id :checkins :date) nil]}
+                   nil))))
 
   (testing "required and default specified"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value {:type  :dimension
                     :value "2015-04-01~2015-05-01"}}
-           (into {} (#'values/value-for-tag
-                     {:name         "checkin_date"
-                      :display-name "Checkin Date"
-                      :type         :dimension
-                      :required     true
-                      :default      "2015-04-01~2015-05-01",
-                      :dimension    [:field-id (mt/id :checkins :date)]}
-                     nil)))))
+           (value-for-tag
+             {:name         "checkin_date"
+              :display-name "Checkin Date"
+              :type         :dimension
+              :required     true
+              :default      "2015-04-01~2015-05-01",
+              :dimension    [:field-id (mt/id :checkins :date)]}
+             nil))))
 
 
   (testing "multiple values for the same tag should return a vector with multiple params instead of a single param"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value [{:type  :date/range
                      :value "2015-01-01~2016-09-01"}
                     {:type  :date/single
                      :value "2015-07-01"}]}
-           (into {} (#'values/value-for-tag
-                     {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (mt/id :checkins :date)]}
-                     [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value "2015-01-01~2016-09-01"}
-                      {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}])))))
+           (value-for-tag
+             {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (mt/id :checkins :date)]}
+             [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value "2015-01-01~2016-09-01"}
+              {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}]))))
 
   (testing "Make sure defaults values get picked up for field filter clauses"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name          "DATE"
+                     :parent_id     nil
+                     :table_id      (mt/id :checkins)
+                     :base_type     :type/Date
+                     :semantic_type nil})
             :value {:type  :date/all-options
                     :value "past5days"}}
-           (into {} (#'values/parse-tag
-                     {:name         "checkin_date"
-                      :display-name "Checkin Date"
-                      :type         :dimension
-                      :dimension    [:field-id (mt/id :checkins :date)]
-                      :default      "past5days"
-                      :widget-type  :date/all-options}
-                     nil)))))
+           (parse-tag
+             {:name         "checkin_date"
+              :display-name "Checkin Date"
+              :type         :dimension
+              :dimension    [:field-id (mt/id :checkins :date)]
+              :default      "past5days"
+              :widget-type  :date/all-options}
+             nil))))
   (testing "Make sure nil values result in no value"
-    (is (= {:field (map->FieldInstance
-                    {:name         "DATE"
-                     :parent_id    nil
-                     :table_id     (mt/id :checkins)
-                     :base_type    :type/Date
-                     :special_type nil})
+    (is (= {:field (extra-field-info
+                    {:name           "DATE"
+                     :parent_id      nil
+                     :table_id       (mt/id :checkins)
+                     :base_type      :type/Date
+                     :effective_type :type/Date})
             :value i/no-value}
-           (into {} (#'values/parse-tag
-                     {:name         "checkin_date"
-                      :display-name "Checkin Date"
-                      :type         :dimension
-                      :dimension    [:field-id (mt/id :checkins :date)]
-                      :widget-type  :date/all-options}
-                     nil))))))
+           (parse-tag
+             {:name         "checkin_date"
+              :display-name "Checkin Date"
+              :type         :dimension
+              :dimension    [:field-id (mt/id :checkins :date)]
+              :widget-type  :date/all-options}
+                     nil)))))
 
 (deftest field-filter-errors-test
   (testing "error conditions for field filter (:dimension) parameters"

@@ -29,6 +29,14 @@ export default class DimensionOptions {
   }
 
   hasDimension(dimension: Dimension): boolean {
+    if (!dimension) {
+      console.error(
+        "attempted to call FieldDimension.hasDimension() with null dimension",
+        dimension,
+      );
+      return false;
+    }
+
     for (const d of this.all()) {
       if (dimension.isSameBaseDimension(d)) {
         return true;

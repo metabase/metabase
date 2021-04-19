@@ -10,11 +10,13 @@
             [metabase.email.messages :as email]
             [metabase.events :as events]
             [metabase.integrations.ldap :as ldap]
+            [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
             [metabase.util.password :as pass]
@@ -26,10 +28,16 @@
   (:import com.unboundid.util.LDAPSDKException
            java.util.UUID))
 
+(s/defn ^:private record-login-history!
+  [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
+  (db/insert! LoginHistory (merge {:user_id    user-id
+                                   :session_id (str session-id)}
+                                  device-info)))
+
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
   `:sso` (for other login types). Returns the newly generated Session."
-  {:arglists '(^java.util.UUID [session-type user])}
+  {:arglists '(^java.util.UUID [session-type user device-info])}
   (fn [session-type & _]
     session-type))
 
@@ -39,25 +47,26 @@
    s/Keyword   s/Any})
 
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
-  [_, user :- CreateSessionUserInfo]
+  [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (UUID/randomUUID)
         session      (or
                       (db/insert! Session
                         :id      (str session-uuid)
-                        :user_id (u/get-id user))
-                      ;; HACK !!! For some reason `db/insert~ doesn't seem to be working correctly for Session.
+                        :user_id (u/the-id user))
+                      ;; HACK !!! For some reason `db/insert` doesn't seem to be working correctly for Session.
                       (t.models/post-insert (Session (str session-uuid))))]
     (assert (map? session))
     (events/publish-event! :user-login
-      {:user_id (u/get-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
+      {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
+    (record-login-history! session-uuid (u/the-id user) device-info)
     (assoc session :id session-uuid)))
 
 (s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
-  [session-type, user :- CreateSessionUserInfo]
+  [session-type user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
   (when-not (public-settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
-  ((get-method create-session! :sso) session-type user))
+  ((get-method create-session! :sso) session-type user device-info))
 
 
 ;;; ## API Endpoints
@@ -76,7 +85,7 @@
 (s/defn ^:private ldap-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
-  [username password]
+  [username password device-info :- request.u/DeviceInfo]
   (when (ldap/ldap-configured?)
     (try
       (when-let [user-info (ldap/find-user username)]
@@ -87,16 +96,16 @@
                    {:status-code 400
                     :errors      {:password password-fail-snippet}})))
         ;; password is ok, return new session
-        (create-session! :sso (ldap/fetch-or-create-user! user-info)))
+        (create-session! :sso (ldap/fetch-or-create-user! user-info) device-info))
       (catch LDAPSDKException e
         (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
 
 (s/defn ^:private email-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
-  [username password]
+  [username password device-info :- request.u/DeviceInfo]
   (when-let [user (db/select-one [User :id :password_salt :password :last_login], :%lower.email (u/lower-case-en username), :is_active true)]
     (when (pass/verify-password password (:password_salt user) (:password user))
-      (create-session! :password user))))
+      (create-session! :password user device-info))))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
@@ -109,22 +118,16 @@
 (s/defn ^:private login :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
-  [username :- su/NonBlankString, password :- su/NonBlankString]
+  [username :- su/NonBlankString password :- su/NonBlankString device-info :- request.u/DeviceInfo]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
-  (or (ldap-login username password)    ; First try LDAP if it's enabled
-      (email-login username password)   ; Then try local authentication
+  (or (ldap-login username password device-info)  ; First try LDAP if it's enabled
+      (email-login username password device-info) ; Then try local authentication
       ;; If nothing succeeded complain about it
       ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw
        (ex-info (str password-fail-message)
-         {:status-code 400
-          :errors      {:password password-fail-snippet}}))))
-
-(defn- source-address
-  "The `public-settings/source-address-header` header's value, or the `(:remote-addr request)` if not set."
-  [{:keys [headers remote-addr]}]
-  (or (some->> (public-settings/source-address-header) (get headers))
-      remote-addr))
+                {:status-code 400
+                 :errors      {:password password-fail-snippet}}))))
 
 (defn- do-http-400-on-error [f]
   (try
@@ -143,17 +146,17 @@
   [:as {{:keys [username password]} :body, :as request}]
   {username su/NonBlankString
    password su/NonBlankString}
-  (let [request-source (source-address request)
-        do-login (fn []
-                   (let [{session-uuid :id, :as session} (login username password)
-                         response                        {:id (str session-uuid)}]
-                     (mw.session/set-session-cookie request response session)))]
+  (let [ip-address (request.u/ip-address request)
+        do-login   (fn []
+                     (let [{session-uuid :id, :as session} (login username password (request.u/device-info request))
+                           response                        {:id (str session-uuid)}]
+                       (mw.session/set-session-cookie request response session)))]
     (if throttling-disabled?
       (do-login)
       (http-400-on-error
-        (throttle/with-throttling [(login-throttlers :ip-address) request-source
-                                   (login-throttlers :username)   username]
-          (do-login))))))
+       (throttle/with-throttling [(login-throttlers :ip-address) ip-address
+                                  (login-throttlers :username)   username]
+           (do-login))))))
 
 
 (api/defendpoint DELETE "/"
@@ -179,15 +182,15 @@
   [:as {:keys [server-name] {:keys [email]} :body, :as request}]
   {email su/Email}
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (let [request-source (source-address request)]
-    (throttle-check (forgot-password-throttlers :ip-address) source-address)
-    (throttle-check (forgot-password-throttlers :email)      email)
-    (when-let [{user-id :id, google-auth? :google_auth} (db/select-one [User :id :google_auth]
-                                                                       :%lower.email (u/lower-case-en email), :is_active true)]
-      (let [reset-token        (user/set-password-reset-token! user-id)
-            password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
-        (email/send-password-reset-email! email google-auth? server-name password-reset-url)
-        (log/info password-reset-url))))
+  (let [request-source (request.u/ip-address request)]
+    (throttle-check (forgot-password-throttlers :ip-address) request-source))
+  (throttle-check (forgot-password-throttlers :email)      email)
+  (when-let [{user-id :id, google-auth? :google_auth} (db/select-one [User :id :google_auth]
+                                                        :%lower.email (u/lower-case-en email), :is_active true)]
+    (let [reset-token        (user/set-password-reset-token! user-id)
+          password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+      (email/send-password-reset-email! email google-auth? server-name password-reset-url)
+      (log/info password-reset-url)))
   api/generic-204-no-content)
 
 
@@ -223,7 +226,7 @@
         (when-not (:last_login user)
           (email/send-user-joined-admin-notification-email! (User user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
-        (let [{session-uuid :id, :as session} (create-session! :password user)
+        (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
               response                        {:success    true
                                                :session_id (str session-uuid)}]
           (mw.session/set-session-cookie request response session)))
@@ -309,12 +312,12 @@
   (user/create-new-google-auth-user! new-user))
 
 (s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
-  [first-name last-name email]
+  [first-name last-name email device-info :- request.u/DeviceInfo]
   (when-let [user (or (db/select-one [User :id :last_login] :%lower.email (u/lower-case-en email))
                       (google-auth-create-new-user! {:first_name first-name
                                                      :last_name  last-name
                                                      :email      email}))]
-    (create-session! :sso user)))
+    (create-session! :sso user device-info)))
 
 (defn do-google-auth
   "Call to Google to perform an authentication"
@@ -323,7 +326,8 @@
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
     (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
     (let [{session-uuid :id, :as session} (api/check-500
-                                           (google-auth-fetch-or-create-user! given_name family_name email))
+                                           (google-auth-fetch-or-create-user!
+                                            given_name family_name email (request.u/device-info request)))
           response                        {:id (str session-uuid)}
           user                            (db/select-one [User :id :is_active], :email email)]
       (if (and user (:is_active user))
@@ -342,8 +346,15 @@
   (if throttling-disabled?
     (do-google-auth token)
     (http-400-on-error
-      (throttle/with-throttling [(login-throttlers :ip-address) (source-address request)]
+      (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
         (do-google-auth request)))))
 
+(defn- +log-all-request-failures [handler]
+  (fn [request respond raise]
+    (try
+      (handler request respond raise)
+      (catch Throwable e
+        (log/error e (trs "Authentication endpoint error"))
+        (throw e)))))
 
-(api/define-routes)
+(api/define-routes +log-all-request-failures)

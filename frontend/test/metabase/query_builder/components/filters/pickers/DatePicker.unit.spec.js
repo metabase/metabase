@@ -8,7 +8,7 @@ describe("DatePicker", () => {
   it("should render 'Previous 30 Days'", () => {
     render(
       <DatePicker
-        filter={["time-interval", ["field-id", 1], -30, "day"]}
+        filter={["time-interval", ["field", 1, null], -30, "day"]}
         onFilterChange={nop}
       />,
     );
@@ -21,7 +21,7 @@ describe("DatePicker", () => {
   it("should render 'Next 1 Month'", () => {
     render(
       <DatePicker
-        filter={["time-interval", ["field-id", 1], 1, "month"]}
+        filter={["time-interval", ["field", 1, null], 1, "month"]}
         onFilterChange={nop}
       />,
     );
@@ -33,7 +33,7 @@ describe("DatePicker", () => {
   it("should render 'Current Week'", () => {
     render(
       <DatePicker
-        filter={["time-interval", ["field-id", 1], "current", "week"]}
+        filter={["time-interval", ["field", 1, null], "current", "week"]}
         onFilterChange={nop}
       />,
     );
@@ -44,7 +44,7 @@ describe("DatePicker", () => {
   it("should render 'Between'", () => {
     render(
       <DatePicker
-        filter={["between", ["field-id", 1], "2018-01-01", null]}
+        filter={["between", ["field", 1, null], "2018-01-01", null]}
         onFilterChange={nop}
       />,
     );
@@ -64,7 +64,7 @@ describe("DatePicker", () => {
       <DatePicker
         filter={[
           "time-interval",
-          ["field-id", 1],
+          ["field", 1, null],
           -30,
           "day",
           { "include-current": true },
@@ -79,7 +79,7 @@ describe("DatePicker", () => {
 
     expect(spy).toHaveBeenCalledWith([
       "time-interval",
-      ["field-id", 1],
+      ["field", 1, null],
       -20,
       "day",
       { "include-current": true },

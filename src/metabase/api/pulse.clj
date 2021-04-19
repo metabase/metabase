@@ -50,14 +50,15 @@
 
 (api/defendpoint POST "/"
   "Create a new `Pulse`."
-  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id]} :body}]
+  [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id parameters]} :body}]
   {name                su/NonBlankString
    cards               (su/non-empty [pulse/CoercibleToCardRef])
    channels            (su/non-empty [su/Map])
    skip_if_empty       (s/maybe s/Bool)
    collection_id       (s/maybe su/IntGreaterThanZero)
    collection_position (s/maybe su/IntGreaterThanZero)
-   dashboard_id        (s/maybe su/IntGreaterThanZero)}
+   dashboard_id        (s/maybe su/IntGreaterThanZero)
+   parameters          [su/Map]}
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, make sure we have write permissions for that collection
@@ -70,7 +71,8 @@
                     :skip_if_empty       skip_if_empty
                     :collection_id       collection_id
                     :collection_position collection_position
-                    :dashboard_id        dashboard_id}]
+                    :dashboard_id        dashboard_id
+                    :parameters          parameters}]
     (db/transaction
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
       ;; check that and fix it if needed
@@ -88,13 +90,14 @@
 
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
-  [id :as {{:keys [name cards channels skip_if_empty collection_id archived], :as pulse-updates} :body}]
-  {name           (s/maybe su/NonBlankString)
-   cards          (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
-   channels       (s/maybe (su/non-empty [su/Map]))
-   skip_if_empty  (s/maybe s/Bool)
-   collection_id  (s/maybe su/IntGreaterThanZero)
-   archived       (s/maybe s/Bool)}
+  [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
+  {name          (s/maybe su/NonBlankString)
+   cards         (s/maybe (su/non-empty [pulse/CoercibleToCardRef]))
+   channels      (s/maybe (su/non-empty [su/Map]))
+   skip_if_empty (s/maybe s/Bool)
+   collection_id (s/maybe su/IntGreaterThanZero)
+   archived      (s/maybe s/Bool)
+   parameters    [su/Map]}
   ;; do various perms checks
   (let [pulse-before-update (api/write-check Pulse id)]
     (check-card-read-permissions cards)
@@ -106,7 +109,7 @@
       ;; ok, now update the Pulse
       (pulse/update-pulse!
        (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                          :archived])
+                                          :archived :parameters])
               :id id))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))

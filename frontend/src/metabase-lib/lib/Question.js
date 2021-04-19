@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 import { chain, assoc, dissoc, assocIn } from "icepick";
 
@@ -22,8 +20,7 @@ import Field from "metabase-lib/lib/metadata/Field";
 
 import {
   AggregationDimension,
-  DatetimeFieldDimension,
-  BinnedDimension,
+  FieldDimension,
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 
@@ -34,7 +31,10 @@ import * as Card_DEPRECATED from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
-import { parameterToMBQLFilter } from "metabase/meta/Parameter";
+import {
+  parameterToMBQLFilter,
+  normalizeParameterValue,
+} from "metabase/meta/Parameter";
 import {
   aggregate,
   breakout,
@@ -56,7 +56,7 @@ import type {
   Card as CardObject,
   VisualizationSettings,
 } from "metabase-types/types/Card";
-import type { Dataset } from "metabase-types/types/Dataset";
+import type { Dataset, Value } from "metabase-types/types/Dataset";
 import type { TableId } from "metabase-types/types/Table";
 import type { DatabaseId } from "metabase-types/types/Database";
 import type { ClickObject } from "metabase-types/types/Visualization";
@@ -156,7 +156,7 @@ export default class Question {
     dataset_query?: DatasetQuery,
   } = {}) {
     // $FlowFixMe
-    let card: Card = {
+    let card: CardObject = {
       name,
       display,
       visualization_settings,
@@ -360,15 +360,19 @@ export default class Question {
       if (aggregations.length >= 1 && breakouts.length === 1) {
         if (breakoutFields[0].isDate()) {
           if (
-            breakoutDimensions[0] instanceof DatetimeFieldDimension &&
-            breakoutDimensions[0].isExtraction()
+            breakoutDimensions[0] instanceof FieldDimension &&
+            breakoutDimensions[0].temporalUnit() &&
+            breakoutDimensions[0].isTemporalExtraction()
           ) {
             return this.setDisplay("bar");
           } else {
             return this.setDisplay("line");
           }
         }
-        if (breakoutDimensions[0] instanceof BinnedDimension) {
+        if (
+          breakoutDimensions[0] instanceof FieldDimension &&
+          breakoutDimensions[0].binningStrategy()
+        ) {
           return this.setDisplay("bar");
         }
         if (breakoutFields[0].isCategory()) {
@@ -531,7 +535,7 @@ export default class Question {
       return query
         .reset()
         .setTable(field.table)
-        .filter(["=", ["field-id", field.id], value])
+        .filter(["=", ["field", field.id, null], value])
         .question();
     }
   }
@@ -822,7 +826,14 @@ export default class Question {
       // include only parameters that have a value applied
       .filter(param => _.has(param, "value"))
       // only the superset of parameters object that API expects
-      .map(param => _.pick(param, "type", "target", "value"));
+      .map(param => _.pick(param, "type", "target", "value"))
+      .map(({ type, value, target }) => {
+        return {
+          type,
+          value: normalizeParameterValue(type, value),
+          target,
+        };
+      });
 
     if (canUseCardApiEndpoint) {
       const queryParams = {

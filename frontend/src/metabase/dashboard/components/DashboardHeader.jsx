@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -48,7 +46,7 @@ type Props = {
   refreshPeriod: ?number,
   setRefreshElapsedHook: Function,
 
-  parametersWidget: React$Element<*>,
+  parametersWidget: React.Element,
 
   addCardToDashboard: ({ dashId: DashCardId, cardId: CardId }) => void,
   addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,
@@ -291,15 +289,17 @@ export default class DashboardHeader extends Component {
     if (!isFullscreen && !isEditing) {
       const extraButtonClassNames =
         "bg-brand-hover text-white-hover py2 px3 text-bold block cursor-pointer";
-      extraButtons.push(
-        <Link
-          className={extraButtonClassNames}
-          to={location.pathname + "/details"}
-          data-metabase-event={"Dashboard;EditDetails"}
-        >
-          {t`Change title and description`}
-        </Link>,
-      );
+      if (canEdit) {
+        extraButtons.push(
+          <Link
+            className={extraButtonClassNames}
+            to={location.pathname + "/details"}
+            data-metabase-event={"Dashboard;EditDetails"}
+          >
+            {t`Change title and description`}
+          </Link>,
+        );
+      }
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
@@ -329,15 +329,17 @@ export default class DashboardHeader extends Component {
           </Link>,
         );
       }
-      extraButtons.push(
-        <Link
-          className={extraButtonClassNames}
-          to={location.pathname + "/archive"}
-          data-metabase-event={"Dashboard;Archive"}
-        >
-          {t`Archive`}
-        </Link>,
-      );
+      if (canEdit) {
+        extraButtons.push(
+          <Link
+            className={extraButtonClassNames}
+            to={location.pathname + "/archive"}
+            data-metabase-event={"Dashboard;Archive"}
+          >
+            {t`Archive`}
+          </Link>,
+        );
+      }
     }
 
     buttons.push(...getDashboardActions(this, this.props));

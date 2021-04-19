@@ -1,5 +1,9 @@
 /* provide flex utilities in lieu of float based layouts */
 
+:root {
+  --gap-1: 0.5rem;
+}
+
 .flex,
 :local(.flex) {
   display: flex;
@@ -253,4 +257,9 @@
 */
 .ie-wrap-content-fix {
   max-width: 100%;
+}
+
+.row-gap-1,
+:local(.row-gap-1) {
+  row-gap: var(--gap-1);
 }

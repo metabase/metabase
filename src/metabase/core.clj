@@ -21,7 +21,8 @@
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
 
-(def ^:private ee-available?
+;; this existed long before 0.39.0, but that's when it was made public
+(def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
   (try
     (classloader/require 'metabase-enterprise.core)
     true

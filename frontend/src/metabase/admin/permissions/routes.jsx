@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Route } from "metabase/hoc/Title";
 import { IndexRedirect, IndexRoute } from "react-router";

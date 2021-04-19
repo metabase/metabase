@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
 import { Box, Flex } from "grid-styled";
@@ -61,6 +62,11 @@ const getParitionedCollections = createSelector(
   },
 );
 
+const getGreeting = createSelector(
+  [getUser],
+  user => Greeting.sayHello(user.first_name),
+);
+
 //class Overworld extends Zelda
 @Search.loadList({
   query: { collection: "root" },
@@ -73,12 +79,14 @@ const getParitionedCollections = createSelector(
     user: getUser(state, props),
     showHomepageData: getShowHomepageData(state),
     showHomepageXrays: getShowHomepageXrays(state),
+    greeting: getGreeting(state, props),
   }),
   { updateSetting },
 )
 class Overworld extends React.Component {
   render() {
     const {
+      greeting,
       user,
       showHomepageData,
       showHomepageXrays,
@@ -91,7 +99,7 @@ class Overworld extends React.Component {
             <MetabotLogo />
           </Tooltip>
           <Box ml={2}>
-            <Subhead>{Greeting.sayHello(user.first_name)}</Subhead>
+            <Subhead>{greeting}</Subhead>
           </Box>
         </Flex>
         <CollectionItemsLoader collectionId="root">

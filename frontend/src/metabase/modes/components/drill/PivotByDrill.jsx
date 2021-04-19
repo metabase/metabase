@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { jt } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";

@@ -14,6 +14,7 @@
             [metabase.api.field :as field]
             [metabase.api.geojson :as geojson]
             [metabase.api.ldap :as ldap]
+            [metabase.api.login-history :as login-history]
             [metabase.api.metastore :as metastore]
             [metabase.api.metric :as metric]
             [metabase.api.native-query-snippet :as native-query-snippet]
@@ -80,6 +81,7 @@
   (context "/field"                [] (+auth field/routes))
   (context "/geojson"              [] geojson/routes)
   (context "/ldap"                 [] (+auth ldap/routes))
+  (context "/login-history"        [] (+auth login-history/routes))
   (context "/metastore"            [] (+auth metastore/routes))
   (context "/metric"               [] (+auth metric/routes))
   (context "/native-query-snippet" [] (+auth native-query-snippet/routes))

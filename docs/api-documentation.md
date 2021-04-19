@@ -684,14 +684,16 @@ Get Dashboard with ID.
 *  **`id`** 
 
 
-## `GET /api/dashboard/:id/params/:param-key/search/:prefix`
+## `GET /api/dashboard/:id/params/:param-key/search/:query`
 
-Fetch possible values of the parameter whose ID is `:param-key` that start with with `:prefix`. Optionally restrict
+Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
   these values by passing query parameters like `other-parameter=value` e.g.
 
-    ;; fetch values for Dashboard 1 parameter 'abc' that start with 'Cam' and are possible when parameter 'def' is set
+    ;; fetch values for Dashboard 1 parameter 'abc' that contain 'Cam' and are possible when parameter 'def' is set
     ;; to 100
      GET /api/dashboard/1/params/abc/search/Cam?def=100
+
+  Currently limited to first 100 results
 
 ##### PARAMS:
 
@@ -699,7 +701,7 @@ Fetch possible values of the parameter whose ID is `:param-key` that start with 
 
 *  **`param-key`** 
 
-*  **`prefix`** 
+*  **`query`** 
 
 *  **`query-params`** 
 
@@ -1006,7 +1008,7 @@ Return a list of autocomplete suggestions for a given `prefix`.
   and `Fields` in this `Database`.
 
   Tables are returned in the format `[table_name "Table"]`;
-  Fields are returned in the format `[field_name "table_name base_type special_type"]`
+  Fields are returned in the format `[field_name "table_name base_type semantic_type"]`
 
 ##### PARAMS:
 
@@ -1615,7 +1617,7 @@ If a Field's value of `has_field_values` is `list`, return a list of all the dis
 *  **`id`** 
 
 
-## `GET /api/field/field-literal%2C:field-name%2Ctype%2F:field-type/values`
+## `GET /api/field/field%2C:field-name%2C:options/values`
 
 Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
   convenience to simplify the frontend code. It just returns the standard 'empty' field values response.
@@ -1666,7 +1668,7 @@ You must be a superuser to do this.
 
 ## `POST /api/field/:id/values`
 
-Update the fields values and human-readable values for a `Field` whose special type is
+Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional.
 
 ##### PARAMS:
@@ -1690,7 +1692,9 @@ Update `Field` with ID.
 
 *  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`special_type`** value may be nil, or if non-nil, value must be a valid field type.
+*  **`semantic_type`** value may be nil, or if non-nil, value must be a valid field type.
+
+*  **`coercion_strategy`** value may be nil, or if non-nil, value must be a valid coercion type.
 
 *  **`has_field_values`** value may be nil, or if non-nil, value must be one of: `auto-list`, `list`, `none`, `search`.
 
@@ -2258,9 +2262,9 @@ Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard
 *  **`field-id`** 
 
 
-## `GET /api/public/dashboard/:uuid/params/:param-key/search/:prefix`
+## `GET /api/public/dashboard/:uuid/params/:param-key/search/:query`
 
-Fetch filter values for dashboard parameter `param-key`, with specified `prefix`.
+Fetch filter values for dashboard parameter `param-key`, containing specified `query`.
 
 ##### PARAMS:
 
@@ -2268,7 +2272,7 @@ Fetch filter values for dashboard parameter `param-key`, with specified `prefix`
 
 *  **`param-key`** 
 
-*  **`prefix`** 
+*  **`query`** 
 
 *  **`query-params`** 
 

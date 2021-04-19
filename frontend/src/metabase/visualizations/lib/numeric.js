@@ -1,9 +1,16 @@
-/* @flow weak */
-
 import { isNumeric } from "metabase/lib/schema_metadata";
 
 export function dimensionIsNumeric({ cols, rows }, i = 0) {
-  return isNumeric(cols[i]) || typeof (rows[0] && rows[0][i]) === "number";
+  if (isNumeric(cols[i])) {
+    return true;
+  }
+
+  const hasAtLeastOneNumber = rows.some(row => typeof row[i] === "number");
+  const hasNumbersOrNullsOnly = rows.every(
+    row => typeof row[i] === "number" || row[i] === null,
+  );
+
+  return hasNumbersOrNullsOnly && hasAtLeastOneNumber;
 }
 
 // We seem to run into float bugs if we get any more precise than this.

@@ -138,6 +138,7 @@
   with-bigquery-fks]
 
  [qp.test-util
+  store-contents
   with-database-timezone-id
   with-everything-store
   with-report-timezone-id
@@ -177,6 +178,7 @@
   throw-if-called
   with-column-remappings
   with-discarded-collections-perms-changes
+  with-env-keys-renamed-by
   with-locale
   with-log-level
   with-log-messages

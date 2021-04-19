@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Link } from "react-router";
 import { t } from "ttag";

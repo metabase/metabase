@@ -115,7 +115,7 @@ describe("personal collections", () => {
           cy.get("@sidebar").findByText("Bar1");
         });
 
-        it.skip("should be able to archive collection(s) inside personal collection (metabase#15343)", () => {
+        it("should be able to archive collection(s) inside personal collection (metabase#15343)", () => {
           cy.icon("pencil").click();
           cy.findByText("Archive this collection").click();
           modal()

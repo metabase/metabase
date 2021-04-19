@@ -1,26 +1,36 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
-  (:require [metabase.driver.common.parameters.dates :as date-params]
+  (:require [metabase.driver.common.parameters :as i]
+            [metabase.driver.common.parameters.dates :as date-params]
+            [metabase.driver.common.parameters.operators :as ops]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.params :as params]
             [schema.core :as s]
             [toucan.db :as db]))
 
+(s/defn ^:private to-numeric :- s/Num
+  "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters
+  or arbitrary maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more
+  sensical number format exception."
+  [s]
+  (if (re-find #"\." s)
+    (Double/parseDouble s)
+    (Long/parseLong s)))
+
 (s/defn ^:private parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
-  [param-type param-value field-clause :- (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal)]
+  [param-type param-value field-clause :- mbql.s/field]
   (cond
     ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
     ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
     (and (#{:id :category} param-type)
          (let [base-type (mbql.u/match-one field-clause
-                           [:field-id id]               (db/select-one-field :base_type Field :id id)
-                           [:field-literal _ base-type] base-type)]
+                           [:field (id :guard integer?) _]  (db/select-one-field :base_type Field :id id)
+                           [:field (_ :guard string?) opts] (:base-type opts))]
            (isa? base-type :type/Number)))
     (recur :number param-value field-clause)
 
@@ -29,17 +39,14 @@
         (not (string? param-value)))
     param-value
 
-    ;; if PARAM-VALUE contains a period then convert to a Double
-    (re-find #"\." param-value)
-    (Double/parseDouble param-value)
-
-    ;; otherwise convert to a Long
     :else
-    (Long/parseLong param-value)))
+    (to-numeric param-value)))
 
 (s/defn ^:private build-filter-clause :- (s/maybe mbql.s/Filter)
   [{param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
+    (ops/operator? param-type)
+    (ops/to-clause (i/throw-if-field-filter-operators-not-enabled param))
     ;; multipe values. Recursively handle them all and glue them all together with an OR clause
     (sequential? param-value)
     (mbql.u/simplify-compound-filter
@@ -57,7 +64,7 @@
     (mbql.u/is-clause? :template-tag field)
     nil
 
-    ;; single-value, non-date param. Generate MBQL [= [field-id <field>] <value>] clause
+    ;; single-value, non-date param. Generate MBQL [= [field <field> nil] <value>] clause
     :else
     [:=
      (params/wrap-field-id-if-needed field)

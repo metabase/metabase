@@ -8,10 +8,12 @@
             [java-time.core :as t.core]
             [metabase.util.date-2.common :as common]
             [metabase.util.date-2.parse :as parse]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [tru]]
             [potemkin.types :as p.types]
             [schema.core :as s])
-  (:import [java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period ZonedDateTime]
+  (:import [java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period
+            ZonedDateTime]
+           [java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle TextStyle]
            [java.time.temporal Temporal TemporalAdjuster WeekFields]
            org.threeten.extra.PeriodDuration))
 
@@ -76,10 +78,18 @@
      (format (temporal->iso-8601-formatter t) t)))
 
   (^String [formatter t]
-   (when t
-     (if (t/instant? t)
-       (recur formatter (t/zoned-date-time t (t/zone-id "UTC")))
-       (t/format formatter t)))))
+   (format formatter t nil))
+
+  (^String [formatter t locale]
+   (cond
+     (t/instant? t)
+     (recur formatter (t/zoned-date-time t (t/zone-id "UTC")) locale)
+
+     locale
+     (recur (.withLocale (t/formatter formatter) (i18n/locale locale)) t nil)
+
+     :else
+     (t/format formatter t))))
 
 (defn format-sql
   "Format a temporal value `t` as a SQL-style literal string (for most SQL databases). This is the same as ISO-8601 but
@@ -87,6 +97,50 @@
   ^String [t]
   ;; replace the `T` with a space. Easy!
   (str/replace-first (format t) #"(\d{2})T(\d{2})" "$1 $2"))
+
+(def ^:private ^{:arglists '(^java.time.format.DateTimeFormatter [klass])} class->human-readable-formatter
+  {LocalDate      (DateTimeFormatter/ofLocalizedDate FormatStyle/LONG)
+   LocalTime      (DateTimeFormatter/ofLocalizedTime FormatStyle/MEDIUM)
+   LocalDateTime  (let [builder (doto (DateTimeFormatterBuilder.)
+                                  (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM))]
+                    (.toFormatter builder))
+   OffsetTime     (let [builder (doto (DateTimeFormatterBuilder.)
+                                  (.append (DateTimeFormatter/ofLocalizedTime FormatStyle/MEDIUM))
+                                  (.appendLiteral " (")
+                                  (.appendLocalizedOffset TextStyle/FULL)
+                                  (.appendLiteral ")"))]
+                    (.toFormatter builder))
+   OffsetDateTime (let [builder (doto (DateTimeFormatterBuilder.)
+                                  (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM)
+                                  (.appendLiteral " (")
+                                  (.appendLocalizedOffset TextStyle/FULL)
+                                  (.appendLiteral ")"))]
+                    (.toFormatter builder))
+   ZonedDateTime  (let [builder (doto (DateTimeFormatterBuilder.)
+                                  (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM)
+                                  (.appendLiteral " (")
+                                  (.appendZoneText TextStyle/FULL)
+                                  (.appendLiteral ")"))]
+                    (.toFormatter builder))})
+
+(defn format-human-readable
+  "Format a temporal value `t` in a human-friendly way for `locale` (by default, the current User's locale).
+
+    (format-human-readable #t \"2021-04-02T14:42:09.524392-07:00[US/Pacific]\" \"es-MX\")
+    ;; -> \"2 de abril de 2021 02:42:09 PM PDT\""
+  ([t]
+   (format-human-readable t (i18n/user-locale)))
+
+  ([t locale]
+   (when t
+     (if-let [formatter (some (fn [[klass formatter]]
+                                (when (instance? klass t)
+                                  formatter))
+                              class->human-readable-formatter)]
+       (format formatter t locale)
+       (throw (ex-info (tru "Don''t know how to format a {0} as a human-readable date/time"
+                            (some-> t class .getCanonicalName))
+                       {:t t}))))))
 
 (def ^:private add-units
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})

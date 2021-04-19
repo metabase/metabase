@@ -8,7 +8,7 @@ const testQuery = {
   query: {
     "source-table": PRODUCTS_ID,
     aggregation: [["count"]],
-    breakout: [["field-id", PRODUCTS.CATEGORY]],
+    breakout: [["field", PRODUCTS.CATEGORY, null]],
   },
   database: 1,
 };

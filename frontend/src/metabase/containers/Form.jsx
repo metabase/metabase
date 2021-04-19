@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
 
@@ -80,7 +79,7 @@ type Props = {
   formName?: string,
   onSubmit: (values: FormValues) => Promise<any>,
   onSubmitSuccess: (action: any) => Promise<any>,
-  formComponent?: React$Component<any, any, any>,
+  formComponent?: React.Component,
   dispatch: Function,
   values: FormValues,
 };

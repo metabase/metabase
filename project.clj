@@ -50,7 +50,7 @@
    [joda-time/joda-time "2.10.8"]
    [org.clojure/core.logic "1.0.0"]
    [org.clojure/core.match "0.3.0"]                                   ; optimized pattern matching library for Clojure
-   [org.clojure/core.memoize "1.0.236"]                               ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+   [org.clojure/core.memoize "1.0.236"]                               ; needed by core.match and search; has useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
    [org.clojure/java.classpath "1.0.0"]                               ; examine the Java classpath from Clojure programs
    [org.clojure/java.jdbc "0.7.11"]                                   ; basic JDBC access from Clojure
@@ -105,9 +105,9 @@
                                            org.apache.poi/poi-ooxml]] ; excel export
    [environ "1.2.0"]                                                  ; easy environment management
    [hiccup "1.0.5"]                                                   ; HTML templating
-   [honeysql "0.9.5" :exclusions [org.clojure/clojurescript]]         ; Transform Clojure data structures to SQL
+   [honeysql "1.0.461" :exclusions [org.clojure/clojurescript]]       ; Transform Clojure data structures to SQL
    [instaparse "1.4.10"]                                              ; Make your own parser
-   [io.forward/yaml "1.0.9"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
+   [io.forward/yaml "1.0.9"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquibase)
     :exclusions [org.clojure/clojure
                  org.flatland/ordered
                  org.yaml/snakeyaml]]
@@ -119,6 +119,7 @@
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/saml20-clj "2.0.0"]                                      ; EE SAML integration
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
+   [net.cgrand/macrovich "0.2.1"]                                     ; utils for writing macros for both Clojure & ClojureScript
    [net.redhogs.cronparser/cron-parser-core "3.4"                     ; describe Cron schedule in human-readable language
     :exclusions [org.slf4j/slf4j-api joda-time]]                      ; exclude joda time 2.3 which has outdated timezone information
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
@@ -150,17 +151,18 @@
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
    [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
-   [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
+   [prismatic/schema "1.1.12"]                                        ; Data schema declaration and validation library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
    [ring/ring-core "1.8.1"]
    [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.15.1" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
+   [toucan "1.15.3" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
                                  org.clojure/tools.namespace
                                  honeysql]]
+   [user-agent "0.1.0"]                                               ; User-Agent string parser, for Login History page & elsewhere
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
    ]
 
@@ -185,7 +187,7 @@
   ["-target" "1.8", "-source" "1.8"]
 
   :source-paths
-  ["src" "backend/mbql/src"]
+  ["src" "backend/mbql/src" "shared/src"]
 
   :java-source-paths
   ["java"]
@@ -201,16 +203,25 @@
    {:source-paths ["enterprise/backend/src"]
     :test-paths   ["enterprise/backend/test"]}
 
+   :socket
+   {:dependencies
+    [[vlaaad/reveal "1.3.196"]]
+    :jvm-opts
+    ["-Dclojure.server.repl={:port 5555 :accept clojure.core.server/repl}"]}
+
    :dev
    {:source-paths ["dev/src" "local/src"]
-    :test-paths   ["test" "backend/mbql/test"]
+    :test-paths   ["test" "backend/mbql/test" "shared/test"]
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
      [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.10.0"]
-     [ring/ring-mock "0.4.0"]]
+     [reifyhealth/specmonstah "2.0.0"]                                ; Generate fixtures to test huge databases
+     [ring/ring-mock "0.4.0"]
+     [talltale "0.5.4"]                                               ; Generate realistic data for fixtures
+     ]
 
     :plugins
     [[lein-environ "1.1.0"] ; easy access to environment variables
@@ -226,13 +237,15 @@
 
     :env
     {:mb-run-mode       "dev"
+     :mb-field-filter-operators-enabled "true"
      :mb-test-setting-1 "ABCDEFG"}
 
     :jvm-opts
     ["-Dlogfile.path=target/log"]
 
     :repl-options
-    {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
+    {:init-ns user ; starting in the user namespace is a lot faster than metabase.core since it has less deps
+     :timeout 180000}}
 
    ;; output test results in JUnit XML format
    :junit
@@ -254,7 +267,7 @@
      :format-result metabase.junit/format-result}}
 
    :ci
-   {:jvm-opts ["-Xmx2000m"]}
+   {}
 
    :install
    {}
@@ -280,7 +293,7 @@
      :repl-options
      {:init    (do (require 'metabase.core)
                    (metabase.core/-main))
-      :timeout 60000}}]
+      :timeout 180000}}]
 
    ;; DISABLED FOR NOW SINCE IT'S BROKEN -- SEE #12181
    ;; start the dev HTTP server with 'lein ring server'
@@ -318,6 +331,7 @@
     {:mb-run-mode     "test"
      :mb-db-in-memory "true"
      :mb-jetty-join   "false"
+     :mb-field-filter-operators-enabled "true"
      :mb-api-key      "test-api-key"
      ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
      ;; they won't stomp on each other
@@ -376,7 +390,7 @@
                            #_:unused-locals]
       :exclude-linters    [    ; Turn this off temporarily until we finish removing self-deprecated functions & macros
                            :deprecations
-                           ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
+                           ;; this has a fit in libs that use Potemkin `import-vars` such as `java-time`
                            :implicit-dependencies
                            ;; too many false positives for now
                            :unused-ret-vals]}}]
@@ -400,21 +414,26 @@
 
    :check-namespace-decls
    [:linters-common
-    {:plugins               [[lein-check-namespace-decls "1.0.2"]]
+    {:plugins               [[lein-check-namespace-decls "1.0.3"]]
      :check-namespace-decls {:prefix-rewriting false}}]
 
    :cloverage
    [:test-common
     {:dependencies [[camsaul/cloverage "1.2.1.1" :exclusions [riddley]]]
      :plugins      [[camsaul/lein-cloverage  "1.2.1.1"]]
-     :source-paths ^:replace ["src" "backend/mbql/src" "enterprise/backend/src"]
-     :test-paths   ^:replace ["test" "backend/mbql/test" "enterprise/backend/test"]
+     :source-paths ^:replace ["src" "backend/mbql/src" "enterprise/backend/src" "shared/src"]
+     :test-paths   ^:replace ["test" "backend/mbql/test" "enterprise/backend/test" "shared/test"]
      :cloverage    {:fail-threshold 69
                     :exclude-call
                     [;; don't instrument logging forms, since they won't get executed as part of tests anyway
                      ;; log calls expand to these
                      clojure.tools.logging/logf
-                     clojure.tools.logging/logp]}}]
+                     clojure.tools.logging/logp]
+                    ;; don't instrument Postgres/MySQL driver namespaces, because we don't current run tests for them
+                    ;; as part of recording test coverage, which means they can give us false positives.
+                    :ns-exclude-regex
+                    [#"metabase\.driver\.mysql"
+                     #"metabase\.driver\.postgres"]}}]
 
    ;; build the uberjar with `lein uberjar`
    :uberjar

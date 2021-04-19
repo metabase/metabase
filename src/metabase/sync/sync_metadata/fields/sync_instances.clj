@@ -39,17 +39,32 @@
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
     (db/insert-many! Field
-      (for [{:keys [database-type base-type field-comment database-position], field-name :name :as field} new-field-metadatas]
-        {:table_id          (u/get-id table)
-         :name              field-name
-         :display_name      (humanization/name->human-readable-name field-name)
-         :database_type     (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
-         :base_type         base-type
-         :special_type      (common/special-type field)
-         :parent_id         parent-id
-         :description       field-comment
-         :position          database-position
-         :database_position database-position}))))
+      (for [{:keys [database-type base-type effective-type coercion-strategy field-comment database-position], field-name :name :as field} new-field-metadatas]
+        (do
+         (when (and effective-type
+                    base-type
+                    (not= effective-type base-type)
+                    (nil? coercion-strategy))
+           (log/warn (u/format-color 'red
+                                     (str
+                                      "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
+                                      " Using base-type: `%s`")
+                                     field-name
+                                     effective-type
+                                     base-type)))
+         {:table_id          (u/get-id table)
+          :name              field-name
+          :display_name      (humanization/name->human-readable-name field-name)
+          :database_type     (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
+          :base_type         base-type
+          ;; todo test this?
+          :effective_type    (if (and effective-type coercion-strategy) effective-type base-type)
+          :coercion_strategy (when effective-type coercion-strategy)
+          :semantic_type     (common/semantic-type field)
+          :parent_id         parent-id
+          :description       field-comment
+          :position          database-position
+          :database_position database-position})))))
 
 (s/defn ^:private create-or-reactivate-fields! :- (s/maybe [i/FieldInstance])
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively

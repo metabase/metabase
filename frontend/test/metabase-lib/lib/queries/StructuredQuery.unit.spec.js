@@ -217,7 +217,7 @@ describe("StructuredQuery", () => {
         expect(
           query
             .aggregate(["count"])
-            .aggregate(["sum", ["field-id", ORDERS.TOTAL.id]])
+            .aggregate(["sum", ["field", ORDERS.TOTAL.id, null]])
             .canRemoveAggregation(),
         ).toBe(true);
       });
@@ -249,7 +249,7 @@ describe("StructuredQuery", () => {
       });
       it("returns a standard aggregation name with field", () => {
         expect(
-          makeQueryWithAggregation(["sum", ["field-id", ORDERS.TOTAL.id]])
+          makeQueryWithAggregation(["sum", ["field", ORDERS.TOTAL.id, null]])
             .aggregations()[0]
             .displayName(),
         ).toBe("Sum of Total");
@@ -258,7 +258,11 @@ describe("StructuredQuery", () => {
         expect(
           makeQueryWithAggregation([
             "sum",
-            ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.TITLE.id],
+            [
+              "field",
+              PRODUCTS.TITLE.id,
+              { "source-field": ORDERS.PRODUCT_ID.id },
+            ],
           ])
             .aggregations()[0]
             .displayName(),
@@ -269,7 +273,7 @@ describe("StructuredQuery", () => {
           makeQueryWithAggregation([
             "+",
             1,
-            ["sum", ["field-id", ORDERS.TOTAL.id]],
+            ["sum", ["field", ORDERS.TOTAL.id, null]],
           ])
             .aggregations()[0]
             .displayName(),
@@ -279,7 +283,7 @@ describe("StructuredQuery", () => {
         expect(
           makeQueryWithAggregation([
             "aggregation-options",
-            ["sum", ["field-id", ORDERS.TOTAL.id]],
+            ["sum", ["field", ORDERS.TOTAL.id, null]],
             { "display-name": "Named" },
           ])
             .aggregations()[0]
@@ -333,7 +337,11 @@ describe("StructuredQuery", () => {
       });
 
       it("excludes the already used breakouts", () => {
-        const queryWithBreakout = query.breakout(["field-id", ORDERS.TOTAL.id]);
+        const queryWithBreakout = query.breakout([
+          "field",
+          ORDERS.TOTAL.id,
+          null,
+        ]);
         expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
       });
 
@@ -345,7 +353,7 @@ describe("StructuredQuery", () => {
       });
 
       it("includes an explicitly provided breakout although it has already been used", () => {
-        const breakout = ["field-id", ORDERS.TOTAL.id];
+        const breakout = ["field", ORDERS.TOTAL.id, null];
         const queryWithBreakout = query.breakout(breakout);
         expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
         expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(
@@ -439,9 +447,9 @@ describe("StructuredQuery", () => {
       it("return an array with the sort clause", () => {
         expect(
           makeQuery({
-            "order-by": [["asc", ["field-id", ORDERS.TOTAL.id]]],
+            "order-by": [["asc", ["field", ORDERS.TOTAL.id, null]]],
           }).sorts(),
-        ).toEqual([["asc", ["field-id", ORDERS.TOTAL.id]]]);
+        ).toEqual([["asc", ["field", ORDERS.TOTAL.id, null]]]);
       });
     });
 
@@ -453,13 +461,13 @@ describe("StructuredQuery", () => {
       it("excludes the already used sorts", () => {
         const queryWithBreakout = query.sort([
           "asc",
-          ["field-id", ORDERS.TOTAL.id],
+          ["field", ORDERS.TOTAL.id, null],
         ]);
         expect(queryWithBreakout.sortOptions().dimensions.length).toBe(6);
       });
 
       it("includes an explicitly provided sort although it has already been used", () => {
-        const sort = ["asc", ["field-id", ORDERS.TOTAL.id]];
+        const sort = ["asc", ["field", ORDERS.TOTAL.id, null]];
         const queryWithBreakout = query.sort(sort);
         expect(queryWithBreakout.sortOptions().dimensions.length).toBe(6);
         expect(queryWithBreakout.sortOptions(sort).dimensions.length).toBe(7);
@@ -581,10 +589,11 @@ describe("StructuredQuery", () => {
 
   describe("FIELD REFERENCE METHODS", () => {
     describe("fieldReferenceForColumn", () => {
-      xit('should return `["field-id", 1]` for a normal column', () => {
+      xit('should return `["field", 1, null]` for a normal column', () => {
         expect(query.fieldReferenceForColumn({ id: ORDERS.TOTAL.id })).toEqual([
-          "field-id",
+          "field",
           ORDERS.TOTAL.id,
+          null,
         ]);
       });
     });

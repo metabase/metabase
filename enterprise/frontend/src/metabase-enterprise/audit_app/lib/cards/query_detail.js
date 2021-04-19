@@ -1,5 +1,3 @@
-/* @flow*/
-
 export const details = (queryHash: string) => ({
   card: {
     name: "Query details",

@@ -38,11 +38,11 @@ export default class DatabaseListContainer extends Component {
     await actions.wrappedFetchDatabases(this.props);
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.fetchContainerData();
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (this.props.location.pathname === newProps.location.pathname) {
       return;
     }

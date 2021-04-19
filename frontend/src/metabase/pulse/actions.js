@@ -48,6 +48,7 @@ export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(
         channels: defaultChannelSpec ? [createChannel(defaultChannelSpec)] : [],
         skip_if_empty: false,
         collection_id: initialCollectionId,
+        parameters: [],
       };
     }
   };

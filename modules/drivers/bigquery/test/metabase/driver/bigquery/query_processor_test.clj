@@ -8,6 +8,7 @@
             [metabase.driver.bigquery :as bigquery]
             [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models :refer [Database Field Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -37,17 +38,17 @@
                :display_name "venue_id"
                :source       :native
                :base_type    :type/Integer
-               :field_ref    [:field-literal "venue_id" :type/Integer]}
+               :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
               {:name         "user_id"
                :display_name "user_id"
                :source       :native
                :base_type    :type/Integer
-               :field_ref    [:field-literal "user_id" :type/Integer]}
+               :field_ref    [:field "user_id" {:base-type :type/Integer}]}
               {:name         "checkins_id"
                :display_name "checkins_id"
                :source       :native
                :base_type    :type/Integer
-               :field_ref    [:field-literal "checkins_id" :type/Integer]}]
+               :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
              (qp.test/cols
                (qp/process-query
                 {:native   {:query (str "SELECT `v3_test_data.checkins`.`venue_id` AS `venue_id`, "
@@ -103,9 +104,11 @@
                rows))))
 
     (testing "let's make sure we're generating correct HoneySQL + SQL for aggregations"
-      (is (= {:select   [[(hx/identifier :field "v3_test_data.venues" "price")
+      (is (= {:select   [[(hx/with-database-type-info (hx/identifier :field "v3_test_data.venues" "price") "integer")
                           (hx/identifier :field-alias "price")]
-                         [(hsql/call :avg (hx/identifier :field "v3_test_data.venues" "category_id"))
+                         [(hsql/call :avg (hx/with-database-type-info
+                                           (hx/identifier :field "v3_test_data.venues" "category_id")
+                                           "integer"))
                           (hx/identifier :field-alias "avg")]]
               :from     [(hx/identifier :table "v3_test_data.venues")]
               :group-by [(hx/identifier :field-alias "price")]
@@ -134,22 +137,18 @@
   (mt/test-driver :bigquery
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
                   "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
-                  "different  what other SQL databases do. (#4218)"))
-    (is (= (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
-                " count(*) AS `count` "
-                "FROM `v3_test_data.venues` "
-                "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
-                " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
-                "GROUP BY `categories__via__category_id__name` "
-                "ORDER BY `categories__via__category_id__name` ASC")
-           ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks
-           ;; that and make it return `true` so this test proceeds as expected
-           (with-redefs [driver/supports? (constantly true)]
-             (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:fk_target_field_id (mt/id :categories :id)
-                                                                          :special_type       "type/FK"}
-               (let [results (mt/run-mbql-query venues
-                               {:aggregation [:count]
-                                :breakout    [$category_id->categories.name]})]
+                  "different  what other SQL databases do. (#4218)")
+      (mt/with-bigquery-fks
+        (let [results (mt/run-mbql-query venues
+                        {:aggregation [:count]
+                         :breakout    [$category_id->categories.name]})]
+          (is (= (str "SELECT `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
+                      " count(*) AS `count` "
+                      "FROM `v3_test_data.venues` "
+                      "LEFT JOIN `v3_test_data.categories` `categories__via__category_id`"
+                      " ON `v3_test_data.venues`.`category_id` = `categories__via__category_id`.`id` "
+                      "GROUP BY `categories__via__category_id__name` "
+                      "ORDER BY `categories__via__category_id__name` ASC")
                  (get-in results [:data :native_form :query] results))))))))
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
@@ -276,27 +275,27 @@
    (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :seconds :some_field)]
      {:value unix-ts
       :type  :timestamp
-      :as    {:date     (hx/cast :date unix-ts)
-              :datetime (hx/cast :datetime unix-ts)}})
+      :as    {:date     (hsql/call :cast unix-ts (hsql/raw "date"))
+              :datetime (hsql/call :cast unix-ts (hsql/raw "datetime"))}})
    (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :milliseconds :some_field)]
      {:value unix-ts
       :type  :timestamp
-      :as    {:date     (hx/cast :date unix-ts)
-              :datetime (hx/cast :datetime unix-ts)}})])
+      :as    {:date     (hsql/call :cast unix-ts (hsql/raw "date"))
+              :datetime (hsql/call :cast unix-ts (hsql/raw "datetime"))}})])
 
 (deftest temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
-    (doseq [[expr expected-type] {[:field-literal "x" :type/DateTime]                                :datetime
-                                  [:datetime-field [:field-literal "x" :type/DateTime] :day-of-week] nil}]
+    (doseq [[expr expected-type] {[:field "x" {:base-type :type/DateTime}]                              :datetime
+                                  [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil}]
       (testing (format "\n(temporal-type %s)" (binding [*print-meta* true] (pr-str expr)))
         (is (= expected-type
                (#'bigquery.qp/temporal-type expr)))))))
 
 (deftest reconcile-temporal-types-test
   (mt/with-everything-store
-    (tt/with-temp* [Field [date-field      {:name "date", :base_type :type/Date}]
-                    Field [datetime-field  {:name "datetime", :base_type :type/DateTime}]
-                    Field [timestamp-field {:name "timestamp", :base_type :type/DateTimeWithLocalTZ}]]
+    (tt/with-temp* [Field [date-field      {:name "date", :base_type :type/Date, :database_type "date"}]
+                    Field [datetime-field  {:name "datetime", :base_type :type/DateTime, :database_type "datetime"}]
+                    Field [timestamp-field {:name "timestamp", :base_type :type/DateTimeWithLocalTZ, :database_type "timestamp"}]]
       ;; bind `*table-alias*` so the BigQuery QP doesn't try to look up the current dataset name when converting
       ;; `hx/identifier`s to SQL
       (binding [sql.qp/*table-alias* "ABC"
@@ -320,10 +319,10 @@
             (testing (format "\n%s filter clause" (:mbql clause))
               (doseq [[temporal-type field] fields
                       field                 [field
-                                             [:field-id (:id field)]
-                                             [:datetime-field [:field-id (:id field)] :default]
-                                             [:field-literal (:name field) (:base_type field)]
-                                             [:datetime-field [:field-literal (:name field) (:base_type field)] :default]]]
+                                             [:field (:id field) nil]
+                                             [:field (:id field) {:temporal-unit :default}]
+                                             [:field (:name field) {:base-type (:base_type field)}]
+                                             [:field (:name field) {:base-type (:base_type field), :temporal-unit :default}]]]
                 (testing (format "\nField = %s %s"
                                  temporal-type
                                  (if (map? field) (format "<Field %s>" (pr-str (:name field))) field))
@@ -334,7 +333,9 @@
                     (testing (format "\nValue = %s %s" (:type value) (pr-str filter-value))
                       (let [filter-clause       (into [(:mbql clause) field]
                                                       (repeat (dec (:args clause)) filter-value))
-                            expected-identifier (hx/identifier :field "ABC" (name temporal-type))
+                            field-literal?      (mbql.u/match-one field [:field (_ :guard string?) _])
+                            expected-identifier (cond-> (hx/identifier :field "ABC" (name temporal-type))
+                                                  (not field-literal?) (hx/with-database-type-info (name temporal-type)))
                             expected-value      (get-in value [:as temporal-type] (:value value))
                             expected-clause     (build-honeysql-clause-head clause
                                                                             expected-identifier
@@ -352,12 +353,31 @@
             (doseq [[temporal-type field] fields
                     :let                  [identifier          (hx/identifier :field "ABC" (name temporal-type))
                                            expected-identifier (case temporal-type
-                                                                 :date      identifier
-                                                                 :datetime  (hx/cast :timestamp identifier)
-                                                                 :timestamp identifier)]]
+                                                                 :date      (hx/with-database-type-info identifier "date")
+                                                                 :datetime  (hsql/call :cast identifier (hsql/raw "timestamp"))
+                                                                 :timestamp (hx/with-database-type-info identifier "timestamp"))]]
               (testing (format "\ntemporal-type = %s" temporal-type)
                 (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
-                       (sql.qp/->honeysql :bigquery [:= [:datetime-field [:field-id (:id field)] :day-of-week] 1])))))))))))
+                       (sql.qp/->honeysql :bigquery [:= [:field (:id field) {:temporal-unit :day-of-week}] 1])))))))))))
+
+(deftest reconcile-unix-timestamps-test
+  (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
+    (mt/test-driver :bigquery
+      (mt/dataset sample-dataset
+        (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                                                                 :effective_type    :type/Instant}
+          (let [query         (mt/mbql-query reviews
+                                {:filter   [:= $rating [:relative-datetime -30 :day]]
+                                 :order-by [[:asc $id]]
+                                 :limit    1})
+                filter-clause (get-in query [:query :filter])]
+            (mt/with-everything-store
+              (is (= [(str "timestamp_millis(v3_sample_dataset.reviews.rating)"
+                           " = "
+                           "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
+                     (hsql/format-predicate (sql.qp/->honeysql :bigquery filter-clause)))))
+            (is (= :completed
+                   (:status (qp/process-query query))))))))))
 
 (deftest reconcile-relative-datetimes-test
   (testing "relative-datetime clauses on their own"
@@ -369,25 +389,26 @@
              :timestamp [:year "CAST(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year) AS timestamp)"]}]
       (testing t
         (let [reconciled-clause (#'bigquery.qp/->temporal-type t [:relative-datetime -1 unit])]
-          (is (= t
-                 (#'bigquery.qp/temporal-type reconciled-clause))
-              "Should have correct type metadata after reconciliation")
-          (is (= [(str "WHERE " expected-sql)]
-                 (sql.qp/format-honeysql :bigquery
-                   {:where (sql.qp/->honeysql :bigquery reconciled-clause)}))
-              "Should get converted to the correct SQL")))))
+          (testing "Should have correct type metadata after reconciliation"
+            (is (= t
+                   (#'bigquery.qp/temporal-type reconciled-clause))))
+          (testing "Should get converted to the correct SQL"
+            (is (= [(str "WHERE " expected-sql)]
+                   (sql.qp/format-honeysql :bigquery
+                                           {:where (sql.qp/->honeysql :bigquery reconciled-clause)}))))))))
 
   (testing "relative-datetime clauses inside filter clauses"
     (doseq [[expected-type t] {:date      #t "2020-01-31"
                                :datetime  #t "2020-01-31T20:43:00.000"
                                :timestamp #t "2020-01-31T20:43:00.000-08:00"}]
       (testing expected-type
-        (let [[_ _ relative-datetime] (sql.qp/->honeysql :bigquery
-                                        [:=
-                                         t
-                                         [:relative-datetime -1 :year]])]
-          (is (= expected-type
-                 (#'bigquery.qp/temporal-type relative-datetime))))))))
+        (let [[_ _ relative-datetime :as clause] (sql.qp/->honeysql :bigquery
+                                                                    [:=
+                                                                     t
+                                                                     [:relative-datetime -1 :year]])]
+          (testing (format "\nclause = %s" (pr-str clause))
+            (is (= expected-type
+                   (#'bigquery.qp/temporal-type relative-datetime)))))))))
 
 (deftest between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"
@@ -432,20 +453,20 @@
             (testing "Should be able to get temporal type from a :field-id"
               (is (= expected
                      (between->sql [:between
-                                    [:field-id (mt/id :checkins :date)]
+                                    [:field (mt/id :checkins :date) nil]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should be able to get temporal type from a wrapped field-id"
               (is (= (cons "WHERE date_trunc(`v3_test_data.checkins`.`date`, day) BETWEEN ? AND ?"
                            (rest expected))
                      (between->sql [:between
-                                    [:datetime-field [:field-id (mt/id :checkins :date)] :day]
+                                    [:field (mt/id :checkins :date) {:temporal-unit :day}]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should work with a field literal"
               (is (= ["WHERE `date` BETWEEN ? AND ?" (t/local-date "2019-11-11") (t/local-date "2019-11-12")]
                      (between->sql [:between
-                                    [:field-literal "date" :type/Date]
+                                    [:field "date" {:base-type :type/Date}]
                                     (t/local-date-time "2019-11-11T12:00:00")
                                     (t/local-date-time "2019-11-12T12:00:00")]))))))))))
 
@@ -485,9 +506,9 @@
          (doseq [column [:ts :dt]]
            (testing (format "Filtering against %s column" column)
              (doseq [s    ["2020-01-01" "2020-01-01T00:00:00"]
-                     field [[:field-id (mt/id table-name column)]
-                            [:datetime-field [:field-id (mt/id table-name column)] :default]
-                            [:datetime-field [:field-id (mt/id table-name column)] :day]]
+                     field [[:field (mt/id table-name column) nil]
+                            [:field (mt/id table-name column) {:temporal-unit :default}]
+                            [:field (mt/id table-name column) {:temporal-unit :day}]]
                      :let [filter-clause [:= field s]]]
                (testing (format "\nMBQL filter clause = %s" (pr-str filter-clause))
                  (is (= [["2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
@@ -519,7 +540,7 @@
                                        :template-tags {"d" {:name         "d"
                                                             :display-name "Date"
                                                             :type         :dimension
-                                                            :dimension    [:field-id (mt/id :attempts field)]}}}
+                                                            :dimension    [:field (mt/id :attempts field) nil]}}}
                           :parameters [{:type   value-type
                                         :name   "d"
                                         :target [:dimension [:template-tag "d"]]
@@ -601,9 +622,12 @@
             (testing (format "%s field" field-type)
               (is (= [expected-sql]
                      (hsql/format {:where (sql.qp/->honeysql :bigquery [:=
-                                                                        [:datetime-field [:field-id (:id f)] unit]
+                                                                        [:field (:id f) {:temporal-unit unit}]
                                                                         [:relative-datetime -1 unit]])}))))))))))
 
+;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
+;; filtering purposes against RELATIVE-DATETIMES. `relative-datetime` only supports the unit below -- a subset of all
+;; the MBQL date bucketing units.
 (def ^:private filter-test-table
   [[nil          :minute :hour :day  :week :month :quarter :year]
    [:time        true    true  false false false  false    false]
@@ -613,6 +637,8 @@
 
 (defn- test-table-with-fn [table f]
   (let [units (rest (first table))]
+    ;; this is done in parallel because there are a lot of combinations and doing them one at a time would take the
+    ;; rest of our lives
     (dorun (pmap (fn [[field & vs]]
                    (testing (format "\nfield = %s" field)
                      (dorun (pmap (fn [[unit expected]]
@@ -631,6 +657,8 @@
       (mt/dataset attempted-murders
         (test-table-with-fn filter-test-table can-we-filter-against-relative-datetime?)))))
 
+;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
+;; breakout purposes.
 (def ^:private breakout-test-table
   [[nil          :default :minute :hour :day  :week :month :quarter :year :minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year]
    [:time        true     true    true  false false false  false    false true            true         false        false         false        false         false          false]
@@ -642,7 +670,7 @@
   (try
     (mt/run-mbql-query attempts
       {:aggregation [[:count]]
-       :breakout [[:datetime-field (mt/id :attempts field) unit]]})
+       :breakout [[:field (mt/id :attempts field) {:temporal-unit unit}]]})
     true
     (catch Throwable _
       false)))

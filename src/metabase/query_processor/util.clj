@@ -61,19 +61,6 @@
       (str/replace #"_" "-")
       keyword))
 
-;; TODO - rename this to `get-in-mbql-query-recursive` or something like that?
-(defn get-in-query
-  "Similar to `get-in` but will look in either `:query` or recursively in `[:query :source-query]`. Using this function
-  will avoid having to check if there's a nested query vs. top-level query. Results in deeper levels of nesting are
-  preferred; i.e. if a key is present in both a `:source-query` and the top-level query, the value from the source
-  query will be returned."
-  ([m ks]
-   (get-in-query m ks nil))
-  ([m ks not-found]
-   (if-let [source-query (get-in m [:query :source-query])]
-     (recur (assoc m :query source-query) ks not-found)
-     (get-in m (cons :query ks) not-found))))
-
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 

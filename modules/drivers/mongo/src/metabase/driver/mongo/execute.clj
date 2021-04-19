@@ -8,12 +8,11 @@
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as ui18n :refer [tru]]
             [monger.conversion :as m.conversion]
             [monger.util :as m.util]
             [schema.core :as s])
-  (:import [com.mongodb AggregationOptions AggregationOptions$OutputMode Cursor DB DBObject]
+  (:import [com.mongodb AggregationOptions AggregationOptions$OutputMode BasicDBObject Cursor DB DBObject]
            java.util.concurrent.TimeUnit))
 
 ;;; ---------------------------------------------------- Metadata ----------------------------------------------------
@@ -27,9 +26,7 @@
   (into
    {}
    (for [k     projections
-         :let  [unescaped (-> k
-                              (str/replace #"___" ".")
-                              (str/replace #"~~~(.+)$" ""))]
+         :let  [unescaped (str/replace k #"~~~(.+)$" "")]
          :when (not (= k unescaped))]
      [k unescaped])))
 
@@ -39,7 +36,8 @@
   [columns first-row-col-names]
   {:pre [(every? string? columns) (every? string? first-row-col-names)]}
   (when (seq first-row-col-names)
-    (let [expected-cols   (set columns)
+    (let [expected-cols   (set (for [col-name columns]
+                                 (str/replace col-name #"\..*$" "")))
           actual-cols     (set first-row-col-names)
           not-in-expected (set/difference actual-cols expected-cols)]
       (when (seq not-in-expected)
@@ -74,28 +72,20 @@
 
 (defn- row->vec [row-col-names]
   (fn [^DBObject row]
-    (mapv (fn [^String col-name]
-            (let [val (.get row col-name)]
+    (mapv (fn [col-name]
+            (let [col-parts (str/split col-name #"\.")
+                  val       (reduce
+                             (fn [^BasicDBObject object ^String part-name]
+                               (when object
+                                 (.get object part-name)))
+                             row
+                             col-parts)]
               (m.conversion/from-db-object val :keywordize)))
           row-col-names)))
 
-(defn- unstringify-dates
-  "Convert string dates, which we wrap in dictionaries like `{:___date <str>}`, back to `Timestamps`.
-  This can't be done within the Mongo aggregation framework itself."
-  [row]
-  (mapv (fn [v]
-          (if (and (map? v)
-                   (contains? v :___date))
-            (u.date/parse (:___date v))
-            v))
-        row))
-
-(defn- post-process-row [{:keys [mbql?]} row-col-names]
+(defn- post-process-row [row-col-names]
   ;; if we formed the query using MBQL then we apply a couple post processing functions
-  (if mbql?
-    (comp unstringify-dates
-          (row->vec row-col-names))
-    (row->vec row-col-names)))
+  (row->vec row-col-names))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -148,7 +138,7 @@
       (respond (result-metadata unescaped-col-names)
                (if-not first-row
                  []
-                 (reducible-rows context cursor first-row (post-process-row native-query row-col-names)))))
+                 (reducible-rows context cursor first-row (post-process-row row-col-names)))))
     (finally
       (.close cursor))))
 

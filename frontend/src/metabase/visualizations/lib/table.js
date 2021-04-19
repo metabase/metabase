@@ -1,5 +1,3 @@
-/* @flow */
-
 import type { DatasetData, Column } from "metabase-types/types/Dataset";
 import type { ClickObject } from "metabase-types/types/Visualization";
 import type { VisualizationSettings } from "metabase-types/types/Card";

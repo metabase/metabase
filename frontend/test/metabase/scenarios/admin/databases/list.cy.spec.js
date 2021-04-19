@@ -50,6 +50,13 @@ describe("scenarios > admin > databases > list", () => {
     cy.get(".ModalBody input").type("DELETE");
     cy.get(".ModalBody")
       .contains("button", "Delete")
+      .should("be.disabled");
+    cy.get(".ModalBody input")
+      .clear()
+      .type("Sample Dataset");
+
+    cy.get(".ModalBody")
+      .contains("button", "Delete")
       .click();
     cy.wait("@delete");
 

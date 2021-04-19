@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { Flex } from "grid-styled";
@@ -81,7 +82,7 @@ export default class SettingsSetupList extends Component {
     };
   }
 
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     try {
       const tasks = await SetupApi.admin_checklist();
       this.setState({ tasks: tasks });

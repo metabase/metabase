@@ -1,8 +1,10 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.postgres :as postgres]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -16,9 +18,9 @@
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [clojure.string :as str])
-  (:import (java.sql DatabaseMetaData)))
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db])
+  (:import java.sql.DatabaseMetaData))
 
 (defn- drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -51,7 +53,8 @@
             :subname                       "//localhost:5432/bird_sightings"
             :OpenSourceSubProtocolOverride true
             :user                          "camsaul"
-            :sslmode                       "disable"}
+            :sslmode                       "disable"
+            :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    false
               :host   "localhost"
@@ -65,7 +68,8 @@
             :OpenSourceSubProtocolOverride true
             :user                          "camsaul"
             :ssl                           true
-            :sslmode                       "require"}
+            :sslmode                       "require"
+            :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    true
               :host   "localhost"
@@ -77,7 +81,8 @@
             :subprotocol                   "postgresql"
             :subname                       "//localhost:5432/cool?prepareThreshold=0"
             :OpenSourceSubProtocolOverride true
-            :sslmode                       "disable"}
+            :sslmode                       "disable"
+            :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:host               "localhost"
               :port               "5432"
@@ -94,7 +99,8 @@
             :sslcert                       "my-cert"
             :sslkey                        "my-key"
             :sslfactory                    "myfactoryoverride"
-            :sslrootcert                   "myrootcert"}
+            :sslrootcert                   "myrootcert"
+            :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl         true
               :host        "localhost"
@@ -278,10 +284,10 @@
     (testing "Verify that we identify JSON columns and mark metadata properly during sync"
       (mt/dataset (mt/dataset-definition "Postgres with a JSON Field"
                     ["venues"
-                     [{:field-name "address", :base-type {:native "json"}}]
+                     [{:field-name "address", :base-type {:native "json"}, :effective-type :type/Structured}]
                      [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
         (is (= :type/SerializedJSON
-               (db/select-one-field :special_type Field, :id (mt/id :venues :address))))))))
+               (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
 (mt/defdataset ^:private with-uuid
   [["users"
@@ -318,7 +324,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
-                                              :dimension    ["field-id" (mt/id :users :user_id)]}}})
+                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]
@@ -334,7 +340,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
-                                              :dimension    ["field-id" (mt/id :users :user_id)]}}})
+                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]
@@ -344,7 +350,7 @@
 
 (mt/defdataset ^:private ip-addresses
   [["addresses"
-    [{:field-name "ip", :base-type {:native "inet"}}]
+    [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
     [[(hsql/raw "'192.168.1.1'::inet")]
      [(hsql/raw "'10.4.4.15'::inet")]]]])
 
@@ -378,7 +384,7 @@
       (testing "It should be possible to return money column results (#3754)"
         (with-open [conn (sql-jdbc.execute/connection-with-timezone :postgres (mt/db) nil)
                     stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
-                    rs   (sql-jdbc.execute/execute-query! :postgres stmt)]
+                    rs   (sql-jdbc.execute/execute-prepared-statement! :postgres stmt)]
           (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
             (is (= [1000.00M]
                    (row-thunk))))))
@@ -438,7 +444,7 @@
 (deftest enums-test
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
-      (is (= (hsql/call :cast "toucan" (keyword "bird type"))
+      (is (= (hx/with-database-type-info (hsql/call :cast "toucan" (keyword "bird type")) "bird type")
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
 
     (do-with-enums-db
@@ -583,7 +589,7 @@
           (is (= [{:display_name "sleep"
                    :base_type    :type/Text
                    :source       :native
-                   :field_ref    [:field-literal "sleep" :type/Text]
+                   :field_ref    [:field "sleep" {:base-type :type/Text}]
                    :name         "sleep"}]
                  (mt/cols results))))))))
 
@@ -614,3 +620,44 @@
           (sync/sync-database! database)
           (is (= #{"table_with_perms"}
                  (db/select-field :name Table :db_id (:id database)))))))))
+
+(deftest json-operator-?-works
+  (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
+    (mt/test-driver :postgres
+      (drop-if-exists-and-create-db! "json-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
+                           "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
+                           "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}');"]]
+          (jdbc/execute! spec [statement])))
+      (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+            query           (str "SELECT json_val::jsonb ? 'a',"
+                                 "json_val::jsonb ?| array['c', 'd'],"
+                                 "json_val::jsonb ?& array['a', 'b']"
+                                 "FROM \"json_table\";")]
+        (mt/with-temp Database [database {:engine :postgres, :details json-db-details}]
+          (mt/with-db database (sync/sync-database! database)
+                               (is (= [[true false true]]
+                                      (-> {:query query}
+                                          (mt/native-query)
+                                          (qp/process-query)
+                                          (mt/rows))))))))))
+
+(defn- pretty-sql [s]
+  (-> s
+      (str/replace #"\"" "")
+      (str/replace #"public\." "")))
+
+(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+  (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!day.date]})]
+          (is (= (str "SELECT attempts.date AS date, count(*) AS count "
+                      "FROM attempts "
+                      "GROUP BY attempts.date "
+                      "ORDER BY attempts.date ASC")
+                 (some-> (qp/query->native query) :query pretty-sql))))))))

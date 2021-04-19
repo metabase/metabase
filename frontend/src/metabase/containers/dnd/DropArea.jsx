@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
 
@@ -35,7 +36,7 @@ export default class DropArea extends React.Component {
     };
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // need to delay showing/hiding due to Chrome bug where "dragend" is triggered
     // immediately if the content shifts during "dragstart"
     // https://github.com/react-dnd/react-dnd/issues/477

@@ -7,6 +7,7 @@
             [metabase.driver.h2 :as h2]
             [metabase.email-test :as et]
             [metabase.http-client :as http-client]
+            [metabase.models :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :as setting]
             [metabase.models.user :refer [User]]
@@ -16,6 +17,7 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.test.integrations.ldap :as ldap.test]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
@@ -33,6 +35,11 @@
                         (reset! (:attempts throttler) nil))
                       (thunk)))
 
+(def ^:private mock-device-info
+  {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+   :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+   :ip_address         "0:0:0:0:0:0:0:1"})
+
 (def ^:private SessionResponse
   {:id (s/pred mt/is-uuid-string? "session")})
 
@@ -42,9 +49,30 @@
       (is (schema= SessionResponse
                    (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
     (testing "Test that we can login with email of mixed case"
-      (let [creds (update (mt/user->credentials :rasta) :username u/upper-case-en)]
+      (let [creds    (update (mt/user->credentials :rasta) :username u/upper-case-en)
+            response (mt/client :post 200 "session" creds)]
         (is (schema= SessionResponse
-                     (mt/client :post 200 "session" creds)))))))
+                     response))
+        (testing "Login should record a LoginHistory item"
+          (is (schema= {:id                 su/IntGreaterThanZero
+                        :timestamp          java.time.OffsetDateTime
+                        :user_id            (s/eq (mt/user->id :rasta))
+                        :device_id          http-client/UUIDString
+                        :device_description su/NonBlankString
+                        :ip_address         su/NonBlankString
+                        :active             (s/eq true)
+                        s/Keyword s/Any}
+                       (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+    (testing "failure should log an error(#14317)"
+      (mt/with-temp User [user]
+        (is (schema= [(s/one (s/eq :error)
+                             "log type")
+                      (s/one clojure.lang.ExceptionInfo
+                             "exception")
+                      (s/one (s/eq "Authentication endpoint error")
+                             "log message")]
+                     (first (mt/with-log-messages-for-level :error
+                              (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))))))))
 
 (deftest login-validation-test
   (testing "POST /api/session"
@@ -75,10 +103,19 @@
                       :username))]
       ;; attempt to log in 10 times
       (dorun (repeatedly 10 login))
-      (is (re= #"^Too many attempts! You must wait 1\d seconds before trying again\.$"
-               (login))
-          "throttling should now be triggered")
-      (is (re= #"^Too many attempts! You must wait 4\d seconds before trying again\.$"
+      (testing "throttling should now be triggered"
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                 (login))))
+      (testing "Error should be logged (#14317)"
+        (is (schema= [(s/one (s/eq :error)
+                             "log type")
+                      (s/one clojure.lang.ExceptionInfo
+                             "exception")
+                      (s/one (s/eq "Authentication endpoint error")
+                             "log message")]
+                     (first (mt/with-log-messages-for-level :error
+                              (login))))))
+      (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
           "Trying to login immediately again should still return throttling error"))))
 
@@ -147,13 +184,26 @@
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
       (test-users/clear-cached-session-tokens!)
-      (let [session-id (test-users/username->token :rasta)]
+      (let [session-id       (test-users/username->token :rasta)
+            login-history-id (db/select-one-id LoginHistory :session_id session-id)]
+        (testing "LoginHistory should have been recorded"
+          (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
         ;; in on the next API call
-        ((mt/user->client :rasta) :delete 204 "session")
+        (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (Session session-id)))))))
+               (Session session-id)))
+        (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
+          (is (schema= {:id                 (s/eq login-history-id)
+                        :timestamp          java.time.OffsetDateTime
+                        :user_id            (s/eq (mt/user->id :rasta))
+                        :device_id          http-client/UUIDString
+                        :device_description su/NonBlankString
+                        :ip_address         su/NonBlankString
+                        :active             (s/eq false)
+                        s/Keyword           s/Any}
+                       (LoginHistory login-history-id))))))))
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
@@ -168,7 +218,7 @@
           (assert (not (reset-fields-set?)))
           ;; issue reset request (token & timestamp should be saved)
           (is (= nil
-                 ((mt/user->client :rasta) :post 204 "session/forgot_password" {:email (:username (mt/user->credentials :rasta))}))
+                 (mt/user-http-request :rasta :post 204 "session/forgot_password" {:email (:username (mt/user->credentials :rasta))}))
               "Request should return no content")
           (is (= true
                  (reset-fields-set?))
@@ -288,14 +338,14 @@
       (is (= (set (keys (merge
                          (setting/properties :public)
                          (setting/properties :authenticated))))
-             (set (keys ((mt/user->client :lucky) :get 200 "session/properties"))))))
+             (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
     (testing "Authenticated super user"
       (is (= (set (keys (merge
                          (setting/properties :public)
                          (setting/properties :authenticated)
                          (setting/properties :admin))))
-             (set (keys ((mt/user->client :crowberto) :get 200 "session/properties"))))))))
+             (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 
 (deftest properties-i18n-test
   (testing "GET /session/properties"
@@ -444,14 +494,18 @@
         (testing "their account should return a Session"
           (is (schema= {:id       UUID
                         s/Keyword s/Any}
-                       (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saul" "cam@sf-toucannery.com")))))))
+                       (#'session-api/google-auth-fetch-or-create-user!
+                        "Cam" "Saul" "cam@sf-toucannery.com"
+                        mock-device-info)))))))
 
   (testing "test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception"
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
                                        admin-email                             "rasta@toucans.com"]
       (is (thrown?
            clojure.lang.ExceptionInfo
-           (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Can" "rasta@sf-toucannery.com")))))
+           (#'session-api/google-auth-fetch-or-create-user!
+            "Rasta" "Can" "rasta@sf-toucannery.com"
+            mock-device-info)))))
 
   (testing "test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created"
     (et/with-fake-inbox
@@ -460,7 +514,9 @@
         (try
           (is (schema= {:id       UUID
                         s/Keyword s/Any}
-                       (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")))
+                       (#'session-api/google-auth-fetch-or-create-user!
+                        "Rasta" "Toucan" "rasta@sf-toucannery.com"
+                        mock-device-info)))
           (finally
             (db/delete! User :email "rasta@sf-toucannery.com")))))))
 
@@ -499,8 +555,7 @@
           (try
             (db/simple-delete! Session :user_id user-id)
             (is (schema= SessionResponse
-                         (mt/suppress-output
-                           (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
+                         (mt/client :post 200 "session" (mt/user->credentials :rasta))))
             (finally
               (db/update! User user-id :login_attributes nil))))))
 

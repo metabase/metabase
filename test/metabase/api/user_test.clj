@@ -1,8 +1,6 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
-            [metabase.email-test :as et]
             [metabase.http-client :as http]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
@@ -11,35 +9,33 @@
             [metabase.models.user-test :as user-test]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
-            [metabase.test.data :refer :all]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu :refer [random-name]]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.hydrate :as hydrate :refer [hydrate]]))
 
 (use-fixtures
   :once
   (fixtures/initialize :test-users-personal-collections)
   ;; reset Toucan hydrate keys because we define some custom ones in this namespace, need to make sure they get loaded
   (fn [thunk]
-    (toucan.hydrate/flush-hydration-key-caches!)
+    (hydrate/flush-hydration-key-caches!)
     (thunk)))
 
 (def ^:private user-defaults
-  {:date_joined      true
-   :google_auth      false
-   :id               true
-   :is_active        true
-   :is_qbnewb        true
-   :is_superuser     false
-   :last_login       false
-   :ldap_auth        false
-   :login_attributes nil
-   :updated_at       true
-   :locale           nil})
+  (merge
+   (mt/object-defaults User)
+   {:date_joined      true
+    :google_auth      false
+    :id               true
+    :is_active        true
+    :last_login       false
+    :ldap_auth        false
+    :login_attributes nil
+    :updated_at       true
+    :locale           nil}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -60,7 +56,7 @@
 (deftest user-list-test
   (testing "GET /api/user"
     (testing "Check that anyone can get a list of all active Users"
-      (tu/with-non-admin-groups-no-root-collection-perms
+      (mt/with-non-admin-groups-no-root-collection-perms
         (is (= [{:id          (mt/user->id :crowberto)
                  :email       "crowberto@metabase.com"
                  :first_name  "Crowberto"
@@ -76,7 +72,7 @@
                  :first_name  "Rasta"
                  :last_name   "Toucan"
                  :common_name "Rasta Toucan"}]
-               (->> ((mt/user->client :rasta) :get 200 "user")
+               (->> (mt/user-http-request :rasta :get 200 "user")
                     (filter mt/test-user?))))))))
 
 (defn- group-ids->sets [users]
@@ -90,70 +86,70 @@
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/get-id (group/all-users))
-                                              (u/get-id (group/admin))}
+                    :group_ids              #{(u/the-id (group/all-users))
+                                              (u/the-id (group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}
                    {:email                  "lucky@metabase.com"
                     :first_name             "Lucky"
                     :last_name              "Pigeon"
-                    :group_ids              #{(u/get-id (group/all-users))}
+                    :group_ids              #{(u/the-id (group/all-users))}
                     :personal_collection_id true
                     :common_name            "Lucky Pigeon"}
                    {:email                  "rasta@metabase.com"
                     :first_name             "Rasta"
                     :last_name              "Toucan"
-                    :group_ids              #{(u/get-id (group/all-users))}
+                    :group_ids              #{(u/the-id (group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
-             (->> ((mt/user->client :crowberto) :get 200 "user")
+             (->> (mt/user-http-request :crowberto :get 200 "user")
                   (filter mt/test-user?)
                   group-ids->sets
-                  tu/boolean-ids-and-timestamps
+                  mt/boolean-ids-and-timestamps
                   (map #(dissoc % :is_qbnewb :last_login))))))))
 
 (deftest user-list-include-inactive-test
   (testing "GET /api/user?include_deactivated=true"
     (testing "Non-admins should *not* be allowed to pass in include_deactivated"
       (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta) :get 403 "user", :include_deactivated true))))
+             (mt/user-http-request :rasta :get 403 "user", :include_deactivated true))))
 
     (testing "for admins, it should include those inactive users as we'd expect"
       (is (= (->> [{:email                  "trashbird@metabase.com"
                     :first_name             "Trash"
                     :last_name              "Bird"
                     :is_active              false
-                    :group_ids              #{(u/get-id (group/all-users))}
+                    :group_ids              #{(u/the-id (group/all-users))}
                     :personal_collection_id true
                     :common_name            "Trash Bird"}
                    {:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/get-id (group/all-users))
-                                              (u/get-id (group/admin))}
+                    :group_ids              #{(u/the-id (group/all-users))
+                                              (u/the-id (group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}
                    {:email                  "lucky@metabase.com"
                     :first_name             "Lucky"
                     :last_name              "Pigeon"
-                    :group_ids              #{(u/get-id (group/all-users))}
+                    :group_ids              #{(u/the-id (group/all-users))}
                     :personal_collection_id true
                     :common_name            "Lucky Pigeon"}
                    {:email                  "rasta@metabase.com"
                     :first_name             "Rasta"
                     :last_name              "Toucan"
-                    :group_ids              #{(u/get-id (group/all-users))}
+                    :group_ids              #{(u/the-id (group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
-             (->> ((mt/user->client :crowberto) :get 200 "user", :include_deactivated true)
+             (->> (mt/user-http-request :crowberto :get 200 "user", :include_deactivated true)
                   (filter mt/test-user?)
                   group-ids->sets
-                  tu/boolean-ids-and-timestamps
+                  mt/boolean-ids-and-timestamps
                   (map #(dissoc % :is_qbnewb :last_login))))))))
 
 (deftest get-current-user-test
@@ -165,11 +161,11 @@
                    :first_name             "Rasta"
                    :last_name              "Toucan"
                    :common_name            "Rasta Toucan"
-                   :group_ids              [(u/get-id (group/all-users))]
+                   :group_ids              [(u/the-id (group/all-users))]
                    :personal_collection_id true})
                  (dissoc :is_qbnewb :last_login))
-             (-> ((mt/user->client :rasta) :get 200 "user/current")
-                 tu/boolean-ids-and-timestamps
+             (-> (mt/user-http-request :rasta :get 200 "user/current")
+                 mt/boolean-ids-and-timestamps
                  (dissoc :is_qbnewb :last_login)))))))
 
 (deftest get-user-test
@@ -181,15 +177,15 @@
                    :first_name  "Rasta"
                    :last_name   "Toucan"
                    :common_name "Rasta Toucan"
-                   :group_ids   [(u/get-id (group/all-users))]})
+                   :group_ids   [(u/the-id (group/all-users))]})
                  (dissoc :is_qbnewb :last_login))
-             (-> ((mt/user->client :rasta) :get 200 (str "user/" (mt/user->id :rasta)))
-                 tu/boolean-ids-and-timestamps
+             (-> (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))
+                 mt/boolean-ids-and-timestamps
                  (dissoc :is_qbnewb :last_login)))))
 
     (testing "Check that a non-superuser CANNOT fetch someone else's user details"
       (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta) :get 403 (str "user/" (mt/user->id :trashbird))))))
+             (mt/user-http-request :rasta :get 403 (str "user/" (mt/user->id :trashbird))))))
 
     (testing "A superuser should be allowed to fetch another users data"
       (is (= (-> (merge
@@ -198,89 +194,82 @@
                    :first_name  "Rasta"
                    :last_name   "Toucan"
                    :common_name "Rasta Toucan"
-                   :group_ids   [(u/get-id (group/all-users))]})
+                   :group_ids   [(u/the-id (group/all-users))]})
                  (dissoc :is_qbnewb :last_login))
-             (-> ((mt/user->client :crowberto) :get 200 (str "user/" (mt/user->id :rasta)))
-                 tu/boolean-ids-and-timestamps
+             (-> (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))
+                 mt/boolean-ids-and-timestamps
                  (dissoc :is_qbnewb :last_login)))))
 
     (testing "We should get a 404 when trying to access a disabled account"
       (is (= "Not found."
-             ((mt/user->client :crowberto) :get 404 (str "user/" (mt/user->id :trashbird))))))))
+             (mt/user-http-request :crowberto :get 404 (str "user/" (mt/user->id :trashbird))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; ## POST /api/user
-;; Test that we can create a new User
-(let [user-name (random-name)
-      email     (tu/random-email)]
-  (expect
-   (merge user-defaults
-          (merge
-           user-defaults
-           {:email            email
-            :first_name       user-name
-            :last_name        user-name
-            :common_name      (str user-name " " user-name)
-            :group_ids        [(u/get-id (group/all-users))]
-            :login_attributes {:test "value"}}))
-   (et/with-fake-inbox
-     (try
-       (tu/boolean-ids-and-timestamps
-        ((mt/user->client :crowberto) :post 200 "user"
-         {:first_name       user-name
-          :last_name        user-name
-          :email            email
-          :login_attributes {:test "value"}}))
-       (finally
-         ;; clean up after ourselves
-         (db/delete! User :email email))))))
+(deftest create-user-test
+  (testing "POST /api/user"
+    (testing "Test that we can create a new User"
+      (let [user-name (mt/random-name)
+            email     (mt/random-email)]
+        (mt/with-model-cleanup [User]
+          (mt/with-fake-inbox
+            (is (= (merge user-defaults
+                          (merge
+                           user-defaults
+                           {:email            email
+                            :first_name       user-name
+                            :last_name        user-name
+                            :common_name      (str user-name " " user-name)
+                            :group_ids        [(u/the-id (group/all-users))]
+                            :login_attributes {:test "value"}}))
+                   (mt/boolean-ids-and-timestamps
+                    (mt/user-http-request :crowberto :post 200 "user"
+                                          {:first_name       user-name
+                                           :last_name        user-name
+                                           :email            email
+                                           :login_attributes {:test "value"}}))))))))
 
-;; Check that non-superusers are denied access
-(expect
-  "You don't have permissions to do that."
-  ((mt/user->client :rasta) :post 403 "user"
-   {:first_name "whatever"
-    :last_name  "whatever"
-    :email      "whatever@whatever.com"}))
+    (testing "Check that non-superusers are denied access"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "user"
+                                   {:first_name "whatever"
+                                    :last_name  "whatever"
+                                    :email      "whatever@whatever.com"}))))
 
-;; Attempting to create a new user with the same email as an existing user should fail
-(expect
-  {:errors {:email "Email address already in use."}}
-  ((mt/user->client :crowberto) :post 400 "user"
-   {:first_name "Something"
-    :last_name  "Random"
-    :email      (:email (mt/fetch-user :rasta))}))
+    (testing "Attempting to create a new user with the same email as an existing user should fail"
+      (is (= {:errors {:email "Email address already in use."}}
+             (mt/user-http-request :crowberto :post 400 "user"
+                                   {:first_name "Something"
+                                    :last_name  "Random"
+                                    :email      (:email (mt/fetch-user :rasta))}))))))
 
-;; Test input validations
-(expect
-  {:errors {:first_name "value must be a non-blank string."}}
-  ((mt/user->client :crowberto) :post 400 "user"
-   {}))
+(deftest create-user-validate-input-test
+  (testing "POST /api/user"
+    (testing "Test input validations"
+      (is (= {:errors {:first_name "value must be a non-blank string."}}
+             (mt/user-http-request :crowberto :post 400 "user"
+                                   {})))
 
-(expect
-  {:errors {:last_name "value must be a non-blank string."}}
-  ((mt/user->client :crowberto) :post 400 "user"
-   {:first_name "whatever"}))
+      (is (= {:errors {:last_name "value must be a non-blank string."}}
+             (mt/user-http-request :crowberto :post 400 "user"
+                                   {:first_name "whatever"})))
 
-(expect
-  {:errors {:email "value must be a valid email address."}}
-  ((mt/user->client :crowberto) :post 400 "user"
-   {:first_name "whatever"
-    :last_name  "whatever"}))
+      (is (= {:errors {:email "value must be a valid email address."}}
+             (mt/user-http-request :crowberto :post 400 "user"
+                                   {:first_name "whatever"
+                                    :last_name  "whatever"})))
 
-(expect
-  {:errors {:email "value must be a valid email address."}}
-  ((mt/user->client :crowberto) :post 400 "user"
-   {:first_name "whatever"
-    :last_name  "whatever"
-    :email      "whatever"}))
+      (is (= {:errors {:email "value must be a valid email address."}}
+             (mt/user-http-request :crowberto :post 400 "user"
+                                   {:first_name "whatever"
+                                    :last_name  "whatever"
+                                    :email      "whatever"}))))))
 
 (defn- do-with-temp-user-email [f]
-  (let [email (tu/random-email)]
+  (let [email (mt/random-email)]
     (try
       (f email)
       (finally (db/delete! User :email email)))))
@@ -288,86 +277,87 @@
 (defmacro ^:private with-temp-user-email [[email-binding] & body]
   `(do-with-temp-user-email (fn [~email-binding] ~@body)))
 
-;; we should be able to put a User in groups the same time we create them
-(expect
-  #{"All Users" "Group 1" "Group 2"}
-  (mt/with-temp* [PermissionsGroup [group-1 {:name "Group 1"}]
-                  PermissionsGroup [group-2 {:name "Group 2"}]]
-    (with-temp-user-email [email]
-      ((mt/user->client :crowberto) :post 200 "user"
-       {:first_name "Cam"
-        :last_name  "Era"
-        :email      email
-        :group_ids  (map u/get-id [(group/all-users) group-1 group-2])})
-      (user-test/user-group-names (User :email email)))))
+(deftest create-user-set-groups-test
+  (testing "POST /api/user"
+    (testing "we should be able to put a User in groups the same time we create them"
+      (mt/with-temp* [PermissionsGroup [group-1 {:name "Group 1"}]
+                      PermissionsGroup [group-2 {:name "Group 2"}]]
+        (with-temp-user-email [email]
+          (mt/user-http-request :crowberto :post 200 "user"
+                                {:first_name "Cam"
+                                 :last_name  "Era"
+                                 :email      email
+                                 :group_ids  (map u/the-id [(group/all-users) group-1 group-2])})
+          (is (= #{"All Users" "Group 1" "Group 2"}
+                 (user-test/user-group-names (User :email email)))))))
 
-;; If you forget the All Users group it should fail, because you cannot have a User that's not in the All Users group.
-;; The whole API call should fail and no user should be created, even though the permissions groups get set after the
-;; User is created
-(expect
-  false
-  (mt/with-temp PermissionsGroup [group {:name "Group"}]
-    (with-temp-user-email [email]
-      ((mt/user->client :crowberto) :post 400 "user"
-       {:first_name "Cam"
-        :last_name  "Era"
-        :email      email
-        :group_ids  [(u/get-id group)]})
-      (db/exists? User :%lower.email (u/lower-case-en email)))))
+    (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
+                  "All Users group. The whole API call should fail and no user should be created, even though the "
+                  "permissions groups get set after the User is created")
+      (mt/with-temp PermissionsGroup [group {:name "Group"}]
+        (with-temp-user-email [email]
+          (mt/user-http-request :crowberto :post 400 "user"
+                                {:first_name "Cam"
+                                 :last_name  "Era"
+                                 :email      email
+                                 :group_ids  [(u/the-id group)]})
+          (is (= false
+                 (db/exists? User :%lower.email (u/lower-case-en email)))))))))
 
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (db/select-one-field :is_superuser User :%lower.email (u/lower-case-en email))
    :pgm-exists?   (db/exists? PermissionsGroupMembership
                     :user_id  (db/select-one-id User :%lower.email (u/lower-case-en email))
-                    :group_id (u/get-id (group/admin)))})
+                    :group_id (u/the-id (group/admin)))})
 
-;; We should be able to put someone in the Admin group when we create them by including the admin group in group_ids
-(expect
-  {:is-superuser? true, :pgm-exists? true}
-  (with-temp-user-email [email]
-    ((mt/user->client :crowberto) :post 200 "user"
-     {:first_name   "Cam"
-      :last_name    "Era"
-      :email        email
-      :group_ids    (map u/get-id [(group/all-users) (group/admin)])})
-    (superuser-and-admin-pgm-info email)))
+(deftest create-user-add-to-admin-group-test
+  (testing "POST /api/user"
+    (testing (str "We should be able to put someone in the Admin group when we create them by including the admin "
+                  "group in group_ids")
+      (with-temp-user-email [email]
+        (mt/user-http-request :crowberto :post 200 "user"
+                              {:first_name "Cam"
+                               :last_name  "Era"
+                               :email      email
+                               :group_ids  (map u/the-id [(group/all-users) (group/admin)])})
+        (is (= {:is-superuser? true, :pgm-exists? true}
+               (superuser-and-admin-pgm-info email)))))
 
-;; for whatever reason we don't let you set is_superuser in the POST endpoint so if someone tries to pass that it
-;; should get ignored
-(expect
-  {:is-superuser? false, :pgm-exists? false}
-  (with-temp-user-email [email]
-    ((mt/user->client :crowberto) :post 200 "user"
-     {:first_name   "Cam"
-      :last_name    "Era"
-      :email        email
-      :is_superuser true})
-    (superuser-and-admin-pgm-info email)))
+    (testing (str "for whatever reason we don't let you set is_superuser in the POST endpoint so if someone tries to "
+                  "pass that it should get ignored")
+      (with-temp-user-email [email]
+        (mt/user-http-request :crowberto :post 200 "user"
+                              {:first_name   "Cam"
+                               :last_name    "Era"
+                               :email        email
+                               :is_superuser true})
+        (is (= {:is-superuser? false, :pgm-exists? false}
+               (superuser-and-admin-pgm-info email)))))))
 
 (deftest create-user-mixed-case-email
   (testing "POST /api/user/:id"
     (testing "can create a new User with a mixed case email and the email is normalized to lower case"
-      (let [user-name (random-name)
-            email     (tu/random-email)]
+      (let [user-name (mt/random-name)
+            email     (mt/random-email)]
         (is (= email
-              (:email (et/with-fake-inbox
-                        (try
-                          (tu/boolean-ids-and-timestamps
-                            ((mt/user->client :crowberto) :post 200 "user"
-                             {:first_name       user-name
-                              :last_name        user-name
-                              :email            (u/upper-case-en email)
-                              :login_attributes {:test "value"}}))
-                          (finally
+               (:email (mt/with-fake-inbox
+                         (try
+                           (mt/boolean-ids-and-timestamps
+                            (mt/user-http-request :crowberto :post 200 "user"
+                                                  {:first_name       user-name
+                                                   :last_name        user-name
+                                                   :email            (u/upper-case-en email)
+                                                   :login_attributes {:test "value"}}))
+                           (finally
                              ;; clean up after ourselves
                              (db/delete! User :email email)))))))))
 
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
       (is (= {:errors {:email "Email address already in use."}}
-             ((mt/user->client :crowberto) :post 400 "user"
-               {:first_name "Something"
-                :last_name  "Random"
-                :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))))))
+             (mt/user-http-request :crowberto :post 400 "user"
+                                   {:first_name "Something"
+                                    :last_name  "Random"
+                                    :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -405,13 +395,13 @@
                      :first_name   "Cam"
                      :last_name    "Eron"
                      :is_superuser true
-                     :group_ids    #{(u/get-id (group/all-users))
-                                     (u/get-id (group/admin))}})
-                   (-> ((mt/user->client :crowberto) :put 200 (str "user/" user-id)
-                        {:last_name "Eron"
-                         :email     "cam.eron@metabase.com"})
+                     :group_ids    #{(u/the-id (group/all-users))
+                                     (u/the-id (group/admin))}})
+                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                             {:last_name "Eron"
+                                              :email     "cam.eron@metabase.com"})
                        (update :group_ids set)
-                       tu/boolean-ids-and-timestamps))))
+                       mt/boolean-ids-and-timestamps))))
           (testing "after API call"
             (is (= {:first_name               "Cam"
                     :last_name                "Eron"
@@ -420,7 +410,6 @@
                     :personal_collection_name "Cam Eron's Personal Collection"}
                    (user)))))))))
 
-;;
 (deftest update-login-attributes-test
   (testing "PUT /api/user/:id"
     (testing "Test that we can update login attributes after a user has been created"
@@ -436,12 +425,13 @@
                  :login_attributes {:test "value"}
                  :common_name      "Test User"
                  :last_name        "User"
-                 :group_ids        #{(u/get-id (group/all-users))
-                                     (u/get-id (group/admin))}})
-               (-> ((mt/user->client :crowberto) :put 200 (str "user/" user-id) {:email            "testuser@metabase.com"
-                                                                                 :login_attributes {:test "value"}})
+                 :group_ids        #{(u/the-id (group/all-users))
+                                     (u/the-id (group/admin))}})
+               (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                         {:email            "testuser@metabase.com"
+                                          :login_attributes {:test "value"}})
                    (update :group_ids set)
-                   tu/boolean-ids-and-timestamps)))))))
+                   mt/boolean-ids-and-timestamps)))))))
 
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
@@ -449,7 +439,8 @@
       (let [trashbird (mt/fetch-user :trashbird)
             rasta     (mt/fetch-user :rasta)]
         (is (= {:errors {:email "Email address already associated to another user."}}
-               ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id rasta)) (select-keys trashbird [:email]))))))))
+               (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
+                                     (select-keys trashbird [:email]))))))))
 
 (deftest update-existing-email-case-mutation-test
   (testing "PUT /api/user/:id"
@@ -458,7 +449,8 @@
             rasta             (mt/fetch-user :rasta)
             trashbird-mutated (update trashbird :email u/upper-case-en)]
         (is (= {:errors {:email "Email address already associated to another user."}}
-               ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id rasta)) (select-keys trashbird-mutated [:email]))))))))
+               (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
+                                     (select-keys trashbird-mutated [:email]))))))))
 
 (deftest update-superuser-status-test
   (testing "PUT /api/user/:id"
@@ -466,58 +458,47 @@
       (letfn [(fetch-rasta []
                 (db/select-one [User :first_name :last_name :is_superuser :email], :id (mt/user->id :rasta)))]
         (let [before (fetch-rasta)]
-          ((mt/user->client :rasta) :put 200 (str "user/" (mt/user->id :rasta)) (assoc (fetch-rasta) :is_superuser true))
+          (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
+                                (assoc (fetch-rasta) :is_superuser true))
           (is (= before
                  (fetch-rasta))))))))
 
-;; Check that a non-superuser CANNOT update someone else's user details
-(expect
-  "You don't have permissions to do that."
-  ((mt/user->client :rasta) :put 403 (str "user/" (mt/user->id :trashbird))
-   {:email "toucan@metabase.com"}))
+(deftest update-permissions-test
+  (testing "PUT /api/user/:id"
+    (testing "Check that a non-superuser CANNOT update someone else's user details"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :trashbird))
+                                   {:email "toucan@metabase.com"}))))
 
-;; We should get a 404 when trying to access a disabled account
-(expect
-  "Not found."
-  ((mt/user->client :crowberto) :put 404 (str "user/" (mt/user->id :trashbird))
-   {:email "toucan@metabase.com"}))
+    (testing "We should get a 404 when trying to access a disabled account"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :put 404 (str "user/" (mt/user->id :trashbird))
+                                   {:email "toucan@metabase.com"}))))
 
-;; Google auth users shouldn't be able to change their own password as we get that from Google
-(expect
-  "You don't have permissions to do that."
-  (mt/with-temp User [user {:email       "anemail@metabase.com"
-                            :password    "def123"
-                            :google_auth true}]
-    (let [creds {:username "anemail@metabase.com"
-                 :password "def123"}]
-      (http/client creds :put 403 (format "user/%d" (u/get-id user))
-                   {:email "adifferentemail@metabase.com"}))))
+    (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
+      (mt/with-temp User [user {:email       "anemail@metabase.com"
+                                :password    "def123"
+                                :google_auth true}]
+        (let [creds {:username "anemail@metabase.com"
+                     :password "def123"}]
+          (is (= "You don't have permissions to do that."
+                 (http/client creds :put 403 (format "user/%d" (u/the-id user))
+                              {:email "adifferentemail@metabase.com"}))))))
 
-;; Similar to Google auth accounts, we should not allow LDAP users to change their own email address as we get that
-;; from the LDAP server
-(expect
-  "You don't have permissions to do that."
-  (mt/with-temp User [user {:email       "anemail@metabase.com"
-                            :password    "def123"
-                            :ldap_auth true}]
-    (let [creds {:username "anemail@metabase.com"
-                 :password "def123"}]
-      (http/client creds :put 403 (format "user/%d" (u/get-id user))
-                   {:email "adifferentemail@metabase.com"}))))
-
-;; Check that we can update the groups a User belongs to -- if we are a superuser
-(expect
-  #{"All Users" "Blue Man Group"}
-  (mt/with-temp* [User             [user]
-                  PermissionsGroup [group {:name "Blue Man Group"}]]
-    (do
-      ((mt/user->client :crowberto) :put 200 (str "user/" (u/get-id user))
-       {:group_ids (map u/get-id [(group/all-users) group])})
-      (user-test/user-group-names user))))
+    (testing (str "Similar to Google auth accounts, we should not allow LDAP users to change their own email address "
+                  "as we get that from the LDAP server")
+      (mt/with-temp User [user {:email     "anemail@metabase.com"
+                                :password  "def123"
+                                :ldap_auth true}]
+        (let [creds {:username "anemail@metabase.com"
+                     :password "def123"}]
+          (is (= "You don't have permissions to do that."
+                 (http/client creds :put 403 (format "user/%d" (u/the-id user))
+                              {:email "adifferentemail@metabase.com"}))))))))
 
 (defn- do-with-preserved-rasta-personal-collection-name [thunk]
   (let [{collection-name :name, collection-id :id} (collection/user->personal-collection (mt/user->id :rasta))]
-    (tu/with-temp-vals-in-db Collection collection-id {:name collection-name}
+    (mt/with-temp-vals-in-db Collection collection-id {:name collection-name}
       (thunk))))
 
 (defmacro ^:private with-preserved-rasta-personal-collection-name
@@ -526,80 +507,87 @@
   [& body]
   `(do-with-preserved-rasta-personal-collection-name (fn [] ~@body)))
 
-;; if we pass group_ids, and are updating ourselves as a non-superuser, the entire call should fail
-(expect
-  {:groups     #{"All Users"}
-   :first-name "Rasta"}
-  ;; By wrapping the test in this macro even if the test fails it will restore the original values
-  (tu/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
-    (with-preserved-rasta-personal-collection-name
-      (mt/with-temp PermissionsGroup [group {:name "Blue Man Group"}]
-        ((mt/user->client :rasta) :put 403 (str "user/" (mt/user->id :rasta))
-         {:group_ids  (map u/get-id [(group/all-users) group])
-          :first_name "Reggae"})))
-    {:groups     (user-test/user-group-names (mt/user->id :rasta))
-     :first-name (db/select-one-field :first_name User :id (mt/user->id :rasta))}))
+(deftest update-groups-test
+  (testing "PUT /api/user/:id"
+    (testing "Check that we can update the groups a User belongs to -- if we are a superuser"
+      (mt/with-temp* [User             [user]
+                      PermissionsGroup [group {:name "Blue Man Group"}]]
+        (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
+                              {:group_ids (map u/the-id [(group/all-users) group])})
+        (is (= #{"All Users" "Blue Man Group"}
+               (user-test/user-group-names user)))))
 
-;; if we pass group_ids as a non-superuser the call should succeed, so long as the value doesn't change
-(expect
-  {:groups     #{"All Users"}
-   :first-name "Reggae"}
-  (tu/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
-    (with-preserved-rasta-personal-collection-name
-      ((mt/user->client :rasta) :put 200 (str "user/" (mt/user->id :rasta))
-       {:group_ids  [(u/get-id (group/all-users))]
-        :first_name "Reggae"}))
-    {:groups     (user-test/user-group-names (mt/user->id :rasta))
-     :first-name (db/select-one-field :first_name User :id (mt/user->id :rasta))}))
+    (testing "if we pass group_ids, and are updating ourselves as a non-superuser, the entire call should fail"
+      ;; By wrapping the test in this macro even if the test fails it will restore the original values
+      (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
+        (with-preserved-rasta-personal-collection-name
+          (mt/with-temp PermissionsGroup [group {:name "Blue Man Group"}]
+            (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
+                                  {:group_ids  (map u/the-id [(group/all-users) group])
+                                   :first_name "Reggae"})))
+        (testing "groups"
+          (is (= #{"All Users"}
+                 (user-test/user-group-names (mt/user->id :rasta)))))
+        (testing "first name"
+          (is (= "Rasta"
+                 (db/select-one-field :first_name User :id (mt/user->id :rasta)))))))
 
-;; We should be able to put someone in the Admin group when we update them them (is_superuser = TRUE and group_ids
-;; including admin group ID)
-(expect
-  {:is-superuser? true, :pgm-exists? true}
-  (mt/with-temp User [{:keys [email id]}]
-    ((mt/user->client :crowberto) :put 200 (str "user/" id)
-     {:is_superuser true
-      :group_ids    (map u/get-id [(group/all-users) (group/admin)])})
-    (superuser-and-admin-pgm-info email)))
+    (testing "if we pass group_ids as a non-superuser the call should succeed, so long as the value doesn't change"
+      (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
+        (with-preserved-rasta-personal-collection-name
+          (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
+                                {:group_ids  [(u/the-id (group/all-users))]
+                                 :first_name "Reggae"}))
+        (testing "groups"
+          (is (= #{"All Users"}
+                 (user-test/user-group-names (mt/user->id :rasta)))))
+        (testing "first name"
+          (is (= "Reggae"
+                 (db/select-one-field :first_name User :id (mt/user->id :rasta)))))))
 
-;; if we try to create a new user with is_superuser FALSE but group_ids that includes the Admin group ID, the entire
-;; call should fail
-(expect
-  {:is-superuser? false, :pgm-exists? false, :first-name "Old First Name"}
-  (mt/with-temp User [{:keys [email id]} {:first_name "Old First Name"}]
-    ((mt/user->client :crowberto) :put 400 (str "user/" id)
-     {:is_superuser false
-      :group_ids    (map u/get-id [(group/all-users) (group/admin)])
-      :first_name   "Cool New First Name"})
-    (assoc (superuser-and-admin-pgm-info email)
-      :first-name (db/select-one-field :first_name User :id id))))
+    (testing (str "We should be able to put someone in the Admin group when we update them them (is_superuser = TRUE "
+                  "and group_ids including admin group ID)")
+      (mt/with-temp User [{:keys [email id]}]
+        (mt/user-http-request :crowberto :put 200 (str "user/" id)
+                              {:is_superuser true
+                               :group_ids    (map u/the-id [(group/all-users) (group/admin)])})
+        (is (= {:is-superuser? true, :pgm-exists? true}
+               (superuser-and-admin-pgm-info email)))))
 
-;; if we try to create a new user with is_superuser TRUE but group_ids that does not include the Admin group ID,
-;; things should fail
-(expect
-  {:is-superuser? false, :pgm-exists? false}
-  (mt/with-temp User [{:keys [email id]}]
-    ((mt/user->client :crowberto) :put 400 (str "user/" id)
-     {:is_superuser true
-      :group_ids    [(u/get-id (group/all-users))]})
-    (superuser-and-admin-pgm-info email)))
+    (testing (str "if we try to create a new user with is_superuser FALSE but group_ids that includes the Admin group "
+                  "ID, the entire call should fail")
+      (mt/with-temp User [{:keys [email id]} {:first_name "Old First Name"}]
+        (mt/user-http-request :crowberto :put 400 (str "user/" id)
+                              {:is_superuser false
+                               :group_ids    (map u/the-id [(group/all-users) (group/admin)])
+                               :first_name   "Cool New First Name"})
+        (is (= {:is-superuser? false, :pgm-exists? false, :first-name "Old First Name"}
+               (assoc (superuser-and-admin-pgm-info email)
+                      :first-name (db/select-one-field :first_name User :id id))))))
 
-;; if we PUT a user with is_superuser TRUE but don't specify group_ids, we should be ok
-(expect
-  {:is-superuser? true, :pgm-exists? true}
-  (mt/with-temp User [{:keys [email id]}]
-    ((mt/user->client :crowberto) :put 200 (str "user/" id)
-     {:is_superuser true})
-    (superuser-and-admin-pgm-info email)))
+    (testing (str "if we try to create a new user with is_superuser TRUE but group_ids that does not include the Admin "
+                  "group ID, things should fail")
+      (mt/with-temp User [{:keys [email id]}]
+        (mt/user-http-request :crowberto :put 400 (str "user/" id)
+                              {:is_superuser true
+                               :group_ids    [(u/the-id (group/all-users))]})
+        (is (= {:is-superuser? false, :pgm-exists? false}
+               (superuser-and-admin-pgm-info email)))))
 
-;; if we include Admin in group_ids but don't specify is_superuser we should be ok
-(expect
-  {:is-superuser? true, :pgm-exists? true}
-  (mt/with-temp User [{:keys [email id]}]
-    ((mt/user->client :crowberto) :put 200 (str "user/" id)
-     {:group_ids [(u/get-id (group/all-users))
-                  (u/get-id (group/admin))]})
-    (superuser-and-admin-pgm-info email)))
+    (testing "if we PUT a user with is_superuser TRUE but don't specify group_ids, we should be ok"
+      (mt/with-temp User [{:keys [email id]}]
+        (mt/user-http-request :crowberto :put 200 (str "user/" id)
+                              {:is_superuser true})
+        (is (= {:is-superuser? true, :pgm-exists? true}
+               (superuser-and-admin-pgm-info email)))))
+
+    (testing "if we include Admin in group_ids but don't specify is_superuser we should be ok"
+      (mt/with-temp User [{:keys [email id]}]
+        (mt/user-http-request :crowberto :put 200 (str "user/" id)
+                              {:group_ids [(u/the-id (group/all-users))
+                                           (u/the-id (group/admin))]})
+        (is (= {:is-superuser? true, :pgm-exists? true}
+               (superuser-and-admin-pgm-info email)))))))
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"
@@ -627,7 +615,7 @@
           (testing "admins should be able to update someone else's locale"
             (testing "response"
               (is (= "en_US"
-                     (:locale ((mt/user->client :crowberto) :put 200 url {:locale "en-US"})))))
+                     (:locale (mt/user-http-request :crowberto :put 200 url {:locale "en-US"})))))
             (testing "value in DB should be updated and normalized"
               (is (= "en_US"
                      (locale-from-db)))))
@@ -635,7 +623,7 @@
           (testing "normal Users should not be able to update someone else's locale"
             (testing "response"
               (is (= "You don't have permissions to do that."
-                     ((mt/user->client :lucky) :put 403 url {:locale "en-GB"}))))
+                     (mt/user-http-request :lucky :put 403 url {:locale "en-GB"}))))
             (testing "value in DB should be unchanged"
               (is (= "en_US"
                      (locale-from-db)))))
@@ -664,10 +652,10 @@
     (testing "Test that reactivating a disabled account works"
       (mt/with-temp User [user {:is_active false}]
         ;; now try creating the same user again, should re-activiate the original
-        ((mt/user->client :crowberto) :put 200 (format "user/%s/reactivate" (u/get-id user))
-         {:first_name (:first_name user)
-          :last_name  "whatever"
-          :email      (:email user)})
+        (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user))
+                              {:first_name (:first_name user)
+                               :last_name  "whatever"
+                               :email      (:email user)})
         (is (= true
                (db/select-one-field :is_active User :id (:id user)))
             "the user should now be active")))
@@ -675,7 +663,7 @@
     (testing "error conditions"
       (testing "Attempting to reactivate a non-existant user should return a 404"
         (is (= "Not found."
-               ((mt/user->client :crowberto) :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
+               (mt/user-http-request :crowberto :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
 
       (testing " Attempting to reactivate an already active user should fail"
         (is (schema= {:message  (s/eq "Not able to reactivate an active user")
@@ -684,14 +672,14 @@
 
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
-      (tu/with-temporary-setting-values [google-auth-client-id "ABCDEFG"]
+      (mt/with-temporary-setting-values [google-auth-client-id "ABCDEFG"]
         (mt/with-temp User [user {:google_auth true}]
-          (db/update! User (u/get-id user)
+          (db/update! User (u/the-id user)
             :is_active false)
-          (tu/with-temporary-setting-values [google-auth-client-id nil]
-            ((mt/user->client :crowberto) :put 200 (format "user/%s/reactivate" (u/get-id user)))
+          (mt/with-temporary-setting-values [google-auth-client-id nil]
+            (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :google_auth false}
-                   (mt/derecordize (db/select-one [User :is_active :google_auth] :id (u/get-id user)))))))))))
+                   (mt/derecordize (db/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -722,21 +710,21 @@
   (testing "PUT /api/user/:id/password"
     (testing "Check that a non-superuser CANNOT update someone else's password"
       (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta) :put 403 (format "user/%d/password" (mt/user->id :trashbird))
-              {:password     "whateverUP12!!"
-               :old_password "whatever"}))))))
+             (mt/user-http-request :rasta :put 403 (format "user/%d/password" (mt/user->id :trashbird))
+                                   {:password     "whateverUP12!!"
+                                    :old_password "whatever"}))))))
 
 (deftest reset-password-input-validation-test
   (testing "PUT /api/user/:id/password"
     (testing "Test input validations on password change"
       (is (= {:errors {:password "Insufficient password strength"}}
-             ((mt/user->client :rasta) :put 400 (format "user/%d/password" (mt/user->id :rasta)) {}))))
+             (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta)) {}))))
 
     (testing "Make sure that if current password doesn't match we get a 400"
       (is (= {:errors {:old_password "Invalid password"}}
-             ((mt/user->client :rasta) :put 400 (format "user/%d/password" (mt/user->id :rasta))
-              {:password     "whateverUP12!!"
-               :old_password "mismatched"}))))))
+             (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta))
+                                   {:password     "whateverUP12!!"
+                                    :old_password "mismatched"}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -747,7 +735,7 @@
   (testing "DELETE /api/user/:id"
     (mt/with-temp User [user]
       (is (= {:success true}
-             ((mt/user->client :crowberto) :delete 200 (format "user/%d" (:id user)) {})))
+             (mt/user-http-request :crowberto :delete 200 (format "user/%d" (:id user)) {})))
 
       (testing "User should still exist, but be inactive"
         (is (= {:is_active false}
@@ -755,7 +743,7 @@
 
     (testing "Check that a non-superuser CANNOT update deactivate themselves"
       (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta) :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
+             (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -765,8 +753,8 @@
 (deftest update-qbnewb-test
   (testing "PUT /api/user/:id/qbnewb"
     (testing "Test that we can set the QB newb status of ourselves"
-      (mt/with-temp User [{:keys [id]} {:first_name (random-name)
-                                        :last_name  (random-name)
+      (mt/with-temp User [{:keys [id]} {:first_name (mt/random-name)
+                                        :last_name  (mt/random-name)
                                         :email      "def@metabase.com"
                                         :password   "def123"}]
         (let [creds {:username "def@metabase.com"
@@ -780,10 +768,10 @@
 
     (testing "shouldn't be allowed to set someone else's QB newb status"
       (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta) :put 403 (format "user/%d/qbnewb" (mt/user->id :trashbird))))))))
+             (mt/user-http-request :rasta :put 403 (format "user/%d/qbnewb" (mt/user->id :trashbird))))))))
 
 (deftest send-invite-test
   (testing "POST /api/user/:id/send_invite"
     (testing "Check that non-superusers are denied access to resending invites"
       (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta) :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
+             (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))

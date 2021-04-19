@@ -1,39 +1,28 @@
+/* eslint "react/prop-types": "error" */
+
 import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import { t, jt, ngettext, msgid } from "ttag";
-import { Flex } from "grid-styled";
 
-import Card from "metabase/components/Card";
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
-import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
-import ExternalLink from "metabase/components/ExternalLink";
-import Icon from "metabase/components/Icon";
-import Label from "metabase/components/type/Label";
-import Subhead from "metabase/components/type/Subhead";
-import Text from "metabase/components/type/Text";
-import Link from "metabase/components/Link";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import RecipientPicker from "metabase/pulse/components/RecipientPicker";
-import SchedulePicker from "metabase/components/SchedulePicker";
-import Select, { Option } from "metabase/components/Select";
-import SendTestEmail from "metabase/components/SendTestEmail";
+import NewPulseSidebar from "metabase/sharing/components/NewPulseSidebar";
+import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
+import {
+  AddEditSlackSidebar,
+  AddEditEmailSidebar,
+} from "metabase/sharing/components/AddEditSidebar";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import Toggle from "metabase/components/Toggle";
-import Tooltip from "metabase/components/Tooltip";
-
 import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
+import { normalizeParameterValue } from "metabase/meta/Parameter";
 
 import { connect } from "react-redux";
 
 import {
   cleanPulse,
   createChannel,
-  dashboardPulseIsValid,
+  getPulseParameters,
 } from "metabase/lib/pulse";
-import MetabaseSettings from "metabase/lib/settings";
 
 import {
   getPulseId,
@@ -51,19 +40,10 @@ import {
   testPulse,
 } from "metabase/pulse/actions";
 
-import cx from "classnames";
-
 export const CHANNEL_ICONS = {
   email: "mail",
   slack: "slack",
 };
-
-const CHANNEL_NOUN_PLURAL = {
-  email: t`Emails`,
-  slack: t`Slack messages`,
-};
-
-const Heading = ({ children }) => <h4>{children}</h4>;
 
 const cardsFromDashboard = dashboard => {
   if (dashboard === undefined) {
@@ -163,13 +143,18 @@ class SharingSidebar extends React.Component {
     setEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
     updateEditingPulse: PropTypes.func.isRequired,
+    pulses: PropTypes.array.isRequired,
+    onCancel: PropTypes.func.isRequired,
+    setPulseArchived: PropTypes.func.isRequired,
+    users: PropTypes.array,
+    params: PropTypes.object,
   };
 
   setPulse = pulse => {
     this.props.updateEditingPulse(pulse);
   };
 
-  addChannel(type) {
+  addChannel = type => {
     const { dashboard, pulse, formInput } = this.props;
 
     const channelSpec = formInput.channels[type];
@@ -185,7 +170,7 @@ class SharingSidebar extends React.Component {
       cards: nonTextCardsFromDashboard(dashboard),
     };
     this.setPulse(newPulse);
-  }
+  };
 
   componentDidMount = async () => {
     await this.props.fetchPulseFormInput();
@@ -196,65 +181,37 @@ class SharingSidebar extends React.Component {
     );
   };
 
-  onChannelPropertyChange(index, name, value) {
+  onChannelPropertyChange = (index, name, value) => {
     const { pulse } = this.props;
     const channels = [...pulse.channels];
 
     channels[index] = { ...channels[index], [name]: value };
 
     this.setPulse({ ...pulse, channels });
-  }
+  };
 
   // changedProp contains the schedule property that user just changed
   // newSchedule may contain also other changed properties as some property changes reset other properties
-  onChannelScheduleChange(index, newSchedule, changedProp) {
+  onChannelScheduleChange = (index, newSchedule, changedProp) => {
     const { pulse } = this.props;
     const channels = [...pulse.channels];
 
     channels[index] = { ...channels[index], ...newSchedule };
     this.setPulse({ ...pulse, channels });
-  }
-
-  renderFields(channel, index, channelSpec) {
-    const valueForField = field => {
-      const value = channel.details && channel.details[field.name];
-      return value != null ? value : null; // convert undefined to null so Uncontrollable doesn't ignore changes
-    };
-    return (
-      <div>
-        {channelSpec.fields.map(field => (
-          <div key={field.name} className={field.name}>
-            <span className="text-bold mr1">{field.displayName}</span>
-            {field.type === "select" ? (
-              <Select
-                className="text-bold bg-white inline-block"
-                value={valueForField(field)}
-                placeholder={t`Pick a user or channel...`}
-                searchProp="name"
-                // Address #5799 where `details` object is missing for some reason
-                onChange={o =>
-                  this.onChannelPropertyChange(index, "details", {
-                    ...channel.details,
-                    [field.name]: o.target.value,
-                  })
-                }
-              >
-                {field.options.map(option => (
-                  <Option name={option} value={option}>
-                    {option}
-                  </Option>
-                ))}
-              </Select>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    );
-  }
+  };
 
   toggleSkipIfEmpty = () => {
     const { pulse } = this.props;
     this.setPulse({ ...pulse, skip_if_empty: !pulse.skip_if_empty });
+  };
+
+  setPulseParameters = parameters => {
+    const { pulse } = this.props;
+
+    this.setPulse({
+      ...pulse,
+      parameters,
+    });
   };
 
   handleSave = async () => {
@@ -262,6 +219,28 @@ class SharingSidebar extends React.Component {
 
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
+    cleanedPulse.parameters = getPulseParameters(cleanedPulse).map(
+      parameter => {
+        const {
+          default: defaultValue,
+          name,
+          slug,
+          type,
+          value,
+          id,
+        } = parameter;
+        const normalizedValue = normalizeParameterValue(type, value);
+        return {
+          default: defaultValue,
+          id,
+          name,
+          slug,
+          type,
+          value: normalizedValue,
+        };
+      },
+    );
+
     await this.props.updateEditingPulse(cleanedPulse);
 
     // The order below matters; it hides the "Done" button faster and prevents two pulses from being made if it's double-clicked
@@ -290,197 +269,6 @@ class SharingSidebar extends React.Component {
     });
   };
 
-  formatHourAMPM(hour) {
-    if (hour > 12) {
-      const newHour = hour - 12;
-      return t`${newHour}:00 PM`;
-    } else if (hour === 0) {
-      return t`12:00 AM`;
-    } else {
-      return t`${hour}:00 AM`;
-    }
-  }
-
-  formatDay(day) {
-    switch (day) {
-      case "mon":
-        return t`Monday`;
-      case "tue":
-        return t`Tuesday`;
-      case "wed":
-        return t`Wednesday`;
-      case "thu":
-        return t`Thursday`;
-      case "fri":
-        return t`Friday`;
-      case "sat":
-        return t`Saturday`;
-      case "sun":
-        return t`Sunday`;
-      default:
-        return day;
-    }
-  }
-
-  formatFrame(frame) {
-    switch (frame) {
-      case "first":
-        return t`first`;
-      case "last":
-        return t`last`;
-      case "mid":
-        return t`15th (Midpoint)`;
-      default:
-        return frame;
-    }
-  }
-
-  friendlySchedule(channel) {
-    let scheduleString = "";
-    if (channel.channel_type === "email") {
-      scheduleString += t`Emailed `;
-    } else if (channel.channel_type === "slack") {
-      scheduleString += t`Sent to ` + channel.details.channel + " ";
-    } else {
-      scheduleString += t`Sent `;
-    }
-
-    switch (channel.schedule_type) {
-      case "hourly":
-        scheduleString += t`hourly`;
-        break;
-      case "daily": {
-        const ampm = this.formatHourAMPM(channel.schedule_hour);
-        scheduleString += t`daily at ${ampm}`;
-        break;
-      }
-      case "weekly": {
-        const ampm = this.formatHourAMPM(channel.schedule_hour);
-        const day = this.formatDay(channel.schedule_day);
-        scheduleString += t`${day} at ${ampm}`;
-        break;
-      }
-      case "monthly": {
-        const ampm = this.formatHourAMPM(channel.schedule_hour);
-        const day = this.formatDay(channel.schedule_day);
-        const frame = this.formatFrame(channel.schedule_frame);
-        scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
-        break;
-      }
-      default:
-        scheduleString += channel.schedule_type;
-    }
-
-    return scheduleString;
-  }
-
-  renderEmailRecipients(recipients) {
-    const [first, ...rest] = recipients;
-
-    let text = "";
-
-    if (rest != null && rest.length > 0) {
-      text += ngettext(
-        msgid` and ${rest.length} other`,
-        ` and ${rest.length} others`,
-        rest.length,
-      );
-    }
-
-    return (
-      <li className="flex align-center mr1 text-bold text-medium hover-child hover--inherit">
-        <Icon
-          name="group"
-          className="text-medium hover-child hover--inherit"
-          size={12}
-        />
-        <span
-          className="ml1 text-medium hover-child hover--inherit"
-          style={{ fontSize: "12px" }}
-        >
-          {first.common_name || first.email}
-          {text !== "" && text}
-        </span>
-      </li>
-    );
-  }
-
-  renderRecipients(pulse) {
-    return (
-      <div className="text-medium hover-child">
-        <ul
-          className="flex flex-wrap scroll-x scroll-y"
-          style={{ maxHeight: 130 }}
-        >
-          {this.renderEmailRecipients(pulse.channels[0].recipients)}
-        </ul>
-      </div>
-    );
-  }
-
-  getConfirmItems() {
-    return this.props.pulse.channels.map((c, index) =>
-      c.channel_type === "email" ? (
-        <span key={index}>
-          {jt`This dashboard will no longer be emailed to ${(
-            <strong>
-              {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
-                c.recipients.length,
-              )}
-            </strong>
-          )} ${<strong>{c.schedule_type}</strong>}`}
-          .
-        </span>
-      ) : c.channel_type === "slack" ? (
-        <span key={index}>
-          {jt`Slack channel ${(
-            <strong>{c.details && c.details.channel}</strong>
-          )} will no longer get this dashboard ${(
-            <strong>{c.schedule_type}</strong>
-          )}`}
-          .
-        </span>
-      ) : (
-        <span key={index}>
-          {jt`Channel ${(
-            <strong>{c.channel_type}</strong>
-          )} will no longer receive this dashboard ${(
-            <strong>{c.schedule_type}</strong>
-          )}`}
-          .
-        </span>
-      ),
-    );
-  }
-
-  renderDeleteSubscription() {
-    const { pulse } = this.props;
-
-    if (pulse.id != null && !pulse.archived) {
-      return (
-        <div className="border-top pt1 pb3 flex justify-end">
-          <ModalWithTrigger
-            triggerClasses="Button Button--borderless text-light text-error-hover flex-align-right flex-no-shrink"
-            triggerElement={t`Delete this subscription`}
-          >
-            {({ onClose }) => (
-              <DeleteModalWithConfirm
-                objectType="pulse"
-                title={t`Delete this subscription to ${pulse.name}?`}
-                buttonText={t`Delete`}
-                confirmItems={this.getConfirmItems()}
-                onClose={onClose}
-                onDelete={this.handleArchive}
-              />
-            )}
-          </ModalWithTrigger>
-        </div>
-      );
-    }
-
-    return null;
-  }
-
   handleArchive = async () => {
     await this.props.setPulseArchived(this.props.pulse, true);
     this.setState({ editingMode: "list-pulses", returnMode: [] });
@@ -504,21 +292,14 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const { pulse, pulses, formInput } = this.props;
-
-    const caveatMessage = (
-      <Text className="mx4 my2 p2 bg-light text-dark rounded">{jt`${(
-        <span className="text-bold">Note:</span>
-      )} charts in your subscription won't look the same as in your dashboard. ${(
-        <ExternalLink
-          className="link"
-          target="_blank"
-          href={MetabaseSettings.docsUrl("users-guide/dashboard-subscriptions")}
-        >
-          Learn more
-        </ExternalLink>
-      )}.`}</Text>
-    );
+    const {
+      pulse,
+      pulses,
+      formInput,
+      testPulse,
+      users,
+      dashboard,
+    } = this.props;
 
     // protect from empty values that will mess this up
     if (!formInput.channels || !pulse) {
@@ -527,161 +308,54 @@ class SharingSidebar extends React.Component {
 
     if (editingMode === "list-pulses" && pulses.length > 0) {
       return (
-        <Sidebar>
-          <div className="px4 pt3 flex justify-between align-center">
-            <Subhead>{t`Subscriptions`}</Subhead>
-
-            <Flex align="center">
-              <Tooltip tooltip={t`Set up a new schedule`}>
-                <Icon
-                  name="add"
-                  className="text-brand bg-light-hover rounded p1 cursor-pointer mr1"
-                  size={18}
-                  onClick={() => this.createSubscription()}
-                />
-              </Tooltip>
-              <Tooltip tooltip={t`Close`}>
-                <Icon
-                  name="close"
-                  className="text-light bg-light-hover rounded p1 cursor-pointer"
-                  size={22}
-                  onClick={this.onCancel}
-                />
-              </Tooltip>
-            </Flex>
-          </div>
-          <div className="my2 mx4">
-            {pulses.map(pulse => (
-              <Card
-                flat
-                className="mb3 cursor-pointer bg-brand-hover"
-                onClick={() =>
-                  this.editPulse(pulse, pulse.channels[0].channel_type)
-                }
-              >
-                <div className="px3 py2 hover-parent hover--inherit text-white-hover">
-                  <div className="flex align-center hover-child hover--inherit">
-                    <Icon
-                      name={
-                        pulse.channels[0].channel_type === "email"
-                          ? "mail"
-                          : "slack"
-                      }
-                      className="mr1"
-                      style={{ paddingBottom: "5px" }}
-                      size={16}
-                    />
-                    <Label className="hover-child hover--inherit">
-                      {this.friendlySchedule(pulse.channels[0])}
-                    </Label>
-                  </div>
-                  {pulse.channels[0].channel_type === "email" &&
-                    this.renderRecipients(pulse)}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </Sidebar>
+        <PulsesListSidebar
+          pulses={pulses}
+          createSubscription={this.createSubscription}
+          onCancel={this.onCancel}
+          editPulse={this.editPulse}
+        />
       );
     }
+
     if (
       editingMode === "add-edit-email" &&
       (pulse.channels && pulse.channels.length > 0)
     ) {
-      const channelType = "email";
-
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
-        .filter(([c, i]) => c.enabled && c.channel_type === channelType);
+        .filter(([c, i]) => c.enabled && c.channel_type === "email");
       // protection from a failure where the channels aren't loaded yet
       if (channelDetails.length === 0) {
         return <Sidebar />;
       }
 
-      const channel = channelDetails[0][0];
-      const index = channelDetails[0][1];
-
+      const [channel, index] = channelDetails[0];
       const channelSpec = formInput.channels.email;
 
       return (
-        <Sidebar
-          onClose={this.handleSave}
+        <AddEditEmailSidebar
+          pulse={pulse}
+          formInput={formInput}
+          channel={channel}
+          channelSpec={channelSpec}
+          handleSave={this.handleSave}
           onCancel={this.onCancel}
-          className="text-dark"
-          closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
-        >
-          <div className="pt4 px4 flex align-center">
-            <Icon name="mail" className="mr1" size={21} />
-            <Heading>{t`Email this dashboard`}</Heading>
-          </div>
-          {caveatMessage}
-          <div className="my2 px4">
-            <div>
-              <div className="text-bold mb1">
-                {this.props.emailRecipientText || t`To:`}
-              </div>
-              <RecipientPicker
-                isNewPulse={this.props.pulseId === undefined}
-                autoFocus={false}
-                recipients={channel.recipients}
-                recipientTypes={channelSpec.recipients}
-                users={this.props.users}
-                onRecipientsChange={recipients =>
-                  this.onChannelPropertyChange(index, "recipients", recipients)
-                }
-              />
-            </div>
-            {channelSpec.fields &&
-              this.renderFields(channel, index, channelSpec)}
-            <SchedulePicker
-              schedule={_.pick(
-                channel,
-                "schedule_day",
-                "schedule_frame",
-                "schedule_hour",
-                "schedule_type",
-              )}
-              scheduleOptions={channelSpec.schedules}
-              textBeforeInterval={t`Sent`}
-              textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
-                channelSpec && channelSpec.type
-              ] || t`Messages`} will be sent at`}
-              onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
-            />
-            <div className="pt2 pb1">
-              <SendTestEmail
-                channel={channel}
-                pulse={pulse}
-                testPulse={this.props.testPulse}
-              />
-            </div>
-
-            <div className="text-bold py3 mt2 flex justify-between align-center border-top">
-              <Heading>{t`Don't send if there aren't results`}</Heading>
-              <Toggle
-                value={pulse.skip_if_empty || false}
-                onChange={this.toggleSkipIfEmpty}
-              />
-            </div>
-            <div className="text-bold py2 flex justify-between align-center border-top">
-              <div className="flex align-center">
-                <Heading>{t`Attach results`}</Heading>
-                <Icon
-                  name="info"
-                  className="text-medium ml1"
-                  size={12}
-                  tooltip={t`Attachments can contain up to 2,000 rows of data.`}
-                />
-              </div>
-            </div>
-            <EmailAttachmentPicker
-              cards={pulse.cards}
-              pulse={pulse}
-              setPulse={this.setPulse.bind(this)}
-            />
-            {pulse.id != null && this.renderDeleteSubscription()}
-          </div>
-        </Sidebar>
+          onChannelPropertyChange={_.partial(
+            this.onChannelPropertyChange,
+            index,
+          )}
+          onChannelScheduleChange={_.partial(
+            this.onChannelScheduleChange,
+            index,
+          )}
+          testPulse={testPulse}
+          toggleSkipIfEmpty={this.toggleSkipIfEmpty}
+          setPulse={this.setPulse}
+          users={users}
+          handleArchive={this.handleArchive}
+          dashboard={dashboard}
+          setPulseParameters={this.setPulseParameters}
+        />
       );
     }
 
@@ -689,177 +363,75 @@ class SharingSidebar extends React.Component {
       editingMode === "add-edit-slack" &&
       (pulse.channels && pulse.channels.length > 0)
     ) {
-      const channelType = "slack";
-
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
-        .filter(([c, i]) => c.enabled && c.channel_type === channelType);
+        .filter(([c, i]) => c.enabled && c.channel_type === "slack");
+
       // protection from a failure where the channels aren't loaded yet
       if (channelDetails.length === 0) {
         return <Sidebar />;
       }
 
-      const channel = channelDetails[0][0];
-      const index = channelDetails[0][1];
-
+      const [channel, index] = channelDetails[0];
       const channelSpec = formInput.channels.slack;
-
       return (
-        <Sidebar
-          onClose={this.handleSave}
+        <AddEditSlackSidebar
+          pulse={pulse}
+          formInput={formInput}
+          channel={channel}
+          channelSpec={channelSpec}
+          handleSave={this.handleSave}
           onCancel={this.onCancel}
-          className="text-dark"
-          closeIsDisabled={!dashboardPulseIsValid(pulse, formInput.channels)}
-        >
-          <div className="pt4 flex align-center px4 mb3">
-            <Icon name="slack" className="mr1" size={21} />
-            <Heading>{t`Send this dashboard to Slack`}</Heading>
-          </div>
-          {caveatMessage}
-          <div className="pb2 px4">
-            {channelSpec.fields &&
-              this.renderFields(channel, index, channelSpec)}
-            <SchedulePicker
-              schedule={_.pick(
-                channel,
-                "schedule_day",
-                "schedule_frame",
-                "schedule_hour",
-                "schedule_type",
-              )}
-              scheduleOptions={channelSpec.schedules}
-              textBeforeInterval={t`Sent`}
-              textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
-                channelSpec && channelSpec.type
-              ] || t`Messages`} will be sent at`}
-              onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
-            />
-            <div className="text-bold py2 mt2 flex justify-between align-center border-top">
-              <Heading>{t`Don't send if there aren't results`}</Heading>
-              <Toggle
-                value={pulse.skip_if_empty || false}
-                onChange={this.toggleSkipIfEmpty}
-              />
-            </div>
-            {pulse.id != null && this.renderDeleteSubscription()}
-          </div>
-        </Sidebar>
+          onChannelPropertyChange={_.partial(
+            this.onChannelPropertyChange,
+            index,
+          )}
+          onChannelScheduleChange={_.partial(
+            this.onChannelScheduleChange,
+            index,
+          )}
+          toggleSkipIfEmpty={this.toggleSkipIfEmpty}
+          handleArchive={this.handleArchive}
+          dashboard={dashboard}
+          setPulseParameters={this.setPulseParameters}
+        />
       );
     }
 
     if (editingMode === "new-pulse" || pulses.length === 0) {
-      const emailSpec = formInput.channels.email || {};
-      const slackSpec = formInput.channels.slack || {};
+      const { configured: emailConfigured = false } =
+        formInput.channels.email || {};
+      const { configured: slackConfigured = false } =
+        formInput.channels.slack || {};
 
       return (
-        <Sidebar onCancel={this.onCancel}>
-          <div className="mt2 pt2 px4">
-            <Heading>{t`Create a dashboard subscription`}</Heading>
-          </div>
-          <div className="my1 mx4">
-            <Card
-              flat
-              className={cx("mt1 mb3", {
-                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
-                  emailSpec.configured,
-              })}
-              onClick={() => {
-                if (emailSpec.configured) {
-                  this.setState(({ returnMode }) => {
-                    return {
-                      editingMode: "add-edit-email",
-                      returnMode: returnMode.concat([editingMode]),
-                    };
-                  });
-                  this.addChannel("email");
-                }
-              }}
-            >
-              <div className="px3 pt3 pb2">
-                <div className="flex align-center">
-                  <Icon
-                    name="mail"
-                    className={cx(
-                      "mr1",
-                      {
-                        "text-brand hover-child hover--inherit":
-                          emailSpec.configured,
-                      },
-                      { "text-light": !emailSpec.configured },
-                    )}
-                  />
-                  <h3
-                    className={cx({ "text-light": !emailSpec.configured })}
-                  >{t`Email it`}</h3>
-                </div>
-                <Text
-                  lineHeight={1.5}
-                  className={cx("text-medium", {
-                    "hover-child hover--inherit": emailSpec.configured,
-                  })}
-                >
-                  {!emailSpec.configured &&
-                    jt`You'll need to ${(
-                      <Link to="/admin/settings/email" className="link">
-                        set up email
-                      </Link>
-                    )} first.`}
-                  {emailSpec.configured &&
-                    t`You can send this dashboard regularly to users or email addresses.`}
-                </Text>
-              </div>
-            </Card>
-            <Card
-              flat
-              className={cx({
-                "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit":
-                  slackSpec.configured,
-              })}
-              onClick={() => {
-                if (slackSpec.configured) {
-                  this.setState(({ returnMode }) => {
-                    return {
-                      editingMode: "add-edit-slack",
-                      returnMode: returnMode.concat([editingMode]),
-                    };
-                  });
-                  this.addChannel("slack");
-                }
-              }}
-            >
-              <div className="px3 pt3 pb2">
-                <div className="flex align-center mb1">
-                  <Icon
-                    name={slackSpec.configured ? "slack_colorized" : "slack"}
-                    size={24}
-                    className={cx("mr1", {
-                      "text-light": !slackSpec.configured,
-                      "hover-child hover--inherit": slackSpec.configured,
-                    })}
-                  />
-                  <h3
-                    className={cx({ "text-light": !slackSpec.configured })}
-                  >{t`Send it to Slack`}</h3>
-                </div>
-                <Text
-                  lineHeight={1.5}
-                  className={cx("text-medium", {
-                    "hover-child hover--inherit": slackSpec.configured,
-                  })}
-                >
-                  {!slackSpec.configured &&
-                    jt`First, you'll have to ${(
-                      <Link to="/admin/settings/slack" className="link">
-                        configure Slack
-                      </Link>
-                    )}.`}
-                  {slackSpec.configured &&
-                    t`Pick a channel and a schedule, and Metabase will do the rest.`}
-                </Text>
-              </div>
-            </Card>
-          </div>
-        </Sidebar>
+        <NewPulseSidebar
+          onCancel={this.onCancel}
+          emailConfigured={emailConfigured}
+          slackConfigured={slackConfigured}
+          onNewEmailPulse={() => {
+            if (emailConfigured) {
+              this.setState(({ returnMode }) => {
+                return {
+                  editingMode: "add-edit-email",
+                  returnMode: returnMode.concat([editingMode]),
+                };
+              });
+              this.addChannel("email");
+            }
+          }}
+          onNewSlackPulse={() => {
+            if (slackConfigured) {
+              this.setState(({ returnMode }) => {
+                return {
+                  editingMode: "add-edit-slack",
+                  returnMode: returnMode.concat([editingMode]),
+                };
+              });
+              this.addChannel("slack");
+            }
+          }}
+        />
       );
     }
 

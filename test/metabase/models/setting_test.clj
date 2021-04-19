@@ -1,5 +1,6 @@
 (ns metabase.models.setting-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
             [metabase.test :as mt]
@@ -513,3 +514,81 @@
     ;; ok, make sure the setting was set
     (is (= "Banana Beak"
            (toucan-name)))))
+
+
+(deftest duplicated-setting-name
+  (testing "can re-register a setting in the same ns (redefining or reloading ns)"
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public)))
+  (testing "if attempt to register in a different ns throws an error"
+    (let [current-ns (ns-name *ns*)]
+      (try
+        (ns nested-setting-test
+          (:require [metabase.models.setting :refer [defsetting]]
+                    [metabase.util.i18n :as i18n :refer [deferred-tru]]))
+        (defsetting foo (deferred-tru "A testing setting") :visibility :public)
+        (catch Exception e
+          (is (= {:existing-setting
+                  {:description (deferred-tru "A testing setting"),
+                   :cache? true,
+                   :default nil,
+                   :name :foo,
+                   :munged-name "foo"
+                   :type :string,
+                   :sensitive? false,
+                   :tag 'java.lang.String,
+                   :namespace current-ns
+                   :visibility :public}}
+                 (ex-data e)))
+          (is (= (str "Setting :foo already registered in " current-ns)
+                 (ex-message e))))
+        (finally (in-ns current-ns))))))
+
+(defsetting ^:private test-setting-with-question-mark?
+  "Test setting - this only shows up in dev (6)"
+  :visibility :internal)
+
+(deftest munged-setting-name-test
+  (testing "Only valid characters used for environment lookup"
+    (is (nil? (test-setting-with-question-mark?)))
+    ;; note now question mark on the environmental setting
+    (with-redefs [environ.core/env {:mb-test-setting-with-question-mark "resolved"}]
+      (binding [setting/*disable-cache* false]
+        (is (= "resolved" (test-setting-with-question-mark?))))))
+  (testing "Setting a setting that would munge the same throws an error"
+    (is (= {:existing-setting
+            {:name :test-setting-with-question-mark?
+             :munged-name "test-setting-with-question-mark"}
+            :new-setting
+            {:name :test-setting-with-question-mark????
+             :munged-name "test-setting-with-question-mark"}}
+           (m/map-vals #(select-keys % [:name :munged-name])
+                       (try (defsetting ^:private test-setting-with-question-mark????
+                              "Test setting - this only shows up in dev (6)"
+                              :visibility :internal)
+                            (catch Exception e (ex-data e)))))))
+  (testing "Munge collision on first definition"
+    (defsetting ^:private test-setting-normal
+      "Test setting - this only shows up in dev (6)"
+      :visibility :internal)
+    (is (= {:existing-setting {:name :test-setting-normal, :munged-name "test-setting-normal"},
+            :new-setting {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
+           (m/map-vals #(select-keys % [:name :munged-name])
+                       (try (defsetting ^:private test-setting-normal??
+                              "Test setting - this only shows up in dev (6)"
+                              :visibility :internal)
+                            (catch Exception e (ex-data e)))))))
+  (testing "Munge collision on second definition"
+    (defsetting ^:private test-setting-normal-1??
+      "Test setting - this only shows up in dev (6)"
+      :visibility :internal)
+    (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
+             :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
+           (m/map-vals #(select-keys % [:name :munged-name])
+                       (try (defsetting ^:private test-setting-normal-1
+                              "Test setting - this only shows up in dev (6)"
+                              :visibility :internal)
+                            (catch Exception e (ex-data e)))))))
+  (testing "Removes characters not-compliant with shells"
+    (is (= "aa1aa-b2b_cc3c"
+           (#'setting/munge-setting-name "aa1'aa@#?-b2@b_cc'3?c?")))))

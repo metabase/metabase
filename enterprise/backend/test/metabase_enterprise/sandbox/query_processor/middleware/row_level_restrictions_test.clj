@@ -42,15 +42,15 @@
 
 (defn- venues-category-mbql-gtap-def []
   {:query      (mt/mbql-query venues)
-   :remappings {:cat ["variable" [:field-id (mt/id :venues :category_id)]]}})
+   :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}})
 
 (defn- venues-price-mbql-gtap-def []
   {:query      (mt/mbql-query venues)
-   :remappings {:price ["variable" [:field-id (mt/id :venues :price)]]}})
+   :remappings {:price ["variable" [:field (mt/id :venues :price) nil]]}})
 
 (defn- checkins-user-mbql-gtap-def []
   {:query      (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})
-   :remappings {:user ["variable" [:field-id (mt/id :checkins :user_id)]]}})
+   :remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]}})
 
 (defn- format-honeysql [honeysql]
   (let [honeysql (cond-> honeysql
@@ -163,13 +163,15 @@
                   :query      {:source-query {:source-table $$checkins
                                               :fields       [$id !default.$date $user_id $venue_id]
                                               :filter       [:and
-                                                             [:> $date [:absolute-datetime #t "2014-01-01T00:00Z[UTC]" :default]]
+                                                             [:>= !default.date [:absolute-datetime #t "2014-01-02T00:00Z[UTC]" :default]]
                                                              [:=
                                                               $user_id
-                                                              [:value 5 {:base_type     :type/Integer
-                                                                         :special_type  :type/FK
-                                                                         :database_type "INTEGER"
-                                                                         :name          "USER_ID"}]]]
+                                                              [:value 5 {:base_type         :type/Integer
+                                                                         :effective_type    :type/Integer
+                                                                         :coercion_strategy nil
+                                                                         :semantic_type     :type/FK
+                                                                         :database_type     "INTEGER"
+                                                                         :name              "USER_ID"}]]]
                                               ::row-level-restrictions/gtap?        true}
                                :joins        [{:source-query
                                                {:source-table $$venues
@@ -177,10 +179,12 @@
                                                                $venues.latitude $venues.longitude $venues.price]
                                                 :filter       [:=
                                                                $venues.price
-                                                               [:value 1 {:base_type     :type/Integer
-                                                                          :special_type  :type/Category
-                                                                          :database_type "INTEGER"
-                                                                          :name          "PRICE"}]]
+                                                               [:value 1 {:base_type         :type/Integer
+                                                                          :effective_type    :type/Integer
+                                                                          :coercion_strategy nil
+                                                                          :semantic_type     :type/Category
+                                                                          :database_type     "INTEGER"
+                                                                          :name              "PRICE"}]]
                                                 ::row-level-restrictions/gtap?        true}
                                                :alias     "v"
                                                :strategy  :left-join
@@ -254,7 +258,7 @@
 
     (testing "Another basic test, this one uses a stringified float for the login attribute"
       (mt/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                            :remappings {:cat ["variable" [:field-id (mt/id :venues :latitude)]]}}}
+                                            :remappings {:cat ["variable" [:field (mt/id :venues :latitude) nil]]}}}
                       :attributes {"cat" "34.1018"}}
         (is (= [[3]]
                (run-venues-count-query)))))
@@ -361,7 +365,7 @@
                    "question with venues and users having the default GTAP and segmented permissions")
        (mt/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                     :venues   (dissoc (venues-price-mbql-gtap-def) :query)
-                                    :users    {:remappings {:user ["variable" [:field-id (mt/id :users :id)]]}}}
+                                    :users    {:remappings {:user ["variable" [:field (mt/id :users :id) nil]]}}}
                        :attributes {"user" 5, "price" 1}}
          (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
                 (set
@@ -446,7 +450,7 @@
                             (assoc col
                                    :id id
                                    :table_id (mt/id :venues)
-                                   :field_ref [:field-id id])))]
+                                   :field_ref [:field id nil])))]
       (testing "A query with a simple attributes-based sandbox should have the same metadata"
         (mt/with-gtaps {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                         :attributes {"cat" 50}}
@@ -512,7 +516,7 @@
                (mt/run-mbql-query checkins
                  {:joins    [{:fields       :all
                               :source-table $$venues
-                              :condition    [:= $venue_id [:joined-field "Venue" $venues.id]]
+                              :condition    [:= $venue_id &Venue.venues.id]
                               :alias        "Venue"}]
                   :order-by [[:asc $id]]
                   :limit    3})))))))
@@ -546,7 +550,7 @@
                        {:fields   [$id $name] ; joined fields get appended automatically because we specify :all :below
                         :joins    [{:fields       :all
                                     :source-table $$venues
-                                    :condition    [:= $id [:joined-field "Venue" $id]]
+                                    :condition    [:= $id &Venue.id]
                                     :alias        "Venue"}]
                         :order-by [[:asc $id]]
                         :limit    3})))))
@@ -588,7 +592,7 @@
                                      {:fields   [$id $name]
                                       :joins    [{:fields       :all
                                                   :source-table $$venues
-                                                  :condition    [:= $id [:joined-field "Venue" $id]]
+                                                  :condition    [:= $id &Venue.id]
                                                   :alias        "Venue"}]
                                       :order-by [[:asc $id]]
                                       :limit    3}))}))))]
@@ -722,10 +726,10 @@
         ;; create query with joins
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
-                       :breakout    [[:joined-field "products" $products.category]]
+                       :breakout    [&products.products.category]
                        :joins       [{:fields       :all
                                       :source-table $$products
-                                      :condition    [:= $product_id [:joined-field "products" $products.id]]
+                                      :condition    [:= $product_id &products.products.id]
                                       :alias        "products"}]
                        :limit       10})]
           (testing "Should be able to run the query"
@@ -752,17 +756,19 @@
                               {:filter [:= $products.category "Widget"]
                                :joins  [{:fields       :all
                                          :source-table $$products
-                                         :condition    [:= $product_id [:joined-field "products" $products.id]]
+                                         :condition    [:= $product_id &products.products.id]
                                          :alias        "products"}]
                                :limit  10})
 
                             test-preprocessing
                             (fn []
-                              (testing "`resolve-joined-fields` middleware should infer `:joined-field` correctly"
+                              (testing "`resolve-joined-fields` middleware should infer `:field` `:join-alias` correctly"
                                 (is (= [:=
-                                        [:joined-field "products" [:field-id (mt/id :products :category)]]
+                                        [:field (mt/id :products :category) {:join-alias "products"}]
                                         [:value "Widget" {:base_type     :type/Text
-                                                          :special_type  (db/select-one-field :special_type Field
+                                                          :effective_type :type/Text
+                                                          :coercion_strategy nil
+                                                          :semantic_type  (db/select-one-field :semantic_type Field
                                                                            :id (mt/id :products :category))
                                                           :database_type "VARCHAR"
                                                           :name          "CATEGORY"}]]
@@ -838,7 +844,11 @@
           (mt/with-column-remappings [orders.product_id products.title]
             (do-tests)))))))
 
-(defn- set-query-metadata-for-gtap-card! [group table-name param-name param-value]
+(defn- set-query-metadata-for-gtap-card!
+  "Find the GTAP Card associated with Group and table-name and add `:result_metadata` to it. Because we (probably) need
+  a parameter in order to run the query to get metadata, pass `param-name` and `param-value` template tag parameters
+  when running the query."
+  [group table-name param-name param-value]
   (let [card-id (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))
         query   (db/select-one-field :dataset_query Card :id (u/the-id card-id))
         results (mt/with-test-user :crowberto

@@ -1,5 +1,3 @@
-// @flow
-
 import d3 from "d3";
 import Color from "color";
 import { Harmonizer } from "color-harmony";

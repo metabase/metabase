@@ -18,18 +18,22 @@
 
 (defonce ^:private h2-test-dbs-created-by-this-instance (atom #{}))
 
-;; For H2, test databases are all in-memory, which don't work if they're saved from a different REPL session or the
-;; like. So delete any 'stale' in-mem DBs from the application DB when someone calls `get-or-create-database!` as
-;; needed.
+(defn- destroy-test-database-if-created-by-another-instance!
+  "For H2, test databases are all in-memory, which don't work if they're saved from a different REPL session or the
+  like. So delete any 'stale' in-mem DBs from the application DB when someone calls `get-or-create-database!` as
+  needed."
+  [database-name]
+  (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
+    (locking h2-test-dbs-created-by-this-instance
+      (when-not (contains? @h2-test-dbs-created-by-this-instance database-name)
+        (mdb/setup-db!)                 ; if not already setup
+        (db/delete! Database :engine "h2", :name database-name)
+        (swap! h2-test-dbs-created-by-this-instance conj database-name)))))
+
 (defmethod data.impl/get-or-create-database! :h2
   [driver dbdef]
   (let [{:keys [database-name], :as dbdef} (tx/get-dataset-definition dbdef)]
-    ;; don't think we need to bother making this super-threadsafe because REPL usage and tests are more or less
-    ;; single-threaded
-    (when (not (contains? @h2-test-dbs-created-by-this-instance database-name))
-      (mdb/setup-db!) ; if not already setup
-      (db/delete! Database :engine "h2", :name database-name)
-      (swap! h2-test-dbs-created-by-this-instance conj database-name))
+    (destroy-test-database-if-created-by-another-instance! database-name)
     ((get-method data.impl/get-or-create-database! :default) driver dbdef)))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"

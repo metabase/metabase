@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -54,7 +55,7 @@ const mapDispatchToProps = (dispatch, props) =>
   mapDispatchToProps,
 )
 export default class CollectionPermissionsModal extends Component {
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { namespace, loadCollections, initialize } = this.props;
     initialize(
       () => CollectionsApi.graph({ namespace }),

@@ -2,8 +2,10 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.cron :as cron-util]
@@ -83,15 +85,51 @@
   :in  (comp json-in maybe-normalize)
   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
+(def ^:private MetricSegmentDefinition
+  {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
+   (s/optional-key :aggregation) (s/maybe [mbql.s/Aggregation])
+   s/Keyword                     s/Any})
+
+(def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
+  (s/validator MetricSegmentDefinition))
+
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
-  (when definition
-    (normalize/normalize-fragment [:query] definition)))
+  (when (seq definition)
+    (u/prog1 (normalize/normalize-fragment [:query] definition)
+      (validate-metric-segment-definition <>))))
 
 ;; For inner queries like those in Metric definitions
 (models/add-type! :metric-segment-definition
   :in  (comp json-in normalize-metric-segment-definition)
   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
+
+(defn- normalize-visualization-settings [viz-settings]
+  ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
+  ;; to modern MBQL clauses so things work correctly
+  (letfn [(normalize-column-settings-key [k]
+            (some-> k u/qualified-name json/parse-string normalize/normalize json/generate-string))
+          (normalize-column-settings [column-settings]
+            (into {} (for [[k v] column-settings]
+                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
+          (mbql-field-clause? [form]
+            (and (vector? form)
+                 (#{"field-id" "fk->" "datetime-field" "joined-field" "binning-strategy" "field"
+                    "aggregation" "expression"}
+                  (first form))))
+          (normalize-mbql-clauses [form]
+            (walk/postwalk
+             (fn [form]
+               (cond-> form
+                 (mbql-field-clause? form) normalize/normalize))
+             form))]
+    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings"))
+      (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
+      true                                 normalize-mbql-clauses)))
+
+(models/add-type! :visualization-settings
+  :in  json-in
+  :out (comp normalize-visualization-settings json-out-without-keywordization))
 
 ;; For DashCard parameter lists
 (defn- normalize-parameter-mapping-targets [parameter-mappings]

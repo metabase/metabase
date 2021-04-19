@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { IFRAMED } from "metabase/lib/dom";
@@ -7,7 +8,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import AuthProviderButton from "metabase/auth/components/AuthProviderButton";
 
 export default class SSOButton extends React.Component {
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // If we're iframed and immediately simulate a click
     if (IFRAMED) {
       this.handleClick();

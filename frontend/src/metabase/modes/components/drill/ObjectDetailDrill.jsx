@@ -1,5 +1,3 @@
-/* @flow */
-
 import { isFK, isPK } from "metabase/lib/schema_metadata";
 import { t } from "ttag";
 import type {

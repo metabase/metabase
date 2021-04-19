@@ -410,8 +410,9 @@ g9oYBkdxlhK9zZvkjCgaLCen+0aY67A=")
                        :common_name  "New User"}]
                      (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login)))))
-              (is (= (some-saml-attributes "newuser")
-                     (saml-login-attributes "newuser@metabase.com"))))
+              (testing "attributes"
+                (is (= (some-saml-attributes "newuser")
+                       (saml-login-attributes "newuser@metabase.com")))))
             (finally
               (db/delete! User :%lower.email "newuser@metabase.com"))))))))
 

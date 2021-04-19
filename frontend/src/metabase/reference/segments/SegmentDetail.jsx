@@ -21,7 +21,6 @@ import {
   getSegment,
   getTable,
   getFields,
-  getGuide,
   getError,
   getLoading,
   getUser,
@@ -58,32 +57,18 @@ const interestingQuestions = (table, segment) => {
 
 const mapStateToProps = (state, props) => {
   const entity = getSegment(state, props) || {};
-  const guide = getGuide(state, props);
   const fields = getFields(state, props);
-
-  const initialValues = {
-    important_fields:
-      (guide &&
-        guide.metric_important_fields &&
-        guide.metric_important_fields[entity.id] &&
-        guide.metric_important_fields[entity.id].map(
-          fieldId => fields[fieldId],
-        )) ||
-      [],
-  };
 
   return {
     entity,
     table: getTable(state, props),
     metadataFields: fields,
-    guide,
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
-    initialValues,
   };
 };
 

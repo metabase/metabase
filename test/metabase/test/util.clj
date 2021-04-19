@@ -1,16 +1,18 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.walk :as walk]
             [clojurewerkz.quartzite.scheduler :as qs]
             [colorize.core :as colorize]
+            [environ.core :as env]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
-                                     Revision Segment Table TaskHistory User]]
+                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
+                                     PulseChannel Revision Segment Table TaskHistory User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -26,7 +28,8 @@
             [toucan.db :as db]
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
-  (:import java.util.concurrent.TimeoutException
+  (:import java.net.ServerSocket
+           java.util.concurrent.TimeoutException
            java.util.Locale
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
@@ -144,6 +147,11 @@
             :name          (random-name)
             :position      1
             :table_id      (data/id :checkins)})
+
+   LoginHistory
+   (fn [_] {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+            :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
+            :ip_address         "0:0:0:0:0:0:0:1"})
 
    Metric
    (fn [_] {:creator_id  (rasta-id)
@@ -264,19 +272,6 @@
   [obj]
   (json/parse-string (json/generate-string obj) keyword))
 
-
-(defn mappify
-  "Walk `coll` and convert all record types to plain Clojure maps. Useful because expectations will consider an instance
-  of a record type to be different from a plain Clojure map, even if all keys & values are the same."
-  [coll]
-  {:style/indent 0}
-  (walk/postwalk (fn [x]
-                   (if (map? x)
-                     (into {} x)
-                     x))
-                 coll))
-
-
 (defn do-with-temporary-setting-value
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as `binding`.
@@ -360,7 +355,7 @@
   example, Database/Table/Field rows related to the test DBs can be temporarily tweaked in this way.
 
     ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
-    (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :special_type \"type/FK\"}
+    (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :semantic_type \"type/FK\"}
       (do-something))"
   {:style/indent 3}
   [model object-or-id column->temp-value & body]
@@ -672,7 +667,7 @@
   `(do-with-non-admin-groups-no-collection-perms
     (assoc collection/root-collection
            :namespace (name ~collection-namespace))
-    (fn [] ~@body) ))
+    (fn [] ~@body)))
 
 (defn doall-recursive
   "Like `doall`, but recursively calls doall on map values and nested sequences, giving you a fully non-lazy object.
@@ -799,3 +794,34 @@
            cols)
     (fn []
       ~@body)))
+
+(defn find-free-port
+  "Finds and returns an available port number on the current host. Does so by briefly creating a ServerSocket, which
+  is closed when returning."
+  []
+  (with-open [socket (ServerSocket. 0)]
+    (.getLocalPort socket)))
+
+(defn do-with-env-keys-renamed-by
+  "Evaluates the thunk with the current core.environ/env being redefined, its keys having been renamed by the given
+  rename-fn. Prefer to use the with-env-keys-renamed-by macro version instead."
+  [rename-fn thunk]
+  (let [orig-e     env/env
+        renames-fn (fn [m k _]
+                     (let [k-str (name k)
+                           new-k (rename-fn k-str)]
+                       (if (not= k-str new-k)
+                         (assoc m k (keyword new-k))
+                         m)))
+        renames    (reduce-kv renames-fn {} orig-e)
+        new-e      (set/rename-keys orig-e renames)]
+    (testing (colorize/blue (format "\nRenaming env vars by map: %s\n" (u/pprint-to-str renames)))
+      (with-redefs [env/env new-e]
+        (thunk)))))
+
+(defmacro with-env-keys-renamed-by
+  "Evaluates body with the current core.environ/env being redefined, its keys having been renamed by the given
+  rename-fn."
+  {:arglists '([rename-fn & body])}
+  [rename-fn & body]
+  `(do-with-env-keys-renamed-by ~rename-fn (fn [] ~@body)))

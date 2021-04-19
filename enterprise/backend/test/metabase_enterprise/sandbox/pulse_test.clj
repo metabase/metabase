@@ -17,7 +17,7 @@
   (testing "Pulses should get sent with the row-level restrictions of the User that created them."
     (letfn [(send-pulse-created-by-user! [user-kw]
               (mt/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                                    :remappings {:cat ["variable" [:field-id (mt/id :venues :category_id)]]}}}
+                                                    :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
                               :attributes {"cat" 50}}
                 (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps` binds the current test user; we don't want that falsely affecting results
@@ -80,7 +80,7 @@
 
 (deftest user-attributes-test
   (testing "Pulses should be sandboxed correctly by User login_attributes"
-    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field-id (mt/id :venues :price)]]}}}
+    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                     :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
@@ -92,7 +92,7 @@
 
               (testing "in a Saved Question"
                 (is (= 22
-                       (count (mt/rows ((mt/user->client :rasta) :post 202 (format "card/%d/query" (u/get-id card)))))))))
+                       (count (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))))))
 
             (testing "Pulse should be sandboxed"
               (is (= 22
@@ -100,18 +100,18 @@
 
 (deftest pulse-preview-test
   (testing "Pulse preview endpoints should be sandboxed"
-    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field-id (mt/id :venues :price)]]}}}
+    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                     :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp Card [card {:dataset_query query}]
             (testing "GET /api/pulse/preview_card/:id"
               (is (= 22
-                     (html->row-count (mt/user-http-request :rasta :get 200 (format "pulse/preview_card/%d" (u/get-id card)))))))
+                     (html->row-count (mt/user-http-request :rasta :get 200 (format "pulse/preview_card/%d" (u/the-id card)))))))
             (testing "POST /api/pulse/test"
               (mt/with-fake-inbox
                 (mt/user-http-request :rasta :post 200 "pulse/test" {:name     "venues"
-                                                                     :cards    [{:id          (u/get-id card)
+                                                                     :cards    [{:id          (u/the-id card)
                                                                                  :include_csv true
                                                                                  :include_xls false}]
                                                                      :channels [{:channel_type :email
@@ -129,7 +129,7 @@
 
 (deftest csv-downloads-test
   (testing "CSV/XLSX downloads should be sandboxed"
-    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field-id (mt/id :venues :price)]]}}}
+    (mt/with-gtaps {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                     :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta

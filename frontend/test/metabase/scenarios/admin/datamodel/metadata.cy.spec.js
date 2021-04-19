@@ -6,7 +6,7 @@ import {
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, REVIEWS } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
@@ -82,7 +82,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
   it.skip("should not include date when metric is binned by hour of day (metabase#14124)", () => {
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
-      special_type: null,
+      semantic_type: null,
     });
 
     cy.createQuestion({
@@ -91,7 +91,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         breakout: [
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT], "hour-of-day"],
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "hour-of-day" }],
         ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
@@ -102,5 +102,27 @@ describe("scenarios > admin > datamodel > metadata", () => {
       cy.log("Reported failing in v0.37.2");
       cy.findByText(/^3:00 AM$/);
     });
+  });
+
+  it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
+    // Remap fields
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: "type/PK",
+    });
+    cy.request("PUT", `/api/field/${REVIEWS.CREATED_AT}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: ORDERS.CREATED_AT,
+    });
+
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.get(".List-section-header")
+      .contains("Created At")
+      .click();
+    cy.get(".List-section--expanded .List-item-title")
+      .contains("Created At")
+      .should("have.length", 1);
   });
 });

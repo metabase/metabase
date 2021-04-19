@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
@@ -36,7 +37,7 @@ export default class LogoIcon extends Component {
     }
   }
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (newProps.url && newProps.url !== this.props.url) {
       this.loadImage(newProps.url);
     }

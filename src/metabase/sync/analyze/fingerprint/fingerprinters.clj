@@ -96,7 +96,7 @@
 (defmulti fingerprinter
   "Return a fingerprinter transducer for a given field based on the field's type."
   {:arglists '([field])}
-  (fn [{:keys [base_type special_type unit] :as field}]
+  (fn [{:keys [base_type semantic_type unit] :as field}]
     [(cond
        (u.date/extract-units unit)     :type/Integer
        (field/unix-timestamp? field)   :type/DateTime
@@ -104,7 +104,7 @@
        ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
        (isa? base_type :type/Temporal) :type/DateTime
        :else                           base_type)
-     (or special_type :type/*)]))
+     (or semantic_type :type/*)]))
 
 (def ^:private global-fingerprinter
   (redux/post-complete
@@ -255,5 +255,5 @@
                     (fingerprinter
                      (cond-> field
                        ;; Try to get a better guestimate of what we're dealing with on first sync
-                       (every? nil? ((juxt :special_type :last_analyzed) field))
-                       (assoc :special_type (classify.name/infer-special-type field)))))))
+                       (every? nil? ((juxt :semantic_type :last_analyzed) field))
+                       (assoc :semantic_type (classify.name/infer-semantic-type field)))))))

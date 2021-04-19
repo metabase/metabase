@@ -27,13 +27,13 @@ export const Column = (col = {}) => ({
 });
 
 export const BooleanColumn = (col = {}) =>
-  Column({ base_type: "type/Boolean", special_type: null, ...col });
+  Column({ base_type: "type/Boolean", semantic_type: null, ...col });
 export const DateTimeColumn = (col = {}) =>
-  Column({ base_type: "type/DateTime", special_type: null, ...col });
+  Column({ base_type: "type/DateTime", semantic_type: null, ...col });
 export const NumberColumn = (col = {}) =>
-  Column({ base_type: "type/Integer", special_type: "type/Number", ...col });
+  Column({ base_type: "type/Integer", semantic_type: "type/Number", ...col });
 export const StringColumn = (col = {}) =>
-  Column({ base_type: "type/Text", special_type: null, ...col });
+  Column({ base_type: "type/Text", semantic_type: null, ...col });
 
 export const Card = (name, ...overrides) =>
   deepExtend(

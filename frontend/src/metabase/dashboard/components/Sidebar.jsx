@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
@@ -8,7 +9,7 @@ const WIDTH = 384;
 function Sidebar({ onClose, onCancel, closeIsDisabled, children }) {
   return (
     <div
-      style={{ width: WIDTH }}
+      style={{ width: WIDTH, minWidth: WIDTH }}
       className="flex flex-column border-left bg-white"
     >
       <div className="flex flex-column flex-auto overflow-y-auto">

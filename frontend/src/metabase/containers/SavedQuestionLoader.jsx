@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { connect } from "react-redux";
 
@@ -22,7 +20,7 @@ type ChildProps = {
 
 type Props = {
   questionId: ?number,
-  children?: (props: ChildProps) => React$Element<any>,
+  children?: (props: ChildProps) => React.Element,
   // provided by redux
   loadMetadataForCard: (card: Card) => Promise<void>,
   metadata: Metadata,
@@ -77,12 +75,12 @@ export class SavedQuestionLoader extends React.Component {
     error: null,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // load the specified question when the component mounts
     this._loadQuestion(this.props.questionId);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     // if the questionId changes (this will most likely be the result of a
     // url change) then we need to load this new question
     if (nextProps.questionId !== this.props.questionId) {

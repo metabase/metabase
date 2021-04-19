@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 import ChoroplethMap, {
@@ -108,7 +107,7 @@ export default class Map extends Component {
         ],
         cols: [
           {
-            special_type: "type/State",
+            semantic_type: "type/State",
             name: "STATE",
             source: "breakout",
             display_name: "State",
@@ -116,7 +115,7 @@ export default class Map extends Component {
           },
           {
             base_type: "type/Integer",
-            special_type: "type/Number",
+            semantic_type: "type/Number",
             name: "count",
             display_name: "count",
             source: "aggregation",

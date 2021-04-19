@@ -29,39 +29,39 @@
   [{:name         "ID"
     :display_name "ID"
     :base_type    :type/BigInteger
-    :special_type :type/PK
+    :semantic_type :type/PK
     :fingerprint  (:id mutil/venue-fingerprints)
-    :field_ref    [:field-literal "ID" :type/BigInteger]}
+    :field_ref    [:field "ID" {:base-type :type/BigInteger}]}
    {:name         "NAME"
     :display_name "Name"
     :base_type    :type/Text
-    :special_type :type/Name
+    :semantic_type :type/Name
     :fingerprint  (:name mutil/venue-fingerprints)
-    :field_ref    [:field-literal "NAME" :type/Text]}
+    :field_ref    [:field "NAME" {:base-type :type/Text}]}
    {:name         "PRICE"
     :display_name "Price"
     :base_type    :type/Integer
-    :special_type nil
+    :semantic_type nil
     :fingerprint  (:price mutil/venue-fingerprints)
-    :field_ref    [:field-literal "PRICE" :type/Integer]}
+    :field_ref    [:field "PRICE" {:base-type :type/Integer}]}
    {:name         "CATEGORY_ID"
     :display_name "Category ID"
     :base_type    :type/Integer
-    :special_type nil
+    :semantic_type nil
     :fingerprint  (:category_id mutil/venue-fingerprints)
-    :field_ref    [:field-literal "CATEGORY_ID" :type/Integer]}
+    :field_ref    [:field "CATEGORY_ID" {:base-type :type/Integer}]}
    {:name         "LATITUDE"
     :display_name "Latitude"
     :base_type    :type/Float
-    :special_type :type/Latitude
+    :semantic_type :type/Latitude
     :fingerprint  (:latitude mutil/venue-fingerprints)
-    :field_ref    [:field-literal "LATITUDE" :type/Float]}
+    :field_ref    [:field "LATITUDE" {:base-type :type/Float}]}
    {:name         "LONGITUDE"
     :display_name "Longitude"
     :base_type    :type/Float
-    :special_type :type/Longitude
+    :semantic_type :type/Longitude
     :fingerprint  (:longitude mutil/venue-fingerprints)
-    :field_ref    [:field-literal "LONGITUDE" :type/Float]}])
+    :field_ref    [:field "LONGITUDE" {:base-type :type/Float}]}])
 
 (def ^:private default-card-results-native
   (for [column (-> default-card-results
@@ -114,13 +114,13 @@
     :display_name "Date"
     :name         "DATE"
     :unit         nil
-    :special_type nil
+    :semantic_type nil
     :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
                                                                                    :latest   "2015-12-29T00:00:00.000Z"}}}}
    {:base_type    :type/Integer
     :display_name "count"
     :name         "count"
-    :special_type :type/Quantity
+    :semantic_type :type/Quantity
     :fingerprint  {:global {:distinct-count 3
                             :nil%           0.0},
                    :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}])
@@ -168,7 +168,7 @@
   (testing "make sure that queries come back with metadata"
     (is (= {:checksum java.lang.String
             :columns  (for [col default-card-results-native]
-                        (-> col (update :special_type keyword) (update :base_type keyword)))}
+                        (-> col (update :semantic_type keyword) (update :base_type keyword)))}
            (-> (qp/process-userland-query
                 {:database (mt/id)
                  :type     :native
@@ -186,23 +186,25 @@
         :type     :query
         :query    {:source-table (mt/id :checkins)
                    :aggregation  [[:count]]
-                   :breakout     [[:datetime-field [:field-id (mt/id :checkins :date)] :year]]}
+                   :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]}
         :info     {:card-id    (u/the-id card)
                    :query-hash (qputil/query-hash {})}})
       (is (= [{:base_type    :type/DateTime
+               :effective_type    :type/Date
+               :coercion_strategy nil
                :display_name "Date"
                :name         "DATE"
                :unit         :year
-               :special_type nil
+               :semantic_type nil
                :fingerprint  {:global {:distinct-count 618 :nil% 0.0}
                               :type   {:type/DateTime {:earliest "2013-01-03"
                                                        :latest   "2015-12-29"}}}
                :id           (mt/id :checkins :date)
-               :field_ref    [:datetime-field [:field-id (mt/id :checkins :date)] :year]}
+               :field_ref    [:field (mt/id :checkins :date) {:temporal-unit :year}]}
               {:base_type    :type/BigInteger
                :display_name "Count"
                :name         "count"
-               :special_type :type/Quantity
+               :semantic_type :type/Quantity
                :fingerprint  {:global {:distinct-count 3
                                        :nil%           0.0},
                               :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}
@@ -239,15 +241,15 @@
         (is (= {:base_type    :type/DateTime,
                 :display_name "D" :name "D"
                 :source       :native
-                :field_ref    [:field-literal "D" :type/DateTime]}
+                :field_ref    [:field "D" {:base-type :type/DateTime}]}
                (first (:cols results)))))
 
       (testing "Results metadata should have the same type info")
       (is (= {:base_type    :type/DateTime
               :display_name "D"
               :name         "D"
-              :special_type nil
-              :field_ref    [:field-literal "D" :type/DateTime]}
+              :semantic_type nil
+              :field_ref    [:field "D" {:base-type :type/DateTime}]}
              (-> results :results_metadata :columns first (dissoc :fingerprint)))))))
 
 (deftest results-metadata-should-have-field-refs-test

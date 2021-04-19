@@ -224,6 +224,16 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression", "number", "string"],
   },
+  "is-null": {
+    displayName: `isnull`,
+    type: "boolean",
+    args: ["expression"],
+  },
+  "is-empty": {
+    displayName: `isempty`,
+    type: "boolean",
+    args: ["expression"],
+  },
   // other expression functions
   coalesce: {
     displayName: `coalesce`,
@@ -380,6 +390,8 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "starts-with",
   "between",
   "time-interval",
+  "is-null",
+  "is-empty",
   // other
   "coalesce",
 ]);
@@ -388,7 +400,8 @@ export const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
 export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
 export const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
-export const BOOLEAN_BINARY_OPERATORS = new Set(["and", "or"]);
+export const LOGICAL_AND_OPERATOR = new Set(["and"]);
+export const LOGICAL_OR_OPERATOR = new Set(["or"]);
 
 export const FUNCTIONS = new Set([
   ...EXPRESSION_FUNCTIONS,
@@ -399,7 +412,8 @@ export const OPERATORS = new Set([
   ...EXPRESSION_OPERATORS,
   ...FILTER_OPERATORS,
   ...BOOLEAN_UNARY_OPERATORS,
-  ...BOOLEAN_BINARY_OPERATORS,
+  ...LOGICAL_AND_OPERATOR,
+  ...LOGICAL_OR_OPERATOR,
 ]);
 
 // "standard" filters, can be edited using UI

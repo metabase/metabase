@@ -12,21 +12,13 @@ describe("query_time", () => {
   describe("parseFieldBucketing()", () => {
     it("supports the standard DatetimeField format", () => {
       expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "week"]),
+        parseFieldBucketing(["field", 3, { "temporal-unit": "week" }]),
       ).toBe("week");
       expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "day"]),
+        parseFieldBucketing(["field", 3, { "temporal-unit": "day" }]),
       ).toBe("day");
     });
 
-    it("supports the legacy DatetimeField format", () => {
-      expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "week"]), // deprecated
-      ).toBe("week");
-      expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "day"]), // deprecated
-      ).toBe("day");
-    });
     it("returns the default unit for FK reference", () => {
       pending();
     });
@@ -43,13 +35,13 @@ describe("query_time", () => {
       expect(
         expandTimeIntervalFilter([
           "time-interval",
-          ["field-id", 100],
+          ["field", 100, null],
           "current",
           "month",
         ]),
       ).toEqual([
         "=",
-        ["datetime-field", ["field-id", 100], "month"],
+        ["field", 100, { "temporal-unit": "month" }],
         ["relative-datetime", "current"],
       ]);
     });
@@ -57,13 +49,13 @@ describe("query_time", () => {
       expect(
         expandTimeIntervalFilter([
           "time-interval",
-          ["field-id", 100],
+          ["field", 100, null],
           -30,
           "day",
         ]),
       ).toEqual([
         "between",
-        ["datetime-field", ["field-id", 100], "day"],
+        ["field", 100, { "temporal-unit": "day" }],
         ["relative-datetime", -31, "day"],
         ["relative-datetime", -1, "day"],
       ]);
@@ -293,7 +285,7 @@ describe("query_time", () => {
         );
       });
       // it ('should handle "last week"', () => {
-      //     let [start, end] = computeFilterTimeRange(["time-interval", ["field-id", 1], "last", "week"]);
+      //     let [start, end] = computeFilterTimeRange(["time-interval", ["field", 1, null], "last", "week"]);
       //     expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").startOf("week").format("YYYY-MM-DD 00:00:00"));
       //     expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").endOf("week")..format("YYYY-MM-DD 23:59:59"));
       // });

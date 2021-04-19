@@ -44,7 +44,7 @@ export default class MetricPane extends Component {
     metadata: PropTypes.object,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.fetchTableMetadata(this.props.metric.table_id);
   }
 

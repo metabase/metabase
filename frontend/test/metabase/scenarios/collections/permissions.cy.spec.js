@@ -366,6 +366,14 @@ describe("collection permissions", () => {
               cy.signIn(user);
             });
 
+            it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+              cy.visit("/collection/root");
+              openEllipsisMenuFor("Orders in a dashboard");
+              popover()
+                .findByText("Duplicate this item")
+                .should("exist");
+            });
+
             ["/", "/collection/root"].forEach(route => {
               it.skip("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
                 const { first_name, last_name } = USERS[user];
@@ -390,6 +398,30 @@ describe("collection permissions", () => {
                     .type("third{Enter}");
                   cy.findByText("Third collection").should("not.exist");
                 });
+              });
+            });
+
+            describe("managing dashboard from the dashboard's edit menu", () => {
+              it("should not be offered to change title and description for dashboard in collections they have `read` access to (metabase#15280)", () => {
+                cy.visit("/dashboard/1");
+                cy.icon("ellipsis").click();
+                popover()
+                  .findByText("Change title and description")
+                  .should("not.exist");
+              });
+
+              it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
+                cy.visit("/dashboard/1");
+                cy.icon("ellipsis").click();
+                popover()
+                  .findByText("Archive")
+                  .should("not.exist");
+              });
+
+              it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+                cy.visit("/dashboard/1");
+                cy.icon("ellipsis").click();
+                popover().findByText("Duplicate");
               });
             });
           });
@@ -504,11 +536,21 @@ describe("collection permissions", () => {
 
           onlyOn(permission === "view", () => {
             describe(`${user} user`, () => {
-              it.skip("should not see revert buttons (metabase#13229)", () => {
+              it("should not see dashboard revert buttons (metabase#13229)", () => {
                 cy.signIn(user);
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
                 cy.findByText("Revision history").click();
+                cy.findAllByRole("button", { name: "Revert" }).should(
+                  "not.exist",
+                );
+              });
+
+              it("should not see question revert buttons (metabase#13229)", () => {
+                cy.signIn(user);
+                cy.visit("/question/1");
+                cy.icon("pencil").click();
+                cy.findByText("View revision history").click();
                 cy.findAllByRole("button", { name: "Revert" }).should(
                   "not.exist",
                 );
@@ -530,7 +572,8 @@ function clickRevert(event_name, index = 0) {
 }
 
 function openEllipsisMenuFor(item, index = 0) {
-  cy.findAllByText(item)
+  return cy
+    .findAllByText(item)
     .eq(index)
     .closest("a")
     .find(".Icon-ellipsis")

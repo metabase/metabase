@@ -16,7 +16,8 @@
                                      :expressions {"RelativePrice" [:/ [:dimension "Category"]
                                                                     [:dimension "CategoriesStats.AvgPrice"]]}
                                      :joins       [{:source    "CategoriesStats"
-                                                    :condition [:= [:dimension "FK"]
+                                                    :condition [:=
+                                                                [:dimension "FK"]
                                                                 [:dimension "CategoriesStats.FK"]]}]
                                      :limit       3}}}
       (#'t.specs/add-metadata-to-steps)

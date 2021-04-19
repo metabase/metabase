@@ -113,6 +113,6 @@
                 (mt/test-qp-middleware
                  large-int-id/convert-id-to-string
                  {:type       :query
-                  :query      {:fields [[:field-id (mt/id :venues :id)]]}
+                  :query      {:fields [[:field (mt/id :venues :id) nil]]}
                   :middleware {:js-int-to-string? true}}
                  rows))))))))

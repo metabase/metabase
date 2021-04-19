@@ -46,9 +46,13 @@ Any dashboards that are pinned in the main "Our analytics" collection will also 
 
 #### Search
 
-![Search results](./images/sharing-answers/search-results.png)
+![Search results](./images/sharing-answers/search-results.gif)
 
-Type into the search box that's at the top of Metabase and hit enter to search through all the dashboards, questions, collections, and pulses your team has.
+Use the search bar to find dashboards, questions, collections, and pulses. You can select from the typeahead's dropdown results, or hit enter to view a search results page. You can also activate the search bar from anywhere by pressing the `/` key.
+
+Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display an item’s description, which collection it’s saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in collections you have permission to view.
+
+![Search results](./images/sharing-answers/search-results.png)
 
 #### Moving
 

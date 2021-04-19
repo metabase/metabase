@@ -46,6 +46,18 @@ For Slack subscriptions, you can set up a subscription for a channel (like #gene
 
 You can specify how often Metabase sends a Slack message (hourly, daily, weekly, or monthly), and whether to send a message if the dashboard fails to return results.
 
+### Adding multiple subscriptions
+
+You can add multiple subscriptions to a single dashboard. To add a subscription, click on the **+** icon in the dashboard subscription panel.
+
+### Deleting a subscription
+
+To remove a subscription from a dashboard, select the subscription you'd like to remove. At the bottom of the sidebar, select **Delete this subscription**. Follow the instructions on the modal that pops up to confirm you'd like to delete the subscription.
+
+## Enterprise Edition: customize filter values for each dashboard subscription
+
+Metabase Enterprise Edition allows you to [customize filter values for each subscription](../enterprise-guide/dashboard-subscriptions.md), so you can set up subscriptions with different filter values applied for different subscribers.
+
 ### Related reading
 
 - [Setting up email](https://www.metabase.com/docs/latest/administration-guide/02-setting-up-email.html)

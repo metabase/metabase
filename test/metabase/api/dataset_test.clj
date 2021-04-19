@@ -21,6 +21,7 @@
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -119,42 +120,41 @@
             query               {:database (mt/id)
                                  :type     "native"
                                  :native   {:query "foobar"}}
-            result              (mt/suppress-output
-                                  (mt/user-http-request :rasta :post 202 "dataset" query))]
+            result              (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "\nAPI Response"
-          (is (= {:data         {:rows []
-                                 :cols []}
-                  :row_count    0
-                  :status       "failed"
-                  :context      "ad-hoc"
-                  :error        true
-                  :json_query   (merge
-                                 query-defaults
-                                 {:database (mt/id)
-                                  :type     "native"
-                                  :native   {:query "foobar"}})
-                  :database_id  (mt/id)
-                  :state        "42001"
-                  :class        "class org.h2.jdbc.JdbcSQLException"
-                  :started_at   true
-                  :running_time true}
-                 (check-error-message (dissoc (format-response result) :stacktrace)))))
+          (is (schema= {:data        (s/eq {:rows []
+                                            :cols []})
+                        :row_count   (s/eq 0)
+                        :status      (s/eq "failed")
+                        :context     (s/eq "ad-hoc")
+                        :error       #"Syntax error in SQL statement"
+                        :json_query  (s/eq (merge
+                                            query-defaults
+                                            {:database (mt/id)
+                                             :type     "native"
+                                             :native   {:query "foobar"}}))
+                        :database_id (s/eq (mt/id))
+                        :state       (s/eq "42001")
+                        :class       (s/eq "class org.h2.jdbc.JdbcSQLException")
+                        :error_type  (s/eq "invalid-query")
+                        s/Keyword    s/Any}
+                       result)))
+
         (testing "\nSaved QueryExecution"
-          (is (= {:hash         true
-                  :id           true
-                  :result_rows  0
-                  :row_count    0
-                  :context      :ad-hoc
-                  :error        true
-                  :database_id  (mt/id)
-                  :started_at   true
-                  :running_time true
-                  :executor_id  (mt/user->id :rasta)
-                  :native       true
-                  :pulse_id     nil
-                  :card_id      nil
-                  :dashboard_id nil}
-                 (check-error-message (format-response (most-recent-query-execution-for-query query))))))))))
+          (is (schema= {:hash         (Class/forName "[B")
+                        :id           su/IntGreaterThanZero
+                        :result_rows  (s/eq 0)
+                        :row_count    (s/eq 0)
+                        :context      (s/eq :ad-hoc)
+                        :error        (s/eq "Error executing query")
+                        :database_id  (s/eq (mt/id))
+                        :executor_id  (s/eq (mt/user->id :rasta))
+                        :native       (s/eq true)
+                        :pulse_id     (s/eq nil)
+                        :card_id      (s/eq nil)
+                        :dashboard_id (s/eq nil)
+                        s/Keyword     s/Any}
+                       (most-recent-query-execution-for-query query))))))))
 
 (deftest download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
@@ -324,7 +324,7 @@
                         "test-expr"]
                        (map :display_name cols)))
                 (is (= {:base_type       "type/Integer"
-                        :special_type    "type/Number"
+                        :semantic_type    "type/Number"
                         :name            "pivot-grouping"
                         :display_name    "pivot-grouping"
                         :expression_name "pivot-grouping"

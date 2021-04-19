@@ -18,6 +18,34 @@ describe("scenarios > question > new", () => {
     cy.signInAsAdmin();
   });
 
+  it("data selector popover should not be too small (metabase#15591)", () => {
+    // Add 10 more databases
+    for (let i = 0; i < 10; i++) {
+      cy.request("POST", "/api/database", {
+        engine: "h2",
+        name: "Sample" + i,
+        details: {
+          db:
+            "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+        },
+        auto_run_queries: false,
+        is_full_sync: false,
+        schedules: {},
+      });
+    }
+
+    // First test UI for Simple question
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Pick your data");
+    cy.findByText("Sample3").isVisibleInPopover();
+
+    // Then move to the Custom question UI
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample3").isVisibleInPopover();
+  });
+
   describe("browse data", () => {
     it("should load orders table and summarize", () => {
       cy.visit("/");
@@ -45,12 +73,10 @@ describe("scenarios > question > new", () => {
           "source-table": ORDERS_ID,
           aggregation: [
             ["count"],
-            ["sum", ["field-id", ORDERS.SUBTOTAL]],
-            ["sum", ["field-id", ORDERS.TOTAL]],
+            ["sum", ["field", ORDERS.SUBTOTAL, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
           ],
-          breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
-          ],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
           "order-by": [["desc", ["aggregation", 1]]],
         },
       }).then(({ body: { id: QESTION_ID } }) => {
@@ -107,13 +133,13 @@ describe("scenarios > question > new", () => {
     });
 
     it.skip("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
-      // set ID to `No special type`
+      // set ID to `No semantic type`
       cy.request("PUT", `/api/field/${ORDERS.ID}`, {
-        special_type: null,
+        semantic_type: null,
       });
       // set Quantity to `Entity Key`
       cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
-        special_type: "type/PK",
+        semantic_type: "type/PK",
       });
 
       openOrdersTable();
@@ -162,7 +188,7 @@ describe("scenarios > question > new", () => {
             .click();
         });
       // this step is maybe redundant since it fails to even find "by month"
-      cy.findByText("Hour of day");
+      cy.findByText("Hour of Day");
     });
 
     it.skip("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
@@ -170,9 +196,9 @@ describe("scenarios > question > new", () => {
         name: "11183",
         query: {
           "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field-id", ORDERS.SUBTOTAL]]],
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
           breakout: [
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],
         },
         display: "line",
@@ -252,7 +278,7 @@ describe("scenarios > question > new", () => {
       cy.log(
         "**The point of failure for ANY non-numeric value reported in v0.36.4**",
       );
-      // the default type for "Reviewer" is "No special type"
+      // the default type for "Reviewer" is "No semantic type"
       cy.findByText("Fields")
         .parent()
         .contains("Reviewer");
@@ -286,8 +312,8 @@ describe("scenarios > question > new", () => {
         query: {
           "source-table": ORDERS_ID,
           breakout: [
-            ["field-id", ORDERS.QUANTITY],
-            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+            ["field", ORDERS.QUANTITY, null],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],
         },
         display: "smartscalar",

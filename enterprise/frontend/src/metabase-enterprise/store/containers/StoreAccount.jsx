@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
@@ -26,7 +27,7 @@ export default class StoreAccount extends React.Component {
     error: null,
   };
 
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     try {
       this.setState({
         status: await StoreApi.tokenStatus(),

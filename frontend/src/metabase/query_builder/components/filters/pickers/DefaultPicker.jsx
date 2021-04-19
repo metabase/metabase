@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import NumberPicker from "./NumberPicker";
@@ -8,7 +7,10 @@ import TextPicker from "./TextPicker";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
+import {
+  getFilterArgumentFormatOptions,
+  isFuzzyOperator,
+} from "metabase/lib/schema_metadata";
 
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
 
@@ -41,6 +43,7 @@ export default function DefaultPicker({
   const dimension = filter.dimension();
   const field = dimension && dimension.field();
   const operatorFields = operator.fields || [];
+  const disableSearch = isFuzzyOperator(operator);
   const fieldWidgets = operatorFields
     .map((operatorField, index) => {
       let values, onValuesChange;
@@ -86,6 +89,7 @@ export default function DefaultPicker({
             autoFocus={index === 0}
             alwaysShowOptions={operator.fields.length === 1}
             formatOptions={getFilterArgumentFormatOptions(operator, index)}
+            disableSearch={disableSearch}
             minWidth={minWidth}
             maxWidth={maxWidth}
             optionsMaxHeight={isSidebar ? null : undefined}

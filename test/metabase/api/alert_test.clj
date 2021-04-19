@@ -243,7 +243,8 @@
    :skip_if_empty       true
    :collection_id       false
    :collection_position nil
-   :dashboard_id        false})
+   :dashboard_id        false
+   :parameters          []})
 
 (def ^:private daily-email-channel
   {:enabled       true
@@ -504,7 +505,7 @@
                        (assoc-in [:channels 0 :recipients] [(recipient-details :crowberto)]))
                    (-> (mt/with-expected-messages 1
                          ((alert-client :crowberto) :put 200 (alert-url alert)
-                          (default-alert-req card (u/get-id pc) {} [(mt/fetch-user :crowberto)])))
+                          (default-alert-req card (u/the-id pc) {} [(mt/fetch-user :crowberto)])))
                        alert-response))))
           (testing "emails"
             (is (= (mt/email-to :rasta {:subject "You’ve been unsubscribed from an alert"
@@ -564,7 +565,7 @@
                    :type     :query
                    :query    {:source-table (mt/id :checkins)
                               :aggregation  [["count"]]
-                              :breakout     [["datetime-field" (mt/id :checkins :date) "hour"]]}}})
+                              :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :hour}]]}}})
 
 (defn- alert-question-url [card-or-id]
   (format "alert/question/%d" (u/get-id card-or-id)))

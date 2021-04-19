@@ -19,7 +19,8 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-trs trs tru]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
             [metabase.util.quotation :as quotation]
             [metabase.util.urls :as url]
             [stencil.core :as stencil]
@@ -163,7 +164,6 @@
                               :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
                              (random-quote-context))))))
 
-
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
   [email google-auth? hostname password-reset-url]
@@ -181,6 +181,26 @@
     (email/send-message!
       :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
+      :message-type :html
+      :message      message-body)))
+
+(defn send-login-from-new-device-email!
+  "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
+  login history infomation as returned by `metabase.models.login-history/human-friendly-infos`."
+  [{user-id :user_id, :keys [timestamp], :as login-history}]
+  (let [user-info    (db/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+        user-locale  (or (:locale user-info) (i18n/site-locale))
+        timestamp    (u.date/format-human-readable timestamp user-locale)
+        context      (merge (common-context)
+                            {:first-name (:first-name user-info)
+                             :device     (:device_description login-history)
+                             :location   (:location login-history)
+                             :timestamp  timestamp})
+        message-body (stencil/render-file "metabase/email/login_from_new_device"
+                       context)]
+    (email/send-message!
+      :subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
+      :recipients   [(:email user-info)]
       :message-type :html
       :message      message-body)))
 

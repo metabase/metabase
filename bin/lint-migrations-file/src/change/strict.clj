@@ -31,3 +31,18 @@
 
 (s/def ::change
   (s/keys :opt-un [::addColumn ::createTable]))
+
+(s/def :change.strict.dbms-qualified-sql-change.sql/dbms
+  string?)
+
+(s/def :change.strict.dbms-qualified-sql-change.sql/sql
+  string?)
+
+(s/def :change.strict.dbms-qualified-sql-change/sql
+  (s/keys :req-un [:change.strict.dbms-qualified-sql-change.sql/dbms
+                   :change.strict.dbms-qualified-sql-change.sql/sql]))
+
+(s/def ::dbms-qualified-sql-change
+  (s/merge
+   ::change
+   (s/keys :req-un [:change.strict.dbms-qualified-sql-change/sql])))

@@ -8,21 +8,21 @@ describe("scenarios > auth > search", () => {
       cy.signInAsAdmin();
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
-      cy.findByText("PRODUCTS");
+      cy.findByText("Products");
     });
 
     it("should work for user with permissions (metabase#12332)", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
-      cy.findByText("PRODUCTS");
+      cy.findByText("Products");
     });
 
     it("should not work for user without permissions", () => {
       cy.signIn("nodata");
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
-      cy.findByText("PRODUCTS").should("not.exist");
+      cy.findByText("Products").should("not.exist");
     });
   });
 });

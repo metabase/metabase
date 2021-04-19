@@ -20,8 +20,8 @@ describe("scenarios > admin > permissions", () => {
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
-        breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT], "week"]],
-        filter: ["<", ["field-id", ORDERS.CREATED_AT], "2016-06-01"],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2016-06-01"],
       },
       display: "line",
     });
@@ -43,11 +43,11 @@ describe("scenarios > admin > permissions", () => {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         breakout: [
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT], "day-of-week"],
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
         ],
         filter: [
           "between",
-          ["field-id", ORDERS.CREATED_AT],
+          ["field", ORDERS.CREATED_AT, null],
           "2020-03-02", // Monday
           "2020-03-03", // Tuesday
         ],
@@ -90,7 +90,7 @@ describe("scenarios > admin > permissions", () => {
             name: "date_range",
             "display-name": "Date range",
             type: "dimension",
-            dimension: ["field-id", ORDERS.CREATED_AT],
+            dimension: ["field", ORDERS.CREATED_AT, null],
             "widget-type": "date/all-options",
             default: "past220weeks",
             required: true,

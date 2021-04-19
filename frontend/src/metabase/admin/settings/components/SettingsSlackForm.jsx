@@ -35,7 +35,7 @@ export default class SettingsSlackForm extends Component {
     updateSettings: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // this gives us an opportunity to load up our formData with any existing values for elements
     const formData = {};
     this.props.elements.forEach(function(element) {

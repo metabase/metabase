@@ -15,10 +15,10 @@
                {:aggregation [[:share [:< $price 4]]]}))))
 
     (testing "Normalization"
-      (= [[0.94]]
-         (mt/formatted-rows [2.0]
-           (mt/run-mbql-query venues
-             {:aggregation [["share" ["<" ["field-id" (mt/id :venues :price)] 4]]]}))))
+      (is (= [[0.94]]
+             (mt/formatted-rows [2.0]
+               (mt/run-mbql-query venues
+                 {:aggregation [["share" ["<" ["field-id" (mt/id :venues :price)] 4]]]})))))
 
     (testing "Complex filter clauses"
       (is (= [[0.17]]

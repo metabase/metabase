@@ -4,15 +4,8 @@
             [clojure.string :as str]
             [environ.core :as env]
             [flatland.ordered.map :as ordered-map]
-            [metabuild-common.core :as u]
-            [metabuild-common.java :as java]))
-
-(defn- build-translation-resources!
-  []
-  (u/step "Build translation resources"
-    (java/check-java-8)
-    (u/sh {:dir u/project-root-directory} "./bin/i18n/build-translation-resources")
-    (u/announce "Translation resources built successfully.")))
+            [i18n.create-artifacts :as i18n]
+            [metabuild-common.core :as u]))
 
 (defn- edition-from-env-var []
   (case (env/env :mb-edition)
@@ -32,6 +25,15 @@
             (u/announce "CI run: enforce the lockfile")
             (u/sh {:dir u/project-root-directory} "yarn" "--frozen-lockfile"))
           (u/sh {:dir u/project-root-directory} "yarn")))
+      ;; TODO -- I don't know why it doesn't work if we try to combine the two steps below by calling `yarn build`,
+      ;; which does the same thing.
+      (u/step "Build frontend (ClojureScript)"
+        (u/sh {:dir u/project-root-directory
+               :env {"PATH"       (env/env :path)
+                     "HOME"       (env/env :user-home)
+                     "NODE_ENV"   "production"
+                     "MB_EDITION" mb-edition}}
+              "./node_modules/.bin/shadow-cljs" "release" "app"))
       (u/step "Run 'webpack' with NODE_ENV=production to assemble and minify frontend assets"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
@@ -57,7 +59,7 @@
    :version      (fn [{:keys [version]}]
                    (version-info/generate-version-info-file! version))
    :translations (fn [_]
-                   (build-translation-resources!))
+                   (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
    :drivers      (fn [{:keys [edition]}]

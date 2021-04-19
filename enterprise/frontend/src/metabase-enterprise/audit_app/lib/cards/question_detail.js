@@ -1,5 +1,3 @@
-/* @flow */
-
 export const viewsByTime = (questionId: number) => ({
   card: {
     name: "Views per day",

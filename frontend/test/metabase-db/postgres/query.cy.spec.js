@@ -52,8 +52,8 @@ describe("postgres > user > query", () => {
             "source-table": PEOPLE_ID,
             aggregation: [["count"]],
             breakout: [
-              ["field-id", PEOPLE.SOURCE],
-              ["datetime-field", ["field-id", PEOPLE.CREATED_AT], "year"],
+              ["field", PEOPLE.SOURCE, null],
+              ["field", PEOPLE.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
         },

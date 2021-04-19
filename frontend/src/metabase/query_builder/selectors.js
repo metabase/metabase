@@ -159,7 +159,7 @@ function normalizeQuery(query, tableMetadata) {
         ? // if the query has fields, copy them before sorting
           [...fields]
         : // if the fields aren't set, we get them from the table metadata
-          tableMetadata.fields.map(({ id }) => ["field-id", id]);
+          tableMetadata.fields.map(({ id }) => ["field", id, null]);
       return fields.sort((a, b) =>
         JSON.stringify(b).localeCompare(JSON.stringify(a)),
       );

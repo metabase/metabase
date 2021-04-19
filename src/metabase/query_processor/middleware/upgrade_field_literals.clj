@@ -5,22 +5,17 @@
 
 (defn- upgrade-field-literals-one-level [{:keys [source-metadata], :as inner-query}]
   (let [field-name->field (u/key-by :name source-metadata)]
-    ;; look for `field-literal` clauses...
+    ;; look for `field` clauses that use a string name...
     (mbql.u/replace inner-query
-      [:field-literal field-name _]
+      [:field (field-name :guard string?) options]
       ;; don't upgrade anything inside `source-query` or `source-metadata`.
       (or (when-not (or (contains? (set &parents) :source-query)
                         (contains? (set &parents) :source-metadata))
             (when-let [{field-ref :field_ref} (get field-name->field field-name)]
-              ;; only do a replacement if the field ref is a `field-id` form or something wrapping one.
-              (when (mbql.u/match-one field-ref :field-id true)
-                ;; replace the `field-literal` with either `field-id`, `joined-field`, or `fk->` -- these are the
-                ;; lowest-level forms that are directly swappable with `field-literal`. Don't include `datetime-field`
-                ;; `binning-strategy`, or anything other "wrapper" clauses, because they may already be wrapping the
-                ;; clause we're replacing
-                (mbql.u/match-one field-ref
-                  #{:field-id :joined-field :fk->}
-                  &match))))
+              ;; only do a replacement if the field ref is a `field` clause that uses an ID
+              (mbql.u/match-one field-ref
+                [:field (id :guard integer?) new-options]
+                [:field id (merge new-options (dissoc options :base-type))])))
           ;; if they don't meet the conditions above, return them as is
           &match))))
 
@@ -38,8 +33,8 @@
    query))
 
 (defn upgrade-field-literals
-  "Look for usage of `field-literal` forms where `field-id` would have been the correct thing to use, and fix it, so the
-  resulting query doesn't end up being broken."
+  "Look for usage of `:field` (name) forms where `field` (ID) would have been the correct thing to use, and fix it, so
+  the resulting query doesn't end up being broken."
   [qp]
   (fn [query rff context]
     (qp (upgrade-field-literals-all-levels query) rff context)))

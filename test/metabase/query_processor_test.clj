@@ -73,12 +73,13 @@
   [table-kw field-kw]
   (merge
    (col-defaults)
-   (db/select-one [Field :id :table_id :special_type :base_type :name :display_name :fingerprint]
+   (db/select-one [Field :id :table_id :semantic_type :base_type :effective_type
+                   :coercion_strategy :name :display_name :fingerprint]
      :id (data/id table-kw field-kw))
-   {:field_ref [:field-id (data/id table-kw field-kw)]}
+   {:field_ref [:field (data/id table-kw field-kw) nil]}
    (when (#{:last_login :date} field-kw)
      {:unit      :default
-      :field_ref [:datetime-field [:field-id (data/id table-kw field-kw)] :default]})))
+      :field_ref [:field (data/id table-kw field-kw) {:temporal-unit :default}]})))
 
 (defn- expected-column-names
   "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."
@@ -140,7 +141,7 @@
   {:arglists '([col] [table-kw field-kw])}
   ([{field-name :name, base-type :base_type, unit :unit, :as col}]
    (-> col
-       (assoc :field_ref [:field-literal field-name base-type]
+       (assoc :field_ref [:field field-name {:base-type base-type}]
               :source    :fields)
        (dissoc :description :parent_id :visibility_type)))
 
@@ -158,7 +159,7 @@
   {:arglists '([col] [table-kw field-kw])}
   ([{field-name :name, base-type :base_type, unit :unit, :as col}]
    (assoc col
-          :field_ref [:field-literal field-name base-type]
+          :field_ref [:field field-name {:base-type base-type}]
           :source    :fields))
 
   ([table-kw field-kw]
@@ -171,7 +172,7 @@
         dest-col   (col dest-table-kw dest-field-kw)]
     (-> dest-col
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
-        (assoc :field_ref    [:fk-> [:field-id (:id source-col)] [:field-id (:id dest-col)]]
+        (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
                :fk_field_id  (:id source-col)
                :source_alias (#'joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
                                                  (:name source-col))))))
@@ -190,7 +191,7 @@
                       {:database db-id
                        :type     :query
                        :query    {:source-table table-id
-                                  :fields       [[:field_id field-id]]
+                                  :fields       [[:field field-id nil]]
                                   :limit        1}})}))))))
 
 (defn native-query-col
@@ -315,7 +316,7 @@
   [results]
   (when (#{:failed "failed"} (:status results))
     (throw (ex-info (str (or (:error results) "Error running query"))
-             (if (map? results) results {:results results}))))
+                    (if (map? results) results {:results results}))))
   (:data results))
 
 (defn rows
@@ -323,7 +324,8 @@
   {:style/indent 0}
   [results]
   (or (some-> (data results) :rows vec)
-      (throw (ex-info "Query does not have any :rows in results." results))))
+      (throw (ex-info "Query does not have any :rows in results."
+                      (if (map? results) results {:result results})))))
 
 (defn formatted-rows
   "Combines `rows` and `format-rows-by`."
@@ -418,16 +420,22 @@
                                        (if (= [driver feature] [:bigquery :foreign-keys])
                                          true
                                          (supports? driver feature)))]
-        (tu/with-temp-vals-in-db Field (data/id :checkins :user_id) {:fk_target_field_id (data/id :users :id)
-                                                                     :special_type       "type/FK"}
-          (tu/with-temp-vals-in-db Field (data/id :checkins :venue_id) {:fk_target_field_id (data/id :venues :id)
-                                                                        :special_type       "type/FK"}
-            (f)))))))
+        (let [thunk (reduce
+                     (fn [thunk [source dest]]
+                       (fn []
+                         (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
+                                                                                :semantic_type      "type/FK"}
+                           (thunk))))
+                     f
+                     {[:checkins :user_id]   [:users :id]
+                      [:checkins :venue_id]  [:venues :id]
+                      [:venues :category_id] [:categories :id]})]
+          (thunk))))))
 
 (defmacro with-bigquery-fks
-  "Execute `body` with test-data `checkins.user_id` and `checkins.venue_id` marked as foreign keys and with
-  `:foreign-keys` a supported feature when testing against BigQuery. BigQuery does not support Foreign Key
-  constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody has
-  manually marked FK relationships for BigQuery."
+  "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` marked as foreign
+  keys and with `:foreign-keys` a supported feature when testing against BigQuery. BigQuery does not support Foreign
+  Key constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody
+  has manually marked FK relationships for BigQuery."
   [& body]
   `(do-with-bigquery-fks (fn [] ~@body)))
