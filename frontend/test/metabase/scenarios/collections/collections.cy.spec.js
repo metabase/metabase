@@ -477,7 +477,7 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("First Collection");
     });
 
-    it.skip("should let be possible to select all items using checkbox (metabase#14705)", () => {
+    it("should be possible to select all items using checkbox (metabase#14705)", () => {
       cy.visit("/collection/root");
       selectItemUsingCheckbox("Orders");
       cy.findByText("1 item selected").should("be.visible");
