@@ -29,6 +29,7 @@ const BulkActionBar = ({ children, showing }) => (
           opacity,
           transform: `translateY(${translateY}px)`,
         }}
+        data-testid="bulk-action-bar"
       >
         <Card>{children}</Card>
       </FixedBottomBar>
