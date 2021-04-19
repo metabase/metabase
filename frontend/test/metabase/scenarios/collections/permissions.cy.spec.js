@@ -366,9 +366,12 @@ describe("collection permissions", () => {
               cy.signIn(user);
             });
 
-            it("should not be offered to duplicate dashboard in collections they have `read` access to", () => {
+            it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
               cy.visit("/collection/root");
-              findEllipsisMenuFor("Orders in a dashboard").should("not.exist");
+              openEllipsisMenuFor("Orders in a dashboard");
+              popover()
+                .findByText("Duplicate this item")
+                .should("exist");
             });
 
             ["/", "/collection/root"].forEach(route => {
@@ -415,10 +418,10 @@ describe("collection permissions", () => {
                   .should("not.exist");
               });
 
-              it("should not be offered to duplicate dashboard in collections they have `read` access to", () => {
+              it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
-                cy.findByText("Duplicate").should("not.exist");
+                popover().findByText("Duplicate");
               });
             });
           });
@@ -568,16 +571,13 @@ function clickRevert(event_name, index = 0) {
     .click();
 }
 
-function findEllipsisMenuFor(item, index = 0) {
+function openEllipsisMenuFor(item, index = 0) {
   return cy
     .findAllByText(item)
     .eq(index)
     .closest("a")
-    .find(".Icon-ellipsis");
-}
-
-function openEllipsisMenuFor(item, index = 0) {
-  findEllipsisMenuFor(item, index).click({ force: true });
+    .find(".Icon-ellipsis")
+    .click({ force: true });
 }
 
 function clickButton(name) {

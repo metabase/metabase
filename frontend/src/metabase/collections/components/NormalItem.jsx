@@ -43,7 +43,7 @@ export default function NormalItem({
             ? () => onMove([item])
             : null
         }
-        onCopy={collection.can_write && item.copy ? () => onCopy([item]) : null}
+        onCopy={item.copy ? () => onCopy([item]) : null}
         onArchive={
           collection.can_write && item.setArchived
             ? () => item.setArchived(true)

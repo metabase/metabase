@@ -309,16 +309,16 @@ export default class DashboardHeader extends Component {
           {t`Revision history`}
         </Link>,
       );
+      extraButtons.push(
+        <Link
+          className={extraButtonClassNames}
+          to={location.pathname + "/copy"}
+          data-metabase-event={"Dashboard;Copy"}
+        >
+          {t`Duplicate`}
+        </Link>,
+      );
       if (canEdit) {
-        extraButtons.push(
-          <Link
-            className={extraButtonClassNames}
-            to={location.pathname + "/copy"}
-            data-metabase-event={"Dashboard;Copy"}
-          >
-            {t`Duplicate`}
-          </Link>,
-        );
         extraButtons.push(
           <Link
             className={extraButtonClassNames}
