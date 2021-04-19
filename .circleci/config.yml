@@ -18,9 +18,6 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: maildev/maildev
-        environment:
-          MB_EMAIL_SMTP_HOST: maildev
-          MB_EMAIL_SMTP_PORT: 25
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
