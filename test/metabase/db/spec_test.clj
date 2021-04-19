@@ -1,12 +1,14 @@
 (ns metabase.db.spec-test
   (:require [clojure.test :refer :all]
+            [metabase.config :as config]
             [metabase.db.spec :as db.spec]))
 
 (defn- default-pg-spec [db]
   {:classname                     "org.postgresql.Driver"
    :subprotocol                   "postgresql"
    :subname                       (format "//localhost:5432/%s" db)
-   :OpenSourceSubProtocolOverride true})
+   :OpenSourceSubProtocolOverride true
+   :ApplicationName               config/mb-version-and-process-identifier})
 
 (deftest basic-test
   (testing "Basic minimal config"
