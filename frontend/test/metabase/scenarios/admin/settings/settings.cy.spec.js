@@ -386,8 +386,8 @@ describe("scenarios > admin > settings", () => {
       cy.findByText("Send test email").click();
       cy.findByText("Sent!");
       cy.request("GET", "http://localhost:80/email").then(({ body }) => {
-        const EMAIL_BODY = body[0].text;
-        expect(EMAIL_BODY).to.include("Your Metabase emails are working");
+        const emailBody = body[0].text;
+        expect(emailBody).to.include("Your Metabase emails are working");
       });
     });
 
