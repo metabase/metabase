@@ -46,16 +46,7 @@ class CollectionSidebar extends React.Component {
   state = {
     openCollections: [],
   };
-  onOpen = id => {
-    this.setState({ openCollections: this.state.openCollections.concat(id) });
-  };
-  onClose = id => {
-    this.setState({
-      openCollections: this.state.openCollections.filter(c => {
-        return c !== id;
-      }),
-    });
-  };
+
   componentDidMount() {
     // an array to store the ancestors
     const { collectionId, collections, loading } = this.props;
@@ -64,6 +55,18 @@ class CollectionSidebar extends React.Component {
       this.setState({ openCollections: ancestors });
     }
   }
+
+  onOpen = id => {
+    this.setState({ openCollections: this.state.openCollections.concat(id) });
+  };
+
+  onClose = id => {
+    this.setState({
+      openCollections: this.state.openCollections.filter(c => {
+        return c !== id;
+      }),
+    });
+  };
   render() {
     const { currentUser, isRoot, collectionId, list } = this.props;
     return (
