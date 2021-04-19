@@ -75,4 +75,31 @@ describe("scenarios > x-rays", () => {
       cy.icon("warning").should("not.exist");
     });
   });
+
+  it.skip("should work on a nested question made from base native question (metabase#15655)", () => {
+    cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
+    cy.createNativeQuestion({
+      name: "15655",
+      native: { query: "select * from people" },
+    });
+
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("15655").click();
+    cy.findByText("Summarize").click();
+    cy.get(".List-item-title")
+      .contains(/Source/i)
+      .click();
+    cy.get(".bar")
+      .first()
+      .click({ force: true });
+    cy.findByText("Compare to the rest").click();
+    cy.wait("@xray").then(xhr => {
+      expect(xhr.response.body.cause).not.to.exist;
+      expect(xhr.response.statusCode).not.to.eq(500);
+    });
+    cy.findByText("How they compare across time");
+    cy.get(".DashCard");
+  });
 });
