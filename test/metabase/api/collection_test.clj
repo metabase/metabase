@@ -3,13 +3,15 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
-                                     PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient]]
+                                     PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
+                                     Revision User]]
             [metabase.models.collection :as collection]
             [metabase.models.collection-test :as collection-test]
             [metabase.models.collection.graph :as graph]
             [metabase.models.collection.graph-test :as graph.test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
+            [metabase.models.revision :as revision]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -333,7 +335,27 @@
           (db/update-where! Dashboard {:collection_id (u/the-id collection)} :archived true)
           (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                  (mt/boolean-ids-and-timestamps
-                  (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true"))))))))))
+                  (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true"))))))))
+    (testing "Results include last edited information from the `Revision` table"
+      (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
+                      User       [{user-id :id} {:first_name "Test" :last_name "User" :email "testuser@example.com"}]
+                      Card       [{card-id :id :as card}
+                                  {:name          "Card with history" :collection_id collection-id}]
+                      Revision   [_revision {:model    "Card"
+                                             :model_id card-id
+                                             :user_id  user-id
+                                             :object   (revision/serialize-instance card card-id card)}]]
+        (is (= [{:name "Card with history",
+                 :last-edit-info
+                 {:id         true,
+                  :email      "testuser@example.com",
+                  :first_name "Test",
+                  :last_name  "User",
+                  ;; timestamp collapsed to true, ordinarily a OffsetDateTime
+                  :timestamp  true}}]
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))
+                    mt/boolean-ids-and-timestamps
+                    (map #(select-keys % [:name :last-edit-info])))))))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
