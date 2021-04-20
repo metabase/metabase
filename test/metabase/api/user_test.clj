@@ -152,6 +152,31 @@
                   mt/boolean-ids-and-timestamps
                   (map #(dissoc % :is_qbnewb :last_login))))))))
 
+(deftest user-list-limit-test
+  (testing "GET /api/user?limit=2&offset=1"
+    (testing "Limit and offset pagination have to have both limit and offset"
+      (is (= "When including a limit, an offset must also be included." (mt/user-http-request :crowberto :get 200 "user" :limit 2))))
+    (testing "Limit and offset pagination works for user list"
+      (is (= (->> [{:email                  "lucky@metabase.com"
+                    :first_name             "Lucky"
+                    :last_name              "Pigeon"
+                    :group_ids              #{(u/the-id (group/all-users))}
+                    :personal_collection_id true
+                    :common_name            "Lucky Pigeon"}
+                   {:email                  "rasta@metabase.com"
+                    :first_name             "Rasta"
+                    :last_name              "Toucan"
+                    :group_ids              #{(u/the-id (group/all-users))}
+                    :personal_collection_id true
+                    :common_name            "Rasta Toucan"}]
+                  (map (partial merge user-defaults))
+                  (map #(dissoc % :is_qbnewb :last_login)))
+             (->> (mt/user-http-request :crowberto :get 200 "user" :limit 2 :offset 1)
+                  (filter mt/test-user?)
+                  group-ids->sets
+                  mt/boolean-ids-and-timestamps
+                  (map #(dissoc % :is_qbnewb :last_login))))))))
+
 (deftest get-current-user-test
   (testing "GET /api/user/current"
     (testing "check that fetching current user will return extra fields like `is_active`"
