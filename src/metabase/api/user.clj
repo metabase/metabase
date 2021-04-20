@@ -72,12 +72,13 @@
   superuser permissions.). For users with segmented permissions, return only themselves."
   [limit offset include_deactivated]
   {
-   limit (s/maybe su/IntString)
-   offset (s/maybe su/IntString)
+   limit (s/maybe su/IntStringGreaterThanZero)
+   offset (s/maybe su/IntStringGreaterThanOrEqualToZero)
    include_deactivated (s/maybe su/BooleanString)
   }
   (when include_deactivated
     (api/check-superuser))
+  (api/check-valid-offset limit offset)
   (cond-> (db/select (vec (cons User (if api/*is-superuser?*
                                        user/admin-or-self-visible-columns
                                        user/non-admin-or-self-visible-columns)))
