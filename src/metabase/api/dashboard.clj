@@ -1,6 +1,7 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
-  (:require [clojure.set :as set]
+  (:require [clj-time.core :as time]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
@@ -246,11 +247,24 @@
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
+(defn- with-last-edit-info
+  "Add the last edited information to a card. Will add a key `:last-edit-info`"
+  [{:keys [id] :as dashboard}]
+  (if-let [[updated-info] (seq (db/query {:select [:u.id :u.email :u.first_name :u.last_name :r.timestamp]
+                                          :from [[:revision :r]]
+                                          :left-join [[:core_user :u] [:= :u.id :r.user_id]]
+                                          :where [:and [:= :r.model "Dashboard"] [:= :r.model_id id]]
+                                          :order-by [[:u.id :desc]]
+                                          :limit 1}))]
+    (assoc dashboard :last-edit-info updated-info)
+    dashboard))
+
 (api/defendpoint GET "/:id"
   "Get Dashboard with ID."
   [id]
-  (u/prog1 (get-dashboard id)
-    (events/publish-event! :dashboard-read (assoc <> :actor_id api/*current-user-id*))))
+  (let [dashboard (get-dashboard id)]
+    (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
+    (with-last-edit-info dashboard)))
 
 
 (defn- check-allowed-to-change-embedding
@@ -302,8 +316,11 @@
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                       :embedding_params :archived})))))
   ;; now publish an event and return the updated Dashboard
-  (u/prog1 (Dashboard id)
-    (events/publish-event! :dashboard-update (assoc <> :actor_id api/*current-user-id*))))
+  (let [dashboard (Dashboard id)]
+    (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
+    (assoc dashboard :last-edit-info (merge {:timestamp (time/now)}
+                                            (select-keys @api/*current-user*
+                                                         [:id :first_name :last_name :email])))))
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead

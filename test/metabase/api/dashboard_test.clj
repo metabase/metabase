@@ -18,8 +18,9 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.revision :refer [Revision]]
+            [metabase.models.revision :as revision :refer [Revision]]
             [metabase.models.table :refer [Table]]
+            [metabase.models.user :refer [User]]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -60,12 +61,18 @@
                              (update :collection_id boolean)))))
 
 (defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
+  ;; todo: should be udpated to use mt/boolean-ids-and-timestamps
   (let [dash (-> (into {} dashboard)
                  (dissoc :id)
                  (assoc :created_at (boolean created_at)
                         :updated_at (boolean updated_at))
                  (update :collection_id boolean))]
     (cond-> dash
+      (contains? dash :last-edit-info)
+      (update :last-edit-info (fn [info]
+                                (-> info
+                                    (update :id boolean)
+                                    (update :timestamp boolean))))
       creator       (update :creator #(into {} %))
       ordered_cards (update :ordered_cards #(mapv dashcard-response %)))))
 
@@ -184,9 +191,18 @@
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard WITH a dashboard card on it"
-      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+      (mt/with-temp* [Dashboard     [{dashboard-id :id
+                                      :as dashboard}    {:name "Test Dashboard"}]
                       Card          [{card-id :id}      {:name "Dashboard Test Card"}]
-                      DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
+                      DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]
+                      User          [{user-id :id}      {:first_name "Test" :last_name "User"
+                                                         :email "test@example.com"}]
+                      Revision      [_                  {:user_id user-id
+                                                         :model "Dashboard"
+                                                         :model_id dashboard-id
+                                                         :object (revision/serialize-instance dashboard
+                                                                                              dashboard-id
+                                                                                              dashboard)}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (card-api-test/with-cards-in-readable-collection [card-id]
             (is (= (merge
@@ -197,6 +213,7 @@
                      :can_write     false
                      :param_values  nil
                      :param_fields  nil
+                     :last-edit-info {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
                      :ordered_cards [{:sizeX                  2
                                       :sizeY                  2
                                       :col                    0
@@ -296,9 +313,11 @@
                  (dashboard-response (Dashboard dashboard-id)))))
 
         (testing "PUT response"
-          (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
-                                            :description   "Some awesome description"
-                                            :creator_id    (mt/user->id :rasta)
+          (is (= (merge dashboard-defaults {:name           "My Cool Dashboard"
+                                            :description    "Some awesome description"
+                                            :creator_id     (mt/user->id :rasta)
+                                            :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
+                                                             :last_name "Toucan" :email "rasta@metabase.com"}
                                             :collection_id true})
                  (dashboard-response
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
@@ -324,6 +343,9 @@
                                             :collection_id           true
                                             :caveats                 ""
                                             :points_of_interest      ""
+                                            :last-edit-info
+                                            {:timestamp true, :id true, :first_name "Rasta",
+                                             :last_name "Toucan", :email "rasta@metabase.com"}
                                             :show_in_getting_started true})
                  (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                                            {:caveats                 ""
