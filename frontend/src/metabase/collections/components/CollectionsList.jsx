@@ -27,7 +27,7 @@ class CollectionsList extends React.Component {
           const action = isOpen ? this.props.onClose : this.props.onOpen;
           const hasChildren =
             Array.isArray(c.children) &&
-            c.children.filter(child => !child.archived).length > 0;
+            c.children.some(child => !child.archived);
           return (
             <Box key={c.id}>
               <CollectionDropTarget collection={c}>
