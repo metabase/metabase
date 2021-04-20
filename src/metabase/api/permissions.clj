@@ -64,12 +64,12 @@
   "Return a sequence of ordered `PermissionsGroups`, including the `MetaBot` group only if MetaBot is enabled."
   [limit offset]
   (db/select PermissionsGroup
-    (-> {:where    (if (metabot/metabot-enabled)
-                 true
-                 [:not= :id (u/get-id (group/metabot))])
-         :order-by [:%lower.name]}
-        (hh/limit (when (some? limit) limit))
-        (hh/offset (when (some? offset) offset))
+    (cond-> {:where    (if (metabot/metabot-enabled)
+                     true
+                     [:not= :id (u/get-id (group/metabot))])
+             :order-by [:%lower.name]}
+        (some? limit) (hh/limit limit)
+        (some? offset) (hh/offset offset)
     )))
 
 (defn add-member-counts

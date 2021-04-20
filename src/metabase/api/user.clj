@@ -83,15 +83,15 @@
   (cond-> (db/select (vec (cons User (if api/*is-superuser?*
                                        user/admin-or-self-visible-columns
                                        user/non-admin-or-self-visible-columns)))
-            (-> {}
-                (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                (hh/merge-where (when-not include_deactivated
+            (cond-> {}
+                true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                true (hh/merge-where (when-not include_deactivated
                                   [:= :is_active true]))
-                (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
                                   (when (segmented-user?)
                                     [:= :id api/*current-user-id*])))
-                (hh/limit (when (some? limit) limit))
-                (hh/offset (when (some? offset) offset))
+                (some? limit) (hh/limit limit)
+                (some? offset) (hh/offset offset)
                 )
             )
     ;; For admins, also include the IDs of the  Users' Personal Collections
