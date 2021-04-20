@@ -174,7 +174,26 @@ export function getParameterOptions(): ParameterOption[] {
       ? OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
           buildOperatorSubtypeOptions(option),
         )
-      : [...PARAMETER_OPERATOR_TYPES["date"]]),
+      : [
+          { type: "category", name: t`Category` },
+          {
+            type: "location/city",
+            name: t`City`,
+          },
+          {
+            type: "location/state",
+            name: t`State`,
+          },
+          {
+            type: "location/zip_code",
+            name: t`ZIP or Postal Code`,
+          },
+          {
+            type: "location/country",
+            name: t`Country`,
+          },
+          ...PARAMETER_OPERATOR_TYPES["date"],
+        ]),
   ].flat();
 }
 
