@@ -292,7 +292,10 @@
   .Dashboard.Dashboard--fullscreen .Header-title-name {
     font-size: 1em;
   }
-
+  /* keep the single row text cards to avoid overflow with a scroll bar */
+  .Dashboard.Dashboard--fullscreen .Text--single-row {
+    font-size: 0.85em;
+  }
   .Dashboard.Dashboard--fullscreen .fullscreen-text-small .LegendItem {
     font-size: 1em;
   }

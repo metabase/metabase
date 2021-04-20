@@ -160,8 +160,7 @@ export default class DashCard extends Component {
       mainCard.visualization_settings["dashcard.background"] === false;
 
     const isEditingDashboardLayout =
-      isEditing &&
-      !(clickBehaviorSidebarDashcard != null || isEditingParameter);
+      isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
 
     return (
       <div

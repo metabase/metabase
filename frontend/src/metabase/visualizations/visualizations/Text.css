@@ -153,3 +153,7 @@
   width: 100%;
   height: auto;
 }
+
+:local .single-row {
+  margin: 0;
+}

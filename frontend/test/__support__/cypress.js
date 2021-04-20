@@ -1,4 +1,5 @@
 import "@testing-library/cypress/add-commands";
+import "cypress-real-events/support";
 import "@cypress/skip-test/support";
 import "./commands";
 
@@ -327,4 +328,10 @@ export function mockSessionProperty(propertyOrObject, value) {
       }
     });
   });
+}
+
+export function showDashboardCardActions(index = 0) {
+  cy.get(".DashCard")
+    .eq(index)
+    .realHover();
 }

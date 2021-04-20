@@ -1,4 +1,4 @@
-import { restore } from "__support__/cypress";
+import { restore, showDashboardCardActions } from "__support__/cypress";
 
 function addTextBox(string) {
   cy.icon("pencil").click();
@@ -22,12 +22,10 @@ describe("scenarios > dashboard > text-box", () => {
     });
 
     it("should render correct icons for preview and edit modes", () => {
-      cy.get(".DashCard")
-        .eq(1)
-        .trigger("mouseover");
+      showDashboardCardActions(1);
 
       // edit mode
-      cy.icon("eye").click({ force: true });
+      cy.icon("eye").click();
 
       // preview mode
       cy.icon("edit_document");

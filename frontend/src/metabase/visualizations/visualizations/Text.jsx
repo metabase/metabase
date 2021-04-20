@@ -100,18 +100,11 @@ export default class Text extends Component {
 
   render() {
     const { className, gridSize, settings, isEditing } = this.props;
-    const isSmall = gridSize && gridSize.width < 4;
+    const isSingleRow = gridSize && gridSize.height === 1;
 
     if (isEditing) {
       return (
-        <div
-          className={cx(
-            className,
-            styles.Text,
-            styles[isSmall ? "small" : "large"],
-            styles["dashboard-is-editing"],
-          )}
-        >
+        <div className={cx(className, styles.Text)}>
           {this.props.isPreviewing ? (
             <ReactMarkdown
               className={cx(
@@ -138,14 +131,12 @@ export default class Text extends Component {
     } else {
       return (
         <div
-          className={cx(
-            className,
-            styles.Text,
-            styles[isSmall ? "small" : "large"],
+          className={cx(className, styles.Text, {
             /* if the card is not showing a background we should adjust the left
              * padding to help align the titles with the wrapper */
-            { pl0: !settings["dashcard.background"] },
-          )}
+            pl0: !settings["dashcard.background"],
+            "Text--single-row": isSingleRow,
+          })}
         >
           <ReactMarkdown
             className={cx(

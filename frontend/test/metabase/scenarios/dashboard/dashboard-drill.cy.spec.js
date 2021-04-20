@@ -3,6 +3,7 @@ import {
   modal,
   popover,
   createNativeQuestion,
+  showDashboardCardActions,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -27,8 +28,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.visit(`/dashboard/${dashboardId}`),
     );
     cy.icon("pencil").click();
-    cy.get(".DashCard").trigger("mouseover");
-    cy.icon("click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
 
     // configure a URL click through on the  "MY_NUMBER" column
     cy.findByText("On-click behavior for each column")
@@ -141,8 +142,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.visit(`/dashboard/${dashboardId}`),
     );
     cy.icon("pencil").click();
-    cy.get(".DashCard").trigger("mouseover");
-    cy.icon("click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
 
     // configure a dashboard target for the "MY_NUMBER" column
     cy.findByText("On-click behavior for each column")
@@ -193,8 +194,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       );
     });
     cy.icon("pencil").click();
-    cy.get(".DashCard").trigger("mouseover");
-    cy.icon("click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
 
     // configure clicks on "MY_NUMBER to update the param
     cy.findByText("On-click behavior for each column")
@@ -236,8 +237,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.visit(`/dashboard/${dashboardId}`),
     );
     cy.icon("pencil").click();
-    cy.get(".DashCard").trigger("mouseover");
-    cy.icon("click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
 
     // configure clicks on "MY_NUMBER to update the param
     cy.findByText("On-click behavior for each column")
@@ -579,9 +580,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
         cy.icon("pencil").click();
-        cy.get(".DashCard").trigger("mouseover");
         // Edit "Visualization options"
-        cy.get(".DashCard .Icon-palette").click({ force: true });
+        showDashboardCardActions();
+        cy.icon("palette").click();
         cy.get(".Modal").within(() => {
           cy.findByText("Reset to defaults").click();
           cy.findByRole("button", { name: "Done" }).click();
