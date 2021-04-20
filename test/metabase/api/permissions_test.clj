@@ -24,6 +24,10 @@
 (defn- fetch-groups []
   (set ((mt/user->client :crowberto) :get 200 "permissions/group")))
 
+;; GET /permissions/group?limit=1&offset=1
+(defn- fetch-groups-limit []
+  (set ((mt/user->client :crowberto) :get 200 "permissions/group" :limit 1 :offset 1)))
+
 (deftest fetch-groups-test
   (testing "GET /api/permissions/group"
     (letfn [(check-default-groups-returned [id->group]
