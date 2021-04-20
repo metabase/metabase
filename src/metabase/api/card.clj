@@ -1,6 +1,7 @@
 (ns metabase.api.card
   "/api/card endpoints."
   (:require [cheshire.core :as json]
+            [clj-time.core :as time]
             [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
@@ -156,12 +157,25 @@
          ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
          (filterv mi/can-read?))))
 
+(defn- with-last-edit-info
+  "Add the last edited information to a card. Will add a key `:last-edit-info`"
+  [{:keys [id] :as card}]
+  (if-let [[updated-info] (seq (db/query {:select [:u.id :u.email :u.first_name :u.last_name :r.timestamp]
+                                          :from [[:revision :r]]
+                                          :left-join [[:core_user :u] [:= :u.id :r.user_id]]
+                                          :where [:and [:= :r.model "Card"] [:= :r.model_id id]]
+                                          :order-by [[:u.id :desc]]
+                                          :limit 1}))]
+    (assoc card :last-edit-info updated-info)
+    card))
+
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
                (hydrate :creator :dashboard_count :can_write :collection)
-               api/read-check)
+               api/read-check
+               with-last-edit-info)
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
@@ -424,7 +438,11 @@
       (publish-card-update! card archived)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
       ;; has with returned one -- See #4142
-      (hydrate card :creator :dashboard_count :can_write :collection))))
+      (-> card
+          (hydrate :creator :dashboard_count :can_write :collection)
+          (assoc :last-edit-info (merge {:timestamp (time/now)}
+                                        (select-keys @api/*current-user*
+                                                     [:first_name :last_name :email :id])))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."

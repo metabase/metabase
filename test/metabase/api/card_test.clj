@@ -14,6 +14,8 @@
                                      PulseChannelRecipient Table ViewLog]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.models.revision :as revision :refer [Revision]]
+            [metabase.models.user :refer [User]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.middleware.constraints :as constraints]
@@ -584,7 +586,17 @@
                    :collection_id          (u/the-id collection)
                    :collection             (into {} collection)
                    :result_metadata        (mt/obj->json->obj (:result_metadata card))})
-                 (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))))))
+                 (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
+        (testing "Card should include last edit info if available"
+          (mt/with-temp* [User     [{user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}]
+                          Revision [_ {:model "Card"
+                                       :model_id (:id card)
+                                       :user_id user-id
+                                       :object (revision/serialize-instance card (:id card) card)}]]
+            (is (= {:id true :email "user@test.com" :first_name "Test" :last_name "User" :timestamp true}
+                   (-> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
+                       mt/boolean-ids-and-timestamps
+                       :last-edit-info)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                UPDATING A CARD                                                 |
@@ -600,7 +612,10 @@
     (with-cards-in-writeable-collection card
       (is (= "Original Name"
              (db/select-one-field :name Card, :id (u/the-id card))))
-      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:name "Updated Name"})
+      (is (= {:timestamp true, :first_name "Rasta", :last_name "Toucan", :email "rasta@metabase.com", :id true}
+             (-> (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:name "Updated Name"})
+                 mt/boolean-ids-and-timestamps
+                 :last-edit-info)))
       (is (= "Updated Name"
              (db/select-one-field :name Card, :id (u/the-id card)))))))
 
