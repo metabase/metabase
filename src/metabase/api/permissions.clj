@@ -68,8 +68,8 @@
                      true
                      [:not= :id (u/get-id (group/metabot))])
              :order-by [:%lower.name]}
-        (some? limit) (hh/limit limit)
-        (some? offset) (hh/offset offset)
+        (some? limit) (hh/limit (Integer/parseInt limit))
+        (some? offset) (hh/offset (Integer/parseInt offset))
     )))
 
 (defn add-member-counts

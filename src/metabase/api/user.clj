@@ -90,8 +90,8 @@
                 true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
                                   (when (segmented-user?)
                                     [:= :id api/*current-user-id*])))
-                (some? limit) (hh/limit limit)
-                (some? offset) (hh/offset offset)
+                (some? limit) (hh/limit (Integer/parseInt limit))
+                (some? offset) (hh/offset (Integer/parseInt offset))
                 )
             )
     ;; For admins, also include the IDs of the  Users' Personal Collections
