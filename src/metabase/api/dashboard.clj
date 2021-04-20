@@ -19,6 +19,7 @@
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.models.query :as query :refer [Query]]
             [metabase.models.revision :as revision]
+            [metabase.models.revision.last-edit :as last-edit]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.util :as qp-util]
@@ -264,7 +265,7 @@
   [id]
   (let [dashboard (get-dashboard id)]
     (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
-    (with-last-edit-info dashboard)))
+    (last-edit/with-last-edit-info dashboard :dashboard)))
 
 
 (defn- check-allowed-to-change-embedding
@@ -318,9 +319,7 @@
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (Dashboard id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
-    (assoc dashboard :last-edit-info (merge {:timestamp (time/now)}
-                                            (select-keys @api/*current-user*
-                                                         [:id :first_name :last_name :email])))))
+    (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead

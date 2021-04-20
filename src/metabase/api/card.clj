@@ -20,6 +20,7 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.public-settings :as public-settings]
@@ -157,25 +158,13 @@
          ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
          (filterv mi/can-read?))))
 
-(defn- with-last-edit-info
-  "Add the last edited information to a card. Will add a key `:last-edit-info`"
-  [{:keys [id] :as card}]
-  (if-let [[updated-info] (seq (db/query {:select [:u.id :u.email :u.first_name :u.last_name :r.timestamp]
-                                          :from [[:revision :r]]
-                                          :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                                          :where [:and [:= :r.model "Card"] [:= :r.model_id id]]
-                                          :order-by [[:u.id :desc]]
-                                          :limit 1}))]
-    (assoc card :last-edit-info updated-info)
-    card))
-
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
                (hydrate :creator :dashboard_count :can_write :collection)
                api/read-check
-               with-last-edit-info)
+               (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
@@ -440,9 +429,7 @@
       ;; has with returned one -- See #4142
       (-> card
           (hydrate :creator :dashboard_count :can_write :collection)
-          (assoc :last-edit-info (merge {:timestamp (time/now)}
-                                        (select-keys @api/*current-user*
-                                                     [:first_name :last_name :email :id])))))))
+          (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."

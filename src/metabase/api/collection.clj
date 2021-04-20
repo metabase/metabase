@@ -6,8 +6,6 @@
   `?namespace=snippet`)."
   (:require [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
-            [honeysql.core :as hsql]
-            [medley.core :as m]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
             [metabase.models.card :refer [Card]]
@@ -20,6 +18,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.revision.last-edit :as last-edit]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -139,37 +138,6 @@
         (assoc child-collection :model "collection"))
       (hydrate :can_write)))
 
-(defn- fetch-last-edited-info
-  "Fetch edited info from the revisions table. Revision information is timestamp, user id, email, first and last
-  name. Takes card-ids and dashboard-ids and returns a map structured like
-
-  {:card      {model_id {:id :email :first_name :last_name :timestamp}}
-   :dashboard {model_id {:id :email :first_name :last_name :timestamp}}}"
-  [{:keys [card-ids dashboard-ids]}]
-  (when (seq (concat card-ids dashboard-ids))
-    ;; [:in :model_id []] generates bad sql so need to conditionally add it
-    (let [where-clause   (into [:or]
-                             (keep (fn [[model-name ids]]
-                                     (when (seq ids)
-                                       [:and [:= :model model-name] [:in :model_id ids]])))
-                             [["Card" card-ids]
-                              ["Dashboard" dashboard-ids]])
-          latest-changes (db/query {:select    [:u.id :u.email :u.first_name :u.last_name
-                                                :r.model :r.model_id :r.timestamp]
-                                    :from      [[:revision :r]]
-                                    :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                                    :where     [:in :r.id
-                                                ;; subselect for the max revision id for each item
-                                                {:select   [[(hsql/call :max :id) :latest-revision-id]]
-                                                 :from     [:revision]
-                                                 :where    where-clause
-                                                 :group-by [:model :model_id]}]})]
-      (->> latest-changes
-           (group-by :model)
-           (m/map-vals (fn [model-changes]
-                         (into {} (map (juxt :model_id #(dissoc % :model :model_id)))  model-changes)))
-           (m/map-keys {"Card" :card "Dashboard" :dashboard})))))
-
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
     :collection Collection
@@ -191,10 +159,13 @@
                                 :when    (or (= model-kw :collection)
                                              (contains? allowed-namespaces (keyword collection-namespace)))]
                             [model-kw (fetch-collection-children model-kw collection (assoc options :collection-namespace collection-namespace))]))
-        last-edited (fetch-last-edited-info {:card-ids (->> item-groups :card (map :id))
-                                             :dashboard-ids (->> item-groups :dashboard (map :id))})]
+        last-edited (last-edit/fetch-last-edited-info
+                     {:card-ids (->> item-groups :card (map :id))
+                      :dashboard-ids (->> item-groups :dashboard (map :id))})]
     (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
              (into []
+                   ;; items are grouped by model, needed for last-edit lookup. put model on each one, cat them, then
+                   ;; plop edit information on them if present
                    (comp (map (fn [[model items]]
                                 (map #(assoc % :model model) items)))
                          cat
