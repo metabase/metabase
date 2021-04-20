@@ -67,11 +67,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (api/defendpoint GET "/"
-  "Fetch a list of `Users` for the admin People page or for Pulses. By default returns only active users. If
+  "Fetch a list of `Users` for Pulses. By default returns only active users. If
   `include_deactivated` is true, return all Users (active and inactive). (Using `include_deactivated` requires
   superuser permissions.). For users with segmented permissions, return only themselves."
-  [include_deactivated]
-  {include_deactivated (s/maybe su/BooleanString)}
+  [limit offset include_deactivated]
+  {
+   limit (s/maybe su/IntString)
+   offset (s/maybe su/IntString)
+   include_deactivated (s/maybe su/BooleanString)
+  }
   (when include_deactivated
     (api/check-superuser))
   (cond-> (db/select (vec (cons User (if api/*is-superuser?*
@@ -83,9 +87,14 @@
                                   [:= :is_active true]))
                 (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
                                   (when (segmented-user?)
-                                    [:= :id api/*current-user-id*])))))
+                                    [:= :id api/*current-user-id*])))
+                (hh/limit (when (some? limit) limit))
+                (hh/offset (when (some? offset) offset))
+                )
+            )
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
+
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
