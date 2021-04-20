@@ -5,6 +5,7 @@ import {
   restore,
   selectDashboardFilter,
   expectedRouteCalls,
+  showDashboardCardActions,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -256,7 +257,8 @@ describe("scenarios > dashboard", () => {
 
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
-    cy.get(".DashCard .Icon-click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
     cy.findByText("COUNT(*)").click();
     cy.findByText("Update a dashboard filter").click();
 

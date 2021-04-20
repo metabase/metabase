@@ -53,7 +53,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
     cy.findByText("Baker");
 
-    cy.contains("of 8");
+    cy.findAllByTestId("table-row").should("have.length", 8);
   });
 
   it("should filter by category", () => {
