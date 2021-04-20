@@ -46,6 +46,35 @@ describe("scenarios > question > new", () => {
     cy.findByText("Sample3").isVisibleInPopover();
   });
 
+  it("binning on values from joined table should work (metabase#15648)", () => {
+    // Simple question
+    openOrdersTable();
+    cy.findByText("Summarize").click();
+    cy.findByText("Group by")
+      .parent()
+      .findByText("Rating")
+      .click();
+    cy.get(".Visualization .bar").should("have.length", 6);
+
+    // Custom question ("Notebook")
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    popover().within(() => {
+      // Close expanded "Orders" section in order to bring everything else into view
+      cy.get(".List-section-title")
+        .contains(/Orders?/)
+        .click();
+      cy.get(".List-section-title")
+        .contains(/Products?/)
+        .click();
+      cy.findByText("Rating").click();
+    });
+    cy.findByText("Visualize").click();
+    cy.get(".Visualization .bar").should("have.length", 6);
+  });
+
   describe("browse data", () => {
     it("should load orders table and summarize", () => {
       cy.visit("/");
