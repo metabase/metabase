@@ -419,8 +419,9 @@
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
-(defn check-valid-offset [limit offset]
-  "check on paginated stuff that if the offset exists the limit exists."
+(defn check-valid-offset
+  "Check on paginated stuff that, if the offset exists, the limit exists."
+  [limit offset]
   (check (and limit offset) [400 (tru "When including a limit, an offset must also be included.")]))
 
 
