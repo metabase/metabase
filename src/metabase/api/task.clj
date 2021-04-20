@@ -15,6 +15,7 @@
   {limit  (s/maybe su/IntStringGreaterThanZero)
    offset (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (api/check-superuser)
+  (api/check-valid-limit limit offset)
   (api/check-valid-offset limit offset)
   (let [limit-int  (some-> limit Integer/parseInt)
         offset-int (some-> offset Integer/parseInt)]

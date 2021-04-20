@@ -79,6 +79,7 @@
   (when include_deactivated
     (api/check-superuser))
   (api/check-valid-offset limit offset)
+  (api/check-valid-limit limit offset)
   (cond-> (db/select (vec (cons User (if api/*is-superuser?*
                                        user/admin-or-self-visible-columns
                                        user/non-admin-or-self-visible-columns)))
