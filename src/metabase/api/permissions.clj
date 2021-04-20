@@ -60,12 +60,15 @@
 
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`, including the `MetaBot` group only if MetaBot is enabled."
-  []
+  [limit offset]
   (db/select PermissionsGroup
-    {:where    (if (metabot/metabot-enabled)
+    (-> {:where    (if (metabot/metabot-enabled)
                  true
                  [:not= :id (u/get-id (group/metabot))])
-     :order-by [:%lower.name]}))
+         :order-by [:%lower.name]}
+        (hh/limit (when (some? limit) limit))
+        (hh/offset (when (some? offset) offset))
+    )))
 
 (defn add-member-counts
   "Efficiently add `:member_count` to PermissionGroups."
@@ -77,9 +80,15 @@
 
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
-  []
+  [limit offset]
+  {
+   limit (s/maybe su/IntStringGreaterThanZero)
+   offset (s/maybe su/IntStringGreaterThanOrEqualToZero)
+  }
   (api/check-superuser)
-  (-> (ordered-groups)
+  (api/check-valid-offset limit offset)
+  (api/check-valid-limit limit offset)
+  (-> (ordered-groups limit offset)
       (hydrate :member_count)))
 
 (api/defendpoint GET "/group/:id"
