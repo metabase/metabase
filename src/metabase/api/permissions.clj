@@ -1,6 +1,7 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
   (:require [compojure.core :refer [DELETE GET POST PUT]]
+            [honeysql.helpers :as hh]
             [metabase.api.common :as api]
             [metabase.api.permission-graph :as pg]
             [metabase.metabot :as metabot]
@@ -9,6 +10,7 @@
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
