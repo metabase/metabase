@@ -41,4 +41,10 @@
   {:system-info   (troubleshooting/system-info)
    :metabase-info (troubleshooting/metabase-info)})
 
+(api/defendpoint GET "/diagnostic_info/connection_pool_info"
+  "Returns database connection pool info for the current Metabase instance."
+  []
+  (api/check-superuser)
+  (troubleshooting/connection-pool-info))
+
 (api/define-routes)

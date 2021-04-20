@@ -407,6 +407,7 @@ export const UtilApi = {
   random_token: GET("/api/util/random_token"),
   logs: GET("/api/util/logs"),
   bug_report_details: GET("/api/util/bug_report_details"),
+  connection_pool_details_url: "/api/util/diagnostic_info/connection_pool_info",
 };
 
 export const GeoJSONApi = {
