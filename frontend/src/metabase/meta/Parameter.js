@@ -563,6 +563,8 @@ function getParameterOperatorType(parameterType) {
     case "number":
       return NUMBER;
     case "string":
+    case "category":
+    case "location":
       return STRING;
     case "id":
       // id can technically be a FK but doesn't matter as both use default filter operators

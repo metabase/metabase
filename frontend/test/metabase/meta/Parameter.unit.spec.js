@@ -252,20 +252,24 @@ describe("metabase/meta/Parameter", () => {
       });
     });
 
-    describe("when parameter is NOT associated with an operator", () => {
-      it("should return undefined", () => {
+    describe("when parameter is location/category", () => {
+      it("should map to an = operator", () => {
         expect(
           deriveFieldOperatorFromParameter({
             type: "location/city",
-          }),
-        ).toBe(undefined);
+          }).name,
+        ).toBe("=");
 
         expect(
           deriveFieldOperatorFromParameter({
             type: "category",
-          }),
-        ).toBe(undefined);
+          }).name,
+        ).toBe("=");
+      });
+    });
 
+    describe("when parameter is NOT associated with an operator", () => {
+      it("should return undefined", () => {
         expect(deriveFieldOperatorFromParameter({ type: "date/single" })).toBe(
           undefined,
         );
