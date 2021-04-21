@@ -11,6 +11,7 @@ import Collection from "metabase/entities/collections";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import CollectionsList from "metabase/collections/components/CollectionsList";
 import CollectionLink from "metabase/collections/components/CollectionLink";
@@ -41,16 +42,17 @@ const Sidebar = styled(Box)`
     we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
   */
   query: () => ({ tree: true }),
+  loadingAndErrorWrapper: false,
 })
 class CollectionSidebar extends React.Component {
   state = {
     openCollections: [],
   };
 
-  componentDidMount() {
-    // an array to store the ancestors
+  componentDidUpdate(prevProps) {
     const { collectionId, collections, loading } = this.props;
-    if (!loading) {
+    const loaded = prevProps.loading && !loading;
+    if (loaded) {
       const ancestors = getParentPath(collections, Number(collectionId)) || [];
       this.setState({ openCollections: ancestors });
     }
@@ -71,10 +73,10 @@ class CollectionSidebar extends React.Component {
   // TODO Should we update the API to filter archived collections?
   filterPersonalCollections = collection => !collection.archived;
 
-  render() {
+  renderContent = () => {
     const { currentUser, isRoot, collectionId, list } = this.props;
     return (
-      <Sidebar w={340} pt={3} data-testid="sidebar">
+      <React.Fragment>
         <CollectionLink
           to={Urls.collection("root")}
           selected={isRoot}
@@ -126,6 +128,22 @@ class CollectionSidebar extends React.Component {
             {t`View archive`}
           </Link>
         </Box>
+      </React.Fragment>
+    );
+  };
+
+  render() {
+    const { loaded } = this.props;
+    return (
+      <Sidebar w={340} pt={3} data-testid="sidebar">
+        {loaded ? (
+          this.renderContent()
+        ) : (
+          <div className="text-brand text-centered">
+            <LoadingSpinner />
+            <h2 className="text-normal text-light mt1">{t`Loading ...`}</h2>
+          </div>
+        )}
       </Sidebar>
     );
   }
