@@ -110,6 +110,10 @@ describe("type-checker", () => {
     it("should accept a CASE expression with complex arguments", () => {
       expect(() => validate("CASE(Deal, 0.5*X, Y-Z)")).not.toThrow();
     });
+
+    it("should accept PERCENTILE with two arguments", () => {
+      expect(() => validate("PERCENTILE([Rating], .5)")).not.toThrow();
+    });
   });
 
   describe("for a filter", () => {
