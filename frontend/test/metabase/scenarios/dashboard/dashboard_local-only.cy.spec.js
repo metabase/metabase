@@ -11,6 +11,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
 
   /**
    * WARNING:
+   *    https://github.com/metabase/metabase/issues/15656
    *    - We are currently not able to test translations in CI
    *    - DO NOT unskip this test even after the issue is fixed
    *    - To be used for local testing only
