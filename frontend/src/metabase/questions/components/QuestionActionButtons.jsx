@@ -6,6 +6,7 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button";
+import Tooltip from "metabase/components/Tooltip";
 
 const BlueHoverTextButton = styled(Button)`
   :hover {
@@ -26,31 +27,34 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
         Add to a dashboard
       </BlueHoverTextButton>
       {canWrite && (
-        <Button
-          tooltip={t`Duplicate this question`}
-          onlyIcon
-          icon="clone"
-          iconSize={18}
-          onClick={() => onOpenModal("clone")}
-        />
+        <Tooltip tooltip={t`Duplicate this question`}>
+          <Button
+            onlyIcon
+            icon="clone"
+            iconSize={18}
+            onClick={() => onOpenModal("clone")}
+          />
+        </Tooltip>
       )}
       {canWrite && (
-        <Button
-          tooltip={t`Move`}
-          onlyIcon
-          icon="move"
-          iconSize={18}
-          onClick={() => onOpenModal("move")}
-        />
+        <Tooltip tooltip={t`Move`}>
+          <Button
+            onlyIcon
+            icon="move"
+            iconSize={18}
+            onClick={() => onOpenModal("move")}
+          />
+        </Tooltip>
       )}
       {canWrite && (
-        <Button
-          tooltip={t`Archive`}
-          onlyIcon
-          icon="archive"
-          iconSize={18}
-          onClick={() => onOpenModal("archive")}
-        />
+        <Tooltip tooltip={t`Archive`}>
+          <Button
+            onlyIcon
+            icon="archive"
+            iconSize={18}
+            onClick={() => onOpenModal("archive")}
+          />
+        </Tooltip>
       )}
     </div>
   );
