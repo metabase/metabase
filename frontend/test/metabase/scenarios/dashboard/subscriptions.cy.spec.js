@@ -55,7 +55,15 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("with email set up", () => {
     beforeEach(() => {
-      setupDummySMTP();
+      cy.request("DELETE", "http://localhost:80/email/all");
+      cy.request("PUT", "/api/setting", {
+        "email-smtp-host": "localhost",
+        "email-smtp-port": "25",
+        "email-smtp-username": "admin",
+        "email-smtp-password": "admin",
+        "email-smtp-security": "none",
+        "email-from-address": "mailer@metabase.test",
+      });
     });
 
     describe("with no existing subscriptions", () => {
