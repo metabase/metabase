@@ -35,14 +35,18 @@ function ClampedText({ className, text, visibleLines }) {
   return (
     <div className={cx("clamped-text", className)}>
       <ClampedDiv
+        className="clamped-text--clamp"
         innerRef={clampedDiv}
         visibleLines={isClamped ? visibleLines : undefined}
       >
-        <div ref={innerDiv}>{text}</div>
+        <div ref={innerDiv} className="clamped-text--text">
+          {text}
+        </div>
       </ClampedDiv>
-      <div>
+      <div className="clamped-text--footer">
         {isOverflowing && (
           <Button
+            className="clamped-text--toggle"
             borderless
             onClick={() => setIsClamped(isClamped => !isClamped)}
           >
