@@ -1,7 +1,6 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
-  (:require [clj-time.core :as time]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
