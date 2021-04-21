@@ -3,7 +3,7 @@ import React from "react";
 import { List, WindowScroller, AutoSizer } from "react-virtualized";
 import "react-virtualized/styles.css";
 
-function VirtualizedList({ items, rowHeight, renderItem }) {
+function VirtualizedList({ items, rowHeight, renderItem, scrollElement }) {
   const rowRenderer = React.useCallback(
     ({ index, key, style }) => (
       <div key={key} style={style}>
@@ -16,7 +16,7 @@ function VirtualizedList({ items, rowHeight, renderItem }) {
   const renderScrollComponent = React.useCallback(
     ({ width }) => {
       return (
-        <WindowScroller>
+        <WindowScroller scrollElement={scrollElement}>
           {({ height, isScrolling, scrollTop }) => (
             <List
               autoHeight
@@ -32,7 +32,7 @@ function VirtualizedList({ items, rowHeight, renderItem }) {
         </WindowScroller>
       );
     },
-    [items, rowHeight, rowRenderer],
+    [items, rowHeight, rowRenderer, scrollElement],
   );
 
   return <AutoSizer>{renderScrollComponent}</AutoSizer>;

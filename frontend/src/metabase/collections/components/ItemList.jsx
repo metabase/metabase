@@ -32,6 +32,7 @@ export default function ItemList({
   showFilters,
   onMove,
   onCopy,
+  scrollElement,
 }) {
   const everythingName =
     collectionHasPins && items.length > 0 ? t`Everything else` : t`Everything`;
@@ -85,10 +86,8 @@ export default function ItemList({
             <VirtualizedList
               items={items}
               rowHeight={ROW_HEIGHT}
-              // needed in order to prevent an issue with content not fully rendering
-              // due to the collection content scrolling layout
-              useAutoSizerHeight={true}
               renderItem={renderListItem}
+              scrollElement={scrollElement}
             />
           </Box>
         </PinDropTarget>
