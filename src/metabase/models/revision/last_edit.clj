@@ -1,5 +1,12 @@
 (ns metabase.models.revision.last-edit
-  "A namespace to handle getting the last edited information about items that satisfy the revision system."
+  "A namespace to handle getting the last edited information about items that satisfy the revision system. The revision
+  system is a 'reversion' system, built to easily revert to previous states and can compute on demand a changelog. The
+  revision system works through events and so when editing something, you should construct the last-edit-info
+  yourself (using `edit-information-for-user`) rather looking at the revision table which might not be updated yet.
+
+  This constructs `:last-edit-info`, a map with keys `:timestamp`, `:id`, `:first_name`, `:last_name`, and
+  `:email`. It is not a full User object (missing some superuser metadata, last login time, and a common name). This
+  was done to prevent another db call and hooking up timestamps to users but this can be added if preferred."
   (:require [clj-time.core :as time]
             [clojure.set :as set]
             [honeysql.core :as hsql]
@@ -7,7 +14,7 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private model-translation {:card "Card" :dashboard "Dashboard"})
+(def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
 (s/defn with-last-edit-info
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
@@ -18,7 +25,7 @@
                                           :from [[:revision :r]]
                                           :left-join [[:core_user :u] [:= :u.id :r.user_id]]
                                           :where [:and
-                                                  [:= :r.model (model-translation model)]
+                                                  [:= :r.model (model->db-model model)]
                                                   [:= :r.model_id id]]
                                           :order-by [[:u.id :desc]]
                                           :limit 1}))]
@@ -64,4 +71,4 @@
            (m/map-vals (fn [model-changes]
                          (into {} (map (juxt :model_id #(dissoc % :model :model_id)))  model-changes)))
            ;; keys are "Card" and "Dashboard" (model in revision table) back to keywords
-           (m/map-keys (set/map-invert model-translation))))))
+           (m/map-keys (set/map-invert model->db-model))))))
