@@ -248,18 +248,6 @@
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
-(defn- with-last-edit-info
-  "Add the last edited information to a card. Will add a key `:last-edit-info`"
-  [{:keys [id] :as dashboard}]
-  (if-let [[updated-info] (seq (db/query {:select [:u.id :u.email :u.first_name :u.last_name :r.timestamp]
-                                          :from [[:revision :r]]
-                                          :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                                          :where [:and [:= :r.model "Dashboard"] [:= :r.model_id id]]
-                                          :order-by [[:u.id :desc]]
-                                          :limit 1}))]
-    (assoc dashboard :last-edit-info updated-info)
-    dashboard))
-
 (api/defendpoint GET "/:id"
   "Get Dashboard with ID."
   [id]
