@@ -45,9 +45,7 @@ describe("collection permissions", () => {
                   });
                   cy.icon("add").click();
                   cy.findByText("New dashboard").click();
-                  cy.get(".Modal")
-                    .findByText("Second collection")
-                    .should("exist");
+                  cy.get(".Modal").findByText("Second collection");
                 });
               });
 
@@ -321,9 +319,7 @@ describe("collection permissions", () => {
                   });
 
                   it("should list collections user has `write` access to", () => {
-                    cy.get(".Modal")
-                      .findByText("Orders in a dashboard")
-                      .should("exist");
+                    cy.get(".Modal").findByText("Orders in a dashboard");
                   });
 
                   it("should list dashboards user has `write` access to when using search", () => {
@@ -332,7 +328,7 @@ describe("collection permissions", () => {
                       cy.findByPlaceholderText("Search").type(
                         "Orders in{Enter}",
                       );
-                      cy.findByText("Orders in a dashboard").should("exist");
+                      cy.findByText("Orders in a dashboard");
                     });
                   });
 
@@ -432,9 +428,7 @@ describe("collection permissions", () => {
             it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
               cy.visit("/collection/root");
               openEllipsisMenuFor("Orders in a dashboard");
-              popover()
-                .findByText("Duplicate this item")
-                .should("exist");
+              popover().findByText("Duplicate this item");
             });
 
             it("should not be offered to save dashboard in collections they have `read` access to from main page (metabase#15281)", () => {
