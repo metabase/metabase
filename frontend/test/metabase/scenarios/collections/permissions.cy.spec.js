@@ -420,51 +420,28 @@ describe("collection permissions", () => {
               popover().findByText("Duplicate this item");
             });
 
-            it("should not be offered to save dashboard in collections they have `read` access to from main page (metabase#15281)", () => {
-              const { first_name, last_name } = USERS[user];
-              cy.visit("/");
+            ["/", "/collection/root"].forEach(route => {
+              it("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
+                const { first_name, last_name } = USERS[user];
+                cy.visit(route);
+                cy.icon("add").click();
+                cy.findByText("New dashboard").click();
 
-              cy.icon("add").click();
-              cy.findByText("New dashboard").click();
-
-              cy.get(".Modal").within(() => {
-                cy.findByText("Our analytics").should("not.exist");
-                cy.findByText("First collection").should("not.exist");
+                // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
                 cy.findByText(
                   `${first_name} ${last_name}'s Personal Collection`,
                 ).click();
-                cy.findByText("First collection").should("not.exist");
-              });
-
-              // This is the second step that makes sure not even search returns collections with read-only access
-              popover().within(() => {
-                cy.icon("search").click();
-                cy.findByPlaceholderText("Search")
-                  .click()
-                  .type("third{Enter}");
-                cy.findByText("Third collection").should("not.exist");
-              });
-            });
-
-            it("should not be offered to save dashboard in collections they have `read` access to from collections page (metabase#15281)", () => {
-              const { first_name, last_name } = USERS[user];
-              cy.visit("collection/root");
-
-              // By default we try to suggest saving dashboard to a currently opened collection
-              // "First collection" is read-only and we check it's not suggested
-              cy.get("[class*=CollectionSidebar]").within(() => {
-                cy.findByText("First collection").click();
-              });
-
-              cy.icon("add").click();
-              cy.findByText("New dashboard").click();
-
-              cy.get(".Modal").within(() => {
-                cy.findByText("First collection").should("not.exist");
-                cy.findByText(
-                  `${first_name} ${last_name}'s Personal Collection`,
-                ).click();
-                cy.findByText("First collection").should("not.exist");
+                popover().within(() => {
+                  cy.findByText("My personal collection");
+                  // Test will fail on this step first
+                  cy.findByText("First collection").should("not.exist");
+                  // This is the second step that makes sure not even search returns collections with read-only access
+                  cy.icon("search").click();
+                  cy.findByPlaceholderText("Search")
+                    .click()
+                    .type("third{Enter}");
+                  cy.findByText("Third collection").should("not.exist");
+                });
               });
             });
 
