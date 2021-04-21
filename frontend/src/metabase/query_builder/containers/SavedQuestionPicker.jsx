@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
@@ -51,6 +52,10 @@ class SavedQuestionTableList extends React.Component {
     }
   }
 }
+SavedQuestionTableList.propTypes = {
+  schema: PropTypes.object.isRequired,
+  onChangeTable: PropTypes.func.isRequired,
+};
 
 // TODO - using a class here so we can use lifecycle methods to do some other API fetching,
 class SavedQuestionPicker extends React.Component {
@@ -97,7 +102,7 @@ class SavedQuestionPicker extends React.Component {
     const { onBack, collections } = this.props;
     // we assume we're loading so show something
     if (this.state.isLoading) {
-      return <div>"Loading..."</div>;
+      return <div>&quot;Loading...&quot;</div>;
     }
 
     // if we're not loading
@@ -189,6 +194,13 @@ class SavedQuestionPicker extends React.Component {
     return <div>Welllp</div>;
   }
 }
+SavedQuestionPicker.propTypes = {
+  query: PropTypes.object.isRequired,
+  collections: PropTypes.object.isRequired,
+  onBack: PropTypes.func.isRequired,
+  onChangeSchema: PropTypes.func.isRequired,
+  onChangeTable: PropTypes.func.isRequired,
+};
 
 //this.setState({ currentSchema: collection.name });
 function CollectionFolder({
@@ -236,6 +248,14 @@ function CollectionFolder({
     </Flex>
   );
 }
+CollectionFolder.propTypes = {
+  collection: PropTypes.object.isRequired,
+  isOpen: PropTypes.bool,
+  selected: PropTypes.bool,
+  depth: PropTypes.number.isRequired,
+  onToggleExpanded: PropTypes.func.isRequired,
+  onSelect: PropTypes.func.isRequired,
+};
 
 export default Collection.loadList({
   query: () => ({ tree: true }),
@@ -263,6 +283,11 @@ class SavedQuestionCollectionList extends React.Component {
     );
   }
 }
+SavedQuestionCollectionList.propTypes = {
+  filter: PropTypes.func,
+  triggerComponent: PropTypes.func.isRequired,
+  collections: PropTypes.object.isRequired,
+};
 
 SavedQuestionCollectionList.defaultProps = {
   initialIcon: "folder",
