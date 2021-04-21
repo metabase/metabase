@@ -6,13 +6,11 @@ import { t } from "ttag";
 import Button from "metabase/components/Button";
 
 const ClampedDiv = styled.div`
-  position: relative;
   max-height: ${props =>
     props.visibleLines == null
       ? "unset"
       : `calc(1.5em * ${props.visibleLines})`};
   overflow: hidden;
-  padding-right: 1rem;
   line-height: 1.5em;
   font-size: 1em;
 `;
