@@ -33,6 +33,7 @@ import Ellipsified from "metabase/components/Ellipsified";
 
 import Popover from "metabase/components/Popover"
 import Link from "metabase/components/Link"
+import * as Urls from "metabase/lib/urls"
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
@@ -629,11 +630,6 @@ export default class TableInteractive extends Component {
             dragColNewIndex: columnIndex,
           });
         }}
-        onMouseLeave={() => {
-          this.setState({
-            infoPopoverIndex: null
-          })
-        }}
         onDrag={(e, data) => {
           const newIndex = this.getDragColNewIndex(data);
           if (newIndex != null && newIndex !== this.state.dragColNewIndex) {
@@ -689,8 +685,9 @@ export default class TableInteractive extends Component {
               "justify-end": isRightAligned,
             },
           )}
-          onMouseEnter={() => {
+          onMouseEnter={(ev) => {
             console.log(column)
+            window.fingerprint = column.fingerprint
             this.setState({
               infoPopoverIndex: columnIndex
             })
@@ -726,11 +723,16 @@ export default class TableInteractive extends Component {
             columnIndex,
           )}
           <Popover isOpen={this.state.infoPopoverIndex === columnIndex}>
-            <div className="p2" style={{ width: 300 }}>
-              <h3 className="mb0">{columnTitle}</h3>
+            <div className="p2" style={{ width: 300 }} onMouseLeave={() => this.setState({ infoPopoverIndex: null })}>
+              <div>
+                <h4>{columnTitle}</h4>
+                <h5 className="text-medium">{column.name}</h5>
+              </div>
               <p>{column.description}</p>
+              { column.fingerprint && <FingerprintDetails fingerprint={column.fingerprint} />}
+              <p>Distincts: {column.fingerprint && column.fingerprint.global['distinct-count']}</p>
 
-              <Link to={Urls.editMetadata(column.databaseId, column.tableId)}>Edit metadata</Link>
+              <Link className="link" to={Urls.editMetadata(this.props.card.dataset_query && this.props.card.dataset_query.database, column.table_id, column.id)} target="_blank">Edit metadata</Link>
             </div>
           </Popover>
           <Draggable
@@ -905,5 +907,22 @@ export default class TableInteractive extends Component {
       }, 40);
     }
     next();
+  }
+}
+
+function FingerprintDetails({ fingerprint }) {
+  console.log('FINGERPRINT', fingerprint)
+  const stats = fingerprint.type && Object.values(fingerprint.type)[0]
+  console.log('stats', stats)
+  if(!stats) {
+    return null
+  } else {
+    return <div>
+    {stats.avg && <p>Avg: {Number.parseFloat(stats.avg).toPrecision(2)}</p>}
+    {stats.min && <p>Min: {Number.parseFloat(stats.min).toPrecision(2)}</p>}
+    {stats.max && <p>Max: {stats.max}</p>}
+    {stats.earliest && <p>Earliest: {new Date(stats.earliest).toLocaleString()}</p>}
+    {stats.latest && <p>Latest: {new Date(stats.latest).toLocaleString()}</p>}
+  </div>
   }
 }

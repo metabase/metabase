@@ -179,6 +179,6 @@ export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
 }
 
-export function editMetadata(databaseId, tableId) {
-  return `/admin/datamodel/database/${databaseId}/table/${tableId}`
+export function editMetadata(databaseId, tableId, fieldId) {
+  return `/admin/datamodel/database/${databaseId}/table/${tableId}/${fieldId}/general`
 }
