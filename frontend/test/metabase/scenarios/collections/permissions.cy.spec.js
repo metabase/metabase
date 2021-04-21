@@ -469,22 +469,15 @@ describe("collection permissions", () => {
             });
 
             describe("managing question from the question's edit dropdown", () => {
-              beforeEach(() => {
+              it("should not be offered to save question in collections they have `read` access to", () => {
                 cy.visit("/question/1");
                 cy.icon("pencil").click();
                 popover()
                   .findByText("Add to dashboard")
                   .click();
-              });
 
-              it("should not be offered to save question in collections they have `read` access to", () => {
-                cy.get(".Modal")
-                  .findByText("Orders in a dashboard")
-                  .should("not.exist");
-              });
-
-              it("should not be offered to save question in collections they have `read` access to when using search", () => {
                 cy.get(".Modal").within(() => {
+                  cy.findByText("Orders in a dashboard").should("not.exist");
                   cy.icon("search").click();
                   cy.findByPlaceholderText("Search").type(
                     "Orders in a dashboard{Enter}",
