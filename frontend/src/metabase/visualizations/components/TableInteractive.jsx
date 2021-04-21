@@ -31,6 +31,9 @@ import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 import Ellipsified from "metabase/components/Ellipsified";
 
+import Popover from "metabase/components/Popover"
+import Link from "metabase/components/Link"
+
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
@@ -124,6 +127,7 @@ export default class TableInteractive extends Component {
     this.state = {
       columnWidths: [],
       contentWidths: null,
+      infoPopoverIndex: null
     };
     this.columnHasResized = {};
     this.headerRefs = [];
@@ -625,6 +629,11 @@ export default class TableInteractive extends Component {
             dragColNewIndex: columnIndex,
           });
         }}
+        onMouseLeave={() => {
+          this.setState({
+            infoPopoverIndex: null
+          })
+        }}
         onDrag={(e, data) => {
           const newIndex = this.getDragColNewIndex(data);
           if (newIndex != null && newIndex !== this.state.dragColNewIndex) {
@@ -680,6 +689,12 @@ export default class TableInteractive extends Component {
               "justify-end": isRightAligned,
             },
           )}
+          onMouseEnter={() => {
+            console.log(column)
+            this.setState({
+              infoPopoverIndex: columnIndex
+            })
+          }}
           onClick={
             // only use the onClick if not draggable since it's also handled in Draggable's onStop
             isClickable && !isDraggable
@@ -710,6 +725,14 @@ export default class TableInteractive extends Component {
             column,
             columnIndex,
           )}
+          <Popover isOpen={this.state.infoPopoverIndex === columnIndex}>
+            <div className="p2" style={{ width: 300 }}>
+              <h3 className="mb0">{columnTitle}</h3>
+              <p>{column.description}</p>
+
+              <Link to={Urls.editMetadata(column.databaseId, column.tableId)}>Edit metadata</Link>
+            </div>
+          </Popover>
           <Draggable
             axis="x"
             bounds={{ left: RESIZE_HANDLE_WIDTH }}

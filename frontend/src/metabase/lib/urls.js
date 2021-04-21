@@ -178,3 +178,7 @@ export function browseSchema(table) {
 export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
 }
+
+export function editMetadata(databaseId, tableId) {
+  return `/admin/datamodel/database/${databaseId}/table/${tableId}`
+}
