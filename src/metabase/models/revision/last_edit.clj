@@ -11,12 +11,22 @@
             [clojure.set :as set]
             [honeysql.core :as hsql]
             [medley.core :as m]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
-(s/defn with-last-edit-info
+;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
+(def LastEditInfo {:timestamp  (s/maybe s/Any)
+                   :id         (s/maybe su/IntGreaterThanZero)
+                   :first_name (s/maybe s/Str)
+                   :last_name  (s/maybe s/Str)
+                   :email      (s/maybe s/Str)})
+
+(def MaybeAnnotated {(s/optional-key :last-edit-info) LastEditInfo s/Any s/Any})
+
+(s/defn with-last-edit-info :- MaybeAnnotated
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
@@ -32,7 +42,7 @@
     (assoc item :last-edit-info updated-info)
     item))
 
-(defn edit-information-for-user
+(s/defn edit-information-for-user :- LastEditInfo
   "Construct the `:last-edit-info` map given a user. Useful for editing routes. Most edit info information comes from
   the revisions table. But this table is populated from events asynchronously so when editing and wanting
   last-edit-info, you must construct it from `@api/*current-user*` and the current timestamp rather than checking the
@@ -41,7 +51,10 @@
   (merge {:timestamp (time/now)}
          (select-keys user [:id :first_name :last_name :email])))
 
-(defn fetch-last-edited-info
+(def CollectionLastEditInfo {(s/optional-key :card)      {s/Int LastEditInfo}
+                             (s/optional-key :dashboard) {s/Int LastEditInfo}})
+
+(s/defn fetch-last-edited-info :- (s/maybe CollectionLastEditInfo)
   "Fetch edited info from the revisions table. Revision information is timestamp, user id, email, first and last
   name. Takes card-ids and dashboard-ids and returns a map structured like
 
@@ -51,11 +64,11 @@
   (when (seq (concat card-ids dashboard-ids))
     ;; [:in :model_id []] generates bad sql so need to conditionally add it
     (let [where-clause   (into [:or]
-                             (keep (fn [[model-name ids]]
-                                     (when (seq ids)
-                                       [:and [:= :model model-name] [:in :model_id ids]])))
-                             [["Card" card-ids]
-                              ["Dashboard" dashboard-ids]])
+                               (keep (fn [[model-name ids]]
+                                       (when (seq ids)
+                                         [:and [:= :model model-name] [:in :model_id ids]])))
+                               [["Card" card-ids]
+                                ["Dashboard" dashboard-ids]])
           latest-changes (db/query {:select    [:u.id :u.email :u.first_name :u.last_name
                                                 :r.model :r.model_id :r.timestamp]
                                     :from      [[:revision :r]]
