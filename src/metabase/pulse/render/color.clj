@@ -5,11 +5,7 @@
             [clojure.java.io :as io]
             [metabase.pulse.render.js-engine :as js]
             [metabase.util.i18n :refer [trs]]
-            [schema.core :as s])
-  (:import java.io.InputStream))
-
-(defn- ^InputStream get-classpath-resource [path]
-  (.getResourceAsStream (class []) path))
+            [schema.core :as s]))
 
 (def ^:private js-file-path "frontend_shared/color_selector.js")
 
