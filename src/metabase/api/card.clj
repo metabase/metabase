@@ -214,7 +214,7 @@
 (defn- save-new-card-async!
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
   will cancel the save."
-  [card-data]
+  [card-data user]
   (async.u/cancelable-thread
     (let [card (db/transaction
                  ;; Adding a new card at `collection_position` could cause other cards in this
@@ -224,7 +224,9 @@
       (events/publish-event! :card-create card)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
       ;; currently has with returned one -- See #4283
-      (hydrate card :creator :dashboard_count :can_write :collection))))
+      (-> card
+          (hydrate :creator :dashboard_count :can_write :collection)
+          (assoc :last-edit-info (last-edit/edit-information-for-user user))))))
 
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
@@ -244,7 +246,7 @@
           (a/close! result-metadata-chan)
           ;; now do the actual saving on a separate thread so we don't tie up our precious core.async thread. Pipe the
           ;; result into `out-chan`.
-          (async.u/promise-pipe (save-new-card-async! card-data) out-chan))
+          (async.u/promise-pipe (save-new-card-async! card-data @api/*current-user*) out-chan))
         (catch Throwable e
           (a/put! out-chan e)
           (a/close! out-chan))))

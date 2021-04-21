@@ -85,9 +85,10 @@
       ;; position, check that and fix up if needed
       (api/maybe-reconcile-collection-position! dashboard-data)
       ;; Ok, now save the Dashboard
-      (->> (db/insert! Dashboard dashboard-data)
+      (-> (db/insert! Dashboard dashboard-data)
            ;; publish an event and return the newly created Dashboard
-           (events/publish-event! :dashboard-create)))))
+          (->> (events/publish-event! :dashboard-create))
+          (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
