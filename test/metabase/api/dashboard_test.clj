@@ -143,12 +143,14 @@
           (try
             (is (= (merge
                     dashboard-defaults
-                    {:name          test-dashboard-name
-                     :creator_id    (mt/user->id :rasta)
-                     :parameters    [{:id "abc123", :name "test", :type "date"}]
-                     :updated_at    true
-                     :created_at    true
-                     :collection_id true})
+                    {:name           test-dashboard-name
+                     :creator_id     (mt/user->id :rasta)
+                     :parameters     [{:id "abc123", :name "test", :type "date"}]
+                     :updated_at     true
+                     :created_at     true
+                     :collection_id  true
+                     :last-edit-info {:timestamp true :id true :first_name "Rasta"
+                                      :last_name "Toucan" :email "rasta@metabase.com"}})
                    (-> (mt/user-http-request :rasta :post 200 "dashboard" {:name          test-dashboard-name
                                                                            :parameters    [{:id "abc123", :name "test", :type "date"}]
                                                                            :collection_id (u/get-id collection)})

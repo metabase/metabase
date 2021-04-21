@@ -295,6 +295,8 @@
                        :can_write              true
                        :dashboard_count        0
                        :result_metadata        true
+                       :last-edit-info         {:timestamp true :id true :first_name "Rasta"
+                                                :last_name "Toucan" :email "rasta@metabase.com"}
                        :creator                (merge
                                                 (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
                                                 {:common_name  "Rasta Toucan"
@@ -310,7 +312,11 @@
                          (update :dataset_query map?)
                          (update :collection map?)
                          (update :result_metadata (partial every? map?))
-                         (update :creator dissoc :is_qbnewb)))))))))))
+                         (update :creator dissoc :is_qbnewb)
+                         (update :last-edit-info (fn [edit-info]
+                                                   (-> edit-info
+                                                       (update :id boolean)
+                                                       (update :timestamp boolean))))))))))))))
 
 (deftest save-empty-card-test
   (testing "POST /api/card"
