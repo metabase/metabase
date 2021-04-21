@@ -490,4 +490,19 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("Unknown Field: .5").should("not.exist");
     cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
   });
+
+  it("contenteditable field should not accidentally delete CC formula value and/or CC name (metabase#15734)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    cy.get("[contenteditable='true']")
+      .as("formula")
+      .type("1+1");
+    cy.findByPlaceholderText("Something nice and descriptive").type("Math");
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+    cy.get("@formula")
+      .click()
+      .type("{movetoend}{leftarrow}{movetostart}{rightarrow}{rightarrow}");
+    cy.findByText("Math");
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+  });
 });
