@@ -1,7 +1,6 @@
 (ns metabase.api.card
   "/api/card endpoints."
   (:require [cheshire.core :as json]
-            [clj-time.core :as time]
             [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
