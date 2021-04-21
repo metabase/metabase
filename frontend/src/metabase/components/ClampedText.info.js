@@ -2,7 +2,7 @@ import React from "react";
 import ClampedText from "metabase/components/ClampedText";
 
 export const component = ClampedText;
-export const category = "layout";
+export const category = "display";
 export const description = `
 Shows a set number of lines for a variable-length string
 `;
