@@ -17,6 +17,11 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
 
+  java-8:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:openjdk-8-lein-2.9.5-buster
+
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
   # what this means.
@@ -26,6 +31,11 @@ executors:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+
+  java-16:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:openjdk-16-lein-2.9.5-buster
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
@@ -963,6 +973,7 @@ workflows:
           name: be-tests-<< matrix.edition >>
           requires:
             - be-deps
+          e: java-8
           lein-command: with-profile +junit test
           skip-when-no-change: true
           <<: *Matrix
@@ -972,6 +983,15 @@ workflows:
           requires:
             - be-deps
           e: java-11
+          lein-command: with-profile +junit test
+          skip-when-no-change: true
+          <<: *Matrix
+
+      - lein:
+          name: be-tests-java-16-<< matrix.edition >>
+          requires:
+            - be-deps
+          e: java-16
           lein-command: with-profile +junit test
           skip-when-no-change: true
           <<: *Matrix
