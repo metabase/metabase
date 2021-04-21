@@ -153,9 +153,14 @@
       (case f
         :database (api/read-check Database model_id)
         :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
-    (->> (cards-for-filter-option f model_id)
-         ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
-         (filterv mi/can-read?))))
+    (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
+          last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
+      (into []
+            (map (fn [{:keys [id] :as card}]
+                   (if-let [edit-info (get last-edit-info id)]
+                     (assoc card :last-edit-info edit-info)
+                     card)))
+            cards))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."

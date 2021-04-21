@@ -60,7 +60,14 @@
   *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
   [f]
   {f (s/maybe (s/enum "all" "mine" "archived"))}
-  (dashboards-list f))
+  (let [dashboards (dashboards-list f)
+        edit-infos (:dashboard (last-edit/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
+    (into []
+          (map (fn [{:keys [id] :as dashboard}]
+                 (if-let [edit-info (get edit-infos id)]
+                   (assoc dashboard :last-edit-info edit-info)
+                   dashboard)))
+          dashboards)))
 
 
 (api/defendpoint POST "/"
