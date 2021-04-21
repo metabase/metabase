@@ -18,13 +18,18 @@
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
 ;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
-(def LastEditInfo {:timestamp  (s/maybe s/Any)
-                   :id         (s/maybe su/IntGreaterThanZero)
-                   :first_name (s/maybe s/Str)
-                   :last_name  (s/maybe s/Str)
-                   :email      (s/maybe s/Str)})
+(def LastEditInfo
+  "Schema of the `:last-edit-info` map. A subset of a user with a timestamp indicating when the last edit was."
+  {:timestamp  (s/maybe s/Any)
+   :id         (s/maybe su/IntGreaterThanZero)
+   :first_name (s/maybe s/Str)
+   :last_name  (s/maybe s/Str)
+   :email      (s/maybe s/Str)})
 
-(def MaybeAnnotated {(s/optional-key :last-edit-info) LastEditInfo s/Any s/Any})
+(def MaybeAnnotated
+  "Spec for an item annotated with last-edit-info. Items are cards or dashboards. Optional because we may not always
+  have revision history for all cards/dashboards."
+  {(s/optional-key :last-edit-info) LastEditInfo s/Any s/Any})
 
 (s/defn with-last-edit-info :- MaybeAnnotated
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
@@ -51,8 +56,11 @@
   (merge {:timestamp (time/now)}
          (select-keys user [:id :first_name :last_name :email])))
 
-(def CollectionLastEditInfo {(s/optional-key :card)      {s/Int LastEditInfo}
-                             (s/optional-key :dashboard) {s/Int LastEditInfo}})
+(def CollectionLastEditInfo
+  "Schema for the map of bulk last-item-info. A map of two keys, `:card` and `:dashboard`, each of which is a map from
+  id to a LastEditInfo."
+  {(s/optional-key :card)      {s/Int LastEditInfo}
+   (s/optional-key :dashboard) {s/Int LastEditInfo}})
 
 (s/defn fetch-last-edited-info :- (s/maybe CollectionLastEditInfo)
   "Fetch edited info from the revisions table. Revision information is timestamp, user id, email, first and last
