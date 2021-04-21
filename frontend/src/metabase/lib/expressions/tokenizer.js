@@ -272,7 +272,7 @@ export function tokenize(expression) {
       ++index;
     }
     const end = index;
-    if (index <= start) {
+    if (index === start) {
       return null;
     }
     const id = source.slice(start, end).toLowerCase();
@@ -308,7 +308,7 @@ export function tokenize(expression) {
       if (token) {
         const { error, ...t } = token;
         tokens.push(t);
-        if (error && error !== null) {
+        if (error) {
           const message = error;
           const pos = t.start;
           errors.push({ message, pos });
