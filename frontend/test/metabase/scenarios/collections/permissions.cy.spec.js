@@ -311,38 +311,27 @@ describe("collection permissions", () => {
                   cy.findByText("Orders").should("not.exist");
                 });
 
-                describe("adding question to dashboard", () => {
-                  beforeEach(() => {
-                    popover()
-                      .findByText("Add to dashboard")
-                      .click();
-                  });
+                it("should be able to add question to dashboard", () => {
+                  popover()
+                    .findByText("Add to dashboard")
+                    .click();
 
-                  it("should list collections user has `write` access to", () => {
-                    cy.get(".Modal").findByText("Orders in a dashboard");
-                  });
-
-                  it("should list dashboards user has `write` access to when using search", () => {
-                    cy.get(".Modal").within(() => {
+                  cy.get(".Modal")
+                    .as("modal")
+                    .within(() => {
+                      // Checking dashboard is visible in the list and with search
+                      cy.findByText("Orders in a dashboard");
                       cy.icon("search").click();
                       cy.findByPlaceholderText("Search").type(
                         "Orders in{Enter}",
                       );
-                      cy.findByText("Orders in a dashboard");
+                      cy.findByText("Orders in a dashboard").click();
                     });
-                  });
 
-                  it("should be able to add question to dashboard", () => {
-                    cy.get(".Modal")
-                      .as("modal")
-                      .findByText("Orders in a dashboard")
-                      .click();
-
-                    cy.get("@modal").should("not.exist");
-                    // By default, the dashboard contains one question
-                    // After we add a new one, we check there are two questions now
-                    cy.get(".DashCard").should("have.length", 2);
-                  });
+                  cy.get("@modal").should("not.exist");
+                  // By default, the dashboard contains one question
+                  // After we add a new one, we check there are two questions now
+                  cy.get(".DashCard").should("have.length", 2);
                 });
               });
 
