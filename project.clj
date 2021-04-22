@@ -141,6 +141,8 @@
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.eclipse.jetty/jetty-server "9.4.32.v20200930"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
+   [org.graalvm.js/js "21.0.0.2"]                                     ; JavaScript engine
+   [org.graalvm.js/js-scriptengine "21.0.0.2"]
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.6.2"]                     ; MySQL/MariaDB driver
@@ -237,7 +239,7 @@
 
     :env
     {:mb-run-mode       "dev"
-     :mb-field-filter-operators-enabled? "true"
+     :mb-field-filter-operators-enabled "true"
      :mb-test-setting-1 "ABCDEFG"}
 
     :jvm-opts
@@ -331,7 +333,7 @@
     {:mb-run-mode     "test"
      :mb-db-in-memory "true"
      :mb-jetty-join   "false"
-     :mb-field-filter-operators-enabled? "true"
+     :mb-field-filter-operators-enabled "true"
      :mb-api-key      "test-api-key"
      ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
      ;; they won't stomp on each other

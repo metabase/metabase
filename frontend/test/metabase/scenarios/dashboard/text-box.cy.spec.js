@@ -1,4 +1,4 @@
-import { restore } from "__support__/cypress";
+import { restore, showDashboardCardActions } from "__support__/cypress";
 
 function addTextBox(string) {
   cy.icon("pencil").click();
@@ -21,10 +21,14 @@ describe("scenarios > dashboard > text-box", () => {
       addTextBox("Text *text* __text__");
     });
 
-    it("should render edit and preview actions when editing", () => {
-      // Check edit options
+    it("should render correct icons for preview and edit modes", () => {
+      showDashboardCardActions(1);
+
+      // edit mode
+      cy.icon("eye").click();
+
+      // preview mode
       cy.icon("edit_document");
-      cy.icon("eye");
     });
 
     it("should not render edit and preview actions when not editing", () => {
@@ -59,9 +63,6 @@ describe("scenarios > dashboard > text-box", () => {
       // Add save text box to dash
       addTextBox("Dashboard testing text");
       cy.findByText("Save").click();
-
-      cy.findByText("Saving…");
-      cy.findByText("Saving…").should("not.exist");
 
       // Reload page
       cy.reload();

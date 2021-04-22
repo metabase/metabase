@@ -33,27 +33,28 @@ export type ParameterSection = {
 const areFieldFilterOperatorsEnabled = () =>
   MetabaseSettings.get("field-filter-operators-enabled?");
 
+const LOCATION_OPTIONS = [
+  {
+    type: "location/city",
+    name: t`City`,
+  },
+  {
+    type: "location/state",
+    name: t`State`,
+  },
+  {
+    type: "location/zip_code",
+    name: t`ZIP or Postal Code`,
+  },
+  {
+    type: "location/country",
+    name: t`Country`,
+  },
+];
+const CATEGORY_OPTIONS = [{ type: "category", name: t`Category` }];
+
 export function getParameterSections(): ParameterSection[] {
   const parameterOptions = getParameterOptions();
-  const LOCATION_OPTIONS = areFieldFilterOperatorsEnabled()
-    ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
-        return {
-          ...option,
-          sectionId: "location",
-          combinedName: getOperatorDisplayName(option, "string", t`Location`),
-        };
-      })
-    : parameterOptions.filter(option => option.type.startsWith("location"));
-
-  const CATEGORY_OPTIONS = areFieldFilterOperatorsEnabled()
-    ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
-        return {
-          ...option,
-          sectionId: "category",
-          combinedName: getOperatorDisplayName(option, "string", t`Category`),
-        };
-      })
-    : parameterOptions.filter(option => option.type.startsWith("category"));
 
   return [
     {
@@ -72,12 +73,25 @@ export function getParameterSections(): ParameterSection[] {
       id: "location",
       name: t`Location`,
       description: t`City, State, Country, ZIP code.`,
-      options: LOCATION_OPTIONS,
+      options: areFieldFilterOperatorsEnabled()
+        ? PARAMETER_OPERATOR_TYPES["string"].map(option => {
+            return {
+              ...option,
+              sectionId: "location",
+              combinedName: getOperatorDisplayName(
+                option,
+                "string",
+                t`Location`,
+              ),
+            };
+          })
+        : LOCATION_OPTIONS,
     },
+
     {
       id: "id",
       name: t`ID`,
-      description: t`User ID, product ID, event ID, etc.`,
+      description: t`User ID, Product ID, Event ID, etc.`,
       options: [
         {
           ..._.findWhere(parameterOptions, { type: "id" }),
@@ -97,12 +111,25 @@ export function getParameterSections(): ParameterSection[] {
         };
       }),
     },
-    {
-      id: "category",
-      name: t`Other Categories`,
-      description: t`Category, Type, Model, Rating, etc.`,
-      options: CATEGORY_OPTIONS,
-    },
+    areFieldFilterOperatorsEnabled()
+      ? {
+          id: "string",
+          name: t`Text or Category`,
+          description: t`Name, Rating, Description, etc.`,
+          options: PARAMETER_OPERATOR_TYPES["string"].map(option => {
+            return {
+              ...option,
+              sectionId: "string",
+              combinedName: getOperatorDisplayName(option, "string", t`Text`),
+            };
+          }),
+        }
+      : {
+          id: "category",
+          name: t`Other Categories`,
+          description: t`Category, Type, Model, Rating, etc.`,
+          options: CATEGORY_OPTIONS,
+        },
   ].filter(Boolean);
 }
 

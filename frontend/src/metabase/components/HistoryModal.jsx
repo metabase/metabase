@@ -20,7 +20,7 @@ function formatDate(date) {
 export default class HistoryModal extends Component {
   static propTypes = {
     revisions: PropTypes.array,
-    onRevert: PropTypes.func.isRequired,
+    onRevert: PropTypes.func,
     onClose: PropTypes.func.isRequired,
   };
 
@@ -60,7 +60,7 @@ export default class HistoryModal extends Component {
                   <span>{this.revisionDescription(revision)}</span>
                 </td>
                 <td className={cellClassName}>
-                  {index !== 0 && (
+                  {index !== 0 && onRevert && (
                     <ActionButton
                       actionFn={() => onRevert(revision)}
                       className="Button Button--small Button--danger text-uppercase"

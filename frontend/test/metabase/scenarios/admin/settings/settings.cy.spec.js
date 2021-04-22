@@ -325,6 +325,21 @@ describe("scenarios > admin > settings", () => {
     cy.findByText(/Site URL/i);
   });
 
+  it("should display the order of the settings items consistently between OSS/EE versions (metabase#15441)", () => {
+    const lastItem = Cypress.env("HAS_ENTERPRISE_TOKEN")
+      ? "Whitelabel"
+      : "Caching";
+
+    cy.visit("/admin/settings/setup");
+    cy.get(".AdminList .AdminList-item")
+      .as("settingsOptions")
+      .first()
+      .contains("Setup");
+    cy.get("@settingsOptions")
+      .last()
+      .contains(lastItem);
+  });
+
   describe(" > email settings", () => {
     it("should be able to save email settings", () => {
       cy.visit("/admin/settings/email");
@@ -354,6 +369,26 @@ describe("scenarios > admin > settings", () => {
       cy.visit("/admin/settings/email");
       cy.findByText("Send test email").click();
       cy.findByText("Sorry, something went wrong. Please try again.");
+    });
+
+    it("should send a test email for a valid SMTP configuration", () => {
+      // We must clear maildev inbox before each run - this will be extracted and automated
+      cy.request("DELETE", "http://localhost:80/email/all");
+      cy.request("PUT", "/api/setting", {
+        "email-smtp-host": "localhost",
+        "email-smtp-port": "25",
+        "email-smtp-username": "admin",
+        "email-smtp-password": "admin",
+        "email-smtp-security": "none",
+        "email-from-address": "mailer@metabase.test",
+      });
+      cy.visit("/admin/settings/email");
+      cy.findByText("Send test email").click();
+      cy.findByText("Sent!");
+      cy.request("GET", "http://localhost:80/email").then(({ body }) => {
+        const emailBody = body[0].text;
+        expect(emailBody).to.include("Your Metabase emails are working");
+      });
     });
 
     it("should be able to clear email settings", () => {

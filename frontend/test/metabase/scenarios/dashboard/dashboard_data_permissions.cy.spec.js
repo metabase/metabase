@@ -1,9 +1,4 @@
-import {
-  restore,
-  popover,
-  selectDashboardFilter,
-  mockSessionProperty,
-} from "__support__/cypress";
+import { restore, popover, selectDashboardFilter } from "__support__/cypress";
 
 function filterDashboard(suggests = true) {
   cy.visit("/dashboard/1");
@@ -11,10 +6,10 @@ function filterDashboard(suggests = true) {
 
   // We should get a suggested response and be able to click it if we're an admin
   if (suggests) {
-    cy.contains("Category").type("Aero");
+    cy.contains("Text").type("Aero");
     cy.contains("Aerodynamic").click();
   } else {
-    cy.contains("Category").type("Aerodynamic Bronze Hat");
+    cy.contains("Text").type("Aerodynamic Bronze Hat");
     cy.wait("@search").should(xhr => {
       expect(xhr.status).to.equal(403);
     });
@@ -26,8 +21,6 @@ function filterDashboard(suggests = true) {
 
 describe("support > permissions (metabase#8472)", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     restore();
     cy.signInAsAdmin();
 
@@ -38,7 +31,7 @@ describe("support > permissions (metabase#8472)", () => {
 
     cy.icon("filter").click();
     popover()
-      .contains("Other Categories")
+      .contains("Text or Category")
       .click();
 
     popover()

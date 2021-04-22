@@ -9,15 +9,14 @@ type Props = {
 };
 
 const CollectionItemsLoader = ({ collectionId, children, ...props }: Props) => (
-  <Collection.Loader
-    {...props}
-    id={collectionId}
-    children={({ object }) => (
+  <Collection.Loader {...props} id={collectionId}>
+    {({ object }) => (
       <Search.ListLoader
         {...props}
         query={{ collection: collectionId }}
         wrapped
-        children={({ list }) =>
+      >
+        {({ list }) =>
           object &&
           list &&
           children({
@@ -25,9 +24,9 @@ const CollectionItemsLoader = ({ collectionId, children, ...props }: Props) => (
             items: list,
           })
         }
-      />
+      </Search.ListLoader>
     )}
-  />
+  </Collection.Loader>
 );
 
 export default CollectionItemsLoader;

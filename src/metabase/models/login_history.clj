@@ -1,5 +1,6 @@
 (ns metabase.models.login-history
   (:require [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.email.messages :as email.messages]
             [metabase.models.setting :refer [defsetting]]
             [metabase.server.request.util :as request.u]
@@ -30,7 +31,7 @@
                  :timezone (timezone-display-name timezone))
           (update :timestamp (fn [timestamp]
                                (if (and timestamp timezone)
-                                 (u.date/with-time-zone-same-instant timestamp timezone)
+                                 (t/zoned-date-time (u.date/with-time-zone-same-instant timestamp timezone) timezone)
                                  timestamp)))
           (update :device_description request.u/describe-user-agent)))))
 

@@ -181,12 +181,9 @@ export default class EntityListLoader extends React.Component {
     const { allFetched, allError } = this.props;
     const { loadingAndErrorWrapper } = this.props;
     return loadingAndErrorWrapper ? (
-      <LoadingAndErrorWrapper
-        loading={!allFetched}
-        error={allError}
-        children={this.renderChildren}
-        noWrapper
-      />
+      <LoadingAndErrorWrapper loading={!allFetched} error={allError} noWrapper>
+        {this.renderChildren}
+      </LoadingAndErrorWrapper>
     ) : (
       this.renderChildren()
     );

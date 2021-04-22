@@ -175,11 +175,7 @@ export function getParameterOptions(): ParameterOption[] {
           buildOperatorSubtypeOptions(option),
         )
       : [
-          ...PARAMETER_OPERATOR_TYPES["date"],
-          {
-            type: "category",
-            name: t`Category`,
-          },
+          { type: "category", name: t`Category` },
           {
             type: "location/city",
             name: t`City`,
@@ -196,6 +192,7 @@ export function getParameterOptions(): ParameterOption[] {
             type: "location/country",
             name: t`Country`,
           },
+          ...PARAMETER_OPERATOR_TYPES["date"],
         ]),
   ].flat();
 }
@@ -244,27 +241,27 @@ function fieldFilterForParameter(parameter: Parameter): FieldPredicate {
       return (field: Field) => field.isCategory();
     case "location":
       return (field: Field) => {
-        if (areFieldFilterOperatorsEnabled()) {
-          return field.isLocation();
-        } else {
-          switch (subtype) {
-            case "city":
-              return field.isCity();
-            case "state":
-              return field.isState();
-            case "zip_code":
-              return field.isZipCode();
-            case "country":
-              return field.isCountry();
-            default:
-              return false;
-          }
+        switch (subtype) {
+          case "city":
+            return field.isCity();
+          case "state":
+            return field.isState();
+          case "zip_code":
+            return field.isZipCode();
+          case "country":
+            return field.isCountry();
+          default:
+            return field.isLocation();
         }
       };
     case "number":
       return (field: Field) => field.isNumber() && !field.isCoordinate();
     case "string":
-      return (field: Field) => field.isString();
+      return (field: Field) => {
+        return subtype === "=" || subtype === "!="
+          ? field.isCategory() && !field.isLocation()
+          : field.isString() && !field.isLocation();
+      };
   }
 
   return (field: Field) => false;
@@ -557,28 +554,13 @@ export function getParameterIconName(parameter: ?Parameter) {
   }
 }
 
-export function mapUIParameterToQueryParameter(type, value, target) {
-  if (!areFieldFilterOperatorsEnabled()) {
-    return { type, value, target };
-  }
+export function normalizeParameterValue(type, value) {
+  const [fieldType] = splitType(type);
 
-  const [fieldType, maybeOperatorName] = splitType(type);
-  const operatorName = getParameterOperatorName(maybeOperatorName);
-
-  if (fieldType === "location" || fieldType === "category") {
-    return {
-      type: `string/${operatorName}`,
-      value: [].concat(value),
-      target,
-    };
-  } else if (fieldType === "number" || fieldType === "string") {
-    return {
-      type,
-      value: [].concat(value),
-      target,
-    };
+  if (["string", "number"].includes(fieldType)) {
+    return value == null ? [] : [].concat(value);
   } else {
-    return { type, value, target };
+    return value;
   }
 }
 
@@ -599,9 +581,9 @@ function getParameterOperatorType(parameterType) {
   switch (parameterType) {
     case "number":
       return NUMBER;
-    case "location":
-    case "category":
     case "string":
+    case "category":
+    case "location":
       return STRING;
     case "id":
       // id can technically be a FK but doesn't matter as both use default filter operators

@@ -50,7 +50,7 @@ const SUBMENU_TETHER_OPTIONS = {
     {
       to: "window",
       attachment: "together",
-      pin: ["left", "right"],
+      pin: true,
     },
   ],
 };

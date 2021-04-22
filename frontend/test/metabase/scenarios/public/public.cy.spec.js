@@ -79,12 +79,14 @@ describe.skip("scenarios > public", () => {
 
       cy.icon("filter").click();
 
-      popover()
-        .contains("Other Categories")
-        .click();
+      popover().within(() => {
+        cy.findByText("Text or Category").click();
+        cy.findByText("Dropdown").click();
+      });
+
       cy.contains("Select…").click();
       popover()
-        .contains("Category")
+        .contains("Text")
         .click();
 
       cy.contains("Done").click();
@@ -92,13 +94,13 @@ describe.skip("scenarios > public", () => {
       cy.findByText("You're editing this dashboard.").should("not.exist");
 
       cy.contains(COUNT_ALL);
-      cy.contains("Category")
+      cy.contains("Text")
         .parent()
         .parent()
         .find("fieldset")
         .should("not.exist");
 
-      cy.findByText("Category").click();
+      cy.findByText("Text").click();
 
       popover().within(() => {
         cy.findByText("Doohickey").click();
@@ -107,7 +109,7 @@ describe.skip("scenarios > public", () => {
       cy.contains(COUNT_DOOHICKEY);
 
       cy.url()
-        .should("match", /\/dashboard\/\d+\?category=Doohickey$/)
+        .should("match", /\/dashboard\/\d+\?text=Doohickey$/)
         .then(url => {
           dashboardId = parseInt(url.match(/dashboard\/(\d+)/)[1]);
         });

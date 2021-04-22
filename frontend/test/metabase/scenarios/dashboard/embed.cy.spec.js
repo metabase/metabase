@@ -91,13 +91,13 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
       .type("text text text");
     cy.icon("filter").click();
     popover().within(() => {
-      cy.findByText("Other Categories").click();
+      cy.findByText("Text or Category").click();
       cy.findByText("Dropdown").click();
     });
     cy.findByText("Save").click();
 
     // confirm text box and filter are still there
     cy.findByText("text text text");
-    cy.findByPlaceholderText("Category");
+    cy.findByPlaceholderText("Text");
   });
 });

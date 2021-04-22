@@ -13,7 +13,7 @@
             [schema.core :as s])
   (:import [java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period
             ZonedDateTime]
-           [java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle]
+           [java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle TextStyle]
            [java.time.temporal Temporal TemporalAdjuster WeekFields]
            org.threeten.extra.PeriodDuration))
 
@@ -106,13 +106,22 @@
                     (.toFormatter builder))
    OffsetTime     (let [builder (doto (DateTimeFormatterBuilder.)
                                   (.append (DateTimeFormatter/ofLocalizedTime FormatStyle/MEDIUM))
-                                  (.appendPattern " (OOOO)"))]
+                                  (.appendLiteral " (")
+                                  (.appendLocalizedOffset TextStyle/FULL)
+                                  (.appendLiteral ")"))]
                     (.toFormatter builder))
    OffsetDateTime (let [builder (doto (DateTimeFormatterBuilder.)
                                   (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM)
-                                  (.appendPattern " (OOOO)"))]
+                                  (.appendLiteral " (")
+                                  (.appendLocalizedOffset TextStyle/FULL)
+                                  (.appendLiteral ")"))]
                     (.toFormatter builder))
-   ZonedDateTime  (DateTimeFormatter/ofLocalizedDateTime FormatStyle/LONG)})
+   ZonedDateTime  (let [builder (doto (DateTimeFormatterBuilder.)
+                                  (.appendLocalized FormatStyle/LONG FormatStyle/MEDIUM)
+                                  (.appendLiteral " (")
+                                  (.appendZoneText TextStyle/FULL)
+                                  (.appendLiteral ")"))]
+                    (.toFormatter builder))})
 
 (defn format-human-readable
   "Format a temporal value `t` in a human-friendly way for `locale` (by default, the current User's locale).
