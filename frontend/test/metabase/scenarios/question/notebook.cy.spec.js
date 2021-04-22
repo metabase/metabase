@@ -835,6 +835,20 @@ describe("scenarios > question > notebook", () => {
       });
     });
   });
+
+  describe("error feedback", () => {
+    it("should catch mismatched parentheses", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("FLOOR [Price]/2)");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Massive Discount");
+        cy.contains(/^Expecting an opening parenthesis/i);
+      });
+    });
+  });
 });
 
 // Extracted repro steps for #13000
