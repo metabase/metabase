@@ -21,6 +21,7 @@ import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 const ROW_HEIGHT = 72;
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+
 export default function ItemList({
   items,
   collection,
@@ -31,10 +32,36 @@ export default function ItemList({
   showFilters,
   onMove,
   onCopy,
+  scrollElement,
 }) {
   const everythingName =
     collectionHasPins && items.length > 0 ? t`Everything else` : t`Everything`;
   const filters = assocIn(ITEM_TYPE_FILTERS, [0, "name"], everythingName);
+
+  const renderListItem = React.useCallback(
+    ({ item, index }) => (
+      <Box className="relative">
+        <ItemDragSource
+          item={item}
+          selection={selection}
+          collection={collection}
+        >
+          <NormalItem
+            key={`${item.model}:${item.id}`}
+            item={item}
+            onPin={() => item.setPinned(true)}
+            collection={collection}
+            selection={selection}
+            onToggleSelected={onToggleSelected}
+            onMove={onMove}
+            onCopy={onCopy}
+          />
+        </ItemDragSource>
+      </Box>
+    ),
+    [collection, onCopy, onMove, onToggleSelected, selection],
+  );
+
   return (
     <Box className="relative">
       {showFilters ? (
@@ -59,29 +86,8 @@ export default function ItemList({
             <VirtualizedList
               items={items}
               rowHeight={ROW_HEIGHT}
-              renderItem={({ item, index }) => (
-                <Box className="relative">
-                  <ItemDragSource
-                    item={item}
-                    selection={selection}
-                    collection={collection}
-                  >
-                    <NormalItem
-                      key={`${item.model}:${item.id}`}
-                      item={item}
-                      onPin={() => item.setPinned(true)}
-                      collection={collection}
-                      selection={selection}
-                      onToggleSelected={onToggleSelected}
-                      onMove={onMove}
-                      onCopy={onCopy}
-                    />
-                  </ItemDragSource>
-                </Box>
-              )}
-              // needed in order to prevent an issue with content not fully rendering
-              // due to the collection content scrolling layout
-              useAutoSizerHeight={true}
+              renderItem={renderListItem}
+              scrollElement={scrollElement}
             />
           </Box>
         </PinDropTarget>
