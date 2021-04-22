@@ -388,18 +388,11 @@ describe("scenarios > collection_defaults", () => {
         "**New collection should immediately be open, showing nested children**",
       );
 
-      openDropdownFor(NEW_COLLECTION);
-      cy.findAllByText("First collection");
-      cy.findAllByText("Second collection");
-
-      // TODO: This was an original test that made sure the collection is indeed open immediately.
-      //       That part is going to be addressed in a separate issue.
-      // cy.findByText(NEW_COLLECTION)
-      //   .closest("a")
-      //   .within(() => {
-      //     cy.icon("chevrondown");
-      //     cy.findByText("First collection");
-      //   });
+      getSidebarCollectionChildren(cy.findByText(NEW_COLLECTION)).within(() => {
+        cy.icon("chevrondown");
+        cy.findByText("First collection");
+        cy.findByText("Second collection");
+      });
     });
 
     it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
@@ -581,4 +574,11 @@ function selectItemUsingCheckbox(item, icon = "table") {
         .should("be.visible")
         .click();
     });
+}
+
+function getSidebarCollectionChildren(item) {
+  return item
+    .closest("a")
+    .parent()
+    .siblings();
 }
