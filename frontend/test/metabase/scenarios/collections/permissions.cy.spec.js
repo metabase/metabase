@@ -45,7 +45,7 @@ describe("collection permissions", () => {
                   });
                   cy.icon("add").click();
                   cy.findByText("New dashboard").click();
-                  cy.get(".Modal").findByText("Second collection");
+                  cy.get(".AdminSelect").findByText("Second collection");
                 });
               });
 
