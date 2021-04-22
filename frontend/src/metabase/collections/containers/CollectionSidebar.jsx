@@ -142,7 +142,7 @@ class CollectionSidebar extends React.Component {
         ) : (
           <div className="text-brand text-centered">
             <LoadingSpinner />
-            <h2 className="text-normal text-light mt1">{t`Loading ...`}</h2>
+            <h2 className="text-normal text-light mt1">{t`Loading…`}</h2>
           </div>
         )}
       </Sidebar>
