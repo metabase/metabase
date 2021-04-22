@@ -86,15 +86,15 @@
                         :creator_id          api/*current-user-id*
                         :collection_id       collection_id
                         :collection_position collection_position}]
-    (db/transaction
-      ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
-      ;; position, check that and fix up if needed
-      (api/maybe-reconcile-collection-position! dashboard-data)
-      ;; Ok, now save the Dashboard
-      (-> (db/insert! Dashboard dashboard-data)
-           ;; publish an event and return the newly created Dashboard
-          (->> (events/publish-event! :dashboard-create))
-          (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
+    (let [dash (db/transaction
+                ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
+                ;; position, check that and fix up if needed
+                (api/maybe-reconcile-collection-position! dashboard-data)
+                ;; Ok, now save the Dashboard
+                (db/insert! Dashboard dashboard-data))]
+      ;; publish event after the txn so that lookup can succeed
+      (events/publish-event! :dashboard-create dash)
+      (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
