@@ -260,26 +260,20 @@
       (email/send-new-user-email! user @api/*current-user* join-url)))
   {:success true})
 
-(defn- search-users-query
-  "Generate the MBQL query used to power user search in `search-users` below."
-  [value limit]
-  {:database (db-id "User")
-   :type     :query
-   :query    {:source-table (throw)
-              :filter       [:contains [:field throw nil] value {:case-sensitive false}]
-              :limit        limit}})
+(defn- search-users [value limit]
+  (apply db/select User [:contains value] {:limit limit}))
 
-(defn- search-users
-  [value limit]
-  ;;; some stuff here
-  )
+(def max-user-search-limit 100)
 
 (api/defendpoint GET "/search"
-  "Search for users. Full text contains search only for `value`, not fuzzy. Limit of `limit` results"
+  "Search for users. Full text contains search only for `value`, not fuzzy.
+  It seems more useful to search whatever field.
+  Limit of `limit` results, defaults to 100"
   [value limit]
   {value su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
-    (search-users value (when limit (Integer/parseInt limit))))
+    (-> (search-users value (min max-user-search-limit (if limit (Integer/parseInt limit) max-user-search-limit)))
+        (hydrate :group_ids)))
 
 
 
