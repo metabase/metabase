@@ -133,10 +133,11 @@ class CollectionSidebar extends React.Component {
   };
 
   render() {
-    const { loaded } = this.props;
+    const { allFetched } = this.props;
+
     return (
       <Sidebar w={340} pt={3} data-testid="sidebar">
-        {loaded ? (
+        {allFetched ? (
           this.renderContent()
         ) : (
           <div className="text-brand text-centered">
