@@ -206,7 +206,7 @@
     (deferred-tru "value must be a valid field type.")))
 
 (def CoercionStrategy
-  "Schema for a valid Field type (does it derive from `:type/*`)?"
+  "Schema for a valid coercion strategy (does it derive from `:Coercion/*`)?"
   (with-api-error-message (s/pred #(isa? % :Coercion/*) (deferred-tru "Valid coercion strategy"))
     (deferred-tru "value must be a valid coercion strategy.")))
 
