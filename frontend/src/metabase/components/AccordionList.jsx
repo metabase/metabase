@@ -520,6 +520,7 @@ const AccordionListCell = ({
   } else if (type === "search") {
     content = (
       <ListSearchField
+        hasClearButton
         className="bg-white m1"
         onChange={onChangeSearchText}
         searchText={searchText}

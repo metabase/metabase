@@ -1,10 +1,11 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { Component, useState } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
+import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -16,6 +17,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
+import { SearchResults } from "./data-search";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -755,9 +757,22 @@ const DatabaseSchemaPicker = ({
   selectedSchema,
   onChangeSchema,
   onChangeDatabase,
+  onChangeTable,
   hasNextStep,
   isLoading,
 }) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const isSearchActive = searchQuery.length >= 2;
+
+  const handleSearchQueryChange = value => {
+    setSearchQuery(value);
+  };
+
+  const handleSelect = item => {
+    // TODO: support saved questions
+    onChangeTable(item);
+  };
+
   if (databases.length === 0) {
     return <DataSelectorLoading />;
   }
@@ -795,33 +810,52 @@ const DatabaseSchemaPicker = ({
   }
 
   return (
-    <AccordionList
-      id="DatabaseSchemaPicker"
-      key="databaseSchemaPicker"
-      className="text-brand"
-      sections={sections}
-      onChange={item => onChangeSchema(item.schema)}
-      onChangeSection={(section, sectionIndex) => {
-        if (
-          selectedDatabase &&
-          selectedDatabase.id === databases[sectionIndex].id
-        ) {
-          // You can't change to the current database. If you click on that,
-          // still return "true" to let the AccordionList collapse that section.
-          return true;
-        }
-        onChangeDatabase(databases[sectionIndex]);
-        return true;
-      }}
-      itemIsSelected={schema => schema === selectedSchema}
-      renderSectionIcon={item => (
-        <Icon className="Icon text-default" name={item.icon} size={18} />
+    <div style={{ width: 300, overflowY: "auto" }}>
+      <ListSearchField
+        hasClearButton
+        className="bg-white m1"
+        onChange={handleSearchQueryChange}
+        searchText={searchQuery}
+        placeholder={t`Search for a table...`}
+        autoFocus
+      />
+      {isSearchActive && (
+        <SearchResults
+          searchQuery={searchQuery}
+          onSelect={handleSelect}
+          selectedDatabase={selectedDatabase}
+        />
       )}
-      renderItemIcon={() => <Icon name="folder" size={16} />}
-      initiallyOpenSection={openSection}
-      alwaysTogglable={true}
-      showItemArrows={hasNextStep}
-    />
+      {!isSearchActive && (
+        <AccordionList
+          id="DatabaseSchemaPicker"
+          key="databaseSchemaPicker"
+          className="text-brand"
+          sections={sections}
+          onChange={item => onChangeSchema(item.schema)}
+          onChangeSection={(section, sectionIndex) => {
+            if (
+              selectedDatabase &&
+              selectedDatabase.id === databases[sectionIndex].id
+            ) {
+              // You can't change to the current database. If you click on that,
+              // still return "true" to let the AccordionList collapse that section.
+              return true;
+            }
+            onChangeDatabase(databases[sectionIndex]);
+            return true;
+          }}
+          itemIsSelected={schema => schema === selectedSchema}
+          renderSectionIcon={item => (
+            <Icon className="Icon text-default" name={item.icon} size={18} />
+          )}
+          renderItemIcon={() => <Icon name="folder" size={16} />}
+          initiallyOpenSection={openSection}
+          alwaysTogglable={true}
+          showItemArrows={hasNextStep}
+        />
+      )}
+    </div>
   );
 };
 
