@@ -318,15 +318,8 @@ describe("collection permissions", () => {
 
                   cy.get(".Modal")
                     .as("modal")
-                    .within(() => {
-                      // Checking dashboard is visible in the list and with search
-                      cy.findByText("Orders in a dashboard");
-                      cy.icon("search").click();
-                      cy.findByPlaceholderText("Search").type(
-                        "Orders in{Enter}",
-                      );
-                      cy.findByText("Orders in a dashboard").click();
-                    });
+                    .findByText("Orders in a dashboard")
+                    .click();
 
                   cy.get("@modal").should("not.exist");
                   // By default, the dashboard contains one question
