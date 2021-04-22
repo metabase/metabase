@@ -52,7 +52,7 @@ export default class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
 
   static propTypes = {
-    sections: PropTypes.array.isRequired,
+    sections: PropTypes.object.isRequired,
     activeSection: PropTypes.object,
     activeSectionName: PropTypes.string,
     updateSetting: PropTypes.func.isRequired,

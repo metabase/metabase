@@ -20,6 +20,9 @@
                          {"No table description yet"
                           {:msgstr ["No hay una descripción de la tabla"]}
 
+                          "Count of ${ 0 }"
+                          {:msgstr ["Número de ${ 0 }"]}
+
                           "${ 0 } Queryable Table"
                           {:msgid_plural "{0} Queryable Tables"
                            :msgstr       ["{0] Tabla Consultable" "{0] Tablas consultables"]}}}}

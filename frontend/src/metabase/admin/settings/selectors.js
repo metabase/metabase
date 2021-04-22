@@ -26,20 +26,34 @@ import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
-  return PLUGIN_ADMIN_SETTINGS_UPDATES.reduce(
-    (sections, update) => update(sections),
-    sections,
-  );
+  if (PLUGIN_ADMIN_SETTINGS_UPDATES.length > 0) {
+    const reduced = PLUGIN_ADMIN_SETTINGS_UPDATES.reduce(
+      (sections, update) => update(sections),
+      sections,
+    );
+
+    // the update functions may change the key ordering inadvertently
+    // see: https://github.com/aearly/icepick/issues/48
+    // therefore, re-sort the reduced object according to the original key order
+    const reSortFn = ([, aVal], [, bVal]) =>
+      aVal && bVal && aVal.order - bVal.order;
+
+    return Object.fromEntries(Object.entries(reduced).sort(reSortFn));
+  } else {
+    return sections;
+  }
 }
 
 const SECTIONS = updateSectionsWithPlugins({
   setup: {
     name: t`Setup`,
+    order: 1,
     settings: [],
     component: SettingsSetupList,
   },
   general: {
     name: t`General`,
+    order: 2,
     settings: [
       {
         key: "site-name",
@@ -98,6 +112,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   updates: {
     name: t`Updates`,
+    order: 3,
     component: SettingsUpdatesForm,
     settings: [
       {
@@ -109,6 +124,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   email: {
     name: t`Email`,
+    order: 4,
     component: SettingsEmailForm,
     settings: [
       {
@@ -161,6 +177,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   slack: {
     name: "Slack",
+    order: 5,
     component: SettingsSlackForm,
     settings: [
       {
@@ -185,10 +202,12 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   authentication: {
     name: t`Authentication`,
+    order: 6,
     settings: [], // added by plugins
   },
   maps: {
     name: t`Maps`,
+    order: 7,
     settings: [
       {
         key: "map-tile-server-url",
@@ -207,6 +226,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   localization: {
     name: t`Localization`,
+    order: 8,
     settings: [
       {
         display_name: t`Instance language`,
@@ -261,6 +281,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   public_sharing: {
     name: t`Public Sharing`,
+    order: 9,
     settings: [
       {
         key: "enable-public-sharing",
@@ -283,6 +304,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   embedding_in_other_applications: {
     name: t`Embedding in other Applications`,
+    order: 10,
     settings: [
       {
         key: "enable-embedding",
@@ -338,6 +360,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   caching: {
     name: t`Caching`,
+    order: 11,
     settings: [
       {
         key: "enable-query-caching",
@@ -402,7 +425,7 @@ export const getSections = createSelector(
   getSettings,
   settings => {
     if (!settings || _.isEmpty(settings)) {
-      return [];
+      return {};
     }
 
     const settingsByKey = _.groupBy(settings, "key");

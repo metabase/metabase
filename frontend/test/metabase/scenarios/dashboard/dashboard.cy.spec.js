@@ -137,7 +137,7 @@ describe("scenarios > dashboard", () => {
     // add third filter
     cy.icon("filter").click();
     popover().within(() => {
-      cy.findByText("Other Categories").click();
+      cy.findByText("Text or Category").click();
       cy.findByText("Starts with").click();
     });
     // and connect it to the card
@@ -744,6 +744,157 @@ describe("scenarios > dashboard", () => {
       });
     });
   });
+
+  it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
+    // Make this dashboard card extremely tall so that it spans outside of visible viewport
+    cy.request("PUT", "/api/dashboard/1/cards", {
+      cards: [
+        {
+          id: 1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          sizeX: 12,
+          sizeY: 20,
+          series: [],
+          visualization_settings: {},
+          parameter_mappings: [],
+        },
+      ],
+    });
+
+    cy.visit("/dashboard/1");
+    cy.contains("37.65");
+    assertScrollBarExists();
+    cy.icon("share").click();
+    cy.findByText("Sharing and embedding").click();
+    // Fullscreen modal opens - close it now
+    cy.icon("close").click();
+    cy.get(".Modal--full").should("not.exist");
+    assertScrollBarExists();
+  });
+
+  it("dashboard filters should allow multiple selections (metabase#15689)", () => {
+    cy.createQuestion({
+      name: "15689",
+      query: { "source-table": PEOPLE_ID },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("15689D").then(({ body: { id: DASHBOARD_ID } }) => {
+        // Add filter to the dashboard
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            {
+              name: "Location",
+              slug: "location",
+              id: "5aefc725",
+              type: "string/=",
+              sectionId: "location",
+            },
+          ],
+        });
+        // Add card to the dashboard
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          // Connect filter to the card
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 12,
+                sizeY: 9,
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: "5aefc725",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field", PEOPLE.STATE, null]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      });
+    });
+
+    cy.get("fieldset").click();
+    cy.findByText("AK").click();
+    cy.findByText("CA").click();
+    cy.icon("close")
+      .as("close")
+      .should("have.length", 2);
+    cy.get("@close")
+      .first()
+      .closest("li")
+      .contains("AK");
+    cy.get("@close")
+      .last()
+      .closest("li")
+      .contains("CA");
+  });
+
+  it.skip("dashboard filters should not limit the number of search results (metabase#15695)", () => {
+    // Change filtering on this field to "a list of all values"
+    cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
+      has_field_values: "list",
+    });
+
+    cy.createQuestion({
+      name: "15695",
+      query: { "source-table": PRODUCTS_ID },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("15695D").then(({ body: { id: DASHBOARD_ID } }) => {
+        // Add filter to the dashboard
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            {
+              name: "Text",
+              slug: "text",
+              id: "de9f36f0",
+              type: "string/=",
+              sectionId: "string",
+            },
+          ],
+        });
+        // Add card to the dashboard
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          // Connect filter to the card
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 12,
+                sizeY: 9,
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: "de9f36f0",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field", PRODUCTS.TITLE, null]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+      });
+    });
+    cy.get("fieldset").click();
+    cy.findByPlaceholderText("Search the list").type("Syner");
+    cy.findByText("Synergistic Wool Coat");
+  });
 });
 
 function checkOptionsForFilter(filter) {
@@ -758,4 +909,13 @@ function checkOptionsForFilter(filter) {
 
   // Get rid of the open popover to be able to select another filter
   cy.findByText("Pick one or more filters to update").click();
+}
+
+function assertScrollBarExists() {
+  cy.get("body").then($body => {
+    const bodyWidth = $body[0].getBoundingClientRect().width;
+    cy.window()
+      .its("innerWidth")
+      .should("be.gt", bodyWidth);
+  });
 }

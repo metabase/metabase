@@ -112,6 +112,8 @@ export default class CollectionContent extends React.Component {
       selection,
       onToggleSelected,
       location,
+
+      scrollElement,
     } = this.props;
     const { selectedItems, selectedAction } = this.state;
 
@@ -157,6 +159,7 @@ export default class CollectionContent extends React.Component {
             />
           )}
           <ItemList
+            scrollElement={scrollElement}
             items={unpinnedItems}
             empty={unpinned.length === 0}
             showFilters={showFilters}

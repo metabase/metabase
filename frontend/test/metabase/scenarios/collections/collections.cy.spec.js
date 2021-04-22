@@ -161,6 +161,20 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
+    describe("archive", () => {
+      it("should show archived items (metabase#15080)", () => {
+        cy.visit("collection/root");
+        openEllipsisMenuFor("Orders");
+        cy.findByText("Archive this item").click();
+        cy.findByText("Archived question")
+          .siblings(".Icon-close")
+          .click();
+        cy.findByText("View archive").click();
+        cy.location("pathname").should("eq", "/archive");
+        cy.findByText("Orders");
+      });
+    });
+
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
       it("should be in the root collection", () => {
@@ -447,11 +461,32 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("Orders");
     });
 
-    it.skip("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
+    it("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
       cy.visit("/collection/root");
-      cy.findByText("Your personal collection")
+      cy.findByTestId("sidebar")
+        .as("sidebar")
+        .findByText("Your personal collection")
         .parent()
         .find(".Icon-chevronright")
+        .should("not.exist");
+
+      // Ensure if sub-collection is archived, the chevron is not displayed
+      cy.get("@sidebar")
+        .findByText("First collection")
+        .click()
+        .findByText("Second collection")
+        .click();
+      cy.icon("pencil").click();
+      popover()
+        .findByText("Archive this collection")
+        .click();
+      cy.get(".Modal")
+        .findByRole("button", { name: "Archive" })
+        .click();
+      cy.get("@sidebar")
+        .findByText("First collection")
+        .parent()
+        .find(".Icon-chevrondown")
         .should("not.exist");
     });
 

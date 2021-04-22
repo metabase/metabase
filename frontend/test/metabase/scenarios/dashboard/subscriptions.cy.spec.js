@@ -4,6 +4,7 @@ import {
   describeWithToken,
   describeOpenSourceOnly,
   popover,
+  mockSessionProperty,
 } from "__support__/cypress";
 import { USERS } from "__support__/cypress_data";
 const { admin } = USERS;
@@ -55,7 +56,15 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("with email set up", () => {
     beforeEach(() => {
-      setupDummySMTP();
+      cy.request("DELETE", "http://localhost:80/email/all");
+      cy.request("PUT", "/api/setting", {
+        "email-smtp-host": "localhost",
+        "email-smtp-port": "25",
+        "email-smtp-username": "admin",
+        "email-smtp-password": "admin",
+        "email-smtp-security": "none",
+        "email-from-address": "mailer@metabase.test",
+      });
     });
 
     describe("with no existing subscriptions", () => {
@@ -115,6 +124,79 @@ describe("scenarios > dashboard > subscriptions", () => {
       // Implicit assertion (word mustn't contain string "null")
       cy.findByText(/^Emailed monthly on the first (?!null)/);
     });
+
+    it.skip("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
+      // In order to reproduce this test, we need to use the old syntac for dashboard filters
+      mockSessionProperty("field-filter-operators-enabled?", false);
+
+      cy.createNativeQuestion({
+        name: "15705",
+        native: {
+          query: "SELECT COUNT(*) FROM ORDERS WHERE QUANTITY={{qty}}",
+          "template-tags": {
+            qty: {
+              id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+              name: "qty",
+              "display-name": "Qty",
+              type: "number",
+              required: true,
+            },
+          },
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.createDashboard("15705D").then(({ body: { id: DASHBOARD_ID } }) => {
+          // Add filter to the dashboard
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+            // Using the old dashboard filter syntax
+            parameters: [
+              {
+                name: "Quantity",
+                slug: "quantity",
+                id: "930e4001",
+                type: "category",
+                default: "20",
+              },
+            ],
+          });
+
+          // Add question to the dashboard
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION_ID,
+          }).then(({ body: { id: DASH_CARD_ID } }) => {
+            // Connect filter to that question
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD_ID,
+                  card_id: QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 12,
+                  sizeY: 10,
+                  parameter_mappings: [
+                    {
+                      parameter_id: "930e4001",
+                      card_id: QUESTION_ID,
+                      target: ["variable", ["template-tag", "qty"]],
+                    },
+                  ],
+                },
+              ],
+            });
+          });
+          assignRecipient({ dashboard_id: DASHBOARD_ID });
+        });
+      });
+      // Click anywhere outside to close the popover
+      cy.findByText("15705D").click();
+      cy.findByText("Send email now").click();
+      cy.findByText("Email sent");
+      cy.request("GET", "http://localhost:80/email").then(({ body }) => {
+        expect(body[0].html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+      });
+    });
   });
 
   describe("with Slack set up", () => {
@@ -155,10 +237,10 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       it("should have a list of the default parameters applied to the subscription", () => {
         assignRecipient();
-        cy.findByText("Category is Corbin Mertz");
+        cy.findByText("Text is Corbin Mertz");
         clickButton("Done");
 
-        cy.findByText("Category is Corbin Mertz");
+        cy.findByText("Text is Corbin Mertz");
       });
     });
   });
@@ -189,7 +271,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         assignRecipient();
         clickButton("Done");
 
-        cy.findByText("Category is Corbin Mertz");
+        cy.findByText("Text is Corbin Mertz");
       });
 
       it("should allow for setting parameters in subscription", () => {
@@ -211,7 +293,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           .contains("Update filter")
           .click();
 
-        cy.findAllByText("Category 1")
+        cy.findAllByText("Text 1")
           .last()
           .click();
         popover()
@@ -225,7 +307,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         clickButton("Done");
         cy.wait("@pulsePut");
-        cy.findByText("Category is 2 selections and 1 more filter");
+        cy.findByText("Text is 2 selections and 1 more filter");
       });
     });
   });
@@ -239,8 +321,8 @@ function openDashboardSubscriptions(dashboard_id = 1) {
   cy.findByText("Dashboard subscriptions").click();
 }
 
-function assignRecipient(user = admin) {
-  openDashboardSubscriptions();
+function assignRecipient({ user = admin, dashboard_id = 1 } = {}) {
+  openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
   cy.findByPlaceholderText("Enter user names or email addresses")
     .click()
@@ -265,7 +347,7 @@ function addParametersToDashboard() {
 
   // add Category > Dropdown "Name" filter
   cy.icon("filter").click();
-  cy.findByText("Other Categories").click();
+  cy.findByText("Text or Category").click();
   cy.findByText("Dropdown").click();
 
   cy.findByText("Select…").click();
@@ -287,7 +369,7 @@ function addParametersToDashboard() {
 
   // add Category > Dropdown "Category" filter
   cy.icon("filter").click();
-  cy.findByText("Other Categories").click();
+  cy.findByText("Text or Category").click();
   cy.findByText("Dropdown").click();
   cy.findByText("Select…").click();
   popover().within(() => {
