@@ -13,6 +13,7 @@ const ClampedDiv = styled.div`
   overflow: hidden;
   line-height: 1.5em;
   font-size: 1em;
+  white-space: pre-line;
 `;
 
 function ClampedText({ className, text, visibleLines }) {
