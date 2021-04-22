@@ -481,4 +481,13 @@ describe("scenarios > question > custom columns", () => {
     });
     cy.get("[contenteditable='true']").contains("Sum([MyCC [2021]])");
   });
+
+  it.skip("should handle floating point numbers with '0' omitted (metabase#15741)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    cy.get("[contenteditable='true']").type(".5 * [Discount]");
+    cy.findByPlaceholderText("Something nice and descriptive").type("Foo");
+    cy.findByText("Unknown Field: .5").should("not.exist");
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+  });
 });
