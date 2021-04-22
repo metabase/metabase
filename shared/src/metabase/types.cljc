@@ -204,6 +204,11 @@
 (derive :Coercion/ISO8601->Time :Coercion/ISO8601->Temporal)
 (derive :Coercion/ISO8601->Date :Coercion/ISO8601->Temporal)
 
+(derive :Coercion/YYYYMMDDHHMMSSString->Temporal :Coercion/String->Temporal)
+
+(derive :Coercion/Bytes->Temporal :Coercion/*)
+(derive :Coercion/YYYYMMDDHHMMSSBytes->Temporal :Coercion/Bytes->Temporal)
+
 (derive :Coercion/Number->Temporal :Coercion/*)
 (derive :Coercion/UNIXTime->Temporal :Coercion/Number->Temporal)
 (derive :Coercion/UNIXSeconds->DateTime :Coercion/UNIXTime->Temporal)
@@ -243,9 +248,11 @@
     (reduce #(assoc %1 %2 {:Coercion/UNIXMicroSeconds->DateTime :type/Instant
                            :Coercion/UNIXMilliSeconds->DateTime :type/Instant
                            :Coercion/UNIXSeconds->DateTime      :type/Instant})
-            {:type/Text   {:Coercion/ISO8601->Date     :type/Date
-                           :Coercion/ISO8601->DateTime :type/DateTime
-                           :Coercion/ISO8601->Time     :type/Time}}
+            {:type/Text   {:Coercion/ISO8601->Date                  :type/Date
+                           :Coercion/ISO8601->DateTime              :type/DateTime
+                           :Coercion/ISO8601->Time                  :type/Time
+                           :Coercion/YYYYMMDDHHMMSSString->Temporal :type/DateTime}
+             :type/*      {:Coercion/YYYYMMDDHHMMSSBytes->Temporal  :type/DateTime}}
             numeric-types)))
 
 (defn ^:export is_coerceable
@@ -257,12 +264,14 @@
   "The effective type resulting from a coercion."
   [coercion]
   ;;todo: unify this with the coercions map above
-  (get {:Coercion/ISO8601->Date              :type/Date
-        :Coercion/ISO8601->DateTime          :type/DateTime
-        :Coercion/ISO8601->Time              :type/Time
-        :Coercion/UNIXMicroSeconds->DateTime :type/Instant
-        :Coercion/UNIXMilliSeconds->DateTime :type/Instant
-        :Coercion/UNIXSeconds->DateTime      :type/Instant}
+  (get {:Coercion/ISO8601->Date                  :type/Date
+        :Coercion/ISO8601->DateTime              :type/DateTime
+        :Coercion/ISO8601->Time                  :type/Time
+        :Coercion/UNIXMicroSeconds->DateTime     :type/Instant
+        :Coercion/UNIXMilliSeconds->DateTime     :type/Instant
+        :Coercion/UNIXSeconds->DateTime          :type/Instant
+        :Coercion/YYYYMMDDHHMMSSString->Temporal :type/DateTime
+        :Coercion/YYYYMMDDHHMMSSBytes->Temporal  :type/DateTime}
        (keyword coercion)))
 
 (defn ^:export coercions-for-type
