@@ -39,7 +39,7 @@ describe("collection permissions", () => {
               describe("create dashboard", () => {
                 it("should offer to save dashboard to a currently opened collection", () => {
                   cy.visit("/collection/root");
-                  cy.get("[class*=CollectionSidebar]").within(() => {
+                  cy.findByTestId("sidebar").within(() => {
                     cy.findByText("First collection").click();
                     cy.findByText("Second collection").click();
                   });
@@ -173,7 +173,7 @@ describe("collection permissions", () => {
                     cy.get("[class*=PageHeading]")
                       .as("title")
                       .contains("Second collection");
-                    cy.get("[class*=CollectionSidebar]")
+                    cy.findByTestId("sidebar")
                       .as("sidebar")
                       .within(() => {
                         cy.findByText("First collection");
