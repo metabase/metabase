@@ -917,4 +917,17 @@ describe("scenarios > question > filter", () => {
     cy.findByRole("button", { name: "Done" }).click();
     cy.findByText("Total is less than Subtotal");
   });
+
+  it.skip("custom expression filter should allow the use of parentheses in combination with logical operators (metabase#15754)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]")
+      .type("([ID] > 2 OR [Subtotal] = 100) and [Tax] < 4")
+      .blur();
+    cy.findByText(/^Expected closing parenthesis but found/).should(
+      "not.exist",
+    );
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+  });
 });
