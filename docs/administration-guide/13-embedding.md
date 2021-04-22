@@ -116,6 +116,13 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 <iframe src="http://metabase.example.com/embed/dashboard/TOKEN" onload="iFrameResize({}, this)"></iframe>
 ```
 
+### Additional parameters
+
+You can add to the embedding URL these additional parameters to affect the look and feel:
+- bordered: true or false. Adds a visible border to the embed
+- titled: true or false. Adds or removes the title to the embedding
+- theme: null or night. Shows the embedded iframe in dark mode 
+
 ### Reference applications
 
 To see concrete examples of how to embed Metabase in applications under a number of common frameworks, check out our [reference implementations](https://github.com/metabase/embedding-reference-apps) on Github.
