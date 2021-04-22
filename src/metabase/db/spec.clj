@@ -1,7 +1,8 @@
 (ns metabase.db.spec
   "Functions for creating JDBC DB specs for a given driver.
   Only databases that are supported as application DBs should have functions in this namespace;
-  otherwise, similar functions are only needed by drivers, and belong in those namespaces.")
+  otherwise, similar functions are only needed by drivers, and belong in those namespaces."
+  (:require [metabase.config :as config]))
 
 (defn h2
   "Create a Clojure JDBC database specification for a H2 database."
@@ -26,7 +27,8 @@
     :subprotocol                   "postgresql"
     :subname                       (make-subname host (or port 5432) db)
     ;; I think this is done to prevent conflicts with redshift driver registering itself to handle postgres://
-    :OpenSourceSubProtocolOverride true}
+    :OpenSourceSubProtocolOverride true
+    :ApplicationName               config/mb-version-and-process-identifier}
    (dissoc opts :host :port :db)))
 
 (defn mysql

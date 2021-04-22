@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.postgres :as postgres]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -52,7 +53,8 @@
             :subname                       "//localhost:5432/bird_sightings"
             :OpenSourceSubProtocolOverride true
             :user                          "camsaul"
-            :sslmode                       "disable"}
+            :sslmode                       "disable"
+            :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    false
               :host   "localhost"
@@ -66,7 +68,8 @@
             :OpenSourceSubProtocolOverride true
             :user                          "camsaul"
             :ssl                           true
-            :sslmode                       "require"}
+            :sslmode                       "require"
+            :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    true
               :host   "localhost"
@@ -78,7 +81,8 @@
             :subprotocol                   "postgresql"
             :subname                       "//localhost:5432/cool?prepareThreshold=0"
             :OpenSourceSubProtocolOverride true
-            :sslmode                       "disable"}
+            :sslmode                       "disable"
+            :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:host               "localhost"
               :port               "5432"
@@ -95,7 +99,8 @@
             :sslcert                       "my-cert"
             :sslkey                        "my-key"
             :sslfactory                    "myfactoryoverride"
-            :sslrootcert                   "myrootcert"}
+            :sslrootcert                   "myrootcert"
+            :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl         true
               :host        "localhost"

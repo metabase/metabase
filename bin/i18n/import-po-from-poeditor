@@ -16,7 +16,7 @@ const POEDITOR_API_TOKEN = process.env["POEDITOR_API_TOKEN"];
 const POEDITOR_PROJECT_ID = "200535"; // Metabae POEditor project
 
 const aliases = {
-  "pt-br": "pt", // default to brazilian portuguese
+  "pt-BR": "pt", // default to brazilian portuguese
   "zh-Hans": "zh", // default to simplified chinese
 };
 

@@ -3,6 +3,7 @@ import {
   modal,
   popover,
   createNativeQuestion,
+  showDashboardCardActions,
 } from "__support__/cypress";
 
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
@@ -27,7 +28,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.visit(`/dashboard/${dashboardId}`),
     );
     cy.icon("pencil").click();
-    cy.icon("click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
 
     // configure a URL click through on the  "MY_NUMBER" column
     cy.findByText("On-click behavior for each column")
@@ -140,7 +142,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.visit(`/dashboard/${dashboardId}`),
     );
     cy.icon("pencil").click();
-    cy.icon("click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
 
     // configure a dashboard target for the "MY_NUMBER" column
     cy.findByText("On-click behavior for each column")
@@ -191,7 +194,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       );
     });
     cy.icon("pencil").click();
-    cy.icon("click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
 
     // configure clicks on "MY_NUMBER to update the param
     cy.findByText("On-click behavior for each column")
@@ -233,7 +237,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.visit(`/dashboard/${dashboardId}`),
     );
     cy.icon("pencil").click();
-    cy.icon("click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
 
     // configure clicks on "MY_NUMBER to update the param
     cy.findByText("On-click behavior for each column")
@@ -576,7 +581,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
         cy.icon("pencil").click();
         // Edit "Visualization options"
-        cy.get(".DashCard .Icon-palette").click({ force: true });
+        showDashboardCardActions();
+        cy.icon("palette").click();
         cy.get(".Modal").within(() => {
           cy.findByText("Reset to defaults").click();
           cy.findByRole("button", { name: "Done" }).click();
@@ -673,6 +679,65 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.findByText("37.65");
     cy.findByText("No relationships found.");
+  });
+
+  it("should display correct tooltip value for multiple series charts on dashboard (metabase#15612)", () => {
+    cy.createNativeQuestion({
+      name: "15612_1",
+      native: { query: "select 1 as axis, 5 as value" },
+      display: "bar",
+      visualization_settings: {
+        "graph.dimensions": ["AXIS"],
+        "graph.metrics": ["VALUE"],
+      },
+    }).then(({ body: { id: QUESTION1_ID } }) => {
+      cy.createNativeQuestion({
+        name: "15612_2",
+        native: { query: "select 1 as axis, 10 as value" },
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["AXIS"],
+          "graph.metrics": ["VALUE"],
+        },
+      }).then(({ body: { id: QUESTION2_ID } }) => {
+        cy.createDashboard("15612D").then(({ body: { id: DASHBOARD_ID } }) => {
+          // Add the first question to the dashboard
+          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cardId: QUESTION1_ID,
+          }).then(({ body: { id: DASH_CARD1_ID } }) => {
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cards: [
+                {
+                  id: DASH_CARD1_ID,
+                  card_id: QUESTION1_ID,
+                  row: 0,
+                  col: 0,
+                  sizeX: 12,
+                  sizeY: 8,
+                  series: [
+                    {
+                      id: QUESTION2_ID,
+                    },
+                  ],
+                  visualization_settings: {},
+                  parameter_mappings: [],
+                },
+              ],
+            });
+          });
+          cy.intercept("POST", `/api/card/${QUESTION2_ID}/query`).as(
+            "secondCardQuery",
+          );
+          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+          cy.wait("@secondCardQuery");
+          cy.get(".bar")
+            .last()
+            .trigger("mousemove");
+          popover().contains("10");
+        });
+      });
+    });
   });
 });
 

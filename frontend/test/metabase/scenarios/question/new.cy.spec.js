@@ -18,6 +18,63 @@ describe("scenarios > question > new", () => {
     cy.signInAsAdmin();
   });
 
+  it("data selector popover should not be too small (metabase#15591)", () => {
+    // Add 10 more databases
+    for (let i = 0; i < 10; i++) {
+      cy.request("POST", "/api/database", {
+        engine: "h2",
+        name: "Sample" + i,
+        details: {
+          db:
+            "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+        },
+        auto_run_queries: false,
+        is_full_sync: false,
+        schedules: {},
+      });
+    }
+
+    // First test UI for Simple question
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Pick your data");
+    cy.findByText("Sample3").isVisibleInPopover();
+
+    // Then move to the Custom question UI
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Sample3").isVisibleInPopover();
+  });
+
+  it("binning on values from joined table should work (metabase#15648)", () => {
+    // Simple question
+    openOrdersTable();
+    cy.findByText("Summarize").click();
+    cy.findByText("Group by")
+      .parent()
+      .findByText("Rating")
+      .click();
+    cy.get(".Visualization .bar").should("have.length", 6);
+
+    // Custom question ("Notebook")
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    popover().within(() => {
+      // Close expanded "Orders" section in order to bring everything else into view
+      cy.get(".List-section-title")
+        .contains(/Orders?/)
+        .click();
+      cy.get(".List-section-title")
+        .contains(/Products?/)
+        .click();
+      cy.findByText("Rating").click();
+    });
+    cy.findByText("Visualize").click();
+    cy.get(".Visualization .bar").should("have.length", 6);
+  });
+
   describe("browse data", () => {
     it("should load orders table and summarize", () => {
       cy.visit("/");
@@ -160,7 +217,7 @@ describe("scenarios > question > new", () => {
             .click();
         });
       // this step is maybe redundant since it fails to even find "by month"
-      cy.findByText("Hour of day");
+      cy.findByText("Hour of Day");
     });
 
     it.skip("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {

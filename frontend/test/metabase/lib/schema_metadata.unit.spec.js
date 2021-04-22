@@ -23,12 +23,9 @@ describe("schema_metadata", () => {
       expect(getFieldType({ base_type: TYPE.Date })).toEqual(TEMPORAL);
       expect(getFieldType({ base_type: TYPE.DateTime })).toEqual(TEMPORAL);
       expect(getFieldType({ base_type: TYPE.Time })).toEqual(TEMPORAL);
-      expect(
-        getFieldType({ semantic_type: TYPE.UNIXTimestampSeconds }),
-      ).toEqual(TEMPORAL);
-      expect(
-        getFieldType({ semantic_type: TYPE.UNIXTimestampMilliseconds }),
-      ).toEqual(TEMPORAL);
+      expect(getFieldType({ effective_type: TYPE.Date })).toEqual(TEMPORAL);
+      expect(getFieldType({ effective_type: TYPE.DateTime })).toEqual(TEMPORAL);
+      expect(getFieldType({ effective_type: TYPE.Time })).toEqual(TEMPORAL);
     });
     it("should know a number", () => {
       expect(getFieldType({ base_type: TYPE.BigInteger })).toEqual(NUMBER);

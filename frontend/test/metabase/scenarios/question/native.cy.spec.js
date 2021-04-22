@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   visitQuestionAdhoc,
+  mockSessionProperty,
 } from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 import { USER_GROUPS } from "__support__/cypress_data";
@@ -604,6 +605,43 @@ describe("scenarios > question > native", () => {
     cy.get(".Visualization").within(() => {
       cy.findAllByText("Doohickey");
       cy.findAllByText("Gizmo").should("not.exist");
+    });
+  });
+
+  ["old", "new"].forEach(test => {
+    it(`${test} syntax:\n should be able to select category Field Filter in Native query (metabase#15700)`, () => {
+      if (test === "old") {
+        mockSessionProperty("field-filter-operators-enabled?", false);
+      }
+      const widgetType = test === "old" ? "Category" : "String";
+
+      cy.visit("/");
+      cy.icon("sql").click();
+      cy.get(".ace_content").type("{{filter}}", {
+        parseSpecialCharSequences: false,
+      });
+      cy.findByText("Variable type")
+        .parent()
+        .findByText("Text")
+        .click();
+      popover()
+        .findByText("Field Filter")
+        .click();
+      popover().within(() => {
+        cy.findByText("Sample Dataset");
+        cy.findByText("Products").click();
+      });
+      popover()
+        .findByText("Category")
+        .click();
+      cy.findByText("Filter widget type")
+        .parent()
+        .find(".AdminSelect")
+        .findByText(widgetType)
+        .click();
+      popover()
+        .find(".List-section")
+        .should("have.length.gt", 1);
     });
   });
 });

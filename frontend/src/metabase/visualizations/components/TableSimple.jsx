@@ -197,7 +197,11 @@ export default class TableSimple extends Component {
               </thead>
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
-                  <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
+                  <tr
+                    key={rowIndex}
+                    ref={index === 0 ? "firstRow" : null}
+                    data-testid="table-row"
+                  >
                     {rows[rowIndex].map((value, columnIndex) => {
                       const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(

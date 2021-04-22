@@ -8,8 +8,9 @@
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the Metabase navbar?")
-  :type    :boolean
-  :default true)
+  :type       :boolean
+  :default    true
+  :visibility :authenticated)
 
 (def ^:dynamic db-max-results
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by

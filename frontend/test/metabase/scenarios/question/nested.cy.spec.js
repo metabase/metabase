@@ -527,6 +527,69 @@ describe("scenarios > question > nested", () => {
       cy.get(".ScalarValue").findByText(value);
     }
   });
+
+  describe.skip("should not remove user defined metric when summarizing based on saved question (metabase#15725)", () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.createNativeQuestion({
+        name: "15725",
+        native: { query: "select 'A' as cat, 5 as val" },
+      });
+      // Window object gets recreated for every `cy.visit`
+      // See: https://stackoverflow.com/a/65218352/8815185
+      cy.visit("/question/new", {
+        onBeforeLoad(win) {
+          cy.spy(win.console, "warn").as("consoleWarn");
+        },
+      });
+      cy.findByText("Custom question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("15725").click();
+      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Count of rows").click();
+    });
+
+    it("Count of rows AND Sum of VAL by CAT (metabase#15725-1)", () => {
+      cy.icon("add")
+        .last()
+        .click();
+      cy.findByText(/^Sum of/).click();
+      cy.findByText("VAL").click();
+      cy.findByText("Sum of VAL");
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText("CAT").click();
+
+      cy.findByText("Visualize").click();
+      cy.get("@consoleWarn").should(
+        "not.be.calledWith",
+        "Removing invalid MBQL clause",
+      );
+      cy.findByText("Sum of VAL");
+    });
+
+    it("Count of rows by CAT + add sum of VAL later from the sidebar (metabase#15725-2)", () => {
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText("CAT").click();
+
+      cy.findByText("Visualize").click();
+      cy.wait("@dataset");
+      cy.findAllByRole("button")
+        .contains("Summarize")
+        .click();
+      cy.findByText("Add a metric").click();
+      cy.findByText(/^Sum of/).click();
+      popover()
+        .findByText("VAL")
+        .click();
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+      cy.get("@consoleWarn").should(
+        "not.be.calledWith",
+        "Removing invalid MBQL clause",
+      );
+    });
+  });
 });
 
 function ordersJoinProducts(name) {

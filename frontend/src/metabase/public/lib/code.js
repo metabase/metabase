@@ -173,7 +173,7 @@ payload = {
 }
 token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
 
-iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token.decode("utf8")${
+iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
     optionsToHashParams(displayOptions)
       ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
       : ""

@@ -158,11 +158,12 @@ export default ComposedComponent =>
           {triggerElement}
           <ComposedComponent
             {...this.props}
-            children={children}
             isOpen={isOpen}
             onClose={this.onClose}
             target={() => this.target()}
-          />
+          >
+            {children}
+          </ComposedComponent>
         </a>
       );
     }

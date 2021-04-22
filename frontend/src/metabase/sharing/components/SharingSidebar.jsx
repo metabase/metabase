@@ -14,7 +14,7 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
-import { mapUIParameterToQueryParameter } from "metabase/meta/Parameter";
+import { normalizeParameterValue } from "metabase/meta/Parameter";
 
 import { connect } from "react-redux";
 
@@ -229,17 +229,14 @@ class SharingSidebar extends React.Component {
           value,
           id,
         } = parameter;
-        const {
-          type: mappedType,
-          value: mappedValue,
-        } = mapUIParameterToQueryParameter(type, value);
+        const normalizedValue = normalizeParameterValue(type, value);
         return {
           default: defaultValue,
           id,
           name,
           slug,
-          type: mappedType,
-          value: mappedValue,
+          type,
+          value: normalizedValue,
         };
       },
     );
