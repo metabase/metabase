@@ -76,7 +76,7 @@ describe("postgres > question > custom columns", () => {
     });
   });
 
-  it.skip("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
+  it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
     cy.findByText(PG_DB_NAME).click();
