@@ -238,7 +238,7 @@
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                  Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite                   |
+;;; |       Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite, GET /api/user/search        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
@@ -259,6 +259,28 @@
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
       (email/send-new-user-email! user @api/*current-user* join-url)))
   {:success true})
+
+(defn- search-users-query
+  "Generate the MBQL query used to power user search in `search-users` below."
+  [value limit]
+  {:database (db-id "User")
+   :type     :query
+   :query    {:source-table (throw)
+              :filter       [:contains [:field throw nil] value {:case-sensitive false}]
+              :limit        limit}})
+
+(defn- search-users
+  [value limit]
+  ;;; some stuff here
+  )
+
+(api/defendpoint GET "/search"
+  "Search for users. Full text contains search only for `value`, not fuzzy. Limit of `limit` results"
+  [value limit]
+  {value su/NonBlankString
+   limit (s/maybe su/IntStringGreaterThanZero)}
+    (search-users value (when limit (Integer/parseInt limit))))
+
 
 
 (api/define-routes)
