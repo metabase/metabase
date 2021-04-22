@@ -197,6 +197,28 @@ describe("scenarios > dashboard > subscriptions", () => {
         );
       });
     });
+
+    it.skip("should include text cards (metabase#15744)", () => {
+      const TEXT_CARD = "FooBar";
+
+      cy.visit("/dashboard/1");
+      cy.icon("pencil").click();
+      cy.icon("string").click();
+      cy.findByPlaceholderText(
+        "Write here, and use Markdown if you'd like",
+      ).type(TEXT_CARD);
+      cy.findByRole("button", { name: "Save" }).click();
+      cy.findByText("You're editing this dashboard.").should("not.exist");
+      assignRecipient();
+      // Click outside popover to close it and at the same time check that the text card content is shown as expected
+      cy.findByText(TEXT_CARD).click();
+      cy.findByText("Send email now").click();
+      cy.findByText(/^Sending/);
+      cy.findByText("Email sent");
+      cy.request("GET", "http://localhost:80/email").then(({ body }) => {
+        expect(body[0].html).to.include(TEXT_CARD);
+      });
+    });
   });
 
   describe("with Slack set up", () => {
