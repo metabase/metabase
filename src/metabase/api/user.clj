@@ -261,7 +261,14 @@
   {:success true})
 
 (defn- search-users [value limit]
-  (apply db/select User [:contains value] {:limit limit}))
+  (let [value-pat (str "%" value "%")]
+  (apply db/simple-select User
+         {:where
+          [:or
+           [:like :first_name value-pat]
+           [:like :last_name value-pat]
+           [:like :email value-pat]]
+          :limit limit})))
 
 (def max-user-search-limit 100)
 
