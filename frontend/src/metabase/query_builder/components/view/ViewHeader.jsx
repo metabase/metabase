@@ -115,10 +115,10 @@ export class ViewTitleHeader extends React.Component {
               <SavedQuestionHeaderButton
                 question={question}
                 active={isShowingQuestionDetailsSidebar}
-                onClick={() =>
+                onClick={
                   isShowingQuestionDetailsSidebar
-                    ? onCloseQuestionDetails()
-                    : onOpenQuestionDetails()
+                    ? onCloseQuestionDetails
+                    : onOpenQuestionDetails
                 }
               />
             </SavedQuestionHeaderButtonContainer>
