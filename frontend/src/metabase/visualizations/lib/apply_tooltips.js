@@ -3,7 +3,6 @@
 import d3 from "d3";
 import moment from "moment";
 import { getIn } from "icepick";
-import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -23,7 +22,6 @@ export function getClickHoverObject(
     event,
     element,
     settings,
-    groups,
   },
 ) {
   let { cols } = series[seriesIndex].data;
@@ -86,35 +84,25 @@ export function getClickHoverObject(
     const { key } = d.data;
 
     // We look through the rows to match up they key in d.data to the x value
-    // from some row.
-    const row = datas[seriesIndex].find(
+    // from some rows. There might be multiple rows in case of unaggregated data.
+    const rows = datas[seriesIndex].filter(
       ([x]) => key === x || (moment.isMoment(key) && key.isSame(x)),
     );
 
-    const xIndex = _.findIndex(
-      groups[0][0].all(),
-      groupedRow =>
-        key === groupedRow.key ||
-        (moment.isMoment(groupedRow.key) && key.isSame(groupedRow.key)),
-    );
+    // try to get rows from _origin
+    const rawRows = rows
+      .map(row => {
+        return row._origin && row._origin.row;
+      })
+      .filter(Boolean);
 
-    const groupByColumnName = {};
-    series.forEach((s, index) => {
-      const seriesGroup = groups[index];
-
-      if (seriesGroup) {
-        groupByColumnName[s.card._seriesKey] = seriesGroup[0];
-      }
-    });
-
-    // try to get row from _origin but fall back to the row we already have
-    const rawRow = (row && row._origin && row._origin.row) || row;
+    // aggregate rows to show correct values from unaggregated data
+    const aggregatedRow = aggregateRows(rawRows.length > 0 ? rawRows : rows);
 
     // Loop over *all* of the columns and create the new array
-    if (rawRow) {
+    if (aggregatedRow) {
       data = rawCols.map((col, i) => {
-        const isSeriesValueColumn = _.isEqual(cols[1].field_ref, col.field_ref);
-        if (isNormalized && isSeriesValueColumn) {
+        if (isNormalized && cols[1].field_ref === col.field_ref) {
           return {
             key: getColumnDisplayName(cols[1]),
             value: formatValue(d.data.value, {
@@ -125,21 +113,16 @@ export function getClickHoverObject(
             col: col,
           };
         }
-
-        const columnGroup = groupByColumnName[col.name];
-        const groupedRow = columnGroup ? columnGroup.all()[xIndex] : null;
-
-        const value = formatNull(
-          groupedRow != null ? groupedRow.value : rawRow[i],
-        );
-
         return {
           key: getColumnDisplayName(col),
-          value,
+          value: formatNull(aggregatedRow[i]),
           col: col,
         };
       });
-      dimensions = rawCols.map((column, i) => ({ column, value: rawRow[i] }));
+      dimensions = rawCols.map((column, i) => ({
+        column,
+        value: aggregatedRow[i],
+      }));
     }
   } else if (isBreakoutMultiseries) {
     // an area doesn't have any data, but might have a breakout series to show
@@ -216,12 +199,32 @@ function parseBooleanStringValue({ column, value }) {
   return value;
 }
 
+function aggregateRows(rows) {
+  if (!rows.length) {
+    return null;
+  }
+
+  const aggregatedRow = [...rows[0]];
+
+  for (let i = 1; i < rows.length; i++) {
+    // The first element is the X-axis value and should not be aggregated
+    for (let colIndex = 1; colIndex < rows[i].length; colIndex++) {
+      const value = rows[i][colIndex];
+
+      if (typeof value === "number") {
+        aggregatedRow[colIndex] += value;
+      }
+    }
+  }
+
+  return aggregatedRow;
+}
+
 export function setupTooltips(
   { settings, series, isScalarSeries, onHoverChange, onVisualizationClick },
   datas,
   chart,
   { isBrushing },
-  groups,
 ) {
   const stacked = isStacked(settings, datas);
   const normalized = isNormalized(settings, datas);
@@ -253,7 +256,6 @@ export function setupTooltips(
       event: d3.event,
       element: target,
       settings,
-      groups,
     });
   };
 

@@ -447,6 +447,194 @@ exports[`CheckBox should render "Yellow" correctly 1`] = `
 </div>
 `;
 
+exports[`CollapseSection should render "Collapsed by default" correctly 1`] = `
+<div
+  aria-expanded={false}
+  className="collapse-section"
+  role="tab"
+>
+  <div
+    className="collapse-section__header cursor-pointer flex align-center"
+    onClick={[Function]}
+    onKeyDown={[Function]}
+    role="button"
+    tabIndex="0"
+  >
+    <svg
+      aria-label="chevronright icon"
+      className="Icon Icon-chevronright mr1 Icon-sc-1x67v3y-1 hFNRPZ"
+      fill="currentcolor"
+      height={12}
+      role="img"
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M12 1 L26 16 L12 31 L8 27 L18 16 L8 5 z "
+      />
+    </svg>
+    <span
+      className="collapse-section__header-text flex align-center"
+    >
+      Section header
+    </span>
+  </div>
+  <div
+    className="collapse-section__body-container"
+    role="tabpanel"
+  />
+</div>
+`;
+
+exports[`CollapseSection should render "Components in header" correctly 1`] = `
+<div
+  aria-expanded={false}
+  className="collapse-section"
+  role="tab"
+>
+  <div
+    className="collapse-section__header cursor-pointer flex align-center"
+    onClick={[Function]}
+    onKeyDown={[Function]}
+    role="button"
+    tabIndex="0"
+  >
+    <svg
+      aria-label="chevronright icon"
+      className="Icon Icon-chevronright mr1 Icon-sc-1x67v3y-1 hFNRPZ"
+      fill="currentcolor"
+      height={12}
+      role="img"
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M12 1 L26 16 L12 31 L8 27 L18 16 L8 5 z "
+      />
+    </svg>
+    <span
+      className="collapse-section__header-text flex align-center"
+    >
+      <div>
+        <svg
+          aria-label="folder icon"
+          className="Icon Icon-folder mr1 Icon-sc-1x67v3y-1 hFNRPZ"
+          fill="currentcolor"
+          height={12}
+          role="img"
+          viewBox="0 0 32 32"
+          width={12}
+        >
+          <path
+            d="M0 5l.01 21.658a2 2 0 0 0 2 1.999H30a2 2 0 0 0 2-2V7.705a2 2 0 0 0-2-2H17.51a1 1 0 0 1-.924-.615l-.614-1.474A1 1 0 0 0 15.049 3H1.999a2 2 0 0 0-2 2z"
+          />
+        </svg>
+        Component header
+      </div>
+    </span>
+  </div>
+  <div
+    className="collapse-section__body-container"
+    role="tabpanel"
+  />
+</div>
+`;
+
+exports[`CollapseSection should render "Header and body classes" correctly 1`] = `
+<div
+  aria-expanded={true}
+  className="collapse-section collapse-section--expanded"
+  role="tab"
+>
+  <div
+    className="collapse-section__header cursor-pointer flex align-center text-brand flex-reverse justify-between p1 border-bottom"
+    onClick={[Function]}
+    onKeyDown={[Function]}
+    role="button"
+    tabIndex="0"
+  >
+    <svg
+      aria-label="chevrondown icon"
+      className="Icon Icon-chevrondown mr1 Icon-sc-1x67v3y-1 hFNRPZ"
+      fill="currentcolor"
+      height={12}
+      role="img"
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+      />
+    </svg>
+    <span
+      className="collapse-section__header-text flex align-center"
+    >
+      Section header
+    </span>
+  </div>
+  <div
+    className="collapse-section__body-container"
+    role="tabpanel"
+  >
+    <div
+      className="collapse-section__body-container p2"
+    >
+      <div>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus neque tellus, mattis ut felis non, tempus mollis lacus. Vivamus nulla massa, accumsan non ligula eu, dapibus volutpat libero. Mauris sollicitudin dolor et ipsum fringilla auctor. Praesent et diam non nisi consequat ornare. Aenean et risus vel dolor maximus dapibus a id massa. Nam finibus quis libero eu finibus. Sed vehicula ac enim pellentesque luctus. Phasellus vehicula et ipsum porttitor mollis. Fusce blandit lacus a elit pretium, vestibulum porta nisi vehicula. Aliquam vel ligula enim. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Pellentesque eget porta mi. Duis et lectus eget dolor convallis mollis. Sed commodo nec urna eget egestas.
+        <br />
+        <br />
+        Mauris in ante sit amet ipsum tempus consequat. Curabitur auctor massa vitae dui auctor scelerisque. Donec in leo a libero commodo sodales. Integer egestas lacinia elit, vitae cursus sem mollis ut. Proin ut dapibus metus, vel accumsan justo. Pellentesque eget finibus elit, ut commodo felis. Ut non lacinia metus. Maecenas eget bibendum nisl.
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`CollapseSection should render "Settable collpased/expanded initial state" correctly 1`] = `
+<div
+  aria-expanded={true}
+  className="collapse-section collapse-section--expanded"
+  role="tab"
+>
+  <div
+    className="collapse-section__header cursor-pointer flex align-center"
+    onClick={[Function]}
+    onKeyDown={[Function]}
+    role="button"
+    tabIndex="0"
+  >
+    <svg
+      aria-label="chevrondown icon"
+      className="Icon Icon-chevrondown mr1 Icon-sc-1x67v3y-1 hFNRPZ"
+      fill="currentcolor"
+      height={12}
+      role="img"
+      viewBox="0 0 32 32"
+      width={12}
+    >
+      <path
+        d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+      />
+    </svg>
+    <span
+      className="collapse-section__header-text flex align-center"
+    >
+      Foo
+    </span>
+  </div>
+  <div
+    className="collapse-section__body-container"
+    role="tabpanel"
+  >
+    <div
+      className="collapse-section__body-container"
+    >
+      foo foo foo foo foo
+    </div>
+  </div>
+</div>
+`;
+
 exports[`ColorPicker should render "" correctly 1`] = `
 <div
   className="inline-block"

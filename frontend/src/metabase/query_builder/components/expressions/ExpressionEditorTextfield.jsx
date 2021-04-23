@@ -9,6 +9,7 @@ import cx from "classnames";
 
 import { format } from "metabase/lib/expressions/format";
 import { processSource } from "metabase/lib/expressions/process";
+import { countMatchingParentheses } from "metabase/lib/expressions/tokenizer";
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
 
@@ -238,8 +239,10 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   onInputBlur = () => {
     this.clearSuggestions();
-    const { compileError } = this.state;
-    this.setState({ displayCompileError: compileError });
+    const { tokenizerError, compileError } = this.state;
+    const displayError =
+      tokenizerError.length > 0 ? tokenizerError : compileError;
+    this.setState({ displayError });
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (this.state.expression) {
@@ -247,8 +250,8 @@ export default class ExpressionEditorTextfield extends React.Component {
         console.warn("isExpression=false", this.state.expression);
       }
       this.props.onChange(this.state.expression);
-    } else if (this.state.compileError) {
-      this.props.onError(this.state.compileError);
+    } else if (displayError) {
+      this.props.onError(displayError);
     } else {
       this.props.onError({ message: t`Invalid expression` });
     }
@@ -311,12 +314,31 @@ export default class ExpressionEditorTextfield extends React.Component {
     const showSuggestions =
       !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
 
+    const tokenizerError = [];
+    const mismatchedParentheses = countMatchingParentheses(source);
+    const mismatchedError =
+      mismatchedParentheses === 1
+        ? t`Expecting a closing parenthesis`
+        : mismatchedParentheses > 1
+        ? t`Expecting ${mismatchedParentheses} closing parentheses`
+        : mismatchedParentheses === -1
+        ? t`Expecting an opening parenthesis`
+        : mismatchedParentheses < -1
+        ? t`Expecting ${-mismatchedParentheses} opening parentheses`
+        : null;
+    if (mismatchedError) {
+      tokenizerError.push({
+        message: mismatchedError,
+      });
+    }
+
     this.setState({
       source,
       expression,
       syntaxTree,
+      tokenizerError,
       compileError,
-      displayCompileError: null,
+      displayError: null,
       suggestions: showSuggestions ? suggestions : [],
       helpText,
       highlightedSuggestionIndex: 0,
@@ -336,7 +358,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { placeholder } = this.props;
     const {
       compileError,
-      displayCompileError,
+      displayError,
       source,
       suggestions,
       syntaxTree,
@@ -378,7 +400,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           onClick={this.onInputClick}
           autoFocus
         />
-        <Errors compileError={displayCompileError} />
+        <Errors compileError={displayError} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
         <ExpressionEditorSuggestions
           suggestions={suggestions}
