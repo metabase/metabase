@@ -240,21 +240,21 @@
      ["bar" "20200421164300"]
      ["baz" "20210421164300"]]]])
 
-(deftest yyyymmddhhss-dates
-  (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql}
+(deftest yyyymmddhhmmss-dates
+  (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery :snowflake :redshift}
     (is (= (case driver/*driver*
              :mongo
              [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
               [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
               [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]]
-             :h2
+             (:h2 :mysql)
              [[1 "foo" #t "2019-04-21T16:43"]
               [2 "bar" #t "2020-04-21T16:43"]
               [3 "baz" #t "2021-04-21T16:43"]]
-             :mysql
-             [[1 "foo" #t "2019-04-21T16:43"]
-              [2 "bar" #t "2020-04-21T16:43"]
-              [3 "baz" #t "2021-04-21T16:43"]]
+             (:bigquery :redshift)
+             [[1 "foo" #t "2019-04-21T16:43Z[UTC]"]
+              [2 "bar" #t "2020-04-21T16:43Z[UTC]"]
+              [3 "baz" #t "2021-04-21T16:43Z[UTC]"]]
              :postgres
              [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
               [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
@@ -262,9 +262,12 @@
              :oracle
              [[1M "foo" #t "2019-04-21T16:43"]
               [2M "bar" #t "2020-04-21T16:43"]
-              [3M "baz" #t "2021-04-21T16:43"]])
+              [3M "baz" #t "2021-04-21T16:43"]]
+             [])
            ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
-           (mt/rows (mt/dataset yyyymmddhhss-times
-                                (qp/process-query
-                                 (assoc (mt/mbql-query times)
-                                        :middleware {:format-rows? false}))))))))
+           (sort-by
+            first
+            (mt/rows (mt/dataset yyyymmddhhss-times
+                                 (qp/process-query
+                                  (assoc (mt/mbql-query times)
+                                         :middleware {:format-rows? false})))))))))

@@ -436,6 +436,10 @@
          (>= (count components) 2))
     true))
 
+(defmethod sql.qp/cast-temporal-string [:bigquery :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion_strategy expr]
+  (hsql/call :parse_datetime (hsql/raw "'%Y%m%d%H%M%S'") expr))
+
 (defmethod sql.qp/->honeysql [:bigquery (class Field)]
   [driver field]
   (let [parent-method (get-method sql.qp/->honeysql [:sql (class Field)])

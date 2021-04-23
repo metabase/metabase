@@ -123,7 +123,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion_strategy expr]
-  (hsql/call :to_timestamp expr "YYYYMMDDHH24MISS"))
+  (hsql/call :to_timestamp expr (hsql/raw "'YYYYMMDDHH24MISS'")))
 
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion_strategy expr]
