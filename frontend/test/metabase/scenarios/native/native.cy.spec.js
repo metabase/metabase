@@ -229,6 +229,7 @@ describe("scenarios > question > native", () => {
     cy.findByText("Simple question").click();
     popover().within(() => {
       cy.findByText("Saved Questions").click();
+      cy.findByText("Robert Tableton's Personal Collection").click();
       cy.findByText(QUESTION).click();
     });
 
