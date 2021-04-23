@@ -912,31 +912,6 @@ jobs:
                   - store_test_results:
                       path: cypress/results
 
-  fe-tests-cypress-smoketest:
-    parameters:
-      e:
-        type: executor
-        default: clojure-and-node-and-browsers
-      cypress-group:
-        type: string
-      <<: *Params
-    executor: << parameters.e >>
-    environment:
-      CYPRESS_GROUP: << parameters.cypress-group >>
-      DISPLAY: ""
-    steps:
-      - run-yarn-command:
-          command-name: Run Cypress tests
-          command: run test-cypress-smoketest
-          before-steps:
-            - restore_cache:
-                name: Restore cached uberjar built in previous step
-                <<: *CacheKeyUberjar
-      - store_artifacts:
-          path: /home/circleci/metabase/metabase/cypress
-      - store_test_results:
-          path: cypress/results
-
 
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
@@ -1248,40 +1223,3 @@ workflows:
                 port: 3306
           <<: *Matrix
 
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 9 * * *"
-          filters:
-            branches:
-              only:
-                - master
-                - /release-*/
-    jobs:
-      - checkout
-
-      - be-deps:
-          requires:
-            - checkout
-
-      - fe-deps:
-          requires:
-            - checkout
-
-      # Build the OSS version of the uberjar.
-      - build-uberjar-drivers:
-          requires:
-            - be-deps
-      - build-uberjar-frontend:
-          requires:
-            - fe-deps
-      - build-uberjar:
-          requires:
-            - build-uberjar-drivers
-            - build-uberjar-frontend
-
-      - fe-tests-cypress-smoketest:
-          name: fe-tests-cypress-smoketest
-          requires:
-            - build-uberjar
-          cypress-group: "default"
