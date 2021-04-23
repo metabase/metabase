@@ -1,6 +1,5 @@
 (ns metabase.cmd.rotate-encryption-key-test
-  (:require [clojure.java.io :as io]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.cmd :as cmd]
@@ -29,13 +28,9 @@
     :postgres (db.spec/postgres (tx/dbdef->connection-details :postgres :db {:database-name db-name}))
     :mysql (db.spec/mysql (tx/dbdef->connection-details :mysql :db {:database-name db-name}))))
 
-(defn- abs-path
-  [path]
-  (.getAbsolutePath (io/file path)))
-
-(defn- raw-value [key]
+(defn- raw-value [keyy]
   (:value (first (jdbc/query mdb.connection/*jdbc-spec*
-                             ["select value from setting where setting.key=?;" key]))))
+                             ["select value from setting where setting.key=?;" keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
   (with-redefs [rotate-encryption-key! #(throw "err")
@@ -61,34 +56,38 @@
             (when-not (= driver/*driver* :h2)
               (tx/create-db! driver/*driver* {:database-name db-name}))
             (load-from-h2/load-from-h2! h2-fixture-db-file)
-            (db/insert! Setting {:key "setting0", :value "val0"})
+            (db/insert! Setting {:key "nocrypt", :value "unencrypted value"})
             (db/insert! Setting {:key "settings-last-updated", :value original-timestamp})
             (eu/with-secret-key k1
-              (db/insert! Setting {:key "setting1", :value "val1"})
+              (db/insert! Setting {:key "k1crypted", :value "encrypted with k1"})
               (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"}))
 
             (testing "rotating with the same key is a noop"
               (eu/with-secret-key k1
                 (rotate-encryption-key! k1)
                 ;; plain->newkey
-                (is (not (= "val0" (raw-value "setting0"))))
-                (is (= "val0" (db/select-one-field :value Setting :key "setting0")))
-                ;; oldkey->newkey
-                (is (not (= "val1" (raw-value "setting1"))))
-                (is (= "val1" (db/select-one-field :value Setting :key "setting1")))))
+                (testing "for unencrypted values"
+                  (is (not= "unencrypted value" (raw-value "nocrypt")))
+                  (is (= "unencrypted value" (db/select-one-field :value Setting :key "nocrypt"))))
+                ;; samekey->samekey
+                (testing "for values encrypted with the same key"
+                  (is (not= "encrypted with k1" (raw-value "k1crypted")))
+                  (is (= "encrypted with k1" (db/select-one-field :value Setting :key "k1crypted"))))))
 
             (testing "settings-last-updated is updated AND plaintext"
-              (is (not (= original-timestamp (raw-value "settings-last-updated"))))
+              (is (not= original-timestamp (raw-value "settings-last-updated")))
               (is (not (encrypt/possibly-encrypted-string? (raw-value "settings-last-updated")))))
 
             (testing "rotating with a new key is recoverable"
               (eu/with-secret-key k1 (rotate-encryption-key! k2))
-              (eu/with-secret-key k2
-                (is (= "val0" (db/select-one-field :value Setting :key "setting0")))
-                (is (= {:db "/tmp/test.db"} (db/select-one-field :details Database :id 1))))
-              (eu/with-secret-key k1
-                (is (not (= "val0" (db/select-one-field :value Setting :key "setting0"))))
-                (is (not (= "{\"db\":\"/tmp/test.db\"}" (db/select-one-field :details Database :id 1))))))
+              (testing "with new key"
+                (eu/with-secret-key k2
+                  (is (= "unencrypted value" (db/select-one-field :value Setting :key "nocrypt")))
+                  (is (= {:db "/tmp/test.db"} (db/select-one-field :details Database :id 1)))))
+              (testing "but not with old key"
+                (eu/with-secret-key k1
+                  (is (not= "unencrypted value" (db/select-one-field :value Setting :key "nocrypt")))
+                  (is (not= "{\"db\":\"/tmp/test.db\"}" (db/select-one-field :details Database :id 1))))))
 
             (testing "full rollback when a database details looks encrypted with a different key than the current one"
               (eu/with-secret-key k3
@@ -115,7 +114,7 @@
               (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
               (eu/with-secret-key k2
                 (rotate-encryption-key! nil))
-              (is (= "val0" (raw-value "setting0"))))
+              (is (= "unencrypted value" (raw-value "nocrypt"))))
 
             (testing "short keys fail to rotate"
               (is (thrown? Throwable (rotate-encryption-key! "short"))))))))))
