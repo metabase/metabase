@@ -226,3 +226,44 @@
                  (count (mt/rows (mt/dataset string-times
                                    (mt/run-mbql-query times
                                      {:filter   [:= [:datetime-field $d :day] "2008-10-19"]})))))))))))
+
+(mt/defdataset yyyymmddhhss-times
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_text"
+              :base-type :type/Text
+              :effective-type :type/DateTime
+              :coercion-strategy :Coercion/YYYYMMDDHHMMSSString->Temporal}]
+    [["foo" "20190421164300"]
+     ["bar" "20200421164300"]
+     ["baz" "20210421164300"]]]])
+
+(deftest yyyymmddhhss-dates
+  (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql}
+    (is (= (case driver/*driver*
+             :mongo
+             [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+              [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+              [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]]
+             :h2
+             [[1 "foo" #t "2019-04-21T16:43"]
+              [2 "bar" #t "2020-04-21T16:43"]
+              [3 "baz" #t "2021-04-21T16:43"]]
+             :mysql
+             [[1 "foo" #t "2019-04-21T16:43"]
+              [2 "bar" #t "2020-04-21T16:43"]
+              [3 "baz" #t "2021-04-21T16:43"]]
+             :postgres
+             [[1 "foo" (java.time.OffsetDateTime/from #t "2019-04-21T16:43Z")]
+              [2 "bar" (java.time.OffsetDateTime/from #t "2020-04-21T16:43Z")]
+              [3 "baz" (java.time.OffsetDateTime/from #t "2021-04-21T16:43Z")]]
+             :oracle
+             [[1M "foo" #t "2019-04-21T16:43"]
+              [2M "bar" #t "2020-04-21T16:43"]
+              [3M "baz" #t "2021-04-21T16:43"]])
+           ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
+           (mt/rows (mt/dataset yyyymmddhhss-times
+                                (qp/process-query
+                                 (assoc (mt/mbql-query times)
+                                        :middleware {:format-rows? false}))))))))
