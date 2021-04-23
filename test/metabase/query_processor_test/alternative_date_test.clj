@@ -8,7 +8,8 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import java.time.OffsetDateTime))
 
 (deftest semantic-type->unix-timestamp-unit-test
   (testing "every descendant of `:Coercion/UNIXTime->Temporal` has a unit associated with it"
@@ -255,9 +256,9 @@
               [2 "bar" #t "2020-04-21T16:43"]
               [3 "baz" #t "2021-04-21T16:43"]]
              :postgres
-             [[1 "foo" (java.time.OffsetDateTime/from #t "2019-04-21T16:43Z")]
-              [2 "bar" (java.time.OffsetDateTime/from #t "2020-04-21T16:43Z")]
-              [3 "baz" (java.time.OffsetDateTime/from #t "2021-04-21T16:43Z")]]
+             [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+              [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+              [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]
              :oracle
              [[1M "foo" #t "2019-04-21T16:43"]
               [2M "bar" #t "2020-04-21T16:43"]
