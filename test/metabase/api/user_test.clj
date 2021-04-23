@@ -784,4 +784,21 @@
                :first_name  "Crowberto"
                :last_name   "Corv"
                :common_name "Crowberto Corv"}]
-             (mt/user-http-request :rasta :get 200 "user/search" :q "crow"))))))
+             (mt/user-http-request :rasta :get 200 "user/search" :q "crow"))))
+    (testing "Check that admin search gets more stuff"
+      (is (= (->> [
+              {:email                  "crowberto@metabase.com"
+               :first_name             "Crowberto"
+               :last_name              "Corv"
+               :is_superuser           true
+               :group_ids              #{(u/the-id (group/all-users))
+                                         (u/the-id (group/admin))}
+               :personal_collection_id true
+               :common_name            "Crowberto Corv"}]
+                  (map (partial merge user-defaults))
+                  (map #(dissoc % :is_qbnewb :last_login)))
+             (->> (mt/user-http-request :crowberto :get 200 "user/search" :q "crow")
+                  (filter mt/test-user?)
+                  group-ids->sets
+                  mt/boolean-ids-and-timestamps
+                  (map #(dissoc % :is_qbnewb :last_login))))))))
