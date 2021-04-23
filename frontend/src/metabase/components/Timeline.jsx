@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import _ from "underscore";
 import styled from "styled-components";
 import moment from "moment";
@@ -49,7 +48,7 @@ const Timeline = ({ className, items = [], renderFooter }) => {
     <TimelineContainer
       leftShift={halfIconSize}
       bottomShift={halfIconSize}
-      className={cx(className, "timeline")}
+      className={className}
     >
       <Border borderShift={halfIconSize} />
       {sortedFormattedItems.map((item, index) => {
@@ -60,24 +59,14 @@ const Timeline = ({ className, items = [], renderFooter }) => {
           <TimelineItem
             key={key}
             leftShift={halfIconSize}
-            className="timeline--item flex align-start justify-start mb2"
+            className="flex align-start justify-start mb2"
           >
-            <Icon
-              className="timeline--item-icon text-light"
-              name={icon}
-              size={iconSize}
-            />
-            <div className="timeline--item-details ml1">
-              <div className="timeline--item-title text-bold">{title}</div>
-              <div className="timeline--item-timestamp text-medium text-small">
-                {formattedTimestamp}
-              </div>
-              <div className="timeline--item-description">{description}</div>
-              {_.isFunction(renderFooter) && (
-                <div className="timeline--item-footer">
-                  {renderFooter(item)}
-                </div>
-              )}
+            <Icon className="text-light" name={icon} size={iconSize} />
+            <div className="ml1">
+              <div className="text-bold">{title}</div>
+              <div className="text-medium text-small">{formattedTimestamp}</div>
+              <div>{description}</div>
+              {_.isFunction(renderFooter) && <div>{renderFooter(item)}</div>}
             </div>
           </TimelineItem>
         );
