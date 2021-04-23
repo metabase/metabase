@@ -260,14 +260,14 @@
       (email/send-new-user-email! user @api/*current-user* join-url)))
   {:success true})
 
-(defn- search-users [value limit]
-  (let [value-pat (str "%" value "%")]
-  (apply db/simple-select User
+(defn- search-users [query limit]
+  (let [query-pat (str "%" query "%")]
+  (db/simple-select User
          {:where
           [:or
-           [:like :first_name value-pat]
-           [:like :last_name value-pat]
-           [:like :email value-pat]]
+           [:like [:%lower.first_name] [query-pat]]
+           [:like [:%lower.last_name] [query-pat]]
+           [:like [:%lower.email] [query-pat]]]
           :limit limit})))
 
 (def max-user-search-limit 100)
@@ -276,10 +276,10 @@
   "Search for users. Full text contains search only for `value`, not fuzzy.
   It seems more useful to search whatever field.
   Limit of `limit` results, defaults to 100"
-  [value limit]
-  {value su/NonBlankString
+  [q limit]
+  {q su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
-    (-> (search-users value (min max-user-search-limit (if limit (Integer/parseInt limit) max-user-search-limit)))
+    (-> (search-users q (min max-user-search-limit (if limit (Integer/parseInt limit) max-user-search-limit)))
         (hydrate :group_ids)))
 
 

@@ -747,7 +747,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                  Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite                   |
+;;; |       Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite, GET /api/user/search        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest update-qbnewb-test
@@ -775,3 +775,13 @@
     (testing "Check that non-superusers are denied access to resending invites"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
+
+(deftest search-test
+  (testing "GET /api/user/search"
+    (testing "Check that searching gets some searching"
+      (is (= [{:id          (mt/user->id :crowberto)
+               :email       "crowberto@metabase.com"
+               :first_name  "Crowberto"
+               :last_name   "Corv"
+               :common_name "Crowberto Corv"}]
+             (mt/user-http-request :rasta :get 200 "user/search" :q "crow"))))))
