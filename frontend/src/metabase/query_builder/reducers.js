@@ -44,6 +44,8 @@ import {
   onOpenChartType,
   onCloseChartType,
   onCloseSidebars,
+  onOpenQuestionDetails,
+  onCloseQuestionDetails,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -68,6 +70,7 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
+  isShowingQuestionDetailsSidebar: false,
 };
 
 // this is used to close toher sidebar when one is updated
@@ -202,6 +205,15 @@ export const uiControls = handleActions(
       isShowingChartTypeSidebar: true,
     }),
     [onCloseChartType]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenQuestionDetails]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingQuestionDetailsSidebar: true,
+    }),
+    [onCloseQuestionDetails]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),

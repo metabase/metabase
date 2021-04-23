@@ -17,7 +17,8 @@
   border-radius: var(--default-button-border-radius);
 }
 
-.Button:hover {
+.Button:hover,
+.Button--active {
   color: var(--color-brand);
   border-color: color(var(--color-border) blackness(+ 12%));
   background: var(--color-bg-light);
