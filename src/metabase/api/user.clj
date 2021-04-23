@@ -262,13 +262,19 @@
 
 (defn- search-users [query limit]
   (let [query-pat (str "%" query "%")]
-  (db/simple-select User
-         {:where
-          [:or
-           [:like [:%lower.first_name] [query-pat]]
-           [:like [:%lower.last_name] [query-pat]]
-           [:like [:%lower.email] [query-pat]]]
-          :limit limit})))
+    (cond->
+      (db/select (vec (cons User
+                            (if api/*is-superuser?*
+                              user/admin-or-self-visible-columns
+                              user/non-admin-or-self-visible-columns)))
+                 (-> {}
+                     (hh/merge-where
+                       [:or
+                        [:like [:%lower.first_name] [query-pat]]
+                        [:like [:%lower.last_name] [query-pat]]
+                        [:like [:%lower.email] [query-pat]]])
+                     (hh/limit limit)))
+      api/*is-superuser?* (hydrate :personal_collection_id :group_ids))))
 
 (def max-user-search-limit 100)
 
@@ -279,8 +285,7 @@
   [q limit]
   {q su/NonBlankString
    limit (s/maybe su/IntStringGreaterThanZero)}
-    (-> (search-users q (min max-user-search-limit (if limit (Integer/parseInt limit) max-user-search-limit)))
-        (hydrate :group_ids)))
+    (search-users q (min max-user-search-limit (if limit (Integer/parseInt limit) max-user-search-limit))))
 
 
 
