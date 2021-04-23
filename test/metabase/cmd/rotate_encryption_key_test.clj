@@ -90,26 +90,28 @@
                 (is (not (= "val0" (db/select-one-field :value Setting :key "setting0"))))
                 (is (not (= "{\"db\":\"/tmp/test.db\"}" (db/select-one-field :details Database :id 1))))))
 
-            (testing "full rollback when a setting looks encrypted with a different key than the current one"
+            (testing "full rollback when a database details looks encrypted with a different key than the current one"
               (eu/with-secret-key k3
-                (db/insert! Setting {:key "setting3", :value "val3"}))
+                (db/insert! Database {:name "k3", :engine :mysql, :details "{\"db\":\"/tmp/k3.db\"}"}))
               (eu/with-secret-key k2
-                (db/insert! Setting {:key "setting2", :value "val2"})
-                (is (thrown? Throwable (rotate-encryption-key! k3))))
+                (db/insert! Database {:name "k2", :engine :mysql, :details "{\"db\":\"/tmp/k2.db\"}"})
+                (is (thrown? clojure.lang.ExceptionInfo (rotate-encryption-key! k3))))
               (eu/with-secret-key k3
-                (is (not (= "val2" (:value (first (db/select Setting :key [:= "setting2"]))))))
-                (is (= "val3" (:value (first (db/select Setting :key [:= "setting3"])))))))
+                (is (not= {:db "/tmp/k2.db"} (db/select-one-field :details Database :name "k2")))
+                (is (= {:db "/tmp/k3.db"} (db/select-one-field :details Database :name "k3")))))
 
             (testing "full rollback when a database looks encrypted with a different key than the current one"
-              (eu/with-secret-key k3
-                (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"}))
-              (eu/with-secret-key k2
-                (is (thrown? Throwable (rotate-encryption-key! k3))))
-              (eu/with-secret-key k3
-                (is (= {:db "/tmp/test.db"} (db/select-one-field :details Database :id 1)))))
+              (let [db-details {:db "/tmp/test.db"}]
+                (eu/with-secret-key k3
+                  (db/update! Database 1 {:details db-details}))
+                (eu/with-secret-key k3
+                  (is (= db-details (db/select-one-field :details Database :id 1))))
+                (eu/with-secret-key k2
+                  (is (nil? (rotate-encryption-key! k3))))
+                (eu/with-secret-key k3
+                  (is (= db-details (db/select-one-field :details Database :id 1))))))
 
             (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
-              (db/delete! Setting :key "setting3")
               (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
               (eu/with-secret-key k2
                 (rotate-encryption-key! nil))
