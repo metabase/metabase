@@ -9,7 +9,10 @@ import cx from "classnames";
 
 import { format } from "metabase/lib/expressions/format";
 import { processSource } from "metabase/lib/expressions/process";
-import { countMatchingParentheses } from "metabase/lib/expressions/tokenizer";
+import {
+  tokenize,
+  countMatchingParentheses,
+} from "metabase/lib/expressions/tokenizer";
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
 
@@ -241,7 +244,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.clearSuggestions();
     const { tokenizerError, compileError } = this.state;
     const displayError =
-      tokenizerError.length > 0 ? tokenizerError : compileError;
+      tokenizerError.length > 0 ? _.first(tokenizerError) : compileError;
     this.setState({ displayError });
 
     // whenever our input blurs we push the updated expression to our parent if valid
@@ -314,8 +317,8 @@ export default class ExpressionEditorTextfield extends React.Component {
     const showSuggestions =
       !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
 
-    const tokenizerError = [];
-    const mismatchedParentheses = countMatchingParentheses(source);
+    const { tokens, errors: tokenizerError } = tokenize(source);
+    const mismatchedParentheses = countMatchingParentheses(tokens);
     const mismatchedError =
       mismatchedParentheses === 1
         ? t`Expecting a closing parenthesis`

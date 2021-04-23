@@ -135,11 +135,12 @@ describe("metabase/lib/expressions/tokenizer", () => {
   });
 
   it("should count matching parentheses", () => {
-    expect(countMatchingParentheses("()")).toEqual(0);
-    expect(countMatchingParentheses("(")).toEqual(1);
-    expect(countMatchingParentheses(")")).toEqual(-1);
-    expect(countMatchingParentheses("(A+(")).toEqual(2);
-    expect(countMatchingParentheses("SUMIF(")).toEqual(1);
-    expect(countMatchingParentheses("COUNTIF(Deal))")).toEqual(-1);
+    const count = expr => countMatchingParentheses(tokenize(expr).tokens);
+    expect(count("()")).toEqual(0);
+    expect(count("(")).toEqual(1);
+    expect(count(")")).toEqual(-1);
+    expect(count("(A+(")).toEqual(2);
+    expect(count("SUMIF(")).toEqual(1);
+    expect(count("COUNTIF(Deal))")).toEqual(-1);
   });
 });
