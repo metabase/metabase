@@ -8273,6 +8273,9 @@ databaseChangeLog:
       id: 301
       author: dpsutton
       comment: Added 0.40.0 renaming collection_revision to collection_permission_graph_revision
+      validCheckSum:
+        - 8:bd0440e623f3dd2e40f6daea97989dac
+        - 8:aaf1a546a6f5932a157d016f72c02f8a
       failOnError: false # mysql and h2 don't have this sequence
       preConditions:
         - onFail: MARK_RAN
