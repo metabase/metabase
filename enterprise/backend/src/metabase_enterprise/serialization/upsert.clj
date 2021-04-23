@@ -70,7 +70,7 @@
   `(try
      (do ~@body)
      (catch Throwable e#
-       (log/error (u/format-color 'red "%s: %s" ~message (.getMessage e#)))
+       (log/error e# (u/format-color 'red "%s: %s" ~message (.getMessage e#)))
        nil)))
 
 (defn- insert-many-individually!

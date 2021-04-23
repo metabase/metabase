@@ -53,7 +53,7 @@
         (load/load-settings path context)
         (load/load-dependencies path context))
       (catch Throwable e
-        (log/error (trs "Error loading dump: {0}" (.getMessage e)))))))
+        (log/error e (trs "Error loading dump: {0}" (.getMessage e)))))))
 
 (defn- select-entities-in-collections
   ([model collections]

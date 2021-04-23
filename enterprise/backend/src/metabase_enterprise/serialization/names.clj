@@ -134,8 +134,8 @@
 (def ^:private ^{:arglists '([context model entity-name])} path->context
   "Extract entities from a logical path."
   ;(memoize path->context*)
-   path->context*
-  )
+   path->context*)
+
 
 (defmethod path->context* "databases"
   [context _ db-name]
@@ -232,7 +232,8 @@
                          (str/join ", " (map name (keys (:value (ex-data e)))))
                          fully-qualified-name)
                     {:fully-qualified-name fully-qualified-name
-                     :context              context})))))))
+                     :context              context}
+                    e)))))))
 
 (defn name-for-logging
   "Return a string representation of entity suitable for logs"
