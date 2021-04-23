@@ -276,7 +276,7 @@
                      (hh/limit limit)))
       api/*is-superuser?* (hydrate :personal_collection_id :group_ids))))
 
-(def max-user-search-limit 100)
+(def ^:private max-user-search-limit 100)
 
 (api/defendpoint GET "/search"
   "Search for users. Full text contains search only for `value`, not fuzzy.
