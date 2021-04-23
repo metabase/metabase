@@ -2,20 +2,19 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
+import styled from "styled-components";
 import { Box } from "grid-styled";
 
-import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-
+import SavedQuestionHeaderButton from "metabase/questions/components/SavedQuestionHeaderButton";
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionEntityMenu from "./QuestionEntityMenu";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
@@ -44,6 +43,7 @@ const viewTitleHeaderPropTypes = {
   isNativeEditorOpen: PropTypes.bool,
   isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
+  isShowingQuestionDetailsSidebar: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -53,6 +53,8 @@ const viewTitleHeaderPropTypes = {
   onCloseSummary: PropTypes.func,
   onAddFilter: PropTypes.func,
   onCloseFilter: PropTypes.func,
+  onOpenQuestionDetails: PropTypes.func,
+  onCloseQuestionDetails: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
@@ -61,6 +63,11 @@ const viewTitleHeaderPropTypes = {
   className: PropTypes.string,
   style: PropTypes.object,
 };
+const SavedQuestionHeaderButtonContainer = styled.div`
+  position: relative;
+  right: 0.5rem;
+  margin-bottom: 0.5rem;
+`;
 
 export class ViewTitleHeader extends React.Component {
   constructor(props) {
@@ -114,10 +121,12 @@ export class ViewTitleHeader extends React.Component {
       isShowingFilterSidebar,
       onAddFilter,
       onCloseFilter,
+      isShowingQuestionDetailsSidebar,
+      onOpenQuestionDetails,
+      onCloseQuestionDetails,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
-    const description = question.description();
     const lastEditInfo = question.lastEditInfo();
 
     const isStructured = question.isStructured();
@@ -141,29 +150,23 @@ export class ViewTitleHeader extends React.Component {
       >
         {isSaved ? (
           <div>
-            <div className="flex align-center">
-              <ViewHeading className="mr1">
-                {question.displayName()}
-              </ViewHeading>
-              {description && (
-                <Icon
-                  name="info"
-                  className="text-light mx1 cursor-pointer text-brand-hover"
-                  size={18}
-                  tooltip={description}
-                />
-              )}
-              <QuestionEntityMenu
+            <SavedQuestionHeaderButtonContainer>
+              <SavedQuestionHeaderButton
                 question={question}
-                onOpenModal={onOpenModal}
+                active={isShowingQuestionDetailsSidebar}
+                onClick={
+                  isShowingQuestionDetailsSidebar
+                    ? onCloseQuestionDetails
+                    : onOpenQuestionDetails
+                }
               />
-              {lastEditInfo && (
-                <LastEditInfoLabel
-                  className="ml1 text-light"
-                  item={question.card()}
-                />
-              )}
-            </div>
+            </SavedQuestionHeaderButtonContainer>
+            {lastEditInfo && (
+              <LastEditInfoLabel
+                className="ml1 text-light"
+                item={question.card()}
+              />
+            )}
             <ViewSubHeading className="flex align-center flex-wrap">
               <CollectionBadge
                 className="mb1"
