@@ -7,13 +7,15 @@ import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
 const {
   active: isPluginActive,
   ModerationIssueActionMenu,
+  CreateModerationIssuePanel,
 } = PLUGIN_MODERATION_COMPONENTS;
 
 const VIEW = {
+  DETAILS: "DETAILS",
   CREATE_ISSUE: "CREATE_ISSUE",
 };
 
-function QuestionSidebarView(props) {
+function QuestionSidebarView() {
   const [view, setView] = useState({
     name: undefined,
     props: undefined,
@@ -22,9 +24,15 @@ function QuestionSidebarView(props) {
 
   switch (name) {
     case VIEW.CREATE_ISSUE:
-      return <div />;
+      return (
+        <CreateModerationIssuePanel
+          {...viewProps}
+          onCancel={() => setView({ name: VIEW.DETAILS })}
+        />
+      );
+    case VIEW.DETAILS:
     default:
-      return <QuestionDetailsSidebar {...props} setView={setView} />;
+      return <QuestionDetailsSidebar setView={setView} />;
   }
 }
 

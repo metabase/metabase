@@ -23,7 +23,7 @@ function ModerationIssueActionMenu({ className, onAction }) {
           icon,
           iconSize: 18,
           className: `text-${color}`,
-          action: () => onAction(name),
+          action: () => onAction(type),
           title: MODERATION_TEXT.moderator[type].action,
         };
       })}
