@@ -2,19 +2,18 @@
 import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
+import styled from "styled-components";
 import { Box } from "grid-styled";
 
-import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-
+import SavedQuestionHeaderButton from "metabase/questions/components/SavedQuestionHeaderButton";
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionEntityMenu from "./QuestionEntityMenu";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
@@ -26,6 +25,12 @@ import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+const SavedQuestionHeaderButtonContainer = styled.div`
+  position: relative;
+  right: 0.5rem;
+  margin-bottom: 0.5rem;
+`;
 
 export class ViewTitleHeader extends React.Component {
   constructor(props) {
@@ -79,10 +84,12 @@ export class ViewTitleHeader extends React.Component {
       isShowingFilterSidebar,
       onAddFilter,
       onCloseFilter,
+      isShowingQuestionDetailsSidebar,
+      onOpenQuestionDetails,
+      onCloseQuestionDetails,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
-    const description = question.description();
 
     const isStructured = question.isStructured();
     const isNative = question.isNative();
@@ -105,23 +112,17 @@ export class ViewTitleHeader extends React.Component {
       >
         {isSaved ? (
           <div>
-            <div className="flex align-center">
-              <ViewHeading className="mr1">
-                {question.displayName()}
-              </ViewHeading>
-              {description && (
-                <Icon
-                  name="info"
-                  className="text-light mx1 cursor-pointer text-brand-hover"
-                  size={18}
-                  tooltip={description}
-                />
-              )}
-              <QuestionEntityMenu
+            <SavedQuestionHeaderButtonContainer>
+              <SavedQuestionHeaderButton
                 question={question}
-                onOpenModal={onOpenModal}
+                active={isShowingQuestionDetailsSidebar}
+                onClick={
+                  isShowingQuestionDetailsSidebar
+                    ? onCloseQuestionDetails
+                    : onOpenQuestionDetails
+                }
               />
-            </div>
+            </SavedQuestionHeaderButtonContainer>
             <ViewSubHeading className="flex align-center flex-wrap">
               <CollectionBadge
                 className="mb1"
