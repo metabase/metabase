@@ -232,6 +232,7 @@
                          (str/join ", " (map name (keys (:value (ex-data e)))))
                          fully-qualified-name)
                     {:fully-qualified-name fully-qualified-name
+                     :resolve-name-failed? true
                      :context              context})))))))
 
 (defn name-for-logging

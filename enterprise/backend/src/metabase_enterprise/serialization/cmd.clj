@@ -47,13 +47,18 @@
                        context)]
     (try
       (do
-        (load/load (str path "/users") context)
-        (load/load (str path "/databases") context)
-        (load/load (str path "/collections") context)
-        (load/load-settings path context)
-        (load/load-dependencies path context))
+        (let [all-res    [(load/load (str path "/users") context)
+                          (load/load (str path "/databases") context)
+                          (load/load (str path "/collections") context)
+                          (load/load-settings path context)
+                          (load/load-dependencies path context)]
+              reload-fns (filter fn? all-res)]
+          (if-not (empty? reload-fns)
+            (do (log/info (trs "Finished first pass of load; now performing second pass"))
+                (doseq [reload-fn reload-fns]
+                  (reload-fn))))))
       (catch Throwable e
-        (log/error (trs "Error loading dump: {0}" (.getMessage e)))))))
+        (log/error e (trs "Error loading dump: {0}" (.getMessage e)))))))
 
 (defn- select-entities-in-collections
   ([model collections]
