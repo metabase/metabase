@@ -6,17 +6,18 @@
             [metabase-enterprise.serialization.cmd :refer [dump load]]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
-                                     Dimension Field FieldValues Metric Pulse PulseCard PulseChannel Segment Table User]]
+                                     Dimension Field FieldValues Metric Pulse PulseCard PulseChannel Segment Table
+                                     User]]
             [metabase.test.data.users :as test-users]
             [metabase.util :as u]
             [toucan.db :as db]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.util.log :as log]
             [metabase.test :as mt]
             [metabase.util.i18n :refer [deferred-trs trs]])
   (:import org.apache.commons.io.FileUtils))
-
 
 (defn- delete-directory!
   [file-or-filename]
@@ -81,19 +82,62 @@
   [card query-results]
   (query-res-match query-results card))
 
+(defn- id->name [model id]
+  (db/select-one-field :name model :id id))
+
 (defmethod assert-loaded-entity (type Dashboard)
   [dashboard _]
   (testing "The dashboard card series were loaded correctly"
-    (doseq [dashcard (db/select DashboardCard :dashboard_id (u/the-id dashboard))]
-      (doseq [series (db/select DashboardCardSeries :dashboardcard_id (u/the-id dashcard))]
-        ;; check that the linked :card_id matches the expected name for each in the series
-        ;; based on the entities declared in test_util.clj
-        (let [series-pos    (:position series)
-              expected-name (case series-pos
-                              0 "My Card"
-                              1 "My Nested Card"
-                              2 ts/root-card-name)]
-          (is (= expected-name (db/select-one-field :name Card :id (:card_id series))))))))
+    (when (= "My Dashboard" (:name dashboard))
+      (doseq [dashcard (db/select DashboardCard :dashboard_id (u/the-id dashboard))]
+        (doseq [series (db/select DashboardCardSeries :dashboardcard_id (u/the-id dashcard))]
+          ;; check that the linked :card_id matches the expected name for each in the series
+          ;; based on the entities declared in test_util.clj
+          (let [series-pos    (:position series)
+                expected-name (case series-pos
+                                0 "My Card"
+                                1 "My Nested Card"
+                                2 ts/root-card-name)]
+            (is (= expected-name (db/select-one-field :name Card :id (:card_id series))))
+            (case series-pos
+              1
+              (testing "Top level click action was preserved for dashboard card"
+                (let [viz-settings (:visualization_settings dashcard)
+                      cb           (:click_behavior viz-settings)]
+                  (is (not-empty cb))
+                  (is (int? (:targetId cb)))
+                  (is (= "My Nested Query Card" (db/select-one-field :name Card :id (:targetId cb))))))
+              2
+              (testing "Column level click actions were preserved for dashboard card"
+                (let [viz-settings   (:visualization_settings dashcard)
+                      check-click-fn (fn [[col-key col-value]]
+                                       (let [col-ref   (mb.viz/parse-column-ref col-key)
+                                             {:keys [::mb.viz/field-id ::mb.viz/column-name]} col-ref
+                                             click-bhv (get col-value :click_behavior)
+                                             target-id (get click-bhv :targetId)]
+                                         (cond
+                                           field-id (let [field-nm (id->name Field field-id)]
+                                                      (case field-nm
+                                                        ;; consider either case for these fields, since they are all
+                                                        ;; caps in some (ex: H2) and lowercase in others (ex: Postgres)
+                                                        ;; this is simpler than the alternative (dynamically loading
+                                                        ;; the expected name based on driver)
+                                                        ("price" "PRICE") (is (= "My Card" (id->name Card target-id)))
+                                                        ("name" "NAME") (is (=
+                                                                             "Root Dashboard"
+                                                                             (id->name Dashboard target-id)))
+                                                        ("latitude" "LATITUDE") (is (= {:linkType         nil
+                                                                                        :parameterMapping {}
+                                                                                        :type             "crossfilter"}
+                                                                                       click-bhv))))
+                                           column-name
+                                           (case column-name
+                                             "Price Known" (is (= {:type         "link"
+                                                                   :linkType     "url"
+                                                                   :linkTemplate "/price-info"} click-bhv))))))]
+                  (is (not-empty viz-settings))
+                  (doall (map check-click-fn (:column_settings viz-settings)))))
+              true)))))) ; nothing related to viz settings to check for other series positions
   dashboard)
 
 (defmethod assert-loaded-entity :default
@@ -136,12 +180,16 @@
                            :entities      [[Database      (Database db-id)]
                                            [Table         (Table table-id)]
                                            [Field         (Field numeric-field-id)]
+                                           [Field         (Field name-field-id)]
                                            [Field         (Field category-field-id)]
+                                           [Field         (Field latitude-field-id)]
+                                           [Field         (Field longitude-field-id)]
                                            [Collection    (Collection collection-id)]
                                            [Collection    (Collection collection-id-nested)]
                                            [Metric        (Metric metric-id)]
                                            [Segment       (Segment segment-id)]
                                            [Dashboard     (Dashboard dashboard-id)]
+                                           [Dashboard     (Dashboard root-dashboard-id)]
                                            [Card          (Card card-id)]
                                            [Card          (Card card-arch-id)]
                                            [Card          (Card card-id-root)]
@@ -149,9 +197,10 @@
                                            [Card          (Card card-id-nested-query)]
                                            [Card          (Card card-id-native-query)]
                                            [DashboardCard (DashboardCard dashcard-id)]
+                                           [DashboardCard (DashboardCard dashcard-top-level-click-id)]
                                            [DashboardCard (DashboardCard dashcard-with-click-actions)]]})]
         (with-world-cleanup
-          (load dump-dir {:on-error :continue :mode :skip})
+          (load dump-dir {:on-error :continue :mode :update})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))

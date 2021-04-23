@@ -21,6 +21,7 @@
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :refer [User]]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u]
             [toucan.db :as db]))
 
@@ -114,12 +115,46 @@
                                field/values
                                (u/select-non-nil-keys [:values :human_readable_values]))))))
 
+(defn- convert-column-settings-key [k]
+  (if-let [field-id (::mb.viz/field-id k)]
+    (-> (db/select-one Field :id field-id)
+        fully-qualified-name
+        mb.viz/column-ref-for-qualified-name)
+    k))
+
+(defn- convert-click-behavior [{:keys [::mb.viz/click-behavior-type ::mb.viz/link-type
+                                       ::mb.viz/link-target-id ::mb.viz/link-parameter-mapping] :as click}]
+  (if-let [new-target-id (case link-type
+                           ::mb.viz/card (-> (Card link-target-id)
+                                             fully-qualified-name)
+                           ::mb.viz/dashboard (-> (Dashboard link-target-id)
+                                                  fully-qualified-name)
+                           nil)]
+    (assoc click ::mb.viz/link-target-id new-target-id)
+    click))
+
+(defn- convert-column-settings-value [{:keys [::mb.viz/click-behavior] :as v}]
+  (cond (some? click-behavior)
+        (assoc v ::mb.viz/click-behavior (convert-click-behavior click-behavior))
+        :default
+        v))
+
+(defn- convert-column-settings [acc k v]
+  (assoc acc (convert-column-settings-key k) (convert-column-settings-value v)))
+
+(defn- convert-viz-settings [viz-settings]
+  (-> (mb.viz/from-db-form viz-settings)
+      (update ::mb.viz/column-settings (fn [col-settings]
+                                         (reduce-kv convert-column-settings {} col-settings)))
+      (m/update-existing ::mb.viz/click-behavior convert-click-behavior)
+      mb.viz/db-form))
+
 (defn- dashboard-cards-for-dashboard
   [dashboard]
-  (let [dashboard-cards (db/select DashboardCard :dashboard_id (u/the-id dashboard))
-        series          (when (not-empty dashboard-cards)
-                          (db/select DashboardCardSeries
-                            :dashboardcard_id [:in (map u/the-id dashboard-cards)]))]
+  (let [dashboard-cards   (db/select DashboardCard :dashboard_id (u/the-id dashboard))
+        series            (when (not-empty dashboard-cards)
+                            (db/select DashboardCardSeries
+                              :dashboardcard_id [:in (map u/the-id dashboard-cards)]))]
     (for [dashboard-card dashboard-cards]
       (-> dashboard-card
           (assoc :series (for [series series
@@ -127,6 +162,7 @@
                            (-> series
                                (update :card_id (partial fully-qualified-name Card))
                                (dissoc :id :dashboardcard_id))))
+          (assoc :visualization_settings (convert-viz-settings (:visualization_settings dashboard-card)))
           strip-crud))))
 
 (defmethod serialize-one (type Dashboard)

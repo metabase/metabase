@@ -28,6 +28,7 @@
             [metabase.models.setting :as setting]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :refer [User]]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
@@ -109,6 +110,20 @@
     (-> (assoc m ::unresolved-names (m/map-vals #(vec (concat ks %)) unresolved-names))
         (assoc-in ks (dissoc v ::unresolved-names)))
     (assoc-in m ks v)))
+
+(defn- unresolved-names->string
+  ([entity]
+   (unresolved-names->string entity nil))
+  ([entity insert-id]
+   (str
+    (if-let [nm (:name entity)] (str "\"" nm "\", missing:\n") "")
+    (if insert-id (format " (inserted as ID %d)" insert-id))
+    (str/join
+     "\n  "
+     (map
+      (fn [[k v]]
+        (format "  at %s -> %s" (str/join "/" v) k))
+      (::unresolved-names entity))))))
 
 (defmulti load
   "Load an entity of type `model` stored at `path` in the context `context`.
@@ -212,6 +227,73 @@
         (update-existing-capture-missing :card_id fully-qualified-name->card-id)
         (update-existing-capture-missing :target mbql-fully-qualified-names->ids))))
 
+(defn- resolve-column-settings-key
+  [col-key]
+  (if-let [field-name (::mb.viz/field-qualified-name col-key)]
+    (let [field-id ((comp :field fully-qualified-name->context) field-name)]
+      (if (nil? field-id)
+        {::unresolved-names {field-name [::column-settings-key]}}
+        {::mb.viz/field-id field-id}))
+    col-key))
+
+(defn- resolve-click-behavior
+  [click-behavior]
+  (if-let [link-type (::mb.viz/link-type click-behavior)]
+    (case link-type
+      ::mb.viz/card (let [card-id (::mb.viz/link-target-id click-behavior)]
+                      (if (string? card-id)
+                        (update-existing-in-capture-missing
+                         click-behavior
+                         [::mb.viz/link-target-id]
+                         (comp :card fully-qualified-name->context))))
+      ::mb.viz/dashboard (let [dashboard-id (::mb.viz/link-target-id click-behavior)]
+                          (if (string? dashboard-id)
+                            (update-existing-in-capture-missing
+                             click-behavior
+                             [::mb.viz/link-target-id]
+                             (comp :dashboard fully-qualified-name->context))))
+      click-behavior)
+    click-behavior))
+
+(defn- update-col-settings-click-behavior [col-settings-value]
+  (let [new-cb (resolve-click-behavior (::mb.viz/click-behavior col-settings-value))]
+    (pull-unresolved-names-up col-settings-value [::mb.viz/click-behavior] new-cb)))
+
+(defn- resolve-column-settings-value
+  [col-value]
+  (cond-> col-value
+    (::mb.viz/click-behavior col-value) update-col-settings-click-behavior))
+
+(defn- accumulate-converted-column-settings
+  [acc col-key v]
+  (let [new-key (resolve-column-settings-key col-key)
+        new-val (resolve-column-settings-value v)]
+    (-> (pull-unresolved-names-up acc [::column-settings-key] new-key)
+        (dissoc ::column-settings-key)
+        (pull-unresolved-names-up [new-key] new-val))))
+
+(defn- resolve-top-level-click-behavior [vs-norm]
+  (if-let [click-behavior (::mb.viz/click-behavior vs-norm)]
+    (let [resolved-cb (resolve-click-behavior click-behavior)]
+      (pull-unresolved-names-up vs-norm [::mb.viz/click-behavior] resolved-cb))
+    vs-norm))
+
+(defn- resolve-column-settings [vs-norm]
+  (if-let [col-settings (::mb.viz/column-settings vs-norm)]
+    (let [resolved-cs (reduce-kv accumulate-converted-column-settings {} col-settings)]
+      (pull-unresolved-names-up vs-norm [::mb.viz/column-settings] resolved-cs))
+    vs-norm))
+
+(defn- resolve-visualization-settings
+  [entity]
+  (if-let [viz-settings (:visualization_settings entity)]
+    (let [resolved-vs (-> (mb.viz/from-db-form viz-settings)
+                          resolve-top-level-click-behavior
+                          resolve-column-settings
+                          mb.viz/db-form)]
+      (pull-unresolved-names-up entity [:visualization_settings] resolved-vs))
+    entity))
+
 (defn load-dashboards
   "Loads `dashboards` (which is a sequence of maps parsed from a YAML dump of dashboards) in a given `context`."
   {:added "0.40.0"}
@@ -225,24 +307,31 @@
         dashboard-cards (map :dashboard_cards dashboards)
         ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
         ;; card_id could be resolved from the fully qualified name
-        prepare-card-fn (fn [idx dashboard-id card]
+        prepare-card-fn (fn [dash-idx dashboard-id acc card-idx card]
                           (let [proc-card  (-> card
                                                (update-existing-capture-missing :card_id fully-qualified-name->card-id)
                                                (assoc :dashboard_id dashboard-id))
                                 new-pm     (update-parameter-mappings (:parameter_mappings proc-card))
-                                final-card (pull-unresolved-names-up proc-card [:parameter_mappings] new-pm)]
-                            (if (::unresolved-names final-card)
-                              {;; index means something different here than in the Card case (it's actually the index
-                               ;; of the dashboard)
-                               ::revisit-index idx
-                               ::revisit       final-card}
-                              {::process final-card})))
-        prep-init-acc   {::process [] ::revisit-index [] ::revisit []}
+                                with-pm    (pull-unresolved-names-up proc-card [:parameter_mappings] new-pm)
+                                with-viz   (resolve-visualization-settings with-pm)]
+                            (if-let [unresolved (::unresolved-names with-viz)]
+                              ;; prepend the dashboard card index and :visualization_settings to each unresolved
+                              ;; name path for better debugging
+                              (let [add-keys         [:dashboard_cards card-idx :visualization_settings]
+                                    fixed-names      (m/map-vals #(concat add-keys %) unresolved)
+                                    with-fixed-names (assoc with-viz ::unresolved-names fixed-names)]
+                               (-> acc
+                                   (update ::revisit (fn [revisit-map]
+                                                       (update revisit-map dash-idx #(cons with-fixed-names %))))
+                                   ;; index means something different here than in the Card case (it's actually the index
+                                   ;; of the dashboard)
+                                   (update ::revisit-index #(conj % dash-idx))))
+                              (update acc ::process #(conj % with-viz)))))
+        prep-init-acc   {::process [] ::revisit-index #{} ::revisit {}}
         filtered-cards  (reduce-kv
                          (fn [acc idx [cards dash-id]]
                            (if dash-id
-                             (let [map-fn (map (partial prepare-card-fn idx dash-id) cards)
-                                   res    (apply merge-with conj prep-init-acc map-fn)]
+                             (let [res (reduce-kv (partial prepare-card-fn idx dash-id) prep-init-acc (vec cards))]
                                (merge-with concat acc res))
                              acc))
                          prep-init-acc
@@ -260,12 +349,22 @@
             (update :card_id fully-qualified-name->card-id))))
     (let [revisit-dashboards (map (partial nth dashboards) revisit-indexes)]
       (if-not (empty? revisit-dashboards)
-        (fn []
+        (let [revisit-map    (::revisit filtered-cards)
+              revisit-inf-fn (fn [[dash-idx dashcards]]
+                               (format
+                                "For dashboard %s:%n%s"
+                                (->> dash-idx (nth dashboards) :name)
+                                (str/join "\n" (map unresolved-names->string dashcards))))]
           (log/infof
-           "Retrying dashboards for collection %s: %s"
-           (or (:collection context) "root")
-           (str/join ", " (map :name revisit-dashboards)))
-          (load-dashboards context revisit-dashboards))))))
+           "Unresolved references found for dashboard cards in collection %d; will reload after first pass%n%s%n"
+           (:collection context)
+           (str/join "\n" (map revisit-inf-fn revisit-map)))
+          (fn []
+            (log/infof
+             "Retrying dashboards for collection %s: %s"
+             (or (:collection context) "root")
+             (str/join ", " (map :name revisit-dashboards)))
+            (load-dashboards context revisit-dashboards)))))))
 
 (defmethod load "dashboards"
   [path context]
@@ -335,6 +434,7 @@
       (assoc :creator_id    @default-user
              :collection_id (:collection context))
       (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
+      resolve-visualization-settings
       (cond->
           (-> card
               :dataset_query
@@ -370,7 +470,7 @@
                                     (update ::revisit #(conj % card))
                                     (update ::revisit-index #(conj % idx)))
                                 (update acc ::process #(conj % card))))
-                            {::revisit [] ::revisit-index [] ::process []}
+                            {::revisit [] ::revisit-index #{} ::process []}
                             (vec resolved-cards))
         dummy-insert-cards (not-empty (::revisit grouped-cards))
         process-cards      (::process grouped-cards)
@@ -394,16 +494,7 @@
                                 (map make-dummy-card dummy-insert-cards))
             id-and-cards       (map vector dummy-insert-cards dummy-inserted-ids)
             retry-info-fn      (fn [[card card-id]]
-                                 (format
-                                  "\"%s\" (inserted as ID %d), missing:%n%s%n"
-                                  (:name card)
-                                  card-id
-                                  (str/join
-                                   "\n  "
-                                   (map
-                                    (fn [[k v]]
-                                      (format "  for %s -> %s" (str/join "/" v) k))
-                                    (::unresolved-names card)))))]
+                                 (unresolved-names->string card card-id))]
         (log/infof
          "Unresolved references found for cards in collection %d; will reload after first pass%n%s%n"
          (:collection context)

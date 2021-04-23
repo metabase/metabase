@@ -2,6 +2,7 @@
   (:require [metabase-enterprise.serialization.names :as names]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Field Metric
                                      Segment Table]]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test.data :as data]
             [toucan.util.test :as tt]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name]]))
@@ -23,6 +24,18 @@
                                                             Field
                                                             (dissoc :id)
                                                             (assoc :table_id ~'table-id))]
+                   Field      [{~'name-field-id :id} (-> (data/id :venues :name)
+                                                         Field
+                                                         (dissoc :id)
+                                                         (assoc :table_id ~'table-id))]
+                   Field      [{~'latitude-field-id :id} (-> (data/id :venues :latitude)
+                                                             Field
+                                                             (dissoc :id)
+                                                             (assoc :table_id ~'table-id))]
+                   Field      [{~'longitude-field-id :id} (-> (data/id :venues :longitude)
+                                                              Field
+                                                              (dissoc :id)
+                                                              (assoc :table_id ~'table-id))]
                    Field      [{~'category-field-id :id} (-> (data/id :venues :category_id)
                                                              Field
                                                              (dissoc :id)
@@ -41,6 +54,7 @@
                                                                 :filter [:!= [:field ~'category-field-id nil] nil]}}]
                    Dashboard  [{~'dashboard-id :id} {:name "My Dashboard"
                                                      :collection_id ~'collection-id}]
+                   Dashboard  [{~'root-dashboard-id :id} {:name "Root Dashboard"}]
                    Card       [{~'card-id :id}
                                {:table_id ~'table-id
                                 :name "My Card"
@@ -67,7 +81,8 @@
                                 :name root-card-name
                                 :dataset_query {:type :query
                                                 :database ~'db-id
-                                                :query {:source-table ~'table-id}}}]
+                                                :query {:source-table ~'table-id}
+                                                :expressions {"Price Known" [:> [:field-id ~'numeric-field-id] 0]}}}]
                    Card       [{~'card-id-nested :id}
                                {:table_id ~'table-id
                                 :name "My Nested Card"
@@ -105,18 +120,42 @@
                    DashboardCard       [{~'dashcard-id :id}
                                         {:dashboard_id ~'dashboard-id
                                          :card_id ~'card-id}]
+                   DashboardCard       [{~'dashcard-top-level-click-id :id}
+                                        {:dashboard_id ~'dashboard-id
+                                         :card_id ~'card-id-nested
+                                         ;; this is how click actions on a non-table card work (ex: a chart)
+                                         :visualization_settings {:click_behavior {:targetId ~'card-id-nested-query
+                                                                                   :linkType :question
+                                                                                   :type     :link}}}]
                    DashboardCardSeries [~'_ {:dashboardcard_id ~'dashcard-id
                                              :card_id ~'card-id
                                              :position 0}]
-                   DashboardCardSeries [~'_ {:dashboardcard_id ~'dashcard-id
+                   DashboardCardSeries [~'_ {:dashboardcard_id ~'dashcard-top-level-click-id
                                              :card_id ~'card-id-nested
                                              :position 1}]
                    DashboardCard       [{~'dashcard-with-click-actions :id}
-                                        {:dashboard_id ~'dashboard-id
-                                         :card_id      ~'card-id-root}]
-                   DashboardCardSeries [~'_ {:dashboardcard_id ~'dashcard-with-click-actions
-                                             :card_id          ~'card-id-root
-                                             :position         2}]]
+                                        {:dashboard_id           ~'dashboard-id
+                                         :card_id                ~'card-id-root
+                                         :visualization_settings (-> (mb.viz/visualization-settings)
+                                                                     (mb.viz/with-entity-click-action
+                                                                      ~'numeric-field-id
+                                                                      ::mb.viz/card
+                                                                      ~'card-id)
+                                                                     (mb.viz/with-entity-click-action
+                                                                      ~'name-field-id
+                                                                      ::mb.viz/dashboard
+                                                                      ~'root-dashboard-id)
+                                                                     (mb.viz/with-click-action
+                                                                      (mb.viz/column-ref-for-column-name "Price Known")
+                                                                      (mb.viz/url-click-action "/price-info"))
+                                                                     (mb.viz/with-click-action
+                                                                      (mb.viz/column-ref-for-id ~'latitude-field-id)
+                                                                      ;; TODO: add checks for param mappings
+                                                                      (mb.viz/crossfilter-click-action {}))
+                                                                     mb.viz/db-form)}]
+                   DashboardCardSeries [~'_ {:dashboardcard_id   ~'dashcard-with-click-actions
+                                             :card_id            ~'card-id-root
+                                             :position           2}]]
      ~@body))
 
 ;; Don't memoize as IDs change in each `with-world` context
