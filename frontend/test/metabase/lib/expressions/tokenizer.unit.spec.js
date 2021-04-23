@@ -2,6 +2,7 @@ import {
   tokenize,
   TOKEN as T,
   OPERATOR as OP,
+  countMatchingParentheses,
 } from "metabase/lib/expressions/tokenizer";
 
 describe("metabase/lib/expressions/tokenizer", () => {
@@ -131,5 +132,14 @@ describe("metabase/lib/expressions/tokenizer", () => {
     expect(errors("!")[0].message).toEqual("Invalid character: !");
     expect(errors(" % @")[1].message).toEqual("Invalid character: @");
     expect(errors("    #")[0].pos).toEqual(4);
+  });
+
+  it("should count matching parentheses", () => {
+    expect(countMatchingParentheses("()")).toEqual(0);
+    expect(countMatchingParentheses("(")).toEqual(1);
+    expect(countMatchingParentheses(")")).toEqual(-1);
+    expect(countMatchingParentheses("(A+(")).toEqual(2);
+    expect(countMatchingParentheses("SUMIF(")).toEqual(1);
+    expect(countMatchingParentheses("COUNTIF(Deal))")).toEqual(-1);
   });
 });
