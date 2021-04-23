@@ -209,6 +209,13 @@
 
 (def ^:private separator-pattern #"\/")
 
+(def ^:dynamic *suppress-log-name-lookup-exception*
+  "Dynamic boolean var that controls whether warning messages will NOT be logged on a failed name lookup (from within
+  `fully-qualified-name->context`). Intended to be bound differently in first pass (i.e. set to true), where we expect
+  some name lookups to fail, in order to avoid polluting the log. On subsequent rounds (i.e. reload fns) then it should
+  be left off because we wouldn't expect to have failed lookups then."
+  false)
+
 (defn fully-qualified-name->context
   "Parse a logical path into a context map."
   [fully-qualified-name]
@@ -222,13 +229,15 @@
       (try
         (s/validate (s/maybe Context) context)
         (catch Exception e
-          (log/warn
-           (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
-                         (str/join ", " (map name (keys (:value (ex-data e)))))
-                         fully-qualified-name)
-                    {:fully-qualified-name fully-qualified-name
-                     :resolve-name-failed? true
-                     :context              context})))))))
+          (when-not *suppress-log-name-lookup-exception*
+            (log/warn
+             (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
+                           (str/join ", " (map name (keys (:value (ex-data e)))))
+                           fully-qualified-name)
+                      {:fully-qualified-name fully-qualified-name
+                       :resolve-name-failed? true
+                       :context              context}
+                      e))))))))
 
 (defn name-for-logging
   "Return a string representation of entity suitable for logs"

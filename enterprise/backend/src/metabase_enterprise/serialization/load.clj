@@ -5,7 +5,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase-enterprise.serialization.names :refer [fully-qualified-name->context]]
+            [metabase-enterprise.serialization.names :as names :refer [fully-qualified-name->context]]
             [metabase-enterprise.serialization.upsert :refer [maybe-fixup-card-template-ids! maybe-upsert-many!]]
             [metabase.config :as config]
             [metabase.mbql.normalize :as mbql.normalize]
@@ -372,7 +372,8 @@
 
 (defmethod load "dashboards"
   [path context]
-  (load-dashboards context (slurp-dir path)))
+  (binding [names/*suppress-log-name-lookup-exception* true]
+    (load-dashboards context (slurp-dir path))))
 
 (defmethod load "pulses"
   [path context]
@@ -416,7 +417,7 @@
   (try
     (-> (fully-qualified-name->context fully-qualified-name) :card)
     (catch Throwable e
-      (log/warn e))))
+      (log/warn e (trs "Could not find context for fully qualified card name {0}" fully-qualified-name)))))
 
 (defn- resolve-native
   [card]
@@ -511,7 +512,8 @@
 
 (defmethod load "cards"
   [path context]
-  (load-cards context (list-dirs path) nil))
+  (binding [names/*suppress-log-name-lookup-exception* true]
+    (load-cards context (list-dirs path) nil)))
 
 (defmethod load "users"
   [path context]

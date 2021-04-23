@@ -47,6 +47,7 @@
                        context)]
     (try
       (do
+        (log/info (trs "BEGIN LOAD from {0} with context {1}" path context))
         (let [all-res    [(load/load (str path "/users") context)
                           (load/load (str path "/databases") context)
                           (load/load (str path "/collections") context)
@@ -56,9 +57,10 @@
           (if-not (empty? reload-fns)
             (do (log/info (trs "Finished first pass of load; now performing second pass"))
                 (doseq [reload-fn reload-fns]
-                  (reload-fn))))))
+                  (reload-fn))))
+          (log/info (trs "END LOAD from {0} with context {1}" path context))))
       (catch Throwable e
-        (log/error e (trs "Error loading dump: {0}" (.getMessage e)))))))
+        (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))))))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -106,6 +108,7 @@
    (dump path user :active))
   ([path user state]
    (mdb/setup-db!)
+   (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
    (let [users       (if user
                        (let [user (db/select-one User
                                     :email        user
@@ -128,4 +131,5 @@
                 users))
    (dump/dump-settings path)
    (dump/dump-dependencies path)
-   (dump/dump-dimensions path)))
+   (dump/dump-dimensions path)
+   (log/info (trs "END DUMP to {0} via user {1}" path user))))
