@@ -6,6 +6,8 @@
             [toucan.util.test :as tt]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name]]))
 
+(def root-card-name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž")
+
 (defmacro with-world
   "Run test in the context of a minimal Metabase instance connected to our test database."
   [& body]
@@ -60,7 +62,7 @@
                    Card       [{~'card-id-root :id}
                                {:table_id ~'table-id
                                 ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
-                                :name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž"
+                                :name root-card-name
                                 :dataset_query {:type :query
                                                 :database ~'db-id
                                                 :query {:source-table ~'table-id}}}]

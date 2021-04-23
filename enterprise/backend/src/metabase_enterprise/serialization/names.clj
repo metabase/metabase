@@ -134,8 +134,8 @@
 (def ^:private ^{:arglists '([context model entity-name])} path->context
   "Extract entities from a logical path."
   ;(memoize path->context*)
-   path->context*
-  )
+   path->context*)
+
 
 (defmethod path->context* "databases"
   [context _ db-name]
@@ -215,7 +215,7 @@
 (def ^:private separator-pattern #"\/")
 
 (defn fully-qualified-name->context
-  "Parse a logcial path into a context map."
+  "Parse a logical path into a context map."
   [fully-qualified-name]
   (when fully-qualified-name
     (let [context (->> (str/split fully-qualified-name separator-pattern)
