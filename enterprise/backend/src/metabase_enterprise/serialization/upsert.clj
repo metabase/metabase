@@ -36,7 +36,7 @@
    Segment             [:name :table_id]
    Collection          [:name :location]
    Dashboard           [:name :collection_id]
-   DashboardCard       [:card_id :dashboard_id :visualiation_settings]
+   DashboardCard       [:card_id :dashboard_id :visualization_settings]
    DashboardCardSeries [:dashboardcard_id :card_id]
    FieldValues         [:field_id]
    Dimension           [:field_id :human_readable_field_id]

@@ -2,6 +2,7 @@
   (:require [metabase-enterprise.serialization.names :as names]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Field Metric
                                      Segment Table]]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test.data :as data]
             [toucan.util.test :as tt]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name]]))
@@ -110,11 +111,17 @@
                                              :card_id ~'card-id-nested
                                              :position 1}]
                    DashboardCard       [{~'dashcard-with-click-actions :id}
-                                        {:dashboard_id ~'dashboard-id
-                                         :card_id      ~'card-id-root}]
-                   DashboardCardSeries [~'_ {:dashboardcard_id ~'dashcard-with-click-actions
-                                             :card_id          ~'card-id-root
-                                             :position         2}]]
+                                        {:dashboard_id           ~'dashboard-id
+                                         :card_id                ~'card-id-root
+                                         :visualization_settings (-> (mb.viz/visualization-settings)
+                                                                     (mb.viz/click-action
+                                                                      ~'numeric-field-id
+                                                                      ::mb.viz/card
+                                                                      ~'card-id)
+                                                                     mb.viz/db-form)}]
+                   DashboardCardSeries [~'_ {:dashboardcard_id   ~'dashcard-with-click-actions
+                                             :card_id            ~'card-id-root
+                                             :position           2}]]
      ~@body))
 
 ;; Don't memoize as IDs change in each `with-world` context

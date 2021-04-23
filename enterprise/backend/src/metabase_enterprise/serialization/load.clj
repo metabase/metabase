@@ -28,6 +28,7 @@
             [metabase.models.setting :as setting]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :refer [User]]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
@@ -216,6 +217,61 @@
         (update-existing-capture-missing :card_id fully-qualified-name->card-id)
         (update-existing-capture-missing :target mbql-fully-qualified-names->ids))))
 
+(def ^:private card-name-to-id (comp :field fully-qualified-name->context))
+
+(defn- resolve-column-settings-key
+  [col-key]
+  (if-let [field-name (::mb.viz/field-qualified-name col-key)]
+    (let [field-id ((comp :field fully-qualified-name->context) field-name)]
+      (if (nil? field-id)
+        {::unresolved-names {field-name [::column-settings-key]}}
+        {::mb.viz/field-id field-id}))
+    col-key))
+
+(defn- resolve-click-behavior
+  [click-behavior col-settings-value]
+  (let [link-type (::mb.viz/link-type click-behavior)]
+    (case link-type
+      ::mb.viz/card (let [card-id (::mb.viz/link-target-id click-behavior)]
+                      (if (string? card-id)
+                        (update-existing-in-capture-missing
+                         click-behavior
+                         [::mb.viz/link-target-id]
+                         (comp :card fully-qualified-name->context))))
+      :default      click-behavior)))
+
+(defn- resolve-column-settings-value
+  [col-value]
+  (cond-> col-value
+    (::mb.viz/click-behavior col-value) (update-existing-in-capture-missing
+                                         [::mb.viz/click-behavior]
+                                         (partial resolve-click-behavior (::mb.viz/click-behavior col-value)))))
+
+(defn- accumulate-converted-column-settings
+  [acc col-key val]
+  (let [new-key (resolve-column-settings-key col-key)
+        new-val (resolve-column-settings-value val)]
+    (-> (pull-unresolved-names-up acc [::column-settings-key] new-key)
+        (dissoc ::column-settings-key)
+        (pull-unresolved-names-up [new-key] new-val))))
+
+(defn- resolve-visualization-settings
+  [entity]
+  (if-let [viz-settings (:visualization_settings entity)]
+    (let [converted-vs (mb.viz/from-db-form viz-settings)
+          col-settings (::mb.viz/column-settings converted-vs)]
+      (if (not-empty col-settings)
+        (let [translated-cs (reduce-kv accumulate-converted-column-settings {} col-settings)
+              new-vs        (if (not-empty (::unresolved-names translated-cs))
+                              (-> converted-vs
+                                  (pull-unresolved-names-up [::mb.viz/column-settings] translated-cs)
+                                  mb.viz/db-form)
+                              (-> (assoc converted-vs ::mb.viz/column-settings translated-cs)
+                                  mb.viz/db-form))]
+            (pull-unresolved-names-up entity [:visualization_settings] new-vs))
+        entity))
+    entity))
+
 (defn load-dashboards
   "Loads `dashboards` (which is a sequence of maps parsed from a YAML dump of dashboards) in a given `context`."
   {:added "0.40.0"}
@@ -234,13 +290,14 @@
                                                (update-existing-capture-missing :card_id fully-qualified-name->card-id)
                                                (assoc :dashboard_id dashboard-id))
                                 new-pm     (update-parameter-mappings (:parameter_mappings proc-card))
-                                final-card (pull-unresolved-names-up proc-card [:parameter_mappings] new-pm)]
-                            (if (::unresolved-names final-card)
+                                with-pm    (pull-unresolved-names-up proc-card [:parameter_mappings] new-pm)
+                                with-viz   (resolve-visualization-settings with-pm)]
+                            (if (::unresolved-names with-viz)
                               {;; index means something different here than in the Card case (it's actually the index
                                ;; of the dashboard)
                                ::revisit-index idx
-                               ::revisit       final-card}
-                              {::process final-card})))
+                               ::revisit       with-viz}
+                              {::process with-viz})))
         prep-init-acc   {::process [] ::revisit-index [] ::revisit []}
         filtered-cards  (reduce-kv
                          (fn [acc idx [cards dash-id]]
@@ -339,6 +396,7 @@
       (assoc :creator_id    @default-user
              :collection_id (:collection context))
       (update-in [:dataset_query :database] (comp :database fully-qualified-name->context))
+      resolve-visualization-settings
       (cond->
           (-> card
               :dataset_query

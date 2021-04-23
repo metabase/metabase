@@ -6,13 +6,15 @@
             [metabase-enterprise.serialization.cmd :refer [dump load]]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
-                                     Dimension Field FieldValues Metric Pulse PulseCard PulseChannel Segment Table User]]
+                                     Dimension Field FieldValues Metric Pulse PulseCard PulseChannel Segment Table
+                                     User]]
             [metabase.test.data.users :as test-users]
             [metabase.util :as u]
             [toucan.db :as db]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.shared.util.log :as log]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
             [metabase.util.i18n :refer [deferred-trs trs]])
   (:import org.apache.commons.io.FileUtils))
@@ -93,7 +95,22 @@
                               0 "My Card"
                               1 "My Nested Card"
                               2 ts/root-card-name)]
-          (is (= expected-name (db/select-one-field :name Card :id (:card_id series))))))))
+          (is (= expected-name (db/select-one-field :name Card :id (:card_id series))))
+          (if (= 2 series-pos)
+            (testing "Click action was preserved for dashboard card"
+              (let [viz-settings (:visualization_settings dashcard)]
+                (is (not-empty viz-settings))
+                ;; the click action for this dashboard card should be from the "PRICE" column to the "My Card" card
+                (let [target-card-id  (db/select-one-id Card :name "My Card")
+                      col-set-key     (-> viz-settings :column_settings keys first)
+                      col-set-ref     (mb.viz/parse-column-ref col-set-key)
+                      source-field-id (::mb.viz/field-id col-set-ref)
+                      actual-card-id  (get-in viz-settings [:column_settings col-set-key :click_behavior :targetId])]
+                  (is (some? source-field-id) "Could not parse field id from loaded dashcard column settings key")
+                  (is
+                   (= "PRICE" (db/select-one-field :name Field :id source-field-id))
+                   "Click action column settings key was not \"PRICE\"")
+                  (is (= target-card-id actual-card-id) "Click target card ID was not tpreserved")))))))))
   dashboard)
 
 (defmethod assert-loaded-entity :default
@@ -131,7 +148,7 @@
                                          [DashboardCard (DashboardCard dashcard-id)]
                                          [DashboardCard (DashboardCard dashcard-with-click-actions)]]})]
       (with-world-cleanup
-        (load dump-dir {:on-error :continue :mode :skip})
+        (load dump-dir {:on-error :continue :mode :update})
         (doseq [[model entity] (:entities fingerprint)]
           (testing (format "%s \"%s\"" (type model) (:name entity))
             (is (or (-> entity :name nil?)
