@@ -23,6 +23,10 @@ function ClampedText({ className, text, visibleLines }) {
   const innerDiv = useRef();
 
   useLayoutEffect(() => {
+    if (!clampedDiv.current || !innerDiv.current) {
+      return;
+    }
+
     const clampedHeight = clampedDiv.current.getBoundingClientRect().height;
     const textHeight = innerDiv.current.getBoundingClientRect().height;
 
