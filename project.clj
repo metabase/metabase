@@ -134,16 +134,18 @@
    [org.apache.logging.log4j/log4j-slf4j-impl "2.13.3"]               ; allows the slf4j API to work with log4j 2
    [org.apache.poi/poi "5.0.0"]                                       ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
    [org.apache.poi/poi-ooxml "5.0.0"
-    :exclusions [org.bouncycastle/bcprov-jdk15on
+    :exclusions [org.apache.xmlgraphics/batik-all
+                 org.bouncycastle/bcprov-jdk15on
                  org.bouncycastle/bcpkix-jdk15on]]
    [org.apache.sshd/sshd-core "2.4.0"]                                ; ssh tunneling and test server
+   [org.apache.xmlgraphics/batik-all "1.14"]                          ; SVG manipulation/rendering
    [org.bouncycastle/bcprov-jdk15on "1.68"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
    [org.bouncycastle/bcpkix-jdk15on "1.68"]
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.eclipse.jetty/jetty-server "9.4.32.v20200930"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
-   [org.graalvm.js/js "21.0.0.2"]                                     ; JavaScript engine
-   [org.graalvm.js/js-scriptengine "21.0.0.2"]
+   [org.graalvm.js/js "21.1.0"]                                       ; JavaScript engine
+   [org.graalvm.js/js-scriptengine "21.1.0"]
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.6.2"]                     ; MySQL/MariaDB driver

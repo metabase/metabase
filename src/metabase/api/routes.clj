@@ -1,5 +1,5 @@
 (ns metabase.api.routes
-  (:require [compojure.core :refer [context defroutes]]
+  (:require [compojure.core :refer [context defroutes GET]]
             [compojure.route :as route]
             [metabase.api.activity :as activity]
             [metabase.api.alert :as alert]
@@ -39,6 +39,7 @@
             [metabase.api.util :as util]
             [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
+            [metabase.pulse.render.poc :as render.poc]
             [metabase.server.middleware.auth :as middleware.auth]
             [metabase.server.middleware.exceptions :as middleware.exceptions]
             [metabase.util :as u]
@@ -107,4 +108,8 @@
   (context "/transform"            [] (+auth transform/routes))
   (context "/user"                 [] (+auth user/routes))
   (context "/util"                 [] util/routes)
+  (GET "/poc" [] (fn [_ respond _]
+                   (respond {:status  200
+                             :headers {"Content-Type" "image/png"}
+                             :body    (render.poc/png)})))
   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")})))
