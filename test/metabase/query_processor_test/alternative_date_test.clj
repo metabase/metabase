@@ -263,7 +263,10 @@
              [[1M "foo" #t "2019-04-21T16:43"]
               [2M "bar" #t "2020-04-21T16:43"]
               [3M "baz" #t "2021-04-21T16:43"]]
-             [])
+             :snowflake
+             [[1 "foo" #t "2609-10-23T10:19:24.300"]
+              [2 "bar" #t "2610-02-16T04:06:04.300"]
+              [3 "baz" #t "2610-06-11T21:52:44.300"]])
            ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
            (sort-by
             first
