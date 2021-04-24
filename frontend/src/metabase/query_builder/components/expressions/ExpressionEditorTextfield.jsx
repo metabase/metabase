@@ -146,10 +146,16 @@ export default class ExpressionEditorTextfield extends React.Component {
               source,
               ...this._getParserOptions(newProps),
             })
-          : { expression: null, compileError: null, syntaxTree: null };
+          : {
+              expression: null,
+              tokenizerError: [],
+              compileError: null,
+              syntaxTree: null,
+            };
       this.setState({
         source,
         expression,
+        tokenizeError: [],
         compileError,
         syntaxTree,
         suggestions: [],
