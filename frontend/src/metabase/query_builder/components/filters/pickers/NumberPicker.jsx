@@ -59,7 +59,6 @@ export default class NumberPicker extends Component {
   }
 
   render() {
-    // $FlowFixMe
     const values: Array<string | null> = this.state.stringValues.slice(
       0,
       this.props.values.length,

@@ -264,9 +264,7 @@ export function copyObjects(metadata, objects, Klass) {
   const copies = {};
   for (const object of Object.values(objects)) {
     if (object && object.id != null) {
-      // $FlowFixMe
       copies[object.id] = new Klass(object);
-      // $FlowFixMe
       copies[object.id].metadata = metadata;
     } else {
       console.warn("Missing id:", object);
@@ -278,7 +276,6 @@ export function copyObjects(metadata, objects, Klass) {
 // calls a function to derive the value of a property for every object
 function hydrate(objects, property, getPropertyValue) {
   for (const object of Object.values(objects)) {
-    // $FlowFixMe
     object[property] = getPropertyValue(object);
   }
 }

@@ -29,7 +29,6 @@ export default class FilterList extends Component {
   };
 
   render() {
-    // $FlowFixMe: metadata provided by @connect
     const { filters, metadata, filterRenderer } = this.props;
     return (
       <div className="Query-filterList scroll-x scroll-show">

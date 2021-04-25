@@ -406,7 +406,6 @@ export function initializeIframeResizer(readyCallback = () => {}) {
     // Ideally that should happen in the test config, but it doesn't
     // seem to want to play nice when messing with require
     if (typeof require.ensure !== "function") {
-      // $FlowFixMe: flow doesn't seem to like returning false here
       return false;
     }
 

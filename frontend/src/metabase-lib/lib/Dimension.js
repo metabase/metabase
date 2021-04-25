@@ -102,15 +102,9 @@ export default class Dimension {
    */
   static isEqual(a: ?Dimension | ConcreteField, b: ?Dimension): boolean {
     const dimensionA: ?Dimension =
-      a instanceof Dimension
-        ? a
-        : // $FlowFixMe
-          Dimension.parseMBQL(a);
+      a instanceof Dimension ? a : Dimension.parseMBQL(a);
     const dimensionB: ?Dimension =
-      b instanceof Dimension
-        ? b
-        : // $FlowFixMe
-          Dimension.parseMBQL(b);
+      b instanceof Dimension ? b : Dimension.parseMBQL(b);
     return !!dimensionA && !!dimensionB && dimensionA.isEqual(dimensionB);
   }
 

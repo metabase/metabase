@@ -1246,7 +1246,6 @@ export const loadObjectDetailFKReferences = createThunkAction(
           ) {
             info["value"] = result.data.rows[0][0];
           } else {
-            // $FlowFixMe
             info["value"] = "Unknown";
           }
         } catch (error) {

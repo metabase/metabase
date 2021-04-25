@@ -28,7 +28,6 @@ export const CATEGORIES = {
 import COMPONENTS from "../lib/components-webpack";
 import { slugify } from "metabase/lib/formatting";
 
-// $FlowFixMe: doesn't know about require.context
 const req = require.context(
   "metabase/internal/components",
   true,

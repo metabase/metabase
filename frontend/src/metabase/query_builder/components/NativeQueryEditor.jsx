@@ -5,7 +5,6 @@ import cx from "classnames";
 
 import "./NativeQueryEditor.css";
 
-// $FlowFixMe react-resizable causes Flow errors
 import { ResizableBox } from "react-resizable";
 
 import "ace/ace";
@@ -145,7 +144,6 @@ export default class NativeQueryEditor extends Component {
 
     // Ace sometimes fires mutliple "change" events in rapid succession
     // e.x. https://github.com/metabase/metabase/issues/2801
-    // $FlowFixMe
     this.onChange = _.debounce(this.onChange.bind(this), 1);
 
     this.editor = React.createRef();
@@ -290,7 +288,6 @@ export default class NativeQueryEditor extends Component {
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
-      // $FlowFixMe
       runQuestionQuery()
         // <hack>
         // This is an attempt to fix a conflict between Ace and react-draggable.
@@ -314,7 +311,6 @@ export default class NativeQueryEditor extends Component {
 
     const editorElement = this.editor.current;
 
-    // $FlowFixMe
     if (typeof ace === "undefined" || !ace || !ace.edit) {
       // fail gracefully-ish if ace isn't available, e.x. in integration tests
       return;

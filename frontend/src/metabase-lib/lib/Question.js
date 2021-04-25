@@ -155,7 +155,6 @@ export default class Question {
     visualization_settings?: VisualizationSettings,
     dataset_query?: DatasetQuery,
   } = {}) {
-    // $FlowFixMe
     let card: CardObject = {
       name,
       display,
@@ -909,7 +908,6 @@ export default class Question {
   }
 
   parametersList(): ParameterObject[] {
-    // $FlowFixMe
     return (Object.values(this.parameters()): ParameterObject[]);
   }
 

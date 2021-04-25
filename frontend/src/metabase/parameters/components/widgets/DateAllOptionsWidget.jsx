@@ -19,13 +19,11 @@ import type {
 type UrlEncoded = string;
 
 // Use a placeholder value as field references are not used in dashboard filters
-// $FlowFixMe
 const noopRef: LocalFieldReference = null;
 
 function getFilterValueSerializer(
   func: (val1: string, val2: string) => UrlEncoded,
 ) {
-  // $FlowFixMe
   return filter => func(filter[2], filter[3], filter[4] || {});
 }
 
@@ -34,7 +32,6 @@ const serializersByOperatorName: {
 } = {
   previous: getFilterValueSerializer(
     (value, unit, options = {}) =>
-      // $FlowFixMe
       `past${-value}${unit}s${options["include-current"] ? "~" : ""}`,
   ),
   next: getFilterValueSerializer(
@@ -93,10 +90,8 @@ export default class DateAllOptionsWidget extends Component {
     this.state = {
       filter:
         props.value != null
-          ? // $FlowFixMe
-            dateParameterValueToMBQL(props.value, noopRef) || []
-          : // $FlowFixMe
-            [],
+          ? dateParameterValueToMBQL(props.value, noopRef) || []
+          : [],
     };
   }
 

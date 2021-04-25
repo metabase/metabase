@@ -4246,20 +4246,18 @@ function compileFormatter(format, columnName, columnExtents) {
   } else if (format.type === "range") {
     var columnMin = function columnMin(name) {
       return (
-        // $FlowFixMe
         columnExtents && columnExtents[name] && columnExtents[name][0]
       );
     };
     var columnMax = function columnMax(name) {
       return (
-        // $FlowFixMe
         columnExtents && columnExtents[name] && columnExtents[name][1]
       );
     };
 
-    var min = format.min_type === "custom" ? parseFloat(format.min_value) : format.min_type === "all" ? // $FlowFixMe
+    var min = format.min_type === "custom" ? parseFloat(format.min_value) : format.min_type === "all" ?
     Math.min.apply(Math, _toConsumableArray(format.columns.map(columnMin))) : columnMin(columnName);
-    var max = format.max_type === "custom" ? parseFloat(format.max_value) : format.max_type === "all" ? // $FlowFixMe
+    var max = format.max_type === "custom" ? parseFloat(format.max_value) : format.max_type === "all" ?
     Math.max.apply(Math, _toConsumableArray(format.columns.map(columnMax))) : columnMax(columnName);
 
     if (typeof max !== "number" || typeof min !== "number") {
@@ -4481,7 +4479,6 @@ function syncDeprecatedColorFamilies() {
 }
 
 var getRandomColor = exports.getRandomColor = function getRandomColor(family) {
-  // $FlowFixMe: Object.values doesn't preserve the type :-/
   var colors = Object.values(family);
   return colors[Math.floor(Math.random() * colors.length)];
 };
@@ -8458,7 +8455,7 @@ var Harmonizer = function () {
 		}
 		return color;
 	};
-	
+
 	var harmonize = function (color, degrees) {
 		var ret = [], hsl, h, s, l, a, i, degree;
 		hsl = color.hsl();

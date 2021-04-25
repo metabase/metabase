@@ -171,7 +171,6 @@ export function getDateTimeFieldTarget(
   if (dimension && dimension.temporalUnit()) {
     return dimension.withoutTemporalBucketing().mbql();
   } else {
-    // $FlowFixMe
     return field;
   }
 }
@@ -186,7 +185,6 @@ function getDateTimeFieldAndValues(
     .map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const field = getDateTimeField(filter[1], bucketing);
-  // $FlowFixMe
   return [field, ...values];
 }
 
@@ -230,7 +228,6 @@ export const DATE_OPERATORS: Operator[] = [
       getOptions(filter),
     ],
     test: ([op, field, value]) =>
-      // $FlowFixMe
       (op === "time-interval" && value < 0) || Object.is(value, -0),
     widget: PreviousPicker,
     options: { "include-current": true },
@@ -245,7 +242,6 @@ export const DATE_OPERATORS: Operator[] = [
       getUnit(filter),
       getOptions(filter),
     ],
-    // $FlowFixMe
     test: ([op, field, value]) => op === "time-interval" && value >= 0,
     widget: NextPicker,
     options: { "include-current": true },

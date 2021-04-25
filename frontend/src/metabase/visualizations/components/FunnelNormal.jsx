@@ -47,7 +47,6 @@ export default class FunnelNormal extends Component {
     const dimensionIndex = 0;
     const metricIndex = 1;
     const cols = series[0].data.cols;
-    // $FlowFixMe
     const rows: number[][] = series.map(s => s.data.rows[0]);
 
     const funnelSmallSize =

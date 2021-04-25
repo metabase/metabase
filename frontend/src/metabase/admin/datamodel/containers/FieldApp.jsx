@@ -176,7 +176,6 @@ export default class FieldApp extends React.Component {
     this.props.deleteFieldDimension,
   );
 
-  // $FlowFixMe
   onUpdateFieldSettings = (settings: ColumnSettingsType): void => {
     return this.onUpdateFieldProperties({ settings });
   };
