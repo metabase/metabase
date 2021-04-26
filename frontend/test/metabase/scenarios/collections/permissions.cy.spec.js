@@ -408,9 +408,15 @@ describe("collection permissions", () => {
             });
 
             it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+              const { first_name, last_name } = USERS[user];
               cy.visit("/collection/root");
               openEllipsisMenuFor("Orders in a dashboard");
-              popover().findByText("Duplicate this item");
+              popover()
+                .findByText("Duplicate this item")
+                .click();
+              cy.get(".AdminSelect").findByText(
+                `${first_name} ${last_name}'s Personal Collection`,
+              );
             });
 
             ["/", "/collection/root"].forEach(route => {
@@ -455,6 +461,26 @@ describe("collection permissions", () => {
                   cy.findByText("Orders in a dashboard").should("not.exist");
                 });
               });
+
+              it("should be offered to save question in personal collection when creating a new dashboard", () => {
+                const { first_name, last_name } = USERS[user];
+                const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
+                cy.visit("/question/1");
+                cy.icon("pencil").click();
+                popover()
+                  .findByText("Add to dashboard")
+                  .click();
+
+                cy.get(".Modal").within(() => {
+                  cy.findByText("Create a new dashboard").click();
+                  cy.get(".AdminSelect").findByText(personalCollection);
+                  cy.findByLabelText("Name").type("Foo");
+                  cy.findByRole("button", { name: "Create" }).click();
+                });
+                cy.url().should("match", /\/dashboard\/\d+$/);
+                saveDashboard();
+                cy.get(".Entity").findByText(personalCollection);
+              });
             });
 
             describe("managing dashboard from the dashboard's edit menu", () => {
@@ -475,9 +501,15 @@ describe("collection permissions", () => {
               });
 
               it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+                const { first_name, last_name } = USERS[user];
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
-                popover().findByText("Duplicate");
+                popover()
+                  .findByText("Duplicate")
+                  .click();
+                cy.get(".AdminSelect").findByText(
+                  `${first_name} ${last_name}'s Personal Collection`,
+                );
               });
             });
           });
