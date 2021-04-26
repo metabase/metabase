@@ -491,7 +491,7 @@ describe("scenarios > question > custom columns", () => {
     cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
   });
 
-  describe("contentedtable field (metabase#15734)", () => {
+  describe.skip("contentedtable field (metabase#15734)", () => {
     beforeEach(() => {
       // This is the default screen size but we need it explicitly set for this test because of the resize later on
       cy.viewport(1280, 800);
@@ -504,10 +504,6 @@ describe("scenarios > question > custom columns", () => {
           .type("1+1")
           .blur();
       });
-      // Ugly hack without which the contenteditable field loses value making all subsequent repros impossible
-      cy.get("@formula")
-        .clear()
-        .type("1 + 1");
       cy.findByPlaceholderText("Something nice and descriptive").type("Math");
       cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
     });
@@ -526,7 +522,7 @@ describe("scenarios > question > custom columns", () => {
      *  - Without it, test runner is too fast and the test resutls in false positive.
      *  - This gives it enough time to update the DOM. The same result can be achieved with `cy.wait(1)`
      */
-    it.skip("should not erase CC formula and CC name when expression is incomplete (metabase#15734-2)", () => {
+    it("should not erase CC formula and CC name when expression is incomplete (metabase#15734-2)", () => {
       cy.get("@formula")
         .click()
         .type("{movetoend}{backspace}")
@@ -537,11 +533,28 @@ describe("scenarios > question > custom columns", () => {
       cy.findByDisplayValue("Math");
     });
 
-    it.skip("should not erase CC formula and CC name on window resize", () => {
+    it("should not erase CC formula and CC name on window resize (metabase#15734-3)", () => {
       cy.viewport(1260, 800);
       cy.get("@formula").click(); /* [1] */
       cy.findByDisplayValue("Math");
       cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
     });
+  });
+
+  it.skip("should maintain data type (metabase#13122)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']")
+        .type("case([Discount] > 0, [Created At], [Product → Created At])")
+        .blur();
+      cy.findByPlaceholderText("Something nice and descriptive").type("13112");
+      cy.findByRole("button", { name: "Done" }).click();
+    });
+    cy.findByText("Filter").click();
+    popover()
+      .findByText("13112")
+      .click();
+    cy.findByPlaceholderText("Enter a number").should("not.exist");
   });
 });
