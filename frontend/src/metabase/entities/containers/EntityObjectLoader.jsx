@@ -95,7 +95,6 @@ export default class EntityObjectLoader extends React.Component {
   }
 
   UNSAFE_componentWillMount() {
-    // $FlowFixMe: provided by @connect
     const { entityId, fetch } = this.props;
     if (entityId != null) {
       fetch(
@@ -109,7 +108,6 @@ export default class EntityObjectLoader extends React.Component {
       nextProps.entityId !== this.props.entityId &&
       this.props.entityId != null
     ) {
-      // $FlowFixMe: provided by @connect
       nextProps.fetch(
         { id: nextProps.entityId },
         { reload: nextProps.reload, properties: nextProps.properties },
@@ -117,15 +115,12 @@ export default class EntityObjectLoader extends React.Component {
     }
   }
   renderChildren = () => {
-    // $FlowFixMe: provided by @connect
     let { children, entityDef, wrapped, object, ...props } = this.props; // eslint-disable-line no-unused-vars
 
     if (wrapped) {
-      // $FlowFixMe:
       object = this._getWrappedObject(this.props);
     }
 
-    // $FlowFixMe: missing loading/error
     return children({
       ..._.omit(props, ...CONSUMED_PROPS),
       object,
@@ -136,7 +131,6 @@ export default class EntityObjectLoader extends React.Component {
     });
   };
   render() {
-    // $FlowFixMe: provided by @connect
     const { entityId, fetched, error, loadingAndErrorWrapper } = this.props;
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
@@ -152,7 +146,6 @@ export default class EntityObjectLoader extends React.Component {
   }
 
   reload = () => {
-    // $FlowFixMe: provided by @connect
     return this.props.fetch(
       { id: this.props.entityId },
       { reload: true, properties: this.props.properties },
@@ -160,7 +153,6 @@ export default class EntityObjectLoader extends React.Component {
   };
 
   remove = () => {
-    // $FlowFixMe: provided by @connect
     return this.props.delete(this.props.object);
   };
 }

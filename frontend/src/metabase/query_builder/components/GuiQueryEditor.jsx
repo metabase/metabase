@@ -193,7 +193,6 @@ export default class GuiQueryEditor extends React.Component {
 
     // aggregation clause.  must have table details available
     if (query.isEditable()) {
-      // $FlowFixMe
       const aggregations: (Aggregation | null)[] = query.aggregations();
 
       if (aggregations.length === 0) {
@@ -256,7 +255,6 @@ export default class GuiQueryEditor extends React.Component {
 
     const breakoutList = [];
 
-    // $FlowFixMe
     const breakouts: (Breakout | null)[] = query.breakouts();
 
     // Placeholder breakout for showing the add button

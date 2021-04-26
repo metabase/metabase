@@ -32,7 +32,6 @@ const CURRENT_INTERVAL_NAME = {
 
 function getCurrentIntervalName(filter: FieldFilter): ?string {
   if (filter[0] === "time-interval") {
-    // $FlowFixMe:
     return CURRENT_INTERVAL_NAME[filter[3]];
   }
   return null;

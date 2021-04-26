@@ -20,7 +20,6 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     !clicked.column ||
     clicked.value !== undefined ||
     clicked.column.source !== "fields" ||
-    // $FlowFixMe: flow thinks `clicked` or `clicked.column` may be null even though we checked it above
     _.any(DENYLIST_TYPES, t => isa(clicked.column.semantic_type, t))
   ) {
     return [];

@@ -236,7 +236,6 @@ export default class TableSimple extends Component {
                           })
                         );
 
-                      // $FlowFixMe: proper test for a React element?
                       const isLink = cellData && cellData.type === ExternalLink;
                       const isClickable =
                         !isLink && this.visualizationIsClickable(clicked);

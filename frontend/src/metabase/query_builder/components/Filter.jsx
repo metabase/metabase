@@ -61,7 +61,6 @@ export const OperatorFilter = ({
   children = DEFAULT_FILTER_RENDERER,
 }: Props) => {
   const [op, field] = filter;
-  // $FlowFixMe
   const values: ValueType[] = hasFilterOptions(filter)
     ? filter.slice(2, -1)
     : filter.slice(2);
@@ -74,7 +73,6 @@ export const OperatorFilter = ({
   const operator = dimension.filterOperator(op);
 
   let formattedValues;
-  // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
   if (operator && operator.multi && values.length > maxDisplayValues) {
     const n = values.length;
     formattedValues = [ngettext(msgid`${n} selection`, `${n} selections`, n)];

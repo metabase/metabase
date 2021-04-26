@@ -126,7 +126,6 @@ function syncDeprecatedColorFamilies() {
 }
 
 export const getRandomColor = (family: ColorFamily): ColorString => {
-  // $FlowFixMe: Object.values doesn't preserve the type :-/
   const colors: ColorString[] = Object.values(family);
   return colors[Math.floor(Math.random() * colors.length)];
 };

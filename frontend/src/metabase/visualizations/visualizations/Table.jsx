@@ -413,7 +413,6 @@ export default class Table extends Component {
       );
     } else {
       return (
-        // $FlowFixMe
         <TableComponent
           {...this.props}
           data={data}

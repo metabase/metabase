@@ -55,7 +55,6 @@ export default class AuditTable extends React.Component {
   };
 
   render() {
-    // $FlowFixMe: metadata, and onChangeLocation provided by @connect
     const { metadata, table, onChangeLocation, pageSize } = this.props;
     const { page, hasMorePages } = this.state;
 
