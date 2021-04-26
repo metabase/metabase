@@ -537,11 +537,28 @@ describe("scenarios > question > custom columns", () => {
       cy.findByDisplayValue("Math");
     });
 
-    it.skip("should not erase CC formula and CC name on window resize", () => {
+    it.skip("should not erase CC formula and CC name on window resize (metabase#15734-3)", () => {
       cy.viewport(1260, 800);
       cy.get("@formula").click(); /* [1] */
       cy.findByDisplayValue("Math");
       cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
     });
+  });
+
+  it.skip("should maintain data type (metabase#13122)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']")
+        .type("case([Discount] > 0, [Created At], [Product → Created At])")
+        .blur();
+      cy.findByPlaceholderText("Something nice and descriptive").type("13112");
+      cy.findByRole("button", { name: "Done" }).click();
+    });
+    cy.findByText("Filter").click();
+    popover()
+      .findByText("13112")
+      .click();
+    cy.findByPlaceholderText("Enter a number").should("not.exist");
   });
 });
