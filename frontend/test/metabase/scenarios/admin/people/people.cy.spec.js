@@ -25,13 +25,12 @@ describe("scenarios > admin > people", () => {
     it("should render (metabase-enterprise#210)", () => {
       cy.visit("/admin/people");
 
-      cy.log("Assert it loads People by default");
-      cy.get(".PageTitle").contains("People");
-
       cy.get(".ContentTable tbody tr")
         .as("result-rows")
         // Bobby Tables, No Collection Tableton, No Data Tableton, None Tableton, Robert Tableton
         .should("have.length", TOTAL_USERS);
+
+      cy.findByText("8 people found");
 
       // A small sidebar selector
       cy.get(".AdminList-items").within(() => {
@@ -69,7 +68,7 @@ describe("scenarios > admin > people", () => {
       const { first_name, last_name, email } = TEST_USER;
       const FULL_NAME = `${first_name} ${last_name}`;
       cy.visit("/admin/people");
-      clickButton("Add someone");
+      clickButton("Invite someone");
 
       // first modal
       cy.findByLabelText("First name").type(first_name);
@@ -89,7 +88,7 @@ describe("scenarios > admin > people", () => {
     it("should disallow admin to create new users with case mutation of existing user", () => {
       const { first_name, last_name, email } = normal;
       cy.visit("/admin/people");
-      clickButton("Add someone");
+      clickButton("Invite someone");
 
       cy.findByLabelText("First name").type(first_name + "New");
       cy.findByLabelText("Last name").type(last_name + "New");
@@ -132,10 +131,6 @@ describe("scenarios > admin > people", () => {
         cy.icon("refresh").click();
         cy.findByText(`Reactivate ${FULL_NAME}?`);
         clickButton("Reactivate");
-        // It redirects to all people listing
-        cy.findByText("Deactivated").should("not.exist");
-        cy.findByText("Add someone");
-        cy.findByText(FULL_NAME);
       });
     });
 

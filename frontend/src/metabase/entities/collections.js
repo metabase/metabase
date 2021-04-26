@@ -66,7 +66,10 @@ const Collections = createEntity({
     getExpandedCollectionsById: createSelector(
       [
         state => state.entities.collections,
-        state => state.entities.collections_list[null] || [],
+        state => {
+          const { list } = state.entities.collections_list[null] || {};
+          return list || [];
+        },
         getUser,
       ],
       (collections, collectionsIds, user) =>

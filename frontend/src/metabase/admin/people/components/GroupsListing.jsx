@@ -25,7 +25,7 @@ import UserAvatar from "metabase/components/UserAvatar";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 
-import AddRow from "./AddRow";
+import { AddRow } from "./AddRow";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
