@@ -66,33 +66,67 @@
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- status-clause
+  "Figure out what `where` clause to add to the user query when we get a fiddly status and include_deactivated query. This is to keep backwards compatibility with `include_deactivated` while adding `status."
+  [status include_deactivated]
+  (if (some? include_deactivated)
+    []
+    (case status
+      "all" []
+      "deactivated" [:= :is_active false]
+      "active" [:= :is_active true]
+      [:= :is_active true]
+      ))
+)
+
+(defn- user-visible-columns []
+  (if api/*is-superuser?* user/admin-or-self-visible-columns user/non-admin-or-self-visible-columns))
+
+
 (api/defendpoint GET "/"
-  "Fetch a list of `Users` for Pulses. By default returns only active users. If
-  `include_deactivated` is true, return all Users (active and inactive). (Using `include_deactivated` requires
-  superuser permissions.). For users with segmented permissions, return only themselves."
-  [limit offset include_deactivated]
+  "Fetch a list of `Users`. By default returns every active user but only active users.
+
+  If `status` is `deactivated`, include deactivated users only.
+  If `status` is `all`, include all users (active and inactive).
+  Also supports `include_deactivated`, which if true, is equivalent to `status=all`.
+  `status` and `included_deactivated` requires superuser permissions.
+
+  For users with segmented permissions, return only themselves.
+
+  Takes `limit`, `offset` for pagination.
+  Takes `query` for filtering on first name, last name, email.
+  Also takes `groupid`, which filters on groupid."
+  [limit offset status query group_id include_deactivated]
   {
    limit (s/maybe su/IntStringGreaterThanZero)
    offset (s/maybe su/IntStringGreaterThanOrEqualToZero)
+   status (s/maybe su/String)
+   query (s/maybe su/String)
+   groupid (s/maybe su/IntStringGreaterThanOrEqualToZero)
    include_deactivated (s/maybe su/BooleanString)
   }
-  (when include_deactivated
+  (when (or status include_deactivated)
     (api/check-superuser))
   (api/check-valid-offset limit offset)
   (api/check-valid-limit limit offset)
-  (cond-> (db/select (vec (cons User (if api/*is-superuser?*
-                                       user/admin-or-self-visible-columns
-                                       user/non-admin-or-self-visible-columns)))
+  (cond-> (db/select
+            (vec (cons User (user-visible-columns)))
             (cond-> {}
-                true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                true (hh/merge-where (when-not include_deactivated
-                                  [:= :is_active true]))
-                true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                                  (when (segmented-user?)
-                                    [:= :id api/*current-user-id*])))
-                (some? limit) (hh/limit (Integer/parseInt limit))
-                (some? offset) (hh/offset (Integer/parseInt offset))
-                )
+              true (hh/merge-where (status-clause status include_deactivated))
+              true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                                     (when (segmented-user?)
+                                       [:= :id api/*current-user-id*])))
+              (some? query) (let [query-pat (str "%" query "%")]
+                              (hh/merge-where
+                                [:or
+                                 [:like [:%lower.first_name] [query-pat]]
+                                 [:like [:%lower.last_name] [query-pat]]
+                                 [:like [:%lower.email] [query-pat]]]))
+              true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+              (some? group_id) (hh/merge-where [:= :group_id group_id])
+              (some? limit) (hh/limit (Integer/parseInt limit))
+              (some? offset) (hh/offset (Integer/parseInt offset))
+              )
             )
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
