@@ -88,8 +88,9 @@
    [:like [:%lower.email] [(str "%" query "%")]]])
 
 
-(defn- user-visible-columns []
+(defn- user-visible-columns
   "Columns of user table visible to current caller of API"
+  []
   (if api/*is-superuser?* user/admin-or-self-visible-columns user/non-admin-or-self-visible-columns))
 
 (defn- user-clauses
