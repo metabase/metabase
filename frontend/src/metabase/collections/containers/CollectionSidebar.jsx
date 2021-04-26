@@ -42,6 +42,11 @@ const Sidebar = styled(Box)`
     we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
   */
   query: () => ({ tree: true }),
+
+  // Using the default loading wrapper breaks the UI,
+  // as the sidebar has a unique fixed left layout
+  // It's disabled, so loading can be displayed appropriately
+  // See: https://github.com/metabase/metabase/issues/14603
   loadingAndErrorWrapper: false,
 })
 class CollectionSidebar extends React.Component {
