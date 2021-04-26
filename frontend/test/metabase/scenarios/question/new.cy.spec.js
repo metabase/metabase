@@ -358,6 +358,31 @@ describe("scenarios > question > new", () => {
         cy.get(".ScalarValue").contains("33");
       });
     });
+
+    it("'read-only' user should be able to resize column width (metabase#9772)", () => {
+      cy.signIn("readonly");
+      cy.visit("/question/1");
+      cy.findByText("Tax")
+        .closest(".TableInteractive-headerCellData")
+        .as("headerCell")
+        .then($cell => {
+          const originalWidth = $cell[0].getBoundingClientRect().width;
+
+          cy.wrap($cell)
+            .find(".react-draggable")
+            .trigger("mousedown", 0, 0, { force: true })
+            .trigger("mousemove", 100, 0, { force: true })
+            .trigger("mouseup", 100, 0, { force: true });
+
+          cy.findByText("Started from").click(); // Give DOM some time to update
+
+          cy.get("@headerCell").then($newCell => {
+            const newWidth = $newCell[0].getBoundingClientRect().width;
+
+            expect(newWidth).to.be.gt(originalWidth);
+          });
+        });
+    });
   });
 });
 
