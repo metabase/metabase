@@ -67,7 +67,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- status-clause
-  "Figure out what `where` clause to add to the user query when we get a fiddly status and include_deactivated query. This is to keep backwards compatibility with `include_deactivated` while adding `status."
+  "Figure out what `where` clause to add to the user query when
+  we get a fiddly status and include_deactivated query.
+
+  This is to keep backwards compatibility with `include_deactivated` while adding `status."
   [status include_deactivated]
   (if include_deactivated
     nil
