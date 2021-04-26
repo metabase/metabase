@@ -202,6 +202,7 @@ export default class ItemPicker extends React.Component {
                   // only show if collection can be selected or has children
                   return canSelect || hasChildren ? (
                     <Item
+                      key={`collection-${collection.id}`}
                       item={collection}
                       name={collection.name}
                       color={COLLECTION_ICON_COLOR}
