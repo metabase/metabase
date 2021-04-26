@@ -78,20 +78,14 @@ const HelpText = ({ helpText, width }) =>
     </Popover>
   ) : null;
 
-const Errors = ({ compileError }) => {
-  if (!compileError) {
-    return null;
-  }
-
-  compileError = Array.isArray(compileError) ? compileError : [compileError];
-
+const ErrorMessage = ({ error }) => {
   return (
     <div>
-      {compileError.map(error => (
+      {error && (
         <div className="text-error mt1 mb1" style={{ whiteSpace: "pre-wrap" }}>
           {error.message}
         </div>
-      ))}
+      )}
     </div>
   );
 };
@@ -249,8 +243,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   onInputBlur = () => {
     this.clearSuggestions();
     const { tokenizerError, compileError } = this.state;
-    const displayError =
-      tokenizerError.length > 0 ? _.first(tokenizerError) : compileError;
+    const displayError = [...tokenizerError, ...compileError || []];
     this.setState({ displayError });
 
     // whenever our input blurs we push the updated expression to our parent if valid
@@ -259,7 +252,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         console.warn("isExpression=false", this.state.expression);
       }
       this.props.onChange(this.state.expression);
-    } else if (displayError) {
+    } else if (displayError && displayError.length > 0) {
       this.props.onError(displayError);
     } else {
       this.props.onError({ message: t`Invalid expression` });
@@ -365,19 +358,14 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   render() {
     const { placeholder } = this.props;
-    const {
-      compileError,
-      displayError,
-      source,
-      suggestions,
-      syntaxTree,
-    } = this.state;
+    const { displayError, source, suggestions, syntaxTree } = this.state;
 
     const inputClassName = cx("input text-bold text-monospace", {
       "text-dark": source,
       "text-light": !source,
     });
     const inputStyle = { fontSize: 12 };
+    const priorityError = _.first(displayError);
 
     return (
       <div className={cx("relative my1")}>
@@ -395,7 +383,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           ref={this.input}
           type="text"
           className={cx(inputClassName, {
-            "border-error": compileError,
+            "border-error": priorityError,
           })}
           style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
           placeholder={placeholder}
@@ -409,7 +397,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           onClick={this.onInputClick}
           autoFocus
         />
-        <Errors compileError={displayError} />
+        <ErrorMessage error={priorityError} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
         <ExpressionEditorSuggestions
           suggestions={suggestions}
