@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 import { dissoc } from "icepick";
 import { t } from "ttag";
 
@@ -9,10 +10,21 @@ import { entityTypeForObject } from "metabase/schema";
 
 import Link from "metabase/components/Link";
 
+import Collections from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+
+function mapStateToProps(state, props) {
+  return {
+    initialCollectionId: Collections.selectors.getInitialCollectionId(
+      state,
+      props,
+    ),
+  };
+}
 
 function CollectionCopyEntityModal({
   entityObject,
+  initialCollectionId,
   onClose,
   onSaved,
   triggerToast,
@@ -20,7 +32,10 @@ function CollectionCopyEntityModal({
   return (
     <EntityCopyModal
       entityType={entityTypeForObject(entityObject)}
-      entityObject={entityObject}
+      entityObject={{
+        ...entityObject,
+        collection_id: initialCollectionId,
+      }}
       copy={async values => {
         return entityObject.copy(dissoc(values, "id"));
       }}
@@ -45,4 +60,4 @@ function CollectionCopyEntityModal({
   );
 }
 
-export default withToast(CollectionCopyEntityModal);
+export default withToast(connect(mapStateToProps)(CollectionCopyEntityModal));
