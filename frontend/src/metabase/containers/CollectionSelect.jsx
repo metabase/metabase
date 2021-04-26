@@ -1,12 +1,34 @@
-import ItemSelect from "./ItemSelect";
+/* eslint-disable react/prop-types */
+import React from "react";
 
+import Collection from "metabase/entities/collections";
+
+import ItemSelect from "./ItemSelect";
 import CollectionPicker from "./CollectionPicker";
 import CollectionName from "./CollectionName";
 
-const QuestionSelect = ItemSelect(
+const CollectionSelect = ItemSelect(
   CollectionPicker,
   CollectionName,
   "collection",
 );
 
-export default QuestionSelect;
+/**
+ * When suggesting an initial collection,
+ * we need to check a user has `write` access to it.
+ * For that, collection objects have to be present in Redux store,
+ * so we can retrieve a collection by ID and check the `can_write` flag.
+ *
+ * This component is wrapped with @Collection.loadList
+ * to ensure collection are fetched and permissions can be checked.
+ */
+@Collection.loadList({
+  loadingAndErrorWrapper: false,
+})
+class CollectionSelectWrapped extends React.Component {
+  render() {
+    return <CollectionSelect {...this.props} />;
+  }
+}
+
+export default CollectionSelectWrapped;
