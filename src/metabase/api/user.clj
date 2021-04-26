@@ -69,10 +69,10 @@
 (defn- status-clause
   "Figure out what `where` clause to add to the user query when we get a fiddly status and include_deactivated query. This is to keep backwards compatibility with `include_deactivated` while adding `status."
   [status include_deactivated]
-  (if (some? include_deactivated)
-    []
+  (if include_deactivated
+    nil
     (case status
-      "all" []
+      "all" nil
       "deactivated" [:= :is_active false]
       "active" [:= :is_active true]
       [:= :is_active true]
@@ -95,14 +95,14 @@
 
   Takes `limit`, `offset` for pagination.
   Takes `query` for filtering on first name, last name, email.
-  Also takes `groupid`, which filters on groupid."
+  Also takes `group_id`, which filters on group id."
   [limit offset status query group_id include_deactivated]
   {
    limit (s/maybe su/IntStringGreaterThanZero)
    offset (s/maybe su/IntStringGreaterThanOrEqualToZero)
-   status (s/maybe su/String)
-   query (s/maybe su/String)
-   groupid (s/maybe su/IntStringGreaterThanOrEqualToZero)
+   status (s/maybe s/Str)
+   query (s/maybe s/Str)
+   group_id (s/maybe su/IntStringGreaterThanOrEqualToZero)
    include_deactivated (s/maybe su/BooleanString)
   }
   (when (or status include_deactivated)
@@ -116,12 +116,11 @@
               true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
                                      (when (segmented-user?)
                                        [:= :id api/*current-user-id*])))
-              (some? query) (let [query-pat (str "%" query "%")]
-                              (hh/merge-where
-                                [:or
-                                 [:like [:%lower.first_name] [query-pat]]
-                                 [:like [:%lower.last_name] [query-pat]]
-                                 [:like [:%lower.email] [query-pat]]]))
+              (some? query) (hh/merge-where
+                              [:or
+                               [:like [:%lower.first_name] [(str "%" query "%")]]
+                               [:like [:%lower.last_name] [(str "%" query "%")]]
+                               [:like [:%lower.email] [(str "%" query "%")]]])
               true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
               (some? group_id) (hh/merge-where [:= :group_id group_id])
               (some? limit) (hh/limit (Integer/parseInt limit))
