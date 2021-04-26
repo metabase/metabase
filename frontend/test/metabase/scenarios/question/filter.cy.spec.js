@@ -930,4 +930,35 @@ describe("scenarios > question > filter", () => {
     );
     cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
   });
+
+  it.skip("should work on twice summarized questions (metabase#15620)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-query": {
+            "source-table": 1,
+            aggregation: [["count"]],
+            breakout: [["field", 7, { "temporal-unit": "month" }]],
+          },
+          aggregation: [
+            ["avg", ["field", "count", { "base-type": "type/Integer" }]],
+          ],
+        },
+        type: "query",
+      },
+    });
+    cy.get(".ScalarValue").contains("5");
+    cy.findAllByRole("button")
+      .contains("Filter")
+      .click();
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("Category").click();
+      cy.findByText("Gizmo").click();
+    });
+    cy.findByRole("button", { name: "Add filter" })
+      .should("not.be.disabled")
+      .click();
+    cy.get(".dot");
+  });
 });
