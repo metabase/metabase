@@ -2,6 +2,7 @@
   "/api/table endpoints."
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST PUT]]
+            [honeysql.helpers :as hh]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
@@ -30,12 +31,20 @@
   "Schema for a valid table field ordering."
   (apply s/enum (map name table/field-orderings)))
 
+(defn- query-clause [query]
+  [:or
+   [:like [:%lower.some shit] [(str "%" query "%")]]
+   ])
+
 (api/defendpoint GET "/"
   "Get all `Tables`."
-  []
-  (as-> (db/select Table, :active true, {:order-by [[:name :asc]]}) tables
-    (hydrate tables :db)
-    (filterv mi/can-read? tables)))
+  [query]
+  (as-> (db/select Table, :active true,
+                   (cond-> {:order-by [[:name :asc]]}
+                     (some? query) (hh/merge-where (query-clause query)))
+                   tables
+                   (hydrate tables :db)
+                   (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
