@@ -328,8 +328,7 @@ export function tokenize(expression) {
 }
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
-export function countMatchingParentheses(expression) {
-  const { tokens } = tokenize(expression);
+export function countMatchingParentheses(tokens) {
   const isOpen = t => t.op === OPERATOR.OpenParenthesis;
   const isClose = t => t.op === OPERATOR.CloseParenthesis;
   const count = (c, token) =>

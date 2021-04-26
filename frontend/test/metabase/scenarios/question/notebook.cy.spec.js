@@ -848,6 +848,44 @@ describe("scenarios > question > notebook", () => {
         cy.contains(/^Expecting an opening parenthesis/i);
       });
     });
+
+    it("should catch invalid characters", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("[Price] / #");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Massive Discount");
+        cy.contains(/^Invalid character: #/i);
+      });
+    });
+
+    it("should catch unterminated string literals", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Filter").click();
+      cy.findByText("Custom Expression").click();
+      cy.get("[contenteditable='true']")
+        .click()
+        .clear()
+        .type('[Category] = "widget', { delay: 50 });
+      cy.findAllByRole("button", { name: "Done" })
+        .should("not.be.disabled")
+        .click();
+      cy.findByText("Unterminated quoted string");
+    });
+
+    it("should catch unterminated field reference", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("[Price / 2");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Massive Discount");
+        cy.contains(/^Unterminated bracket identifier/i);
+      });
+    });
   });
 });
 
