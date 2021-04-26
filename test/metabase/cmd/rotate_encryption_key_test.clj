@@ -99,19 +99,9 @@
                 (is (not= {:db "/tmp/k2.db"} (db/select-one-field :details Database :name "k2")))
                 (is (= {:db "/tmp/k3.db"} (db/select-one-field :details Database :name "k3")))))
 
-            (testing "full rollback when a database looks encrypted with a different key than the current one"
-              (let [db-details {:db "/tmp/test.db"}]
-                (eu/with-secret-key k3
-                  (db/update! Database 1 {:details db-details}))
-                (eu/with-secret-key k3
-                  (is (= db-details (db/select-one-field :details Database :id 1))))
-                (eu/with-secret-key k2
-                  (is (nil? (rotate-encryption-key! k3))))
-                (eu/with-secret-key k3
-                  (is (= db-details (db/select-one-field :details Database :id 1))))))
-
             (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
               (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
+              (db/update-where! Database {:name "k3"} :details "{\"db\":\"/tmp/test.db\"}")
               (eu/with-secret-key k2
                 (rotate-encryption-key! nil))
               (is (= "unencrypted value" (raw-value "nocrypt"))))
