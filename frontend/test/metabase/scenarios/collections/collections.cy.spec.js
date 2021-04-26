@@ -388,8 +388,8 @@ describe("scenarios > collection_defaults", () => {
         "**New collection should immediately be open, showing nested children**",
       );
 
-      getSidebarCollectionChildren(cy.findByText(NEW_COLLECTION)).within(() => {
-        cy.icon("chevrondown");
+      getSidebarCollectionChildrenFor(NEW_COLLECTION).within(() => {
+        cy.icon("chevrondown").should("have.length", 2); // both target collection and "First collection" are open
         cy.findByText("First collection");
         cy.findByText("Second collection");
       });
@@ -576,9 +576,11 @@ function selectItemUsingCheckbox(item, icon = "table") {
     });
 }
 
-function getSidebarCollectionChildren(item) {
-  return item
+function getSidebarCollectionChildrenFor(item) {
+  return cy
+    .findByTestId("sidebar")
+    .findByText(item)
     .closest("a")
     .parent()
-    .siblings();
+    .parent();
 }
