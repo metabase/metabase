@@ -128,7 +128,8 @@
               )
             )
     ;; For admins, also include the IDs of the  Users' Personal Collections
-    api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
+    api/*is-superuser?* (hydrate :personal_collection_id :group_ids)
+    (some? limit) (partial api/add-total-count-header (db/count User))))
 
 
 (api/defendpoint GET "/current"
