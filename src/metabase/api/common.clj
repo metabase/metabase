@@ -448,8 +448,8 @@
 
 (defn add-total-count-header
   "Adds total count header to a response. For paginated responses"
-  [total-count body]
-  {:status 200, :headers {"X-Total-Count" (str total-count)}, :body body}
+  [body total-count]
+  {:status 200, :headers {"X-Total-Count" (str total-count)}, :body body})
 
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------

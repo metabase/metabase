@@ -79,8 +79,33 @@
       ))
 )
 
+(defn- query-clause
+  "Honeysql clause to shove into user query if there's a query"
+  [query]
+  [:or
+   [:like [:%lower.first_name] [(str "%" query "%")]]
+   [:like [:%lower.last_name] [(str "%" query "%")]]
+   [:like [:%lower.email] [(str "%" query "%")]]])
+
+
 (defn- user-visible-columns []
+  "Columns of user table visible to current caller of API"
   (if api/*is-superuser?* user/admin-or-self-visible-columns user/non-admin-or-self-visible-columns))
+
+(defn- user-clauses
+  "Honeysql clauses for filtering on users
+  - with a status,
+  - with a query,
+  - with a group_id,
+  - with include_deactivatved"
+  [status query group_id include_deactivated]
+  (cond-> {}
+        true (hh/merge-where (status-clause status include_deactivated))
+        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                               (when (segmented-user?)
+                                 [:= :id api/*current-user-id*])))
+        (some? query) (hh/merge-where (query-clause query))
+        (some? group_id) (hh/merge-where [:= :group_id group_id])))
 
 
 (api/defendpoint GET "/"
@@ -104,32 +129,23 @@
    query (s/maybe s/Str)
    group_id (s/maybe su/IntStringGreaterThanOrEqualToZero)
    include_deactivated (s/maybe su/BooleanString)
-  }
+   }
   (when (or status include_deactivated)
     (api/check-superuser))
   (api/check-valid-offset limit offset)
   (api/check-valid-limit limit offset)
   (cond-> (db/select
             (vec (cons User (user-visible-columns)))
-            (cond-> {}
-              true (hh/merge-where (status-clause status include_deactivated))
-              true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                                     (when (segmented-user?)
-                                       [:= :id api/*current-user-id*])))
-              (some? query) (hh/merge-where
-                              [:or
-                               [:like [:%lower.first_name] [(str "%" query "%")]]
-                               [:like [:%lower.last_name] [(str "%" query "%")]]
-                               [:like [:%lower.email] [(str "%" query "%")]]])
+            (cond-> (user-clauses status query group_id include_deactivated)
               true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-              (some? group_id) (hh/merge-where [:= :group_id group_id])
               (some? limit) (hh/limit (Integer/parseInt limit))
               (some? offset) (hh/offset (Integer/parseInt offset))
               )
             )
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id :group_ids)
-    (some? limit) (partial api/add-total-count-header (db/count User))))
+    (some? limit) (api/add-total-count-header
+                    (db/count User (user-clauses status query group_id include_deactivated)))))
 
 
 (api/defendpoint GET "/current"
