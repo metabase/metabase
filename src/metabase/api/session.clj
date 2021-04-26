@@ -290,8 +290,10 @@
   (= (email->domain email) domain))
 
 (defn- autocreate-user-allowed-for-email? [email]
-  (when-let [domain (google-auth-auto-create-accounts-domain)]
-    (email-in-domain? email domain)))
+  (boolean
+   (some
+    (partial email-in-domain? email)
+    (str/split (google-auth-auto-create-accounts-domain) #","))))
 
 (defn check-autocreate-user-allowed-for-email
   "Throws if an admin needs to intervene in the account creation."

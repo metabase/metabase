@@ -398,14 +398,22 @@
     (et/with-fake-inbox
       (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
                                          admin-email                             "rasta@toucans.com"]
-        (try
+        (mt/with-model-cleanup [User]
           (let [user (#'session-api/google-auth-create-new-user! {:first_name "Rasta"
                                                                   :last_name  "Toucan"
                                                                   :email      "rasta@sf-toucannery.com"})]
             (is (= {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
-                   (select-keys user [:first_name :last_name :email]))))
-          (finally
-            (db/delete! User :email "rasta@sf-toucannery.com")))))))
+                   (select-keys user [:first_name :last_name :email]))))))))
+
+  (testing "should support multiple domains (#5218)"
+    ;; set the Setting to one with multiple CSV domains
+    (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com,example.com"]
+      (mt/with-model-cleanup [User]
+        (let [user (#'session-api/google-auth-create-new-user! {:first_name "Cam"
+                                                                :last_name  "Era"
+                                                                :email      "camera@metabase.com"})]
+          (is (= {:first_name "Cam", :last_name "Era", :email "camera@metabase.com"}
+                 (select-keys user [:first_name :last_name :email]))))))))
 
 
 ;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
@@ -484,6 +492,7 @@
                ExceptionInfo
                #"Your account is disabled. Please contact your administrator."
                (session-api/do-google-auth {:body {:token "foo"}}))))))))
+
 
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 
