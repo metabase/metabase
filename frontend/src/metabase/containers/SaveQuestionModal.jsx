@@ -110,6 +110,7 @@ export default class SaveQuestionModal extends Component {
             { name: "collection_id" },
           ]}
           onSubmit={this.handleSubmit}
+          overwriteOnInitialValuesChange
         >
           {({ values, Form }) => (
             <Form>
