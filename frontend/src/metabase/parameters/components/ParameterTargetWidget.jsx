@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -21,7 +22,11 @@ type Props = {
 };
 
 export default class ParameterTargetWidget extends React.Component {
-  props: Props;
+  constructor(props: Props) {
+    super(props);
+
+    this.popover = React.createRef();
+  }
 
   static defaultProps = {
     children: ({ selected, placeholder }) => (
@@ -45,7 +50,7 @@ export default class ParameterTargetWidget extends React.Component {
 
     return (
       <PopoverWithTrigger
-        ref="popover"
+        ref={this.popover}
         triggerClasses={cx({ disabled: disabled })}
         sizeToFit
         triggerElement={
@@ -57,7 +62,7 @@ export default class ParameterTargetWidget extends React.Component {
         <ParameterTargetList
           onChange={target => {
             onChange(target);
-            this.refs.popover.close();
+            this.popover.current.close();
           }}
           target={target}
           mappingOptions={mappingOptions}

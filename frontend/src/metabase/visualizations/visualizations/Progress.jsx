@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
@@ -20,7 +21,14 @@ const MAX_BAR_HEIGHT = 65;
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 export default class Progress extends Component {
-  props: VisualizationProps;
+  constructor(props: VisualizationProps) {
+    super(props);
+
+    this.containerRef = React.createRef();
+    this.labelRef = React.createRef();
+    this.pointerRef = React.createRef();
+    this.barRef = React.createRef();
+  }
 
   static uiName = t`Progress`;
   static identifier = "progress";
@@ -75,10 +83,10 @@ export default class Progress extends Component {
 
   componentDidUpdate() {
     const component = ReactDOM.findDOMNode(this);
-    const pointer = ReactDOM.findDOMNode(this.refs.pointer);
-    const label = ReactDOM.findDOMNode(this.refs.label);
-    const container = ReactDOM.findDOMNode(this.refs.container);
-    const bar = ReactDOM.findDOMNode(this.refs.bar);
+    const pointer = this.pointerRef.current;
+    const label = this.labelRef.current;
+    const container = this.containerRef.current;
+    const bar = this.barRef.current;
 
     // Safari not respecting `height: 25%` so just do it here ¯\_(ツ)_/¯
     bar.style.height = Math.min(MAX_BAR_HEIGHT, component.offsetHeight) + "px";
@@ -171,17 +179,17 @@ export default class Progress extends Component {
           style={{ padding: 10, paddingTop: 0 }}
         >
           <div
-            ref="container"
+            ref={this.containerRef}
             className="relative text-bold text-medium"
             style={{ height: 20 }}
           >
-            <div ref="label" style={{ position: "absolute" }}>
+            <div ref={this.labelRef} style={{ position: "absolute" }}>
               {formatValue(value, settings.column(column))}
             </div>
           </div>
           <div className="relative" style={{ height: 10, marginBottom: 5 }}>
             <div
-              ref="pointer"
+              ref={this.pointerRef}
               style={{
                 width: 0,
                 height: 0,
@@ -195,7 +203,7 @@ export default class Progress extends Component {
             />
           </div>
           <div
-            ref="bar"
+            ref={this.barRef}
             className={cx("relative", { "cursor-pointer": isClickable })}
             style={{
               backgroundColor: restColor,

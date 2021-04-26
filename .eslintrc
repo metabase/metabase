@@ -17,7 +17,7 @@
     "react/no-did-update-set-state": 0,
     "react/no-find-dom-node": 0,
     "react/no-children-prop": 2,
-    "react/no-string-refs": 0,
+    "react/no-string-refs": 2,
     "react/no-unescaped-entities": 2,
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 0,

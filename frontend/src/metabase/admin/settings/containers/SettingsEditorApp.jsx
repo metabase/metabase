@@ -58,6 +58,11 @@ export default class SettingsEditorApp extends Component {
     updateSetting: PropTypes.func.isRequired,
   };
 
+  constructor(props) {
+    super(props);
+    this.saveStatusRef = React.createRef();
+  }
+
   UNSAFE_componentWillMount() {
     this.props.initializeSettings();
   }
@@ -65,7 +70,7 @@ export default class SettingsEditorApp extends Component {
   updateSetting = async (setting, newValue) => {
     const { settingValues, updateSetting } = this.props;
 
-    this.layout.setSaving();
+    this.saveStatusRef.current.setSaving();
 
     const oldValue = setting.value;
 
@@ -83,7 +88,7 @@ export default class SettingsEditorApp extends Component {
         );
       }
 
-      this.layout.setSaved();
+      this.saveStatusRef.current.setSaved();
 
       const value = prepareAnalyticsValue(setting);
 
@@ -97,7 +102,7 @@ export default class SettingsEditorApp extends Component {
     } catch (error) {
       const message =
         error && (error.message || (error.data && error.data.message));
-      this.layout.setSaveError(message);
+      this.saveStatusRef.current.setSaveError(message);
       MetabaseAnalytics.trackEvent(
         "General Settings",
         setting.display_name,
@@ -213,7 +218,7 @@ export default class SettingsEditorApp extends Component {
   render() {
     return (
       <AdminLayout
-        ref={layout => (this.layout = layout)}
+        saveStatusRef={this.saveStatusRef}
         title={t`Settings`}
         sidebar={this.renderSettingsSections()}
       >
