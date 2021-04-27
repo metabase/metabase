@@ -7,7 +7,6 @@ import ModerationIssueActionMenu from "metabase-enterprise/moderation/components
 import CreateModerationIssuePanel from "metabase-enterprise/moderation/components/CreateModerationIssuePanel";
 
 Object.assign(PLUGIN_MODERATION_COMPONENTS, {
-  active: true,
   ModerationIssueActionMenu,
   CreateModerationIssuePanel,
 });

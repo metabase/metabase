@@ -5,39 +5,24 @@ import QuestionActionButtons from "metabase/questions/components/QuestionActionB
 import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
 import { SIDEBAR_VIEWS } from "./constants";
 
-const {
-  active: isPluginActive,
-  ModerationIssueActionMenu,
-} = PLUGIN_MODERATION_COMPONENTS;
+const { ModerationIssueActionMenu } = PLUGIN_MODERATION_COMPONENTS;
 
 function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
   const canWrite = question && question.canWrite();
 
   return (
     <SidebarContent className="full-height px1">
-      {isPluginActive ? (
-        <div>
-          <QuestionActionButtons
-            canWrite={canWrite}
-            onOpenModal={onOpenModal}
-          />
-          <ModerationIssueActionMenu
-            onAction={issueType => {
-              setView({
-                name: SIDEBAR_VIEWS.CREATE_ISSUE_PANEL,
-                props: { issueType },
-              });
-            }}
-          />
-        </div>
-      ) : (
-        <div>
-          <QuestionActionButtons
-            canWrite={canWrite}
-            onOpenModal={onOpenModal}
-          />
-        </div>
-      )}
+      <div>
+        <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
+        <ModerationIssueActionMenu
+          onAction={issueType => {
+            setView({
+              name: SIDEBAR_VIEWS.CREATE_ISSUE_PANEL,
+              props: { issueType },
+            });
+          }}
+        />
+      </div>
     </SidebarContent>
   );
 }
