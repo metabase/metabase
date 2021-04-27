@@ -4,6 +4,7 @@ import {
   _typeUsingGet,
   _typeUsingPlaceholder,
   openOrdersTable,
+  openPeopleTable,
   visitQuestionAdhoc,
 } from "__support__/cypress";
 
@@ -554,6 +555,23 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("Filter").click();
     popover()
       .findByText("13112")
+      .click();
+    cy.findByPlaceholderText("Enter a number").should("not.exist");
+  });
+
+  it.skip("filter based on `concat` function should not offer numeric options (metabase#13217)", () => {
+    openPeopleTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']")
+        .type(`concat("State: ", [State])`)
+        .blur();
+      cy.findByPlaceholderText("Something nice and descriptive").type("13217");
+      cy.findByRole("button", { name: "Done" }).click();
+    });
+    cy.findByText("Filter").click();
+    popover()
+      .findByText("13217")
       .click();
     cy.findByPlaceholderText("Enter a number").should("not.exist");
   });
