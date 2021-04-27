@@ -102,6 +102,15 @@
              (->> (mt/user-http-request :rasta :get 200 "table")
                   (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
                   (map #(select-keys % [:name :display_name :id :entity_type]))
+                  set))))
+    (testing "Should have filter if we query"
+      (is (= #{{:name         (mt/format-name "venues")
+                :display_name "Venues"
+                :id           (mt/id :venues)
+                :entity_type  "entity/GenericTable"}}
+             (->> (mt/user-http-request :rasta :get 200 "table" :query "ven")
+                  (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
+                  (map #(select-keys % [:name :display_name :id :entity_type]))
                   set))))))
 
 (deftest get-table-test
