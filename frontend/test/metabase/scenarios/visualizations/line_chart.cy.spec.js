@@ -41,16 +41,16 @@ describe("scenarios > visualizations > line chart", () => {
       dataset_query: {
         type: "query",
         query: {
-          "source-table": 2,
+          "source-table": ORDERS_ID,
           aggregation: [
-            ["sum", ["field", 15, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
             [
               "aggregation-options",
-              ["/", ["avg", ["field", 10, null]], 10],
+              ["/", ["avg", ["field", ORDERS.QUANTITY, null]], 10],
               { "display-name": "AvgPct" },
             ],
           ],
-          breakout: [["field", 12, { "temporal-unit": "year" }]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
         database: 1,
       },
