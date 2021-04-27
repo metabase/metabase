@@ -118,6 +118,22 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
+                  (map #(dissoc % :is_qbnewb :last_login))))))
+    (testing "Get list of users with a group id"
+      (is (= (->> [{:email                  "crowberto@metabase.com"
+                    :first_name             "Crowberto"
+                    :last_name              "Corv"
+                    :is_superuser           true
+                    :group_ids              #{(u/the-id (group/all-users))
+                                              (u/the-id (group/admin))}
+                    :personal_collection_id true
+                    :common_name            "Crowberto Corv"}]
+                  (map (partial merge user-defaults))
+                  (map #(dissoc % :is_qbnewb :last_login)))
+             (->> (mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (group/admin)))
+                  (filter mt/test-user?)
+                  group-ids->sets
+                  mt/boolean-ids-and-timestamps
                   (map #(dissoc % :is_qbnewb :last_login))))))))
 
 (deftest user-list-include-inactive-test
