@@ -221,6 +221,8 @@
              (mt/user-http-request :crowberto :get 400 "user" :limit "1")))
       (is (= "When including an offset, a limit must also be included."
              (mt/user-http-request :crowberto :get 400 "user" :offset "1"))))
+    (testing "Limit and offset pagination get the total"
+      (is (= 4 ((mt/user-http-request :crowberto :get 400 "user" :offset "1" :limit "1") :total))))
     (testing "Limit and offset pagination works for user list"
       (is (= [{:id          (mt/user->id :lucky)
                :email       "lucky@metabase.com"
