@@ -35,4 +35,36 @@ describe("scenarios > visualizations > line chart", () => {
     cy.findByText("Right").click();
     cy.get(Y_AXIS_RIGHT_SELECTOR);
   });
+
+  it.skip("should be able to format data point values style independently on multi-series chart (metabase#13095)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": 2,
+          aggregation: [
+            ["sum", ["field", 15, null]],
+            [
+              "aggregation-options",
+              ["/", ["avg", ["field", 10, null]], 10],
+              { "display-name": "AvgPct" },
+            ],
+          ],
+          breakout: [["field", 12, { "temporal-unit": "year" }]],
+        },
+        database: 1,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.show_values": true,
+        column_settings: {
+          '["name","expression"]': { number_style: "percent" },
+        },
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["sum", "expression"],
+      },
+    });
+
+    cy.get(".value-labels").contains("30%");
+  });
 });
