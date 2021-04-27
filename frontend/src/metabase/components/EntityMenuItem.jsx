@@ -17,6 +17,7 @@ const Item = styled.div`
   transition: all 300ms linear;
   :hover {
     color: ${color("brand")};
+    background-color: ${color("bg-light")};
   }
   > .Icon {
     color: ${color("text-light")};
@@ -68,10 +69,12 @@ const EntityMenuItem = ({
   action,
   title,
   icon,
+  iconSize,
   link,
   onClose,
   event,
   externalLink,
+  className,
 }) => {
   if (link && action) {
     console.warn(
@@ -81,8 +84,8 @@ const EntityMenuItem = ({
   }
 
   const content = (
-    <Item>
-      {icon && <Icon name={icon} mr={1} />}
+    <Item className={className}>
+      {icon && <Icon name={icon} size={iconSize} mr={1} />}
       <span className="text-bold">{title}</span>
     </Item>
   );
