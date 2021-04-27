@@ -90,7 +90,7 @@
                 :content-type :json
                 :headers headers})
     (catch clojure.lang.ExceptionInfo e
-      (:object (ex-data e)))))
+      (ex-data e))))
 
 (defn- cleaned-throttlers [var-symbol ks]
   (let [throttlers (var-get var-symbol)
