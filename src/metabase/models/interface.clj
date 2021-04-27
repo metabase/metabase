@@ -156,7 +156,7 @@
 
 (models/add-type! :encrypted-json
   :in  encrypted-json-in
-  :out #(cached-encrypted-json-out %)) ; needed indirection to allow with-redef in tests
+  :out cached-encrypted-json-out)
 
 (models/add-type! :encrypted-text
   :in  encryption/maybe-encrypt

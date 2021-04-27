@@ -10,12 +10,27 @@
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Setting]]
-            [metabase.models.interface :as models]
+            [metabase.models.interface :as interface]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.util.encryption :as encrypt]
             [metabase.util.encryption-test :as eu]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
+
+(defn do-with-model-type
+  [mtype in-type-fns f]
+  (let [type-fns        (var-get #'models/type-fns)
+        before-type-fns @type-fns]
+    (swap! type-fns update mtype merge in-type-fns)
+    (try
+      (f)
+      (finally
+        (reset! type-fns before-type-fns)))))
+
+(defmacro with-model-type
+  [mtype type-fns & body]
+  `(do-with-model-type ~mtype ~type-fns (fn [] ~@body)))
 
 (defn- persistent-jdbcspec
   "Return a jdbc spec for the specified `db-type` on the db `db-name`. In case of H2, makes the connection persistent
@@ -48,7 +63,7 @@
                               "yHa/6VEQuIItMyd5CNcgV9nXvzZcX6bWmiY0oOh6pLU="
                               "BCQbKNVu6N8TQ2BwyTC0U0oCBqsvFVr2uhEM/tRgJUM="]]
       (mt/test-drivers #{:postgres :h2 :mysql}
-        (with-redefs [models/cached-encrypted-json-out #'models/encrypted-json-out]
+        (with-model-type :encrypted-json {:out #'interface/encrypted-json-out}
           (binding [mdb.connection/*db-type*   driver/*driver*
                     mdb.connection/*jdbc-spec* (persistent-jdbcspec driver/*driver* db-name)
                     db/*db-connection*         (persistent-jdbcspec driver/*driver* db-name)
