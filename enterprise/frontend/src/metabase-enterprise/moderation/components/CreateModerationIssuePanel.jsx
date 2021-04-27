@@ -29,7 +29,7 @@ function CreateModerationIssuePanel({ issueType, onCancel }) {
         {MODERATION_TEXT.moderator[issueType].actionCreationLabel}
       </label>
       <textarea
-        className="input full"
+        className="input full max-w-full min-w-full"
         rows={10}
         value={description}
         onChange={setDescription}
