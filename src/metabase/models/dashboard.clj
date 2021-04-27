@@ -17,6 +17,7 @@
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
             [metabase.util :as u]
@@ -43,6 +44,18 @@
                             [:= :card.archived false]
                             [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                :order-by  [[:dashcard.created_at :asc]]})))
+
+(defn moderation-requests
+  "Return the ModerationRequests for this `dashboard`"
+  {:hydrate :moderation_requests}
+  [dashboard-or-id]
+  (moderation/moderation-requests-for-item :dashboard (u/the-id dashboard-or-id)))
+
+(defn moderation-reviews
+  "Return the ModerationReviews for this `dashboard`"
+  {:hydrate :moderation_reviews}
+  [dashboard-or-id]
+  (moderation/moderation-reviews-for-item :dashboard (u/the-id dashboard-or-id)))
 
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------

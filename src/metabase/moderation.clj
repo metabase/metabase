@@ -1,6 +1,5 @@
 (ns metabase.moderation
-  (:require [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
+  (:require [metabase.models :refer [Card Dashboard ModerationRequest ModerationReview]]
             [toucan.db :as db]))
 
 (def ^:const moderated-item-name->class
@@ -9,7 +8,7 @@
   {:card      Card
    :dashboard Dashboard})
 
-(defn add-moderated-items
+#_(defn add-moderated-items
   "Efficiently add `moderated_item`s (Cards/Dashboards) to a collection of ModerationRequests or ModerationReviews"
   [requests-or-reviews]
   (when (seq requests-or-reviews)
@@ -28,3 +27,13 @@
                    :items-by-id
                    (get (:moderated_item_id r))
                    first))))))
+
+(defn moderation-requests-for-item
+  "ModerationRequests for the `moderated-item` whose ID is provided. `item-type` should be a keyword (`:card` or `:dashboard`)"
+  [item-type moderated-item-id]
+  (db/select ModerationRequest :moderated_item_type (name item-type) :moderated_item_id moderated-item-id))
+
+(defn moderation-reviews-for-item
+  "ModerationReviews for the `moderated-item` whose ID is provided. `item-type` should be a keyword (`:card` or `:dashboard`)"
+  [item-type moderated-item-id]
+  (db/select ModerationReview  :moderated_item_type (name item-type) :moderated_item_id moderated-item-id))
