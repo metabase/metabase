@@ -109,7 +109,8 @@
                                (when (segmented-user?)
                                  [:= :id api/*current-user-id*])))
         (some? query) (hh/merge-where (query-clause query))
-        (some? group_id) (hh/merge-where [:= :group_id group_id])))
+        (some? group_id) (hh/merge-right-join :permissions_group_membership [:= :user_id :group_id])
+        (some? group_id) (hh/merge-where [:= :user_id :group_id])))
 
 
 (api/defendpoint GET "/"
@@ -143,9 +144,7 @@
             (cond-> (user-clauses status query group_id include_deactivated)
               true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
               (some? limit) (hh/limit (Integer/parseInt limit))
-              (some? offset) (hh/offset (Integer/parseInt offset))
-              )
-            )
+              (some? offset) (hh/offset (Integer/parseInt offset))))
     ;; For admins, also include the IDs of the  Users' Personal Collections
     api/*is-superuser?* (hydrate :personal_collection_id :group_ids)
     true (api/add-total-count-header

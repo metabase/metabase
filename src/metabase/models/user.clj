@@ -118,7 +118,7 @@
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
   other Users at all? I honestly would prefer they couldn't, but we need to give them a list of emails to power
   Pulses."
-  [:id :email :first_name :last_name])
+  [:core_user.id :email :first_name :last_name])
 
 (u/strict-extend (class User)
   models/IModel
