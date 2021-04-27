@@ -28,27 +28,28 @@ import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
   reload: true,
 })
 @connect((state, props) => {
-  // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
+  // split out collections, since bulk actions are not applied to them
   const [collections, items] = _.partition(
     props.list,
     item => item.model === "collection",
   );
+  items.sort((a, b) => a.collection_position - b.collection_position);
+
   const [pinned, unpinned] = _.partition(
     items,
     item => item.collection_position != null,
   );
-  // sort the pinned items by collection_position
-  pinned.sort((a, b) => a.collection_position - b.collection_position);
+
   return {
     collections,
+    items,
     pinned,
     unpinned,
     isAdmin: getUserIsAdmin(state),
   };
 })
-// only apply bulk actions to unpinned items
 @listSelect({
-  listProp: "unpinned",
+  listProp: "items",
   keyForItem: item => `${item.model}:${item.id}`,
 })
 @withRouter
@@ -158,6 +159,8 @@ export default class CollectionContent extends React.Component {
             <PinnedItems
               items={pinned}
               collection={collection}
+              selection={selection}
+              onToggleSelected={onToggleSelected}
               onMove={this.handleMove}
               onCopy={this.handleCopy}
             />
