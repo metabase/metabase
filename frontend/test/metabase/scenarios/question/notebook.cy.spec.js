@@ -886,6 +886,18 @@ describe("scenarios > question > notebook", () => {
         cy.contains(/^Unterminated bracket identifier/i);
       });
     });
+
+    it("should catch non-existent field reference", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("abcdef");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Non-existent");
+        cy.contains(/^Unknown Field: abcdef/i);
+      });
+    });
   });
 });
 
