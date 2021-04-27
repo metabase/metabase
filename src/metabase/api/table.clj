@@ -31,20 +31,19 @@
   "Schema for a valid table field ordering."
   (apply s/enum (map name table/field-orderings)))
 
-;; (defn- query-clause [query]
-;;   [:or
-;;    [:like [:%lower.some shit] [(str "%" query "%")]]
-;;    ])
 
 (api/defendpoint GET "/"
   "Get all `Tables`."
   [query]
-  (as-> (db/select Table, :active true,
-                   (cond-> {:order-by [[:name :asc]]}
-                     (some? query) (hh/merge-where nil));; (query-clause query)))
-                   tables
-                   (hydrate tables :db)
-                   (filterv mi/can-read? tables)))
+  (as->(db/select Table, :active true,
+                  (cond-> {:order-by [[:name :asc]]}
+                    (some? query) (hh/merge-where
+                                    [:like
+                                     [:%lower.display_name]
+                                     [(str "%" query "%")]])))
+    tables
+    (hydrate tables :db)
+    (filterv mi/can-read? tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
