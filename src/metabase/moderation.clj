@@ -1,19 +1,23 @@
 (ns metabase.moderation
-  (:require [metabase.models :refer [Card Dashboard ModerationRequest ModerationReview]]
+  (:require [clojure.string :as str]
+            [metabase.models.moderation-request :refer [ModerationRequest]]
+            [metabase.models.moderation-review :refer [ModerationReview]]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
-(def ^:const moderated-item-name->class
-  "Map used to relate the type stored in the DB to the actual class of the moderated item (currently questions and
-  dashboards)"
-  {:card      Card
-   :dashboard Dashboard})
+(defn- object->type
+  "Convert a moderated item instance to the keyword stored in the database"
+  [moderated-item]
+  (str/lower-case (name moderated-item)))
 
 (defn moderation-requests-for-item
-  "ModerationRequests for the `moderated-item` whose ID is provided. `item-type` should be a keyword (`:card` or `:dashboard`)"
-  [item-type moderated-item-id]
-  (db/select ModerationRequest :moderated_item_type (name item-type) :moderated_item_id moderated-item-id))
+  "ModerationRequests for the `moderated-item` (either a Card or a Dashboard)."
+  {:hydrate :moderation_requests}
+  [moderated-item]
+  (db/select ModerationRequest :moderated_item_type (object->type moderated-item) :moderated_item_id (u/the-id moderated-item)))
 
 (defn moderation-reviews-for-item
-  "ModerationReviews for the `moderated-item` whose ID is provided. `item-type` should be a keyword (`:card` or `:dashboard`)"
-  [item-type moderated-item-id]
-  (db/select ModerationReview  :moderated_item_type (name item-type) :moderated_item_id moderated-item-id))
+  "ModerationReviews for the `moderated-item` (either a Card or a Dashboard)."
+  {:hydrate :moderation_reviews}
+  [moderated-item]
+  (db/select ModerationReview  :moderated_item_type (object->type moderated-item) :moderated_item_id (u/the-id moderated-item)))

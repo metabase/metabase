@@ -34,18 +34,8 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
-(defn moderation-requests
-  "Return the ModerationRequests for this `card`"
-  {:hydrate :moderation_requests}
-  [card-or-id]
-  (moderation/moderation-requests-for-item :card (u/the-id card-or-id)))
-
-(defn moderation-reviews
-  "Return the ModerationReviews for this `card`"
-  {:hydrate :moderation_reviews}
-  [card-or-id]
-  (moderation/moderation-reviews-for-item :dashboard (u/the-id card-or-id)))
-
+;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
+(comment moderation/keep-me)
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 

@@ -45,18 +45,8 @@
                             [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                :order-by  [[:dashcard.created_at :asc]]})))
 
-(defn moderation-requests
-  "Return the ModerationRequests for this `dashboard`"
-  {:hydrate :moderation_requests}
-  [dashboard-or-id]
-  (moderation/moderation-requests-for-item :dashboard (u/the-id dashboard-or-id)))
-
-(defn moderation-reviews
-  "Return the ModerationReviews for this `dashboard`"
-  {:hydrate :moderation_reviews}
-  [dashboard-or-id]
-  (moderation/moderation-reviews-for-item :dashboard (u/the-id dashboard-or-id)))
-
+;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
+(comment moderation/keep-me)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
