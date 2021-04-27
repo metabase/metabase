@@ -1032,7 +1032,7 @@
       can-sort? (assoc-in [:query :descending] (= direction :desc)))))
 
 (defmethod handle-order-by ::scan
-  [_ {[[direction field]] :order-by, fields :fields} druid-query]
+  [_ {[[direction field]] :order-by, :keys [limit fields]} druid-query]
   (let [can-sort? (cond
                     (not (some datetime-field? fields))
                     (log/warn (trs "scan queries can only be sorted if they include the ''timestamp'' column."))
@@ -1043,12 +1043,16 @@
                     :else
                     true)]
     (cond-> druid-query
-      can-sort? (update :query assoc
-                        :order (case direction
-                                 :desc :descending
-                                 :asc  :ascending)
-                        :maxRowsQueuedForOrdering 10000
-                        #_:maxSegmentPartitionsOrderedInMemory #_100))))
+      can-sort? (update :query merge
+                        {:order (case direction
+                                  :desc :descending
+                                  :asc  :ascending)}
+                        ;; if the MBQL query specifies a limit, tell Druid to only return that many rows when time
+                        ;; ordering is used -- see https://druid.apache.org/docs/latest/querying/scan-query.html#query-context-properties
+                        ;;
+                        ;; not sure why, but sorting doesn't seem to work without this set with the test Docker image.
+                        (when limit
+                          {:maxRowsQueuedForOrdering limit})))))
 
 
 ;;; ------------------------------------------------- handle-fields --------------------------------------------------
