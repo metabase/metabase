@@ -1,21 +1,10 @@
 import React, { useState } from "react";
-import PropTypes from "prop-types";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import QuestionActionButtons from "metabase/questions/components/QuestionActionButtons";
+import QuestionDetailsSidebarPanel from "metabase/query_builder/components/view/sidebars/QuestionDetailsSidebarPanel";
 import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
+import { SIDEBAR_VIEWS } from "./constants";
+const { CreateModerationIssuePanel } = PLUGIN_MODERATION_COMPONENTS;
 
-const {
-  active: isPluginActive,
-  ModerationIssueActionMenu,
-  CreateModerationIssuePanel,
-} = PLUGIN_MODERATION_COMPONENTS;
-
-const VIEW = {
-  DETAILS: "DETAILS",
-  CREATE_ISSUE: "CREATE_ISSUE",
-};
-
-function QuestionSidebarView() {
+function QuestionSidebarView(props) {
   const [view, setView] = useState({
     name: undefined,
     props: undefined,
@@ -23,55 +12,17 @@ function QuestionSidebarView() {
   const { name, props: viewProps } = view;
 
   switch (name) {
-    case VIEW.CREATE_ISSUE:
+    case SIDEBAR_VIEWS.CREATE_ISSUE_PANEL:
       return (
         <CreateModerationIssuePanel
           {...viewProps}
-          onCancel={() => setView({ name: VIEW.DETAILS })}
+          onCancel={() => setView({ name: SIDEBAR_VIEWS.DETAILS })}
         />
       );
-    case VIEW.DETAILS:
+    case SIDEBAR_VIEWS.DETAILS:
     default:
-      return <QuestionDetailsSidebar setView={setView} />;
+      return <QuestionDetailsSidebarPanel setView={setView} {...props} />;
   }
 }
-
-function QuestionDetailsSidebar({ setView, question, onOpenModal }) {
-  const canWrite = question && question.canWrite();
-
-  return (
-    <SidebarContent className="full-height px1">
-      {isPluginActive ? (
-        <div>
-          <QuestionActionButtons
-            canWrite={canWrite}
-            onOpenModal={onOpenModal}
-          />
-          <ModerationIssueActionMenu
-            onAction={issueType => {
-              setView({
-                name: VIEW.CREATE_ISSUE,
-                props: { issueType },
-              });
-            }}
-          />
-        </div>
-      ) : (
-        <div>
-          <QuestionActionButtons
-            canWrite={canWrite}
-            onOpenModal={onOpenModal}
-          />
-        </div>
-      )}
-    </SidebarContent>
-  );
-}
-
-QuestionDetailsSidebar.propTypes = {
-  setView: PropTypes.func.isRequired,
-  question: PropTypes.object.isRequired,
-  onOpenModal: PropTypes.func.isRequired,
-};
 
 export default QuestionSidebarView;

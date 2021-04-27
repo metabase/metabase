@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
   getModerationStatusIcon,
   getColor,
-  MODERATION_TEXT,
-} from "metabase/lib/moderation";
+} from "metabase-enterprise/moderation";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 
