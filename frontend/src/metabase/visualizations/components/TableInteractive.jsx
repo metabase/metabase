@@ -506,7 +506,7 @@ export default class TableInteractive extends Component {
           "Table-FK": value != null && isFK(column),
           link: isClickable && isID(column),
         })}
-        onMouseUp={
+        onClick={
           isClickable
             ? e => {
                 this.onVisualizationClick(clicked, e.currentTarget);
