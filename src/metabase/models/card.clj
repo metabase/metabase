@@ -13,6 +13,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
             [metabase.models.revision :as revision]
+            [metabase.moderation :as moderation]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.util :as qputil]
@@ -32,6 +33,18 @@
   {:hydrate :dashboard_count}
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
+
+(defn moderation-requests
+  "Return the ModerationRequests for this `card`"
+  {:hydrate :moderation_requests}
+  [card-or-id]
+  (moderation/moderation-requests-for-item :card (u/the-id card-or-id)))
+
+(defn moderation-reviews
+  "Return the ModerationReviews for this `card`"
+  {:hydrate :moderation_reviews}
+  [card-or-id]
+  (moderation/moderation-reviews-for-item :dashboard (u/the-id card-or-id)))
 
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
