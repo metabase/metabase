@@ -20,6 +20,7 @@ type Props = {
   className?: string,
   tooltip?: string,
   triggerProps: Object,
+  triggerChildren: any,
 };
 
 class EntityMenu extends Component {
@@ -49,7 +50,14 @@ class EntityMenu extends Component {
   };
 
   render() {
-    const { items, triggerIcon, triggerProps, className, tooltip } = this.props;
+    const {
+      items,
+      triggerIcon,
+      triggerProps,
+      className,
+      tooltip,
+      triggerChildren,
+    } = this.props;
     const { open, menuItemContent } = this.state;
     return (
       <div className={cx("relative", className)}>
@@ -59,7 +67,9 @@ class EntityMenu extends Component {
           open={open}
           tooltip={tooltip}
           triggerProps={triggerProps}
-        />
+        >
+          {triggerChildren}
+        </EntityMenuTrigger>
         <Popover
           isOpen={open}
           onClose={this.toggleMenu}
@@ -93,47 +103,44 @@ class EntityMenu extends Component {
                 <Card>
                   {menuItemContent || (
                     <ol className="py1" style={{ minWidth: 210 }}>
-                      {items.map(item => {
-                        if (!item) {
-                          return null;
-                        } else if (item.content) {
-                          return (
-                            <li key={item.title}>
-                              <EntityMenuItem
-                                icon={item.icon}
-                                title={item.title}
-                                action={() =>
-                                  this.replaceMenuWithItemContent(
-                                    item.content(
-                                      this.toggleMenu,
-                                      this.setFreezeMenu,
-                                    ),
-                                  )
-                                }
-                              />
-                            </li>
-                          );
-                        } else {
-                          return (
-                            <li key={item.title}>
-                              <EntityMenuItem
-                                icon={item.icon}
-                                title={item.title}
-                                externalLink={item.externalLink}
-                                action={
-                                  item.action &&
-                                  (() => {
-                                    item.action();
-                                    this.toggleMenu();
-                                  })
-                                }
-                                event={item.event && item.event}
-                                link={item.link}
-                                onClose={() => this.toggleMenu()}
-                              />
-                            </li>
-                          );
-                        }
+                      {items.filter(Boolean).map(item => {
+                        return item.content ? (
+                          <li key={item.title}>
+                            <EntityMenuItem
+                              icon={item.icon}
+                              iconSize={item.iconSize}
+                              title={item.title}
+                              action={() =>
+                                this.replaceMenuWithItemContent(
+                                  item.content(
+                                    this.toggleMenu,
+                                    this.setFreezeMenu,
+                                  ),
+                                )
+                              }
+                            />
+                          </li>
+                        ) : (
+                          <li key={item.title}>
+                            <EntityMenuItem
+                              icon={item.icon}
+                              iconSize={item.iconSize}
+                              title={item.title}
+                              externalLink={item.externalLink}
+                              className={item.className}
+                              action={
+                                item.action &&
+                                (() => {
+                                  item.action();
+                                  this.toggleMenu();
+                                })
+                              }
+                              event={item.event && item.event}
+                              link={item.link}
+                              onClose={() => this.toggleMenu()}
+                            />
+                          </li>
+                        );
                       })}
                     </ol>
                   )}

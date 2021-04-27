@@ -373,3 +373,13 @@
 .text-dark {
   color: var(--color-text-dark);
 }
+
+.text-accent2,
+.text-accent2:hover {
+  color: var(--color-accent2);
+}
+
+.text-accent5,
+.text-accent5:hover {
+  color: var(--color-accent5);
+}
