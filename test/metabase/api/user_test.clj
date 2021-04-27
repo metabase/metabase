@@ -41,6 +41,7 @@
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
@@ -73,6 +74,15 @@
                  :last_name   "Toucan"
                  :common_name "Rasta Toucan"}]
                (->> (mt/user-http-request :rasta :get 200 "user")
+                    (filter mt/test-user?))))))
+    (testing "Get list of users with a query"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (is (= [{:id          (mt/user->id :lucky)
+                 :email       "lucky@metabase.com"
+                 :first_name  "Lucky"
+                 :last_name   "Pigeon"
+                 :common_name "Lucky Pigeon"}]
+               (->> (mt/user-http-request :rasta :get 200 "user" :query "luck")
                     (filter mt/test-user?))))))))
 
 (defn- group-ids->sets [users]
@@ -112,9 +122,11 @@
 
 (deftest user-list-include-inactive-test
   (testing "GET /api/user?include_deactivated=true"
-    (testing "Non-admins should *not* be allowed to pass in include_deactivated"
+    (testing "Non-admins should *not* be allowed to pass in include_deactivated or status"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "user", :include_deactivated true))))
+             (mt/user-http-request :rasta :get 403 "user", :include_deactivated true)))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "user", :status "all"))))
 
     (testing "for admins, it should include those inactive users as we'd expect"
       (is (= (->> [{:email                  "trashbird@metabase.com"
@@ -147,6 +159,40 @@
                   (map (partial merge user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> (mt/user-http-request :crowberto :get 200 "user", :include_deactivated true)
+                  (filter mt/test-user?)
+                  group-ids->sets
+                  mt/boolean-ids-and-timestamps
+                  (map #(dissoc % :is_qbnewb :last_login)))))
+      (is (= (->> [{:email                  "trashbird@metabase.com"
+                    :first_name             "Trash"
+                    :last_name              "Bird"
+                    :is_active              false
+                    :group_ids              #{(u/the-id (group/all-users))}
+                    :personal_collection_id true
+                    :common_name            "Trash Bird"}
+                   {:email                  "crowberto@metabase.com"
+                    :first_name             "Crowberto"
+                    :last_name              "Corv"
+                    :is_superuser           true
+                    :group_ids              #{(u/the-id (group/all-users))
+                                              (u/the-id (group/admin))}
+                    :personal_collection_id true
+                    :common_name            "Crowberto Corv"}
+                   {:email                  "lucky@metabase.com"
+                    :first_name             "Lucky"
+                    :last_name              "Pigeon"
+                    :group_ids              #{(u/the-id (group/all-users))}
+                    :personal_collection_id true
+                    :common_name            "Lucky Pigeon"}
+                   {:email                  "rasta@metabase.com"
+                    :first_name             "Rasta"
+                    :last_name              "Toucan"
+                    :group_ids              #{(u/the-id (group/all-users))}
+                    :personal_collection_id true
+                    :common_name            "Rasta Toucan"}]
+                  (map (partial merge user-defaults))
+                  (map #(dissoc % :is_qbnewb :last_login)))
+             (->> (mt/user-http-request :crowberto :get 200 "user", :status "all")
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
