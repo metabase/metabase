@@ -899,6 +899,15 @@ describe("scenarios > question > notebook", () => {
       });
     });
   });
+
+  describe("typing suggestion", () => {
+    it("should not suggest arithmetic operators", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      cy.get("[contenteditable='true']").type("[Price] ");
+      cy.contains("/").should("not.exist");
+    });
+  });
 });
 
 // Extracted repro steps for #13000

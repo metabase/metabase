@@ -1,5 +1,4 @@
 import _ from "underscore";
-import escape from "regexp.escape";
 
 import {
   getExpressionName,
@@ -19,26 +18,17 @@ import {
 } from "./parser";
 
 import {
-  AdditiveOperator,
   AggregationFunctionName,
-  BooleanOperatorUnary,
-  LogicalAndOperator,
-  LogicalOrOperator,
   CLAUSE_TOKENS,
   Case,
-  Comma,
-  FilterOperator,
   FunctionName,
   Identifier,
   IdentifierString,
   LParen,
   Minus,
-  MultiplicativeOperator,
   NumberLiteral,
-  RParen,
   StringLiteral,
   UnclosedQuotedString,
-  getSubTokenTypes,
   isTokenType,
   lexerWithRecovery,
 } from "./lexer";
@@ -211,35 +201,6 @@ export function suggest({
     } else if (lastInputTokenIsUnclosedIdentifierString) {
       // skip the rest
     } else if (
-      nextTokenType === AdditiveOperator ||
-      nextTokenType === MultiplicativeOperator
-    ) {
-      if (
-        isExpressionType("number", expectedType) ||
-        isExpressionType("aggregation", expectedType)
-      ) {
-        const tokenTypes = getSubTokenTypes(nextTokenType);
-        finalSuggestions.push(
-          ...tokenTypes.map(tokenType =>
-            operatorSuggestion(CLAUSE_TOKENS.get(tokenType).name),
-          ),
-        );
-      }
-    } else if (
-      nextTokenType === BooleanOperatorUnary ||
-      nextTokenType === LogicalAndOperator ||
-      nextTokenType === LogicalOrOperator ||
-      nextTokenType === FilterOperator
-    ) {
-      if (isExpressionType(expectedType, "boolean")) {
-        const tokenTypes = getSubTokenTypes(nextTokenType);
-        finalSuggestions.push(
-          ...tokenTypes.map(tokenType =>
-            operatorSuggestion(CLAUSE_TOKENS.get(tokenType).name),
-          ),
-        );
-      }
-    } else if (
       isTokenType(nextTokenType, FunctionName) ||
       nextTokenType === Case
     ) {
@@ -292,38 +253,6 @@ export function suggest({
           postfixTrim: /^\w+(\(\)?|$)/,
         };
         finalSuggestions.push(caseSuggestion);
-      }
-    } else if (nextTokenType === LParen) {
-      finalSuggestions.push({
-        type: "other",
-        name: "(",
-        text: " (",
-        postfixText: ")",
-        prefixTrim: /\s*$/,
-        postfixTrim: /^\s*\(?\s*/,
-      });
-    } else if (nextTokenType === RParen) {
-      finalSuggestions.push({
-        type: "other",
-        name: ")",
-        text: ") ",
-        prefixTrim: /\s*$/,
-        postfixTrim: /^\s*\)?\s*/,
-      });
-    } else if (nextTokenType === Comma) {
-      if (
-        context.clause &&
-        (context.clause.multiple ||
-          context.index < context.clause.args.length - 1)
-      ) {
-        finalSuggestions.push({
-          type: "other",
-          name: ",",
-          text: ", ",
-          postfixText: ",",
-          prefixTrim: /\s*$/,
-          postfixTrim: /^\s*,?\s*/,
-        });
       }
     } else if (
       nextTokenType === StringLiteral ||
@@ -379,20 +308,6 @@ export function suggest({
       .sortBy("name")
       .sortBy("type")
       .value(),
-  };
-}
-
-function operatorSuggestion(clause) {
-  const name = getExpressionName(clause);
-  return {
-    type: "operators",
-    name: name,
-    text: " " + name + " ",
-    prefixTrim: new RegExp(
-      "\\s*" + escape(name).replace(/(.{1})/g, "$1?") + "$",
-      "i",
-    ),
-    postfixTrim: new RegExp("/^s*" + escape(name) + "?s*/"),
   };
 }
 
