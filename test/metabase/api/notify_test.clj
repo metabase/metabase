@@ -23,6 +23,6 @@
                                 :headers {"X-METABASE-APIKEY" "test-api-key"
                                           "Content-Type"      "application/json"}})
                   (catch clojure.lang.ExceptionInfo e
-                    (select-keys (:object (ex-data e)) [:status :body]))))))))
+                    (select-keys (ex-data e) [:status :body]))))))))
 
 ;; TODO - how can we validate the normal scenario given that it just kicks off a background job?

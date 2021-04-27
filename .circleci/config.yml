@@ -1081,13 +1081,6 @@ workflows:
           skip-when-no-change: true
 
       - lein:
-          name: be-linter-namespace-decls
-          requires:
-            - be-deps
-          lein-command: check-namespace-decls
-          skip-when-no-change: true
-
-      - lein:
           name: be-linter-bikeshed
           requires:
             - be-deps
