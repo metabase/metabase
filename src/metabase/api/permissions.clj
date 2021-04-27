@@ -84,12 +84,11 @@
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
   [limit offset]
   {
-   limit (s/maybe su/IntStringGreaterThanZero)
+   limit  (s/maybe su/IntStringGreaterThanZero)
    offset (s/maybe su/IntStringGreaterThanOrEqualToZero)
   }
   (api/check-superuser)
-  (api/check-valid-offset limit offset)
-  (api/check-valid-limit limit offset)
+  (api/check-valid-page-params limit offset)
   (-> (ordered-groups limit offset)
       (hydrate :member_count)))
 

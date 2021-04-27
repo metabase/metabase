@@ -75,12 +75,10 @@
   (if include_deactivated
     nil
     (case status
-      "all" nil
+      "all"         nil
       "deactivated" [:= :is_active false]
-      "active" [:= :is_active true]
-      [:= :is_active true]
-      ))
-)
+      "active"      [:= :is_active true]
+      [:= :is_active true])))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"
@@ -89,7 +87,6 @@
    [:like [:%lower.first_name] [(str "%" query "%")]]
    [:like [:%lower.last_name] [(str "%" query "%")]]
    [:like [:%lower.email] [(str "%" query "%")]]])
-
 
 (defn- user-visible-columns
   "Columns of user table visible to current caller of API"
@@ -129,17 +126,16 @@
   Also takes `group_id`, which filters on group id."
   [limit offset status query group_id include_deactivated]
   {
-   limit (s/maybe su/IntStringGreaterThanZero)
-   offset (s/maybe su/IntStringGreaterThanOrEqualToZero)
-   status (s/maybe s/Str)
-   query (s/maybe s/Str)
-   group_id (s/maybe su/IntGreaterThanZero)
+   limit               (s/maybe su/IntStringGreaterThanZero)
+   offset              (s/maybe su/IntStringGreaterThanOrEqualToZero)
+   status              (s/maybe s/Str)
+   query               (s/maybe s/Str)
+   group_id            (s/maybe su/IntGreaterThanZero)
    include_deactivated (s/maybe su/BooleanString)
    }
   (when (or status include_deactivated)
     (api/check-superuser))
-  (api/check-valid-offset limit offset)
-  (api/check-valid-limit limit offset)
+  (api/check-valid-page-params limit offset)
   (cond-> (db/select
             (vec (cons User (user-visible-columns)))
             (cond-> (user-clauses status query group_id include_deactivated)

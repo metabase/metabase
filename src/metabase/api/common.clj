@@ -419,15 +419,13 @@
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
-(defn check-valid-limit
-  "Check on paginated stuff that, if the offset exists, the limit exists."
+(defn check-valid-page-params
+  "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
   [limit offset]
-  (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")]))
-
-(defn check-valid-offset
-  "Check on paginated stuff that, if the limit exists, the offset exists."
-  [limit offset]
-  (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")]))
+  (do
+    (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
+    (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")])
+    ))
 
 
 (s/defn column-will-change? :- s/Bool
