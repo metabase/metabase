@@ -68,6 +68,20 @@ export default class CollectionContent extends React.Component {
     }
   };
 
+  handleMove = selectedItems => {
+    this.setState({
+      selectedItems,
+      selectedAction: "move",
+    });
+  };
+
+  handleCopy = selectedItems => {
+    this.setState({
+      selectedItems,
+      selectedAction: "copy",
+    });
+  };
+
   handleBulkMoveStart = () => {
     this.setState({
       selectedItems: this.props.selected,
@@ -144,18 +158,8 @@ export default class CollectionContent extends React.Component {
             <PinnedItems
               items={pinned}
               collection={collection}
-              onMove={selectedItems =>
-                this.setState({
-                  selectedItems,
-                  selectedAction: "move",
-                })
-              }
-              onCopy={selectedItems =>
-                this.setState({
-                  selectedItems,
-                  selectedAction: "copy",
-                })
-              }
+              onMove={this.handleMove}
+              onCopy={this.handleCopy}
             />
           )}
           <ItemList
@@ -167,18 +171,8 @@ export default class CollectionContent extends React.Component {
             collection={collection}
             onToggleSelected={onToggleSelected}
             collectionHasPins={collectionHasPins}
-            onMove={selectedItems =>
-              this.setState({
-                selectedItems,
-                selectedAction: "move",
-              })
-            }
-            onCopy={selectedItems =>
-              this.setState({
-                selectedItems,
-                selectedAction: "copy",
-              })
-            }
+            onMove={this.handleMove}
+            onCopy={this.handleCopy}
           />
         </Box>
         <BulkActions
