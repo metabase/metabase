@@ -136,16 +136,19 @@
   (when (or status include_deactivated)
     (api/check-superuser))
   (api/check-valid-page-params limit offset)
-  (cond-> (db/select
-            (vec (cons User (user-visible-columns)))
-            (cond-> (user-clauses status query group_id include_deactivated)
-              true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-              (some? limit) (hh/limit (Integer/parseInt limit))
-              (some? offset) (hh/offset (Integer/parseInt offset))))
-    ;; For admins, also include the IDs of the  Users' Personal Collections
-    api/*is-superuser?* (hydrate :personal_collection_id :group_ids)
-    true (api/add-total-count-header
-           (db/count User (user-clauses status query group_id include_deactivated)))))
+  (let [limit-int  (some-> limit Integer/parseInt)
+        offset-int (some-> offset Integer/parseInt)]
+    {:data   (cond-> (db/select
+                       (vec (cons User (user-visible-columns)))
+                       (cond-> (user-clauses status query group_id include_deactivated)
+                         true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                         (some? limit) (hh/limit limit-int)
+                         (some? offset) (hh/offset offset-int)))
+               ;; For admins, also include the IDs of the  Users' Personal Collections
+               api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
+     :total  (db/count User (user-clauses status query group_id include_deactivated))
+     :limit  limit-int
+     :offset offset-int}))
 
 
 (api/defendpoint GET "/current"

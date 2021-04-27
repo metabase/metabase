@@ -444,12 +444,6 @@
         (not= (get object-before-updates k)
               (get object-updates k)))))
 
-(defn add-total-count-header
-  "Adds total count header to a response. For paginated responses"
-  [body total-count]
-  {:status 200, :headers {"X-Total-Count" (str total-count)}, :body body})
-
-
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
 (s/defn reconcile-position-for-collection!

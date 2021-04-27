@@ -73,7 +73,7 @@
                  :first_name  "Rasta"
                  :last_name   "Toucan"
                  :common_name "Rasta Toucan"}]
-               (->> (mt/user-http-request :rasta :get 200 "user")
+               (->> ((mt/user-http-request :rasta :get 200 "user") :data)
                     (filter mt/test-user?))))))
     (testing "Get list of users with a query"
       (mt/with-non-admin-groups-no-root-collection-perms
@@ -82,7 +82,7 @@
                  :first_name  "Lucky"
                  :last_name   "Pigeon"
                  :common_name "Lucky Pigeon"}]
-               (->> (mt/user-http-request :rasta :get 200 "user" :query "luck")
+               (->> ((mt/user-http-request :rasta :get 200 "user" :query "luck") :data)
                     (filter mt/test-user?))))))))
 
 (defn- group-ids->sets [users]
@@ -114,7 +114,7 @@
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
-             (->> (mt/user-http-request :crowberto :get 200 "user")
+             (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
@@ -130,7 +130,7 @@
                     :common_name            "Crowberto Corv"}]
                   (map (partial merge user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
-             (->> (mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (group/admin)))
+             (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (group/admin))) :data)
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
@@ -174,7 +174,7 @@
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
-             (->> (mt/user-http-request :crowberto :get 200 "user", :include_deactivated true)
+             (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated true) :data)
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
@@ -208,7 +208,7 @@
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
-             (->> (mt/user-http-request :crowberto :get 200 "user", :status "all")
+             (->> ((mt/user-http-request :crowberto :get 200 "user", :status "all") :data)
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
@@ -232,7 +232,7 @@
                :first_name  "Rasta"
                :last_name   "Toucan"
                :common_name "Rasta Toucan"}]
-             (->> (mt/user-http-request :rasta :get 200 "user" :limit "2" :offset "1")
+             (->> ((mt/user-http-request :rasta :get 200 "user" :limit "2" :offset "1") :data)
                   (filter mt/test-user?)))))))
 
 (deftest get-current-user-test
