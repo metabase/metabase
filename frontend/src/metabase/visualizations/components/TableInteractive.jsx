@@ -513,6 +513,15 @@ export default class TableInteractive extends Component {
               }
             : undefined
         }
+        onKeyUp={
+          isClickable
+            ? e => {
+                e.key === "Enter" &&
+                  this.onVisualizationClick(clicked, e.currentTarget);
+              }
+            : undefined
+        }
+        tabIndex="0"
       >
         {this.props.renderTableCellWrapper(cellData)}
       </div>
