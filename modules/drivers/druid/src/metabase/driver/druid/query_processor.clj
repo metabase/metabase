@@ -1043,9 +1043,12 @@
                     :else
                     true)]
     (cond-> druid-query
-      can-sort? (assoc-in [:query :order] (case direction
-                                            :desc :descending
-                                            :asc  :ascending)))))
+      can-sort? (update :query assoc
+                        :order (case direction
+                                 :desc :descending
+                                 :asc  :ascending)
+                        :maxRowsQueuedForOrdering 10000
+                        #_:maxSegmentPartitionsOrderedInMemory #_100))))
 
 
 ;;; ------------------------------------------------- handle-fields --------------------------------------------------

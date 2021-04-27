@@ -13,9 +13,9 @@
                   "columns order (#9294)")
       (tqpt/with-flattened-dbdef
         (let [results (mt/run-mbql-query checkins
-                        {:limit 1})]
+                        {:limit 1, :order-by [[:asc $timestamp]]})]
           (assert (= (:status results) :completed)
-            (u/pprint-to-str 'red results))
+                  (u/pprint-to-str 'red results))
           (testing "cols"
             (is (=  ["timestamp"
                      "venue_name"
@@ -25,21 +25,23 @@
                      "venue_category_name"
                      "id"
                      "count"
+                     "unique_users"
                      "user_name"
                      "user_last_login"]
-                   (->> results :data :cols (map :name)))))
+                    (->> results :data :cols (map :name)))))
           (testing "rows"
-            (is (=  [["2013-01-03T08:00:00Z"
-                      "Kinaree Thai Bistro"
-                      "-118.344"
-                      "34.094"
-                      "1"
-                      "Thai"
-                      "931"
+            (is (=  [["2015-12-29T00:00:00Z"
+                      "Señor Fish"
+                      -118.238
+                      34.0489
+                      2
+                      "Mexican"
+                      693
                       1
-                      "Simcha Yan"
-                      "2014-01-01T08:30:00.000Z"]]
-                   (-> results :data :rows)))))))))
+                      "AQAAAQAAAAIFIA=="
+                      "Frans Hevel"
+                      "2014-07-03T19:30:00"]]
+                    (-> results :data :rows)))))))))
 
 (deftest post-process-select-query-test
   (testing "Test that we can still return results from native :select queries, even if we no longer generate them"
