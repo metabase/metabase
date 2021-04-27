@@ -57,3 +57,7 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
 export const PLUGIN_MODERATION_COMPONENTS = {
   active: false,
 };
+
+export const PLUGIN_MODERATION_SERVICE = {
+  getModerationStatusIcon: () => {},
+};

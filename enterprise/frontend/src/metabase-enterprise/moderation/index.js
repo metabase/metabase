@@ -1,10 +1,17 @@
-import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
+import {
+  PLUGIN_MODERATION_COMPONENTS,
+  PLUGIN_MODERATION_SERVICE,
+} from "metabase/plugins";
 import ModerationIssueActionMenu from "metabase-enterprise/moderation/components/ModerationIssueActionMenu";
 import { ACTIONS } from "metabase-enterprise/moderation/constants";
 
 Object.assign(PLUGIN_MODERATION_COMPONENTS, {
   active: true,
   ModerationIssueActionMenu,
+});
+
+Object.assign(PLUGIN_MODERATION_SERVICE, {
+  getModerationStatusIcon,
 });
 
 export function getModerationActionsList() {
