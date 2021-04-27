@@ -141,7 +141,7 @@ class CollectionSidebar extends React.Component {
     const { allFetched } = this.props;
 
     return (
-      <Sidebar w={340} pt={3} data-testid="sidebar">
+      <Sidebar w={340} pt={3} data-testid="sidebar" role="tree">
         {allFetched ? (
           this.renderContent()
         ) : (
