@@ -155,16 +155,14 @@ export default class CollectionContent extends React.Component {
             collection={collection}
             unpinnedItems={unpinnedItems}
           />
-          {collectionHasPins && (
-            <PinnedItems
-              items={pinned}
-              collection={collection}
-              selection={selection}
-              onToggleSelected={onToggleSelected}
-              onMove={this.handleMove}
-              onCopy={this.handleCopy}
-            />
-          )}
+          <PinnedItems
+            items={pinned}
+            collection={collection}
+            selection={selection}
+            onToggleSelected={onToggleSelected}
+            onMove={this.handleMove}
+            onCopy={this.handleCopy}
+          />
           <ItemList
             scrollElement={scrollElement}
             items={unpinnedItems}
