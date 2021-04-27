@@ -15,8 +15,3 @@
   ;; Todo: this is wrong, but what should it be?
   i/IObjectPermissions
   perms/IObjectPermissionsForParentCollection)
-
-#_(defn add-moderated-items
-  {:batched-hydrate :moderated_item}
-  [reviews]
-  (moderation/add-moderated-items reviews))
