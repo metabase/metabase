@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
   getModerationStatusIcon,
@@ -16,7 +15,7 @@ function CreateModerationIssuePanel({ issueType, onCancel }) {
 
   return (
     <div className="p2 flex flex-column row-gap-2">
-      <div className="py1 flex align-center">
+      <div className="flex align-center">
         <Icon className="mr1" name={icon} size={18} />
         <span className={`text-${color} text-bold`}>
           {MODERATION_TEXT.moderator[issueType].action}
@@ -32,10 +31,11 @@ function CreateModerationIssuePanel({ issueType, onCancel }) {
         className="input full max-w-full min-w-full"
         rows={10}
         value={description}
-        onChange={setDescription}
+        onChange={e => setDescription(e.target.value)}
+        placeholder={MODERATION_TEXT.actionCreationPlaceholder}
       />
       <div className="flex column-gap-1 justify-end">
-        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button onClick={onCancel}>{MODERATION_TEXT.cancel}</Button>
         <Button primary>
           {MODERATION_TEXT.moderator[issueType].actionCreationButton}
         </Button>

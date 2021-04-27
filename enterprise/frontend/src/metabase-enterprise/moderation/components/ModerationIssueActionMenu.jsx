@@ -1,5 +1,4 @@
 import React from "react";
-import { t } from "ttag";
 import PropTypes from "prop-types";
 
 import EntityMenu from "metabase/components/EntityMenu";
@@ -11,7 +10,7 @@ function ModerationIssueActionMenu({ className, onAction }) {
 
   return (
     <EntityMenu
-      triggerChildren={t`Moderate`}
+      triggerChildren={MODERATION_TEXT.moderator.action}
       triggerProps={{
         iconRight: "chevrondown",
         round: true,
