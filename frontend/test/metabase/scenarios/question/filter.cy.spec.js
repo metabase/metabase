@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   openProductsTable,
   openReviewsTable,
+  openPeopleTable,
   popover,
   visitQuestionAdhoc,
 } from "__support__/cypress";
@@ -960,5 +961,16 @@ describe("scenarios > question > filter", () => {
       .should("not.be.disabled")
       .click();
     cy.get(".dot");
+  });
+
+  it.skip("user shouldn't need to scroll to add filter (metabase#14307)", () => {
+    cy.viewport(1280, 720);
+    openPeopleTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    popover()
+      .findByText("State")
+      .click();
+    cy.findByText("AL").click();
+    cy.findByRole("button", { name: "Add filter" }).isVisibleInPopover();
   });
 });
