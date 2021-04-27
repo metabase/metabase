@@ -27,6 +27,16 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
         Add to a dashboard
       </BlueHoverTextButton>
       {canWrite && (
+        <Tooltip tooltip={t`Edit this question`}>
+          <Button
+            onlyIcon
+            icon="edit_document"
+            iconSize={18}
+            onClick={() => onOpenModal("edit")}
+          />
+        </Tooltip>
+      )}
+      {canWrite && (
         <Tooltip tooltip={t`Duplicate this question`}>
           <Button
             onlyIcon
