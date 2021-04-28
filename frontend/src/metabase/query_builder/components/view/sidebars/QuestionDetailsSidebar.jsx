@@ -1,43 +1,28 @@
-import React from "react";
-import PropTypes from "prop-types";
-
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import QuestionActionButtons from "metabase/questions/components/QuestionActionButtons";
+import React, { useState } from "react";
+import QuestionDetailsSidebarPanel from "metabase/query_builder/components/view/sidebars/QuestionDetailsSidebarPanel";
 import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
+import { SIDEBAR_VIEWS } from "./constants";
+const { CreateModerationIssuePanel } = PLUGIN_MODERATION_COMPONENTS;
 
-const {
-  active: isPluginActive,
-  ModerationIssueActionMenu,
-} = PLUGIN_MODERATION_COMPONENTS;
+function QuestionDetailsSidebar(props) {
+  const [view, setView] = useState({
+    name: undefined,
+    props: undefined,
+  });
+  const { name, props: viewProps } = view;
 
-function QuestionDetailsSidebar({ question, onOpenModal }) {
-  const canWrite = question && question.canWrite();
-
-  return (
-    <SidebarContent className="full-height px1">
-      {isPluginActive ? (
-        <div>
-          <QuestionActionButtons
-            canWrite={canWrite}
-            onOpenModal={onOpenModal}
-          />
-          <ModerationIssueActionMenu onAction={() => {}} />
-        </div>
-      ) : (
-        <div>
-          <QuestionActionButtons
-            canWrite={canWrite}
-            onOpenModal={onOpenModal}
-          />
-        </div>
-      )}
-    </SidebarContent>
-  );
+  switch (name) {
+    case SIDEBAR_VIEWS.CREATE_ISSUE_PANEL:
+      return (
+        <CreateModerationIssuePanel
+          {...viewProps}
+          onCancel={() => setView({ name: SIDEBAR_VIEWS.DETAILS })}
+        />
+      );
+    case SIDEBAR_VIEWS.DETAILS:
+    default:
+      return <QuestionDetailsSidebarPanel setView={setView} {...props} />;
+  }
 }
-
-QuestionDetailsSidebar.propTypes = {
-  question: PropTypes.object.isRequired,
-  onOpenModal: PropTypes.func.isRequired,
-};
 
 export default QuestionDetailsSidebar;
