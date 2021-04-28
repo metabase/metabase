@@ -178,7 +178,11 @@
     (with-search-items-in-root-collection "test"
       (with-redefs [search-config/db-max-results 1]
         (is (= [test-collection]
-               (search-request :crowberto :q "test collection")))))))
+               (search-request :crowberto :q "test collection"))))))
+  (comment testing "It limits and offsets matches properly"
+    (with-search-items-in-root-collection "test"
+      (is (= (take 2 (drop 2 (default-search-results)))
+             (search-request :crowberto :q "test" :limit "2" :offset "2"))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]

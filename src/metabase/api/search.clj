@@ -32,8 +32,8 @@
   {:search-string      (s/maybe su/NonBlankString)
    :archived?          s/Bool
    :current-user-perms #{perms/UserPath}
-   :limit-int          s/Int
-   :offset-int         s/Int})
+   :limit-int          (s/maybe s/Int)
+   :offset-int         (s/maybe s/Int)})
 
 (def ^:private SearchableModel
   (apply s/enum search-config/searchable-models))
@@ -348,9 +348,9 @@
                              (map #(update % :archived bit->boolean))
                              (map (partial scoring/score-and-result (:search-string search-ctx)))
                              (filter some?))]
-      (take (:limit-int search-ctx)
-            (drop (:offset-int search-ctx)
-                  (scoring/top-results reducible-results xf))))))
+      (cond->> (scoring/top-results reducible-results xf)
+        (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+        (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
