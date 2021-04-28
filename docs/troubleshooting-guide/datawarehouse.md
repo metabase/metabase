@@ -63,37 +63,10 @@ If your credentials are incorrect, you should see an error message letting you k
 - [Heroku timeouts](https://devcenter.heroku.com/articles/request-timeout)
 - [App Engine: Dealing with DeadlineExceededErrors](https://cloud.google.com/appengine/articles/deadlineexceedederrors)
 
-### MySQL: Unable to log in with correct credentials
-
-**How to detect this:** Metabase fails to connect to your MySQL server with the error message "Looks like the username or password is incorrect", but you're sure that the username and password is correct. You may have created the MySQL user with an allowed host other than the host you're connecting from.
-
-For example, if the MySQL server is running in a Docker container, and your `metabase` user was created with `CREATE USER 'metabase'@'localhost' IDENTIFIED BY 'thepassword';`, the `localhost` will be resolved to the Docker container, and not the host machine, causing access to be denied.
-
-You can identify this issue by looking in the Metabase server logs for the error message `Access denied for user 'metabase'@'172.17.0.1' (using password: YES)`. Note the host name `172.17.0.1` (in this case a Docker network IP address), and `using password: YES` at the end.
-
-You'll see the same error message when attempting to connect to the MySQL server with the command-line client: `mysql -h 127.0.0.1 -u metabase -p`.
-
-**How to fix this:** Recreate the MySQL user with the correct host name: `CREATE USER 'metabase'@'172.17.0.1' IDENTIFIED BY 'thepassword';`. Otherwise, if necessary, a wildcard may be used for the host name: `CREATE USER 'metabase'@'%' IDENTIFIED BY 'thepassword';`
-
-That user's permissions will need to be set:
-
-```sql
-GRANT SELECT ON targetdb.* TO 'metabase'@'172.17.0.1';
-FLUSH PRIVILEGES;
-```
-
-Remember to drop the old user: `DROP USER 'metabase'@'localhost';`.
-
 ### Error message: "Connections cannot be acquired from the underlying database!"
 
 **How to detect this:** Metabase fails to connect to your data warehouse and the Metabase server logs include the error message `Connections cannot be acquired from the underlying database!`
 
 **How to fix this:** Navigate to the options for your data warehouse and locate the Additional JDBC Connection Strings option, then add `trustServerCertificate=true` as an additional string.
 
-## MongoDB
 
-### I added fields to my database but don't see them in Metabase
-
-Metabase may not sync all of your fields, as it only scans the first 200 documents in a collection to get a sample of the fields the collection contains. Since any document in a MongoDB collection can contain any number of fields, the only way to get 100% coverage of all fields would be to scan every single document in every single collection, which would put too much strain on your database (so we don't do that).
-
-One workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection. 
