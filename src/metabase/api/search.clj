@@ -31,7 +31,9 @@
   "Map with the various allowed search parameters, used to construct the SQL query"
   {:search-string      (s/maybe su/NonBlankString)
    :archived?          s/Bool
-   :current-user-perms #{perms/UserPath}})
+   :current-user-perms #{perms/UserPath}
+   :limit-int          s/Int
+   :offset-int         s/Int})
 
 (def ^:private SearchableModel
   (apply s/enum search-config/searchable-models))
@@ -346,7 +348,9 @@
                              (map #(update % :archived bit->boolean))
                              (map (partial scoring/score-and-result (:search-string search-ctx)))
                              (filter some?))]
-      (scoring/top-results reducible-results xf))))
+      (take (:limit-int search-ctx)
+            (drop (:offset-int search-ctx)
+                  (scoring/top-results reducible-results xf))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -354,16 +358,25 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private search-context :- SearchContext
-  [search-string :- (s/maybe su/NonBlankString), archived-string :- (s/maybe su/BooleanString)]
+  [search-string :-   (s/maybe su/NonBlankString),
+   archived-string :- (s/maybe su/BooleanString)
+   limit :-           (s/maybe su/IntStringGreaterThanZero)
+   offset :-          (s/maybe su/IntStringGreaterThanOrEqualToZero)
+   ]
   {:search-string      search-string
    :archived?          (Boolean/parseBoolean archived-string)
+   :limit-int          (Integer/parseInt limit)
+   :offset-int         (Integer/parseInt offset)
    :current-user-perms @api/*current-user-permissions-set*})
 
 (api/defendpoint GET "/"
   "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
-  [q archived]
+  [q archived limit offset]
   {q        (s/maybe su/NonBlankString)
-   archived (s/maybe su/BooleanString)}
-  (search (search-context q archived)))
+   archived (s/maybe su/BooleanString)
+   limit    (s/maybe su/IntStringGreaterThanZero)
+   offset   (s/maybe su/IntStringGreaterThanOrEqualToZero)
+   }
+  (search (search-context q archived limit offset)))
 
 (api/define-routes)
