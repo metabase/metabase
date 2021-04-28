@@ -128,10 +128,6 @@ describe("metabase/lib/expression/suggest", () => {
       return cleanSuggestions(suggest_(...args).suggestions);
     }
 
-    function uncleanSuggest(...args) {
-      return suggest_(...args).suggestions;
-    }
-
     function helpText(...args) {
       return suggest_(...args).helpText;
     }
