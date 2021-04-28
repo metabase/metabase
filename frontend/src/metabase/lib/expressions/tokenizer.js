@@ -315,6 +315,9 @@ export function tokenize(expression) {
         }
       } else {
         const char = source[index];
+        if (!char) {
+          break;
+        }
         const message = t`Invalid character: ${char}`;
         const pos = index;
         errors.push({ message, pos });

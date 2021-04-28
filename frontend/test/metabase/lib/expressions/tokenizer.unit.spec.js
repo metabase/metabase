@@ -96,6 +96,7 @@ describe("metabase/lib/expressions/tokenizer", () => {
     expect(types("\n[Rating] ")).toEqual([T.Identifier]);
     expect(types("A\t  + ")).toEqual([T.Identifier, T.Operator]);
     expect(types("A \u3000  +\u2028")).toEqual([T.Identifier, T.Operator]);
+    expect(errors("[Expensive]  ")).toEqual([]);
   });
 
   it("should tokenize simple comparisons", () => {
