@@ -9,6 +9,7 @@ import Link from "metabase/components/Link";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import SavedQuestionHeaderButton from "metabase/questions/components/SavedQuestionHeaderButton";
+import HistoryButton from "metabase/questions/components/HistoryButton";
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
 import QuestionDataSource from "./QuestionDataSource";
@@ -28,7 +29,6 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 const SavedQuestionHeaderButtonContainer = styled.div`
   position: relative;
   right: 0.5rem;
-  margin-bottom: 0.5rem;
 `;
 
 export class ViewTitleHeader extends React.Component {
@@ -111,17 +111,24 @@ export class ViewTitleHeader extends React.Component {
       >
         {isSaved ? (
           <div>
-            <SavedQuestionHeaderButtonContainer>
-              <SavedQuestionHeaderButton
-                question={question}
-                active={isShowingQuestionDetailsSidebar}
-                onClick={
-                  isShowingQuestionDetailsSidebar
-                    ? onCloseQuestionDetails
-                    : onOpenQuestionDetails
-                }
+            <div className="flex mb1">
+              <SavedQuestionHeaderButtonContainer>
+                <SavedQuestionHeaderButton
+                  question={question}
+                  active={isShowingQuestionDetailsSidebar}
+                  onClick={
+                    isShowingQuestionDetailsSidebar
+                      ? onCloseQuestionDetails
+                      : onOpenQuestionDetails
+                  }
+                />
+              </SavedQuestionHeaderButtonContainer>
+              <HistoryButton
+                onClick={() => onOpenModal("history")}
+                modelType="card"
+                modelId={question.id()}
               />
-            </SavedQuestionHeaderButtonContainer>
+            </div>
             <ViewSubHeading className="flex align-center flex-wrap">
               <CollectionBadge
                 className="mb1"
