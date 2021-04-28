@@ -19,8 +19,15 @@ export const ACTIONS = {
 };
 
 export const MODERATION_TEXT = {
-  user: {},
+  cancel: t`Cancel`,
+  actionCreationPlaceholder: t`You can add details if you'd like`,
+  user: {
+    verification: {},
+    flag: {},
+    question: {},
+  },
   moderator: {
+    action: t`Moderate`,
     verification: {
       action: t`Verify this`,
       actionCreationDescription: t`Everything look correct here? Verify this question to let others know.`,

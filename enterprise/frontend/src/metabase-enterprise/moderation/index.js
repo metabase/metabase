@@ -2,12 +2,13 @@ import {
   PLUGIN_MODERATION_COMPONENTS,
   PLUGIN_MODERATION_SERVICE,
 } from "metabase/plugins";
-import ModerationIssueActionMenu from "metabase-enterprise/moderation/components/ModerationIssueActionMenu";
 import { ACTIONS } from "metabase-enterprise/moderation/constants";
+import ModerationIssueActionMenu from "metabase-enterprise/moderation/components/ModerationIssueActionMenu";
+import CreateModerationIssuePanel from "metabase-enterprise/moderation/components/CreateModerationIssuePanel";
 
 Object.assign(PLUGIN_MODERATION_COMPONENTS, {
-  active: true,
   ModerationIssueActionMenu,
+  CreateModerationIssuePanel,
 });
 
 Object.assign(PLUGIN_MODERATION_SERVICE, {
