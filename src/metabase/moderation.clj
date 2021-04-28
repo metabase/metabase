@@ -3,7 +3,12 @@
             [metabase.models.moderation-request :refer [ModerationRequest]]
             [metabase.models.moderation-review :refer [ModerationReview]]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db]))
+
+(def moderated-item-types
+  "Schema enum of the acceptable values for the `moderated_item_type` column"
+  (s/enum "card" "dashboard"))
 
 (defn- object->type
   "Convert a moderated item instance to the keyword stored in the database"

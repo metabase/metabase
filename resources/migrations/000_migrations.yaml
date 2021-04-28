@@ -8375,7 +8375,7 @@ databaseChangeLog:
               - column:
                   name: status
                   type: varchar(255)
-                  remarks: "verified, misleading, confusing, pending"
+                  remarks: "verified, misleading, confusing, not_misleading, pending"
                   defaultValue: "pending"
                   constraints:
                     nullable: false
