@@ -29,10 +29,7 @@ function ClampedText({ className, text, visibleLines }) {
 
     const clampedHeight = clampedDiv.current.getBoundingClientRect().height;
     const textHeight = innerDiv.current.getBoundingClientRect().height;
-
-    if (textHeight > clampedHeight) {
-      setIsOverflowing(true);
-    }
+    setIsOverflowing(textHeight > clampedHeight);
   }, [text]);
 
   return (
