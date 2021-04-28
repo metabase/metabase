@@ -86,7 +86,11 @@
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
-  (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  (str (deferred-tru "Only change this if you know what you''re doing!")
+       " "
+       (deferred-tru "This URL is used for things like creating links in emails, auth redirects,")
+       " "
+       (deferred-tru "and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :getter (fn []
             (try
