@@ -66,7 +66,6 @@ const viewTitleHeaderPropTypes = {
 const SavedQuestionHeaderButtonContainer = styled.div`
   position: relative;
   right: 0.5rem;
-  margin-bottom: 0.5rem;
 `;
 
 export class ViewTitleHeader extends React.Component {
@@ -150,23 +149,25 @@ export class ViewTitleHeader extends React.Component {
       >
         {isSaved ? (
           <div>
-            <SavedQuestionHeaderButtonContainer>
-              <SavedQuestionHeaderButton
-                question={question}
-                active={isShowingQuestionDetailsSidebar}
-                onClick={
-                  isShowingQuestionDetailsSidebar
-                    ? onCloseQuestionDetails
-                    : onOpenQuestionDetails
-                }
-              />
-            </SavedQuestionHeaderButtonContainer>
-            {lastEditInfo && (
-              <LastEditInfoLabel
-                className="ml1 text-light"
-                item={question.card()}
-              />
-            )}
+            <div className="flex mb1 align-center">
+              <SavedQuestionHeaderButtonContainer>
+                <SavedQuestionHeaderButton
+                  question={question}
+                  active={isShowingQuestionDetailsSidebar}
+                  onClick={
+                    isShowingQuestionDetailsSidebar
+                      ? onCloseQuestionDetails
+                      : onOpenQuestionDetails
+                  }
+                />
+              </SavedQuestionHeaderButtonContainer>
+              {lastEditInfo && (
+                <LastEditInfoLabel
+                  className="ml1 text-light"
+                  item={question.card()}
+                />
+              )}
+            </div>
             <ViewSubHeading className="flex align-center flex-wrap">
               <CollectionBadge
                 className="mb1"
