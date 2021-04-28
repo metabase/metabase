@@ -613,8 +613,7 @@ describe("collection permissions", () => {
                 // For now that's not possible for user without data access (likely it will be again when #11719 is fixed)
                 cy.skipOn(user === "nodata");
                 cy.visit("/question/1");
-                cy.icon("pencil").click();
-                cy.findByText("View revision history").click();
+                cy.findByRole("button", { name: /Edited .*/ }).click();
                 clickRevert("First revision.");
                 cy.wait("@revert").then(xhr => {
                   expect(xhr.status).to.eq(200);
@@ -643,8 +642,7 @@ describe("collection permissions", () => {
               it("should not see question revert buttons (metabase#13229)", () => {
                 cy.signIn(user);
                 cy.visit("/question/1");
-                cy.icon("pencil").click();
-                cy.findByText("View revision history").click();
+                cy.findByRole("button", { name: /Edited .*/ }).click();
                 cy.findAllByRole("button", { name: "Revert" }).should(
                   "not.exist",
                 );
