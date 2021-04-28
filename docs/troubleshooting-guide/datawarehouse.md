@@ -7,8 +7,8 @@ If you're having trouble connecting to your data warehouse, run through these st
 3. Try connecting to the data warehouse from another client from the machine you're running Metabase on.
 4. Add the connection in Metabase.
 5. Examine the logs to verify that the sync process started and that no errors were thrown. You can view the logs in the Metabase process, or in the app itself in the Admin section -> Troubleshooting -> Logs.
-6. Run a native "SELECT 1" query to verify the connection to the data warehouse.
-7. If the sync process has completed, ask a native question to verify that you are able to use the database.
+6. Run a native `SELECT 1` query to verify the connection to the data warehouse.
+7. If the sync process has completed, ask a [native question](../users-guide/writing-sql.md) to verify that you are able to use the database.
 
 ## Specific Problems
 

@@ -62,9 +62,9 @@ Connection options differ depending on which database you're connecting to. Here
 
 Metabase automatically tries to connect to databases with and without SSL. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we highly recommend keeping SSL turned on to keep your data secure.
 
-### Use an SSH-tunnel for database connections
+### Use an SSH tunnel for database connections
 
-Metabase has the ability to connect to some databases by first establishing a connection to a server in between Metabase and a data warehouse, then connect to the data warehouse using that connection as a bridge. This makes connecting to some data warehouses possible in situations that would otherwise prevent the use of Metabase. See our [guide to ssh tunneling](ssh-tunnel-for-database-connections.md).
+See our [guide to SSH tunneling](ssh-tunnel-for-database-connections.md).
 
 ### This is a large database, so let me choose when Metabase syncs and scans 
 
