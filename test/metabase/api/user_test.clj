@@ -144,6 +144,8 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "user", :status "all"))))
 
+    (testing "Pagination gets the total users _in query_"
+      (is (= 4 ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
     (testing "for admins, it should include those inactive users as we'd expect"
       (is (= (->> [{:email                  "trashbird@metabase.com"
                     :first_name             "Trash"
@@ -222,7 +224,7 @@
       (is (= "When including an offset, a limit must also be included."
              (mt/user-http-request :crowberto :get 400 "user" :offset "1"))))
     (testing "Limit and offset pagination get the total"
-      (is (= 4 ((mt/user-http-request :crowberto :get 400 "user" :offset "1" :limit "1") :total))))
+      (is (= 3 ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
     (testing "Limit and offset pagination works for user list"
       (is (= [{:id          (mt/user->id :lucky)
                :email       "lucky@metabase.com"
