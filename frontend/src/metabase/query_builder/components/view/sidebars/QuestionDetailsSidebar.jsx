@@ -4,7 +4,7 @@ import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
 import { SIDEBAR_VIEWS } from "./constants";
 const { CreateModerationIssuePanel } = PLUGIN_MODERATION_COMPONENTS;
 
-function QuestionSidebarView(props) {
+function QuestionDetailsSidebar(props) {
   const [view, setView] = useState({
     name: undefined,
     props: undefined,
@@ -25,4 +25,4 @@ function QuestionSidebarView(props) {
   }
 }
 
-export default QuestionSidebarView;
+export default QuestionDetailsSidebar;
