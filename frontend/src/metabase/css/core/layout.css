@@ -152,3 +152,11 @@
 .stacking-context {
   transform: scale(1);
 }
+
+.max-w-full {
+  max-width: 100%;
+}
+
+.min-w-full {
+  min-width: 100%;
+}

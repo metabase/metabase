@@ -1,3 +1,6 @@
+import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import _ from "underscore";
+
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 
 // functions called when the application is started
@@ -55,9 +58,10 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
 };
 
 export const PLUGIN_MODERATION_COMPONENTS = {
-  active: false,
+  ModerationIssueActionMenu: PluginPlaceholder,
+  CreateModerationIssuePanel: PluginPlaceholder,
 };
 
 export const PLUGIN_MODERATION_SERVICE = {
-  getModerationStatusIcon: () => {},
+  getModerationStatusIcon: _.noop,
 };
