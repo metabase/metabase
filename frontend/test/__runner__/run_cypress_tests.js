@@ -73,15 +73,26 @@ const init = async () => {
   await generateSnapshots();
 
   console.log(chalk.bold("Starting Cypress"));
-  let commandLineConfig = `baseUrl=${server.host}`;
-  if (sourceFolder) {
-    commandLineConfig = `${commandLineConfig},integrationFolder=${sourceFolderLocation}`;
-  } else if (singleFile) {
-    commandLineConfig = `${commandLineConfig},testFiles=${singleFileName}`;
-  } else {
+  const baseConfig = { baseUrl: server.host };
+  const folderConfig = sourceFolder && {
+    integrationFolder: sourceFolderLocation,
+  };
+  const specsConfig = singleFile && { testFiles: singleFileName };
+  const ignoreConfig =
     // if we're not running specific tests, avoid including db and smoketests
-    commandLineConfig = `${commandLineConfig},ignoreTestFiles=**/metabase-{smoketest,db}/**`;
-  }
+    folderConfig || specsConfig
+      ? null
+      : { ignoreTestFiles: "**/metabase-{smoketest,db}/**" };
+
+  const config = {
+    ...baseConfig,
+    ...folderConfig,
+    ...specsConfig,
+    ...ignoreConfig,
+  };
+  // Cypress suggests using JSON.stringified object for more complex configuration objects
+  // See: https://docs.cypress.io/guides/references/configuration#Command-Line
+  const commandLineConfig = JSON.stringify(config);
 
   // These env vars provide the token to the backend.
   // If they're not present, we skip some tests that depend on a valid token.
