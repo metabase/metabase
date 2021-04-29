@@ -5,7 +5,7 @@ Metabase has the ability to connect to some databases by first establishing a co
 - [When to use SSH tunneling](#when-to-use-ssh-tunneling)
 - [How to use SSH tunneling](#how-to-use-ssh-tunneling)
 - [Disadvantages of indirect connections](#disadvantages-of-direct-connections)
-- [Limitations of Metabase's built-in SSH tunnel]What if the built-
+- [Running SSH directly](#running-ssh-directly)
 
 ### When to use SSH tunneling
 
@@ -57,9 +57,9 @@ There are several inherent limitations to connecting through a tunnel:
 - The number of connections through a bastion host is often limited by organizational policy.
 - Some organizations have IT security policies forbidding using SSH tunnels to bypass security perimeters.
 
-### What if the built-in SSH tunnels don't fit my needs?
+### Running SSH directly 
 
-The SSH tunneling feature exists as a convenient wrapper around SSH, and automates the common cases of connecting through a tunnel. It also makes connections possible with systems that don't have or allow shell access. Metabase uses a built in SSH client that doesn't depend on the installed system's SSH client. This allows connecting from systems where you can't run SSH manually. It also means that Metabase can't take advantage of authentication services provided by the system such as Windows Domain Authentication or Kerberos Authentication.
+The SSH tunneling feature in Metabase exists as a convenient wrapper around SSH, and automates the common cases of connecting through a tunnel. It also makes connections possible with systems that don't have or allow shell access. Metabase uses a built-in SSH client that doesn't depend on the installed system's SSH client. This allows connections from systems where you can't run SSH manually. It also means that Metabase can't take advantage of authentication services provided by the system, such as Windows Domain Authentication or Kerberos Authentication.
 
 If you need to connect using a method not enabled by Metabase, you can often accomplish this by running SSH directly:
 
@@ -68,7 +68,6 @@ ssh -Nf -L input-port:internal-server-name:port-on-server username@bastion-host.
 ```
 
 This allows you to use the full array of features included in SSH. If you find yourself doing this often, please let us know so we can see about making your process more convenient through Metabase.
-
 
 ### Further reading
 

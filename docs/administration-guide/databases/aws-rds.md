@@ -9,7 +9,7 @@ Here's how to get connection information for databases on Amazon's RDS:
 2. Under **Database** services, click **RDS**.
 3. Then click **Instances**.
 4. Select the database you want to connect to Metabase.
-5. Write down the following information based on your database:
+5. Get the information you'll need to connect Metabase to your RDS:
    - **Hostname**. This is listed as the Endpoint parameter.
    - **Port**. Find the port parameter under Security and Network.
    - **Username**. Find this under Configuration Details.

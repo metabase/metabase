@@ -55,7 +55,7 @@ Connection options differ depending on which database you're connecting to. Here
 
 - [Use a secure connection (SSL)](#use-a-secure-connection-SSL)
 - [Use an SSH-tunnel for database connections](#use-an-ssh-tunnel-for-database-connections) 
-- [This is a large database, so let me choose when Metabase syncs and scans](#this-is-a-large-database-so-let-me-choose-when-metabase-syncs-and-scans)
+- [Choose when Metabase syncs and scans his](#choose-when-metabase-syncs-and-scans)
 - [Automatically run queries when doing simple filtering and summarizing](#automatically-run-queries-when-doing-simple-filtering-and-summarizing)
 
 ### Use a secure connection (SSL)
@@ -66,9 +66,9 @@ Metabase automatically tries to connect to databases with SSL first, then withou
 
 See our [guide to SSH tunneling](ssh-tunnel-for-database-connections.md).
 
-### This is a large database, so let me choose when Metabase syncs and scans 
+### Choose when Metabase syncs and scans 
 
-By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen. (Note: this setting used to be called "Enable in-depth analysis.") 
+By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning on the option "This is a large database, let me choose when Metabase syncs and scans". Once on, you can review when and how often the field value scans happen. (Note: this setting used to be called "Enable in-depth analysis.") 
 
 If you enable this and save your changes, you'll see a new tab at the top of the form called "Scheduling." Click on that, and you'll see options to change when and how often Metabase syncs and scans.
 
