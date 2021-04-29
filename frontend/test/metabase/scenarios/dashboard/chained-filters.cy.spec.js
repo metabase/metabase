@@ -1,4 +1,8 @@
-import { restore, popover } from "__support__/cypress";
+import {
+  restore,
+  popover,
+  showDashboardCardActions,
+} from "__support__/cypress";
 import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
 
 const { PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
@@ -301,7 +305,8 @@ describe("scenarios > dashboard > chained filter", () => {
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
         cy.icon("pencil").click();
-        cy.get(".DashCard .Icon-click").click({ force: true });
+        showDashboardCardActions();
+        cy.icon("click").click();
         cy.findByText(/Ean/i).click();
         cy.findByText("Update a dashboard filter").click();
         cy.findByText("Available filters")

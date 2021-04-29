@@ -69,7 +69,6 @@ const SECTIONS = {
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
 Object.values(SECTIONS).map((section, index) => {
-  // $FlowFixMe
   section.index = index;
 });
 
@@ -102,7 +101,6 @@ export default class ChartClickActions extends Component {
   };
 
   handleClickAction = (action: ClickAction) => {
-    // $FlowFixMe: dispatch provided by @connect
     const { dispatch, onChangeCardAndRun } = this.props;
     if (action.popover) {
       MetabaseAnalytics.trackEvent(

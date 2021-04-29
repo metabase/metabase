@@ -177,9 +177,9 @@ describe("scenarios > question > notebook", () => {
     it("should allow post-join filters (metabase#12221)", () => {
       cy.log("Start a custom question with Orders");
       cy.visit("/question/new");
-      cy.contains("Custom question").click();
-      cy.contains("Sample Dataset").click();
-      cy.contains("Orders").click();
+      cy.findByText("Custom question").click();
+      cy.findByText("Sample Dataset").click();
+      cy.findByText("Orders").click();
 
       cy.log("Join to People table using default settings");
       cy.icon("join_left_outer ").click();
@@ -192,9 +192,19 @@ describe("scenarios > question > notebook", () => {
       cy.contains("Filter").click();
       cy.contains("Email").click();
       cy.contains("People – Email");
-      cy.get('[placeholder="Search by Email"]').type("wolf.");
-      cy.contains("wolf.dina@yahoo.com").click();
-      cy.contains("Add filter").click();
+      cy.findByPlaceholderText("Search by Email")
+        .type("wo")
+        .then($el => {
+          // This test was flaking due to a race condition with typing.
+          // We're ensuring that the value entered was correct and are retrying if it wasn't
+          const value = $el[0].value;
+          const input = cy.wrap($el);
+          if (value !== "wo") {
+            input.clear().type("wo");
+          }
+        });
+      cy.findByText("wolf.dina@yahoo.com").click();
+      cy.findByRole("button", { name: "Add filter" }).click();
       cy.contains("Showing 1 row");
     });
 
@@ -601,7 +611,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("37.65");
     });
 
-    it.skip("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
+    it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
       cy.visit("/question/1/notebook");
       cy.findByText("Summarize").click();
       cy.findByText("Count of rows").click();
@@ -620,7 +630,7 @@ describe("scenarios > question > notebook", () => {
         .isVisibleInPopover();
     });
 
-    it.skip("should add numeric filter on joined table (metabase#15570)", () => {
+    it("should add numeric filter on joined table (metabase#15570)", () => {
       cy.createQuestion({
         name: "15570",
         query: {
@@ -656,7 +666,7 @@ describe("scenarios > question > notebook", () => {
         .click();
     });
 
-    it.skip("should not render duplicated values in date binning popover (metabase#15574)", () => {
+    it("should not render duplicated values in date binning popover (metabase#15574)", () => {
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
       cy.findByText("Pick a column to group by").click();
@@ -822,6 +832,70 @@ describe("scenarios > question > notebook", () => {
         cy.findAllByRole("button", { name: "Visualize" }).click();
         cy.contains(filter);
         cy.contains(result);
+      });
+    });
+  });
+
+  describe("error feedback", () => {
+    it("should catch mismatched parentheses", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("FLOOR [Price]/2)");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Massive Discount");
+        cy.contains(/^Expecting an opening parenthesis/i);
+      });
+    });
+
+    it("should catch invalid characters", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("[Price] / #");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Massive Discount");
+        cy.contains(/^Invalid character: #/i);
+      });
+    });
+
+    it("should catch unterminated string literals", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Filter").click();
+      cy.findByText("Custom Expression").click();
+      cy.get("[contenteditable='true']")
+        .click()
+        .clear()
+        .type('[Category] = "widget', { delay: 50 });
+      cy.findAllByRole("button", { name: "Done" })
+        .should("not.be.disabled")
+        .click();
+      cy.findByText("Unterminated quoted string");
+    });
+
+    it("should catch unterminated field reference", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("[Price / 2");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Massive Discount");
+        cy.contains(/^Unterminated bracket identifier/i);
+      });
+    });
+
+    it("should catch non-existent field reference", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("abcdef");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Non-existent");
+        cy.contains(/^Unknown Field: abcdef/i);
       });
     });
   });

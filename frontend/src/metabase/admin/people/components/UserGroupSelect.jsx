@@ -19,10 +19,6 @@ export default class UserGroupSelect extends Component {
     isInitiallyOpen: false,
   };
 
-  toggle() {
-    this.refs.popover.toggle();
-  }
-
   render() {
     const {
       user,

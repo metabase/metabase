@@ -7,8 +7,9 @@
 (deftest edn-test
   (#'backend/write-edn-file! test-common/po-contents "/tmp/out.edn")
   (is (= ["{"
-          "\"No table description yet\""
-          "\"No hay una descripción de la tabla\""
+          "\"No table description yet\"" "\"No hay una descripción de la tabla\""
+          ""
+          "\"Count of {0}\"" "\"Número de {0}\""
           ""
           "}"]
          (some-> (slurp "/tmp/out.edn")

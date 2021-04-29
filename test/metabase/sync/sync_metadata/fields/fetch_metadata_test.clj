@@ -39,8 +39,8 @@
              {:name              "ts"
               :database-type     "BIGINT"
               :base-type         :type/BigInteger
-              :effective-type    :type/BigInteger
-              :semantic-type     :type/UNIXTimestampMilliseconds
+              :effective-type    :type/DateTime
+              :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
               :pk?               false}
              {:name              "toucan"
               :database-type     "OBJECT"

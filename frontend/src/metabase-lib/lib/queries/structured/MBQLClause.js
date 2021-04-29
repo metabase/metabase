@@ -26,7 +26,6 @@ export default class MBQLArrayClause extends Array {
   }
 
   setQuery(query: StructuredQuery) {
-    // $FlowFixMe
     return new this.constructor(this, this._index, query);
   }
 
@@ -38,12 +37,10 @@ export default class MBQLArrayClause extends Array {
    * replaces the previous clause with this one and propagates an update, recursively
    */
   update(...args: any) {
-    // $FlowFixMe
     return this.replace(this).update(undefined, ...args);
   }
 
   parent() {
-    // $FlowFixMe
     return this.replace(this);
   }
 
@@ -55,7 +52,6 @@ export default class MBQLArrayClause extends Array {
   }
 
   raw(): any[] {
-    // $FlowFixMe
     return [...this];
   }
 }

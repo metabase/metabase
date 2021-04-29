@@ -1034,6 +1034,39 @@ describeWithToken("formatting > sandboxes", () => {
 
       // Add positive assertion once this issue is fixed
     });
+
+    it("sandboxed user should receive sandboxed dashboard subscription", () => {
+      cy.request("DELETE", "http://localhost:80/email/all");
+      cy.request("PUT", "/api/setting", {
+        "email-smtp-host": "localhost",
+        "email-smtp-port": "25",
+        "email-smtp-username": "admin",
+        "email-smtp-password": "admin",
+        "email-smtp-security": "none",
+        "email-from-address": "mailer@metabase.test",
+      });
+      cy.sandboxTable({
+        table_id: ORDERS_ID,
+        attribute_remappings: {
+          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
+        },
+      });
+
+      cy.signInAsSandboxedUser();
+      cy.visit("/dashboard/1");
+      cy.icon("share").click();
+      cy.findByText("Dashboard subscriptions").click();
+      cy.findByText("Email it").click();
+      cy.findByPlaceholderText("Enter user names or email addresses").click();
+      cy.findByText("User 1").click();
+      cy.findByText("Send email now").click();
+      cy.findByText("Email sent");
+      cy.request("GET", "http://localhost:80/email").then(({ body }) => {
+        expect(body[0].html).to.include("Orders in a dashboard");
+        expect(body[0].html).to.include("37.65");
+        expect(body[0].html).not.to.include("148.23"); // Order for user with ID 3
+      });
+    });
   });
 });
 

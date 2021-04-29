@@ -43,7 +43,6 @@ type State = {
 export default class TimeseriesFilterWidget extends Component {
   props: Props;
   state: State = {
-    // $FlowFixMe
     filter: null,
     filterIndex: -1,
     currentFilter: null,
@@ -78,7 +77,6 @@ export default class TimeseriesFilterWidget extends Component {
         filter = ["time-interval", timeField, -30, "day"];
       }
 
-      // $FlowFixMe
       this.setState({ filter, filterIndex, currentFilter });
     }
   }

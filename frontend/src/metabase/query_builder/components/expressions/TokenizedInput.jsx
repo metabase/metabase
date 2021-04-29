@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { Component, forwardRef } from "react";
 import ReactDOM from "react-dom";
 import ReactDOMServer from "react-dom/server";
 
@@ -16,7 +16,7 @@ const KEYCODE_LEFT = 37;
 const KEYCODE_RIGHT = 39;
 const KEYCODE_FORWARD_DELETE = 46;
 
-export default class TokenizedInput extends Component {
+class TokenizedInput extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -161,9 +161,10 @@ export default class TokenizedInput extends Component {
   }
 
   render() {
-    const { className, onFocus, onBlur, style } = this.props;
+    const { className, onFocus, onBlur, style, forwardedRef } = this.props;
     return (
       <div
+        ref={forwardedRef}
         className={className}
         style={{ ...style }}
         contentEditable
@@ -181,3 +182,7 @@ export default class TokenizedInput extends Component {
     );
   }
 }
+
+export default forwardRef(function TokenizedInputWithForwardedRef(props, ref) {
+  return <TokenizedInput forwardedRef={ref} {...props} />;
+});

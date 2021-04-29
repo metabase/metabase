@@ -57,7 +57,6 @@ export type WidgetDef = {
   hidden: boolean,
   disabled: boolean,
   props: { [key: string]: any },
-  // $FlowFixMe
   widget?: React.Component,
   onChange: (value: any) => void,
 };

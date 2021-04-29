@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+/* eslint-disable react/no-string-refs */
 import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -48,7 +49,13 @@ type State = {
 };
 
 export default class GuiQueryEditor extends React.Component {
-  props: Props;
+  constructor(props: Props) {
+    super(props);
+
+    this.filterPopover = React.createRef();
+    this.guiBuilder = React.createRef();
+  }
+
   state: State = {
     expanded: true,
   };
@@ -151,10 +158,9 @@ export default class GuiQueryEditor extends React.Component {
         <div className="mx2">
           <PopoverWithTrigger
             id="FilterPopover"
-            ref="filterPopover"
+            ref={this.filterPopover}
             triggerElement={addFilterButton}
             triggerClasses="flex align-center"
-            getTarget={() => this.refs.addFilterTarget}
             horizontalAttachments={["left", "center"]}
             autoWidth
           >
@@ -164,7 +170,7 @@ export default class GuiQueryEditor extends React.Component {
               onChangeFilter={filter =>
                 query.filter(filter).update(setDatasetQuery)
               }
-              onClose={() => this.refs.filterPopover.close()}
+              onClose={() => this.filterPopover.current.close()}
               showCustom={false}
             />
           </PopoverWithTrigger>
@@ -187,7 +193,6 @@ export default class GuiQueryEditor extends React.Component {
 
     // aggregation clause.  must have table details available
     if (query.isEditable()) {
-      // $FlowFixMe
       const aggregations: (Aggregation | null)[] = query.aggregations();
 
       if (aggregations.length === 0) {
@@ -250,7 +255,6 @@ export default class GuiQueryEditor extends React.Component {
 
     const breakoutList = [];
 
-    // $FlowFixMe
     const breakouts: (Breakout | null)[] = query.breakouts();
 
     // Placeholder breakout for showing the add button
@@ -334,7 +338,7 @@ export default class GuiQueryEditor extends React.Component {
     return (
       <div
         className="GuiBuilder-section GuiBuilder-filtered-by flex align-center"
-        ref="filterSection"
+        ref={this.filterSection}
       >
         <span className="GuiBuilder-section-label Query-label">{t`Filtered by`}</span>
         {this.renderFilters()}
@@ -377,7 +381,7 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   componentDidUpdate() {
-    const guiBuilder = ReactDOM.findDOMNode(this.refs.guiBuilder);
+    const guiBuilder = this.guiBuilder.current;
     if (!guiBuilder) {
       return;
     }
@@ -405,7 +409,7 @@ export default class GuiQueryEditor extends React.Component {
         className={cx("GuiBuilder rounded shadowed", {
           "GuiBuilder--expand": this.state.expanded,
         })}
-        ref="guiBuilder"
+        ref={this.guiBuilder}
       >
         <div className="GuiBuilder-row flex">
           {this.renderDataSection()}

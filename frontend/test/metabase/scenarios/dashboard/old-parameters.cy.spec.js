@@ -16,13 +16,13 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("filter").click();
 
     cy.findByText("Number").should("not.exist");
+    cy.findByText("Text or Category").should("not.exist");
 
     cy.findByText("Location").click();
     cy.findByText("Contains").should("not.exist");
     cy.findByText("City").should("exist");
 
     cy.icon("filter").click();
-    cy.findByText("Contains").should("not.exist");
   });
 
   it("should filter by city", () => {
@@ -53,7 +53,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
     cy.findByText("Baker");
 
-    cy.contains("of 8");
+    cy.findAllByTestId("table-row").should("have.length", 8);
   });
 
   it("should filter by category", () => {

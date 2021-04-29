@@ -52,9 +52,7 @@ export type FormFieldDefinition = {
 export type FormDefinition = {
   fields:
     | ((values: FormValues) => FormFieldDefinition[])
-    // $FlowFixMe
     | FormFieldDefinition[],
-  // $FlowFixMe
   initial?: FormValues | (() => FormValues),
   normalize?: (values: FormValues) => FormValues,
   validate?: (values: FormValues, props: FormProps) => FormErrors,

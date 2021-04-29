@@ -47,7 +47,6 @@ export default ({
   return Object.entries(AGGREGATIONS)
     .map(([aggregationShort, action]) => [
       getAggregationOperator(aggregationShort),
-      // $FlowFixMe
       action,
     ])
     .filter(([aggregator]) =>
@@ -58,7 +57,6 @@ export default ({
       ...action,
       question: () =>
         query
-          // $FlowFixMe
           .aggregate([aggregator.short, fieldRefForColumn(column)])
           .question()
           .setDefaultDisplay(),

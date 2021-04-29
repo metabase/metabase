@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -76,7 +77,12 @@ type State = {
 };
 
 export default class DashboardHeader extends Component {
-  props: Props;
+  constructor(props: Props) {
+    super(props);
+
+    this.addQuestionModal = React.createRef();
+  }
+
   state: State = {
     modal: null,
   };
@@ -197,7 +203,7 @@ export default class DashboardHeader extends Component {
       buttons.push(
         <ModalWithTrigger
           key="add-a-question"
-          ref="addQuestionModal"
+          ref={this.addQuestionModal}
           triggerElement={
             <Tooltip tooltip={t`Add question`}>
               <Icon name="add" data-metabase-event="Dashboard;Add Card Modal" />
@@ -208,7 +214,7 @@ export default class DashboardHeader extends Component {
             dashboard={dashboard}
             addCardToDashboard={this.props.addCardToDashboard}
             onEditingChange={this.props.onEditingChange}
-            onClose={() => this.refs.addQuestionModal.toggle()}
+            onClose={() => this.addQuestionModal.current.toggle()}
           />
         </ModalWithTrigger>,
       );
@@ -289,15 +295,17 @@ export default class DashboardHeader extends Component {
     if (!isFullscreen && !isEditing) {
       const extraButtonClassNames =
         "bg-brand-hover text-white-hover py2 px3 text-bold block cursor-pointer";
-      extraButtons.push(
-        <Link
-          className={extraButtonClassNames}
-          to={location.pathname + "/details"}
-          data-metabase-event={"Dashboard;EditDetails"}
-        >
-          {t`Change title and description`}
-        </Link>,
-      );
+      if (canEdit) {
+        extraButtons.push(
+          <Link
+            className={extraButtonClassNames}
+            to={location.pathname + "/details"}
+            data-metabase-event={"Dashboard;EditDetails"}
+          >
+            {t`Change title and description`}
+          </Link>,
+        );
+      }
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
@@ -327,15 +335,17 @@ export default class DashboardHeader extends Component {
           </Link>,
         );
       }
-      extraButtons.push(
-        <Link
-          className={extraButtonClassNames}
-          to={location.pathname + "/archive"}
-          data-metabase-event={"Dashboard;Archive"}
-        >
-          {t`Archive`}
-        </Link>,
-      );
+      if (canEdit) {
+        extraButtons.push(
+          <Link
+            className={extraButtonClassNames}
+            to={location.pathname + "/archive"}
+            data-metabase-event={"Dashboard;Archive"}
+          >
+            {t`Archive`}
+          </Link>,
+        );
+      }
     }
 
     buttons.push(...getDashboardActions(this, this.props));

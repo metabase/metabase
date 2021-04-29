@@ -117,7 +117,7 @@ export const MBQL_CLAUSES = {
   percentile: {
     displayName: `Percentile`,
     type: "aggregation",
-    args: ["number"],
+    args: ["number", "number"],
     requiresFeature: "percentile-aggregations",
   },
   // string functions

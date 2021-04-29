@@ -158,15 +158,12 @@ export default class EntityListLoader extends React.Component {
   }
 
   renderChildren = () => {
-    // $FlowFixMe: provided by @connect
     let { children, entityDef, wrapped, list, reload, ...props } = this.props; // eslint-disable-line no-unused-vars
 
     if (wrapped) {
-      // $FlowFixMe
       list = this._getWrappedList(this.props);
     }
 
-    // $FlowFixMe: loading and error missing
     return children({
       ..._.omit(props, ...CONSUMED_PROPS),
       list,
@@ -177,16 +174,12 @@ export default class EntityListLoader extends React.Component {
   };
 
   render() {
-    // $FlowFixMe: provided by @connect
     const { allFetched, allError } = this.props;
     const { loadingAndErrorWrapper } = this.props;
     return loadingAndErrorWrapper ? (
-      <LoadingAndErrorWrapper
-        loading={!allFetched}
-        error={allError}
-        children={this.renderChildren}
-        noWrapper
-      />
+      <LoadingAndErrorWrapper loading={!allFetched} error={allError} noWrapper>
+        {this.renderChildren}
+      </LoadingAndErrorWrapper>
     ) : (
       this.renderChildren()
     );

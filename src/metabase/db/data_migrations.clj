@@ -126,9 +126,9 @@
 ;;; |                                                NEW TYPE SYSTEM                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; this is the old new type system. as of v30 these are migrated from a field named special_type to
+;; this is the old new type system. as of v39 these are migrated from a field named special_type to
 ;; semantic_type. These migrations target the world before this migration so they are left as is. The migrations talk
-;; about special_type as a column and a try/catch is introduced to the migration runner to allow migrations to
+;; about semantic_type as a column and a try/catch is introduced to the migration runner to allow migrations to
 ;; fail. It is opt in.
 (def ^:private ^:const old-special-type->new-type
     {"avatar"                 "type/AvatarURL"
@@ -145,8 +145,6 @@
      "name"                   "type/Name"
      "number"                 "type/Number"
      "state"                  "type/State"
-     "timestamp_milliseconds" "type/UNIXTimestampMilliseconds"
-     "timestamp_seconds"      "type/UNIXTimestampSeconds"
      "url"                    "type/URL"
      "zip_code"               "type/ZipCode"})
 
@@ -181,11 +179,11 @@
 (defmigration ^{:author "camsaul", :added "0.20.0", :catch? true} migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:%lower.special_type (str/lower-case old-type)}
-      :special_type new-type)
+    (db/update-where! 'Field {:%lower.semantic_type (str/lower-case old-type)}
+      :semantic_type new-type)
     ;; migrate things like :UNIXTimestampMilliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:special_type (name (keyword new-type))}
-      :special_type new-type))
+    (db/update-where! 'Field {:semantic_type (name (keyword new-type))}
+      :semantic_type new-type))
   (doseq [[old-type new-type] old-base-type->new-type]
     ;; migrate things like :DateTimeField -> :type/DateTime
     (db/update-where! 'Field {:%lower.base_type (str/lower-case old-type)}
@@ -199,8 +197,8 @@
 (defmigration ^{:author "camsaul", :added "0.20.0", :catch? true} fix-invalid-field-types
   (db/update-where! 'Field {:base_type [:not-like "type/%"]}
     :base_type "type/*")
-  (db/update-where! 'Field {:special_type [:not-like "type/%"]}
-    :special_type nil))
+  (db/update-where! 'Field {:semantic_type [:not-like "type/%"]}
+    :semantic_type nil))
 
 ;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.  (`site-url` used to be stored
 ;; internally as `-site-url`; this was confusing, see #4188 for details) This has the side effect of making sure the
@@ -261,12 +259,12 @@
 ;; Since the meanings of things has changed we'll want to make sure we mark all Category fields as `list` as well so
 ;; their behavior doesn't suddenly change.
 
-;; Note that since v39 special_type became semantic_type. All of these migrations concern data from before this
+;; Note that since v39 semantic_type became semantic_type. All of these migrations concern data from before this
 ;; change. Therefore, the migration is set to `:catch? true` and the old name is used. If the column is semantic then
 ;; the data shouldn't be bad.
 (defmigration ^{:author "camsaul", :added "0.29.0", :catch? true} mark-category-fields-as-list
   (db/update-where! Field {:has_field_values nil
-                           :special_type     (mdb.u/isa :type/Category)
+                           :semantic_type     (mdb.u/isa :type/Category)
                            :active           true}
     :has_field_values "list"))
 

@@ -12,10 +12,17 @@ executors:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
 
   # CircleCI base (Lein 2.9.5) + Node + Headless browsers + Clojure CLI - big one
+  # Maildev runs by default with all Cypress tests
   clojure-and-node-and-browsers:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
+      - image: maildev/maildev
+
+  java-8:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:openjdk-8-lein-2.9.5-buster
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
@@ -26,6 +33,11 @@ executors:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+
+  java-16:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:openjdk-16-lein-2.9.5-buster
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
@@ -796,6 +808,7 @@ jobs:
           checksum: '{{ checksum ".FRONTEND-CHECKSUMS" }}'
           steps:
             - restore-fe-deps-cache
+            - restore-be-deps-cache
             - run:
                 name: Build frontend
                 environment:
@@ -899,41 +912,6 @@ jobs:
                   - store_test_results:
                       path: cypress/results
 
-  fe-tests-cypress-smoketest:
-    parameters:
-      e:
-        type: executor
-        default: clojure-and-node-and-browsers
-      cypress-group:
-        type: string
-      <<: *Params
-    executor: << parameters.e >>
-    environment:
-      CYPRESS_GROUP: << parameters.cypress-group >>
-      DISPLAY: ""
-    steps:
-      - run-yarn-command:
-          command-name: Run Cypress tests
-          command: run test-cypress-smoketest
-          before-steps:
-            - restore_cache:
-                name: Restore cached uberjar built in previous step
-                <<: *CacheKeyUberjar
-      - store_artifacts:
-          path: /home/circleci/metabase/metabase/cypress
-      - store_test_results:
-          path: cypress/results
-
-########################################################################################################################
-#                                                   DEPLOYMENT, ETC.                                                   #
-########################################################################################################################
-
-  deploy-master:
-    executor: clojure-and-node
-    steps:
-      - attach-workspace
-      - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
-
 
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
@@ -963,6 +941,7 @@ workflows:
           name: be-tests-<< matrix.edition >>
           requires:
             - be-deps
+          e: java-8
           lein-command: with-profile +junit test
           skip-when-no-change: true
           <<: *Matrix
@@ -972,6 +951,15 @@ workflows:
           requires:
             - be-deps
           e: java-11
+          lein-command: with-profile +junit test
+          skip-when-no-change: true
+          <<: *Matrix
+
+      - lein:
+          name: be-tests-java-16-<< matrix.edition >>
+          requires:
+            - be-deps
+          e: java-16
           lein-command: with-profile +junit test
           skip-when-no-change: true
           <<: *Matrix
@@ -1235,40 +1223,3 @@ workflows:
                 port: 3306
           <<: *Matrix
 
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 9 * * *"
-          filters:
-            branches:
-              only:
-                - master
-                - /release-*/
-    jobs:
-      - checkout
-
-      - be-deps:
-          requires:
-            - checkout
-
-      - fe-deps:
-          requires:
-            - checkout
-
-      # Build the OSS version of the uberjar.
-      - build-uberjar-drivers:
-          requires:
-            - be-deps
-      - build-uberjar-frontend:
-          requires:
-            - fe-deps
-      - build-uberjar:
-          requires:
-            - build-uberjar-drivers
-            - build-uberjar-frontend
-
-      - fe-tests-cypress-smoketest:
-          name: fe-tests-cypress-smoketest
-          requires:
-            - build-uberjar
-          cypress-group: "default"

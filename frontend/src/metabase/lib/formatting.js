@@ -152,7 +152,6 @@ export function numberFormatterForOptions(options: FormattingOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
-  // $FlowFixMe: doesn't know about Intl.NumberFormat
   return new Intl.NumberFormat("en", {
     style: options.number_style,
     currency: options.currency,
@@ -177,7 +176,6 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   if (number < 0 && options.negativeInParentheses) {
     return (
       "(" +
-      // $FlowFixMe coerce into string
       formatNumber(-number, { ...options, negativeInParentheses: false }) +
       ")"
     );
@@ -518,7 +516,6 @@ export function formatDateTimeWithUnit(
 
   if (!dateFormat) {
     dateFormat = getDateFormatFromStyle(
-      // $FlowFixMe: date_style default set above
       options["date_style"],
       unit,
       options["date_separator"],
@@ -527,7 +524,6 @@ export function formatDateTimeWithUnit(
 
   if (!timeFormat) {
     timeFormat = getTimeFormatFromStyle(
-      // $FlowFixMe: time_style default set above
       options.time_style,
       unit,
       options.time_enabled,
@@ -551,7 +547,6 @@ const EMAIL_ALLOW_LIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`
 
 export function formatEmail(
   value: Value,
-  // $FlowFixMe: unclear problem with `view_as` default
   { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const email = String(value);
@@ -571,7 +566,6 @@ export function formatEmail(
 
 function getUrlProtocol(url) {
   try {
-    // $FlowFixMe: url might not be a string, but we're in a try/catch
     const { protocol } = new URL(url);
     return protocol;
   } catch (e) {
@@ -625,7 +619,6 @@ export function formatUrl(value: Value, options: FormattingOptions = {}) {
 
 export function formatImage(
   value: Value,
-  // $FlowFixMe: unclear problem with `view_as` default
   { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const url = String(value);
@@ -698,7 +691,6 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         </span>
       );
     } else {
-      // $FlowFixMe: doesn't understand formatted is a string
       return `${options.prefix || ""}${formatted}${options.suffix || ""}`;
     }
   } else {
@@ -711,9 +703,7 @@ export function getRemappedValue(
   { remap, column }: FormattingOptions = {},
 ): ?string {
   if (remap && column) {
-    // $FlowFixMe: column could be Field or Column
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
-      // $FlowFixMe: column could be Field or Column
       return column.remappedValue(value);
     }
     // or it may be a raw column object with a "remapping" object
@@ -812,7 +802,7 @@ export function formatColumn(column: Column): string {
   if (!column) {
     return "";
   } else if (column.remapped_to_column != null) {
-    // $FlowFixMe: remapped_to_column is a special field added by Visualization.jsx
+    // remapped_to_column is a special field added by Visualization.jsx
     return formatColumn(column.remapped_to_column);
   } else {
     let columnTitle = getFriendlyName(column);
@@ -833,32 +823,26 @@ export function formatField(field: Field): string {
   }
 }
 
-// $FlowFixMe
 export function singularize(...args) {
   return inflection.singularize(...args);
 }
 
-// $FlowFixMe
 export function pluralize(...args) {
   return inflection.pluralize(...args);
 }
 
-// $FlowFixMe
 export function capitalize(...args) {
   return inflection.capitalize(...args);
 }
 
-// $FlowFixMe
 export function inflect(...args) {
   return inflection.inflect(...args);
 }
 
-// $FlowFixMe
 export function titleize(...args) {
   return inflection.titleize(...args);
 }
 
-// $FlowFixMe
 export function humanize(...args) {
   return inflection.humanize(...args);
 }

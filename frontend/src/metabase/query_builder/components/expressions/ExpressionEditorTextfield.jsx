@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -9,6 +8,10 @@ import cx from "classnames";
 
 import { format } from "metabase/lib/expressions/format";
 import { processSource } from "metabase/lib/expressions/process";
+import {
+  tokenize,
+  countMatchingParentheses,
+} from "metabase/lib/expressions/tokenizer";
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
 
@@ -75,20 +78,14 @@ const HelpText = ({ helpText, width }) =>
     </Popover>
   ) : null;
 
-const Errors = ({ compileError }) => {
-  if (!compileError) {
-    return null;
-  }
-
-  compileError = Array.isArray(compileError) ? compileError : [compileError];
-
+const ErrorMessage = ({ error }) => {
   return (
     <div>
-      {compileError.map(error => (
+      {error && (
         <div className="text-error mt1 mb1" style={{ whiteSpace: "pre-wrap" }}>
           {error.message}
         </div>
-      ))}
+      )}
     </div>
   );
 };
@@ -103,6 +100,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       // except currently we exclude `startRule` and `query` since they shouldn't change
       [source, targetOffset].join(","),
     );
+    this.input = React.createRef();
   }
 
   static propTypes = {
@@ -142,10 +140,16 @@ export default class ExpressionEditorTextfield extends React.Component {
               source,
               ...this._getParserOptions(newProps),
             })
-          : { expression: null, compileError: null, syntaxTree: null };
+          : {
+              expression: null,
+              tokenizerError: [],
+              compileError: null,
+              syntaxTree: null,
+            };
       this.setState({
         source,
         expression,
+        tokenizeError: [],
         compileError,
         syntaxTree,
         suggestions: [],
@@ -238,8 +242,17 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   onInputBlur = () => {
     this.clearSuggestions();
-    const { compileError } = this.state;
-    this.setState({ displayCompileError: compileError });
+
+    const { tokenizerError, compileError } = this.state;
+    let displayError = [...tokenizerError];
+    if (compileError) {
+      if (Array.isArray(compileError)) {
+        displayError = [...displayError, ...compileError];
+      } else {
+        displayError.push(compileError);
+      }
+    }
+    this.setState({ displayError });
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (this.state.expression) {
@@ -247,8 +260,8 @@ export default class ExpressionEditorTextfield extends React.Component {
         console.warn("isExpression=false", this.state.expression);
       }
       this.props.onChange(this.state.expression);
-    } else if (this.state.compileError) {
-      this.props.onError(this.state.compileError);
+    } else if (displayError && displayError.length > 0) {
+      this.props.onError(displayError);
     } else {
       this.props.onError({ message: t`Invalid expression` });
     }
@@ -263,14 +276,14 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   _setCaretPosition = (position, autosuggest) => {
-    setCaretPosition(ReactDOM.findDOMNode(this.refs.input), position);
+    setCaretPosition(this.input.current, position);
     if (autosuggest) {
       setTimeout(() => this._triggerAutosuggest());
     }
   };
 
   onExpressionChange(source) {
-    const inputElement = ReactDOM.findDOMNode(this.refs.input);
+    const inputElement = this.input.current;
     if (!inputElement) {
       return;
     }
@@ -311,12 +324,31 @@ export default class ExpressionEditorTextfield extends React.Component {
     const showSuggestions =
       !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
 
+    const { tokens, errors: tokenizerError } = tokenize(source);
+    const mismatchedParentheses = countMatchingParentheses(tokens);
+    const mismatchedError =
+      mismatchedParentheses === 1
+        ? t`Expecting a closing parenthesis`
+        : mismatchedParentheses > 1
+        ? t`Expecting ${mismatchedParentheses} closing parentheses`
+        : mismatchedParentheses === -1
+        ? t`Expecting an opening parenthesis`
+        : mismatchedParentheses < -1
+        ? t`Expecting ${-mismatchedParentheses} opening parentheses`
+        : null;
+    if (mismatchedError) {
+      tokenizerError.push({
+        message: mismatchedError,
+      });
+    }
+
     this.setState({
       source,
       expression,
       syntaxTree,
+      tokenizerError,
       compileError,
-      displayCompileError: null,
+      displayError: null,
       suggestions: showSuggestions ? suggestions : [],
       helpText,
       highlightedSuggestionIndex: 0,
@@ -334,19 +366,14 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   render() {
     const { placeholder } = this.props;
-    const {
-      compileError,
-      displayCompileError,
-      source,
-      suggestions,
-      syntaxTree,
-    } = this.state;
+    const { displayError, source, suggestions, syntaxTree } = this.state;
 
     const inputClassName = cx("input text-bold text-monospace", {
       "text-dark": source,
       "text-light": !source,
     });
     const inputStyle = { fontSize: 12 };
+    const priorityError = _.first(displayError);
 
     return (
       <div className={cx("relative my1")}>
@@ -361,10 +388,10 @@ export default class ExpressionEditorTextfield extends React.Component {
           {"= "}
         </div>
         <TokenizedInput
-          ref="input"
+          ref={this.input}
           type="text"
           className={cx(inputClassName, {
-            "border-error": compileError,
+            "border-error": priorityError,
           })}
           style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
           placeholder={placeholder}
@@ -378,7 +405,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           onClick={this.onInputClick}
           autoFocus
         />
-        <Errors compileError={displayCompileError} />
+        <ErrorMessage error={priorityError} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
         <ExpressionEditorSuggestions
           suggestions={suggestions}

@@ -887,7 +887,7 @@ export default function lineAreaBar(
 
   applyYAxisSettings(parent, yAxisProps);
 
-  setupTooltips(props, datas, parent, brushChangeFunctions, groups);
+  setupTooltips(props, datas, parent, brushChangeFunctions);
 
   parent.render();
 
@@ -918,7 +918,6 @@ export default function lineAreaBar(
   if (onRender) {
     onRender({
       yAxisSplit: yAxisProps.yAxisSplit,
-      // $FlowFixMe
       warnings: (Object.values(warnings): string[]),
     });
   }

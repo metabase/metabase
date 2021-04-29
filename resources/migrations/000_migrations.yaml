@@ -8038,6 +8038,10 @@ databaseChangeLog:
               WHERE semantic_type IN ('type/ISO8601DateTimeString',
                                       'type/ISO8601TimeString',
                                       'type/ISO8601DateString');
+  ## This includes values 'timestamp_milliseconds' and 'timestamp_seconds'. These are old "special_types" that were
+  ## migrated in a data migration for version 0.20. But these migrations occur after all liquibase migrations so
+  ## it would be possible for another type/UNIXTimestampSeconds to pop up after this migration that supposedly
+  ## got rid of them all
   - changeSet:
       id: 288
       author: dpsutton
@@ -8046,6 +8050,7 @@ databaseChangeLog:
         - 8:4fa37c8edede4a10c39bf5aca13bd1b5
         - 8:96af0fae84744857640d029cf4cd4bb6
         - 8:8a8b10ff335892c18394a6e00676a446
+        - 8:943c6dd0c9339729fefcee9207227849
       changes:
         - sql:
               sql: >-
@@ -8053,12 +8058,16 @@ databaseChangeLog:
                 set effective_type    = 'type/Instant',
                     coercion_strategy = (case semantic_type
                                           WHEN 'type/UNIXTimestampSeconds'      THEN 'Coercion/UNIXSeconds->DateTime'
+                                          WHEN 'timestamp_seconds'              THEN 'Coercion/UNIXSeconds->DateTime'
                                           WHEN 'type/UNIXTimestampMilliSeconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                          WHEN 'timestamp_milliseconds'         THEN 'Coercion/UNIXMilliSeconds->DateTime'
                                           WHEN 'type/UNIXTimestampMicroSeconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
                                          END)
                 WHERE semantic_type IN ('type/UNIXTimestampSeconds',
                                         'type/UNIXTimestampMilliSeconds',
-                                        'type/UNIXTimestampMicroSeconds');
+                                        'type/UNIXTimestampMicroSeconds',
+                                        'timestamp_seconds',
+                                        'timestamp_milliseconds');
 
   - changeSet:
       id: 289
@@ -8252,6 +8261,26 @@ databaseChangeLog:
             columnName: parameters
             defaultNullValue: '[]'
             tableName: pulse
+  - changeSet:
+      id: 300
+      author: dpsutton
+      comment: Added 0.40.0
+      changes:
+        - renameTable:
+            oldTableName: collection_revision
+            newTableName: collection_permission_graph_revision
+  - changeSet:
+      id: 301
+      author: dpsutton
+      comment: Added 0.40.0 renaming collection_revision to collection_permission_graph_revision
+      failOnError: false # mysql and h2 don't have this sequence
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            - sql: ALTER SEQUENCE collection_revision_id_seq RENAME TO collection_permission_graph_revision_id_seq
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -53,7 +53,6 @@ const Collections = createEntity({
       ),
 
     // NOTE: DELETE not currently implemented
-    // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
   },
 
@@ -149,7 +148,6 @@ export const canonicalCollectionId = (
     ? null
     : parseInt(collectionId, 10);
 
-// $FlowFixMe
 export function normalizedCollection(collection) {
   if (canonicalCollectionId(collection.id) === null) {
     return ROOT_COLLECTION;
@@ -282,7 +280,6 @@ export function getExpandedCollectionsById(
         parentId = ROOT_COLLECTION.id;
       }
 
-      // $FlowFixMe
       const parent = parentId == null ? null : collectionsById[parentId];
       c.parent = parent;
       // need to ensure the parent collection exists, it may have been filtered

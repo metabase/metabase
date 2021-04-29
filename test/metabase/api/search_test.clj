@@ -169,11 +169,6 @@
     (with-search-items-in-root-collection "test"
       (is (= (default-search-results)
              (search-request :crowberto :q "test")))))
-
-  (testing (str "Search with no search string should yield no results.")
-    (with-search-items-in-root-collection "test"
-      (is (empty? (search-request :crowberto)))))
-
   (testing "Basic search should only return substring matches"
     (with-search-items-in-root-collection "test"
       (with-search-items-in-root-collection "something different"
@@ -367,12 +362,22 @@
   (testing "Should return archived results when specified"
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card       [_ (archived {:name "card test card"})]
+                      Card       [_ (archived {:name "card that will not appear in results"})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard"})]
                       Collection [_ (archived {:name "collection test collection"})]
                       Metric     [_ (archived {:name "metric test metric"})]
                       Segment    [_ (archived {:name "segment test segment"})]]
         (is (= (default-archived-results)
-               (search-request :crowberto :q "test", :archived "true")))))))
+               (search-request :crowberto :q "test", :archived "true"))))))
+  (testing "Should return archived results when specified without a search query"
+    (with-search-items-in-root-collection "test2"
+      (mt/with-temp* [Card       [_ (archived {:name "card test card"})]
+                      Dashboard  [_ (archived {:name "dashboard test dashboard"})]
+                      Collection [_ (archived {:name "collection test collection"})]
+                      Metric     [_ (archived {:name "metric test metric"})]
+                      Segment    [_ (archived {:name "segment test segment"})]]
+        (is (= (default-archived-results)
+               (search-request :crowberto :archived "true")))))))
 
 (deftest alerts-test
   (testing "Search should not return alerts"

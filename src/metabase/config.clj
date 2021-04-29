@@ -104,6 +104,11 @@
   local-process-uuid
   (str (UUID/randomUUID)))
 
+(defonce
+  ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
+  mb-version-and-process-identifier
+  (format "%s [%s]" mb-app-id-string local-process-uuid))
+
 (defn- mb-session-cookie-samesite*
   []
   (let [same-site (str/lower-case (config-str :mb-session-cookie-samesite))]
