@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
@@ -22,10 +23,10 @@ import { SIDEBAR_SPACER } from "metabase/collections/constants";
 import {
   nonPersonalCollection,
   currentUserPersonalCollections,
+  isAnotherUsersPersonalCollection,
   getParentPath,
+  getParentPersonalCollection,
 } from "metabase/collections/utils";
-
-const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
 // TODO - what's different about this from another sidebar component?
 const Sidebar = styled(Box.withComponent("aside"))`
@@ -39,6 +40,13 @@ const Sidebar = styled(Box.withComponent("aside"))`
   flex-direction: column;
 `;
 
+function mapStateToProps(state) {
+  return {
+    currentUser: state.currentUser,
+    collectionsById: state.entities.collections,
+  };
+}
+
 @Collection.loadList({
   /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
     we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
@@ -51,16 +59,18 @@ const Sidebar = styled(Box.withComponent("aside"))`
   // See: https://github.com/metabase/metabase/issues/14603
   loadingAndErrorWrapper: false,
 })
+@connect(mapStateToProps)
 class CollectionSidebar extends React.Component {
   state = {
     openCollections: [],
   };
 
   componentDidUpdate(prevProps) {
-    const { collectionId, collections, loading } = this.props;
+    const { collectionId, collectionsById, loading } = this.props;
     const loaded = prevProps.loading && !loading;
     if (loaded) {
-      const ancestors = getParentPath(collections, collectionId) || [];
+      const collections = Object.values(collectionsById);
+      const ancestors = getParentPath(collections, Number(collectionId)) || [];
       this.setState({ openCollections: ancestors });
     }
   }
@@ -81,7 +91,20 @@ class CollectionSidebar extends React.Component {
   filterPersonalCollections = collection => !collection.archived;
 
   renderContent = () => {
-    const { currentUser, isRoot, collectionId, list } = this.props;
+    const {
+      currentUser,
+      isRoot,
+      collectionId,
+      collectionsById,
+      list,
+    } = this.props;
+
+    const isAnotherUserCollectionOpened = isAnotherUsersPersonalCollection(
+      Number(collectionId),
+      collectionsById,
+      currentUser.id,
+    );
+
     return (
       <React.Fragment>
         <Collection.Loader id="root">
@@ -126,24 +149,40 @@ class CollectionSidebar extends React.Component {
           </Box>
         </Box>
 
-        <Box className="mt-auto" pb={2} pl={SIDEBAR_SPACER * 2}>
-          {currentUser.is_superuser && (
+        <Box className="mt-auto" pb={2}>
+          {currentUser.is_superuser && isAnotherUserCollectionOpened && (
+            <CollectionsList
+              openCollections={this.state.openCollections}
+              onClose={this.onClose}
+              onOpen={this.onOpen}
+              collections={getParentPersonalCollection(
+                Number(collectionId),
+                collectionsById,
+              )}
+              initialIcon="group"
+              filter={this.filterPersonalCollections}
+              currentCollection={collectionId}
+            />
+          )}
+          <Box pl={SIDEBAR_SPACER * 2}>
+            {currentUser.is_superuser && (
+              <Link
+                my={2}
+                to={Urls.collection("users")}
+                className="flex align-center text-bold text-light text-brand-hover"
+              >
+                <Icon name="group" mr={1} />
+                {t`Other users' personal collections`}
+              </Link>
+            )}
             <Link
-              my={2}
-              to={Urls.collection({ id: "users" })}
+              to={`/archive`}
               className="flex align-center text-bold text-light text-brand-hover"
             >
-              <Icon name="group" mr={1} />
-              {t`Other users' personal collections`}
+              <Icon name="view_archive" mr={1} />
+              {t`View archive`}
             </Link>
-          )}
-          <Link
-            to={`/archive`}
-            className="flex align-center text-bold text-light text-brand-hover"
-          >
-            <Icon name="view_archive" mr={1} />
-            {t`View archive`}
-          </Link>
+          </Box>
         </Box>
       </React.Fragment>
     );
@@ -167,4 +206,4 @@ class CollectionSidebar extends React.Component {
   }
 }
 
-export default connect(getCurrentUser)(CollectionSidebar);
+export default CollectionSidebar;
