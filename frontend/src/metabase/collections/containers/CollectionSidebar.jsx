@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import { Box } from "grid-styled";
 import { t } from "ttag";
 import styled from "styled-components";
+import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -65,10 +66,19 @@ class CollectionSidebar extends React.Component {
     openCollections: [],
   };
 
+  checkCollectionsMapChanged = prevMap => {
+    const prevKeys = Object.keys(prevMap);
+    const keys = Object.keys(this.props.collectionsById);
+    if (prevKeys.length !== keys.length) {
+      return true;
+    }
+    return !_.isEqual(prevKeys.sort(), keys.sort());
+  };
+
   componentDidUpdate(prevProps) {
     const { collectionId, collectionsById, loading } = this.props;
     const loaded = prevProps.loading && !loading;
-    if (loaded) {
+    if (loaded || this.checkCollectionsMapChanged(prevProps.collectionsById)) {
       const collections = Object.values(collectionsById);
       const ancestors = getParentPath(collections, Number(collectionId)) || [];
       this.setState({ openCollections: ancestors });
