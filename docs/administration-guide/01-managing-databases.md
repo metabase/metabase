@@ -60,7 +60,7 @@ Connection options differ depending on which database you're connecting to. Here
 
 ### Use a secure connection (SSL)
 
-Metabase automatically tries to connect to databases with and without SSL. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we highly recommend keeping SSL turned on to keep your data secure.
+Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we highly recommend keeping SSL turned on to keep your data secure.
 
 ### Use an SSH tunnel for database connections
 
@@ -68,7 +68,7 @@ See our [guide to SSH tunneling](ssh-tunnel-for-database-connections.md).
 
 ### This is a large database, so let me choose when Metabase syncs and scans 
 
-(Formerly called "Enable in-depth analysis"). By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
+By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen. (Note: this setting used to be called "Enable in-depth analysis.") 
 
 If you enable this and save your changes, you'll see a new tab at the top of the form called "Scheduling." Click on that, and you'll see options to change when and how often Metabase syncs and scans.
 
