@@ -228,7 +228,9 @@
                                                                       :display                "table"
                                                                       :visualization_settings {}
                                                                       :result_metadata        nil})
-                                      :series                 []}]})
+                                      :series                 []}]
+                     :moderation_requests []
+                     :moderation_reviews  []})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
     (testing "fetch a dashboard with a param in it"
@@ -278,7 +280,9 @@
                                                                             :query_type             nil
                                                                             :visualization_settings {}
                                                                             :result_metadata        nil})
-                                            :series                 []}]})
+                                            :series                 []}]
+                           :moderation_requests []
+                           :moderation_reviews  []})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
     (testing "fetch a dashboard from an official collection includes the collection type"
       (mt/with-temp* [Dashboard     [{dashboard-id :id
