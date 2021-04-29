@@ -155,7 +155,20 @@
                                                                      mb.viz/db-form)}]
                    DashboardCardSeries [~'_ {:dashboardcard_id   ~'dashcard-with-click-actions
                                              :card_id            ~'card-id-root
-                                             :position           2}]]
+                                             :position           2}]
+                   Card                [{~'card-id-root-to-collection :id}
+                                        {:table_id ~'table-id
+                                         :name "Root card based on one in collection"
+                                         :dataset_query {:type :query
+                                                         :database ~'db-id
+                                                         :query {:source-table (str "card__" ~'card-id)}}}]
+                   Card                [{~'card-id-collection-to-root :id}
+                                        {:table_id ~'table-id
+                                         :name "Card in collection based on root one"
+                                         :collection_id ~'collection-id
+                                         :dataset_query {:type :query
+                                                         :database ~'db-id
+                                                         :query {:source-table (str "card__" ~'card-id-root)}}}]]
      ~@body))
 
 ;; Don't memoize as IDs change in each `with-world` context

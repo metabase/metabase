@@ -13,7 +13,6 @@
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :refer [User]]
-            [metabase.query-processor.util :as qp.util]
             [metabase.util.i18n :as i18n :refer [trs]]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
@@ -97,10 +96,6 @@
   [card]
   (format "%s/cards/%s"
           (or (some->> card
-                       :dataset_query
-                       qp.util/query->source-card-id
-                       (fully-qualified-name Card))
-              (some->> card
                        :collection_id
                        (fully-qualified-name Collection))
               "/collections/root")

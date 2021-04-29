@@ -53,7 +53,7 @@
   native form, not actual data, since some of the statements don't have an ordering (thus the rows won't be stable)."
   [orig-results loaded-card]
   (let [card-name   (:name loaded-card)
-        orig-result (get orig-results (:name loaded-card))]
+        orig-result (get orig-results card-name)]
     (try
       (let [new-result  (card-query-results loaded-card)]
         (is (some? orig-result) (format "No original query result found for card: %s" card-name))
@@ -67,20 +67,44 @@
           ;; TODO: figure out a better way to simply fail with an explicit message
           (is (nil? e) msg))))))
 
-(defn- gather-orig-results [card-ids]
+(defn- collection-name-for-card [card]
+  (let [collection-id (:collection_id card)]
+    (if (nil? collection-id)
+      "root"
+      (db/select-one-field :name Collection :id (:collection_id card)))))
+
+(defn- collection-names-match
+  "Checks that the collection name for a card matches between original (pre-dump) and new (after load)."
+  [collection-names loaded-card]
+  (let [card-name (:name loaded-card)]
+    (is (= (get collection-names card-name) (collection-name-for-card loaded-card)) "Collection name did not match")))
+
+(defn- gather-orig-results
+  "Create a map from card names to their query results"
+  [card-ids]
   (reduce (fn [acc card-id]
             (let [card (Card card-id)]
               (assoc acc (:name card) (card-query-results card))))
           {}
           card-ids))
 
+(defn- gather-collections
+  "Create a map from card names to their collection names"
+  [card-ids]
+  (reduce (fn [acc card-id]
+            (let [card (Card card-id)]
+              (assoc acc (:name card) (collection-name-for-card card))))
+          {}
+          card-ids))
+
 (defmulti ^:private assert-loaded-entity
-  (fn [entity & _]
+  (fn [entity fingerprint]
     (type entity)))
 
 (defmethod assert-loaded-entity (type Card)
-  [card query-results]
-  (query-res-match query-results card))
+  [card {:keys [query-results collections]}]
+  (query-res-match query-results card)
+  (collection-names-match collections card))
 
 (defn- id->name [model id]
   (db/select-one-field :name model :id id))
@@ -176,7 +200,17 @@
                                                                 card-id-root
                                                                 card-id-nested
                                                                 card-id-nested-query
-                                                                card-id-native-query])
+                                                                card-id-native-query
+                                                                card-id-root-to-collection
+                                                                card-id-collection-to-root])
+                           :collections   (gather-collections [card-id
+                                                               card-arch-id
+                                                               card-id-root
+                                                               card-id-nested
+                                                               card-id-nested-query
+                                                               card-id-native-query
+                                                               card-id-root-to-collection
+                                                               card-id-collection-to-root])
                            :entities      [[Database      (Database db-id)]
                                            [Table         (Table table-id)]
                                            [Field         (Field numeric-field-id)]
@@ -198,7 +232,9 @@
                                            [Card          (Card card-id-native-query)]
                                            [DashboardCard (DashboardCard dashcard-id)]
                                            [DashboardCard (DashboardCard dashcard-top-level-click-id)]
-                                           [DashboardCard (DashboardCard dashcard-with-click-actions)]]})]
+                                           [DashboardCard (DashboardCard dashcard-with-click-actions)]
+                                           [Card          (Card card-id-root-to-collection)]
+                                           [Card          (Card card-id-collection-to-root)]]})]
         (with-world-cleanup
           (load dump-dir {:on-error :continue :mode :update})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
@@ -212,8 +248,8 @@
                                               "Failed to find loaded entity with type %s and name %s"
                                               model
                                               (:name entity)))
-                          (assert-loaded-entity loaded (:query-results fingerprint))))
-                    (str " failed " (pr-str entity))))))
-          fingerprint)))
+                          (assert-loaded-entity loaded fingerprint)))
+                    (str " failed " (pr-str entity)))))
+            fingerprint))))
     (finally
       (delete-directory! dump-dir))))
