@@ -250,7 +250,7 @@
 
   Examples:
 
-    (client :get 200 \"card/1\")                ; GET  http://localhost:3000/api/card/1, throw exception is status code != 200
+    (client :get 200 \"card/1\")                ; GET  http://localhost:3000/api/card/1, throw exception if status code != 200
     (client :get \"card\" :org 1)               ; GET  http://localhost:3000/api/card?org=1
     (client :post \"card\" {:name \"My Card\"}) ; POST http://localhost:3000/api/card with JSON-encoded body {:name \"My Card\"}
 
