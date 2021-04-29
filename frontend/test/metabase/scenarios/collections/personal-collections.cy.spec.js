@@ -72,7 +72,7 @@ describe("personal collections", () => {
       });
     });
 
-    it.skip("should be able view other users' personal sub-collections (metabase#15339)", () => {
+    it("should be able view other users' personal sub-collections (metabase#15339)", () => {
       cy.visit("/collection/5");
       cy.icon("new_folder").click();
       cy.findByLabelText("Name").type("Foo");
