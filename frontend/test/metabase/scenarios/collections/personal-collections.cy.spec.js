@@ -102,6 +102,14 @@ describe("personal collections", () => {
       // This test ensures intermediate loading states are handled and the page doesn't crash
       cy.reload();
       getSidebarCollectionChildrenFor(personalCollection).findByText("Foo");
+
+      // Another user's personal collection has to disappear once a user switches to another collection
+      cy.findByTestId("sidebar")
+        .findByText("Our analytics")
+        .click();
+      cy.findByTestId("sidebar")
+        .findByText(personalCollection)
+        .should("not.exist");
     });
   });
 
