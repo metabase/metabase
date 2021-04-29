@@ -1,5 +1,7 @@
 import { restore, popover, modal, sidebar } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
+import _ from "underscore";
+import { getSidebarCollectionChildrenFor } from "./utils";
 
 describe("personal collections", () => {
   beforeEach(() => {
@@ -73,12 +75,29 @@ describe("personal collections", () => {
     });
 
     it("should be able view other users' personal sub-collections (metabase#15339)", () => {
-      cy.visit("/collection/5");
+      const normalUser = USERS.normal;
+      const fullName = `${normalUser.first_name} ${normalUser.last_name}`;
+      const personalCollection = `${fullName}'s Personal Collection`;
+      const otherUsers = Object.values(_.omit(USERS, "normal"));
+
+      cy.visit("/collection/root");
+      cy.findByText("Other users' personal collections").click();
+      cy.findByText(fullName).click();
+
       cy.icon("new_folder").click();
       cy.findByLabelText("Name").type("Foo");
       cy.findByText("Create").click();
-      // This repro could possibly change depending on the design decision for this feature implementation
-      sidebar().findByText("Foo");
+
+      cy.findByTestId("sidebar").findByText(personalCollection);
+      getSidebarCollectionChildrenFor(personalCollection).findByText("Foo");
+
+      // Ensure only selected user's collection is visible at the moment
+      otherUsers.forEach(user => {
+        const collection = `${user.first_name} ${user.last_name}'s Personal Collection`;
+        cy.findByTestId("sidebar")
+          .findByText(collection)
+          .should("not.exist");
+      });
     });
   });
 
