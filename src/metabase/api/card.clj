@@ -160,7 +160,7 @@
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
-               (hydrate :creator :dashboard_count :can_write :collection)
+               (hydrate :creator :dashboard_count :can_write :collection :moderation_requests :moderation_reviews)
                api/read-check)
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 

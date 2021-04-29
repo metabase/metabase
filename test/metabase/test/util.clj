@@ -11,8 +11,9 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
-                                     PulseChannel Revision Segment Table TaskHistory User]]
+                                     LoginHistory Metric ModerationRequest ModerationReview NativeQuerySnippet
+                                     Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table
+                                     TaskHistory User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -159,6 +160,14 @@
             :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"
             :table_id    (data/id :checkins)})
+
+   ModerationRequest
+   (fn [_] {:requester_id (rasta-id)
+            :text "Please tell me if this is any good"})
+
+   ModerationReview
+   (fn [_] {:moderator_id (user-id :crowberto)
+            :text "Bird's the word, looks good to me!"})
 
    NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)

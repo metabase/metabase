@@ -191,28 +191,30 @@
           (card-api-test/with-cards-in-readable-collection [card-id]
             (is (= (merge
                     dashboard-defaults
-                    {:name          "Test Dashboard"
-                     :creator_id    (mt/user->id :rasta)
-                     :collection_id true
-                     :can_write     false
-                     :param_values  nil
-                     :param_fields  nil
-                     :ordered_cards [{:sizeX                  2
-                                      :sizeY                  2
-                                      :col                    0
-                                      :row                    0
-                                      :updated_at             true
-                                      :created_at             true
-                                      :parameter_mappings     []
-                                      :visualization_settings {}
-                                      :card                   (merge card-api-test/card-defaults
-                                                                     {:name                   "Dashboard Test Card"
-                                                                      :creator_id             (mt/user->id :rasta)
-                                                                      :collection_id          true
-                                                                      :display                "table"
-                                                                      :visualization_settings {}
-                                                                      :result_metadata        nil})
-                                      :series                 []}]})
+                    {:name                "Test Dashboard"
+                     :creator_id          (mt/user->id :rasta)
+                     :collection_id       true
+                     :can_write           false
+                     :param_values        nil
+                     :param_fields        nil
+                     :ordered_cards       [{:sizeX                  2
+                                            :sizeY                  2
+                                            :col                    0
+                                            :row                    0
+                                            :updated_at             true
+                                            :created_at             true
+                                            :parameter_mappings     []
+                                            :visualization_settings {}
+                                            :card                   (merge card-api-test/card-defaults
+                                                                           {:name                   "Dashboard Test Card"
+                                                                            :creator_id             (mt/user->id :rasta)
+                                                                            :collection_id          true
+                                                                            :display                "table"
+                                                                            :visualization_settings {}
+                                                                            :result_metadata        nil})
+                                            :series                 []}]
+                     :moderation_requests []
+                     :moderation_reviews  []})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
     (testing "fetch a dashboard with a param in it"
@@ -229,38 +231,40 @@
         (with-dashboards-in-readable-collection [dashboard-id]
           (card-api-test/with-cards-in-readable-collection [card-id]
             (is (= (merge dashboard-defaults
-                          {:name          "Test Dashboard"
-                           :creator_id    (mt/user->id :rasta)
-                           :collection_id true
-                           :can_write     false
-                           :param_values  nil
-                           :param_fields  {(keyword (str field-id)) {:id               field-id
-                                                                     :table_id         table-id
-                                                                     :display_name     display-name
-                                                                     :base_type        "type/Text"
-                                                                     :semantic_type    nil
-                                                                     :has_field_values "search"
-                                                                     :name_field       nil
-                                                                     :dimensions       []}}
-                           :ordered_cards [{:sizeX                  2
-                                            :sizeY                  2
-                                            :col                    0
-                                            :row                    0
-                                            :updated_at             true
-                                            :created_at             true
-                                            :parameter_mappings     [{:card_id      1
-                                                                      :parameter_id "foo"
-                                                                      :target       ["dimension" ["field" field-id nil]]}]
-                                            :visualization_settings {}
-                                            :card                   (merge card-api-test/card-defaults
-                                                                           {:name                   "Dashboard Test Card"
-                                                                            :creator_id             (mt/user->id :rasta)
-                                                                            :collection_id          true
-                                                                            :display                "table"
-                                                                            :query_type             nil
-                                                                            :visualization_settings {}
-                                                                            :result_metadata        nil})
-                                            :series                 []}]})
+                          {:name                "Test Dashboard"
+                           :creator_id          (mt/user->id :rasta)
+                           :collection_id       true
+                           :can_write           false
+                           :param_values        nil
+                           :param_fields        {(keyword (str field-id)) {:id               field-id
+                                                                           :table_id         table-id
+                                                                           :display_name     display-name
+                                                                           :base_type        "type/Text"
+                                                                           :semantic_type    nil
+                                                                           :has_field_values "search"
+                                                                           :name_field       nil
+                                                                           :dimensions       []}}
+                           :ordered_cards       [{:sizeX                  2
+                                                  :sizeY                  2
+                                                  :col                    0
+                                                  :row                    0
+                                                  :updated_at             true
+                                                  :created_at             true
+                                                  :parameter_mappings     [{:card_id      1
+                                                                            :parameter_id "foo"
+                                                                            :target       ["dimension" ["field" field-id nil]]}]
+                                                  :visualization_settings {}
+                                                  :card                   (merge card-api-test/card-defaults
+                                                                                 {:name                   "Dashboard Test Card"
+                                                                                  :creator_id             (mt/user->id :rasta)
+                                                                                  :collection_id          true
+                                                                                  :display                "table"
+                                                                                  :query_type             nil
+                                                                                  :visualization_settings {}
+                                                                                  :result_metadata        nil})
+                                                  :series                 []}]
+                           :moderation_requests []
+                           :moderation_reviews  []})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
 
 (deftest fetch-dashboard-permissions-test
