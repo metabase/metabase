@@ -163,6 +163,8 @@ export default class ExpressionEditorTextfield extends React.Component {
       this.state.source.length,
       this.state.source.length === 0,
     );
+
+    this._triggerAutosuggest();
   }
 
   onSuggestionSelected = index => {
