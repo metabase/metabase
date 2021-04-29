@@ -32,6 +32,8 @@
   {:search-string      (s/maybe su/NonBlankString)
    :archived?          s/Bool
    :current-user-perms #{perms/UserPath}
+   :models             (s/maybe #{su/NonBlankString})
+   :table-db-id        (s/maybe s/Int)
    :limit-int          (s/maybe s/Int)
    :offset-int         (s/maybe s/Int)})
 
@@ -274,7 +276,7 @@
       (h/left-join [Table :table] [:= :segment.table_id :table.id])))
 
 (s/defmethod search-query-for-model (class Table)
-  [_ {:keys [current-user-perms], :as search-ctx} :- SearchContext]
+  [_ {:keys [current-user-perms, db-table-id], :as search-ctx} :- SearchContext]
   (when (seq current-user-perms)
     (let [base-query (base-query-for-model Table search-ctx)]
       (if (contains? current-user-perms "/")
