@@ -80,13 +80,15 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
+(defn- wildcard-query [query] (str "%" (clojure.string/lower-case query) "%"))
+
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"
   [query]
   [:or
-   [:like [:%lower.first_name] [(str "%" query "%")]]
-   [:like [:%lower.last_name] [(str "%" query "%")]]
-   [:like [:%lower.email] [(str "%" query "%")]]])
+   [:like [:%lower.first_name] [(wildcard-query query)]]
+   [:like [:%lower.last_name] [(wildcard-query query)]]
+   [:like [:%lower.email] [(wildcard-query query)]]])
 
 (defn- user-visible-columns
   "Columns of user table visible to current caller of API"

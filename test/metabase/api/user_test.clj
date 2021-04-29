@@ -82,7 +82,7 @@
                  :first_name  "Lucky"
                  :last_name   "Pigeon"
                  :common_name "Lucky Pigeon"}]
-               (->> ((mt/user-http-request :rasta :get 200 "user" :query "luck") :data)
+               (->> ((mt/user-http-request :rasta :get 200 "user" :query "lUck") :data)
                     (filter mt/test-user?))))))))
 
 (defn- group-ids->sets [users]
