@@ -32,7 +32,7 @@
   {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
    :current-user-perms           #{perms/UserPath}
-   (s/optional-key :models)      (s/maybe #{su/NonBlankString})
+   (s/optional-key :models)      (s/maybe #{s/Keyword})
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
    (s/optional-key :offset-int)  (s/maybe s/Int)})
@@ -362,14 +362,18 @@
 (s/defn ^:private search-context :- SearchContext
   [search-string :-   (s/maybe su/NonBlankString),
    archived-string :- (s/maybe su/BooleanString)
+   table-db-id :-     (s/maybe su/IntStringGreaterThanZero)
+   models :-          (s/maybe [s/NonBlankString])
    limit :-           (s/maybe su/IntStringGreaterThanZero)
    offset :-          (s/maybe su/IntStringGreaterThanOrEqualToZero)
    ]
-  (cond-> {:search-string      search-string
-   :archived?          (Boolean/parseBoolean archived-string)
-   :current-user-perms @api/*current-user-permissions-set*}
-    (some? limit) (assoc :limit-int (Integer/parseInt limit))
-    (some? offset) (assoc :offset-int (Integer/parseInt offset))))
+  (cond->{:search-string      search-string
+          :archived?          (Boolean/parseBoolean archived-string)
+          :current-user-perms @api/*current-user-permissions-set*}
+    (some? table-db-id) (assoc :table-db-id (Integer/parseInt table-db-id))
+    (some? models)      (assoc :models (hash-set (map keyword models)))
+    (some? limit)       (assoc :limit-int (Integer/parseInt limit))
+    (some? offset)      (assoc :offset-int (Integer/parseInt offset))))
 
 (api/defendpoint GET "/"
   "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
