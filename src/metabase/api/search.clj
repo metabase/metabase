@@ -29,13 +29,13 @@
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
-  {:search-string      (s/maybe su/NonBlankString)
-   :archived?          s/Bool
-   :current-user-perms #{perms/UserPath}
-   :models             (s/maybe #{su/NonBlankString})
-   :table-db-id        (s/maybe s/Int)
-   :limit-int          (s/maybe s/Int)
-   :offset-int         (s/maybe s/Int)})
+  {:search-string                (s/maybe su/NonBlankString)
+   :archived?                    s/Bool
+   :current-user-perms           #{perms/UserPath}
+   (s/optional-key :models)      (s/maybe #{su/NonBlankString})
+   (s/optional-key :table-db-id) (s/maybe s/Int)
+   (s/optional-key :limit-int)   (s/maybe s/Int)
+   (s/optional-key :offset-int)  (s/maybe s/Int)})
 
 (def ^:private SearchableModel
   (apply s/enum search-config/searchable-models))
@@ -276,7 +276,7 @@
       (h/left-join [Table :table] [:= :segment.table_id :table.id])))
 
 (s/defmethod search-query-for-model (class Table)
-  [_ {:keys [current-user-perms, db-table-id], :as search-ctx} :- SearchContext]
+  [_ {:keys [current-user-perms], :as search-ctx} :- SearchContext]
   (when (seq current-user-perms)
     (let [base-query (base-query-for-model Table search-ctx)]
       (if (contains? current-user-perms "/")
@@ -365,11 +365,11 @@
    limit :-           (s/maybe su/IntStringGreaterThanZero)
    offset :-          (s/maybe su/IntStringGreaterThanOrEqualToZero)
    ]
-  {:search-string      search-string
+  (cond-> {:search-string      search-string
    :archived?          (Boolean/parseBoolean archived-string)
-   :limit-int          (Integer/parseInt limit)
-   :offset-int         (Integer/parseInt offset)
-   :current-user-perms @api/*current-user-permissions-set*})
+   :current-user-perms @api/*current-user-permissions-set*}
+    (some? limit) (assoc :limit-int (Integer/parseInt limit))
+    (some? offset) (assoc :offset-int (Integer/parseInt offset))))
 
 (api/defendpoint GET "/"
   "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
