@@ -19,19 +19,18 @@ import { getUser } from "metabase/selectors/user";
 import User from "metabase/entities/users";
 
 import UserGroupSelect from "../components/UserGroupSelect";
-import { USER_STATUS } from "../const";
+import { USER_STATUS } from "../constants";
 import { isLastPage } from "../utils";
 import { loadMemberships } from "../people";
 
 @User.loadList({
-  pageSize: 10,
   reload: true,
-  query: (_, props) => {
-    return {
-      query: props.searchQuery,
-      status: props.status,
-    };
-  },
+  query: (_, { query }) => ({
+    query: query.searchText,
+    status: query.status,
+    limit: query.pageSize,
+    offset: query.pageSize * query.page,
+  }),
 })
 @connect(
   state => ({
@@ -45,10 +44,12 @@ export default class PeopleList extends Component {
   state = {};
 
   static propTypes = {
-    searchQuery: PropTypes.string,
-    status: PropTypes.string.isRequired,
-    page: PropTypes.number.isRequired,
-    pageSize: PropTypes.number.isRequired,
+    query: PropTypes.shape({
+      searchText: PropTypes.string.isRequired,
+      status: PropTypes.string.isRequired,
+      page: PropTypes.number.isRequired,
+      pageSize: PropTypes.number.isRequired,
+    }),
     user: PropTypes.object.isRequired,
     users: PropTypes.array,
     loadMemberships: PropTypes.func.isRequired,
@@ -90,13 +91,13 @@ export default class PeopleList extends Component {
     const {
       user,
       users,
-      status,
-      page,
-      pageSize,
+      query,
       total,
       onNextPage,
       onPreviousPage,
     } = this.props;
+
+    const { page, pageSize, status } = query;
 
     const isCurrentUser = u => user && user.id === u.id;
     const showDeactivated = status === USER_STATUS.deactivated;
@@ -214,7 +215,7 @@ export default class PeopleList extends Component {
               pageSize={pageSize}
               itemsLength={users.length}
               onNextPage={isLastPage(page, pageSize, total) ? null : onNextPage}
-              onPreviousPage={onPreviousPage}
+              onPreviousPage={page > 0 ? onPreviousPage : null}
             />
           </div>
         )}

@@ -11,13 +11,13 @@ export default function SearchInput({
   placeholder,
   onChange,
   className,
-  clearButton,
+  hasClearButton,
 }) {
   const handleClearClick = () => {
     onChange("");
   };
 
-  const showClearButton = clearButton && value.length > 0;
+  const showClearButton = hasClearButton && value.length > 0;
 
   return (
     <SearchFieldRoot className={className}>
@@ -25,7 +25,7 @@ export default function SearchInput({
         <Icon name="search" size={16} />
       </IconWrapper>
       <Input
-        clearButton
+        hasClearButton
         type="text"
         placeholder={placeholder}
         value={value}
@@ -47,14 +47,14 @@ SearchInput.propTypes = {
   value: PropTypes.string,
   autoFocus: PropTypes.bool,
   className: PropTypes.string,
-  clearButton: PropTypes.bool,
+  hasClearButton: PropTypes.bool,
 };
 
 SearchInput.defaultProps = {
   placeholder: t`Find...`,
   value: "",
   autoFocus: false,
-  clearButton: false,
+  hasClearButton: false,
 };
 
 const Input = styled.input`
@@ -69,7 +69,7 @@ const Input = styled.input`
   color: ${color("text-dark")};
 
   ${props =>
-    props.clearButton
+    props.hasClearButton
       ? css`
           padding-right: 26px;
         `

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -6,27 +6,24 @@ import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 import Radio from "metabase/components/Radio";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
 import SearchInput from "../components/SearchInput";
 import PeopleList from "../components/PeopleList";
-import { USER_STATUS } from "../const";
+import { USER_STATUS } from "../constants";
+import { usePeopleQuery } from "../hooks/use-people-query";
 
-const MIN_QUERY_LENGTH = 2;
+const PAGE_SIZE = 10;
 
 export default function PeopleListingApp({ children }) {
-  const [status, setStatus] = useState(USER_STATUS.active);
-  const [searchValue, setSearchValue] = useState("");
-  const debouncedSearchValue = useDebouncedValue(
-    searchValue,
-    SEARCH_DEBOUNCE_DURATION,
-  );
-  const searchQuery =
-    debouncedSearchValue.length >= MIN_QUERY_LENGTH ? debouncedSearchValue : "";
-
-  const handleFilterChange = value => setStatus(value);
-  const handleQueryChange = value => setSearchValue(value);
+  const {
+    query,
+    status,
+    searchInputValue,
+    updateSearchInputValue,
+    updateStatus,
+    handleNextPage,
+    handlePreviousPage,
+  } = usePeopleQuery(PAGE_SIZE);
 
   const headingContent = (
     <div className="mb2 flex">
@@ -34,9 +31,9 @@ export default function PeopleListingApp({ children }) {
         className="text-small mr2"
         type="text"
         placeholder={t`Find someone`}
-        value={searchValue}
-        onChange={handleQueryChange}
-        clearButton
+        value={searchInputValue}
+        onChange={updateSearchInputValue}
+        hasClearButton
       />
       <Radio
         className="ml2 text-bold"
@@ -47,7 +44,7 @@ export default function PeopleListingApp({ children }) {
         ]}
         showButtons
         py={1}
-        onChange={handleFilterChange}
+        onChange={updateStatus}
       />
     </div>
   );
@@ -58,7 +55,11 @@ export default function PeopleListingApp({ children }) {
       buttonText={status === USER_STATUS.deactivated ? null : t`Invite someone`}
       buttonLink={Urls.newUser()}
     >
-      <PeopleList searchQuery={searchQuery} status={status} />
+      <PeopleList
+        query={query}
+        onNextPage={handleNextPage}
+        onPreviousPage={handlePreviousPage}
+      />
       {children}
     </AdminPaneLayout>
   );

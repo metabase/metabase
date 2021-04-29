@@ -32,7 +32,7 @@ export const getUsersWithMemberships = createSelector(
 export const getUserMemberships = createSelector(
   [(_, props) => props.userId, getMemberships],
   (userId, memberships) =>
-    memberships && _.values(memberships).filter(m => m.user_id === userId),
+    memberships && Object.values(memberships).filter(m => m.user_id === userId),
 );
 
 // sort the users list by last_name, ignore case or diacritical marks. If last names are the same then compare by first

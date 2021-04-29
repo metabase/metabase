@@ -23,10 +23,11 @@ import GroupSelect from "./GroupSelect";
 )
 export default class UserGroupSelect extends Component {
   static propTypes = {
-    userId: PropTypes.string.isRequired,
+    userId: PropTypes.number.isRequired,
     isCurrentUser: PropTypes.bool.isRequired,
     userMemberships: PropTypes.array,
     groups: PropTypes.array,
+    loading: PropTypes.bool.isRequired,
     createMembership: PropTypes.func.isRequired,
     deleteMembership: PropTypes.func.isRequired,
   };
@@ -50,9 +51,9 @@ export default class UserGroupSelect extends Component {
   };
 
   render() {
-    const { groups, userMemberships, isCurrentUser } = this.props;
+    const { loading, groups, userMemberships, isCurrentUser } = this.props;
 
-    if (!groups || groups.length === 0 || !userMemberships) {
+    if (loading || !userMemberships) {
       return <LoadingSpinner />;
     }
 
