@@ -196,7 +196,7 @@ export default class DashCard extends Component {
           </DashboardCardActionsPanel>
         ) : null}
         <WrappedVisualization
-          className={cx("flex-full", {
+          className={cx("flex-full overflow-hidden", {
             "pointer-events-none": isEditingDashboardLayout,
           })}
           classNameWidgets={isEmbed && "text-light text-medium-hover"}
