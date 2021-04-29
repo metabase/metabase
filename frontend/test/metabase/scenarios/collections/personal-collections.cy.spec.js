@@ -97,6 +97,11 @@ describe("personal collections", () => {
           .findByText(collection)
           .should("not.exist");
       });
+
+      // Frontend makes a few requests needed to correctly display the collections tree
+      // This test ensures intermediate loading states are handled and the page doesn't crash
+      cy.reload();
+      getSidebarCollectionChildrenFor(personalCollection).findByText("Foo");
     });
   });
 
