@@ -587,7 +587,9 @@
                    :table_id               (mt/id :venues)
                    :collection_id          (u/the-id collection)
                    :collection             (into {} collection)
-                   :result_metadata        (mt/obj->json->obj (:result_metadata card))})
+                   :result_metadata        (mt/obj->json->obj (:result_metadata card))
+                   :moderation_requests    []
+                   :moderation_reviews     []})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp* [User     [{user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}]
