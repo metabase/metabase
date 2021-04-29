@@ -88,7 +88,6 @@ describe("personal collections", () => {
       cy.findByLabelText("Name").type("Foo");
       cy.findByText("Create").click();
 
-      cy.findByTestId("sidebar").findByText(personalCollection);
       getSidebarCollectionChildrenFor(personalCollection).findByText("Foo");
 
       // Ensure only selected user's collection is visible at the moment
