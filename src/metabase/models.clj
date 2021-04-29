@@ -16,6 +16,8 @@
             [metabase.models.login-history :as login-history]
             [metabase.models.metric :as metric]
             [metabase.models.metric-important-field :as metric-important-field]
+            [metabase.models.moderation-request :as moderation-request]
+            [metabase.models.moderation-review :as moderation-review]
             [metabase.models.native-query-snippet :as native-query-snippet]
             [metabase.models.permissions :as permissions]
             [metabase.models.permissions-group :as permissions-group]
@@ -55,6 +57,8 @@
          login-history/keep-me
          metric/keep-me
          metric-important-field/keep-me
+         moderation-request/keep-me
+         moderation-review/keep-me
          native-query-snippet/keep-me
          permissions/keep-me
          permissions-group/keep-me
@@ -93,6 +97,8 @@
  [login-history LoginHistory]
  [metric Metric]
  [metric-important-field MetricImportantField]
+ [moderation-request ModerationRequest]
+ [moderation-review ModerationReview]
  [native-query-snippet NativeQuerySnippet]
  [permissions Permissions]
  [permissions-group PermissionsGroup]

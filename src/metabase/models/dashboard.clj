@@ -17,6 +17,7 @@
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
             [metabase.util :as u]
@@ -44,6 +45,8 @@
                             [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                :order-by  [[:dashcard.created_at :asc]]})))
 
+;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
+(comment moderation/keep-me)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
