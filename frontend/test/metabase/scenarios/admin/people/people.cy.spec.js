@@ -1,7 +1,12 @@
 // Includes migrations from integration tests:
 // https://github.com/metabase/metabase/pull/14174
 
-import { restore, popover, setupDummySMTP } from "__support__/cypress";
+import {
+  restore,
+  popover,
+  setupDummySMTP,
+  generateUsers,
+} from "__support__/cypress";
 import { USERS, USER_GROUPS } from "__support__/cypress_data";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -25,10 +30,7 @@ describe("scenarios > admin > people", () => {
     it("should render (metabase-enterprise#210)", () => {
       cy.visit("/admin/people");
 
-      cy.get(".ContentTable tbody tr")
-        .as("result-rows")
-        // Bobby Tables, No Collection Tableton, No Data Tableton, None Tableton, Robert Tableton
-        .should("have.length", TOTAL_USERS);
+      assertTableRowsCount(TOTAL_USERS);
 
       cy.findByText("8 people found");
 
@@ -41,8 +43,7 @@ describe("scenarios > admin > people", () => {
       cy.log("Switch to 'Groups' and make sure it renders properly");
       cy.get(".PageTitle").contains("Groups");
 
-      // Administrators, All Users, collection, data
-      cy.get("@result-rows").should("have.length", TOTAL_GROUPS);
+      assertTableRowsCount(TOTAL_GROUPS);
 
       cy.get(".AdminList-items").within(() => {
         cy.findByText("Groups").should("have.class", "selected");
@@ -55,7 +56,7 @@ describe("scenarios > admin > people", () => {
       cy.get(".PageTitle").contains("All Users");
 
       // The same list as for "People"
-      cy.get("@result-rows").should("have.length", TOTAL_USERS);
+      assertTableRowsCount(TOTAL_USERS);
     });
 
     it("should load the members when navigating to the group directly", () => {
@@ -182,6 +183,78 @@ describe("scenarios > admin > people", () => {
       );
       cy.findByText(/^temporary password$/i).should("not.exist");
     });
+
+    it("should allow to search people", () => {
+      cy.visit("/admin/people");
+
+      cy.findByPlaceholderText("Find someone").type("no");
+      cy.findByText("5 people found");
+      assertTableRowsCount(5);
+
+      cy.findByPlaceholderText("Find someone").type("ne");
+      cy.findByText("1 people found");
+      assertTableRowsCount(1);
+
+      cy.findByPlaceholderText("Find someone").clear();
+      cy.findByText("8 people found");
+      assertTableRowsCount(8);
+    });
+
+    describe("pagination", () => {
+      beforeEach(() => {
+        generateUsers(8);
+      });
+
+      it("should allow paginating people forward and backward", () => {
+        cy.visit("/admin/people");
+
+        // Total
+        cy.findByText("16 people found");
+
+        // Page 1
+        cy.findByText("1 - 10");
+        assertTableRowsCount(10);
+        cy.findByTestId("previous-page-btn").should("be.disabled");
+
+        cy.findByTestId("next-page-btn").click();
+
+        // Page 2
+        cy.findByText("11 - 16");
+        assertTableRowsCount(6);
+        cy.findByTestId("next-page-btn").should("be.disabled");
+
+        cy.findByTestId("previous-page-btn").click();
+
+        // Page 1
+        cy.findByText("1 - 10");
+        assertTableRowsCount(10);
+      });
+
+      it("should allow paginating group members forward and backward", () => {
+        cy.visit("admin/people/groups/1");
+
+        // Total
+        cy.findByText("16 members");
+
+        // Page 1
+        cy.findByText("1 - 15");
+        assertTableRowsCount(15);
+        cy.findByTestId("previous-page-btn").should("be.disabled");
+
+        cy.findByTestId("next-page-btn").click();
+
+        // Page 2
+        cy.findByText("16 - 16");
+        assertTableRowsCount(1);
+        cy.findByTestId("next-page-btn").should("be.disabled");
+
+        cy.findByTestId("previous-page-btn").click();
+
+        // Page 1
+        cy.findByText("1 - 15");
+        assertTableRowsCount(15);
+      });
+    });
   });
 });
 
@@ -198,4 +271,8 @@ function clickButton(button_name) {
     .closest(".Button")
     .should("not.be.disabled")
     .click();
+}
+
+function assertTableRowsCount(length) {
+  cy.get(".ContentTable tbody tr").should("have.length", length);
 }
