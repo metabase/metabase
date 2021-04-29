@@ -335,6 +335,7 @@ export function showDashboardCardActions(index = 0) {
   cy.get(".DashCard")
     .eq(index)
     .realHover();
+}
 
 export function generateUsers(count, groupIds) {
   const users = _.range(count).map(index => ({
