@@ -51,12 +51,11 @@ export function isAnotherUsersPersonalCollection(
     return false;
   }
   return targetCollection.effective_ancestors.some(ancestor => {
-    if (ancestor.id === "root") {
-      return false;
-    }
     const collection = collectionById[ancestor.id];
     return (
-      collection.personal_owner_id && collection.personal_owner_id !== userId
+      collection &&
+      collection.personal_owner_id &&
+      collection.personal_owner_id !== userId
     );
   });
 }
