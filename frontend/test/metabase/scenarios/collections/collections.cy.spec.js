@@ -7,6 +7,7 @@ import {
   sidebar,
 } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
+import { getSidebarCollectionChildrenFor } from "./utils";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -623,14 +624,6 @@ function selectItemUsingCheckbox(item, icon = "table") {
         .should("be.visible")
         .click();
     });
-}
-
-function getSidebarCollectionChildrenFor(item) {
-  return sidebar()
-    .findByText(item)
-    .closest("a")
-    .parent()
-    .parent();
 }
 
 function pinAllRootItems() {
