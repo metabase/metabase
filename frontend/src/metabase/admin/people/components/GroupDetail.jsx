@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
 
 import _ from "underscore";
-import cx from "classnames";
 
 import {
   isAdminGroup,
@@ -11,22 +11,13 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 
-import { color } from "metabase/lib/colors";
-
 import { PermissionsApi } from "metabase/services";
-import { t } from "ttag";
-import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
-import UserAvatar from "metabase/components/UserAvatar";
-import AdminEmptyText from "metabase/components/AdminEmptyText";
+import { t, ngettext, msgid } from "ttag";
 import Alert from "metabase/components/Alert";
-
-import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 
-import Typeahead from "metabase/hoc/Typeahead";
-
-import AddRow from "./AddRow";
+import GroupMembersTable from "./group-members/GroupMembersTable";
+import { deleteMembership } from "../people";
 
 const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (
@@ -50,177 +41,12 @@ const GroupDescription = ({ group }) =>
     </div>
   ) : null;
 
-// ------------------------------------------------------------ Add User Row / Autocomplete ------------------------------------------------------------
-
-const AddMemberAutocompleteSuggestion = ({
-  user,
-  color,
-  selected,
-  onClick,
-}) => (
-  <div
-    className={cx("px2 py1 cursor-pointer", { "bg-brand": selected })}
-    onClick={onClick}
-  >
-    <span className="inline-block mr2">
-      <UserAvatar background={color} user={user} />
-    </span>
-    <span className={cx("h3", { "text-white": selected })}>
-      {user.common_name}
-    </span>
-  </div>
-);
-
-const COLORS = [
-  color("brand"),
-  color("accent1"),
-  color("accent2"),
-  color("accent3"),
-  color("accent4"),
-];
-
-const AddMemberTypeahead = Typeahead({
-  optionFilter: (text, user) =>
-    (user.common_name || "").toLowerCase().includes(text.toLowerCase()),
-  optionIsEqual: (userA, userB) => userA.id === userB.id,
-})(({ suggestions, selectedSuggestion, onSuggestionAccepted }) => (
-  <Popover
-    className="bordered"
-    hasArrow={false}
-    targetOffsetY={2}
-    targetOffsetX={0}
-    horizontalAttachments={["left"]}
-  >
-    {suggestions &&
-      suggestions.map((user, index) => (
-        <AddMemberAutocompleteSuggestion
-          key={index}
-          user={user}
-          color={COLORS[index % COLORS.length]}
-          selected={selectedSuggestion && user.id === selectedSuggestion.id}
-          onClick={onSuggestionAccepted.bind(null, user)}
-        />
-      ))}
-  </Popover>
-));
-
-const AddUserRow = ({
-  users,
-  text,
-  selectedUsers,
-  onCancel,
-  onDone,
-  onTextChange,
-  onSuggestionAccepted,
-  onRemoveUserFromSelection,
-}) => (
-  <tr>
-    <td colSpan="3" style={{ padding: 0 }}>
-      <AddRow
-        value={text}
-        isValid={selectedUsers.length}
-        placeholder="Julie McMemberson"
-        onChange={e => onTextChange(e.target.value)}
-        onDone={onDone}
-        onCancel={onCancel}
-      >
-        {selectedUsers.map(user => (
-          <div className="bg-medium p1 px2 mr1 rounded flex align-center">
-            {user.common_name}
-            <Icon
-              className="pl1 cursor-pointer text-slate text-medium-hover"
-              name="close"
-              onClick={() => onRemoveUserFromSelection(user)}
-            />
-          </div>
-        ))}
-        <div className="absolute bottom left">
-          <AddMemberTypeahead
-            value={text}
-            options={Object.values(users)}
-            onSuggestionAccepted={onSuggestionAccepted}
-          />
-        </div>
-      </AddRow>
-    </td>
-  </tr>
-);
-
-// ------------------------------------------------------------ Users Table ------------------------------------------------------------
-
-const UserRow = ({ user, showRemoveButton, onRemoveUserClicked }) => (
-  <tr>
-    <td>{user.first_name + " " + user.last_name}</td>
-    <td>{user.email}</td>
-    {showRemoveButton ? (
-      <td
-        className="text-right cursor-pointer"
-        onClick={onRemoveUserClicked.bind(null, user)}
-      >
-        <Icon name="close" className="text-light" size={16} />
-      </td>
-    ) : null}
-  </tr>
-);
-
-const MembersTable = ({
-  group,
-  members,
-  currentUser: { id: currentUserId } = {},
-  users,
-  showAddUser,
-  text,
-  selectedUsers,
-  onAddUserCancel,
-  onAddUserDone,
-  onAddUserTextChange,
-  onUserSuggestionAccepted,
-  onRemoveUserClicked,
-  onRemoveUserFromSelection,
-}) => {
-  // you can't remove people from Default and you can't remove the last user from Admin
-  const isCurrentUser = ({ user_id }) => user_id === currentUserId;
-  const showRemoveMemeberButton = user =>
-    !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser(user));
-
-  return (
-    <div>
-      <AdminContentTable columnTitles={[t`Members`, t`Email`]}>
-        {showAddUser && (
-          <AddUserRow
-            users={users}
-            text={text}
-            selectedUsers={selectedUsers}
-            onCancel={onAddUserCancel}
-            onDone={onAddUserDone}
-            onTextChange={onAddUserTextChange}
-            onSuggestionAccepted={onUserSuggestionAccepted}
-            onRemoveUserFromSelection={onRemoveUserFromSelection}
-          />
-        )}
-        {members &&
-          members.map((user, index) => (
-            <UserRow
-              key={index}
-              user={user}
-              showRemoveButton={showRemoveMemeberButton(user)}
-              onRemoveUserClicked={onRemoveUserClicked}
-            />
-          ))}
-      </AdminContentTable>
-      {members.length === 0 && (
-        <div className="mt4 pt4 flex layout-centered">
-          <AdminEmptyText
-            message={t`A group is only as good as its members.`}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ------------------------------------------------------------ Logic ------------------------------------------------------------
-
+@connect(
+  null,
+  {
+    deleteMembership,
+  },
+)
 export default class GroupDetail extends Component {
   constructor(props, context) {
     super(props, context);
@@ -291,9 +117,14 @@ export default class GroupDetail extends Component {
     });
   }
 
-  async onRemoveUserClicked(membership) {
+  async onRemoveUserClicked(user) {
     try {
-      await PermissionsApi.deleteMembership({ id: membership.membership_id });
+      const membership = this.props.group.members.find(
+        m => m.user_id === user.id,
+      );
+      await this.props.deleteMembership({
+        membershipId: membership.membership_id,
+      });
       const newMembers = _.reject(
         this.getMembers(),
         m => m.user_id === membership.user_id,
@@ -334,9 +165,22 @@ export default class GroupDetail extends Component {
       user => !usedUsers[user.id],
     );
 
+    const title = (
+      <React.Fragment>
+        {getGroupNameLocalized(group)}
+        <span className="text-light ml1">
+          {ngettext(
+            msgid`${members.length} member`,
+            `${members.length} members`,
+            members.length,
+          )}
+        </span>
+      </React.Fragment>
+    );
+
     return (
       <AdminPaneLayout
-        title={getGroupNameLocalized(group)}
+        title={title}
         buttonText={t`Add members`}
         buttonAction={
           canEditMembership(group) ? this.onAddUsersClicked.bind(this) : null
@@ -344,7 +188,7 @@ export default class GroupDetail extends Component {
         buttonDisabled={addUserVisible}
       >
         <GroupDescription group={group} />
-        <MembersTable
+        <GroupMembersTable
           currentUser={currentUser}
           group={group}
           members={members}
