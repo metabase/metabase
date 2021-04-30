@@ -43,7 +43,6 @@ Don't see the database you need here? Take a look at our [Community Drivers](../
 For provider-specific connection details, like connecting to a PostgreSQL data warehouse on RDS:
 
 - [AWS's Relational Database Service (RDS)](databases/aws-rds.md)
-- [Heroku](databases/heroku.md)
 
 ### Errors when connecting to your database
 
