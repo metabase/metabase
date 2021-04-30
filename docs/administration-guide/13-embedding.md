@@ -118,10 +118,11 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 
 ### Additional parameters
 
-You can add to the embedding URL these additional parameters to affect the look and feel:
-- bordered: true or false. Adds a visible border to the embed
-- titled: true or false. Adds or removes the title to the embedding
-- theme: null or night. Shows the embedded iframe in dark mode 
+To change the look and feel of the embed, you can add additional parameters to the embedding URL:
+
+- **bordered**: true or false. Adds a visible border to the embed.
+- **titled**: true or false. Adds or removes the title to the embedding.
+- **theme**: null or night. Shows the embedded iframe in dark mode. 
 
 ### Reference applications
 
