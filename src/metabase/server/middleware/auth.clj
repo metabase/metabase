@@ -32,10 +32,13 @@
 
 (defn enforce-api-key
   "Middleware that enforces validation of the client via API Key, canceling the request processing if the check fails.
+
   Validation is handled by first checking for the presence of the `:metabase-api-key` on the request.  If the api key
   is available then we validate it by checking it against the configured `:mb-api-key` value set in our global config.
+
   If the request `:metabase-api-key` matches the configured `api-key` value then the request continues, otherwise we
   reject the request and return a 403 Forbidden response.
+  
   This variable only works for /api/notify/db/:id endpoint"
   [handler]
   (fn [{:keys [metabase-api-key], :as request} respond raise]
