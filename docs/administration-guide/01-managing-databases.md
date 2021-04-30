@@ -6,7 +6,7 @@
 - [Errors when connecting to your database](#errors-when-connecting-to-your-database)
 - [Database connection options](#database-connection-options) 
 - [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
-- [Deleting databases](#disconnecting-databases)
+- [Deleting databases](#deleting-databases)
 
 ## Adding a database connection
 
@@ -52,7 +52,7 @@ Check our [troubleshooting guide](../troubleshooting-guide/datawarehouse.md).
 
 Connection options differ depending on which database you're connecting to. Here's an overview:
 
-- [Use a secure connection (SSL)](#use-a-secure-connection-SSL)
+- [Use a secure connection (SSL)](#use-a-secure-connection-ssl)
 - [Use an SSH-tunnel for database connections](#use-an-ssh-tunnel-for-database-connections) 
 - [Choose when Metabase syncs and scans his](#choose-when-metabase-syncs-and-scans)
 - [Automatically run queries when doing simple filtering and summarizing](#automatically-run-queries-when-doing-simple-filtering-and-summarizing)
