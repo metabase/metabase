@@ -184,8 +184,9 @@ export default class ExpressionEditorTextfield extends React.Component {
           : suggested;
         const updatedExpression = prefix + replacement.trim() + postfix;
         this.onExpressionChange(updatedExpression);
+        const caretPos = updatedExpression.length - postfix.length;
         setTimeout(() => {
-          this._setCaretPosition(prefix.length + replacement.length, true);
+          this._setCaretPosition(caretPos, true);
         });
       } else {
         const newExpression = source + suggestion.text;
