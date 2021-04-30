@@ -122,31 +122,54 @@
   "Remove DBs from the results, which is useful since test databases unrelated to this suite can pollute the results"
   (partial filter #(not= (:model %) "database")))
 
-(defn- search-request-with [xf user-kwd & params]
-  (let [raw-results      (apply (partial mt/user-http-request user-kwd) :get 200 "search" params)
+(defn- process-raw-data [raw-data keep-database-id]
+  (for [result raw-data
+        ;; filter out any results not from the usual test data DB (e.g. results from other drivers)
+        :when  (contains? #{keep-database-id nil} (:database_id result))]
+    (-> result
+        mt/boolean-ids-and-timestamps
+        (update-in [:collection :name] #(some-> % string?))
+        ;; `:scores` is just used for debugging and would be a pain to match against.
+        (dissoc :scores))))
+
+(defn- make-search-request [user-kwd params]
+  (apply (partial mt/user-http-request user-kwd) :get 200 "search" params))
+
+(defn- search-request-data-with [xf user-kwd & params]
+  (let [raw-results-data (:data (make-search-request user-kwd params))
         keep-database-id (if (fn? *search-request-results-database-id*)
                            (*search-request-results-database-id*)
                            *search-request-results-database-id*)]
-    (if (:error raw-results)
+    (if (:error raw-results-data)
+      raw-results-data
+      (vec (xf (process-raw-data raw-results-data keep-database-id))))))
+
+(defn- search-request-with [xf user-kwd & params]
+  (let [raw-results      (make-search-request user-kwd params)
+        keep-database-id (if (fn? *search-request-results-database-id*)
+                           (*search-request-results-database-id*)
+                           *search-request-results-database-id*)]
+    (if (:error (:data raw-results)
       raw-results
-      (vec
-       (xf
-        (for [result raw-results
-              ;; filter out any results not from the usual test data DB (e.g. results from other drivers)
-              :when  (contains? #{keep-database-id nil} (:database_id result))]
-          (-> result
-              mt/boolean-ids-and-timestamps
-              (update-in [:collection :name] #(some-> % string?))
-              ;; `:scores` is just used for debugging and would be a pain to match against.
-              (dissoc :scores))))))))
+      ;;;;;; update-in shenanigans goes here
+      ;;;;;; update-in shenanigans goes here
+      ;;;;;; update-in shenanigans goes here
+      ;;;;;; update-in shenanigans goes here
+      ;;;;;; update-in shenanigans goes here
+      (vec (xf (process-raw-data raw-results keep-database-id))))))
 
 (defn- search-request
   [& args]
   (apply search-request-with (comp sorted-results remove-databases) args))
 
-(defn- unsorted-search-request
+(defn- search-request-data
+  "Gets just the data elements of the search"
   [& args]
-  (apply search-request-with identity args))
+  (apply search-request-data-with (comp sorted-results remove-databases) args))
+
+(defn- unsorted-search-request-data
+  [& args]
+  (apply search-request-data-with identity args))
 
 (deftest order-clause-test
   (testing "it includes all columns and normalizes the query"
