@@ -32,7 +32,7 @@
   {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
    :current-user-perms           #{perms/UserPath}
-   (s/optional-key :models)      (s/maybe [su/NonBlankString])
+   (s/optional-key :models)      (s/maybe #{su/NonBlankString})
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
    (s/optional-key :offset-int)  (s/maybe s/Int)})
@@ -396,7 +396,8 @@
           :archived?          (Boolean/parseBoolean archived-string)
           :current-user-perms @api/*current-user-permissions-set*}
     (some? table-db-id) (assoc :table-db-id table-db-id)
-    (some? models)      (assoc :models (if (vector? models) models [models]))
+    (some? models)      (assoc :models
+                               (apply hash-set (if (vector? models) models [models])))
     (some? limit)       (assoc :limit-int (Integer/parseInt limit))
     (some? offset)      (assoc :offset-int (Integer/parseInt offset))))
 
