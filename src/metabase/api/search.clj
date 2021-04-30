@@ -219,6 +219,11 @@
       (h/merge-left-join [Collection :collection]
                          [:= collection-id-column :collection.id]))))
 
+(s/defn ^:private add-table-db-id-clause
+  "Add a WHERE clause to only return tables with the given DB id.
+  Used in data picker for joins because we can't join across DB's."
+  [id :- s/Int, query :- su/Map]
+  (h/merge-where query [:= id :database_id])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
@@ -276,27 +281,31 @@
       (h/left-join [Table :table] [:= :segment.table_id :table.id])))
 
 (s/defmethod search-query-for-model (class Table)
-  [_ {:keys [current-user-perms], :as search-ctx} :- SearchContext]
+  [_ {:keys [current-user-perms table-db-id], :as search-ctx} :- SearchContext]
   (when (seq current-user-perms)
     (let [base-query (base-query-for-model Table search-ctx)]
-      (if (contains? current-user-perms "/")
-        base-query
-        (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
-          (when (seq data-perms)
-            {:select (:select base-query)
-             :from   [[(merge
-                        base-query
-                        {:select [:id :schema :db_id :name :description :display_name :updated_at
-                                  [(hx/concat (hx/literal "/db/") :db_id
-                                              (hx/literal "/schema/") (hsql/call :case
-                                                                        [:not= :schema nil] :schema
-                                                                        :else               (hx/literal ""))
-                                              (hx/literal "/table/") :id
-                                              (hx/literal "/read/"))
-                                   :path]]})
-                       :table]]
-             :where  (into [:or] (for [path data-perms]
-                                   [:like :path (str path "%")]))}))))))
+      (add-table-db-id-clause
+        table-db-id
+        (if (contains? current-user-perms "/")
+          base-query
+          (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
+            (when (seq data-perms)
+              {:select (:select base-query)
+               :from   [[(merge
+                           base-query
+                           {:select [:id :schema :db_id :name :description :display_name :updated_at
+                                     [(hx/concat (hx/literal "/db/")
+                                                 :db_id
+                                                 (hx/literal "/schema/")
+                                                 (hsql/call :case
+                                                            [:not= :schema nil] :schema
+                                                            :else               (hx/literal ""))
+                                                 (hx/literal "/table/") :id
+                                                 (hx/literal "/read/"))
+                                      :path]]})
+                         :table]]
+               :where  (into [:or] (for [path data-perms]
+                                     [:like :path (str path "%")]))})))))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -327,6 +336,8 @@
 (defmethod check-permissions-for-model :segment
   [{:keys [id]}]
   (-> id Segment mi/can-read?))
+
+(defn- models-to-search [ctx default] (if (:models ctx) (:models ctx) default))
 
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
@@ -363,7 +374,7 @@
   [search-string :-   (s/maybe su/NonBlankString),
    archived-string :- (s/maybe su/BooleanString)
    table-db-id :-     (s/maybe su/IntStringGreaterThanZero)
-   models :-          (s/maybe [s/NonBlankString])
+   models :-          (s/maybe [su/NonBlankString])
    limit :-           (s/maybe su/IntStringGreaterThanZero)
    offset :-          (s/maybe su/IntStringGreaterThanOrEqualToZero)
    ]
@@ -377,12 +388,14 @@
 
 (api/defendpoint GET "/"
   "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
-  [q archived limit offset]
-  {q        (s/maybe su/NonBlankString)
-   archived (s/maybe su/BooleanString)
-   limit    (s/maybe su/IntStringGreaterThanZero)
-   offset   (s/maybe su/IntStringGreaterThanOrEqualToZero)
+  [q archived table_db_id models limit offset]
+  {q           (s/maybe su/NonBlankString)
+   archived    (s/maybe su/BooleanString)
+   table_db_id (s/maybe su/IntStringGreaterThanZero)
+   models      (s/maybe [su/NonBlankString])
+   limit       (s/maybe su/IntStringGreaterThanZero)
+   offset      (s/maybe su/IntStringGreaterThanOrEqualToZero)
    }
-  (search (search-context q archived limit offset)))
+  (search (search-context q archived table_db_id models limit offset)))
 
 (api/define-routes)
