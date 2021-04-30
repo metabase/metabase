@@ -16,26 +16,26 @@ export default function PaginationControls({
       <span className="text-bold mr1">
         {page * pageSize + 1} - {page * pageSize + itemsLength}
       </span>
-      <Button
+      <PaginationButton
         onClick={onPreviousPage}
         disabled={!onPreviousPage}
         data-testid="previous-page-btn"
       >
         <Icon name="chevronleft" />
-      </Button>
-      <Button
+      </PaginationButton>
+      <PaginationButton
         small
         onClick={onNextPage}
         disabled={!onNextPage}
         data-testid="next-page-btn"
       >
         <Icon name="chevronright" />
-      </Button>
+      </PaginationButton>
     </div>
   );
 }
 
-const Button = IconWrapper.withComponent("button").extend`
+const PaginationButton = IconWrapper.withComponent("button").extend`
   &:disabled {
     background-color: ${colors["white"]};
     color: ${colors["text-light"]};

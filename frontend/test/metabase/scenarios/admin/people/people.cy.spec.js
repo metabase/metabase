@@ -32,7 +32,7 @@ describe("scenarios > admin > people", () => {
 
       assertTableRowsCount(TOTAL_USERS);
 
-      cy.findByText("8 people found");
+      cy.findByText(`${TOTAL_USERS} people found`);
 
       // A small sidebar selector
       cy.get(".AdminList-items").within(() => {
@@ -196,63 +196,69 @@ describe("scenarios > admin > people", () => {
       assertTableRowsCount(1);
 
       cy.findByPlaceholderText("Find someone").clear();
-      cy.findByText("8 people found");
-      assertTableRowsCount(8);
+      cy.findByText(`${TOTAL_USERS} people found`);
+      assertTableRowsCount(TOTAL_USERS);
     });
 
     describe("pagination", () => {
+      const NEW_USERS = 8;
+      const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
+
       beforeEach(() => {
-        generateUsers(8);
+        generateUsers(NEW_USERS);
       });
 
       it("should allow paginating people forward and backward", () => {
+        const PAGE_SIZE = 10;
+
         cy.visit("/admin/people");
 
         // Total
-        cy.findByText("16 people found");
+        cy.findByText(`${NEW_TOTAL_USERS} people found`);
 
         // Page 1
-        cy.findByText("1 - 10");
-        assertTableRowsCount(10);
+        cy.findByText(`1 - ${PAGE_SIZE}`);
+        assertTableRowsCount(PAGE_SIZE);
         cy.findByTestId("previous-page-btn").should("be.disabled");
 
         cy.findByTestId("next-page-btn").click();
 
         // Page 2
-        cy.findByText("11 - 16");
-        assertTableRowsCount(6);
+        cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
         cy.findByTestId("next-page-btn").should("be.disabled");
 
         cy.findByTestId("previous-page-btn").click();
 
         // Page 1
-        cy.findByText("1 - 10");
-        assertTableRowsCount(10);
+        cy.findByText(`1 - ${PAGE_SIZE}`);
+        assertTableRowsCount(PAGE_SIZE);
       });
 
       it("should allow paginating group members forward and backward", () => {
+        const PAGE_SIZE = 15;
         cy.visit("admin/people/groups/1");
 
         // Total
-        cy.findByText("16 members");
+        cy.findByText(`${NEW_TOTAL_USERS} members`);
 
         // Page 1
-        cy.findByText("1 - 15");
-        assertTableRowsCount(15);
+        cy.findByText(`1 - ${PAGE_SIZE}`);
+        assertTableRowsCount(PAGE_SIZE);
         cy.findByTestId("previous-page-btn").should("be.disabled");
 
         cy.findByTestId("next-page-btn").click();
 
         // Page 2
-        cy.findByText("16 - 16");
-        assertTableRowsCount(1);
+        cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
         cy.findByTestId("next-page-btn").should("be.disabled");
 
         cy.findByTestId("previous-page-btn").click();
 
         // Page 1
-        cy.findByText("1 - 15");
-        assertTableRowsCount(15);
+        cy.findByText(`1 - ${PAGE_SIZE}`);
+        assertTableRowsCount(PAGE_SIZE);
       });
     });
   });
