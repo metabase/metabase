@@ -172,22 +172,31 @@ export default class ExpressionEditorTextfield extends React.Component {
     const suggestion = suggestions && suggestions[index];
 
     if (suggestion) {
-      let prefix = source.slice(0, suggestion.index);
-      if (suggestion.prefixTrim) {
-        prefix = prefix.replace(suggestion.prefixTrim, "");
-      }
-      let postfix = source.slice(suggestion.index);
-      if (suggestion.postfixTrim) {
-        postfix = postfix.replace(suggestion.postfixTrim, "");
-      }
-      if (!postfix && suggestion.postfixText) {
-        postfix = suggestion.postfixText;
-      }
+      const { tokens } = tokenize(source);
+      const token = tokens.find(t => t.end >= suggestion.index);
+      if (token) {
+        const prefix = source.slice(0, token.start);
+        const postfix = source.slice(token.end);
+        const suggested = suggestion.text;
 
-      this.onExpressionChange(prefix + suggestion.text + postfix);
-      setTimeout(() =>
-        this._setCaretPosition((prefix + suggestion.text).length, true),
-      );
+        // e.g. source is "isnull(A" and suggested is "isempty("
+        // the result should be "isempty(A" and NOT "isempty((A"
+        const openParen = _.last(suggested) === "(";
+        const alreadyOpenParen = _.first(postfix.trimLeft()) === "(";
+        const extraTrim = openParen && alreadyOpenParen ? 1 : 0;
+        const replacement = suggested.slice(0, suggested.length - extraTrim);
+
+        const updatedExpression = prefix + replacement.trim() + postfix;
+        this.onExpressionChange(updatedExpression);
+        const caretPos = updatedExpression.length - postfix.length;
+        setTimeout(() => {
+          this._setCaretPosition(caretPos, true);
+        });
+      } else {
+        const newExpression = source + suggestion.text;
+        this.onExpressionChange(newExpression);
+        setTimeout(() => this._setCaretPosition(newExpression.length, true));
+      }
     }
   };
 

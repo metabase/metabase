@@ -90,16 +90,6 @@ export function suggest({
     partialSuggestionMode = true;
   }
 
-  const identifierTrimOptions = lastInputTokenIsUnclosedIdentifierString
-    ? {
-        // use the last token's pattern anchored to the end of the text
-        prefixTrim: new RegExp(lastInputToken.tokenType.PATTERN.source + "$"),
-      }
-    : {
-        prefixTrim: new RegExp(Identifier.PATTERN.source + "$"),
-        postfixTrim: new RegExp("^" + Identifier.PATTERN.source + "\\s*"),
-      };
-
   const context = getContext({
     cst,
     tokenVector,
@@ -174,7 +164,6 @@ export function suggest({
             alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
               getDimensionName(dimension, symbol),
             ),
-            ...identifierTrimOptions,
           })),
         );
       }
@@ -184,7 +173,6 @@ export function suggest({
             type: "segments",
             name: segment.name,
             text: formatSegmentName(segment),
-            ...identifierTrimOptions,
           })),
         );
       }
@@ -194,7 +182,6 @@ export function suggest({
             type: "metrics",
             name: metric.name,
             text: formatMetricName(metric),
-            ...identifierTrimOptions,
           })),
         );
       }
@@ -248,9 +235,6 @@ export function suggest({
           type: "functions",
           name: "case",
           text: "case(",
-          postfixText: ")",
-          prefixTrim: /\w+$/,
-          postfixTrim: /^\w+(\(\)?|$)/,
         };
         finalSuggestions.push(caseSuggestion);
       }
@@ -317,9 +301,6 @@ function functionSuggestion(type, clause, parens = true) {
     type: type,
     name: name,
     text: name + (parens ? "(" : " "),
-    postfixText: parens ? ")" : " ",
-    prefixTrim: /\w+$/,
-    postfixTrim: parens ? /^\w+(\(\)?|$)/ : /^\w+\s*/,
   };
 }
 
