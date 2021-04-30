@@ -58,7 +58,7 @@
                        (jwt/unsign jwt (sso-settings/jwt-shared-secret)
                                    {:max-age three-minutes-in-seconds})
                        (catch Throwable e
-                         (throw (ex-info (tru "Couldn't unsign JWT")
+                         (throw (ex-info (ex-message e)
                                          {:status-code 401}
                                          e))))
         login-attrs  (jwt-data->login-attributes jwt-data)
