@@ -1,3 +1,4 @@
+import { getIn } from "icepick";
 import {
   PLUGIN_MODERATION_COMPONENTS,
   PLUGIN_MODERATION_SERVICE,
@@ -20,11 +21,13 @@ export function getModerationActionsList() {
 }
 
 export function getModerationStatusIcon(type) {
-  const { icon } = ACTIONS[type] || {};
-  return icon;
+  return getIn(ACTIONS, [type, "icon"]);
 }
 
 export function getColor(type) {
-  const { color } = ACTIONS[type] || {};
-  return color;
+  return getIn(ACTIONS, [type, "color"]);
+}
+
+export function getModerationStatus(type) {
+  return getIn(ACTIONS, [type, "moderationReviewStatus"]);
 }

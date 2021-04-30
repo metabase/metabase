@@ -4,14 +4,38 @@ import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
   getModerationStatusIcon,
   getColor,
+  getModerationStatus,
 } from "metabase-enterprise/moderation";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 
-function CreateModerationIssuePanel({ issueType, onCancel }) {
+CreateModerationIssuePanel.propTypes = {
+  issueType: PropTypes.string.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  createModerationReview: PropTypes.func.isRequired,
+  itemId: PropTypes.number.isRequired,
+  itemType: PropTypes.string.isRequired,
+};
+
+function CreateModerationIssuePanel({
+  issueType,
+  onCancel,
+  createModerationReview,
+  itemId,
+  itemType,
+}) {
   const [description, setDescription] = useState("");
   const icon = getModerationStatusIcon(issueType);
   const color = getColor(issueType);
+
+  const onCreateModerationReview = () => {
+    createModerationReview({
+      // TODO: I should redo the ACTIONS map to be keyed by statuses
+      status: getModerationStatus(issueType),
+      moderated_item_id: itemId,
+      moderated_item_type: itemType,
+    });
+  };
 
   return (
     <div className="p2 flex flex-column row-gap-2">
@@ -43,10 +67,5 @@ function CreateModerationIssuePanel({ issueType, onCancel }) {
     </div>
   );
 }
-
-CreateModerationIssuePanel.propTypes = {
-  issueType: PropTypes.string.isRequired,
-  onCancel: PropTypes.func.isRequired,
-};
 
 export default CreateModerationIssuePanel;

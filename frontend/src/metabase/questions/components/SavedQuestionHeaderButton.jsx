@@ -5,6 +5,7 @@ import styled from "styled-components";
 import Button from "metabase/components/Button";
 
 import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
+const { getModerationStatusIcon } = PLUGIN_MODERATION_SERVICE;
 
 const StyledButton = styled(Button)`
   font-size: 1.25rem;
@@ -17,14 +18,16 @@ const StyledButton = styled(Button)`
 `;
 
 function SavedQuestionHeaderButton({ className, question, onClick, active }) {
-  // this will shortly become something like `question.getModerationStatus()`
-  const moderationStatus = "verification";
+  const latestModerationReview = question.getLatestModerationReview();
   return (
     <StyledButton
       className={className}
       onClick={onClick}
       iconRight="chevrondown"
-      icon={PLUGIN_MODERATION_SERVICE.getModerationStatusIcon(moderationStatus)}
+      icon={
+        latestModerationReview &&
+        getModerationStatusIcon(latestModerationReview.status)
+      }
       active={active}
       iconSize={24}
     >

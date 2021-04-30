@@ -1,20 +1,25 @@
 import { t } from "ttag";
 
+// TODO: I should redo the ACTIONS map to be keyed by statuses
+// `verification` has no meaning to the BE -- it's status: "verified"
 export const ACTIONS = {
   verification: {
     type: "verification",
     icon: "verified",
     color: "brand",
+    moderationReviewStatus: "verified",
   },
   flag: {
     type: "flag",
     icon: "warning_colorized",
     color: "accent5",
+    moderationReviewStatus: "misleading",
   },
   question: {
     type: "question",
     icon: "clarification",
     color: "accent2",
+    moderationReviewStatus: "confusing",
   },
 };
 
