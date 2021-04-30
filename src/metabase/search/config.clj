@@ -47,6 +47,11 @@
   [model-name]
   (Class/forName (format "metabase.models.%s.%sInstance" model-name (str/capitalize model-name))))
 
+(defn model-name->instance
+  "Given a model name as a string, return the specific instance"
+  [model-name]
+  (first (filter (fn [x] (= (str/capitalize model-name) (:name x))) searchable-models)))
+
 (defn- ->class
   [class-or-instance]
   (if (class? class-or-instance)

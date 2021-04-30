@@ -32,7 +32,7 @@
   {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
    :current-user-perms           #{perms/UserPath}
-   (s/optional-key :models)      (s/maybe #{s/Symbol})
+   (s/optional-key :models)      (s/maybe [su/NonBlankString])
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
    (s/optional-key :offset-int)  (s/maybe s/Int)})
@@ -222,8 +222,8 @@
 (s/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [id :- s/Int, query :- su/Map]
-  (h/merge-where query [:= id :database_id])
+  [id :- (s/maybe s/Int), query :- su/Map]
+  (if (some? id) (h/merge-where query [:= id :db_id]) query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
@@ -337,7 +337,10 @@
   [{:keys [id]}]
   (-> id Segment mi/can-read?))
 
-(defn- models-to-search [ctx default] (if (:models ctx) (:models ctx) default))
+(defn- models-to-search
+  [ctx default]
+  (if (:models ctx)
+    (vec (map search-config/model-name->instance (:models ctx))) default))
 
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
@@ -373,7 +376,7 @@
 (s/defn ^:private search-context :- SearchContext
   [search-string :-   (s/maybe su/NonBlankString),
    archived-string :- (s/maybe su/BooleanString)
-   table-db-id :-     (s/maybe su/IntStringGreaterThanZero)
+   table-db-id :-     (s/maybe su/IntGreaterThanZero)
    models :-          (s/maybe [su/NonBlankString])
    limit :-           (s/maybe su/IntStringGreaterThanZero)
    offset :-          (s/maybe su/IntStringGreaterThanOrEqualToZero)
@@ -381,8 +384,8 @@
   (cond->{:search-string      search-string
           :archived?          (Boolean/parseBoolean archived-string)
           :current-user-perms @api/*current-user-permissions-set*}
-    (some? table-db-id) (assoc :table-db-id (Integer/parseInt table-db-id))
-    (some? models)      (assoc :models (hash-set (map search-config/model-name->class models)))
+    (some? table-db-id) (assoc :table-db-id table-db-id)
+    (some? models)      (assoc :models models)
     (some? limit)       (assoc :limit-int (Integer/parseInt limit))
     (some? offset)      (assoc :offset-int (Integer/parseInt offset))))
 
@@ -391,7 +394,7 @@
   [q archived table_db_id models limit offset]
   {q           (s/maybe su/NonBlankString)
    archived    (s/maybe su/BooleanString)
-   table_db_id (s/maybe su/IntStringGreaterThanZero)
+   table_db_id (s/maybe su/IntGreaterThanZero)
    models      (s/maybe [su/NonBlankString])
    limit       (s/maybe su/IntStringGreaterThanZero)
    offset      (s/maybe su/IntStringGreaterThanOrEqualToZero)
