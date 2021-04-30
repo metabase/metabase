@@ -23,7 +23,7 @@ If you're having trouble connecting to your data warehouse, run through these st
 
 **How to fix this:** It's out of the scope of this troubleshooting guide to get your data warehouse server back up. Check with whomever set it up for you!
 
-### The data warehouse server is not accepting connections from your IP
+### The data warehouse server is denying connections from your IP address
 
 **How to detect this:** If you can access the server from a bastion host, or another machine, use `nc` on Linux (or your operating system's equivalent) to verify that you can connect to the host on a given port. Different databases use different ports, but an example for a default PostgreSQL configuration (which listens on port 5432) would be:
 
@@ -45,7 +45,7 @@ If your credentials are incorrect, you should see an error message letting you k
 
 **How to fix this:** If the database name or the user/password combination are incorrect, ask the person running your data warehouse for correct credentials.
 
-### Connection time out: your question took too long
+### Connection timeout: your question took too long
 
 **How to detect this:** If you see the error message, "Your question took too long," something in your setup timed out. Depending on the specifics of your deployment, this could be a timeout in:
 
