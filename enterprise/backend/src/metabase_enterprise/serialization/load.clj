@@ -375,29 +375,52 @@
   (binding [names/*suppress-log-name-lookup-exception* true]
     (load-dashboards context (slurp-dir path))))
 
-(defmethod load "pulses"
-  [path context]
-  (let [pulses    (slurp-dir path)
-        cards     (map :cards pulses)
-        channels  (map :channels pulses)
-        pulse-ids (maybe-upsert-many! context Pulse
-                    (for [pulse pulses]
-                      (-> pulse
-                          (assoc :collection_id (:collection context)
-                                 :creator_id    @default-user)
-                          (dissoc :channels :cards))))]
-    (maybe-upsert-many! context PulseCard
-      (for [[cards pulse-id] (map vector cards pulse-ids)
-            card             cards
-            :when pulse-id]
-        (-> card
-            (assoc :pulse_id pulse-id)
-            (update :card_id fully-qualified-name->card-id))))
+(defn- load-pulses [pulses context]
+  (let [cards       (map :cards pulses)
+        channels    (map :channels pulses)
+        pulse-ids   (maybe-upsert-many! context Pulse
+                      (for [pulse pulses]
+                        (-> pulse
+                            (assoc :collection_id (:collection context)
+                                   :creator_id    @default-user)
+                            (dissoc :channels :cards))))
+        pulse-cards (for [[cards pulse-id pulse-idx] (map vector cards pulse-ids (range 0 (count pulse-ids)))
+                          card             cards
+                          :when pulse-id]
+                      (-> card
+                          (assoc :pulse_id pulse-id)
+                          ;; gather the pulse's name and index for easier bookkeeping later
+                          (assoc ::pulse-index pulse-idx)
+                          (assoc ::pulse-name (:name (nth pulses pulse-idx)))
+                          (update-in-capture-missing [:card_id] fully-qualified-name->card-id)))
+        grouped     (group-by #(empty? (::unresolved-names %)) pulse-cards)
+        process     (get grouped true)
+        revisit     (get grouped false)]
+    (maybe-upsert-many! context PulseCard (map #(dissoc % ::pulse-index ::pulse-name) process))
     (maybe-upsert-many! context PulseChannel
       (for [[channels pulse-id] (map vector channels pulse-ids)
             channel             channels
             :when pulse-id]
-        (assoc channel :pulse_id pulse-id)))))
+        (assoc channel :pulse_id pulse-id)))
+    (if-not (empty? revisit)
+      (let [revisit-info-map (group-by ::pulse-name revisit)]
+        (log/infof "Unresolved references for pulses in collection %s; will reload after first pass complete:%n%s%n"
+                   (or (:collection context) "root")
+                   (str/join "\n" (map
+                                   (fn [[pulse-name revisit-cards]]
+                                     (format " for %s:%n%s"
+                                           pulse-name
+                                           (str/join "\n" (map (comp unresolved-names->string #(into {} %)) revisit-cards))))
+                                   revisit-info-map)))
+        (fn []
+          (log/infof "Reloading pulses from collection %d" (:collection context))
+          (let [pulse-indexes (map ::pulse-index revisit)]
+            (load-pulses (map (partial nth pulses) pulse-indexes) context)))))))
+
+(defmethod load "pulses"
+  [path context]
+  (binding [names/*suppress-log-name-lookup-exception* true]
+    (load-pulses (slurp-dir path) context)))
 
 (defn- source-table
   [source-table]
@@ -528,24 +551,42 @@
     (str (-> parent-id Collection :location) parent-id "/")
     "/"))
 
-(defmethod load "collections"
+(defn- load-collections
   [path context]
-  (let [res-fns (for [path (list-dirs path)]
-                  (let [context (assoc context
-                                  :collection (->> (slurp-dir path)
-                                                   (map (fn [collection]
-                                                          (assoc collection :location (derive-location context))))
-                                                   (maybe-upsert-many! context Collection)
-                                                   first))]
-                    (filter fn? [(load (str path "/collections") context)
-                                 (load (str path "/cards") context)
-                                 (load (str path "/pulses") context)
-                                 (load (str path "/dashboards") context)])))
-        all-fns (apply concat res-fns)]
+  (let [subdirs      (list-dirs path)
+        by-ns        (group-by #(let [[_ coll-ns] (re-matches #".*/:([^:/]+)" %)]
+                                  coll-ns)
+                               subdirs)
+        grouped      (group-by (comp nil? first) by-ns)
+        ns-paths     (get grouped false)
+        entity-paths (->> (get grouped true)
+                          (map last)
+                          first)
+        results      (for [path entity-paths]
+                       (let [context (assoc context
+                                       :collection (->> (slurp-dir path)
+                                                        (map #(assoc % :location  (derive-location context)
+                                                                       :namespace (-> context
+                                                                                      :collection-namespace)))
+                                                        (maybe-upsert-many! context Collection)
+                                                        first))]
+                         (log/infof "Processing collection at path %s" path)
+                         [(load (str path "/collections") context)
+                          (load (str path "/cards") context)
+                          (load (str path "/pulses") context)
+                          (load (str path "/dashboards") context)]))
+        load-ns-fns  (for [[coll-ns [coll-ns-path]] ns-paths]
+                       (do (log/infof "Loading %s namespace for collection at path %s" coll-ns coll-ns-path)
+                           (load-collections coll-ns-path (assoc context :collection-namespace coll-ns))))
+        all-fns      (filter fn? (concat (apply concat results) load-ns-fns))]
     (if-not (empty? all-fns)
       (fn []
         (doseq [reload-fn all-fns]
           (reload-fn))))))
+
+(defmethod load "collections"
+  [path context]
+  (load-collections path context))
 
 (defn load-settings
   "Load a dump of settings."

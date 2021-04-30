@@ -75,8 +75,10 @@
                          not-empty
                          (map #(-> % Integer/parseInt Collection safe-name (str "/collections")))
                          (str/join "/")
-                         (format "%s/"))]
-    (str "/collections/root/collections/" parents (safe-name collection))))
+                         (format "%s/"))
+        ns-part (if-let [coll-ns (:namespace collection)]
+                  (str "/:" (if (keyword? coll-ns) (name coll-ns) coll-ns) "/"))]
+    (str "/collections/root/collections/" ns-part parents (safe-name collection))))
 
 (defmethod fully-qualified-name* (type Dashboard)
   [dashboard]

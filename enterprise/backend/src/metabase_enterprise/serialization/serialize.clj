@@ -29,7 +29,8 @@
   "Current serialization protocol version.
 
   This gets stored with each dump, so we can correctly recover old dumps."
-  1)
+  ;; version 2 - start adding namespace portion to /collections/ paths
+  2)
 
 (def ^:private ^{:arglists '([form])} mbql-entity-reference?
   "Is given form an MBQL entity reference?"

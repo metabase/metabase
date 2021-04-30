@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.test-util
   (:require [metabase-enterprise.serialization.names :as names]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Field Metric
-                                     Segment Table]]
+                                     Pulse PulseCard Segment Table]]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test.data :as data]
             [toucan.util.test :as tt]
@@ -168,7 +168,13 @@
                                          :collection_id ~'collection-id
                                          :dataset_query {:type :query
                                                          :database ~'db-id
-                                                         :query {:source-table (str "card__" ~'card-id-root)}}}]]
+                                                         :query {:source-table (str "card__" ~'card-id-root)}}}]
+                   Pulse               [{~'pulse-id :id} {:name          "Serialization Pulse"
+                                                          :collection_id ~'collection-id}]
+                   PulseCard           [{~'pulsecard-root-id :id} {:pulse_id ~'pulse-id
+                                                                   :card_id  ~'card-id-root}]
+                   PulseCard           [{~'pulsecard-collection-id :id} {:pulse_id ~'pulse-id
+                                                                         :card_id  ~'card-id}]]
      ~@body))
 
 ;; Don't memoize as IDs change in each `with-world` context

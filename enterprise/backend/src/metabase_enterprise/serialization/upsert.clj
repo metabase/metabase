@@ -34,7 +34,7 @@
    Field               [:name :table_id]
    Metric              [:name :table_id]
    Segment             [:name :table_id]
-   Collection          [:name :location]
+   Collection          [:name :location :namespace]
    Dashboard           [:name :collection_id]
    DashboardCard       [:card_id :dashboard_id :visualization_settings]
    DashboardCardSeries [:dashboardcard_id :card_id]
