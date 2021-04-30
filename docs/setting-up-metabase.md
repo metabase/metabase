@@ -25,16 +25,18 @@ If you’re ready to connect, here’s what you’ll need:
 * The **username** you use for the database
 * The **password** you use for the database
 
-If you’re using Heroku, here are [instructions on how to get this information](./administration-guide/01-managing-databases.html#heroku-databases). If you’re an Amazon RDS kind of person, you can follow [these instructions](./administration-guide/01-managing-databases.html#rds-databases).
-
 If you don't have this information handy, the person responsible for administering the database should have it.
 
 ## Connect to your database
+
 Now that you have your database info you can connect to your database. Sweet, sweet data at last. Just go ahead and put your info into this form and click **Next**.
 
 ![adddatabase](images/AddDatabaseInfo.png)
 
+For more on connecting to databases, see [Adding and managing databases](./administration-guide/01-managing-databases.md)
+
 ## Usage data preferences
+
 One last quick thing that you’ll have to decide is if it’s okay for us to collect some anonymous info about how you use the product — it helps us a bunch to make Metabase better! Like the box says:
 * Metabase never collects anything about your data or question results.
 * All collection is completely anonymous.
