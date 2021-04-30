@@ -863,10 +863,6 @@ jobs:
       test-files-location:
         type: string
         default: ""
-      # Node number e.g. 1
-      node:
-        type: string
-        default: ""
       before-steps:
         type: steps
         default: []
@@ -1155,7 +1151,6 @@ workflows:
       - fe-tests-cypress:
           matrix:
             parameters:
-              node: ["1"]
               edition: ["ee", "oss"]
           name: e2e-tests-<< matrix.edition >>
           requires:
