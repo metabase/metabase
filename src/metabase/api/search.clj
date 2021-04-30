@@ -32,7 +32,7 @@
   {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
    :current-user-perms           #{perms/UserPath}
-   (s/optional-key :models)      (s/maybe [su/NonBlankString])
+   (s/optional-key :models)      (s/maybe (s/enum su/NonBlankString [su/NonBlankString]))
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
    (s/optional-key :offset-int)  (s/maybe s/Int)})
@@ -363,10 +363,21 @@
                              (map #(update % :favorite bit->boolean))
                              (map #(update % :archived bit->boolean))
                              (map (partial scoring/score-and-result (:search-string search-ctx)))
-                             (filter some?))]
-      (cond->> (scoring/top-results reducible-results xf)
-        (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-        (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))))))
+                             (filter some?))
+          total-results     (scoring/top-results reducible-results xf)]
+      ;; We get to do this slicing and dicing with the result data because
+      ;; the pagination of search is for UI improvement, not for performance.
+      ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
+      {
+       :total (count total-results)
+       :data
+       (cond->> total-results
+         (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+         (some? (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+       :limit (:limit-int search-ctx)
+       :offset (:offset-int search-ctx)
+       :search search-ctx
+      })))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -385,17 +396,28 @@
           :archived?          (Boolean/parseBoolean archived-string)
           :current-user-perms @api/*current-user-permissions-set*}
     (some? table-db-id) (assoc :table-db-id table-db-id)
-    (some? models)      (assoc :models models)
+    (some? models)      (assoc :models
+                               (if (vector? models)
+                                 models
+                                 (clojure.string/split models #",")))
     (some? limit)       (assoc :limit-int (Integer/parseInt limit))
     (some? offset)      (assoc :offset-int (Integer/parseInt offset))))
 
 (api/defendpoint GET "/"
-  "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
+  "Search within a bunch of models for the substring `q`.
+  For the list of models, check `metabase.search.config/searchable-models.
+
+  To search in archived models, pass in `archived=true`.
+  If you want, while searching tables, only tables of a certain DB id,
+  pass in a DB id value to `table_db_id`.
+
+  To specify a list of models, pass in an array to `models`.
+  "
   [q archived table_db_id models limit offset]
   {q           (s/maybe su/NonBlankString)
    archived    (s/maybe su/BooleanString)
    table_db_id (s/maybe su/IntGreaterThanZero)
-   models      (s/maybe [su/NonBlankString])
+   models      (s/maybe (s/enum su/NonBlankString [su/NonBlankString]))
    limit       (s/maybe su/IntStringGreaterThanZero)
    offset      (s/maybe su/IntStringGreaterThanOrEqualToZero)
    }
