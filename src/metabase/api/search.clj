@@ -32,7 +32,7 @@
   {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
    :current-user-perms           #{perms/UserPath}
-   (s/optional-key :models)      (s/maybe (s/enum su/NonBlankString [su/NonBlankString]))
+   (s/optional-key :models)      (s/maybe [su/NonBlankString])
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
    (s/optional-key :offset-int)  (s/maybe s/Int)})
@@ -376,30 +376,27 @@
          (some? (:limit-int search-ctx)) (take (:limit-int search-ctx)))
        :limit (:limit-int search-ctx)
        :offset (:offset-int search-ctx)
-       :search search-ctx
-      })))
-
+       :search search-ctx })))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+; This is basically a union type. defendpoint splits the string if it only gets one
+(def ^:private models-schema (s/conditional #(vector? %) [su/NonBlankString] :else su/NonBlankString))
+
 (s/defn ^:private search-context :- SearchContext
   [search-string :-   (s/maybe su/NonBlankString),
    archived-string :- (s/maybe su/BooleanString)
    table-db-id :-     (s/maybe su/IntGreaterThanZero)
-   models :-          (s/maybe [su/NonBlankString])
+   models :-          (s/maybe models-schema)
    limit :-           (s/maybe su/IntStringGreaterThanZero)
-   offset :-          (s/maybe su/IntStringGreaterThanOrEqualToZero)
-   ]
+   offset :-          (s/maybe su/IntStringGreaterThanOrEqualToZero)]
   (cond->{:search-string      search-string
           :archived?          (Boolean/parseBoolean archived-string)
           :current-user-perms @api/*current-user-permissions-set*}
     (some? table-db-id) (assoc :table-db-id table-db-id)
-    (some? models)      (assoc :models
-                               (if (vector? models)
-                                 models
-                                 (clojure.string/split models #",")))
+    (some? models)      (assoc :models (if (vector? models) models [models]))
     (some? limit)       (assoc :limit-int (Integer/parseInt limit))
     (some? offset)      (assoc :offset-int (Integer/parseInt offset))))
 
@@ -414,13 +411,12 @@
   To specify a list of models, pass in an array to `models`.
   "
   [q archived table_db_id models limit offset]
-  {q           (s/maybe su/NonBlankString)
-   archived    (s/maybe su/BooleanString)
-   table_db_id (s/maybe su/IntGreaterThanZero)
-   models      (s/maybe (s/enum su/NonBlankString [su/NonBlankString]))
-   limit       (s/maybe su/IntStringGreaterThanZero)
-   offset      (s/maybe su/IntStringGreaterThanOrEqualToZero)
-   }
+  {q            (s/maybe su/NonBlankString)
+   archived     (s/maybe su/BooleanString)
+   table_db_id  (s/maybe su/IntGreaterThanZero)
+   models       (s/maybe models-schema)
+   limit        (s/maybe su/IntStringGreaterThanZero)
+   offset       (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (search (search-context q archived table_db_id models limit offset)))
 
 (api/define-routes)
