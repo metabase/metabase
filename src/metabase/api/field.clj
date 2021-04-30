@@ -312,7 +312,7 @@
   {:database (db-id field)
    :type     :query
    :query    {:source-table (table-id field)
-              :filter       [:starts-with [:field (u/the-id search-field) nil] value {:case-sensitive false}]
+              :filter       [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}]
               ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
               ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
               ;; identifiers/aliases
@@ -323,12 +323,12 @@
               :limit        limit}})
 
 (s/defn search-values
-  "Search for values of `search-field` that start with `value` (up to `limit`, if specified), and return like
+  "Search for values of `search-field` that contain `value` (up to `limit`, if specified), and return like
 
       [<value-of-field> <matching-value-of-search-field>].
 
-   For example, with the Sample Dataset, you could search for the first three IDs & names of People whose name starts
-   with `Ma` as follows:
+   For example, with the Sample Dataset, you could search for the first three IDs & names of People whose name
+  contains `Ma` as follows:
 
       (search-values <PEOPLE.ID Field> <PEOPLE.NAME Field> \"Ma\" 3)
       ;; -> ((14 \"Marilyne Mohr\")
