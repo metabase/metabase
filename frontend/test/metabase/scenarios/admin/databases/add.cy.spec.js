@@ -151,7 +151,7 @@ describe("scenarios > admin > databases > add", () => {
   });
 
   it("EE should ship with Oracle and Vertica as options", () => {
-    cy.onlyOn(Cypress.env("HAS_ENTERPRISE_TOKEN"));
+    cy.onlyOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
 
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
