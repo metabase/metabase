@@ -122,7 +122,9 @@ To change the look and feel of the embed, you can add additional parameters to t
 
 - **bordered**: true or false. Adds a visible border to the embed.
 - **titled**: true or false. Adds or removes the title to the embedding.
-- **theme**: null or night. Shows the embedded iframe in dark mode. 
+- **theme**: null or night. Shows the embedded iframe in dark mode.
+
+For example: http://yourmetabaseurl.com/embed/dashboard/a_very_huge_hashed_url#theme=night&hide_parameters=category&titled=true&bordered=false
 
 ### Reference applications
 
