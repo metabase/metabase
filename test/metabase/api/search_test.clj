@@ -149,14 +149,11 @@
         keep-database-id (if (fn? *search-request-results-database-id*)
                            (*search-request-results-database-id*)
                            *search-request-results-database-id*)]
-    (if (:error (:data raw-results)
+    (if (:error (:data raw-results))
       raw-results
-      ;;;;;; update-in shenanigans goes here
-      ;;;;;; update-in shenanigans goes here
-      ;;;;;; update-in shenanigans goes here
-      ;;;;;; update-in shenanigans goes here
-      ;;;;;; update-in shenanigans goes here
-      (vec (xf (process-raw-data raw-results keep-database-id))))))
+      (update-in raw-results [:data]
+                 (fn [raw-data]
+                   (vec (xf (process-raw-data raw-data keep-database-id))))))))
 
 (defn- search-request
   [& args]
@@ -494,7 +491,7 @@
 (deftest no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"
     (letfn [(search-for-pulses [{pulse-id :id}]
-              (->> (mt/user-http-request :crowberto :get "search?q=electro")
+              (->> (:data (mt/user-http-request :crowberto :get "search?q=electro"))
                    (filter #(and (= (:model %) "pulse")
                                  (= (:id %) pulse-id)))
                    first))]
