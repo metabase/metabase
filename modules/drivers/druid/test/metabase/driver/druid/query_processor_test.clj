@@ -598,7 +598,7 @@
                     (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
                             :queryType :scan}
                            (compiled query)))
-                    (is (= ["931" "1" "Kinaree Thai Bistro"]
+                    (is (= [931 1 "Kinaree Thai Bistro"]
                            (mt/first-row (qp/process-query query))))))
 
                 (testing "topN query"

@@ -1046,13 +1046,7 @@
       can-sort? (update :query merge
                         {:order (case direction
                                   :desc :descending
-                                  :asc  :ascending)}
-                        ;; if the MBQL query specifies a limit, tell Druid to only return that many rows when time
-                        ;; ordering is used -- see https://druid.apache.org/docs/latest/querying/scan-query.html#query-context-properties
-                        ;;
-                        ;; not sure why, but sorting doesn't seem to work without this set with the test Docker image.
-                        (when limit
-                          {:maxRowsQueuedForOrdering limit})))))
+                                  :asc  :ascending)}))))
 
 
 ;;; ------------------------------------------------- handle-fields --------------------------------------------------
