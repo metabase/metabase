@@ -244,7 +244,6 @@
         (dotimes [n 10]
           (send-password-reset))
         (let [error (fn []
-                      ; TODO (noahmoss) do I need to change this?
                       (-> (send-password-reset 400)
                           :errors
                           :email))]
