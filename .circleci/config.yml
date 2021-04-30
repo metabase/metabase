@@ -172,8 +172,6 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
-        environment:
-          MB_DRUID_TEST_HOST: localhost
       - image: metabase/druid:0.20.2
         environment:
           CLUSTER_SIZE: nano-quickstart
