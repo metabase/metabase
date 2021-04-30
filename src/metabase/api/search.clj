@@ -376,7 +376,8 @@
          (some? (:limit-int search-ctx)) (take (:limit-int search-ctx)))
        :limit (:limit-int search-ctx)
        :offset (:offset-int search-ctx)
-       :search search-ctx })))
+       :table_db_id (:table-db-id search-ctx)
+       :models (:models search-ctx) })))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
