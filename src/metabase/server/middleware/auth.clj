@@ -38,7 +38,7 @@
 
   If the request `:metabase-api-key` matches the configured `api-key` value then the request continues, otherwise we
   reject the request and return a 403 Forbidden response.
-  
+
   This variable only works for /api/notify/db/:id endpoint"
   [handler]
   (fn [{:keys [metabase-api-key], :as request} respond raise]
