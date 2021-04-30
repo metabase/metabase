@@ -23,7 +23,6 @@
      (do-request http/get \"http://my-json-api.net\")"
   [request-fn url & {:as options}]
   {:pre [(fn? request-fn) (string? url)]}
-  (println "REQUEST =>" (u/pprint-to-str 'cyan options)) ; NOCOMMIT
   ;; this is the way the `Content-Type` header is formatted in requests made by the Druid web interface
   (let [options (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
                   (:body options) (update :body json/generate-string))]

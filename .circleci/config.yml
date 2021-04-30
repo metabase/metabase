@@ -174,7 +174,7 @@ executors:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_DRUID_TEST_HOST: localhost
-      - image: metabase/druid:0.17.0
+      - image: metabase/druid:0.20.2
         environment:
           CLUSTER_SIZE: nano-quickstart
     # Run Docker images with 8GB or RAM instead of the default 4GB for medium instances. The Druid Docker image runs

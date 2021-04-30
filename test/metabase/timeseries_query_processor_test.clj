@@ -43,8 +43,8 @@
     (testing "query w/o :fields"
       (doseq [[direction expected-rows]
               {:desc [["2015-12-29T00:00:00Z" "Señor Fish"                -118.238 34.0489 2 "Mexican"   693 1 "AQAAAQAAAAIFIA==" "Frans Hevel"    "2014-07-03T19:30:00"]
-                      ["2015-12-26T00:00:00Z" "Cha Cha Chicken"           -118.49 34.0071  1 "Caribbean" 135 1 "AQAAAQAAAACYEA==" "Shad Ferdynand" "2014-08-02T12:30:00"]]
-               :asc  [["2013-01-03T00:00:00Z" "Kinaree Thai Bistro"       -118.344 34.094  1 "Thai"      931 1 "AQAAAQAAAAEBsA==" "Simcha Yan"     "2014-01-01T00:30:00"]
+                      ["2015-12-26T00:00:00Z" "Empress of China"          -122.406 37.7949 3 "Chinese"   570 1 "AQAAAQAAAAP4IA==" "Kfir Caj"       "2014-07-03T01:30:00"]]
+               :asc  [["2013-01-03T00:00:00Z" "Kinaree Thai Bistro"       -118.344 34.094  1 "Thai"      931 1 "AQAAAQAAAAEBsA==" "Simcha Yan"     "2014-01-01T08:30:00"]
                       ["2013-01-10T00:00:00Z" "Ruen Pair Thai Restaurant" -118.306 34.1021 2 "Thai"      285 1 "AQAAAQAAAAP4IA==" "Kfir Caj"       "2014-07-03T01:30:00"]]}]
         (testing direction
           (is (= {:columns ["timestamp"
@@ -66,7 +66,7 @@
 
     (testing "for a query with :fields"
       (doseq [[direction expected-rows] {:desc [["Señor Fish"                "Mexican"   "2015-12-29T00:00:00Z"]
-                                                ["Cha Cha Chicken"           "Caribbean" "2015-12-26T00:00:00Z"]]
+                                                ["Empress of China"          "Chinese"   "2015-12-26T00:00:00Z"]]
                                          :asc  [["Kinaree Thai Bistro"       "Thai"      "2013-01-03T00:00:00Z"]
                                                 ["Ruen Pair Thai Restaurant" "Thai"      "2013-01-10T00:00:00Z"]]}]
         (testing direction
