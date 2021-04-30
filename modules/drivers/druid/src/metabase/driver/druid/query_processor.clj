@@ -1032,7 +1032,7 @@
       can-sort? (assoc-in [:query :descending] (= direction :desc)))))
 
 (defmethod handle-order-by ::scan
-  [_ {[[direction field]] :order-by, :keys [limit fields]} druid-query]
+  [_ {[[direction field]] :order-by, fields :fields} druid-query]
   (let [can-sort? (cond
                     (not (some datetime-field? fields))
                     (log/warn (trs "scan queries can only be sorted if they include the ''timestamp'' column."))
@@ -1043,10 +1043,9 @@
                     :else
                     true)]
     (cond-> druid-query
-      can-sort? (update :query merge
-                        {:order (case direction
-                                  :desc :descending
-                                  :asc  :ascending)}))))
+      can-sort? (assoc-in [:query :order] (case direction
+                                            :desc :descending
+                                            :asc  :ascending)))))
 
 
 ;;; ------------------------------------------------- handle-fields --------------------------------------------------
