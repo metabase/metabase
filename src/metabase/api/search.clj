@@ -32,7 +32,7 @@
   {:search-string                (s/maybe su/NonBlankString)
    :archived?                    s/Bool
    :current-user-perms           #{perms/UserPath}
-   (s/optional-key :models)      (s/maybe #{s/Keyword})
+   (s/optional-key :models)      (s/maybe #{s/Symbol})
    (s/optional-key :table-db-id) (s/maybe s/Int)
    (s/optional-key :limit-int)   (s/maybe s/Int)
    (s/optional-key :offset-int)  (s/maybe s/Int)})
@@ -336,7 +336,7 @@
               (not (zero? v))
               v))]
     (let [search-query      {:select [:*]
-                             :from [[{:union-all (for [model search-config/searchable-models
+                             :from [[{:union-all (for [model (models-to-search search-ctx search-config/searchable-models)
                                                        :let  [query (search-query-for-model model search-ctx)]
                                                        :when (seq query)]
                                                    query)} :alias_is_required_by_sql_but_not_needed_here]]
@@ -371,7 +371,7 @@
           :archived?          (Boolean/parseBoolean archived-string)
           :current-user-perms @api/*current-user-permissions-set*}
     (some? table-db-id) (assoc :table-db-id (Integer/parseInt table-db-id))
-    (some? models)      (assoc :models (hash-set (map keyword models)))
+    (some? models)      (assoc :models (hash-set (map search-config/model-name->class models)))
     (some? limit)       (assoc :limit-int (Integer/parseInt limit))
     (some? offset)      (assoc :offset-int (Integer/parseInt offset))))
 
