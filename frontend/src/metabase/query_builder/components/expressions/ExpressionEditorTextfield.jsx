@@ -178,10 +178,14 @@ export default class ExpressionEditorTextfield extends React.Component {
         const prefix = source.slice(0, token.start);
         const postfix = source.slice(token.end);
         const suggested = suggestion.text;
-        const paren = _.last(suggested) === "(";
-        const replacement = paren
-          ? suggested.slice(0, suggested.length - 1)
-          : suggested;
+
+        // e.g. source is "isnull(A" and suggested is "isempty("
+        // the result should be "isempty(A" and NOT "isempty((A"
+        const openParen = _.last(suggested) === "(";
+        const alreadyOpenParen = _.first(postfix.trimLeft()) === "(";
+        const extraTrim = openParen && alreadyOpenParen ? 1 : 0;
+        const replacement = suggested.slice(0, suggested.length - extraTrim);
+
         const updatedExpression = prefix + replacement.trim() + postfix;
         this.onExpressionChange(updatedExpression);
         const caretPos = updatedExpression.length - postfix.length;

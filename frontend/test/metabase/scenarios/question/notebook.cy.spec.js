@@ -943,6 +943,13 @@ describe("scenarios > question > notebook", () => {
       cy.get("[contenteditable='true']").contains("length([Title])");
     });
   });
+
+  it("should correctly insert function suggestion with the opening parenthesis", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    cy.get("[contenteditable='true']").type("LOW{enter}");
+    cy.get("[contenteditable='true']").contains("lower(");
+  });
 });
 
 // Extracted repro steps for #13000
