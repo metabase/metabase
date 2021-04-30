@@ -1,6 +1,7 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
   (:require [compojure.core :refer [DELETE GET POST PUT]]
+            [honeysql.helpers :as hh]
             [metabase.api.common :as api]
             [metabase.api.permission-graph :as pg]
             [metabase.metabot :as metabot]
@@ -9,6 +10,7 @@
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
@@ -60,12 +62,15 @@
 
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`, including the `MetaBot` group only if MetaBot is enabled."
-  []
+  [limit offset]
   (db/select PermissionsGroup
-    {:where    (if (metabot/metabot-enabled)
-                 true
-                 [:not= :id (u/get-id (group/metabot))])
-     :order-by [:%lower.name]}))
+    (cond-> {:where    (if (metabot/metabot-enabled)
+                     true
+                     [:not= :id (u/get-id (group/metabot))])
+             :order-by [:%lower.name]}
+        (some? limit) (hh/limit (Integer/parseInt limit))
+        (some? offset) (hh/offset (Integer/parseInt offset))
+    )))
 
 (defn add-member-counts
   "Efficiently add `:member_count` to PermissionGroups."
@@ -77,9 +82,14 @@
 
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
-  []
+  [limit offset]
+  {
+   limit  (s/maybe su/IntStringGreaterThanZero)
+   offset (s/maybe su/IntStringGreaterThanOrEqualToZero)
+  }
   (api/check-superuser)
-  (-> (ordered-groups)
+  (api/check-valid-page-params limit offset)
+  (-> (ordered-groups limit offset)
       (hydrate :member_count)))
 
 (api/defendpoint GET "/group/:id"

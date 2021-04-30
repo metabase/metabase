@@ -19,4 +19,4 @@
                :first_name  "Rasta"
                :email       "rasta@metabase.com"
                :id          true}]
-             (tu/boolean-ids-and-timestamps (mt/user-http-request :rasta :get 200 "user")))))))
+             (tu/boolean-ids-and-timestamps ((mt/user-http-request :rasta :get 200 "user") :data)))))))

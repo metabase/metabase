@@ -4,22 +4,10 @@
             [metabase.api.common :as api]
             [metabase.models.task-history :as task-history :refer [TaskHistory]]
             [metabase.task :as task]
-            [metabase.util.i18n :as ui18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn- check-valid-limit [limit offset]
-  (when (and offset (not limit))
-    (throw
-     (ex-info (tru "When including an offset, a limit must also be included.")
-       {:status-code 400}))))
-
-(defn- check-valid-offset [limit offset]
-  (when (and limit (not offset))
-    (throw
-     (ex-info (tru "When including a limit, an offset must also be included.")
-       {:status-code 400}))))
 
 (api/defendpoint GET "/"
   "Fetch a list of recent tasks stored as Task History"
@@ -27,8 +15,7 @@
   {limit  (s/maybe su/IntStringGreaterThanZero)
    offset (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (api/check-superuser)
-  (check-valid-limit limit offset)
-  (check-valid-offset limit offset)
+  (api/check-valid-page-params limit offset)
   (let [limit-int  (some-> limit Integer/parseInt)
         offset-int (some-> offset Integer/parseInt)]
     {:total  (db/count TaskHistory)

@@ -19,6 +19,9 @@ const paginationState = () => ComposedComponent =>
     handlePreviousPage = () => {
       this.setState({ page: this.state.page - 1, hasMorePages: true });
     };
+    handleResetPagination = () => {
+      this.setState({ page: 0, hasMorePages: null });
+    };
     render() {
       const isPaginated = typeof this.props.pageSize === "number";
       const extraProps = isPaginated
