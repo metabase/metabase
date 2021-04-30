@@ -316,7 +316,8 @@
   color: var(--color-text-medium);
 }
 
-.bg-transparent {
+.bg-transparent,
+.bg-transparent-hover:hover {
   background-color: transparent;
 }
 
