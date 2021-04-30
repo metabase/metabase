@@ -16,7 +16,7 @@ In general, prefer a Virtual Private Network (VPN) to SSH tunneling, but there a
 
 Sometimes when a data warehouse is inside an enterprise environment, direct connections are blocked by security devices such as firewalls and intrusion prevention systems. To grant access to this environment, many enterprises offer a VPN, a bastion host, or both. VPNs are the more convenient and reliable option, though bastion hosts are used frequently, especially with cloud providers such as Amazon Web Services where VPC (Virtual Private Clouds) prohibit direct connections. Bastion hosts offer the option to first connect to a computer on the edge of the protected network, then from that bastion host computer establish a second connection to the data warehouse on the internal network, essentially patching these two connections together. Using the SSH tunneling feature, Metabase can automate this process. 
 
-### How to use ssh-tunneling
+### How to use SSH tunneling
 
 When connecting though a bastion host:
 
