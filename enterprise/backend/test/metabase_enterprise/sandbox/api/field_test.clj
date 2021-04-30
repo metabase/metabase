@@ -90,9 +90,12 @@
         ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. So
         ;; searching whould only include venues in that category
         (let [url (format "field/%s/search/%s" (mt/id :venues :name) (mt/id :venues :name))]
-          (is (= [["Tacos Villa Corona"     "Tacos Villa Corona"]
+          (is (= [["Gordo Taqueria"         "Gordo Taqueria"]
+                  ["Tacos Villa Corona"     "Tacos Villa Corona"]
                   ["Taqueria Los Coyotes"   "Taqueria Los Coyotes"]
-                  ["Taqueria San Francisco" "Taqueria San Francisco"]]
+                  ["Taqueria San Francisco" "Taqueria San Francisco"]
+                  ["Tito's Tacos"           "Tito's Tacos"]
+                  ["Yuca's Taqueria"        "Yuca's Taqueria"]]
                  (mt/user-http-request :rasta :get 200 url :value "Ta"))))))))
 
 (deftest caching-test
