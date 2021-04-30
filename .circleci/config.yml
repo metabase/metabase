@@ -1184,13 +1184,13 @@ workflows:
             parameters:
               node: ["1"]
               edition: ["ee", "oss"]
-          name: fe-tests-cypress-<< matrix.node >>-<< matrix.edition >>
+          name: e2e-tests-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "default-<< matrix.edition >>"
 
       - fe-tests-cypress:
-          name: fe-tests-cypress-mongo-4-<< matrix.edition >>
+          name: e2e-tests-mongo-4-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
           e: fe-mongo-4
@@ -1203,7 +1203,7 @@ workflows:
           <<: *Matrix
 
       - fe-tests-cypress:
-          name: fe-tests-cypress-postgres-12-<< matrix.edition >>
+          name: e2e-tests-postgres-12-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
           e: fe-postgres-12
@@ -1216,7 +1216,7 @@ workflows:
           <<: *Matrix
 
       - fe-tests-cypress:
-          name: fe-tests-cypress-mysql-8-<< matrix.edition >>
+          name: e2e-tests-mysql-8-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
           e: fe-mysql-8
@@ -1261,7 +1261,7 @@ workflows:
             - build-uberjar-frontend
 
       - fe-tests-cypress-smoketest:
-          name: fe-tests-cypress-smoketest
+          name: e2e-tests-smoketest
           requires:
             - build-uberjar
           cypress-group: "default"
