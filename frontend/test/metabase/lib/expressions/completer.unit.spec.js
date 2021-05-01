@@ -17,7 +17,7 @@ describe("metabase/lib/expressions/completer", () => {
 
     it("should ignore operators and literals", () => {
       expect(partialMatch("X OR")).toEqual(null);
-      expect(partialMatch("42 + ")).toEqual(null);
+      expect(partialMatch("42 +")).toEqual(null);
       expect(partialMatch("3.14")).toEqual(null);
       expect(partialMatch('"Hello')).toEqual(null);
       expect(partialMatch("'world")).toEqual(null);
