@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import Group from "metabase/entities/groups";
 import { connect } from "react-redux";
 
 import { createMembership, deleteMembership } from "../people";
@@ -10,7 +9,6 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import GroupSelect from "./GroupSelect";
 
-@Group.loadList()
 @connect(
   (state, props) => ({
     groups: getGroupsWithoutMetabot(state, props),
@@ -51,9 +49,9 @@ export default class UserGroupSelect extends Component {
   };
 
   render() {
-    const { loading, groups, userMemberships, isCurrentUser } = this.props;
+    const { groups, userMemberships, isCurrentUser } = this.props;
 
-    if (loading || !userMemberships) {
+    if (!groups || groups.length === 0 || !userMemberships) {
       return <LoadingSpinner />;
     }
 
