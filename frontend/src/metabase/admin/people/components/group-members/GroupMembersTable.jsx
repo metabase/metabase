@@ -39,6 +39,12 @@ export default function GroupMembersTable({
     <User.ListLoader pageSize={15} entityQuery={entityQuery}>
       {({ list, page, pageSize, onNextPage, onPreviousPage, reload }) => {
         const hasMembers = members.length !== 0;
+
+        const handleAddUser = async user => {
+          await onAddUserDone();
+          reload();
+        };
+
         const handleRemoveUser = async user => {
           await onRemoveUserClicked(user);
           reload();
@@ -53,7 +59,7 @@ export default function GroupMembersTable({
                   text={text}
                   selectedUsers={selectedUsers}
                   onCancel={onAddUserCancel}
-                  onDone={onAddUserDone}
+                  onDone={handleAddUser}
                   onTextChange={onAddUserTextChange}
                   onSuggestionAccepted={onUserSuggestionAccepted}
                   onRemoveUserFromSelection={onRemoveUserFromSelection}

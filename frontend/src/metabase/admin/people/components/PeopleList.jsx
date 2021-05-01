@@ -16,13 +16,18 @@ import Tooltip from "metabase/components/Tooltip";
 import UserAvatar from "metabase/components/UserAvatar";
 import PaginationControls from "metabase/components/PaginationControls";
 import { getUser } from "metabase/selectors/user";
+
 import User from "metabase/entities/users";
+import Group from "metabase/entities/groups";
 
 import UserGroupSelect from "../components/UserGroupSelect";
 import { USER_STATUS } from "../constants";
 import { isLastPage } from "../utils";
 import { loadMemberships } from "../people";
 
+@Group.loadList({
+  reload: true,
+})
 @User.loadList({
   reload: true,
   query: (_, { query }) => ({
@@ -52,6 +57,7 @@ export default class PeopleList extends Component {
     }),
     user: PropTypes.object.isRequired,
     users: PropTypes.array,
+    groups: PropTypes.array,
     loadMemberships: PropTypes.func.isRequired,
     onNextPage: PropTypes.func,
     onPreviousPage: PropTypes.func,
@@ -91,6 +97,7 @@ export default class PeopleList extends Component {
     const {
       user,
       users,
+      groups,
       query,
       total,
       onNextPage,
@@ -172,6 +179,7 @@ export default class PeopleList extends Component {
                     <React.Fragment>
                       <td>
                         <UserGroupSelect
+                          groups={groups}
                           userId={user.id}
                           isCurrentUser={isCurrentUser(user)}
                         />
