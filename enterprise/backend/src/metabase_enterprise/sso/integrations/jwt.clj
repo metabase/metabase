@@ -59,7 +59,7 @@
                                    {:max-age three-minutes-in-seconds})
                        (catch Throwable e
                          (throw (ex-info (ex-message e)
-                                         {:status-code 401}
+                                         (assoc (ex-data e) :status-code 401)
                                          e))))
         login-attrs  (jwt-data->login-attributes jwt-data)
         email        (get jwt-data (jwt-attribute-email))

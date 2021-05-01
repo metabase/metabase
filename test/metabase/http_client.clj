@@ -230,9 +230,7 @@
 
 (def ^:private response-timeout-ms
   ;; CircleCI is crazy slow and likes to randomly pause, so use a much larger timeout when running on CI
-  (u/seconds->ms (if (env/env :ci)
-                   45
-                   15)))
+  (u/seconds->ms 45))
 
 (defn client-full-response
   "Identical to `client` except returns the full HTTP response map, not just the body of the response"
