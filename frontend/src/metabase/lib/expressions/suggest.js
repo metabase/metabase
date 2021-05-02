@@ -32,7 +32,7 @@ import {
   lexerWithRecovery,
 } from "./lexer";
 
-import { partialMatch } from "./completer";
+import { partialMatch, enclosingFunction } from "./completer";
 
 import getHelpText from "./helper_text_strings";
 
@@ -43,6 +43,7 @@ import {
   MBQL_CLAUSES,
   isExpressionType,
   getFunctionArgType,
+  getMBQLName,
   EXPRESSION_TYPES,
   EDITOR_FK_SYMBOLS,
 } from "./config";
@@ -67,18 +68,29 @@ export function suggest({
   expressionName,
 } = {}) {
   const partialSource = source.slice(0, targetOffset);
+
+  const matchPrefix = partialMatch(partialSource);
+  const partialSuggestionMode =
+    matchPrefix && matchPrefix.length > 0 && _.last(matchPrefix) !== "]";
+
+  if (!partialSuggestionMode) {
+    const functionDisplayName = enclosingFunction(partialSource);
+    if (functionDisplayName) {
+      const helpText = getHelpText(getMBQLName(functionDisplayName));
+      if (helpText) {
+        return { helpText };
+      }
+    }
+  }
+
   const lexResult = lexerWithRecovery.tokenize(partialSource);
   if (lexResult.errors.length > 0) {
     throw lexResult.errors;
   }
   let tokenVector = lexResult.tokens;
-
-  const matchPrefix = partialMatch(partialSource);
-  const partialSuggestionMode = matchPrefix && matchPrefix.length > 0;
   if (partialSuggestionMode) {
     tokenVector = tokenVector.slice(0, -1);
   }
-
   const context = getContext({
     cst,
     tokenVector,
@@ -86,10 +98,6 @@ export function suggest({
     startRule,
   }) || { expectedType: startRule };
 
-  const helpText = context.clause && getHelpText(context.clause.name);
-  if (!partialSuggestionMode && helpText) {
-    return { helpText };
-  }
   const { expectedType } = context;
 
   let finalSuggestions = [];
