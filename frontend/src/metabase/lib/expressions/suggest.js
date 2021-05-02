@@ -70,7 +70,8 @@ export function suggest({
   const partialSource = source.slice(0, targetOffset);
 
   const matchPrefix = partialMatch(partialSource);
-  const partialSuggestionMode = matchPrefix && matchPrefix.length > 0;
+  const partialSuggestionMode =
+    matchPrefix && matchPrefix.length > 0 && _.last(matchPrefix) !== "]";
 
   if (!partialSuggestionMode) {
     const functionDisplayName = enclosingFunction(partialSource);
