@@ -80,14 +80,12 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
     cy.findByText("Filter").click();
-    cy.findByText("Created At").click();
-    cy.get("input[placeholder='30']")
-      .clear()
-      .type("12")
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]")
+      .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
-    cy.findByText("Days").click();
-    cy.findByText("Months").click();
-    cy.findByText("Add filter").click();
+    cy.findByRole("button", { name: "Done" }).click();
+
     cy.findByText("Visualize").click();
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
