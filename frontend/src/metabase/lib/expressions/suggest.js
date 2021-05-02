@@ -28,10 +28,11 @@ import {
   Minus,
   NumberLiteral,
   StringLiteral,
-  UnclosedQuotedString,
   isTokenType,
   lexerWithRecovery,
 } from "./lexer";
+
+import { partialMatch } from "./completer";
 
 import getHelpText from "./helper_text_strings";
 
@@ -70,24 +71,12 @@ export function suggest({
   if (lexResult.errors.length > 0) {
     throw lexResult.errors;
   }
-
-  let partialSuggestionMode = false;
   let tokenVector = lexResult.tokens;
 
-  const lastInputToken = _.last(lexResult.tokens);
-  const lastInputTokenIsUnclosedIdentifierString =
-    lastInputToken &&
-    isTokenType(lastInputToken.tokenType, UnclosedQuotedString) &&
-    isTokenType(lastInputToken.tokenType, IdentifierString);
-  // we have requested assistance while inside an Identifier or Unclosed IdentifierString
-  if (
-    lastInputToken &&
-    ((isTokenType(lastInputToken.tokenType, Identifier) &&
-      Identifier.PATTERN.test(partialSource[partialSource.length - 1])) ||
-      lastInputTokenIsUnclosedIdentifierString)
-  ) {
+  const matchPrefix = partialMatch(partialSource);
+  const partialSuggestionMode = matchPrefix && matchPrefix.length > 0;
+  if (partialSuggestionMode) {
     tokenVector = tokenVector.slice(0, -1);
-    partialSuggestionMode = true;
   }
 
   const context = getContext({
@@ -185,8 +174,6 @@ export function suggest({
           })),
         );
       }
-    } else if (lastInputTokenIsUnclosedIdentifierString) {
-      // skip the rest
     } else if (
       isTokenType(nextTokenType, FunctionName) ||
       nextTokenType === Case
@@ -251,10 +238,7 @@ export function suggest({
 
   // throw away any suggestion that is not a suffix of the last partialToken.
   if (partialSuggestionMode) {
-    const input = lastInputToken.image;
-    const partial = lastInputTokenIsUnclosedIdentifierString
-      ? input.slice(1).toLowerCase()
-      : input.toLowerCase();
+    const partial = matchPrefix.toLowerCase();
     for (const suggestion of finalSuggestions) {
       suggestion: for (const text of [
         suggestion.name,
