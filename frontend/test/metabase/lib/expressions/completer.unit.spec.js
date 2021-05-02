@@ -53,7 +53,7 @@ describe("metabase/lib/expressions/completer", () => {
 
     it("should ignore non-function calls", () => {
       expect(enclosingFunction("1")).toEqual(null);
-      expect(enclosingFunction("2 + ")).toEqual(null);
+      expect(enclosingFunction("2 +")).toEqual(null);
       expect(enclosingFunction("X OR")).toEqual(null);
     });
 
