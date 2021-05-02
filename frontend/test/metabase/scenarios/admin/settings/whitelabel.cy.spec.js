@@ -2,7 +2,7 @@ import {
   restore,
   openOrdersTable,
   describeWithToken,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
 // Define colors that we use for whitelabeling
 // If rbg values exist, it's because we explicit test those

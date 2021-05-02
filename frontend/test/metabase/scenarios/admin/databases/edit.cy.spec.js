@@ -1,4 +1,4 @@
-import { restore, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/e2e/cypress";
 
 describe("scenarios > admin > databases > edit", () => {
   beforeEach(() => {

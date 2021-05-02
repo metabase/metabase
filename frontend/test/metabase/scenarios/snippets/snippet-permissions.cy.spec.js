@@ -4,7 +4,7 @@ import {
   popover,
   sidebar,
   describeWithToken,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
 describeWithToken("scenarios > question > snippets", () => {
   beforeEach(() => {

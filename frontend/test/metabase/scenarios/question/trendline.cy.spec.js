@@ -1,4 +1,4 @@
-import { restore, openOrdersTable, sidebar } from "__support__/cypress";
+import { restore, openOrdersTable, sidebar } from "__support__/e2e/cypress";
 
 describe("scenarios > question > trendline", () => {
   beforeEach(() => {

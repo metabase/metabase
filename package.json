@@ -199,7 +199,7 @@
     "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build && yarn test-cypress-smoketest",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-no-build --open",
-    "test-cypress-no-build": "yarn && CONFIG_FILE=frontend/test/cypress.json babel-node ./frontend/test/__runner__/run_cypress_tests.js",
+    "test-cypress-no-build": "yarn && CONFIG_FILE=frontend/test/__support__/e2e/cypress.json babel-node ./frontend/test/__runner__/run_cypress_tests.js",
     "test-cypress-smoketest": "yarn test-cypress-no-build --folder frontend/test/metabase-smoketest"
   },
   "lint-staged": {

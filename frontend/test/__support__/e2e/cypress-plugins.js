@@ -19,7 +19,7 @@ module.exports = (on, config) => {
   /********************************************************************
    **                          WEBPACK                               **
    ********************************************************************/
-  const { resolve } = require("../../webpack.config.js");
+  const { resolve } = require("../../../../webpack.config.js");
   const options = {
     webpackOptions: { resolve },
     watchOptions: {},

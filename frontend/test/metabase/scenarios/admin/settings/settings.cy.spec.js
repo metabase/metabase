@@ -4,7 +4,7 @@ import {
   version,
   popover,
   setupDummySMTP,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
 describe("scenarios > admin > settings", () => {
   beforeEach(() => {

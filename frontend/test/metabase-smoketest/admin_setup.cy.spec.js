@@ -3,8 +3,8 @@ import {
   popover,
   restore,
   setupLocalHostEmail,
-} from "__support__/cypress";
-import { USERS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin, normal, nocollection, nodata } = USERS;
 const new_user = {

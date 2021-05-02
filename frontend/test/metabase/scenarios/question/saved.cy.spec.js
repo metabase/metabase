@@ -1,4 +1,9 @@
-import { restore, popover, modal, openOrdersTable } from "__support__/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  openOrdersTable,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {

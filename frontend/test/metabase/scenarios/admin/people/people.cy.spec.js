@@ -1,8 +1,8 @@
 // Includes migrations from integration tests:
 // https://github.com/metabase/metabase/pull/14174
 
-import { restore, popover, setupDummySMTP } from "__support__/cypress";
-import { USERS, USER_GROUPS } from "__support__/cypress_data";
+import { restore, popover, setupDummySMTP } from "__support__/e2e/cypress";
+import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
