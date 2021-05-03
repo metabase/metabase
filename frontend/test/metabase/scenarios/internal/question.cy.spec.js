@@ -1,5 +1,5 @@
-import { restore, adhocQuestionHash } from "__support__/cypress";
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { restore, adhocQuestionHash } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 // This is really a test of the QuestionLoader component
 // It's used on /_internal/question among other places and loads questions by ID or url hash.

@@ -4,7 +4,7 @@ import "@cypress/skip-test/support";
 import "./commands";
 import _ from "underscore";
 
-export const version = require("../../../version.json");
+export const version = require("../../../../version.json");
 
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
@@ -211,7 +211,7 @@ export function expectedRouteCalls({ route_alias, calls } = {}) {
 
 export function remapDisplayValueToFK({ display_value, name, fk } = {}) {
   // Both display_value and fk are expected to be field IDs
-  // You can get them from frontend/test/__support__/cypress_sample_dataset.json
+  // You can get them from frontend/test/__support__/e2e/cypress_sample_dataset.json
   cy.request("POST", `/api/field/${display_value}/dimension`, {
     field_id: display_value,
     name,

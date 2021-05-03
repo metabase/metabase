@@ -1,4 +1,4 @@
-import { restore, setupLocalHostEmail } from "__support__/cypress";
+import { restore, setupLocalHostEmail } from "__support__/e2e/cypress";
 
 function setUpHourlyAlert(question_num) {
   cy.visit(`/question/${question_num}`);

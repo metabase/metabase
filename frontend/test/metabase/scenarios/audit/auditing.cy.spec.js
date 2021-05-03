@@ -1,6 +1,6 @@
-import { restore, describeWithToken } from "__support__/cypress";
-import { USERS } from "__support__/cypress_data";
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { restore, describeWithToken } from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 const { normal } = USERS;
 const { PRODUCTS } = SAMPLE_DATASET;
 const TOTAL_USERS = Object.entries(USERS).length;

@@ -1,14 +1,12 @@
-// Mostly ported from `dashboard.e2e.spec.js`
-// *** Haven't ported: should add the parameter values to state tree for public dashboards
 import {
   popover,
   restore,
   selectDashboardFilter,
   expectedRouteCalls,
   showDashboardCardActions,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {
   ORDERS,

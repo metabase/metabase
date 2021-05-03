@@ -1,4 +1,4 @@
-import { modal, popover, restore } from "__support__/cypress";
+import { modal, popover, restore } from "__support__/e2e/cypress";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
 describe("scenarios > dashboard > parameters", () => {

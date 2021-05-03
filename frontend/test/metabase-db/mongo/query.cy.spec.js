@@ -1,4 +1,4 @@
-import { restore, modal, addMongoDatabase } from "__support__/cypress";
+import { restore, modal, addMongoDatabase } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 

@@ -4,8 +4,8 @@ import {
   modal,
   popover,
   openOrdersTable,
-} from "__support__/cypress";
-import { USERS, USER_GROUPS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;

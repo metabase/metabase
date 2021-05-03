@@ -4,8 +4,8 @@ import {
   describeWithToken,
   popover,
   mockSessionProperty,
-} from "__support__/cypress";
-import { USERS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {

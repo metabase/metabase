@@ -1,5 +1,5 @@
 import path from "path";
-import { restore } from "__support__/cypress";
+import { restore } from "__support__/e2e/cypress";
 
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];

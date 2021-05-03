@@ -1,4 +1,4 @@
-import { describeWithToken, restore } from "__support__/cypress";
+import { describeWithToken, restore } from "__support__/e2e/cypress";
 
 describe("scenarios > auth > signin > SSO", () => {
   beforeEach(() => {

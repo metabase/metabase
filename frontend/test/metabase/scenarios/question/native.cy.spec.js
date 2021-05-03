@@ -4,9 +4,9 @@ import {
   modal,
   visitQuestionAdhoc,
   mockSessionProperty,
-} from "__support__/cypress";
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
-import { USER_GROUPS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATASET;
 const { COLLECTION_GROUP } = USER_GROUPS;

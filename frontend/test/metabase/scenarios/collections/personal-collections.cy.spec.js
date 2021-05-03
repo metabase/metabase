@@ -1,5 +1,5 @@
-import { restore, popover, modal } from "__support__/cypress";
-import { USERS } from "__support__/cypress_data";
+import { restore, popover, modal } from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
 
 describe("personal collections", () => {
   beforeEach(() => {
