@@ -336,7 +336,7 @@
 ;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them
 (defmethod sql-jdbc.execute/connection-with-timezone :sqlite
   [driver database ^String timezone-id]
-  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (sql-jdbc.execute/set-best-transaction-level! driver conn)
       conn
