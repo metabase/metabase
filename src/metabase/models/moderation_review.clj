@@ -27,8 +27,9 @@
 (s/defn create-review!
   "Create a new ModerationReview"
   [params :-
-   {:moderated_item_id     su/IntGreaterThanZero
-    :moderated_item_type   (s/enum "card" "dashboard")
-    :moderator_id          su/IntGreaterThanZero
-    (s/optional-key :text) (s/maybe s/Str)}]
+   {:moderated_item_id       su/IntGreaterThanZero
+    :moderated_item_type     (s/enum "card" "dashboard")
+    :moderator_id            su/IntGreaterThanZero
+    (s/optional-key :status) statuses
+    (s/optional-key :text)   (s/maybe s/Str)}]
   (db/insert! ModerationReview params))
