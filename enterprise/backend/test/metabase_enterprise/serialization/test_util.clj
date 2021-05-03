@@ -6,12 +6,15 @@
             [toucan.util.test :as tt]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name]]))
 
+(def root-card-name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž")
+(def temp-db-name "Fingerprint test-data copy")
+
 (defmacro with-world
   "Run test in the context of a minimal Metabase instance connected to our test database."
   [& body]
-  `(tt/with-temp* [Database   [{~'db-id :id} (into {} (-> (data/id)
-                                                          Database
-                                                          (dissoc :id :features :name)))]
+  `(tt/with-temp* [Database   [{~'db-id :id} (into {:name temp-db-name} (-> (data/id)
+                                                                            Database
+                                                                            (dissoc :id :features :name)))]
                    Table      [{~'table-id :id :as ~'table} (-> (data/id :venues)
                                                               Table
                                                               (dissoc :id)
@@ -45,6 +48,7 @@
                                 :dataset_query {:type :query
                                                 :database ~'db-id
                                                 :query {:source-table ~'table-id
+                                                        :filter [:= [:field ~'category-field-id nil] 2]
                                                         :aggregation [:sum [:field-id ~'numeric-field-id]]
                                                         :breakout [[:field-id ~'category-field-id]]}}}]
                    Card       [{~'card-arch-id :id}
@@ -60,7 +64,7 @@
                    Card       [{~'card-id-root :id}
                                {:table_id ~'table-id
                                 ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
-                                :name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž"
+                                :name root-card-name
                                 :dataset_query {:type :query
                                                 :database ~'db-id
                                                 :query {:source-table ~'table-id}}}]
@@ -91,7 +95,7 @@
                                 {:type :native
                                  :database ~'db-id
                                  :native
-                                 {:query "{{#1}}"
+                                 {:query "SELECT * FROM {{#1}} AS subquery"
                                   :template-tags
                                   {"#1"{:id "72461b3b-3877-4538-a5a3-7a3041924517"
                                         :name "#1"

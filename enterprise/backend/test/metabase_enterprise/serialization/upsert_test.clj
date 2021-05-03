@@ -77,7 +77,11 @@
                 (mt/with-temp* [model [_ e1] ; create an additional entity so we're sure whe get the right one
                                 model [{id :id} e2]]
                   (let [e (model id)]
-                    (is (= (#'upsert/select-identical model e) e)))))))]
+                    (is (= (#'upsert/select-identical model (cond-> e
+                                                              ;; engine is a keyword but has to be a string for
+                                                              ;; HoneySQL to not interpret it as a col name
+                                                              (= (class e) (class Database)) (update :engine name)))
+                           e)))))))]
     (doseq [model [Collection
                    Card
                    Table

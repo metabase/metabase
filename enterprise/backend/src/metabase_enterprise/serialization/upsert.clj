@@ -29,7 +29,7 @@
             [toucan.models :as models]))
 
 (def ^:private identity-condition
-  {Database            [:name]
+  {Database            [:name :engine]
    Table               [:schema :name :db_id]
    Field               [:name :table_id]
    Metric              [:name :table_id]

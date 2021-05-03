@@ -83,6 +83,33 @@
   [path]
   (.getName (clojure.java.io/file path)))
 
+(defn- update-capture-missing*
+  [m ks resolve-fn get-fn update-fn]
+  (let [orig-v (get-fn m ks)
+        res    (update-fn m ks resolve-fn)
+        new-v  (get-fn res ks)]
+    (if (and (some? orig-v) (nil? new-v))
+      (update res ::unresolved-names #(assoc % orig-v ks))
+      res)))
+
+(defn- update-existing-in-capture-missing
+  [m ks resolve-fn]
+  (update-capture-missing* m ks resolve-fn get-in m/update-existing-in))
+
+(defn- update-existing-capture-missing
+  [m k resolve-fn]
+  (update-capture-missing* m [k] resolve-fn get-in m/update-existing-in))
+
+(defn- pull-unresolved-names-up
+  "Assocs the given value `v` to the given key sequence `ks` in the given map `m`. If the given `v` contains any
+  ::unresolved-names, these are \"pulled into\" `m` directly by prepending `ks` to their existing paths and dissocing
+  them from `v`."
+  [m ks v]
+  (if-let [unresolved-names (::unresolved-names v)]
+    (-> (assoc m ::unresolved-names (m/map-vals #(vec (concat ks %)) unresolved-names))
+        (assoc-in ks (dissoc v ::unresolved-names)))
+    (assoc-in m ks v)))
+
 (defmulti load
   "Load an entity of type `model` stored at `path` in the context `context`.
 
@@ -182,8 +209,8 @@
   [parameter-mappings]
   (for [parameter-mapping parameter-mappings]
     (-> parameter-mapping
-        (update :card_id fully-qualified-name->card-id)
-        (update :target mbql-fully-qualified-names->ids))))
+        (update-existing-capture-missing :card_id fully-qualified-name->card-id)
+        (update-existing-capture-missing :target mbql-fully-qualified-names->ids))))
 
 (defn load-dashboards
   "Loads `dashboards` (which is a sequence of maps parsed from a YAML dump of dashboards) in a given `context`."
@@ -199,39 +226,34 @@
         ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
         ;; card_id could be resolved from the fully qualified name
         prepare-card-fn (fn [idx dashboard-id card]
-                          (let [final-c (-> (assoc card :fully-qualified-card-name (:card_id card))
-                                            (update :card_id fully-qualified-name->card-id)
-                                            (assoc :dashboard_id dashboard-id)
-                                            (update :parameter_mappings update-parameter-mappings))]
-                            (if (and (nil? (:card_id final-c))
-                                     (some? (:fully-qualified-card-name final-c)))
-                              ;; the lookup of some fully qualified card name failed
-                              ;; we will need to revisit this dashboard in the next pass
-                              {:revisit idx}
-                              ;; card was looked up OK, we can process it
-                              {:process final-c})))
+                          (let [proc-card  (-> card
+                                               (update-existing-capture-missing :card_id fully-qualified-name->card-id)
+                                               (assoc :dashboard_id dashboard-id))
+                                new-pm     (update-parameter-mappings (:parameter_mappings proc-card))
+                                final-card (pull-unresolved-names-up proc-card [:parameter_mappings] new-pm)]
+                            (if (::unresolved-names final-card)
+                              {;; index means something different here than in the Card case (it's actually the index
+                               ;; of the dashboard)
+                               ::revisit-index idx
+                               ::revisit       final-card}
+                              {::process final-card})))
+        prep-init-acc   {::process [] ::revisit-index [] ::revisit []}
         filtered-cards  (reduce-kv
                          (fn [acc idx [cards dash-id]]
                            (if dash-id
-                             (let [{:keys [process revisit]} (apply
-                                                              merge-with
-                                                              conj
-                                                              {:process [] :revisit []}
-                                                              (map (partial prepare-card-fn idx dash-id) cards))]
-                               (-> acc
-                                   (update :process #(concat % process))
-                                   (update :revisit #(concat % revisit))))
+                             (let [map-fn (map (partial prepare-card-fn idx dash-id) cards)
+                                   res    (apply merge-with conj prep-init-acc map-fn)]
+                               (merge-with concat acc res))
                              acc))
-                         {:process [] :revisit []}
+                         prep-init-acc
                          (mapv vector dashboard-cards dashboard-ids))
-        revisit-indexes (:revisit filtered-cards)
-        proceed-cards   (->> (:process filtered-cards)
-                             (map #(dissoc % :fully-qualified-card-name)))
-        dashcard-ids    (maybe-upsert-many! context DashboardCard (map #(dissoc % :series) proceed-cards))]
+        revisit-indexes (vec (::revisit-index filtered-cards))
+        proceed-cards   (vec (::process filtered-cards))
+        dashcard-ids    (maybe-upsert-many! context DashboardCard (map #(dissoc % :series) proceed-cards))
+        series-pairs    (map vector (map :series proceed-cards) dashcard-ids)]
     (maybe-upsert-many! context DashboardCardSeries
-      (for [[series dashboard-card-id] (map vector (mapcat (partial map :series) proceed-cards)
-                                            dashcard-ids)
-            dashboard-card-series series
+      (for [[series dashboard-card-id] series-pairs
+            dashboard-card-series      series
             :when (and dashboard-card-series dashboard-card-id)]
         (-> dashboard-card-series
             (assoc :dashboardcard_id dashboard-card-id)
@@ -284,7 +306,7 @@
   (cond
     (:source-table query) (update-in query [:source-table] source-table)
     (:source-query query) (update-in query [:source-query] fully-qualified-name->id-rec)
-    true query))
+    :default query))
 
 (defn- source-card
   [fully-qualified-name]
@@ -294,8 +316,16 @@
       (log/warn e))))
 
 (defn- resolve-native
-  [template-tags]
-  (m/map-vals #(m/update-existing % :card-id source-card) template-tags))
+  [card]
+  (let [ks                [:dataset_query :native :template-tags]
+        template-tags     (get-in card ks)
+        new-template-tags (reduce-kv
+                           (fn [m k v]
+                             (let [new-v (update-existing-capture-missing v :card-id source-card)]
+                               (pull-unresolved-names-up m [k] new-v)))
+                           {}
+                           template-tags)]
+    (pull-unresolved-names-up card ks new-template-tags)))
 
 (defn- resolve-card [card context]
   (-> card
@@ -314,17 +344,39 @@
           (-> card
               :dataset_query
               :native
-              :template-tags)
-          (m/update-existing-in [:dataset_query :native :template-tags] resolve-native))))
+              :template-tags
+              not-empty) (resolve-native))))
 
-(defmethod load "cards"
-  [path context]
-  (let [paths (list-dirs path)
-        touched-card-ids (maybe-upsert-many!
-                          context Card
-                          (for [card (slurp-many paths)]
-                            (resolve-card card context)))]
+(defn- make-dummy-card
+  "Make a dummy card for first pass insertion"
+  [card]
+  (-> card
+      (assoc :dataset_query {:type :native :native {:query "-- DUMMY QUERY FOR SERIALIZATION FIRST PASS INSERT"}})
+      (dissoc ::unresolved-names)))
 
+(defn load-cards
+  "Loads cards in a given `context`, from a given sequence of `paths` (strings).  If specified, then `only-cards` (maps
+  having the structure of cards loaded from YAML dumps) will be used instead of loading data from `paths` (to serve as
+  a retry mechanism)."
+  {:added "0.40.0"}
+  [context paths only-cards]
+  (let [cards              (or only-cards (slurp-many paths))
+        resolved-cards     (for [card cards]
+                             (resolve-card card context))
+        grouped-cards      (reduce-kv
+                            (fn [acc idx card]
+                              (if (::unresolved-names card)
+                                (-> acc
+                                    (update ::revisit #(conj % card))
+                                    (update ::revisit-index #(conj % idx)))
+                                (update acc ::process #(conj % card))))
+                            {::revisit [] ::revisit-index [] ::process []}
+                            (vec resolved-cards))
+        dummy-insert-cards (not-empty (::revisit grouped-cards))
+        process-cards      (::process grouped-cards)
+        touched-card-ids   (maybe-upsert-many!
+                            context Card
+                            process-cards)]
     (maybe-fixup-card-template-ids!
      (assoc context :mode :update)
      Card
@@ -333,14 +385,44 @@
 
     ;; Nested cards
     (doseq [path paths]
-      (load (str path "/cards") context))))
+      (load (str path "/cards") context))
+
+    (if dummy-insert-cards
+      (let [dummy-inserted-ids (maybe-upsert-many!
+                                context
+                                Card
+                                (map make-dummy-card dummy-insert-cards))
+            id-and-cards       (map vector dummy-insert-cards dummy-inserted-ids)
+            retry-info-fn      (fn [[card card-id]]
+                                 (format
+                                  "\"%s\" (inserted as ID %d), missing:%n%s%n"
+                                  (:name card)
+                                  card-id
+                                  (str/join
+                                   "\n  "
+                                   (map
+                                    (fn [[k v]]
+                                      (format "  for %s -> %s" (str/join "/" v) k))
+                                    (::unresolved-names card)))))]
+        (log/infof
+         "Unresolved references found for cards in collection %d; will reload after first pass%n%s%n"
+         (:collection context)
+         (str/join "%n" (map retry-info-fn id-and-cards)))
+        (fn []
+          (log/infof "Attempting to reload cards in collection %d" (:collection context))
+          (let [revisit-indexes (::revisit-index grouped-cards)]
+            (load-cards context paths (mapv (partial nth cards) revisit-indexes))))))))
+
+(defmethod load "cards"
+  [path context]
+  (load-cards context (list-dirs path) nil))
 
 (defmethod load "users"
   [path context]
   ;; Currently we only serialize the new owner user, so it's fine to ignore mode setting
   (maybe-upsert-many! context User
     (for [user (slurp-dir path)]
-      (assoc user :password "changeme"))))
+      (dissoc user :password))))
 
 (defn- derive-location
   [context]

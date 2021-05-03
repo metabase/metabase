@@ -71,6 +71,12 @@
                                                                                  second
                                                                                  Integer/parseInt))
                                                   (fully-qualified-name Table source-table))))
+      (m/update-existing entity :breakout (fn [breakout]
+                                            (map mbql-id->fully-qualified-name breakout)))
+      (m/update-existing entity :aggregation (fn [aggregation]
+                                               (m/map-vals mbql-id->fully-qualified-name aggregation)))
+      (m/update-existing entity :filter (fn [filter]
+                                          (m/map-vals mbql-id->fully-qualified-name filter)))
       (m/map-vals ids->fully-qualified-names entity))))
 
 (defn- strip-crud
