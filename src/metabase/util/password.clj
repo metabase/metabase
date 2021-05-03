@@ -1,6 +1,8 @@
 (ns metabase.util.password
   "Utility functions for checking passwords against hashes and for making sure passwords match complexity requirements."
   (:require [cemerick.friend.credentials :as creds]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
             [metabase.config :as config]
             [metabase.util :as u]))
 
@@ -54,10 +56,25 @@
          (when-let [min-len (config/config-int :mb-password-length)]
            {:total min-len})))
 
-(def ^{:arglists '([password])} is-complex?
+(defn- is-complex?
   "Check if a given password meets complexity standards for the application."
-  (partial password-has-char-counts? active-password-complexity))
+  [password]
+  (password-has-char-counts? active-password-complexity password))
 
+(def common-passwords
+  "A set of ~12k common passwords to reject, that otherwise meet Metabase's default complexity requirements.
+   Sourced from Dropbox's zxcvbn repo: https://github.com/dropbox/zxcvbn/blob/master/data/passwords.txt"
+  (set (str/split-lines (slurp (io/resource "common_passwords.txt")))))
+
+(defn- is-uncommon?
+  "Check if a given password is not present in the common passwords set. Case-insensitive search since
+   the list only contains lower-case passwords."
+  [password]
+  (not (contains? common-passwords (str/lower-case password))))
+
+(def ^{:arglists '([password])} is-valid?
+  "Check that a password both meets complexity standards, and is not present in the common passwords list"
+  (every-pred is-complex? is-uncommon?))
 
 (defn verify-password
   "Verify if a given unhashed password + salt matches the supplied hashed-password. Returns `true` if matched, `false`

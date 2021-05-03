@@ -47,12 +47,17 @@
           (is (= expected
                  (apply #'pwu/password-has-char-counts? input))))))))
 
-(deftest is-complex?-test
+(deftest is-valid?-test
   (testing "Do some tests with the default (:normal) password requirements"
-    (doseq [[input expected] {"ABC"    false
-                              "ABCDEF" false
-                              "ABCDE1" true
-                              "123456" true}]
-      (testing (pr-str (list 'is-complex? input))
+    (doseq [[input expected] {"ABC"              false
+                              "ABCDEF"           false
+                              "ABCDE1"           false
+                              "123456"           false
+                              "passw0rd"         false
+                              "PASSW0RD"         false
+                              "test12345"        true
+                              "pa$$w0®∂"         true
+                              "s6n!8z-6.gcJe"    true}]
+      (testing (pr-str (list 'is-valid? input))
         (is (= expected
-               (pwu/is-complex? input)))))))
+               (pwu/is-valid? input)))))))

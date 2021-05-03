@@ -15,4 +15,4 @@
 
     (testing "Should be a valid password"
       (is (= {:valid true}
-             (mt/client :post 200 "util/password_check" {:password "something1"}))))))
+             (mt/client :post 200 "util/password_check" {:password "something123"}))))))

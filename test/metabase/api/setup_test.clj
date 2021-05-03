@@ -257,7 +257,7 @@
                          :user     {:first_name (mt/random-name)
                                     :last_name  (mt/random-name)
                                     :email      user-email
-                                    :password   "p@ssw0rd"}}]
+                                    :password   "p@ssword1"}}]
         (do-with-setup*
          body
          (fn []
