@@ -129,7 +129,7 @@
 ;; connection read-only, because that seems to be causing problems for people
 (defmethod sql-jdbc.execute/connection-with-timezone :redshift
   [driver database ^String timezone-id]
-  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (sql-jdbc.execute/set-best-transaction-level! driver conn)
       (sql-jdbc.execute/set-time-zone-if-supported! driver conn timezone-id)

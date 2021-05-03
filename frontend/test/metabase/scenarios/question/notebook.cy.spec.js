@@ -872,7 +872,7 @@ describe("scenarios > question > notebook", () => {
       cy.findAllByRole("button", { name: "Done" })
         .should("not.be.disabled")
         .click();
-      cy.findByText("Unterminated quoted string");
+      cy.findByText("Missing closing quotes");
     });
 
     it("should catch unterminated field reference", () => {
@@ -883,9 +883,95 @@ describe("scenarios > question > notebook", () => {
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
           .type("Massive Discount");
-        cy.contains(/^Unterminated bracket identifier/i);
+        cy.contains(/^Missing a closing bracket/i);
       });
     });
+
+    it("should catch non-existent field reference", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("abcdef");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Non-existent");
+        cy.contains(/^Unknown Field: abcdef/i);
+      });
+    });
+  });
+
+  describe("typing suggestion", () => {
+    it("should not suggest arithmetic operators", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      cy.get("[contenteditable='true']").type("[Price] ");
+      cy.contains("/").should("not.exist");
+    });
+
+    it("should correctly accept the chosen field suggestion", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      cy.get("[contenteditable='true']").type(
+        "[Rating]{leftarrow}{leftarrow}{leftarrow}",
+      );
+
+      // accept the only suggested item, i.e. "[Rating]"
+      cy.get("[contenteditable='true']").type("{enter}");
+
+      // if the replacement is correct -> "[Rating]"
+      // if the replacement is wrong -> "[Rating] ng"
+      cy.get("[contenteditable='true']")
+        .contains("[Rating] ng")
+        .should("not.exist");
+    });
+
+    it("should correctly accept the chosen function suggestion", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      cy.get("[contenteditable='true']").type("LTRIM([Title])");
+
+      // Place the cursor between "is" and "empty"
+      cy.get("[contenteditable='true']").type(
+        Array(13)
+          .fill("{leftarrow}")
+          .join(""),
+      );
+
+      // accept the first suggested function, i.e. "length"
+      cy.get("[contenteditable='true']").type("{enter}");
+
+      cy.get("[contenteditable='true']").contains("length([Title])");
+    });
+  });
+
+  describe("help text", () => {
+    it("should appear while inside a function", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      cy.get("[contenteditable='true']").type("Lower(");
+      cy.findByText("lower(text)");
+    });
+
+    it("should not appear while outside a function", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      cy.get("[contenteditable='true']").type("Lower([Category])");
+      cy.findByText("lower(text)").should("not.exist");
+    });
+
+    it("should appear after a field reference", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      cy.get("[contenteditable='true']").type("Lower([Category]");
+      cy.findByText("lower(text)");
+    });
+  });
+
+  it("should correctly insert function suggestion with the opening parenthesis", () => {
+    openProductsTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    cy.get("[contenteditable='true']").type("LOW{enter}");
+    cy.get("[contenteditable='true']").contains("lower(");
   });
 });
 

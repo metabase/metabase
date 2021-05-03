@@ -63,8 +63,8 @@ describe("metabase/lib/expressions/tokenizer", () => {
   });
 
   it("should catch unterminated string literals", () => {
-    expect(errors("'single")[0].message).toEqual("Unterminated quoted string");
-    expect(errors('"double')[0].message).toEqual("Unterminated quoted string");
+    expect(errors("'single")[0].message).toEqual("Missing closing quotes");
+    expect(errors('"double')[0].message).toEqual("Missing closing quotes");
   });
 
   it("should tokenize identifiers", () => {
@@ -78,7 +78,7 @@ describe("metabase/lib/expressions/tokenizer", () => {
   });
 
   it("should catch unterminated bracket", () => {
-    expect(errors("[T")[0].message).toEqual("Unterminated bracket identifier");
+    expect(errors("[T")[0].message).toEqual("Missing a closing bracket");
   });
 
   it("should catch new brackets within bracket identifiers", () => {
@@ -96,6 +96,7 @@ describe("metabase/lib/expressions/tokenizer", () => {
     expect(types("\n[Rating] ")).toEqual([T.Identifier]);
     expect(types("A\t  + ")).toEqual([T.Identifier, T.Operator]);
     expect(types("A \u3000  +\u2028")).toEqual([T.Identifier, T.Operator]);
+    expect(errors("[Expensive]  ")).toEqual([]);
   });
 
   it("should tokenize simple comparisons", () => {

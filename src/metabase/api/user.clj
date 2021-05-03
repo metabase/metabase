@@ -66,26 +66,92 @@
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- status-clause
+  "Figure out what `where` clause to add to the user query when
+  we get a fiddly status and include_deactivated query.
+
+  This is to keep backwards compatibility with `include_deactivated` while adding `status."
+  [status include_deactivated]
+  (if include_deactivated
+    nil
+    (case status
+      "all"         nil
+      "deactivated" [:= :is_active false]
+      "active"      [:= :is_active true]
+      [:= :is_active true])))
+
+(defn- wildcard-query [query] (str "%" (clojure.string/lower-case query) "%"))
+
+(defn- query-clause
+  "Honeysql clause to shove into user query if there's a query"
+  [query]
+  [:or
+   [:like [:%lower.first_name] [(wildcard-query query)]]
+   [:like [:%lower.last_name] [(wildcard-query query)]]
+   [:like [:%lower.email] [(wildcard-query query)]]])
+
+(defn- user-visible-columns
+  "Columns of user table visible to current caller of API"
+  []
+  (if api/*is-superuser?* user/admin-or-self-visible-columns user/non-admin-or-self-visible-columns))
+
+(defn- user-clauses
+  "Honeysql clauses for filtering on users
+  - with a status,
+  - with a query,
+  - with a group_id,
+  - with include_deactivatved"
+  [status query group_id include_deactivated]
+  (cond-> {}
+        true (hh/merge-where (status-clause status include_deactivated))
+        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                               (when (segmented-user?)
+                                 [:= :id api/*current-user-id*])))
+        (some? query) (hh/merge-where (query-clause query))
+        (some? group_id) (hh/merge-right-join :permissions_group_membership
+                                              [:= :core_user.id :permissions_group_membership.user_id])
+        (some? group_id) (hh/merge-where [:= :group_id group_id])))
+
+
 (api/defendpoint GET "/"
-  "Fetch a list of `Users` for the admin People page or for Pulses. By default returns only active users. If
-  `include_deactivated` is true, return all Users (active and inactive). (Using `include_deactivated` requires
-  superuser permissions.). For users with segmented permissions, return only themselves."
-  [include_deactivated]
-  {include_deactivated (s/maybe su/BooleanString)}
-  (when include_deactivated
+  "Fetch a list of `Users`. By default returns every active user but only active users.
+
+  If `status` is `deactivated`, include deactivated users only.
+  If `status` is `all`, include all users (active and inactive).
+  Also supports `include_deactivated`, which if true, is equivalent to `status=all`.
+  `status` and `included_deactivated` requires superuser permissions.
+
+  For users with segmented permissions, return only themselves.
+
+  Takes `limit`, `offset` for pagination.
+  Takes `query` for filtering on first name, last name, email.
+  Also takes `group_id`, which filters on group id."
+  [limit offset status query group_id include_deactivated]
+  {
+   limit               (s/maybe su/IntStringGreaterThanZero)
+   offset              (s/maybe su/IntStringGreaterThanOrEqualToZero)
+   status              (s/maybe s/Str)
+   query               (s/maybe s/Str)
+   group_id            (s/maybe su/IntGreaterThanZero)
+   include_deactivated (s/maybe su/BooleanString)
+   }
+  (when (or status include_deactivated)
     (api/check-superuser))
-  (cond-> (db/select (vec (cons User (if api/*is-superuser?*
-                                       user/admin-or-self-visible-columns
-                                       user/non-admin-or-self-visible-columns)))
-            (-> {}
-                (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                (hh/merge-where (when-not include_deactivated
-                                  [:= :is_active true]))
-                (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-                                  (when (segmented-user?)
-                                    [:= :id api/*current-user-id*])))))
-    ;; For admins, also include the IDs of the  Users' Personal Collections
-    api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
+  (api/check-valid-page-params limit offset)
+  (let [limit-int  (some-> limit Integer/parseInt)
+        offset-int (some-> offset Integer/parseInt)]
+    {:data   (cond-> (db/select
+                       (vec (cons User (user-visible-columns)))
+                       (cond-> (user-clauses status query group_id include_deactivated)
+                         true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                         (some? limit) (hh/limit limit-int)
+                         (some? offset) (hh/offset offset-int)))
+               ;; For admins, also include the IDs of the  Users' Personal Collections
+               api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
+     :total  (db/count User (user-clauses status query group_id include_deactivated))
+     :limit  limit-int
+     :offset offset-int}))
+
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."

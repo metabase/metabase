@@ -46,7 +46,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should add key attributes to a new user", () => {
-      cy.findByText("Add someone").click();
+      cy.findByText("Invite someone").click();
       cy.findByPlaceholderText("Johnny").type("John");
       cy.findByPlaceholderText("Appleseed").type("Smith");
       cy.findByPlaceholderText("youlooknicetoday@email.com").type(
