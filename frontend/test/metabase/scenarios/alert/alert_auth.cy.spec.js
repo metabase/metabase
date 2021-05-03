@@ -2,7 +2,7 @@ import {
   restore,
   setupLocalHostEmail,
   createBasicAlert,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 // Port from alert.e2e.spec.js
 
 // [quarantine]: cannot run tests that rely on email setup in CI (yet)

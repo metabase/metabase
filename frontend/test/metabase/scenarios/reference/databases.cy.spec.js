@@ -1,4 +1,4 @@
-import { popover, restore } from "__support__/cypress";
+import { popover, restore } from "__support__/e2e/cypress";
 
 describe("scenarios > reference > databases", () => {
   beforeEach(() => {

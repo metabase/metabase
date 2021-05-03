@@ -1,6 +1,6 @@
 import { onlyOn } from "@cypress/skip-test";
-import { restore, popover } from "__support__/cypress";
-import { USERS } from "__support__/cypress_data";
+import { restore, popover } from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

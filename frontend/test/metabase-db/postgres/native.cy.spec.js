@@ -1,4 +1,4 @@
-import { restore, addPostgresDatabase, modal } from "__support__/cypress";
+import { restore, addPostgresDatabase, modal } from "__support__/e2e/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 

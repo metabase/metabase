@@ -1,4 +1,4 @@
-import { restore, showDashboardCardActions } from "__support__/cypress";
+import { restore, showDashboardCardActions } from "__support__/e2e/cypress";
 
 function addTextBox(string) {
   cy.icon("pencil").click();

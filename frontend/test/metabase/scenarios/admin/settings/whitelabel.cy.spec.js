@@ -2,7 +2,7 @@ import {
   restore,
   openOrdersTable,
   describeWithToken,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
 // Define colors that we use for whitelabeling
 // If rbg values exist, it's because we explicit test those
@@ -33,12 +33,11 @@ function checkFavicon() {
 }
 
 function checkLogo() {
-  cy.readFile(
-    "enterprise/frontend/test/metabase-enterprise/_support_/logo.jpeg",
-    "base64",
-  ).then(logo_data => {
-    cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`);
-  });
+  cy.readFile("frontend/test/__support__/e2e/assets/logo.jpeg", "base64").then(
+    logo_data => {
+      cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`);
+    },
+  );
 }
 
 describeWithToken("formatting > whitelabel", () => {
@@ -207,7 +206,7 @@ describeWithToken("formatting > whitelabel", () => {
     beforeEach(() => {
       cy.log("Add a logo");
       cy.readFile(
-        "enterprise/frontend/test/metabase-enterprise/_support_/logo.jpeg",
+        "frontend/test/__support__/e2e/assets/logo.jpeg",
         "base64",
       ).then(logo_data => {
         cy.request("PUT", "/api/setting/application-logo-url", {
