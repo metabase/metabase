@@ -1,4 +1,4 @@
-name: Frontend
+name: Frontend Tests
 
 on:
   pull_request:
@@ -13,15 +13,18 @@ on:
       - '**'
     paths:
     - '**/frontend/**'
+    - '!frontend/test/e2e/**'
+    - '!**/*.cy.*'
+    - '!**/*cypress*'
+    - '!**/*.md'
     - 'shared/**'
-    - 'docs/**'
     - '**/package.json'
     - '**/yarn.lock'
     - '.github/workflows/**'
 
 jobs:
 
-  fe-linter-prettier:
+  fe-tests-unit:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
@@ -36,10 +39,10 @@ jobs:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
-    - run: yarn run lint-prettier
-      name: Run Prettier formatting linter
+    - run: yarn run test-unit
+      name: Run frontend unit tests
 
-  fe-linter-eslint:
+  fe-tests-timezones:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
@@ -54,23 +57,5 @@ jobs:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
-    - run: yarn run lint-eslint
-      name: Run ESLint linter
-
-  fe-linter-docs-links:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 10
-    steps:
-    - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v1
-      with:
-        node-version: 14.x
-    - name: Get yarn cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/yarn
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
-    - run: yarn run lint-docs-links
-      name: Run docs links checker
+    - run: yarn run test-timezones
+      name: Run frontend timezones tests
