@@ -28,17 +28,22 @@ function CreateModerationIssuePanel({
   const icon = getModerationStatusIcon(issueType);
   const color = getColor(issueType);
 
-  const onCreateModerationReview = () => {
-    createModerationReview({
-      // TODO: I should redo the ACTIONS map to be keyed by statuses
-      status: getModerationStatus(issueType),
-      moderated_item_id: itemId,
-      moderated_item_type: itemType,
-    });
+  const onCreateModerationReview = e => {
+    e.preventDefault();
+    console.log("onCreateModerationReview");
+    // createModerationReview({
+    //   // TODO: I should redo the ACTIONS map to be keyed by statuses
+    //   status: getModerationStatus(issueType),
+    //   moderated_item_id: itemId,
+    //   moderated_item_type: itemType,
+    // });
   };
 
   return (
-    <div className="p2 flex flex-column row-gap-2">
+    <form
+      onSubmit={onCreateModerationReview}
+      className="p2 flex flex-column row-gap-2"
+    >
       <div className="flex align-center">
         <Icon className="mr1" name={icon} size={18} />
         <span className={`text-${color} text-bold`}>
@@ -59,12 +64,14 @@ function CreateModerationIssuePanel({
         placeholder={MODERATION_TEXT.actionCreationPlaceholder}
       />
       <div className="flex column-gap-1 justify-end">
-        <Button onClick={onCancel}>{MODERATION_TEXT.cancel}</Button>
-        <Button primary>
+        <Button type="button" onClick={onCancel}>
+          {MODERATION_TEXT.cancel}
+        </Button>
+        <Button type="submit" primary>
           {MODERATION_TEXT.moderator[issueType].actionCreationButton}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
 
