@@ -199,10 +199,22 @@
       (with-redefs [search-config/db-max-results 1]
         (is (= [test-collection]
                (search-request-data :crowberto :q "test collection"))))))
-  (comment testing "It limits and offsets matches properly"
+  (testing "It limits and offsets matches properly"
     (with-search-items-in-root-collection "test"
       (is (= (take 2 (drop 2 (default-search-results)))
-             (search-request-data :crowberto :q "test" :limit "2" :offset "2"))))))
+             (search-request-data :crowberto :q "test" :limit "2" :offset "2")))))
+  (testing "It returns limits and offsets in return result"
+    (with-search-items-in-root-collection "test"
+      (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
+      (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3"))))))
+  (testing "It subsets models properly"
+    (with-search-items-in-root-collection "test"
+      (is (= (default-search-results))
+             (search-request-data :crowberto :q "test" :models "table" :models "database"))))
+  (testing "It takes table databse ids properly"
+    (with-search-items-in-root-collection "test"
+      (is (= (default-search-results))
+             (search-request-data :crowberto :q "test" :table_database_id "1")))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
