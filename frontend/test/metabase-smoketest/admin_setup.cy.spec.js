@@ -3,8 +3,8 @@ import {
   popover,
   restore,
   setupLocalHostEmail,
-} from "__support__/cypress";
-import { USERS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin, normal, nocollection, nodata } = USERS;
 const new_user = {
@@ -166,7 +166,7 @@ describe("smoketest > admin_setup", () => {
 
       // Add new user into 2 groups
 
-      cy.findByText("Add someone").click();
+      cy.findByText("Invite someone").click();
       cy.findByLabelText("First name").type(new_user.first_name);
       cy.findByLabelText("Last name").type(new_user.last_name);
       cy.findByLabelText("Email").type(new_user.email);

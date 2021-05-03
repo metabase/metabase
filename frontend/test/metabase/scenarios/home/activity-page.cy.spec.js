@@ -1,5 +1,5 @@
 //Replaces HomepageApp.e2e.spec.js
-import { restore, openProductsTable, popover } from "__support__/cypress";
+import { restore, openProductsTable, popover } from "__support__/e2e/cypress";
 
 describe("metabase > scenarios > home > activity-page", () => {
   beforeEach(() => {

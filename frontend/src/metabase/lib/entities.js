@@ -406,12 +406,14 @@ export function createEntity(def: EntityDefinition): Entity {
       // contains the actual entries, if that is on the response we should
       // use that as the 'results'
       const results = fetched.data ? fetched.data : fetched;
+      const total = fetched.total;
       if (!Array.isArray(results)) {
         throw `Invalid response listing ${entity.name}`;
       }
       return {
         ...entity.normalizeList(results),
         entityQuery,
+        total,
       };
     }),
 
@@ -477,9 +479,19 @@ export function createEntity(def: EntityDefinition): Entity {
     entities => entities[`${entity.name}_list`],
   );
 
-  const getEntityIds = createSelector(
+  const getEntityList = createSelector(
     [getEntityQueryId, getEntityLists],
     (entityQueryId, lists) => lists[entityQueryId],
+  );
+
+  const getEntityIds = createSelector(
+    [getEntityList],
+    entities => entities && entities.list,
+  );
+
+  const getListTotal = createSelector(
+    [getEntityList],
+    entities => entities && entities.total,
   );
 
   const getList = createSelector(
@@ -536,6 +548,7 @@ export function createEntity(def: EntityDefinition): Entity {
     getLoading,
     getLoaded,
     getError,
+    getListTotal,
   };
   entity.selectors = {
     ...defaultSelectors,
@@ -580,7 +593,10 @@ export function createEntity(def: EntityDefinition): Entity {
       if (payload && payload.result) {
         return {
           ...state,
-          [getIdForQuery(payload.entityQuery)]: payload.result,
+          [getIdForQuery(payload.entityQuery)]: {
+            list: payload.result,
+            total: payload.total,
+          },
         };
       }
       // NOTE: only add/remove from the "default" list (no entityQuery)

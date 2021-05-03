@@ -8,10 +8,10 @@ import {
   restore,
   remapDisplayValueToFK,
   sidebar,
-} from "__support__/cypress";
-import { USER_GROUPS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {
   ORDERS,
@@ -46,7 +46,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should add key attributes to a new user", () => {
-      cy.findByText("Add someone").click();
+      cy.findByText("Invite someone").click();
       cy.findByPlaceholderText("Johnny").type("John");
       cy.findByPlaceholderText("Appleseed").type("Smith");
       cy.findByPlaceholderText("youlooknicetoday@email.com").type(

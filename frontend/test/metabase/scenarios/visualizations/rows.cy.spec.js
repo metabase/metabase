@@ -1,4 +1,4 @@
-import { restore } from "__support__/cypress";
+import { restore } from "__support__/e2e/cypress";
 
 describe("scenarios > visualizations > rows", () => {
   beforeEach(() => {

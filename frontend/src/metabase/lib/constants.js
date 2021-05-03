@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+export const SEARCH_DEBOUNCE_DURATION = 300;
+
 // A part of hack required to work with both null and 0
 // values in numeric dimensions
 export const NULL_NUMERIC_VALUE = -Infinity;

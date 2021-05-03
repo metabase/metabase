@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 
 function typeField(label, value) {
   cy.findByLabelText(label)
@@ -148,6 +148,20 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.wait("@createDatabase");
     cy.findByText("DATABASE CONNECTION ERROR").should("exist");
+  });
+
+  it("EE should ship with Oracle and Vertica as options", () => {
+    cy.onlyOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
+
+    cy.visit("/admin/databases/create");
+    cy.contains("Database type")
+      .closest(".Form-field")
+      .find(".AdminSelect")
+      .click();
+    popover().within(() => {
+      cy.findByText("Oracle");
+      cy.findByText("Vertica");
+    });
   });
 
   describe("BigQuery", () => {

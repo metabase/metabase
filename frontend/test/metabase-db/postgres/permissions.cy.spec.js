@@ -2,8 +2,8 @@ import {
   restore,
   addPostgresDatabase,
   withDatabase,
-} from "__support__/cypress";
-import { USER_GROUPS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const PG_DB_NAME = "QA Postgres12";

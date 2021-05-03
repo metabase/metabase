@@ -19,7 +19,7 @@ module.exports = (on, config) => {
   /********************************************************************
    **                          WEBPACK                               **
    ********************************************************************/
-  const { resolve } = require("../../webpack.config.js");
+  const { resolve } = require("../../../../webpack.config.js");
   const options = {
     webpackOptions: { resolve },
     watchOptions: {},
@@ -33,7 +33,7 @@ module.exports = (on, config) => {
 
   //  Open dev tools in Chrome by default
   on("before:browser:launch", (browser = {}, launchOptions) => {
-    if (browser.name === "chrome") {
+    if (browser.name === "chrome" || browser.name === "chromium") {
       launchOptions.args.push("--auto-open-devtools-for-tabs");
 
       return launchOptions;

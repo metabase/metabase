@@ -23,7 +23,8 @@
     "react/jsx-key": 0,
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0,
-    "no-only-tests/no-only-tests": "error"
+    "no-only-tests/no-only-tests": "error",
+    "complexity": ["error", { "max": 54 }]
   },
   "globals": {
     "pending": false,

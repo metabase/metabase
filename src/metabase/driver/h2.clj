@@ -301,7 +301,7 @@
   [driver database ^String timezone-id]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
   ;; steps that are in the default impl
-  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (doto conn
         (.setReadOnly true))
