@@ -222,8 +222,14 @@
 (s/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [id :- (s/maybe s/Int), query :- su/Map]
+  [query :- su/Map, id :- (s/maybe s/Int)]
   (if (some? id) (h/merge-where query [:= id :db_id]) query))
+
+(s/defn ^:private add-card-db-id-clause
+  "Add a WHERE clause to only return crads with the given DB id.
+  Used in data picker for joins because we can't join across DB's."
+  [query :- su/Map, id :- (s/maybe s/Int)]
+  (if (some? id) (h/merge-where query [:= id :database_id]) query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
@@ -240,7 +246,8 @@
                    [:and
                     [:= :card.id :fave.card_id]
                     [:= :fave.owner_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :card.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses :card.collection_id search-ctx)
+      (add-card-db-id-clause (:table-db-id search-ctx))))
 
 (s/defmethod search-query-for-model (class Collection)
   [_ search-ctx :- SearchContext]
@@ -285,7 +292,6 @@
   (when (seq current-user-perms)
     (let [base-query (base-query-for-model Table search-ctx)]
       (add-table-db-id-clause
-        table-db-id
         (if (contains? current-user-perms "/")
           base-query
           (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
@@ -305,7 +311,8 @@
                                       :path]]})
                          :table]]
                :where  (into [:or] (for [path data-perms]
-                                     [:like :path (str path "%")]))})))))))
+                                     [:like :path (str path "%")]))})))
+        table-db-id))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
