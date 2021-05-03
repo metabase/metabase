@@ -70,6 +70,8 @@
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
 
+(defn- subset-model [model res] (filter #(= (:model %) model) res))
+
 (defn- default-archived-results []
   (for [result (default-search-results)
         :when (false? (:archived result))]
@@ -199,22 +201,20 @@
       (with-redefs [search-config/db-max-results 1]
         (is (= [test-collection]
                (search-request-data :crowberto :q "test collection"))))))
-  (testing "It limits and offsets matches properly"
+  (testing "It limits matches properly"
     (with-search-items-in-root-collection "test"
-      (is (= (take 2 (drop 2 (default-search-results)))
-             (search-request-data :crowberto :q "test" :limit "2" :offset "2")))))
-  (testing "It returns limits and offsets in return result"
+      (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2" :offset "0"))))))
+  (testing "It offsets matches properly"
+    (with-search-items-in-root-collection "test"
+      (is (= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
+  (testing "It returns limit and offset params in return result"
     (with-search-items-in-root-collection "test"
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
       (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3"))))))
   (testing "It subsets models properly"
     (with-search-items-in-root-collection "test"
-      (is (= (default-search-results))
-             (search-request-data :crowberto :q "test" :models "table" :models "database"))))
-  (testing "It takes table databse ids properly"
-    (with-search-items-in-root-collection "test"
-      (is (= (default-search-results))
-             (search-request-data :crowberto :q "test" :table_database_id "1")))))
+      (is (= (subset-model "pulse" (default-search-results))
+             (search-request-data :crowberto :q "test" :models "pulse"))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
