@@ -33,7 +33,7 @@ function checkFavicon() {
 }
 
 function checkLogo() {
-  cy.readFile("frontend/test/__support__/assets/logo.jpeg", "base64").then(
+  cy.readFile("frontend/test/__support__/e2e/assets/logo.jpeg", "base64").then(
     logo_data => {
       cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`);
     },
@@ -205,13 +205,14 @@ describeWithToken("formatting > whitelabel", () => {
   describe("company logo", () => {
     beforeEach(() => {
       cy.log("Add a logo");
-      cy.readFile("frontend/test/__support__/assets/logo.jpeg", "base64").then(
-        logo_data => {
-          cy.request("PUT", "/api/setting/application-logo-url", {
-            value: `data:image/jpeg;base64,${logo_data}`,
-          });
-        },
-      );
+      cy.readFile(
+        "frontend/test/__support__/e2e/assets/logo.jpeg",
+        "base64",
+      ).then(logo_data => {
+        cy.request("PUT", "/api/setting/application-logo-url", {
+          value: `data:image/jpeg;base64,${logo_data}`,
+        });
+      });
     });
 
     it("changes should reflect on admin's dashboard", () => {
