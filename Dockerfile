@@ -42,7 +42,7 @@ COPY . .
 RUN INTERACTIVE=false MB_EDITION=$MB_EDITION sh bin/build-drivers.sh
 
 ###################
-# STAGE 1.3: main builder
+# STAGE 1.4: main builder
 ###################
 
 FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as builder
