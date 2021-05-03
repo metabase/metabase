@@ -8,10 +8,10 @@ import {
   restore,
   remapDisplayValueToFK,
   sidebar,
-} from "__support__/cypress";
-import { USER_GROUPS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {
   ORDERS,

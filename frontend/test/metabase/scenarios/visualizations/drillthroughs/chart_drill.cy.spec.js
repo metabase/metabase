@@ -5,9 +5,9 @@ import {
   popover,
   sidebar,
   visitQuestionAdhoc,
-} from "__support__/cypress";
-import { USER_GROUPS } from "__support__/cypress_data";
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+} from "__support__/e2e/cypress";
+import { USER_GROUPS } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {
   ORDERS,

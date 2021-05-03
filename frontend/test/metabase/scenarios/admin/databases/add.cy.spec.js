@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 
 function typeField(label, value) {
   cy.findByLabelText(label)

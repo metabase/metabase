@@ -1,8 +1,8 @@
 {
   "testFiles": "**/*.cy.spec.js",
-  "pluginsFile": "frontend/test/cypress-plugins.js",
+  "pluginsFile": "frontend/test/__support__/e2e/cypress-plugins.js",
   "integrationFolder": ".",
-  "supportFile": "frontend/test/__support__/cypress.js",
+  "supportFile": "frontend/test/__support__/e2e/cypress.js",
   "videoUploadOnPasses": false,
   "viewportHeight": 800,
   "viewportWidth": 1280,

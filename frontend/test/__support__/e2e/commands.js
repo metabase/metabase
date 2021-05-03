@@ -1,4 +1,4 @@
-import { USERS } from "__support__/cypress_data";
+import { USERS } from "__support__/e2e/cypress_data";
 
 Cypress.Commands.add("createUser", user => {
   cy.log(`Create ${user} user`);

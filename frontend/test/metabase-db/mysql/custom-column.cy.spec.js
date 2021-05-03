@@ -1,4 +1,8 @@
-import { restore, addMySQLDatabase, withDatabase } from "__support__/cypress";
+import {
+  restore,
+  addMySQLDatabase,
+  withDatabase,
+} from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 

@@ -152,7 +152,7 @@ async function generateSnapshots() {
       "cypress",
       "run",
       "--config-file",
-      "frontend/test/cypress-snapshots.json",
+      "frontend/test/__support__/e2e/cypress-snapshots.json",
       "--config",
       `baseUrl=${server.host}`,
     ],

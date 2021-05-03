@@ -1,5 +1,5 @@
-import { restore } from "__support__/cypress";
-import { USERS } from "__support__/cypress_data";
+import { restore } from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
 
 ["admin", "normal"].forEach(user => {
   describe(`search > ${user} user`, () => {
