@@ -217,7 +217,7 @@ export function tokenize(expression) {
     const type = TOKEN.String;
     const end = index;
     const terminated = quote === source[end - 1];
-    const error = terminated ? null : t`Unterminated quoted string`;
+    const error = terminated ? null : t`Missing closing quotes`;
     return { type, value, start, end, error };
   };
 
@@ -245,7 +245,7 @@ export function tokenize(expression) {
     const type = TOKEN.Identifier;
     const end = index;
     const terminated = source[end - 1] === "]";
-    const error = terminated ? null : t`Unterminated bracket identifier`;
+    const error = terminated ? null : t`Missing a closing bracket`;
     return { type, start, end, error };
   };
 

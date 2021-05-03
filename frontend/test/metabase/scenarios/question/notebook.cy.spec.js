@@ -872,7 +872,7 @@ describe("scenarios > question > notebook", () => {
       cy.findAllByRole("button", { name: "Done" })
         .should("not.be.disabled")
         .click();
-      cy.findByText("Unterminated quoted string");
+      cy.findByText("Missing closing quotes");
     });
 
     it("should catch unterminated field reference", () => {
@@ -883,7 +883,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
           .type("Massive Discount");
-        cy.contains(/^Unterminated bracket identifier/i);
+        cy.contains(/^Missing a closing bracket/i);
       });
     });
 
