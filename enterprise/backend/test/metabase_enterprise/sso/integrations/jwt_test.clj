@@ -103,7 +103,7 @@
   (testing "Check an expired JWT"
     (with-jwt-default-setup
       (is (= "Token is older than max-age (180)"
-             (:message (saml-test/client :get 500 "/auth/sso" {:request-options {:redirect-strategy :none}}
+             (:message (saml-test/client :get 401 "/auth/sso" {:request-options {:redirect-strategy :none}}
                                          :return_to default-redirect-uri
                                          :jwt (jwt/sign {:email "test@metabase.com", :first_name "Test" :last_name "User"
                                                          :iat   (- (buddy-util/now) (u/minutes->seconds 5))}
