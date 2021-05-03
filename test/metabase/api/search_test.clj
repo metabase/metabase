@@ -213,8 +213,8 @@
       (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3"))))))
   (testing "It subsets models properly"
     (with-search-items-in-root-collection "test"
-      (is (= (subset-model "pulse" (default-search-results))
-             (search-request-data :crowberto :q "test" :models "pulse"))))))
+      (is (= (subset-model "dashboard" (default-search-results))
+             (search-request-data :crowberto :q "test" :models "dashboard"))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
