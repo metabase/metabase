@@ -426,6 +426,7 @@
    models       (s/maybe models-schema)
    limit        (s/maybe su/IntStringGreaterThanZero)
    offset       (s/maybe su/IntStringGreaterThanOrEqualToZero)}
+  (api/check-valid-page-params limit offset)
   (search (search-context q archived table_db_id models limit offset)))
 
 (api/define-routes)
