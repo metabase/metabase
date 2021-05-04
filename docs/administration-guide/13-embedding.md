@@ -136,5 +136,7 @@ If you'd like to embed Metabase dashboards or charts in your application without
 
 To learn more about embedding, check out these articles:
 
-- [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics/index.html).
+- [Embedding charts and dashboards](https://www.metabase.com/learn/developing-applications/advanced-metabase/embedding-charts-and-dashboards)
+- [Four strategies for delivering customer-facing analytics with Metabase](https://www.metabase.com/learn/developing-applications/advanced-metabase/embedding-overview)
+- [Embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/learn/developing-applications/advanced-metabase/multi-tenant-self-service-analytics.html)
 - [How to embed Metabase in your app to deliver multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding/index.html).
