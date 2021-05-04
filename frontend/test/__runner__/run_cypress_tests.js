@@ -39,40 +39,36 @@ const init = async () => {
   }
 
   if (sourceFolder) {
-    console.log(chalk.bold(`Running tests in '${sourceFolderLocation}'`));
+    printBold(`Running tests in '${sourceFolderLocation}'`);
   }
 
   if (singleFile) {
-    console.log(chalk.bold(`Running single spec '${singleFileName}'`));
+    printBold(`Running single spec '${singleFileName}'`);
   }
 
   try {
     const version = await readFile(
       __dirname + "/../../../resources/version.properties",
     );
-    console.log(chalk.bold("Running e2e test runner with this build:"));
+    printBold("Running e2e test runner with this build:");
     process.stdout.write(chalk.cyan(version));
-    console.log(
-      chalk.bold(
-        "If that version seems too old, please run `./bin/build version uberjar`.\n",
-      ),
+    printBold(
+      "If that version seems too old, please run `./bin/build version uberjar`.\n",
     );
   } catch (e) {
-    console.log(
-      chalk.bold(
-        "No version file found. Please run `./bin/build version uberjar`.",
-      ),
+    printBold(
+      "No version file found. Please run `./bin/build version uberjar`.",
     );
     process.exit(1);
   }
 
-  console.log(chalk.bold("Starting backend"));
+  printBold("Starting backend");
   await BackendResource.start(server);
 
-  console.log(chalk.bold("Generating snapshots"));
+  printBold("Generating snapshots");
   await generateSnapshots();
 
-  console.log(chalk.bold("Starting Cypress"));
+  printBold("Starting Cypress");
   const baseConfig = { baseUrl: server.host };
   const folderConfig = sourceFolder && {
     integrationFolder: sourceFolderLocation,
@@ -127,7 +123,7 @@ const init = async () => {
 };
 
 const cleanup = async (exitCode = 0) => {
-  console.log(chalk.bold("Cleaning up..."));
+  printBold("Cleaning up...");
   await BackendResource.stop(server);
   process.exit(exitCode);
 };
@@ -162,4 +158,8 @@ async function generateSnapshots() {
   return new Promise((resolve, reject) => {
     cypressProcess.on("exit", resolve);
   });
+}
+
+function printBold(message) {
+  console.log(chalk.bold(message));
 }
