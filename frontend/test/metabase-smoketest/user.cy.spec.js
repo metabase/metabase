@@ -1,4 +1,4 @@
-import { restore, sidebar, popover } from "__support__/cypress";
+import { restore, sidebar, popover } from "__support__/e2e/cypress";
 
 describe("smoketest > user", () => {
   // Goal: user can use all the features of the simple question and notebook editor

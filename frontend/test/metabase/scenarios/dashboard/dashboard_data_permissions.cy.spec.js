@@ -1,4 +1,8 @@
-import { restore, popover, selectDashboardFilter } from "__support__/cypress";
+import {
+  restore,
+  popover,
+  selectDashboardFilter,
+} from "__support__/e2e/cypress";
 
 function filterDashboard(suggests = true) {
   cy.visit("/dashboard/1");

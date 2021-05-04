@@ -19,6 +19,7 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.public-settings :as public-settings]
@@ -152,16 +153,22 @@
       (case f
         :database (api/read-check Database model_id)
         :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
-    (->> (cards-for-filter-option f model_id)
-         ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
-         (filterv mi/can-read?))))
+    (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
+          last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
+      (into []
+            (map (fn [{:keys [id] :as card}]
+                   (if-let [edit-info (get last-edit-info id)]
+                     (assoc card :last-edit-info edit-info)
+                     card)))
+            cards))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
                (hydrate :creator :dashboard_count :can_write :collection)
-               api/read-check)
+               api/read-check
+               (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
@@ -211,7 +218,7 @@
 (defn- save-new-card-async!
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
   will cancel the save."
-  [card-data]
+  [card-data user]
   (async.u/cancelable-thread
     (let [card (db/transaction
                  ;; Adding a new card at `collection_position` could cause other cards in this
@@ -221,7 +228,9 @@
       (events/publish-event! :card-create card)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
       ;; currently has with returned one -- See #4283
-      (hydrate card :creator :dashboard_count :can_write :collection))))
+      (-> card
+          (hydrate :creator :dashboard_count :can_write :collection)
+          (assoc :last-edit-info (last-edit/edit-information-for-user user))))))
 
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
@@ -241,7 +250,7 @@
           (a/close! result-metadata-chan)
           ;; now do the actual saving on a separate thread so we don't tie up our precious core.async thread. Pipe the
           ;; result into `out-chan`.
-          (async.u/promise-pipe (save-new-card-async! card-data) out-chan))
+          (async.u/promise-pipe (save-new-card-async! card-data @api/*current-user*) out-chan))
         (catch Throwable e
           (a/put! out-chan e)
           (a/close! out-chan))))
@@ -424,7 +433,9 @@
       (publish-card-update! card archived)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
       ;; has with returned one -- See #4142
-      (hydrate card :creator :dashboard_count :can_write :collection))))
+      (-> card
+          (hydrate :creator :dashboard_count :can_write :collection)
+          (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."

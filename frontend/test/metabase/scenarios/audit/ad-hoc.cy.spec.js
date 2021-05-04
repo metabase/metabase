@@ -1,4 +1,4 @@
-import { restore, describeWithToken } from "__support__/cypress";
+import { restore, describeWithToken } from "__support__/e2e/cypress";
 
 describeWithToken("audit > ad-hoc", () => {
   describe("native query with JOIN", () => {

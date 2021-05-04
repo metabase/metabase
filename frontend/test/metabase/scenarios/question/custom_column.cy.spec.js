@@ -5,9 +5,9 @@ import {
   _typeUsingPlaceholder,
   openOrdersTable,
   visitQuestionAdhoc,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 

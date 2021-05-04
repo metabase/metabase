@@ -2,11 +2,10 @@ import {
   restore,
   setupDummySMTP,
   describeWithToken,
-  describeOpenSourceOnly,
   popover,
   mockSessionProperty,
-} from "__support__/cypress";
-import { USERS } from "__support__/cypress_data";
+} from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
@@ -224,8 +223,9 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describeOpenSourceOnly("OSS email subscriptions", () => {
+  describe("OSS email subscriptions", () => {
     beforeEach(() => {
+      cy.skipOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
       cy.visit(`/dashboard/1`);
       setupDummySMTP();
     });

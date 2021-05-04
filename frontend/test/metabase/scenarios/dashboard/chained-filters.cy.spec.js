@@ -2,8 +2,8 @@ import {
   restore,
   popover,
   showDashboardCardActions,
-} from "__support__/cypress";
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+} from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 

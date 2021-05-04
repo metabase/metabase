@@ -4,7 +4,7 @@ import {
   createBasicAlert,
   popover,
   openPeopleTable,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 // Ported from alert.e2e.spec.js
 // *** We should also check that alerts can be set up through slack
 

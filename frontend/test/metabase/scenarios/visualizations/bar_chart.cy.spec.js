@@ -1,4 +1,4 @@
-import { restore, visitQuestionAdhoc } from "__support__/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
 
 describe("scenarios > visualizations > bar chart", () => {
   beforeEach(() => {
