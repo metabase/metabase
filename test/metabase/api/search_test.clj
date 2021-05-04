@@ -210,11 +210,7 @@
   (testing "It returns limit and offset params in return result"
     (with-search-items-in-root-collection "test"
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
-      (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3"))))))
-  (testing "It subsets models properly"
-    (with-search-items-in-root-collection "test"
-      (is (= (subset-model "dashboard" (default-search-results))
-             (search-request-data :crowberto :q "test" :models "dashboard"))))))
+      (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3")))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
