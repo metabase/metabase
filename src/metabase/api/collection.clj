@@ -200,11 +200,18 @@
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`."
   [id model archived]
   {model    (s/maybe (apply s/enum valid-model-param-values))
-   archived (s/maybe su/BooleanString)}
-  (collection-children
-    (api/read-check Collection id)
-    {:model     (keyword model)
-     :archived? (Boolean/parseBoolean archived)}))
+   archived (s/maybe su/BooleanString)
+   limit    (s/maybe su/IntStringSomeShit)
+   offset   (s/maybe su/IntStringSomeShit) }
+  {:data  (cond->
+            (collection-children (api/read-check Collection id)
+                                 {:model     (keyword model)
+                                  :archived? (Boolean/parseBoolean archived)})
+            (some? offset) (drop offset)
+            (some? limit) (take limit))
+   :limit  limit
+   :offset offset
+   :model  model })
 
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -235,16 +242,26 @@
   [model archived namespace]
   {model     (s/maybe (apply s/enum valid-model-param-values))
    archived  (s/maybe su/BooleanString)
-   namespace (s/maybe su/NonBlankString)}
+   namespace (s/maybe su/NonBlankString)
+   limit     (s/maybe su/NonBlankString)
+   offset    (s/maybe su/NonBlankString)
+   }
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)]
-    (collection-children
-     root-collection
-     {:model     (if (mi/can-read? root-collection)
-                   (keyword model)
-                   :collection)
-      :archived? (Boolean/parseBoolean archived)})))
+
+    {:data  (cond->
+              (collection-children
+                root-collection
+                {:model     (if (mi/can-read? root-collection)
+                              (keyword model)
+                              :collection)
+                 :archived? (Boolean/parseBoolean archived)})
+              (some? offset) (drop offset)
+              (some? limit) (take limit))
+     :limit  limit
+     :offset offset
+     :model  model })
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
