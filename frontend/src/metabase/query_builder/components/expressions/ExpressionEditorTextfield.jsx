@@ -11,6 +11,8 @@ import { processSource } from "metabase/lib/expressions/process";
 import {
   tokenize,
   countMatchingParentheses,
+  TOKEN,
+  OPERATOR as OP,
 } from "metabase/lib/expressions/tokenizer";
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
@@ -35,7 +37,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import TokenizedInput from "./TokenizedInput";
 
-import { isExpression } from "metabase/lib/expressions";
+import { getMBQLName, isExpression } from "metabase/lib/expressions";
 
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
 
@@ -351,6 +353,21 @@ export default class ExpressionEditorTextfield extends React.Component {
       tokenizerError.push({
         message: mismatchedError,
       });
+    }
+
+    for (let i = 0; i < tokens.length - 1; ++i) {
+      const token = tokens[i];
+      if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
+        const functionName = source.slice(token.start, token.end);
+        if (getMBQLName(functionName)) {
+          const next = tokens[i + 1];
+          if (next.op !== OP.OpenParenthesis) {
+            tokenizerError.unshift({
+              message: t`Expecting an opening parenthesis after function ${functionName}`,
+            });
+          }
+        }
+      }
     }
 
     this.setState({
