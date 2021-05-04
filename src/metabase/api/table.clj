@@ -21,7 +21,7 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]])
-  (:import [java.util.concurrent Callable Future ThreadFactory ExecutorService Executors]))
+  (:import [java.util.concurrent Callable Executors ExecutorService Future ThreadFactory]))
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
@@ -62,21 +62,22 @@
         (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
-(defonce thread-factory
+(defonce ^:private thread-factory
   (reify ThreadFactory
     (newThread [_ r]
       (doto (Thread. r)
         (.setName "table sync worker")
         (.setDaemon true)))))
 
-(defonce ^ExecutorService executor
+(defonce ^:private executor
   (delay (Executors/newFixedThreadPool 1 ^ThreadFactory thread-factory)))
 
 (defn- submit-task
   "Submit a task to the single thread executor. This will attempt to serialize repeated requests to sync tables. It
   obviously cannot work across multiple instances."
-  ^Future [f]
-  (.submit @executor ^Callable (bound-fn [] (f))))
+  ^Future [^Callable f]
+  (let [task (bound-fn [] (f))]
+    (.submit ^ExecutorService @executor ^Callable task)))
 
 (defn- sync-unhidden-tables
   "Function to call on newly unhidden tables. Starts a thread to sync all tables."
