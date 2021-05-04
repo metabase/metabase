@@ -46,7 +46,7 @@ const TableLocation = ({ item }) => (
     {jt`Table in ${(
       <React.Fragment>
         <LocationLink to={Urls.browseDatabase({ id: item.database_id })}>
-          <Database.Name id={item.database_id} />{" "}
+          <Database.Name id={item.database_id} />
         </LocationLink>
         {item.table_schema && (
           <Schema.ListLoader
