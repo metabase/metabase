@@ -39,8 +39,8 @@
    limit (s/maybe su/IntStringGreaterThanZero)
    offset (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (let [archived? (Boolean/parseBoolean archived)
-        limit (Integer/parseInteger limit)
-        offset (Integer/parseInteger offset)]
+        limit (Integer/parseInt limit)
+        offset (Integer/parseInt offset)]
     (as-> (db/select Collection
             {:where    [:and
                         [:= :archived archived?]
