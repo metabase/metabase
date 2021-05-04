@@ -203,15 +203,16 @@
    archived (s/maybe su/BooleanString)
    limit    (s/maybe su/IntStringSomeShit)
    offset   (s/maybe su/IntStringSomeShit) }
-  {:data  (cond->
-            (collection-children (api/read-check Collection id)
-                                 {:model     (keyword model)
-                                  :archived? (Boolean/parseBoolean archived)})
-            (some? offset) (drop offset)
-            (some? limit) (take limit))
-   :limit  limit
-   :offset offset
-   :model  model })
+  (let [children-res  (collection-children (api/read-check Collection id)
+                                           {:model     (keyword model)
+                                            :archived? (Boolean/parseBoolean archived)})]
+    {:data   (cond-> children-res
+               (some? offset) (drop offset)
+               (some? limit) (take limit))
+     :total  (count children-res)
+     :limit  limit
+     :offset offset
+     :model  model }))
 
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
