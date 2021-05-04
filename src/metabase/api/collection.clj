@@ -155,7 +155,7 @@
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [model collections-only? limit offset], :as options}    :- CollectionChildrenOptions]
+   {:keys [model collections-only?], :as options}    :- CollectionChildrenOptions]
   (let [item-groups (into {}
                           (for [model-kw [:collection :card :dashboard :pulse :snippet]
                                 ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
