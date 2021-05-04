@@ -4,7 +4,6 @@ import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
   getModerationStatusIcon,
   getColor,
-  getModerationStatus,
 } from "metabase-enterprise/moderation";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";

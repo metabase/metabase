@@ -17,7 +17,7 @@ Object.assign(PLUGIN_MODERATION_SERVICE, {
 });
 
 export function getModerationActionsList() {
-  return [ACTIONS.verification, ACTIONS.flag, ACTIONS.question];
+  return [ACTIONS.verified, ACTIONS.misleading, ACTIONS.confused];
 }
 
 export function getModerationStatusIcon(type) {
@@ -26,8 +26,4 @@ export function getModerationStatusIcon(type) {
 
 export function getColor(type) {
   return getIn(ACTIONS, [type, "color"]);
-}
-
-export function getModerationStatus(type) {
-  return getIn(ACTIONS, [type, "moderationReviewStatus"]);
 }
