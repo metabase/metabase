@@ -1223,6 +1223,16 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
+          name: e2e-tests-native-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "native-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/native
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
           name: e2e-tests-question-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
