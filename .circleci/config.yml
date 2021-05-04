@@ -867,10 +867,10 @@ jobs:
         default: clojure-and-node-and-browsers
       cypress-group:
         type: string
-      only-single-database:
-        type: boolean
-        default: false
-      test-files-location:
+      source-folder:
+        type: string
+        default: ""
+      test-files:
         type: string
         default: ""
       before-steps:
@@ -895,7 +895,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
-                  run test-cypress-no-build <<# parameters.only-single-database >> --folder << parameters.test-files-location >> <</ parameters.only-single-database >>
+                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> --folder << parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -1187,6 +1187,7 @@ workflows:
           requires:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "default-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios
 
       - fe-tests-cypress:
           name: e2e-tests-mongo-4-<< matrix.edition >>
@@ -1194,8 +1195,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-mongo-4
           cypress-group: "mongo"
-          only-single-database: true
-          test-files-location: frontend/test/metabase-db/mongo
+          source-folder: frontend/test/metabase-db/mongo
           before-steps:
             - wait-for-port:
                 port: 27017
@@ -1207,8 +1207,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-postgres-12
           cypress-group: "postgres"
-          only-single-database: true
-          test-files-location: frontend/test/metabase-db/postgres
+          source-folder: frontend/test/metabase-db/postgres
           before-steps:
             - wait-for-port:
                 port: 5432
@@ -1220,8 +1219,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-mysql-8
           cypress-group: "mysql"
-          only-single-database: true
-          test-files-location: frontend/test/metabase-db/mysql
+          source-folder: frontend/test/metabase-db/mysql
           before-steps:
             - wait-for-port:
                 port: 3306
