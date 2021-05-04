@@ -88,7 +88,9 @@
 (def ^:private CollectionChildrenOptions
   {:archived? s/Bool
    ;; when specified, only return results of this type.
-   :model     (s/maybe (apply s/enum (map keyword valid-model-param-values)))})
+   :model     (s/maybe (apply s/enum (map keyword valid-model-param-values)))
+   :limit     (s/maybe s/Int)
+   :offset     (s/maybe s/Int) })
 
 (defmulti ^:private fetch-collection-children
   "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -155,7 +157,7 @@
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [model collections-only?], :as options}    :- CollectionChildrenOptions]
+   {:keys [model collections-only? limit offset], :as options}    :- CollectionChildrenOptions]
   (let [item-groups (into {}
                           (for [model-kw [:collection :card :dashboard :pulse :snippet]
                                 ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
@@ -168,7 +170,7 @@
         last-edited (last-edit/fetch-last-edited-info
                      {:card-ids (->> item-groups :card (map :id))
                       :dashboard-ids (->> item-groups :dashboard (map :id))})]
-    (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
+    (take limit (drop offset (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
              (into []
                    ;; items are grouped by model, needed for last-edit lookup. put model on each one, cat them, then
                    ;; plop edit information on them if present
@@ -179,7 +181,7 @@
                                 (if-let [edit-info (get-in last-edited [model id])]
                                   (assoc item :last-edit-info edit-info)
                                   item))))
-                   item-groups))))
+                   item-groups))))))
 
 (s/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
