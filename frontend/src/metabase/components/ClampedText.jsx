@@ -29,6 +29,7 @@ function ClampedText({ className, text, visibleLines }) {
 
     const clampedHeight = clampedDiv.current.getBoundingClientRect().height;
     const textHeight = innerDiv.current.getBoundingClientRect().height;
+
     setIsOverflowing(textHeight > clampedHeight);
   }, [text]);
 
@@ -38,7 +39,9 @@ function ClampedText({ className, text, visibleLines }) {
         innerRef={clampedDiv}
         visibleLines={isClamped ? visibleLines : undefined}
       >
-        <div ref={innerDiv}>{text}</div>
+        <div className="clamped-text--text" ref={innerDiv}>
+          {text}
+        </div>
       </ClampedDiv>
       <div>
         {isOverflowing && (
