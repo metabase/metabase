@@ -86,7 +86,7 @@
     (submit-task
      (fn []
        (let [database (table/database (first newly-unhidden))]
-         (if (doto (driver/can-connect? (:engine database) (:details database)) tap>)
+         (if (driver.u/can-connect-with-details? (:engine database) (:details database))
            (doseq [table newly-unhidden]
              (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
              (sync/sync-table! table))
