@@ -13,7 +13,6 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.table :as table]
             [metabase.server.middleware.util :as middleware.u]
-            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.mock.util :as mutil]
             [metabase.test.util :as tu]
@@ -291,28 +290,37 @@
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
       (mt/with-temp Table [table]
-        (let [original-sync-table! sync/sync-table!
-              called               (atom 0)
-              test-fun             (fn [state]
-                                     (with-redefs [sync/sync-table! (fn [& args] (swap! called inc)
-                                                                      (apply original-sync-table! args))]
-                                       (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
-                                                             {:display_name    "Userz"
-                                                              :visibility_type state
-                                                              :description     "What a nice table!"})))]
-          (test-fun "hidden")
-          (test-fun nil)                ; <- should get synced
-          (is (= 1
-                 @called))
-          (test-fun "hidden")
-          (test-fun "cruft")
-          (test-fun "technical")
-          (test-fun nil)                ; <- should get synced again
-          (is (= 2
-                 @called))
-          (test-fun "technical")
-          (is (= 2
-                 @called)))))))
+        (let [called (atom 0)
+              ;; original is private so a var will pick up the redef'd. need contents of var before
+              original (var-get #'table-api/sync-unhidden-tables)]
+          (with-redefs [table-api/sync-unhidden-tables
+                        (fn [unhidden]
+                          (when (seq unhidden)
+                            (is (= (:id table)
+                                   (:id (first unhidden)))
+                                "Unhidden callback did not get correct tables.")
+                            (swap! called inc)
+                            (let [fut (original unhidden)]
+                              (when (future? fut)
+                                (deref fut)))))]
+            (let [set-visibility (fn [state]
+                                   (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                                         {:display_name    "Userz"
+                                                          :visibility_type state
+                                                          :description     "What a nice table!"}))]
+              (set-visibility "hidden")
+              (set-visibility nil)        ; <- should get synced
+              (is (= 1
+                     @called))
+              (set-visibility "hidden")
+              (set-visibility "cruft")
+              (set-visibility "technical")
+              (set-visibility nil)        ; <- should get synced again
+              (is (= 2
+                     @called))
+              (set-visibility "technical")
+              (is (= 2
+                     @called)))))))))
 
 (deftest get-fks-test
   (testing "GET /api/table/:id/fks"
