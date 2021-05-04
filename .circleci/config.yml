@@ -1183,11 +1183,71 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-          name: e2e-tests-<< matrix.edition >>
+          name: e2e-tests-admin-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          cypress-group: "default-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios
+          cypress-group: "admin-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/admin
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-collections-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "collections-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/collections
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-dashboard-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "dashboard-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/dashboard
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-onboarding-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "onboarding-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/onboarding
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-question-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "question-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/question
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-sharing-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "sharing-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/sharing
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-visualizations-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "visualizations-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/visualizations
 
       - fe-tests-cypress:
           name: e2e-tests-mongo-4-<< matrix.edition >>
