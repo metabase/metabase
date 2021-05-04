@@ -13,10 +13,12 @@ const server = BackendResource.get({ dbKey: "" });
 // --spec <single-spec-path> - Specifies a path to a single test file
 const userArgs = process.argv.slice(2);
 const isOpenMode = userArgs.includes("--open");
-const sourceFolder = userArgs.includes("--folder");
-const singleFile = userArgs.includes("--spec");
+const isFolderFlag = userArgs.includes("--folder");
+const isSpecFlag = userArgs.includes("--spec");
 const sourceFolderLocation = userArgs[userArgs.indexOf("--folder") + 1];
-const singleFileName = userArgs[userArgs.indexOf("--spec") + 1];
+const specs = userArgs[userArgs.indexOf("--spec") + 1];
+const isSingleSpec = !specs.match(/,/);
+const testFiles = isSingleSpec ? specs : specs.split(",");
 
 function readFile(fileName) {
   return new Promise(function(resolve, reject) {
@@ -38,13 +40,11 @@ const init = async () => {
     );
   }
 
-  if (sourceFolder) {
-    printBold(`Running tests in '${sourceFolderLocation}'`);
-  }
+  const logMessage = isFolderFlag
+    ? `Running tests in '${sourceFolderLocation}'`
+    : `Running '${testFiles}'`;
 
-  if (singleFile) {
-    printBold(`Running single spec '${singleFileName}'`);
-  }
+  printBold(logMessage);
 
   try {
     const version = await readFile(
@@ -70,10 +70,10 @@ const init = async () => {
 
   printBold("Starting Cypress");
   const baseConfig = { baseUrl: server.host };
-  const folderConfig = sourceFolder && {
+  const folderConfig = isFolderFlag && {
     integrationFolder: sourceFolderLocation,
   };
-  const specsConfig = singleFile && { testFiles: singleFileName };
+  const specsConfig = isSpecFlag && { testFiles };
   const ignoreConfig =
     // if we're not running specific tests, avoid including db and smoketests
     folderConfig || specsConfig
