@@ -38,9 +38,10 @@
    namespace (s/maybe su/NonBlankString)
    limit (s/maybe su/IntStringGreaterThanZero)
    offset (s/maybe su/IntStringGreaterThanOrEqualToZero)}
-  (let [archived? (Boolean/parseBoolean archived)
-        limit (Integer/parseInt limit)
-        offset (Integer/parseInt offset)]
+  (api/check-valid-page-params limit offset)
+  (let [archived?  (Boolean/parseBoolean archived)
+        limit-int  (some-> limit Integer/parseInt)
+        offset-int (some-> offset Integer/parseInt)]
     (as-> (db/select Collection
             {:where    [:and
                         [:= :archived archived?]
@@ -49,8 +50,8 @@
                          :id
                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
              :order-by [[:%lower.name :asc]]
-             :limit limit
-             :offset offset }) collections
+             :limit limit-int
+             :offset offset-int }) collections
       ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
@@ -201,17 +202,20 @@
   [id model archived]
   {model    (s/maybe (apply s/enum valid-model-param-values))
    archived (s/maybe su/BooleanString)
-   limit    (s/maybe su/IntStringSomeShit)
-   offset   (s/maybe su/IntStringSomeShit) }
+   limit    (s/maybe su/IntStringGreaterThanZero)
+   offset   (s/maybe su/IntStringGreaterThanOrEqualToZero) }
+  (api/check-valid-page-params limit offset)
   (let [children-res  (collection-children (api/read-check Collection id)
                                            {:model     (keyword model)
-                                            :archived? (Boolean/parseBoolean archived)})]
+                                            :archived? (Boolean/parseBoolean archived)})
+        limit-int     (some-> limit Integer/parseInt)
+        offset-int    (some-> offset Integer/parseInt) ]
     {:data   (cond-> children-res
-               (some? offset) (drop offset)
-               (some? limit) (take limit))
+               (some? offset-int) (drop offset-int)
+               (some? limit-int)  (take limit-int))
      :total  (count children-res)
-     :limit  limit
-     :offset offset
+     :limit  limit-int
+     :offset offset-int
      :model  model }))
 
 
@@ -244,24 +248,26 @@
   {model     (s/maybe (apply s/enum valid-model-param-values))
    archived  (s/maybe su/BooleanString)
    namespace (s/maybe su/NonBlankString)
-   limit     (s/maybe su/NonBlankString)
-   offset    (s/maybe su/NonBlankString)
+   limit     (s/maybe su/IntStringGreaterThanZero)
+   offset    (s/maybe su/IntStringGreaterThanOrEqualToZero)
    }
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (let [root-collection (assoc collection/root-collection :namespace namespace)]
-
-    {:data  (cond->
-              (collection-children
-                root-collection
-                {:model     (if (mi/can-read? root-collection)
-                              (keyword model)
-                              :collection)
-                 :archived? (Boolean/parseBoolean archived)})
-              (some? offset) (drop offset)
-              (some? limit) (take limit))
-     :limit  limit
-     :offset offset
+  (let [root-collection (assoc collection/root-collection :namespace namespace)
+        limit-int       (some-> limit Integer/parseInt)
+        offset-int      (some-> offset Integer/parseInt)
+        col-children    (collection-children
+                          root-collection
+                          {:model     (if (mi/can-read? root-collection)
+                                        (keyword model)
+                                        :collection)
+                           :archived? (Boolean/parseBoolean archived)}) ]
+    {:data  (cond-> col-children
+              (some? offset-int) (drop offset-int)
+              (some? limit-int)  (take limit-int))
+     :total  (count col-children)
+     :limit  limit-int
+     :offset offset-int
      :model  model })
 
 
