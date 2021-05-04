@@ -6,7 +6,7 @@ import TextInput from "metabase/components/TextInput";
 
 const SearchInput = styled(TextInput).attrs({
   icon: <Icon name="search" size={16} />,
-  borderRadius: 'sm'
+  borderRadius: "sm",
 })`
   min-width: 286px;
 `;

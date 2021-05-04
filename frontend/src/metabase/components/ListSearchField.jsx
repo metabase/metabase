@@ -33,4 +33,4 @@ export default function ListSearchField(props) {
   );
 }
 
-ListSearchField.propTypes = TextInput.propTypes
+ListSearchField.propTypes = TextInput.propTypes;
