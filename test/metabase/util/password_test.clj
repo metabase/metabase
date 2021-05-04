@@ -55,7 +55,7 @@
                               "123456"           false
                               "passw0rd"         false
                               "PASSW0RD"         false
-                              "test12345"        true
+                              "unc0mmonpw"       true
                               "pa$$w0®∂"         true
                               "s6n!8z-6.gcJe"    true}]
       (testing (pr-str (list 'is-valid? input))
