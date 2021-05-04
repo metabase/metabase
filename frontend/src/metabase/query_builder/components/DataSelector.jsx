@@ -26,6 +26,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import _ from "underscore";
 
+const MIN_SEARCH_LENGTH = 2;
+
 // chooses a database
 const DATABASE_STEP = "DATABASE";
 // chooses a schema (given that a database has already been selected)
@@ -707,7 +709,7 @@ export class UnconnectedDataSelector extends Component {
     const { canChangeDatabase, selectedDatabaseId } = this.props;
     const searchDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
-    const isSearchActive = searchText.length >= 2;
+    const isSearchActive = searchText.length >= MIN_SEARCH_LENGTH;
 
     return (
       <PopoverWithTrigger

@@ -5,10 +5,9 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 
-import Schema from "metabase/entities/schemas";
-import Database from "metabase/entities/databases";
-
 import { color, lighten } from "metabase/lib/colors";
+
+import { ItemLocation } from "./ItemLocation";
 
 export function SearchResultItem({ item, onSelect }) {
   const handleClick = () => onSelect(item);
@@ -16,7 +15,7 @@ export function SearchResultItem({ item, onSelect }) {
   return (
     <SearchResultItemRoot onClick={handleClick}>
       <IconWrapper>
-        <Icon name="table" size={26} />
+        <Icon name="table2" size={22} />
       </IconWrapper>
       <Details>
         <Title>{item.name}</Title>
@@ -39,45 +38,6 @@ const Title = styled.div`
   line-height: 17px;
 `;
 
-const ItemLocation = ({ item }) => {
-  switch (item.model) {
-    case "card":
-      return item.getCollection().name;
-    case "table":
-      return (
-        <React.Fragment>
-          <Database.Name id={item.database_id} />{" "}
-          {item.table_schema && (
-            <Schema.ListLoader
-              query={{ dbId: item.database_id }}
-              loadingAndErrorWrapper={false}
-            >
-              {({ list }) =>
-                list && list.length > 1 ? (
-                  <React.Fragment>
-                    <Icon
-                      className="text-light"
-                      name="chevronright"
-                      mx="4px"
-                      size={10}
-                    />
-                    {item.table_schema}
-                  </React.Fragment>
-                ) : null
-              }
-            </Schema.ListLoader>
-          )}
-        </React.Fragment>
-      );
-    default:
-      return null;
-  }
-};
-
-ItemLocation.propTypes = {
-  item: PropTypes.object.isRequired,
-};
-
 const IconWrapper = styled.div`
   margin-right: 10px;
   margin-left: 10px;
@@ -90,7 +50,7 @@ const Details = styled.div`
   overflow: hidden;
 `;
 
-const SearchResultItemRoot = styled.div`
+const SearchResultItemRoot = styled.li`
   cursor: pointer;
   display: flex;
   align-items: center;

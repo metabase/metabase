@@ -9,14 +9,10 @@ import Search from "metabase/entities/search";
 
 import { SearchResultItem } from "./SearchResultItem";
 
-const MAX_SEARCH_RESULTS = 200;
-
 export function SearchResults({ searchQuery, onSelect, databaseId }) {
   const query = {
     q: searchQuery,
     models: ["table", "card"],
-    limit: MAX_SEARCH_RESULTS,
-    offset: 0,
   };
 
   if (databaseId) {
@@ -39,11 +35,15 @@ export function SearchResults({ searchQuery, onSelect, databaseId }) {
           }
 
           return (
-            <ol>
+            <ul>
               {list.map(item => (
-                <SearchResultItem item={item} onSelect={onSelect} />
+                <SearchResultItem
+                  key={`${item.id}_${item.model}`}
+                  item={item}
+                  onSelect={onSelect}
+                />
               ))}
-            </ol>
+            </ul>
           );
         }}
       </Search.ListLoader>
