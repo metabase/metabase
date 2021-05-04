@@ -226,10 +226,12 @@
   (if (some? id) (h/merge-where query [:= id :db_id]) query))
 
 (s/defn ^:private add-card-db-id-clause
-  "Add a WHERE clause to only return crads with the given DB id.
+  "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
   [query :- su/Map, id :- (s/maybe s/Int)]
-  (if (some? id) (h/merge-where query [:= id :database_id]) query))
+  (if (some? id)
+    (h/merge-where query [:= id :database_id])
+    query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
@@ -345,9 +347,10 @@
   (-> id Segment mi/can-read?))
 
 (defn- models-to-search
-  [ctx default]
-  (if (:models ctx)
-    (vec (map search-config/model-name->instance (:models ctx))) default))
+  [{:keys [models]} default]
+  (if models
+    (vec (map search-config/model-name->instance models))
+    default))
 
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
@@ -375,16 +378,14 @@
       ;; We get to do this slicing and dicing with the result data because
       ;; the pagination of search is for UI improvement, not for performance.
       ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-      {
-       :total (count total-results)
-       :data
-       (cond->> total-results
-         (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-         (some? (:limit-int search-ctx)) (take (:limit-int search-ctx)))
-       :limit (:limit-int search-ctx)
-       :offset (:offset-int search-ctx)
+      { :total      (count total-results)
+        :data       (cond->> total-results
+         (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+         (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+       :limit       (:limit-int search-ctx)
+       :offset      (:offset-int search-ctx)
        :table_db_id (:table-db-id search-ctx)
-       :models (:models search-ctx) })))
+       :models      (:models search-ctx) })))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
@@ -400,7 +401,7 @@
    models :-          (s/maybe models-schema)
    limit :-           (s/maybe su/IntStringGreaterThanZero)
    offset :-          (s/maybe su/IntStringGreaterThanOrEqualToZero)]
-  (cond->{:search-string      search-string
+  (cond-> {:search-string     search-string
           :archived?          (Boolean/parseBoolean archived-string)
           :current-user-perms @api/*current-user-permissions-set*}
     (some? table-db-id) (assoc :table-db-id table-db-id)
