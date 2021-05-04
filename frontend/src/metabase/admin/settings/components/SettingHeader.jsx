@@ -7,9 +7,12 @@ const SettingHeader = ({ setting }) => (
       {setting.display_name}
     </div>
     <div className="text-medium text-measure my1">
-      {setting.descriptionComponent
-        ? setting.descriptionComponent(setting)
-        : setting.description}
+      {setting.warningMessage && (
+        <React.Fragment>
+          <strong>{setting.warningMessage}</strong>{" "}
+        </React.Fragment>
+      )}
+      {setting.description}
       {setting.note && <div>{setting.note}</div>}
     </div>
   </div>

@@ -20,7 +20,6 @@ import SettingsUpdatesForm from "./components/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";
-import SiteUrlDescription from "./components/SiteUrlDescription";
 
 import { UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
@@ -66,7 +65,7 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Site URL`,
         type: "string",
         widget: SiteUrlWidget,
-        descriptionComponent: SiteUrlDescription,
+        warningMessage: t`Only change this if you know what you're doing!`,
       },
       {
         key: "redirect-all-requests-to-https",
