@@ -4,7 +4,9 @@ Metabot is your friendly robot who will answer the questions that you ask from S
 
 ### Metabot does not answer on Slack or it's offline 
 
-The Metabase server needs to have inbound and outbound connection for Slack to connect to the Metabot APIs so it can answer your question. You can keep Metabase completely isolated from the outside world and provide Metabot the possibility of connecting to your Slack workspace by using a Proxy server which needs to support SOCKS protocol and websockets.
+The Metabase server uses Websockets to connect to Slack to answer your question. You can keep Metabase completely isolated from the outside world and provide Metabot the possibility of connecting to your Slack workspace by using a Proxy server but it needs to support websockets.
 
 Remember that Metabase supports connecting through a proxy by passing variables to the java command like:
 `java -Dhttps.proxyHost=[your proxy's hostname] -Dhttps.proxyPort=[your proxy's port] -jar metabase.jar`
+
+Please refer to Slack's help regarding connectivity in their [help center](https://slack.com/intl/en-dk/help/articles/360001603387-Manage-Slack-connection-issues)
