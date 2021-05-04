@@ -34,7 +34,7 @@
 
 (def ^:private ^{:arglists '([form])} mbql-entity-reference?
   "Is given form an MBQL entity reference?"
-  (partial mbql.normalize/is-clause? #{:field-id :fk-> :metric :segment}))
+  (partial mbql.normalize/is-clause? #{:field :field-id :fk-> :metric :segment}))
 
 (defn- mbql-id->fully-qualified-name
   [mbql]

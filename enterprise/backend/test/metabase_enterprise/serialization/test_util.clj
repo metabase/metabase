@@ -10,6 +10,12 @@
 (def root-card-name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž")
 (def temp-db-name "Fingerprint test-data copy")
 
+(defn temp-field [from-field-id table-id]
+  (-> from-field-id
+      Field
+      (dissoc :id)
+      (assoc :table_id table-id)))
+
 (defmacro with-world
   "Run test in the context of a minimal Metabase instance connected to our test database."
   [& body]
@@ -20,26 +26,18 @@
                                                               Table
                                                               (dissoc :id)
                                                               (assoc :db_id ~'db-id))]
-                   Field      [{~'numeric-field-id :id} (-> (data/id :venues :price)
-                                                            Field
-                                                            (dissoc :id)
-                                                            (assoc :table_id ~'table-id))]
-                   Field      [{~'name-field-id :id} (-> (data/id :venues :name)
-                                                         Field
-                                                         (dissoc :id)
-                                                         (assoc :table_id ~'table-id))]
-                   Field      [{~'latitude-field-id :id} (-> (data/id :venues :latitude)
-                                                             Field
-                                                             (dissoc :id)
-                                                             (assoc :table_id ~'table-id))]
-                   Field      [{~'longitude-field-id :id} (-> (data/id :venues :longitude)
-                                                              Field
-                                                              (dissoc :id)
-                                                              (assoc :table_id ~'table-id))]
-                   Field      [{~'category-field-id :id} (-> (data/id :venues :category_id)
-                                                             Field
-                                                             (dissoc :id)
-                                                             (assoc :table_id ~'table-id))]
+                   Table      [{~'table-id-categories :id :as ~'table} (-> (data/id :categories)
+                                                                           Table
+                                                                           (dissoc :id)
+                                                                           (assoc :db_id ~'db-id))]
+                   Field      [{~'numeric-field-id :id}     (temp-field (data/id :venues :price) ~'table-id)]
+                   Field      [{~'name-field-id :id}        (temp-field (data/id :venues :name) ~'table-id)]
+                   Field      [{~'latitude-field-id :id}    (temp-field (data/id :venues :latitude) ~'table-id)]
+                   Field      [{~'longitude-field-id :id}   (temp-field (data/id :venues :longitude) ~'table-id)]
+                   Field      [{~'category-field-id :id}    (temp-field (data/id :venues :category_id) ~'table-id)]
+                   Field      [{~'category-pk-field-id :id} (temp-field
+                                                             (data/id :categories :id)
+                                                             ~'table-id-categories)]
                    Collection [{~'collection-id :id} {:name "My Collection"}]
                    Collection [{~'collection-id-nested :id} {:name "My Nested Collection"
                                                              :location (format "/%s/" ~'collection-id)}]
@@ -101,7 +99,6 @@
                                  {:source-query
                                   {:source-query
                                    {:source-table ~'table-id}}}}}]
-
                    Card       [{~'card-id-native-query :id}
                                {:query_type :native
                                 :name "My Native Nested Query Card"
@@ -174,7 +171,25 @@
                    PulseCard           [{~'pulsecard-root-id :id} {:pulse_id ~'pulse-id
                                                                    :card_id  ~'card-id-root}]
                    PulseCard           [{~'pulsecard-collection-id :id} {:pulse_id ~'pulse-id
-                                                                         :card_id  ~'card-id}]]
+                                                                         :card_id  ~'card-id}
+                                                         :query {:source-table (str "card__" ~'card-id-root)}]
+                   Card                [{~'card-id-template-tags :id}
+                                        {:query_type    :native
+                                         :name          "My Native Card With Template Tags"
+                                         :collection_id ~'collection-id
+                                         :dataset_query
+                                         {:type     :native
+                                          :database ~'db-id
+                                          :native {:query "SELECT * FROM venues WHERE {{category-id}}"
+                                                   :template-tags
+                                                   {"category-id" {:id           "751880ce-ad1a-11eb-8529-0242ac130003"
+                                                                   :name         "category-id"
+                                                                   :display-name "Category ID"
+                                                                   :type         "dimension"
+                                                                   :dimension    [:field ~'category-field-id nil]
+                                                                   :widget-type  "id"
+                                                                   :required     true
+                                                                   :default      40}}}}}]]
      ~@body))
 
 ;; Don't memoize as IDs change in each `with-world` context
