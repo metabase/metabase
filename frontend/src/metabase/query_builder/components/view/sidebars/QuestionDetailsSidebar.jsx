@@ -28,7 +28,7 @@ function QuestionDetailsSidebar({
       return (
         <CreateModerationIssuePanel
           {...viewProps}
-          onCancel={() => setView({ name: SIDEBAR_VIEWS.DETAILS })}
+          onReturn={() => setView({ name: SIDEBAR_VIEWS.DETAILS })}
           createModerationReview={createModerationReview}
           itemId={id}
           itemType="card"

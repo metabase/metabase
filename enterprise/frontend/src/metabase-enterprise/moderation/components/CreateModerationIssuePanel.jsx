@@ -10,7 +10,7 @@ import Button from "metabase/components/Button";
 
 CreateModerationIssuePanel.propTypes = {
   issueType: PropTypes.string.isRequired,
-  onCancel: PropTypes.func.isRequired,
+  onReturn: PropTypes.func.isRequired,
   createModerationReview: PropTypes.func.isRequired,
   itemId: PropTypes.number.isRequired,
   itemType: PropTypes.string.isRequired,
@@ -18,24 +18,31 @@ CreateModerationIssuePanel.propTypes = {
 
 function CreateModerationIssuePanel({
   issueType,
-  onCancel,
+  onReturn,
   createModerationReview,
   itemId,
   itemType,
 }) {
   const [description, setDescription] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const icon = getModerationStatusIcon(issueType);
   const color = getColor(issueType);
 
-  const onCreateModerationReview = e => {
+  const onCreateModerationReview = async e => {
     e.preventDefault();
-    console.log("onCreateModerationReview");
-    // createModerationReview({
-    //   // TODO: I should redo the ACTIONS map to be keyed by statuses
-    //   status: getModerationStatus(issueType),
-    //   moderated_item_id: itemId,
-    //   moderated_item_type: itemType,
-    // });
+    setIsLoading(true);
+
+    try {
+      await createModerationReview({
+        status: issueType,
+        moderated_item_id: itemId,
+        moderated_item_type: itemType,
+      });
+
+      onReturn();
+    } catch (e) {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -61,12 +68,13 @@ function CreateModerationIssuePanel({
         value={description}
         onChange={e => setDescription(e.target.value)}
         placeholder={MODERATION_TEXT.actionCreationPlaceholder}
+        name="text"
       />
       <div className="flex column-gap-1 justify-end">
-        <Button type="button" onClick={onCancel}>
+        <Button disabled={isLoading} type="button" onClick={onReturn}>
           {MODERATION_TEXT.cancel}
         </Button>
-        <Button type="submit" primary>
+        <Button disabled={isLoading} type="submit" primary>
           {MODERATION_TEXT.moderator[issueType].actionCreationButton}
         </Button>
       </div>

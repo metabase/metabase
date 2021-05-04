@@ -734,6 +734,17 @@ export const setParameterValue = createAction(
   },
 );
 
+export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
+export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
+  return async (dispatch, getState) => {
+    const card = getState().qb.card;
+    const action = await dispatch(
+      Questions.actions.fetch({ id: card.id }, { reload: true }),
+    );
+    return Questions.HACK_getObjectFromAction(action);
+  };
+});
+
 // reloadCard
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
@@ -1372,5 +1383,5 @@ export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSett
 
 export async function createModerationReview(reviewParams) {
   await ModerationReviewApi.create(reviewParams);
-  return reloadCard();
+  return softReloadCard();
 }

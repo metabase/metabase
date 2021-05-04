@@ -986,7 +986,7 @@ export default class Question {
   }
 
   getLatestModerationReview() {
-    return _.last(this.getModerationReviews);
+    return _.last(this.getModerationReviews());
   }
 }
 

@@ -1,11 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
 import styled from "styled-components";
+import cx from "classnames";
 
 import Button from "metabase/components/Button";
 
 import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
-const { getModerationStatusIcon } = PLUGIN_MODERATION_SERVICE;
+const { getStatusIconForReview, getColorForReview } = PLUGIN_MODERATION_SERVICE;
 
 const StyledButton = styled(Button)`
   font-size: 1.25rem;
@@ -19,15 +20,15 @@ const StyledButton = styled(Button)`
 
 function SavedQuestionHeaderButton({ className, question, onClick, active }) {
   const latestModerationReview = question.getLatestModerationReview();
+  const color = getColorForReview(latestModerationReview);
+  const icon = getStatusIconForReview(latestModerationReview);
+
   return (
     <StyledButton
-      className={className}
+      className={cx(className, color && `text-${color}`)}
       onClick={onClick}
       iconRight="chevrondown"
-      icon={
-        latestModerationReview &&
-        getModerationStatusIcon(latestModerationReview.status)
-      }
+      icon={icon}
       active={active}
       iconSize={24}
     >

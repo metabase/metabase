@@ -13,11 +13,20 @@ Object.assign(PLUGIN_MODERATION_COMPONENTS, {
 });
 
 Object.assign(PLUGIN_MODERATION_SERVICE, {
-  getModerationStatusIcon,
+  getStatusIconForReview,
+  getColorForReview,
 });
 
 export function getModerationActionsList() {
-  return [ACTIONS.verified, ACTIONS.misleading, ACTIONS.confused];
+  return [ACTIONS.verified, ACTIONS.misleading, ACTIONS.confusing];
+}
+
+export function getStatusIconForReview(review) {
+  return getModerationStatusIcon(review && review.status);
+}
+
+export function getColorForReview(review) {
+  return getColor(review && review.status);
 }
 
 export function getModerationStatusIcon(type) {
