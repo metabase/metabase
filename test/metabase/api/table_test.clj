@@ -322,22 +322,22 @@
               (is (= 2
                      @called))))))))
   (testing "Bulk updating visibility"
-    (let [unhidden-ids (atom nil)]
+    (let [unhidden-ids (atom #{})]
       (mt/with-temp* [Table [{id-1 :id} {}]
                       Table [{id-2 :id} {:visibility_type "hidden"}]]
-        (with-redefs [table-api/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (map :id unhidden)))]
+        (with-redefs [table-api/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
           (let [set-many-vis (fn [ids state]
-                               (reset! unhidden-ids nil)
+                               (reset! unhidden-ids #{})
                                (mt/user-http-request :crowberto :put 200 "table/"
                                                      {:ids ids :visibility_type state}))]
             (set-many-vis [id-1 id-2] nil) ;; unhides only 2
-            (is (= @unhidden-ids [id-2]))
+            (is (= @unhidden-ids #{id-2}))
 
             (set-many-vis [id-1 id-2] "hidden")
-            (is (= @unhidden-ids [])) ;; no syncing when they are hidden
+            (is (= @unhidden-ids #{})) ;; no syncing when they are hidden
 
             (set-many-vis [id-1 id-2] nil) ;; both are made unhidden so both synced
-            (is (= @unhidden-ids [id-1 id-2]))))))))
+            (is (= @unhidden-ids #{id-1 id-2}))))))))
 
 (deftest get-fks-test
   (testing "GET /api/table/:id/fks"

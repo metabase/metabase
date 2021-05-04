@@ -20,7 +20,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.hydrate :refer [hydrate]])
+  (:import [java.util.concurrent Callable Future ThreadFactory ExecutorService Executors]))
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
@@ -61,13 +62,35 @@
         (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
+(defonce thread-factory
+  (reify ThreadFactory
+    (newThread [_ r]
+      (doto (Thread. r)
+        (.setName "table sync worker")
+        (.setDaemon true)))))
+
+(defonce ^ExecutorService executor
+  (delay (Executors/newFixedThreadPool 1 ^ThreadFactory thread-factory)))
+
+(defn- submit-task
+  "Submit a task to the single thread executor. This will attempt to serialize repeated requests to sync tables. It
+  obviously cannot work across multiple instances."
+  ^Future [f]
+  (.submit @executor ^Callable (bound-fn [] (f))))
+
 (defn- sync-unhidden-tables
   "Function to call on newly unhidden tables. Starts a thread to sync all tables."
   [newly-unhidden]
   (when (seq newly-unhidden)
-    (future (doseq [table newly-unhidden]
-              (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
-              (sync/sync-table! table)))))
+    (submit-task
+     (fn []
+       (let [database (table/database (first newly-unhidden))]
+         (if (doto (driver/can-connect? (:engine database) (:details database)) tap>)
+           (doseq [table newly-unhidden]
+             (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
+             (sync/sync-table! table))
+           (log/warn (u/format-color 'red (trs "Cannot connect to database ''{0}'' in order to sync unhidden tables"
+                                               (:name database))))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
