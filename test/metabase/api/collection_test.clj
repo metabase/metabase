@@ -309,6 +309,29 @@
                    :model               "card"}])
                (mt/obj->json->obj
                  (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
+    (testing "check that limit and offset work and total comes back"
+      (mt/with-temp* [Collection [collection]
+                      Card       [card1        {:collection_id (u/the-id collection)}]
+                      Card       [card2        {:collection_id (u/the-id collection)}]
+                      Card       [card3        {:collection_id (u/the-id collection)}]]
+        (is (= (mt/obj->json->obj
+                 [{:id                  (u/the-id card2)
+                   :name                (:name card2)
+                   :collection_position nil
+                   :display             "table"
+                   :description         nil
+                   :favorite            false
+                   :model               "card"}
+                  {:id                  (u/the-id card3)
+                   :name                (:name card3)
+                   :collection_position nil
+                   :display             "table"
+                   :description         nil
+                   :favorite            false
+                   :model               "card"} ])
+               (mt/obj->json->obj
+                 (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1")))))
+        (is (= 3 (:total (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1"))))))
 
     (testing "check that you get to see the children as appropriate"
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
@@ -572,6 +595,18 @@
                (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                    (remove-non-test-items &ids)
                    mt/boolean-ids-and-timestamps))))
+
+      (testing "... with limits and offsets"
+        (is (= [(collection-item "Crowberto Corv's Personal Collection")
+                (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
+               (with-some-children-of-collection nil
+                 (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))
+                     (remove-non-test-items &ids)
+                     mt/boolean-ids-and-timestamps)))))
+
+      (testing "... with a total back, too, even with limit and offset"
+        (is (= 4 (with-some-children-of-collection nil
+                   (:total (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))))))
 
       (testing "...but we don't let you see stuff you wouldn't otherwise be allowed to see"
         (is (= [(collection-item "Rasta Toucan's Personal Collection")]
