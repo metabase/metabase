@@ -22,7 +22,6 @@ import Group from "metabase/entities/groups";
 
 import UserGroupSelect from "../components/UserGroupSelect";
 import { USER_STATUS } from "../constants";
-import { isLastPage } from "../utils";
 import { loadMemberships } from "../people";
 
 @Group.loadList({
@@ -221,9 +220,10 @@ export default class PeopleList extends Component {
             <PaginationControls
               page={page}
               pageSize={pageSize}
+              total={total}
               itemsLength={users.length}
-              onNextPage={isLastPage(page, pageSize, total) ? null : onNextPage}
-              onPreviousPage={page > 0 ? onPreviousPage : null}
+              onNextPage={onNextPage}
+              onPreviousPage={onPreviousPage}
             />
           </div>
         )}

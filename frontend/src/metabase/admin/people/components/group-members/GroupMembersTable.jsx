@@ -10,7 +10,6 @@ import PaginationControls from "metabase/components/PaginationControls";
 
 import User from "metabase/entities/users";
 
-import { isLastPage } from "../../utils";
 import AddMemberRow from "./AddMemberRow";
 
 export default function GroupMembersTable({
@@ -80,11 +79,8 @@ export default function GroupMembersTable({
                   page={page}
                   pageSize={pageSize}
                   itemsLength={list.length}
-                  onNextPage={
-                    isLastPage(page, pageSize, members.length)
-                      ? null
-                      : onNextPage
-                  }
+                  total={members.length}
+                  onNextPage={onNextPage}
                   onPreviousPage={onPreviousPage}
                 />
               </div>
