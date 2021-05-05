@@ -64,10 +64,10 @@
         (is (= expected
                (pwu/is-valid? input)))))))
 
-(deftest is-valid?-easy-test
-  (testing "Do some tests with password complexity requirements set to :easy.
+(deftest is-valid?-weak-test
+  (testing "Do some tests with password complexity requirements set to :weak.
             Common password list should not be checked."
-    (with-redefs [environ/env (assoc environ/env :mb-password-complexity "easy")]
+    (with-redefs [environ/env (assoc environ/env :mb-password-complexity "weak")]
       (doseq [[input expected] {"ABC"              false
                                 "ABCDEF"           true
                                 "ABCDE1"           true

@@ -50,8 +50,9 @@
                  (when (>= (occurances char-type) min-count)
                    (recur more)))))))
 
-(def active-password-complexity
+(defn active-password-complexity
   "The currently configured description of the password complexity rules being enforced"
+  []
   (merge (complexity->char-type->min (config/config-kw :mb-password-complexity))
          ;; Setting MB_PASSWORD_LENGTH overrides the default :total for a given password complexity class
          (when-let [min-len (config/config-int :mb-password-length)]
@@ -60,7 +61,7 @@
 (defn- is-complex?
   "Check if a given password meets complexity standards for the application."
   [password]
-  (password-has-char-counts? active-password-complexity password))
+  (password-has-char-counts? (active-password-complexity) password))
 
 (def common-passwords-file
   "A set of ~12k common passwords to reject, that otherwise meet Metabase's default complexity requirements.
@@ -78,11 +79,11 @@
 
 (def ^{:arglists '([password])} is-valid?
   "Check that a password both meets complexity standards, and is not present in the common passwords list.
-   Common password list is ignored if minimum password complexity is set to :easy."
+   Common password list is ignored if minimum password complexity is set to :weak"
   (every-pred
     is-complex?
     #(or
-       (= :easy (config/config-kw :mb-password-complexity))
+       (= :weak (config/config-kw :mb-password-complexity))
        (is-uncommon? %))))
 
 (defn verify-password
