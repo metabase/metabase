@@ -9,7 +9,9 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import Table from "metabase/entities/tables";
 
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
 import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 
 import Card from "metabase/components/Card";
 import Database from "metabase/entities/databases";
@@ -29,14 +31,23 @@ function TableBrowser(props) {
     schemaName,
     showSchemaInHeader = true,
   } = props;
+
+  const databaseCrumb =
+    dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID
+      ? {
+          title: t`Saved Questions`,
+          to: Urls.browseDatabase({ id: SAVED_QUESTIONS_VIRTUAL_DB_ID }),
+        }
+      : {
+          title: <Database.Link id={dbId} />,
+        };
+
   return (
     <Box>
       <BrowseHeader
         crumbs={[
           { title: t`Our data`, to: "browse" },
-          {
-            title: <Database.Link id={dbId} />,
-          },
+          databaseCrumb,
           showSchemaInHeader && { title: schemaName },
         ]}
       />
