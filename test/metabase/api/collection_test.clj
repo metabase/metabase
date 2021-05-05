@@ -224,7 +224,7 @@
       (mt/with-temp Collection [collection {:name "Coin Collection"}]
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (is (= "Coin Collection"
-               (:name (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection)))))))))
+               (:name (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
 
     (testing "check that collections detail properly checks permissions"
       (mt/with-non-admin-groups-no-root-collection-perms
@@ -405,7 +405,7 @@
   (mt/user-http-request user-kw :get expected-status-code (str "collection/" (lucky-personal-collection-id))))
 
 (defn- api-get-lucky-personal-collection-items [user-kw & {:keys [expected-status-code], :or {expected-status-code 200}}]
-  (mt/user-http-request user-kw :get expected-status-code (str "collection/" (lucky-personal-collection-id) "/items")))
+  (:data (mt/user-http-request user-kw :get expected-status-code (str "collection/" (lucky-personal-collection-id) "/items"))))
 
 (deftest fetch-personal-collection-test
   (testing "GET /api/collection/:id"
@@ -459,9 +459,9 @@
 
 (defn- api-get-collection-children
   [collection-or-id & additional-get-params]
-  (mt/boolean-ids-and-timestamps (apply mt/user-http-request :rasta
+  (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta
                                         :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
-                                        additional-get-params)))
+                                        additional-get-params))))
 
 (deftest effective-ancestors-and-children-test
   (testing "does a top-level Collection like A have the correct Children?"
@@ -569,7 +569,7 @@
               (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
               (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
              (with-some-children-of-collection nil
-               (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
+               (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                    (remove-non-test-items &ids)
                    mt/boolean-ids-and-timestamps))))
 
@@ -577,7 +577,7 @@
         (is (= [(collection-item "Rasta Toucan's Personal Collection")]
                ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
                (with-some-children-of-collection nil
-                 (mt/boolean-ids-and-timestamps (mt/user-http-request :rasta :get 200 "collection/root/items")))))
+                 (mt/boolean-ids-and-timestamps (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))))))
 
         (testing "...but if they have read perms for the Root Collection they should get to see them"
           (with-some-children-of-collection nil
@@ -588,7 +588,7 @@
                       (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                       (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
-                     (-> (mt/user-http-request :rasta :get 200 "collection/root/items")
+                     (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                          (remove-non-test-items &ids)
                          mt/boolean-ids-and-timestamps ))))))))
 
@@ -598,7 +598,7 @@
                :description nil
                :model       "collection"
                :can_write   true}]
-             (->> (mt/user-http-request :rasta :get 200 "collection/root/items")
+             (->> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection"))))))
 
     (testing "For admins, only return our own Personal Collection (!)"
@@ -607,7 +607,7 @@
                :description nil
                :model       "collection"
                :can_write   true}]
-             (->> (mt/user-http-request :crowberto :get 200 "collection/root/items")
+             (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection")))))
 
       (testing "That includes sub-collections of Personal Collections! I shouldn't see them!"
@@ -619,7 +619,7 @@
                    :description nil
                    :model       "collection"
                    :can_write   true}]
-                 (->> (mt/user-http-request :crowberto :get 200 "collection/root/items")
+                 (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                       (filter #(str/includes? (:name %) "Personal Collection"))))))))
 
     (testing "Can we look for `archived` stuff with this endpoint?"
@@ -630,7 +630,7 @@
                  :display             "table"
                  :favorite            false
                  :model               "card"}]
-               (for [item (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true")]
+               (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
                  (dissoc item :id))))))))
 
 
@@ -644,8 +644,7 @@
 
 (defn- api-get-root-collection-children
   [& additional-get-params]
-  (mt/boolean-ids-and-timestamps (apply mt/user-http-request :rasta :get 200 "collection/root/items" additional-get-params)))
-
+  (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta :get 200 "collection/root/items" additional-get-params))) )
 (deftest fetch-root-collection-items-test
   (testing "GET /api/collection/root/items"
     (testing "Do top-level collections show up as children of the Root Collection?"
@@ -684,7 +683,7 @@
                       Collection [{coins-id :id}  {:name "Coin Collection", :namespace "currency"}]]
         (perms/grant-collection-read-permissions! (group/all-users) coins-id)
         (letfn [(collection-names [items]
-                  (->> items
+                  (->> (:data items)
                        (filter #(and (= (:model %) "collection")
                                      (#{normal-id coins-id} (:id %))))
                        (map :name)))]
@@ -721,21 +720,21 @@
           (is (= [{:id    snippet-id
                    :name  "My Snippet"
                    :model "snippet"}]
-                 (only-test-items (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets"))))
+                 (only-test-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets")))))
 
           (testing "\nSnippets should not come back for the default namespace"
             (is (= ["My Dashboard"]
-                   (only-test-item-names (mt/user-http-request :rasta :get 200 "collection/root/items")))))
+                   (only-test-item-names (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))))))
 
           (testing "\nShould be able to fetch archived Snippets"
             (is (= ["Archived Snippet"]
-                   (only-test-item-names (mt/user-http-request :rasta :get 200
-                                                               "collection/root/items?namespace=snippets&archived=true")))))
+                   (only-test-item-names (:data (mt/user-http-request :rasta :get 200
+                                                               "collection/root/items?namespace=snippets&archived=true"))))))
 
           (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
             (is (= ["My Snippet"]
-                   (only-test-item-names (mt/user-http-request :rasta :get 200
-                                                               "collection/root/items?namespace=snippets&model=snippet"))))))))))
+                   (only-test-item-names (:data (mt/user-http-request :rasta :get 200
+                                                               "collection/root/items?namespace=snippets&model=snippet")))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
