@@ -280,12 +280,12 @@ describe("collection permissions", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/card/1").as("updateQuestion");
                   cy.visit("/question/1");
-                  cy.icon("pencil").click();
+                  cy.findByRole("button", { name: /Orders/ }).click();
                 });
 
                 it("should be able to edit question details (metabase#11719-1)", () => {
                   cy.skipOn(user === "nodata");
-                  cy.findByText("Edit this question").click();
+                  cy.icon("edit_document").click();
                   cy.findByLabelText("Name")
                     .click()
                     .type("1");
@@ -296,7 +296,7 @@ describe("collection permissions", () => {
 
                 it("should be able to move the question (metabase#11719-2)", () => {
                   cy.skipOn(user === "nodata");
-                  cy.findByText("Move").click();
+                  cy.icon("move").click();
                   cy.findByText("My personal collection").click();
                   clickButton("Move");
                   assertOnRequest("updateQuestion");
@@ -304,7 +304,7 @@ describe("collection permissions", () => {
                 });
 
                 it("should be able to archive the question (metabase#11719-3)", () => {
-                  cy.findByText("Archive").click();
+                  cy.icon("archive").click();
                   clickButton("Archive");
                   assertOnRequest("updateQuestion");
                   cy.location("pathname").should("eq", "/collection/root");
