@@ -161,7 +161,10 @@
                                                                    :linkTemplate "/price-info"} click-bhv))))))]
                   (is (not-empty viz-settings))
                   (doall (map check-click-fn (:column_settings viz-settings)))))
-              true)))))) ; nothing related to viz settings to check for other series positions
+              true))) ; nothing to assert for other series numberst
+        (when-let [virt-card (get-in dashcard [:visualization_settings :virtual_card])]
+          (is (= ts/virtual-card virt-card))
+          (is (= "Textbox Card" (get-in dashcard [:visualization_settings :text])))))))
   dashboard)
 
 (defmethod assert-loaded-entity (type Pulse)
@@ -247,7 +250,8 @@
                                            [Card          (Card card-id-root-to-collection)]
                                            [Card          (Card card-id-collection-to-root)]
                                            [Card          (Card card-id-template-tags)]
-                                           [Pulse         (Pulse pulse-id)]]})]
+                                           [Pulse         (Pulse pulse-id)]
+                                           [DashboardCard (DashboardCard dashcard-with-textbox-id)]]})]
         (with-world-cleanup
           (load dump-dir {:on-error :continue :mode :update})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)

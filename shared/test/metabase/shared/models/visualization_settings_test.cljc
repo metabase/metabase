@@ -51,3 +51,22 @@
             (t/is (= db-form to-db)))))
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
       (t/is (= norm-click-bhvr-map (mb.viz/from-db-form db-click-bhv-map))))))
+
+(t/deftest virtual-card-test
+  (t/testing "Virtual card in visualization settings is preserved through normalization roundtrip"
+    ;; virtual cards have the form of a regular card, mostly
+    (let [db-form {:virtual_card {:archived false
+                                  ;; the name is nil
+                                  :name     nil
+                                  ;; there is no dataset_query
+                                  :dataset_query {}
+                                  ;; display is text
+                                  :display "text"
+                                  ;; visualization settings also exist here (being a card), but are unused
+                                  :visualization_settings {}}
+                   ;; this is where the actual text is stored
+                   :text        "Stuff in Textbox"}]
+      ;; the current viz setting code does not interpret textbox type cards, hence this should be a passthrough
+      (t/is (= db-form (-> db-form
+                           mb.viz/from-db-form
+                           mb.viz/db-form))))))

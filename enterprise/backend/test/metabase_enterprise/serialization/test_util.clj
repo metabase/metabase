@@ -16,6 +16,12 @@
       (dissoc :id)
       (assoc :table_id table-id)))
 
+(def virtual-card {:name                   nil
+                   :display                "text"
+                   :visualization_settings {}
+                   :dataset_query          {}
+                   :archived               false})
+
 (defmacro with-world
   "Run test in the context of a minimal Metabase instance connected to our test database."
   [& body]
@@ -153,6 +159,11 @@
                    DashboardCardSeries [~'_ {:dashboardcard_id   ~'dashcard-with-click-actions
                                              :card_id            ~'card-id-root
                                              :position           2}]
+                   DashboardCard       [{~'dashcard-with-textbox-id :id}
+                                        {:dashboard_id           ~'dashboard-id
+                                         :card_id                nil
+                                         :visualization_settings {:virtual_card virtual-card
+                                                                  :text         "Textbox Card"}}]
                    Card                [{~'card-id-root-to-collection :id}
                                         {:table_id ~'table-id
                                          :name "Root card based on one in collection"

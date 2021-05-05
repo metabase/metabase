@@ -203,12 +203,22 @@
       (dissoc :linkType)
       (set/rename-keys db->norm-click-behavior-keys)))
 
+(defn- db->norm-click-behavior [v]
+  (-> v
+      (assoc
+        ::click-behavior-type
+        (db-to-normalized-click-action-type (:type v)))
+      (dissoc :type)
+      (assoc ::link-type (db-to-normalized-link-type (:linkType v)))
+      (dissoc :linkType)
+      (set/rename-keys db->norm-click-behavior-keys)))
+
 (defn- db-form-entry-to-normalized
   "Converts a :column_settings DB form to qualified form. Does the opposite of
   `db-normalized-entry-to-db-form-entry-to-normalized`."
   [m k v]
   (case k
-    :click_behavior (assoc m ::click-behavior (db->norm-click-behavior-value v))
+    :click_behavior (assoc m ::click-behavior (db->norm-click-behavior v))
     (assoc m (db->norm-column-settings-keys k) v)))
 
 (defn from-db-form
@@ -216,7 +226,7 @@
   normalized form (i.e. map with key `::visualization-settings`."
   {:added "0.40.0"}
   [vs]
-  (cond-> {}
+  (cond-> vs
           ;; column_settings at top level; ex: table card
           (:column_settings vs)
           (assoc ::column-settings (->> (:column_settings vs)
@@ -227,7 +237,10 @@
 
           ;; click behavior key at top level; ex: non-table card
           (:click_behavior vs)
-          (assoc ::click-behavior (db->norm-click-behavior-value (:click_behavior vs)))))
+          (assoc ::click-behavior (db->norm-click-behavior-value (:click_behavior vs)))
+
+          :always
+          (dissoc :column_settings :click_behavior)))
 
 (defn- norm->db-click-behavior-value [v]
   (-> v
@@ -269,9 +282,10 @@
   `::visualization-settings` into the equivalent DB form (i.e. a map having `:visualization_settings`)."
   {:added "0.40.0"}
   [settings]
-  (cond-> {}
-    (::column-settings settings)
-    (assoc :column_settings (db-form-column-settings (::column-settings settings)))
-
-    (::click-behavior settings)
-    (assoc :click_behavior (norm->db-click-behavior-value (::click-behavior settings)))))
+  (cond-> settings
+    (::column-settings settings) (-> ; from cond->
+                                     (assoc :column_settings (db-form-column-settings (::column-settings settings)))
+                                     (dissoc ::column-settings))
+    (::click-behavior settings)  (-> ; from cond->
+                                     (assoc :click_behavior (norm->db-click-behavior-value (::click-behavior settings)))
+                                     (dissoc ::click-behavior))))

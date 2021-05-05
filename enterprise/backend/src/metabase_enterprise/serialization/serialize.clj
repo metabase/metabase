@@ -145,8 +145,8 @@
 
 (defn- convert-viz-settings [viz-settings]
   (-> (mb.viz/from-db-form viz-settings)
-      (update ::mb.viz/column-settings (fn [col-settings]
-                                         (reduce-kv convert-column-settings {} col-settings)))
+      (m/update-existing ::mb.viz/column-settings (fn [col-settings]
+                                                    (reduce-kv convert-column-settings {} col-settings)))
       (m/update-existing ::mb.viz/click-behavior convert-click-behavior)
       mb.viz/db-form))
 
