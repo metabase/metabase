@@ -36,7 +36,7 @@
   [archived namespace]
   {archived  (s/maybe su/BooleanString)
    namespace (s/maybe su/NonBlankString)}
-  (let [archived?  (Boolean/parseBoolean archived) ]
+  (let [archived? (Boolean/parseBoolean archived)]
     (as-> (db/select Collection
             {:where    [:and
                         [:= :archived archived?]
