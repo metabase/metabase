@@ -3,7 +3,6 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [environ.core :as environ]
             [metabase.config :as config]
             [metabase.util :as u]))
 

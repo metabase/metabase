@@ -225,7 +225,7 @@
 
       (testing "password"
         (testing "missing"
-          (is (= {:errors {:password "Insufficient password strength"}}
+          (is (= {:errors {:password "Password is insufficiently complex, or is too common"}}
                  (setup! m/dissoc-in [:user :password]))))
 
         (testing "invalid"
