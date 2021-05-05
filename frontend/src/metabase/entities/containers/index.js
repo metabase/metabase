@@ -5,6 +5,7 @@ import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
 import EntityName from "./EntityName";
 import EntityForm from "./EntityForm";
+import EntityLink from "./EntityLink";
 
 export function addEntityContainers(entity) {
   const ObjectName = entity.nameOne;
@@ -34,6 +35,12 @@ export function addEntityContainers(entity) {
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
   entity.Name.displayName = `${ObjectName}.Name`;
+
+  // Entity.Link component
+  entity.Link = ({ id, ...props }) => (
+    <EntityLink entityType={entity.name} entityId={id} {...props} />
+  );
+  entity.Link.displayName = `${ObjectName}.Link`;
 
   // Entity.Form component
   entity.Form = ({ object, ...props }) => (
