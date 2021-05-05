@@ -65,7 +65,8 @@ export default class EmbedFrame extends Component {
     } = this.props;
     const { innerScroll } = this.state;
 
-    const showFooter = !MetabaseSettings.hideEmbedBranding() || actionButtons;
+    // const showFooter = !MetabaseSettings.hideEmbedBranding() || actionButtons;
+    const showFooter = false;
 
     const { bordered, titled, theme, hide_parameters } = {
       ...DEFAULT_OPTIONS,
