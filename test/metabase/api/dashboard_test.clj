@@ -204,7 +204,6 @@
           (card-api-test/with-cards-in-readable-collection [card-id]
             (is (= (merge
                     dashboard-defaults
-<<<<<<< HEAD
                     {:name          "Test Dashboard"
                      :creator_id    (mt/user->id :rasta)
                      :collection_id true
