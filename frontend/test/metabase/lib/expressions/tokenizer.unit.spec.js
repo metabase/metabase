@@ -87,6 +87,12 @@ describe("metabase/lib/expressions/tokenizer", () => {
     );
   });
 
+  it("should catch a dangling closing bracket", () => {
+    expect(errors("floor(Total]*1.25)")[0].message).toEqual(
+      "Missing an opening bracket for Total",
+    );
+  });
+
   it("should allow escaping brackets within bracket identifiers", () => {
     expect(types("[T\\[]")).toEqual([T.Identifier]);
     expect(errors("[T\\[]")).toEqual([]);
