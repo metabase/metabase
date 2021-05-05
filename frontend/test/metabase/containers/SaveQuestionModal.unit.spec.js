@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import mock from "xhr-mock";
 
-import { createEntity, combineEntities } from "metabase/lib/entities";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Question from "metabase-lib/lib/Question";
 
@@ -11,45 +11,13 @@ import {
   PEOPLE,
   metadata,
 } from "__support__/sample_dataset_fixture";
+import { getStore } from "__support__/entities-store";
 
-import { createStore, combineReducers } from "redux";
 import { Provider } from "react-redux";
 import { reducer as form } from "redux-form";
 
-const collections = createEntity({
-  name: "collections",
-  api: {
-    list: () => [
-      {
-        can_write: false,
-        effective_ancestors: [],
-        effective_location: null,
-        id: "root",
-        name: "Our analytics",
-        parent_id: null,
-      },
-      {
-        archived: false,
-        can_write: true,
-        color: "#31698A",
-        description: null,
-        id: 1,
-        location: "/",
-        name: "Bobby Tables's Personal Collection",
-        namespace: null,
-        personal_owner_id: 1,
-        slug: "bobby_tables_s_personal_collection",
-      },
-    ],
-  },
-});
-
-const entities = combineEntities([collections]);
-
 const renderSaveQuestionModal = (question, originalQuestion) => {
-  const store = createStore(
-    combineReducers({ form, entities: entities.reducer }),
-  );
+  const store = getStore({ form });
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   render(
@@ -68,6 +36,40 @@ const renderSaveQuestionModal = (question, originalQuestion) => {
 };
 
 describe("SaveQuestionModal", () => {
+  const TEST_COLLECTIONS = [
+    {
+      can_write: false,
+      effective_ancestors: [],
+      effective_location: null,
+      id: "root",
+      name: "Our analytics",
+      parent_id: null,
+    },
+    {
+      archived: false,
+      can_write: true,
+      color: "#31698A",
+      description: null,
+      id: 1,
+      location: "/",
+      name: "Bobby Tables's Personal Collection",
+      namespace: null,
+      personal_owner_id: 1,
+      slug: "bobby_tables_s_personal_collection",
+    },
+  ];
+
+  beforeEach(() => {
+    mock.setup();
+    mock.get("/api/collection", {
+      body: JSON.stringify(TEST_COLLECTIONS),
+    });
+  });
+
+  afterEach(() => {
+    mock.teardown();
+  });
+
   it("should call onCreate correctly for a new question", async () => {
     const newQuestion = Question.create({
       databaseId: SAMPLE_DATASET.id,
