@@ -123,6 +123,8 @@ class JoinClause extends React.Component {
         </PopoverWithTrigger>
 
         <DatabaseSchemaAndTableDataSelector
+          hasTableSearch
+          canChangeDatabase={false}
           databases={[
             query.database(),
             query.database().savedQuestionsDatabase(),
