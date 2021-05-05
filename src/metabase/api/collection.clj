@@ -199,11 +199,11 @@
 
   *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`."
-  [id model archived]
+  [id model archived limit offset]
   {model    (s/maybe (apply s/enum valid-model-param-values))
    archived (s/maybe su/BooleanString)
    limit    (s/maybe su/IntStringGreaterThanZero)
-   offset   (s/maybe su/IntStringGreaterThanOrEqualToZero) }
+   offset   (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (api/check-valid-page-params limit offset)
   (let [children-res  (collection-children (api/read-check Collection id)
                                            {:model     (keyword model)
@@ -244,13 +244,12 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [model archived namespace]
+  [model archived namespace limit offset]
   {model     (s/maybe (apply s/enum valid-model-param-values))
    archived  (s/maybe su/BooleanString)
    namespace (s/maybe su/NonBlankString)
    limit     (s/maybe su/IntStringGreaterThanZero)
-   offset    (s/maybe su/IntStringGreaterThanOrEqualToZero)
-   }
+   offset    (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -268,7 +267,7 @@
      :total  (count col-children)
      :limit  limit-int
      :offset offset-int
-     :model  model })
+     :model  model }))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------

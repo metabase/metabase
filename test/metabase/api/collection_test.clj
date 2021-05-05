@@ -48,13 +48,13 @@
                  :name                "Our analytics"
                  :id                  "root"}
                 (assoc (into {} collection) :can_write true)]
-               (for [collection (mt/user-http-request :crowberto :get 200 "collection")
+               (for [collection (:data (mt/user-http-request :crowberto :get 200 "collection"))
                      :when      (not (:personal_owner_id collection))]
                  collection)))))
 
     (testing "We should only see our own Personal Collections!"
       (is (= ["Lucky Pigeon's Personal Collection"]
-             (->> (mt/user-http-request :lucky :get 200 "collection")
+             (->> (:data (mt/user-http-request :lucky :get 200 "collection"))
                   (filter :personal_owner_id)
                   (map :name))))
 
@@ -63,7 +63,7 @@
                 "Lucky Pigeon's Personal Collection"
                 "Rasta Toucan's Personal Collection"
                 "Trash Bird's Personal Collection"]
-               (->> (mt/user-http-request :crowberto :get 200 "collection")
+               (->> (:data (mt/user-http-request :crowberto :get 200 "collection"))
                     (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
                     (map :name)
                     sort)))))
@@ -76,7 +76,7 @@
           (is (= ["Our analytics"
                   "Collection 1"
                   "Rasta Toucan's Personal Collection"]
-                 (map :name (mt/user-http-request :rasta :get 200 "collection")))))))
+                 (map :name (:data (mt/user-http-request :rasta :get 200 "collection"))))))))
 
     (testing "check that we don't see collections if they're archived"
       (mt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
@@ -84,13 +84,13 @@
         (is (= ["Our analytics"
                 "Rasta Toucan's Personal Collection"
                 "Regular Collection"]
-               (map :name (mt/user-http-request :rasta :get 200 "collection"))))))
+               (map :name (:data (mt/user-http-request :rasta :get 200 "collection")))))))
 
     (testing "Check that if we pass `?archived=true` we instead see archived Collections"
       (mt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
                       Collection [collection-2 {:name "Regular Collection"}]]
         (is (= ["Archived Collection"]
-               (map :name (mt/user-http-request :rasta :get 200 "collection" :archived :true))))))
+               (map :name (:data (mt/user-http-request :rasta :get 200 "collection" :archived :true)))))))
 
     (testing "?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
@@ -101,17 +101,17 @@
                        (map :name)))]
           (testing "shouldn't show Collections of a different `:namespace` by default"
             (is (= ["Normal Collection"]
-                   (collection-names (mt/user-http-request :rasta :get 200 "collection")))))
+                   (collection-names (:data (mt/user-http-request :rasta :get 200 "collection"))))))
 
           (perms/grant-collection-read-permissions! (group/all-users) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
             (testing "?namespace=currency"
               (is (= ["Coin Collection"]
-                     (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=currency")))))
+                     (collection-names (:data (mt/user-http-request :rasta :get 200 "collection?namespace=currency"))))))
 
             (testing "?namespace=stamps"
               (is (= []
-                     (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=stamps")))))))))))
+                     (collection-names (:data (mt/user-http-request :rasta :get 200 "collection?namespace=stamps"))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/tree                                              |
@@ -224,7 +224,7 @@
       (mt/with-temp Collection [collection {:name "Coin Collection"}]
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (is (= "Coin Collection"
-               (:name (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
+               (:name (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection)))))))))
 
     (testing "check that collections detail properly checks permissions"
       (mt/with-non-admin-groups-no-root-collection-perms
@@ -308,7 +308,7 @@
                    :favorite            false
                    :model               "card"}])
                (mt/obj->json->obj
-                 (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items")))))))
+                 (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
     (testing "check that you get to see the children as appropriate"
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
@@ -318,7 +318,7 @@
                                     {:name "Dine & Dashboard", :description nil, :model "dashboard"}
                                     {:name "Electro-Magnetic Pulse", :model "pulse"}])
                  (mt/boolean-ids-and-timestamps
-                  (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items")))))))
+                  (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
       (testing "...and that you can also filter so that you only see the children you want to see"
         (mt/with-temp Collection [collection {:name "Art Collection"}]
@@ -326,7 +326,7 @@
           (with-some-children-of-collection collection
             (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                    (mt/boolean-ids-and-timestamps
-                    (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?model=dashboard")))))))))
+                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?model=dashboard"))))))))))
 
     (testing "Let's make sure the `archived` option works."
       (mt/with-temp Collection [collection {:name "Art Collection"}]
@@ -335,7 +335,7 @@
           (db/update-where! Dashboard {:collection_id (u/the-id collection)} :archived true)
           (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
                  (mt/boolean-ids-and-timestamps
-                  (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true"))))))))
+                  (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
     (testing "Results include last edited information from the `Revision` table"
       (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
                       User       [{user-id :id} {:first_name "Test" :last_name "User" :email "testuser@example.com"}]
@@ -353,7 +353,7 @@
                   :last_name  "User",
                   ;; timestamp collapsed to true, ordinarily a OffsetDateTime
                   :timestamp  true}}]
-               (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))
+               (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
                     mt/boolean-ids-and-timestamps
                     (map #(select-keys % [:name :last-edit-info])))))))))
 
@@ -366,19 +366,19 @@
         (is (= [{:id    snippet-id
                  :name  "My Snippet"
                  :model "snippet"}]
-               (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id))))
+               (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)))))
 
         (testing "\nShould be able to fetch archived Snippets"
           (is (= [{:id    archived-id
                    :name  "Archived Snippet"
                    :model "snippet"}]
-                 (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" collection-id)))))
+                 (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" collection-id))))))
 
         (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
           (is (= [{:id    snippet-id
                    :name  "My Snippet"
                    :model "snippet"}]
-                 (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" collection-id)))))))))
+                 (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" collection-id))))))))))
 
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
