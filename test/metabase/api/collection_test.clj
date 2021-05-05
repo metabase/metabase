@@ -48,13 +48,13 @@
                  :name                "Our analytics"
                  :id                  "root"}
                 (assoc (into {} collection) :can_write true)]
-               (for [collection (:data (mt/user-http-request :crowberto :get 200 "collection"))
+               (for [collection (mt/user-http-request :crowberto :get 200 "collection")
                      :when      (not (:personal_owner_id collection))]
                  collection)))))
 
     (testing "We should only see our own Personal Collections!"
       (is (= ["Lucky Pigeon's Personal Collection"]
-             (->> (:data (mt/user-http-request :lucky :get 200 "collection"))
+             (->> (mt/user-http-request :lucky :get 200 "collection")
                   (filter :personal_owner_id)
                   (map :name))))
 
@@ -63,7 +63,7 @@
                 "Lucky Pigeon's Personal Collection"
                 "Rasta Toucan's Personal Collection"
                 "Trash Bird's Personal Collection"]
-               (->> (:data (mt/user-http-request :crowberto :get 200 "collection"))
+               (->> (mt/user-http-request :crowberto :get 200 "collection")
                     (filter #((set (map mt/user->id [:crowberto :lucky :rasta :trashbird])) (:personal_owner_id %)))
                     (map :name)
                     sort)))))
@@ -76,7 +76,7 @@
           (is (= ["Our analytics"
                   "Collection 1"
                   "Rasta Toucan's Personal Collection"]
-                 (map :name (:data (mt/user-http-request :rasta :get 200 "collection"))))))))
+                 (map :name (mt/user-http-request :rasta :get 200 "collection")))))))
 
     (testing "check that we don't see collections if they're archived"
       (mt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
@@ -84,13 +84,13 @@
         (is (= ["Our analytics"
                 "Rasta Toucan's Personal Collection"
                 "Regular Collection"]
-               (map :name (:data (mt/user-http-request :rasta :get 200 "collection")))))))
+               (map :name (mt/user-http-request :rasta :get 200 "collection"))))))
 
     (testing "Check that if we pass `?archived=true` we instead see archived Collections"
       (mt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
                       Collection [collection-2 {:name "Regular Collection"}]]
         (is (= ["Archived Collection"]
-               (map :name (:data (mt/user-http-request :rasta :get 200 "collection" :archived :true)))))))
+               (map :name (mt/user-http-request :rasta :get 200 "collection" :archived :true))))))
 
     (testing "?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
@@ -101,17 +101,17 @@
                        (map :name)))]
           (testing "shouldn't show Collections of a different `:namespace` by default"
             (is (= ["Normal Collection"]
-                   (collection-names (:data (mt/user-http-request :rasta :get 200 "collection"))))))
+                   (collection-names (mt/user-http-request :rasta :get 200 "collection")))))
 
           (perms/grant-collection-read-permissions! (group/all-users) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
             (testing "?namespace=currency"
               (is (= ["Coin Collection"]
-                     (collection-names (:data (mt/user-http-request :rasta :get 200 "collection?namespace=currency"))))))
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=currency")))))
 
             (testing "?namespace=stamps"
               (is (= []
-                     (collection-names (:data (mt/user-http-request :rasta :get 200 "collection?namespace=stamps"))))))))))))
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection?namespace=stamps")))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/tree                                              |

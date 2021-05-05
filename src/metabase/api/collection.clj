@@ -33,15 +33,10 @@
 
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`."
-  [archived namespace limit offset]
+  [archived namespace]
   {archived  (s/maybe su/BooleanString)
-   namespace (s/maybe su/NonBlankString)
-   limit (s/maybe su/IntStringGreaterThanZero)
-   offset (s/maybe su/IntStringGreaterThanOrEqualToZero)}
-  (api/check-valid-page-params limit offset)
-  (let [archived?  (Boolean/parseBoolean archived)
-        limit-int  (some-> limit Integer/parseInt)
-        offset-int (some-> offset Integer/parseInt)]
+   namespace (s/maybe su/NonBlankString)}
+  (let [archived?  (Boolean/parseBoolean archived) ]
     (as-> (db/select Collection
             {:where    [:and
                         [:= :archived archived?]
@@ -49,9 +44,7 @@
                         (collection/visible-collection-ids->honeysql-filter-clause
                          :id
                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-             :order-by [[:%lower.name :asc]]
-             :limit limit-int
-             :offset offset-int }) collections
+             :order-by [[:%lower.name :asc]]}) collections
       ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
