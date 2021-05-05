@@ -6,6 +6,8 @@ import { withRouter } from "react-router";
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
+// set the locale before loading anything else
+import { loadLocalization } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
@@ -68,10 +70,15 @@ export default class EmbedFrame extends Component {
     // const showFooter = !MetabaseSettings.hideEmbedBranding() || actionButtons;
     const showFooter = false;
 
-    const { bordered, titled, theme, hide_parameters } = {
+    const { bordered, titled, theme, hide_parameters, locale } = {
       ...DEFAULT_OPTIONS,
       ...parseHashOptions(location.hash),
     };
+
+    const user_locale = locale;
+    if (user_locale) {
+      loadLocalization(user_locale);
+    }
 
     const name = titled ? this.props.name : null;
 
