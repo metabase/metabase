@@ -85,6 +85,59 @@ describe("scenarios > question > new", () => {
     });
   });
 
+  describe("data picker search", () => {
+    beforeEach(() => {
+      cy.visit("/");
+      cy.findByText("Ask a question").click();
+    });
+
+    describe("on a (simple) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Simple question").click();
+        cy.findByPlaceholderText("Search for a table...").type("Ord");
+      });
+
+      it("should allow to search saved questions", () => {
+        cy.findByText("Orders, Count").click();
+        cy.findByText("18,760");
+      });
+
+      it("should allow to search and select tables", () => {
+        cy.findAllByText("Orders")
+          .closest("li")
+          .findByText("Table in")
+          .click();
+        cy.url().should("include", "question#");
+        cy.findByText("Sample Dataset");
+        cy.findByText("Orders");
+      });
+    });
+
+    describe("on a (custom) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Custom question").click();
+        cy.findByPlaceholderText("Search for a table...").type("Ord");
+      });
+
+      it("should allow to search saved questions", () => {
+        cy.findByText("Orders, Count").click();
+        cy.findByText("Visualize").click();
+        cy.findByText("18,760");
+      });
+
+      it("should allow to search and select tables", () => {
+        cy.findAllByText("Orders")
+          .closest("li")
+          .findByText("Table in")
+          .click();
+        cy.findByText("Visualize").click();
+        cy.url().should("include", "question#");
+        cy.findByText("Sample Dataset");
+        cy.findByText("Orders");
+      });
+    });
+  });
+
   describe("ask a (simple) question", () => {
     it("should load orders table", () => {
       cy.visit("/");
