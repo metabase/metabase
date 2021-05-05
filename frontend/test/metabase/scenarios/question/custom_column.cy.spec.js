@@ -588,4 +588,26 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText(/Field formula/i).click(); // Click outside of formula field instead of blur
     cy.findByText("round([Temperature])").should("not.exist");
   });
+
+  it.skip("should work with `isNull` function (metabase#15922)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']").type(`isnull([Discount])`, {
+        delay: 100,
+      });
+      cy.findByPlaceholderText("Something nice and descriptive").type(
+        "No discount",
+      );
+      cy.findByRole("button", { name: "Done" }).click();
+    });
+    cy.findByRole("button", { name: "Visualize" }).click();
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).to.not.exist;
+    });
+    cy.contains("37.65");
+    cy.findByText("No discount");
+  });
 });
