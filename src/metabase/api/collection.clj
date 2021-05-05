@@ -203,7 +203,7 @@
                                             :archived? (Boolean/parseBoolean archived)})
         limit-int     (some-> limit Integer/parseInt)
         offset-int    (some-> offset Integer/parseInt) ]
-    {:data   (cond-> children-res
+    {:data   (cond->> (vec children-res)
                (some? offset-int) (drop offset-int)
                (some? limit-int)  (take limit-int))
      :total  (count children-res)
@@ -245,6 +245,7 @@
    offset    (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
+  (api/check-valid-page-params limit offset)
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         limit-int       (some-> limit Integer/parseInt)
         offset-int      (some-> offset Integer/parseInt)
@@ -254,7 +255,7 @@
                                         (keyword model)
                                         :collection)
                            :archived? (Boolean/parseBoolean archived)}) ]
-    {:data  (cond-> col-children
+    {:data  (cond->> (vec col-children)
               (some? offset-int) (drop offset-int)
               (some? limit-int)  (take limit-int))
      :total  (count col-children)
