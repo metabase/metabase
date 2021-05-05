@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import Collection from "metabase/entities/collections";
 
 import ItemSelect from "./ItemSelect";
@@ -22,13 +20,6 @@ const CollectionSelect = ItemSelect(
  * This component is wrapped with @Collection.loadList
  * to ensure collection are fetched and permissions can be checked.
  */
-@Collection.loadList({
+export default Collection.loadList({
   loadingAndErrorWrapper: false,
-})
-class CollectionSelectWrapped extends React.Component {
-  render() {
-    return <CollectionSelect {...this.props} />;
-  }
-}
-
-export default CollectionSelectWrapped;
+})(CollectionSelect);
