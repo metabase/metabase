@@ -15,12 +15,13 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { getDashboardComplete } from "../selectors";
 
 const mapStateToProps = (state, props) => {
+  const dashboard = getDashboardComplete(state, props);
   return {
-    dashboard: getDashboardComplete(state, props),
-    initialCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
+    dashboard,
+    initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
+      ...props,
+      collectionId: dashboard.collection_id,
+    }),
   };
 };
 

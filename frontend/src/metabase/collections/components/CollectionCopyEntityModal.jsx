@@ -15,10 +15,10 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
 function mapStateToProps(state, props) {
   return {
-    initialCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
+    initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
+      ...props,
+      collectionId: props.entityObject.collection_id,
+    }),
   };
 }
 
