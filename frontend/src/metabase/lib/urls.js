@@ -1,5 +1,6 @@
 import slugify from "slugify";
 import { serializeCardForUrl } from "metabase/lib/card";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
 
@@ -176,7 +177,12 @@ export function reactivateUser(userId) {
 }
 
 export function browseDatabase(database) {
-  return `/browse/${database.id}-${slug(database.name)}`;
+  const name =
+    database.id === SAVED_QUESTIONS_VIRTUAL_DB_ID
+      ? "Saved Questions"
+      : database.name;
+
+  return `/browse/${database.id}-${slug(name)}`;
 }
 
 export function browseSchema(table) {
