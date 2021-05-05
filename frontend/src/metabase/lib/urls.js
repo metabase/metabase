@@ -1,6 +1,14 @@
+import slugify from "slugify";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
+
+function slug(str) {
+  return slugify(str, {
+    lower: true,
+    strict: true,
+  });
+}
 
 // provides functions for building urls to things we care about
 
@@ -177,4 +185,8 @@ export function browseSchema(table) {
 
 export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
+}
+
+export function extractEntityId(slug) {
+  return parseInt(slug, 10);
 }

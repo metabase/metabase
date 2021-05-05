@@ -1,4 +1,8 @@
-import { question, extractQueryParams } from "metabase/lib/urls";
+import {
+  question,
+  extractQueryParams,
+  extractEntityId,
+} from "metabase/lib/urls";
 
 describe("urls", () => {
   describe("question", () => {
@@ -20,6 +24,7 @@ describe("urls", () => {
       });
     });
   });
+
   describe("query", () => {
     it("should return the correct number of parameters", () => {
       expect(extractQueryParams({ foo: "bar" })).toHaveLength(1);
@@ -44,6 +49,20 @@ describe("urls", () => {
       const extractedParams2 = extractQueryParams({ foo: ["1", "2"] });
       expect(extractedParams2).toContainEqual(["foo", "1"]);
       expect(extractedParams2).toContainEqual(["foo", "2"]);
+    });
+  });
+
+  describe("extractEntityId", () => {
+    it("should correctly extract entity ID", () => {
+      const testCases = [
+        { slug: "33-metabase-ga", id: 33 },
+        { slug: "330-pricing-v2-traction", id: 330 },
+        { slug: "274-queries-run-in-the-last-24-weeks", id: 274 },
+      ];
+
+      testCases.forEach(({ slug, id }) => {
+        expect(extractEntityId(slug)).toBe(id);
+      });
     });
   });
 });
