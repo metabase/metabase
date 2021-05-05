@@ -168,6 +168,18 @@ executors:
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
 
+  druid:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/druid:0.20.2
+        environment:
+          CLUSTER_SIZE: nano-quickstart
+    # Run Docker images with 8GB or RAM instead of the default 4GB for medium instances. The Druid Docker image runs
+    # OOM all the time with the default medium size.
+    resource_class: large
+
+
   fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -185,6 +197,7 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: metabase/qa-databases:mysql-sample-8
+
 
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
@@ -861,10 +874,10 @@ jobs:
         default: clojure-and-node-and-browsers
       cypress-group:
         type: string
-      only-single-database:
-        type: boolean
-        default: false
-      test-files-location:
+      source-folder:
+        type: string
+        default: ""
+      test-files:
         type: string
         default: ""
       before-steps:
@@ -889,7 +902,7 @@ jobs:
                       <<: *CacheKeyUberjar
                   - steps: << parameters.before-steps >>
                 command: |
-                  run test-cypress-no-build <<# parameters.only-single-database >> --folder << parameters.test-files-location >> <</ parameters.only-single-database >>
+                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> --folder << parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
@@ -969,6 +982,7 @@ workflows:
           name: be-tests-druid-ee
           requires:
             - be-tests-ee
+          e: druid
           driver: druid
 
       - test-driver:
@@ -1156,10 +1170,81 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-          name: e2e-tests-<< matrix.edition >>
+          name: e2e-tests-admin-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          cypress-group: "default-<< matrix.edition >>"
+          cypress-group: "admin-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/admin
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-collections-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "collections-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/collections
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-dashboard-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "dashboard-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/dashboard
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-onboarding-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "onboarding-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/onboarding
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-native-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "native-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/native
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-question-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "question-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/question
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-sharing-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "sharing-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/sharing
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+          name: e2e-tests-visualizations-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "visualizations-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/visualizations
 
       - fe-tests-cypress:
           name: e2e-tests-mongo-4-<< matrix.edition >>
@@ -1167,8 +1252,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-mongo-4
           cypress-group: "mongo"
-          only-single-database: true
-          test-files-location: frontend/test/metabase-db/mongo
+          source-folder: frontend/test/metabase-db/mongo
           before-steps:
             - wait-for-port:
                 port: 27017
@@ -1180,8 +1264,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-postgres-12
           cypress-group: "postgres"
-          only-single-database: true
-          test-files-location: frontend/test/metabase-db/postgres
+          source-folder: frontend/test/metabase-db/postgres
           before-steps:
             - wait-for-port:
                 port: 5432
@@ -1193,8 +1276,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-mysql-8
           cypress-group: "mysql"
-          only-single-database: true
-          test-files-location: frontend/test/metabase-db/mysql
+          source-folder: frontend/test/metabase-db/mysql
           before-steps:
             - wait-for-port:
                 port: 3306

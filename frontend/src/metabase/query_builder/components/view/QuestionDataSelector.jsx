@@ -6,6 +6,7 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 export default function QuestionDataSelector({ query, triggerElement }) {
   return (
     <DatabaseSchemaAndTableDataSelector
+      hasTableSearch
       databaseQuery={{ saved: true }}
       selectedDatabaseId={query.databaseId()}
       selectedTableId={query.tableId()}

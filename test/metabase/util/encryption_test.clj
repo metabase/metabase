@@ -11,9 +11,13 @@
   ;; flush the Setting cache so unencrypted values have to be fetched from the DB again
   (initialize/initialize-if-needed! :db)
   (setting.cache/restore-cache!)
-  (with-redefs [encryption/default-secret-key (when (seq secret-key)
-                                                (encryption/secret-key->hash secret-key))]
-    (thunk)))
+  (try
+    (with-redefs [encryption/default-secret-key (when (seq secret-key)
+                                                  (encryption/secret-key->hash secret-key))]
+      (thunk))
+    (finally
+      ;; reset the cache again so nothing that happened during the test is persisted.
+      (setting.cache/restore-cache!))))
 
 (defmacro with-secret-key
   "Run `body` with the encryption secret key temporarily bound to `secret-key`. Useful for testing how functions behave

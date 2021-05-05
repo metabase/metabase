@@ -310,7 +310,7 @@ export class ObjectDetail extends Component {
           );
         }
 
-        return <li>{fkReference}</li>;
+        return <li key={fk.id}>{fkReference}</li>;
       });
 
     return <ul className="px4">{relationships}</ul>;

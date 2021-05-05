@@ -79,6 +79,7 @@ export default class AlertListPopoverContent extends Component {
         <ul>
           {Object.values(sortedQuestionAlerts).map(alert => (
             <AlertListItem
+              key={alert.id}
               alert={alert}
               setMenuFreeze={setMenuFreeze}
               closeMenu={closeMenu}

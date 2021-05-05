@@ -1,11 +1,9 @@
 (ns metabase.models.login-history-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
-            [environ.core :as env]
             [java-time :as t]
             [metabase.models :refer [LoginHistory User]]
             [metabase.models.login-history :as login-history]
-            [metabase.models.setting.cache :as setting.cache]
             [metabase.server.request.util :as request.u]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]
@@ -81,17 +79,10 @@
 
   (testing "don't send email if the setting is disabled by setting MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE=FALSE"
     (mt/with-temp User [{user-id :id, email :email, first-name :first_name}]
-      (try
-        (mt/with-fake-inbox
-          ;; can't use `mt/with-temporary-setting-values` here because it's a read-only setting
-          (with-redefs [env/env (assoc env/env :mb-send-email-on-first-login-from-new-device "FALSE")]
-            ;; flush the Setting cache so it picks up the env var value for the `send-email-on-first-login-from-new-device` setting
-            (setting.cache/restore-cache!)
-            (mt/with-temp* [LoginHistory [_ {:user_id user-id, :device_id (str (java.util.UUID/randomUUID))}]
-                            LoginHistory [_ {:user_id user-id, :device_id (str (java.util.UUID/randomUUID))}]]
-              (is (= {}
-                     @mt/inbox)))))
-        (finally
-          ;; flush the cache again so the original value of `send-email-on-first-login-from-new-device` gets
-          ;; restored
-          (setting.cache/restore-cache!))))))
+      (mt/with-fake-inbox
+        ;; can't use `mt/with-temporary-setting-values` here because it's a read-only setting
+        (mt/with-temp-env-var-value [mb-send-email-on-first-login-from-new-device "FALSE"]
+          (mt/with-temp* [LoginHistory [_ {:user_id user-id, :device_id (str (java.util.UUID/randomUUID))}]
+                          LoginHistory [_ {:user_id user-id, :device_id (str (java.util.UUID/randomUUID))}]]
+            (is (= {}
+                   @mt/inbox))))))))

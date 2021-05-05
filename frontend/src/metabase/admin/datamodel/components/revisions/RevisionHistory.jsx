@@ -49,6 +49,7 @@ export default class RevisionHistory extends Component {
               <ol>
                 {revisions.map(revision => (
                   <Revision
+                    key={revision.id}
                     revision={revision}
                     objectName={object.name}
                     currentUser={user}

@@ -63,37 +63,39 @@ function TableBrowser(props) {
                     name={table.display_name || table.name}
                     iconName="table"
                     iconColor={color("accent2")}
-                    buttons={[
-                      props.xraysEnabled && (
+                    buttons={
+                      <React.Fragment>
+                        {props.xraysEnabled && (
+                          <Link
+                            to={`auto/dashboard/table/${table.id}`}
+                            data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
+                            className="link--icon ml1"
+                          >
+                            <Icon
+                              key="xray"
+                              tooltip={t`X-ray this table`}
+                              name="bolt"
+                              color={color("warning")}
+                              size={20}
+                              className="hover-child"
+                            />
+                          </Link>
+                        )}
                         <Link
-                          to={`auto/dashboard/table/${table.id}`}
-                          data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
+                          to={`reference/databases/${dbId}/tables/${table.id}`}
+                          data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
                           className="link--icon ml1"
                         >
                           <Icon
-                            key="xray"
-                            tooltip={t`X-ray this table`}
-                            name="bolt"
-                            color={color("warning")}
-                            size={20}
+                            key="reference"
+                            tooltip={t`Learn about this table`}
+                            name="reference"
+                            color={color("text-medium")}
                             className="hover-child"
                           />
                         </Link>
-                      ),
-                      <Link
-                        to={`reference/databases/${dbId}/tables/${table.id}`}
-                        data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
-                        className="link--icon ml1"
-                      >
-                        <Icon
-                          key="reference"
-                          tooltip={t`Learn about this table`}
-                          name="reference"
-                          color={color("text-medium")}
-                          className="hover-child"
-                        />
-                      </Link>,
-                    ]}
+                      </React.Fragment>
+                    }
                   />
                 </Link>
               </Card>
