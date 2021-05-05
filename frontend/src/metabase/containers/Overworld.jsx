@@ -317,7 +317,7 @@ class Overworld extends React.Component {
                       {databases.map(database => (
                         <GridItem w={[1, 1 / 3]} key={database.id}>
                           <Link
-                            to={`browse/${database.id}`}
+                            to={Urls.browseDatabase(database)}
                             hover={{ color: color("brand") }}
                             data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${database.engine}`}
                           >

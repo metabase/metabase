@@ -176,7 +176,7 @@ export function reactivateUser(userId) {
 }
 
 export function browseDatabase(database) {
-  return `/browse/${database.id}`;
+  return `/browse/${database.id}-${slug(database.name)}`;
 }
 
 export function browseSchema(table) {

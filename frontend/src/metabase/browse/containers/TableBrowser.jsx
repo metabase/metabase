@@ -25,7 +25,8 @@ function TableBrowser(props) {
   const {
     tables,
     metadata,
-    params: { dbId, schemaName },
+    dbId,
+    schemaName,
     showSchemaInHeader = true,
   } = props;
   return (
@@ -34,8 +35,7 @@ function TableBrowser(props) {
         crumbs={[
           { title: t`Our data`, to: "browse" },
           {
-            title: <Database.Name id={dbId} />,
-            to: `browse/${dbId}`,
+            title: <Database.Link id={dbId} />,
           },
           showSchemaInHeader && { title: schemaName },
         ]}
@@ -108,7 +108,7 @@ function TableBrowser(props) {
 }
 
 export default Table.loadList({
-  query: (state, { params: { dbId, schemaName } }) => ({
+  query: (state, { dbId, schemaName }) => ({
     dbId,
     schemaName,
   }),

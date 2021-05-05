@@ -177,9 +177,7 @@ function InfoText({ result }) {
         <span>
           {jt`Table in ${(
             <span>
-              <Link to={Urls.browseDatabase({ id: result.database_id })}>
-                <Database.Name id={result.database_id} />{" "}
-              </Link>
+              <Database.Link id={result.database_id} />{" "}
               {result.table_schema && (
                 <Schema.ListLoader
                   query={{ dbId: result.database_id }}

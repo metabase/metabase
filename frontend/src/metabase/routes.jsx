@@ -237,7 +237,7 @@ export const getRoutes = store => (
 
         <Route path="browse" component={BrowseApp}>
           <IndexRoute component={DatabaseBrowser} />
-          <Route path=":dbId" component={SchemaBrowser} />
+          <Route path=":slug" component={SchemaBrowser} />
           <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
         </Route>
 
