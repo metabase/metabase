@@ -932,6 +932,22 @@ describe("scenarios > question > filter", () => {
     cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
   });
 
+  it.skip("custom expression filter should work with numeric value before an operator (metabase#15893)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]")
+      .type("0 < [ID]")
+      .blur();
+    cy.findByRole("button", { name: "Done" }).click();
+    cy.findByText("Visualize").click();
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).to.not.exist;
+    });
+  });
+
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
     visitQuestionAdhoc({
       dataset_query: {
