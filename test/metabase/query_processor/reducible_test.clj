@@ -57,7 +57,7 @@
      :rff     print-rows-rff}))
 
 (deftest write-rows-to-file-test
-  (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") "out.txt"))]
+  (mt/with-temp-file [filename "out.txt"]
     (try
       (is (= 3
              (qp/process-query
@@ -71,7 +71,7 @@
              (str/split-lines (slurp filename))))
       (finally
         (u/ignore-exceptions
-          (.delete (io/file filename)))))))
+         (.delete (io/file filename)))))))
 
 (defn- maps-rff [metadata]
   (let [ks (mapv (comp keyword :name) (:cols metadata))]
