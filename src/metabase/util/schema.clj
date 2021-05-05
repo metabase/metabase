@@ -235,7 +235,7 @@
 (def ValidPassword
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
   (with-api-error-message (s/constrained s/Str password/is-valid?)
-    (deferred-tru "Insufficient password strength")))
+    (deferred-tru "Password is insufficiantly complex, or is too common")))
 
 (def IntString
   "Schema for a string that can be parsed as an integer.

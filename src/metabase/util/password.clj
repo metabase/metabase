@@ -3,6 +3,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [environ.core :as environ]
             [metabase.config :as config]
             [metabase.util :as u]))
 
@@ -76,8 +77,13 @@
       (iterator-seq (.. reader lines iterator)))))
 
 (def ^{:arglists '([password])} is-valid?
-  "Check that a password both meets complexity standards, and is not present in the common passwords list"
-  (every-pred is-complex? is-uncommon?))
+  "Check that a password both meets complexity standards, and is not present in the common passwords list.
+   Common password list is ignored if minimum password complexity is set to :easy."
+  (every-pred
+    is-complex?
+    #(or
+       (= :easy (config/config-kw :mb-password-complexity))
+       (is-uncommon? %))))
 
 (defn verify-password
   "Verify if a given unhashed password + salt matches the supplied hashed-password. Returns `true` if matched, `false`

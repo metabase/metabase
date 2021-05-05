@@ -1,5 +1,7 @@
 (ns metabase.util.password-test
   (:require [clojure.test :refer :all]
+            [environ.core :as environ]
+            [metabase.test :as mt]
             [metabase.util.password :as pwu]))
 
 ;; Password Complexity testing
@@ -47,7 +49,7 @@
           (is (= expected
                  (apply #'pwu/password-has-char-counts? input))))))))
 
-(deftest is-valid?-test
+(deftest is-valid?-normal-test
   (testing "Do some tests with the default (:normal) password requirements"
     (doseq [[input expected] {"ABC"              false
                               "ABCDEF"           false
@@ -61,3 +63,15 @@
       (testing (pr-str (list 'is-valid? input))
         (is (= expected
                (pwu/is-valid? input)))))))
+
+(deftest is-valid?-easy-test
+  (testing "Do some tests with password complexity requirements set to :easy.
+            Common password list should not be checked."
+    (with-redefs [environ/env (assoc environ/env :mb-password-complexity "easy")]
+      (doseq [[input expected] {"ABC"              false
+                                "ABCDEF"           true
+                                "ABCDE1"           true
+                                "passw0rd"         true}]
+        (testing (pr-str (list 'is-valid? input))
+          (is (= expected
+                 (pwu/is-valid? input))))))))
