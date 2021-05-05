@@ -168,6 +168,18 @@ executors:
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
 
+  druid:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/druid:0.20.2
+        environment:
+          CLUSTER_SIZE: nano-quickstart
+    # Run Docker images with 8GB or RAM instead of the default 4GB for medium instances. The Druid Docker image runs
+    # OOM all the time with the default medium size.
+    resource_class: large
+
+
   fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -185,6 +197,7 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: metabase/qa-databases:mysql-sample-8
+
 
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
@@ -969,6 +982,7 @@ workflows:
           name: be-tests-druid-ee
           requires:
             - be-tests-ee
+          e: druid
           driver: druid
 
       - test-driver:

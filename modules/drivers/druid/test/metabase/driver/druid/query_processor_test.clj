@@ -241,11 +241,11 @@
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (testing "Druid driver doesn't need to convert results to the expected timezone for us. QP middleware can handle that."
-        (let [expected [["1" "The Misfit Restaurant + Bar" (t/instant "2014-04-07T07:00:00Z")]
-                        ["10" "Dal Rae Restaurant" (t/instant "2015-08-22T07:00:00Z")]
-                        ["100" "PizzaHacker" (t/instant "2014-07-26T07:00:00Z")]
-                        ["1000" "Tito's Tacos" (t/instant "2014-06-03T07:00:00Z")]
-                        ["101" "Golden Road Brewing" (t/instant "2015-09-04T07:00:00Z")]]]
+        (let [expected [[1 "The Misfit Restaurant + Bar" (t/instant "2014-04-07T00:00:00Z")]
+                        [2 "Bludso's BBQ"                (t/instant "2014-09-18T00:00:00Z")]
+                        [3 "Philippe the Original"       (t/instant "2014-09-15T00:00:00Z")]
+                        [4 "Wurstküche"                  (t/instant "2014-03-11T00:00:00Z")]
+                        [5 "Hotel Biron"                 (t/instant "2013-05-05T00:00:00Z")]]]
           (testing "UTC timezone"
             (is (= expected
                    (table-rows-sample))))
@@ -277,39 +277,37 @@
                              :database (mt/id)})
           (m/dissoc-in [:data :results_metadata])))))
 
-(def ^:private col-defaults
-  {:base_type :type/Text})
-
 (deftest native-query-test
   (mt/test-driver :druid
     (is (= {:row_count 2
             :status    :completed
-            :data      {:rows             [["931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
-                                           ["285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
-                        :cols             (mapv #(merge col-defaults %)
-                                                [{:name         "id"
-                                                  :source       :native
-                                                  :display_name "id"
-                                                  :field_ref    [:field "id" {:base-type :type/Text}]
-                                                  :base_type    :type/Text}
-                                                 {:name         "user_name"
-                                                  :source       :native
-                                                  :display_name "user_name"
-                                                  :field_ref    [:field "user_name" {:base-type :type/Text}]}
-                                                 {:name         "venue_price"
-                                                  :source       :native
-                                                  :display_name "venue_price"
-                                                  :base_type    :type/Text
-                                                  :field_ref    [:field "venue_price" {:base-type :type/Text}]}
-                                                 {:name         "venue_name"
-                                                  :source       :native
-                                                  :display_name "venue_name"
-                                                  :field_ref    [:field "venue_name" {:base-type :type/Text}]}
-                                                 {:name         "count"
-                                                  :source       :native
-                                                  :display_name "count"
-                                                  :base_type    :type/Integer
-                                                  :field_ref    [:field "count" {:base-type :type/Integer}]}])
+            :data      {:rows             [[931 "Simcha Yan" 1 "Kinaree Thai Bistro"       1]
+                                           [285 "Kfir Caj"   2 "Ruen Pair Thai Restaurant" 1]]
+                        :cols             [{:name         "id"
+                                            :source       :native
+                                            :display_name "id"
+                                            :field_ref    [:field "id" {:base-type :type/Integer}]
+                                            :base_type    :type/Integer}
+                                           {:name         "user_name"
+                                            :source       :native
+                                            :display_name "user_name"
+                                            :base_type    :type/Text
+                                            :field_ref    [:field "user_name" {:base-type :type/Text}]}
+                                           {:name         "venue_price"
+                                            :source       :native
+                                            :display_name "venue_price"
+                                            :base_type    :type/Integer
+                                            :field_ref    [:field "venue_price" {:base-type :type/Integer}]}
+                                           {:name         "venue_name"
+                                            :source       :native
+                                            :display_name "venue_name"
+                                            :base_type    :type/Text
+                                            :field_ref    [:field "venue_name" {:base-type :type/Text}]}
+                                           {:name         "count"
+                                            :source       :native
+                                            :display_name "count"
+                                            :base_type    :type/Integer
+                                            :field_ref    [:field "count" {:base-type :type/Integer}]}]
                         :native_form      {:query native-query-1}
                         :results_timezone "UTC"}}
            (-> (process-native-query native-query-1)
@@ -600,7 +598,7 @@
                     (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
                             :queryType :scan}
                            (compiled query)))
-                    (is (= ["931" "1" "Kinaree Thai Bistro"]
+                    (is (= [931 1 "Kinaree Thai Bistro"]
                            (mt/first-row (qp/process-query query))))))
 
                 (testing "topN query"
