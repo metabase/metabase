@@ -845,7 +845,19 @@ describe("scenarios > question > notebook", () => {
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
           .type("Massive Discount");
-        cy.contains(/^Expecting an opening parenthesis/i);
+        cy.contains(/^Expecting an opening parenthesis after function FLOOR/i);
+      });
+    });
+
+    it("should catch missing parentheses", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']").type("LOWER [Vendor]");
+        cy.findByPlaceholderText("Something nice and descriptive")
+          .click()
+          .type("Massive Discount");
+        cy.contains(/^Expecting an opening parenthesis after function LOWER/i);
       });
     });
 

@@ -15,7 +15,7 @@
                (-> (mt/formatted-rows [str]
                      (mt/run-mbql-query venues
                        {:fields [$name]
-                        :where  [[$id = 1]]}))
+                        :filter [:= $id 1]}))
                    ffirst)))
         ;; now, check the actual diagnostic info map
         (let [diag-info (diag-info-fn)]
