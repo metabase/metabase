@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
+
+import { useAsyncFunction } from "metabase/lib/hooks";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
   getModerationStatusIcon,
@@ -19,30 +21,28 @@ CreateModerationIssuePanel.propTypes = {
 function CreateModerationIssuePanel({
   issueType,
   onReturn,
-  createModerationReview,
+  createModerationReview: _createModerationReview,
   itemId,
   itemType,
 }) {
   const [description, setDescription] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const icon = getModerationStatusIcon(issueType);
   const color = getColor(issueType);
 
+  const [createModerationReview, isPending] = useAsyncFunction(
+    _createModerationReview,
+  );
+
   const onCreateModerationReview = async e => {
     e.preventDefault();
-    setIsLoading(true);
 
-    try {
-      await createModerationReview({
-        status: issueType,
-        moderated_item_id: itemId,
-        moderated_item_type: itemType,
-      });
+    await createModerationReview({
+      status: issueType,
+      moderated_item_id: itemId,
+      moderated_item_type: itemType,
+    });
 
-      onReturn();
-    } catch (e) {
-      setIsLoading(false);
-    }
+    onReturn();
   };
 
   return (
@@ -71,10 +71,10 @@ function CreateModerationIssuePanel({
         name="text"
       />
       <div className="flex column-gap-1 justify-end">
-        <Button disabled={isLoading} type="button" onClick={onReturn}>
+        <Button disabled={isPending} type="button" onClick={onReturn}>
           {MODERATION_TEXT.cancel}
         </Button>
-        <Button disabled={isLoading} type="submit" primary>
+        <Button disabled={isPending} type="submit" primary>
           {MODERATION_TEXT.moderator[issueType].actionCreationButton}
         </Button>
       </div>
