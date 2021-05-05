@@ -94,7 +94,9 @@ describe("scenarios > question > saved", () => {
     cy.visit("/question/1");
     cy.wait("@query");
 
-    cy.get(".Button").find(".Icon-chevrondown").click();
+    cy.get(".Button")
+      .find(".Icon-chevrondown")
+      .click();
     cy.get(".Icon-clone").click();
 
     modal().within(() => {
