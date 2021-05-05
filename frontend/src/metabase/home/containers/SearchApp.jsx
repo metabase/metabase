@@ -110,6 +110,7 @@ export default class SearchApp extends React.Component {
 
                       return (
                         <Link
+                          key={f.filter}
                           className="flex align-center"
                           mb={3}
                           color={color(isActive ? "brand" : "text-medium")}
@@ -134,10 +135,10 @@ export default class SearchApp extends React.Component {
   }
 }
 
-const SearchResultSection = ({ title, items }) => (
+const SearchResultSection = ({ items }) => (
   <Card pt={2}>
-    {items.map(item => {
-      return <SearchResult result={item} />;
+    {items.map((item, index) => {
+      return <SearchResult key={index} result={item} />;
     })}
   </Card>
 );

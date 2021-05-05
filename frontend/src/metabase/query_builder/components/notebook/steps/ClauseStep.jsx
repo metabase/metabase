@@ -27,6 +27,7 @@ export default function ClauseStep({
       {items.map((item, index) => (
         <PopoverWithTrigger
           tetherOptions={tetherOptions}
+          key={index}
           triggerElement={
             <NotebookCellItem color={color}>
               {renderName(item, index)}

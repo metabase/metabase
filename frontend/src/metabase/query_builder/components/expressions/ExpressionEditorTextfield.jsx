@@ -62,8 +62,8 @@ const HelpText = ({ helpText, width }) =>
         <p className="text-code m0 text-body">{helpText.example}</p>
       </div>
       <div className="p2 border-top">
-        {helpText.args.map(({ name, description }) => (
-          <div>
+        {helpText.args.map(({ name, description }, index) => (
+          <div key={index}>
             <h4 className="text-medium">{name}</h4>
             <p className="mt1 text-bold">{description}</p>
           </div>

@@ -43,8 +43,9 @@ const ColorRangePicker = ({
   >
     {({ onClose }) => (
       <div className="pt1 mr1 flex flex-wrap" style={{ width: 300 }}>
-        {ranges.map(range => (
+        {ranges.map((range, index) => (
           <div
+            key={index}
             className={"mb1 pl1"}
             style={{ flex: `1 1 ${Math.round(100 / columns)}%` }}
           >
@@ -84,7 +85,11 @@ export const ColorRangePreview = ({
   return (
     <div className={cx(className, "flex")} {...props}>
       {d3.range(0, sections).map(value => (
-        <div className="flex-full" style={{ background: scale(value) }} />
+        <div
+          key={value}
+          className="flex-full"
+          style={{ background: scale(value) }}
+        />
       ))}
     </div>
   );

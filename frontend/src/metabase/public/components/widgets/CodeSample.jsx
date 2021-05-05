@@ -63,7 +63,9 @@ export default class CodeSample extends Component {
                 onChange={e => this.handleChange(e.target.value)}
               >
                 {options.map(option => (
-                  <Option value={option.name}>{option.name}</Option>
+                  <Option key={option.name} value={option.name}>
+                    {option.name}
+                  </Option>
                 ))}
               </Select>
             ) : null}

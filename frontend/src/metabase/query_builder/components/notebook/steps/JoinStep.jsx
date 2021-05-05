@@ -222,6 +222,7 @@ function JoinTypeSelect({ value, onChange, options }) {
       {options.map(option => (
         <JoinTypeOption
           {...option}
+          key={option.value}
           selected={value === option.value}
           onChange={onChange}
         />

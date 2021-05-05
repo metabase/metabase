@@ -169,7 +169,7 @@ export default class PulseEditChannels extends Component {
                 }
               >
                 {field.options.map(option => (
-                  <Option name={option} value={option}>
+                  <Option key={option} name={option} value={option}>
                     {option}
                   </Option>
                 ))}
