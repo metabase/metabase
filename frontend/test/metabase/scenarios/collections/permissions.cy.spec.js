@@ -479,7 +479,7 @@ describe("collection permissions", () => {
                 });
                 cy.url().should("match", /\/dashboard\/\d+$/);
                 saveDashboard();
-                cy.get(".Entity").findByText(personalCollection);
+                cy.get(".DashboardHeader").findByText(personalCollection);
               });
             });
 
