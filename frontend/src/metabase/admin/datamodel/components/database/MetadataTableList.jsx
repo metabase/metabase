@@ -191,13 +191,30 @@ function TableRow({
 }
 
 function ToggleHiddenButton({ setVisibilityForTables, tables, isHidden }) {
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const handleToggle = async e => {
+    e.stopPropagation();
+
+    if (isLoading) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await setVisibilityForTables(tables, isHidden ? null : "hidden");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Icon
+      tabIndex="0"
       name={isHidden ? "eye" : "eye_crossed_out"}
-      onClick={e => {
-        e.stopPropagation();
-        setVisibilityForTables(tables, isHidden ? null : "hidden");
-      }}
+      onClick={handleToggle}
+      onKeyUp={e => e.key === "Enter" && handleToggle(e)}
+      disabled={isLoading}
       tooltip={
         tables.length > 1
           ? isHidden
@@ -208,8 +225,11 @@ function ToggleHiddenButton({ setVisibilityForTables, tables, isHidden }) {
           : t`Hide`
       }
       size={18}
-      className={"float-right cursor-pointer"}
-      hover={{ color: color("brand") }}
+      className={cx(
+        "float-right",
+        isLoading ? "cursor-not-allowed" : "cursor-pointer",
+      )}
+      hover={{ color: isLoading ? undefined : color("brand") }}
     />
   );
 }
