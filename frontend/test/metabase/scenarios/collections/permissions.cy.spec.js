@@ -445,7 +445,7 @@ describe("collection permissions", () => {
             });
 
             describe("managing question from the question's edit dropdown", () => {
-              it("should not be offered to save question in collections they have `read` access to", () => {
+              it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
                 cy.visit("/question/1");
                 cy.icon("pencil").click();
                 popover()
@@ -462,7 +462,7 @@ describe("collection permissions", () => {
                 });
               });
 
-              it("should be offered to save question in personal collection when creating a new dashboard", () => {
+              it("should offer personal collection as a save destination for a new dashboard", () => {
                 const { first_name, last_name } = USERS[user];
                 const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
                 cy.visit("/question/1");
