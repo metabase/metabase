@@ -9,7 +9,8 @@
             [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
             [pretty.core :as pretty]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private ^{:arglist '([user-id last-updated field])} fetch-sandboxed-field-values*
   (memoize/ttl
@@ -35,12 +36,16 @@
    (db/select-one-field :updated_at FieldValues :field_id (u/the-id field))
    field))
 
-(defn- field-is-sandboxed? [field]
-  (sandbox.api.table/only-segmented-perms? (field/table field)))
+(defn- field-is-sandboxed?
+  [{:keys [table], :as field}]
+  ;; slight optimization: for the `field-id->field-values` version we can batched hydrate `:table` to avoid having to
+  ;; make a bunch of calls to fetch Table. For `get-or-create-field-values` we don't hydrate `:table` so we can fall
+  ;; back to fetching it manually with `field/table`
+  (sandbox.api.table/only-segmented-perms? (or table (field/table field))))
 
 (defn- field-id->field-values-for-current-user [field-ids]
   (let [fields                   (when (seq field-ids)
-                                   (db/select Field :id [:in (set field-ids)]))
+                                   (hydrate (db/select Field :id [:in (set field-ids)]) :table))
         {unsandboxed-fields false
          sandboxed-fields   true} (group-by (comp boolean field-is-sandboxed?) fields)]
     (merge
@@ -62,6 +67,7 @@
     params.field-values/FieldValuesForCurrentUser
     (get-or-create-field-values-for-current-user!* [_ field]
       (if (field-is-sandboxed? field)
+        ;; if sandboxing is in effect we never actually "save" the FieldValues the way the OSS/non-sandboxed impl does.
         (fetch-sandboxed-field-values field)
         (params.field-values/get-or-create-field-values-for-current-user!* params.field-values/default-impl field)))
 
