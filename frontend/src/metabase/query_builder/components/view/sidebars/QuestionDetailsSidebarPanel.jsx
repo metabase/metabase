@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/questions/components/QuestionActionButtons";
 import ClampedText from "metabase/components/ClampedText";
+import { QuestionActivityTimeline } from "metabase/questions/components/QuestionActivityTimeline";
 import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
 import { SIDEBAR_VIEWS } from "./constants";
 
@@ -20,7 +21,7 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
       <div>
         <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
         <ClampedText className="px2 pb2" text={description} visibleLines={8} />
-        <div className="px1 flex justify-between">
+        <div className="mx1 pb2 flex justify-between border-row-divider">
           <ModerationIssueActionMenu
             triggerClassName="Button--round text-brand border-brand"
             onAction={issueType => {
@@ -38,6 +39,7 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
             }}
           />
         </div>
+        <QuestionActivityTimeline className="px2 pt2" question={question} />
       </div>
     </SidebarContent>
   );
