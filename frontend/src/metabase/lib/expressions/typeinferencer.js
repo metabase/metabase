@@ -1,49 +1,54 @@
-import { ExpressionVisitor } from "./visitor";
-import { compactSyntaxTree } from "./typechecker";
+import { MBQL_CLAUSES } from "./config";
+import { OPERATOR as OP } from "./tokenizer";
 
-export function infer(cst, env) {
-  class TypeInferer extends ExpressionVisitor {
-    constructor(env) {
-      super();
-      this.env = env;
-    }
+export const MONOTYPE = {
+  Undefined: "undefined",
+  Number: "number",
+  String: "string",
+  Boolean: "boolean",
+};
 
-    numberLiteral() {
-      return "number";
-    }
-    stringLiteral() {
-      return "string";
-    }
+export function infer(mbql) {
+  if (!Array.isArray(mbql)) {
+    return typeof mbql;
+  }
+  const op = mbql[0];
+  switch (op) {
+    case OP.Plus:
+    case OP.Minus:
+    case OP.Star:
+    case OP.Slash:
+      return MONOTYPE.Number;
 
-    relationalExpression(ctx) {
-      return "boolean";
-    }
-    logicalOrExpression(ctx) {
-      return "boolean";
-    }
-    logicalAndExpression(ctx) {
-      return "boolean";
-    }
-    logicalNotExpression(ctx) {
-      return "boolean";
-    }
+    case OP.Not:
+    case OP.And:
+    case OP.Or:
+    case OP.Equal:
+    case OP.NotEqual:
+    case OP.GreaterThan:
+    case OP.GreaterThanEqual:
+    case OP.LessThan:
+    case OP.LessThanEqual:
+      return MONOTYPE.Boolean;
+  }
 
-    additionExpression(ctx) {
-      return "number";
-    }
+  if (op === "case" || op === "coalesce") {
+    // TODO
+    return MONOTYPE.Undefined;
+  }
 
-    multiplicationExpression(ctx) {
-      return "number";
-    }
-
-    caseExpression(ctx) {
-      const args = ctx.arguments || [];
-      const types = args.map(arg => this.visit(arg));
-      return types[1];
+  const func = MBQL_CLAUSES[op];
+  if (func) {
+    const returnType = func.type;
+    switch (returnType) {
+      case "object":
+        return MONOTYPE.Undefined;
+      case "aggregation":
+        return MONOTYPE.Number;
+      default:
+        return returnType;
     }
   }
 
-  const inferencer = new TypeInferer();
-  const compactCst = compactSyntaxTree(cst);
-  return inferencer.visit(compactCst);
+  return MONOTYPE.Undefined;
 }
