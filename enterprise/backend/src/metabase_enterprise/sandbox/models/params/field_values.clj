@@ -38,10 +38,6 @@
 (defn- field-is-sandboxed? [field]
   (sandbox.api.table/only-segmented-perms? (field/table field)))
 
-(defn- fetch-sandboxed-field-values-if-field-is-sandboxed [field]
-  (when (field-is-sandboxed? field)
-    (fetch-sandboxed-field-values field)))
-
 (defn- field-id->field-values-for-current-user [field-ids]
   (let [fields                   (when (seq field-ids)
                                    (db/select Field :id [:in (set field-ids)]))
@@ -65,9 +61,9 @@
 
     params.field-values/FieldValuesForCurrentUser
     (get-or-create-field-values-for-current-user!* [_ field]
-      (or (when (field-is-sandboxed? field)
-            (fetch-sandboxed-field-values field))
-          (params.field-values/get-or-create-field-values-for-current-user!* params.field-values/default-impl field)))
+      (if (field-is-sandboxed? field)
+        (fetch-sandboxed-field-values field)
+        (params.field-values/get-or-create-field-values-for-current-user!* params.field-values/default-impl field)))
 
     (field-id->field-values-for-current-user* [_ field-ids]
       (field-id->field-values-for-current-user field-ids))))

@@ -59,7 +59,7 @@
   ;; default OSS impl if we don't have a valid EE token. Thus the actual EE versions of the methods won't get used
   ;; unless EE code is present *and* we have a valid EE token.
   (delay
-    (u/prog1 (or (do #_u/ignore-exceptions
+    (u/prog1 (or (u/ignore-exceptions
                    (classloader/require 'metabase-enterprise.sandbox.models.params.field-values)
                    (some-> (resolve 'metabase-enterprise.sandbox.models.params.field-values/ee-strategy-impl) var-get))
                  default-impl)
