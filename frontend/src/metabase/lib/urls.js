@@ -123,10 +123,6 @@ export function collection(collection = {}) {
   return `/collection/${id}-${slug}`;
 }
 
-export function collectionPermissions(collectionId) {
-  return `/collection/${collectionId || "root"}/permissions`;
-}
-
 export function label(label) {
   return `/questions/search?label=${encodeURIComponent(label.slug)}`;
 }
