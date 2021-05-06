@@ -76,7 +76,7 @@ class CollectionSidebar extends React.Component {
     return (
       <Sidebar w={340} pt={3} data-testid="sidebar">
         <CollectionLink
-          to={Urls.collection("root")}
+          to={Urls.collection({ id: "root" })}
           selected={isRoot}
           mb={1}
           mt={2}
@@ -111,7 +111,7 @@ class CollectionSidebar extends React.Component {
           {currentUser.is_superuser && (
             <Link
               my={2}
-              to={Urls.collection("users")}
+              to={Urls.collection({ id: "users" })}
               className="flex align-center text-bold text-light text-brand-hover"
             >
               <Icon name="group" mr={1} />

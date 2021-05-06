@@ -112,8 +112,10 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   return question(null, query);
 }
 
-export function collection(collectionId) {
-  return `/collection/${collectionId || "root"}`;
+export function collection(collection = {}) {
+  const id = collection.id || "root";
+  const path = typeof id === "number" ? `${id}-${slug(collection.name)}` : id;
+  return `/collection/${path}`;
 }
 
 export function collectionPermissions(collectionId) {
@@ -195,4 +197,11 @@ export function browseTable(table) {
 
 export function extractEntityId(slug) {
   return parseInt(slug, 10);
+}
+
+export function extractCollectionId(slug) {
+  if (slug === "root" || slug === "users") {
+    return slug;
+  }
+  return extractEntityId(slug);
 }

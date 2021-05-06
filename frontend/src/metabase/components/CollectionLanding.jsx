@@ -5,9 +5,12 @@ import { Box } from "grid-styled";
 import CollectionContent from "metabase/collections/containers/CollectionContent";
 import CollectionSidebar from "metabase/collections/containers/CollectionSidebar";
 
+import * as Urls from "metabase/lib/urls";
+
 import { PageWrapper } from "metabase/collections/components/Layout";
 
-const CollectionLanding = ({ params: { collectionId }, children }) => {
+const CollectionLanding = ({ params: { slug }, children }) => {
+  const collectionId = Urls.extractCollectionId(slug);
   const isRoot = collectionId === "root";
 
   // This ref is passed to VirtualizedList inside CollectionContent

@@ -198,7 +198,7 @@ export const getRoutes = store => (
           <IndexRoute component={UserCollectionList} />
         </Route>
 
-        <Route path="collection/:collectionId" component={CollectionLanding}>
+        <Route path="collection/:slug" component={CollectionLanding}>
           <ModalRoute path="edit" modal={CollectionEdit} />
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
           <ModalRoute path="new_collection" modal={CollectionCreate} />

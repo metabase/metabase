@@ -28,4 +28,21 @@ describe("URLs", () => {
       });
     });
   });
+
+  describe.only("collections", () => {
+    ["/", "/collection/root"].forEach(url => {
+      it(`should slugify collection name when opening it from "${url}"`, () => {
+        cy.visit(url);
+        cy.findByText("First collection").click();
+        cy.url().should("match", /\/collection\/9-first-collection$/);
+      });
+    });
+
+    it("should not slugify users' collections page URL", () => {
+      cy.visit("/collection/root");
+      cy.findByText("Other users' personal collections").click();
+      cy.findByText("All personal collections");
+      cy.url().should("match", /\/collection\/users$/);
+    });
+  });
 });

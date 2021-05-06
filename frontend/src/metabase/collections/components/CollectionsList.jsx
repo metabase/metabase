@@ -34,7 +34,7 @@ class CollectionsList extends React.Component {
                 {({ highlighted, hovered }) => {
                   return (
                     <CollectionLink
-                      to={Urls.collection(c.id)}
+                      to={Urls.collection(c)}
                       // TODO - need to make sure the types match here
                       selected={String(c.id) === currentCollection}
                       depth={this.props.depth}

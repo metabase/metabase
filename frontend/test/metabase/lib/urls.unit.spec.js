@@ -2,6 +2,7 @@ import {
   question,
   extractQueryParams,
   extractEntityId,
+  extractCollectionId,
 } from "metabase/lib/urls";
 
 describe("urls", () => {
@@ -62,6 +63,20 @@ describe("urls", () => {
 
       testCases.forEach(({ slug, id }) => {
         expect(extractEntityId(slug)).toBe(id);
+      });
+    });
+  });
+
+  describe("extractCollectionId", () => {
+    it("should correctly extract collection ID", () => {
+      const testCases = [
+        { slug: "23-customer-success", id: 274 },
+        { slug: "root", id: "root" },
+        { slug: "users", id: "users" },
+      ];
+
+      testCases.forEach(({ slug, id }) => {
+        expect(extractCollectionId(slug)).toBe(id);
       });
     });
   });
