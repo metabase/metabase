@@ -4,7 +4,8 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [metabase.config :as config]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import [java.io BufferedReader FileReader]))
 
 (defn- count-occurrences
   "Return a map of the counts of each class of character for `password`.
@@ -62,7 +63,7 @@
   [password]
   (password-has-char-counts? (active-password-complexity) password))
 
-(def common-passwords-file
+(def ^File common-passwords-file
   "A set of ~12k common passwords to reject, that otherwise meet Metabase's default complexity requirements.
    Sourced from Dropbox's zxcvbn repo: https://github.com/dropbox/zxcvbn/blob/master/data/passwords.txt"
   (io/file (io/resource "common_passwords.txt")))
