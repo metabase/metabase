@@ -8,14 +8,20 @@ import { replace } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
+import Collections from "metabase/entities/collections";
 
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
 import { getDashboardComplete } from "../selectors";
 
 const mapStateToProps = (state, props) => {
+  const dashboard = getDashboardComplete(state, props);
   return {
-    dashboard: getDashboardComplete(state, props),
+    dashboard,
+    initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
+      ...props,
+      collectionId: dashboard.collection_id,
+    }),
   };
 };
 
@@ -36,12 +42,17 @@ class DashboardCopyModal extends React.Component {
       onReplaceLocation,
       copyDashboard,
       dashboard,
+      initialCollectionId,
       ...props
     } = this.props;
     return (
       <EntityCopyModal
         entityType="dashboards"
-        entityObject={dashboard}
+        entityObject={{
+          ...dashboard,
+          collection_id: initialCollectionId,
+        }}
+        overwriteOnInitialValuesChange
         copy={object =>
           copyDashboard(
             { id: this.props.params.dashboardId },
