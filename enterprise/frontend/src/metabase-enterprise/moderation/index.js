@@ -1,3 +1,4 @@
+import { getIn } from "icepick";
 import {
   PLUGIN_MODERATION_COMPONENTS,
   PLUGIN_MODERATION_SERVICE,
@@ -12,19 +13,26 @@ Object.assign(PLUGIN_MODERATION_COMPONENTS, {
 });
 
 Object.assign(PLUGIN_MODERATION_SERVICE, {
-  getModerationStatusIcon,
+  getStatusIconForReview,
+  getColorForReview,
 });
 
 export function getModerationActionsList() {
-  return [ACTIONS.verification, ACTIONS.flag, ACTIONS.question];
+  return [ACTIONS.verified, ACTIONS.misleading, ACTIONS.confusing];
+}
+
+export function getStatusIconForReview(review) {
+  return getModerationStatusIcon(review && review.status);
+}
+
+export function getColorForReview(review) {
+  return getColor(review && review.status);
 }
 
 export function getModerationStatusIcon(type) {
-  const { icon } = ACTIONS[type] || {};
-  return icon;
+  return getIn(ACTIONS, [type, "icon"]);
 }
 
 export function getColor(type) {
-  const { color } = ACTIONS[type] || {};
-  return color;
+  return getIn(ACTIONS, [type, "color"]);
 }
