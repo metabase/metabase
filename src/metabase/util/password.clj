@@ -4,8 +4,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [metabase.config :as config]
-            [metabase.util :as u])
-  (:import [java.io File BufferedReader FileReader]))
+            [metabase.util :as u]))
 
 (defn- count-occurrences
   "Return a map of the counts of each class of character for `password`.
@@ -65,12 +64,12 @@
 
 (def ^File common-passwords-file
   "A set of ~12k common passwords to reject, that otherwise meet Metabase's default complexity requirements.
-   Sourced from Dropbox's zxcvbn repo: https://github.com/dropbox/zxcvbn/blob/master/data/passwords.txt"
+  Sourced from Dropbox's zxcvbn repo: https://github.com/dropbox/zxcvbn/blob/master/data/passwords.txt"
   (io/file (io/resource "common_passwords.txt")))
 
 (defn- is-uncommon?
   "Check if a given password is not present in the common passwords set. Case-insensitive search since
-   the list only contains lower-case passwords."
+  the list only contains lower-case passwords."
   [password]
   (with-open [reader (java.io.BufferedReader. (java.io.FileReader. common-passwords-file))]
     (not-any?
@@ -79,7 +78,7 @@
 
 (def ^{:arglists '([password])} is-valid?
   "Check that a password both meets complexity standards, and is not present in the common passwords list.
-   Common password list is ignored if minimum password complexity is set to :weak"
+  Common password list is ignored if minimum password complexity is set to :weak"
   (every-pred
     is-complex?
     #(or
