@@ -106,6 +106,7 @@ export default class View extends React.Component {
       fitClassNames,
       height,
       onOpenModal,
+      createModerationReview,
     } = this.props;
     const {
       aggregationIndex,
@@ -161,7 +162,11 @@ export default class View extends React.Component {
     ) : isShowingChartTypeSidebar ? (
       <ChartTypeSidebar {...this.props} onClose={this.props.onCloseChartType} />
     ) : isShowingQuestionDetailsSidebar ? (
-      <QuestionDetailsSidebar question={question} onOpenModal={onOpenModal} />
+      <QuestionDetailsSidebar
+        question={question}
+        onOpenModal={onOpenModal}
+        createModerationReview={createModerationReview}
+      />
     ) : null;
 
     const rightSideBar =
