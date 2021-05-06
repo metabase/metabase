@@ -464,7 +464,18 @@ describe("collection permissions", () => {
         // There is no fourth entry for editing the textbox as this
         // change currently creates a revision item with a `null` description.
         // TODO: consider generating a description for edited textboxes
-        cy.findAllByText("Bobby Tables").should("have.length", 3);
+        const revisionHistoryEntries = cy.findAllByText("Bobby Tables").parent()
+
+        revisionHistoryEntries.should("have.length", 3);
+
+        // Topmost visible revision history entry
+        // should not have a Revert button, as it's
+        // the latest practical one.
+        revisionHistoryEntries.first().within(() => {
+          cy.findByText("Revert").should("not.exist");
+        });
+
+        cy.findAllByText("Revert").should("have.length", 2);
       });
 
       it.skip("dashboard should update properly on revert (metabase#6884)", () => {
