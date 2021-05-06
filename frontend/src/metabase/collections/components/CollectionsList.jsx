@@ -46,7 +46,7 @@ class CollectionsList extends React.Component {
                       <Flex
                         className="relative"
                         align={
-                          // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
+                          // if a collection name is somewhat long, align things at flex-start ("top") for a slightly better
                           // visual
                           c.name.length > 25 ? "flex-start" : "center"
                         }
