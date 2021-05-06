@@ -241,7 +241,7 @@
      ["baz" "20210421164300"]]]])
 
 (deftest yyyymmddhhmmss-dates
-  (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery :snowflake :redshift :sqlserver}
+  (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery :snowflake :redshift :sqlserver :presto}
     (is (= (case driver/*driver*
              :mongo
              [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
@@ -251,7 +251,7 @@
              [[1 "foo" #t "2019-04-21T16:43"]
               [2 "bar" #t "2020-04-21T16:43"]
               [3 "baz" #t "2021-04-21T16:43"]]
-             (:bigquery :redshift)
+             (:bigquery :redshift :presto)
              [[1 "foo" #t "2019-04-21T16:43Z[UTC]"]
               [2 "bar" #t "2020-04-21T16:43Z[UTC]"]
               [3 "baz" #t "2021-04-21T16:43Z[UTC]"]]
