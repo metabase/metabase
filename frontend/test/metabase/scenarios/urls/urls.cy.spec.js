@@ -38,6 +38,15 @@ describe("URLs", () => {
       });
     });
 
+    it("should slugify current user's personal collection name correctly", () => {
+      cy.visit("/collection/root");
+      cy.findByText("Your personal collection").click();
+      cy.url().should(
+        "match",
+        /\/collection\/1-bobby-tables-s-personal-collection$/,
+      );
+    });
+
     it("should not slugify users' collections page URL", () => {
       cy.visit("/collection/root");
       cy.findByText("Other users' personal collections").click();

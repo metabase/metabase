@@ -1,11 +1,11 @@
-import slugify from "slugify";
+import _slugify from "slugify";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
 
-function slug(str) {
-  return slugify(str, {
+function slugify(str) {
+  return _slugify(str, {
     lower: true,
     strict: true,
   });
@@ -114,8 +114,13 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
 
 export function collection(collection = {}) {
   const id = collection.id || "root";
-  const path = typeof id === "number" ? `${id}-${slug(collection.name)}` : id;
-  return `/collection/${path}`;
+  if (typeof id !== "number") {
+    return `/collection/${id}`;
+  }
+  const slug = collection.slug
+    ? collection.slug.split("_").join("-")
+    : slugify(collection.name);
+  return `/collection/${id}-${slug}`;
 }
 
 export function collectionPermissions(collectionId) {
@@ -184,7 +189,7 @@ export function browseDatabase(database) {
       ? "Saved Questions"
       : database.name;
 
-  return `/browse/${database.id}-${slug(name)}`;
+  return `/browse/${database.id}-${slugify(name)}`;
 }
 
 export function browseSchema(table) {
