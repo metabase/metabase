@@ -417,3 +417,11 @@
     display: inherit;
   }
 }
+
+.DashCard span.text-brand-hover {
+  font-size: 20px;
+}
+
+.CardVisualization table {
+  font-size: 16px;
+}

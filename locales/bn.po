@@ -394,7 +394,7 @@ msgstr ""
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:37
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:271
 msgid "Other"
-msgstr ""
+msgstr "অন্যান্য"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem.jsx:220
 msgid "Select a special type"
@@ -7188,7 +7188,7 @@ msgstr ""
 #: frontend/src/metabase/visualizations/lib/renderer_utils.js:338
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:375
 msgid "Total"
-msgstr ""
+msgstr "সর্বমোট"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:71
 msgid "Which columns do you want to use?"
@@ -17060,7 +17060,7 @@ msgstr ""
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:356
 msgid "Percentage"
-msgstr ""
+msgstr "শতাংশ"
 
 #: frontend/src/metabase/lib/data_grid.js:371
 msgid "Totals for {0}"
