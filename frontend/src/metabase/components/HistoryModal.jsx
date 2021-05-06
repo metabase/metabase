@@ -36,6 +36,7 @@ export default class HistoryModal extends Component {
 
   shouldRenderRevisionEntry({ diff }) {
     // diff may be null in "First revision"
+    // or in the earliest revision kept in store
     if (diff === null) {
       return true;
     }
