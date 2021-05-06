@@ -83,10 +83,10 @@
              (m2 ee 1 2)))
       (is (= -1
              (m2 oss 1 2))))
-    (with-redefs [metastore/enable-enhancements? (constantly false)]
+    (with-redefs [settings.metastore/enable-enhancements? (constantly false)]
       (is (= -1
              (m2 impl 1 2))))
-    (with-redefs [metastore/enable-enhancements? (constantly true)]
+    (with-redefs [settings.metastore/enable-enhancements? (constantly true)]
       (is (= 3
              (m2 impl 1 2))))
     (testing "Should pretty print"
