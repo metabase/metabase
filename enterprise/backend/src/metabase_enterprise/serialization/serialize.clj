@@ -43,7 +43,17 @@
       (mbql.util/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]
-        [:field (fully-qualified-name Field id) opts]
+        [:field (fully-qualified-name Field id) (mbql-id->fully-qualified-name opts)]
+
+        ;; field-id is still used within parameter mapping dimensions
+        ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
+        [:field-id (id :guard integer?)]
+        [:field-id (fully-qualified-name Field id)]
+
+        ;; source-field is also used within parameter mapping dimensions
+        ;; example relevant clause - [:field 2 {:source-field 1}]
+        {:source-field (id :guard integer?)}
+        {:source-field (fully-qualified-name Field id)}
 
         [:metric (id :guard integer?)]
         [:metric (fully-qualified-name Metric id)]
@@ -79,6 +89,7 @@
                                                (m/map-vals mbql-id->fully-qualified-name aggregation)))
       (m/update-existing entity :filter (fn [filter]
                                           (m/map-vals mbql-id->fully-qualified-name filter)))
+      (m/update-existing entity ::mb.viz/param-mapping-source (partial fully-qualified-name Field))
       (m/map-vals ids->fully-qualified-names entity))))
 
 (defn- strip-crud
@@ -123,22 +134,43 @@
         mb.viz/column-ref-for-qualified-name)
     k))
 
-(defn- convert-click-behavior [{:keys [::mb.viz/click-behavior-type ::mb.viz/link-type
-                                       ::mb.viz/link-target-id ::mb.viz/link-parameter-mapping] :as click}]
-  (if-let [new-target-id (case link-type
-                           ::mb.viz/card (-> (Card link-target-id)
-                                             fully-qualified-name)
-                           ::mb.viz/dashboard (-> (Dashboard link-target-id)
-                                                  fully-qualified-name)
-                           nil)]
-    (assoc click ::mb.viz/link-target-id new-target-id)
-    click))
+(defn- convert-param-mapping-key
+  "The `k` is something like [:dimension [:fk-> [:field-id <id1>] [:field-id <id2]]]"
+  [k]
+  (mbql-id->fully-qualified-name k))
+
+(defn- convert-param-ref [new-id param-ref]
+  (cond-> param-ref
+    (= "dimension" (::mb.viz/param-ref-type param-ref)) ids->fully-qualified-names
+    (some? new-id) (update ::mb.viz/param-ref-id new-id)))
+
+(defn- convert-param-mapping-val [new-id v]
+  (-> v
+      (m/update-existing ::mb.viz/param-mapping-source (partial convert-param-ref new-id))
+      (m/update-existing ::mb.viz/param-mapping-target (partial convert-param-ref new-id))
+      (m/assoc-some ::mb.viz/param-mapping-id (or new-id (::mb.viz/param-mapping-id v)))))
+
+(defn- convert-parameter-mapping [param-mapping]
+  (if (nil? param-mapping)
+    nil
+    (reduce-kv (fn [acc k v]
+                 (assoc acc (convert-param-mapping-key k)
+                            (convert-param-mapping-val nil v))) {} param-mapping)))
+
+(defn- convert-click-behavior [{:keys [::mb.viz/link-type ::mb.viz/link-target-id] :as click}]
+  (-> (if-let [new-target-id (case link-type
+                               ::mb.viz/card      (-> (Card link-target-id)
+                                                      fully-qualified-name)
+                               ::mb.viz/dashboard (-> (Dashboard link-target-id)
+                                                      fully-qualified-name)
+                               nil)]
+        (assoc click ::mb.viz/link-target-id new-target-id)
+        click)
+      (m/update-existing ::mb.viz/parameter-mapping convert-parameter-mapping)))
 
 (defn- convert-column-settings-value [{:keys [::mb.viz/click-behavior] :as v}]
-  (cond (some? click-behavior)
-        (assoc v ::mb.viz/click-behavior (convert-click-behavior click-behavior))
-        :default
-        v))
+  (cond (not-empty click-behavior) (assoc v ::mb.viz/click-behavior (convert-click-behavior click-behavior))
+        :else v))
 
 (defn- convert-column-settings [acc k v]
   (assoc acc (convert-column-settings-key k) (convert-column-settings-value v)))

@@ -62,11 +62,18 @@
   [entity]
   (mbql.util/replace (mbql.normalize/normalize-tokens entity)
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
+    ;; and also *current* expresion forms used in parameter mapping dimensions
+    ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
     [:field-id (fully-qualified-name :guard string?)]
     (mbql-fully-qualified-names->ids [:field fully-qualified-name nil])
 
     [:field (fully-qualified-name :guard string?) opts]
-    [:field (:field (fully-qualified-name->context fully-qualified-name)) opts]
+    [:field (:field (fully-qualified-name->context fully-qualified-name)) (mbql-fully-qualified-names->ids opts)]
+
+    ;; source-field is also used within parameter mapping dimensions
+    ;; example relevant clause - [:field 2 {:source-field 1}]
+    {:source-field (fully-qualified-name :guard string?)}
+    {:source-field (:field (fully-qualified-name->context fully-qualified-name))}
 
     [:metric (fully-qualified-name :guard string?)]
     [:metric (:metric (fully-qualified-name->context fully-qualified-name))]
@@ -224,7 +231,7 @@
           (assoc-in [:definition :source-table] (:table context))
           (update :definition mbql-fully-qualified-names->ids)))))
 
-(defn- update-parameter-mappings
+(defn- update-card-parameter-mappings
   [parameter-mappings]
   (for [parameter-mapping parameter-mappings]
     (-> parameter-mapping
@@ -240,24 +247,52 @@
         {::mb.viz/field-id field-id}))
     col-key))
 
+(defn- resolve-param-mapping-key [k]
+  (mbql-fully-qualified-names->ids k))
+
+(defn- resolve-dimension [dimension]
+  (mbql-fully-qualified-names->ids dimension))
+
+(defn- resolve-param-ref [param-ref]
+  (cond-> param-ref
+    (= "dimension" (::mb.viz/param-ref-type param-ref))
+    (-> ; from outer cond->
+        (m/update-existing ::mb.viz/param-ref-id mbql-fully-qualified-names->ids)
+        (m/update-existing ::mb.viz/param-dimension resolve-dimension))))
+
+(defn- resolve-param-mapping-val [v]
+  (-> v
+      (m/update-existing ::mb.viz/param-mapping-id mbql-fully-qualified-names->ids)
+      (m/update-existing ::mb.viz/param-mapping-source resolve-param-ref)
+      (m/update-existing ::mb.viz/param-mapping-target resolve-param-ref)))
+
+(defn- resolve-click-behavior-parameter-mapping [parameter-mapping]
+  (->> parameter-mapping
+       mb.viz/db->norm-param-mapping
+       (reduce-kv (fn [acc k v]
+                    (assoc acc (resolve-param-mapping-key k)
+                               (resolve-param-mapping-val v))) {})
+       mb.viz/norm->db-param-mapping))
+
 (defn- resolve-click-behavior
   [click-behavior]
-  (if-let [link-type (::mb.viz/link-type click-behavior)]
-    (case link-type
-      ::mb.viz/card (let [card-id (::mb.viz/link-target-id click-behavior)]
-                      (if (string? card-id)
-                        (update-existing-in-capture-missing
-                         click-behavior
-                         [::mb.viz/link-target-id]
-                         (comp :card fully-qualified-name->context))))
-      ::mb.viz/dashboard (let [dashboard-id (::mb.viz/link-target-id click-behavior)]
-                          (if (string? dashboard-id)
+  (-> (if-let [link-type (::mb.viz/link-type click-behavior)]
+        (case link-type
+          ::mb.viz/card (let [card-id (::mb.viz/link-target-id click-behavior)]
+                          (if (string? card-id)
                             (update-existing-in-capture-missing
                              click-behavior
                              [::mb.viz/link-target-id]
-                             (comp :dashboard fully-qualified-name->context))))
-      click-behavior)
-    click-behavior))
+                             (comp :card fully-qualified-name->context))))
+          ::mb.viz/dashboard (let [dashboard-id (::mb.viz/link-target-id click-behavior)]
+                              (if (string? dashboard-id)
+                                (update-existing-in-capture-missing
+                                 click-behavior
+                                 [::mb.viz/link-target-id]
+                                 (comp :dashboard fully-qualified-name->context))))
+          click-behavior)
+        click-behavior)
+      (m/update-existing ::mb.viz/parameter-mapping resolve-click-behavior-parameter-mapping)))
 
 (defn- update-col-settings-click-behavior [col-settings-value]
   (let [new-cb (resolve-click-behavior (::mb.viz/click-behavior col-settings-value))]
@@ -315,7 +350,7 @@
                           (let [proc-card  (-> card
                                                (update-existing-capture-missing :card_id fully-qualified-name->card-id)
                                                (assoc :dashboard_id dashboard-id))
-                                new-pm     (update-parameter-mappings (:parameter_mappings proc-card))
+                                new-pm     (update-card-parameter-mappings (:parameter_mappings proc-card))
                                 with-pm    (pull-unresolved-names-up proc-card [:parameter_mappings] new-pm)
                                 with-viz   (resolve-visualization-settings with-pm)]
                             (if-let [unresolved (::unresolved-names with-viz)]

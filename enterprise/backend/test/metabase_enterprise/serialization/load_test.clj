@@ -109,6 +109,26 @@
 (defn- id->name [model id]
   (db/select-one-field :name model :id id))
 
+(defn- assert-price-click [click target-id]
+  ;; first, it should be pointing to "My Card"
+  (is (= "My Card" (id->name Card target-id)))
+  (let [param-mapping (:parameterMapping click)]
+    ;; also, the parameter mappings should have been preserved
+    (is (not-empty param-mapping))
+    (let [mapping-key     (-> param-mapping
+                              keys
+                              first)
+          mapping-keyname (mb.viz/keyname mapping-key)
+          [_ f1-id f2-id] (re-matches #".*\[\"field(?:-id)?\",(\d+),.*\[\"field(?:-id)?\",(\d+),.*" mapping-keyname)
+          f1              (db/select-one Field :id (Integer/parseInt f1-id))
+          f2              (db/select-one Field :id (Integer/parseInt f2-id))
+          dimension       (get-in param-mapping [mapping-key :target :dimension])]
+      ;; the source and target fields should be category_id and price, respectively
+      ;; for an explanation of why both cases are allowed, see `case field-nm` below
+      (is (contains? #{"category_id" "CATEGORY_ID"} (:name f1)))
+      (is (contains? #{"price" "PRICE"} (:name f2)))
+      (is (= {:dimension [:field (u/the-id f2) {:source-field (u/the-id f1)}]} dimension)))))
+
 (defmethod assert-loaded-entity (type Dashboard)
   [dashboard _]
   (testing "The dashboard card series were loaded correctly"
@@ -146,12 +166,11 @@
                                                         ;; caps in some (ex: H2) and lowercase in others (ex: Postgres)
                                                         ;; this is simpler than the alternative (dynamically loading
                                                         ;; the expected name based on driver)
-                                                        ("price" "PRICE") (is (= "My Card" (id->name Card target-id)))
+                                                        ("price" "PRICE") (assert-price-click click-bhv target-id)
                                                         ("name" "NAME") (is (=
                                                                              "Root Dashboard"
                                                                              (id->name Dashboard target-id)))
-                                                        ("latitude" "LATITUDE") (is (= {:linkType         nil
-                                                                                        :parameterMapping {}
+                                                        ("latitude" "LATITUDE") (is (= {:parameterMapping {}
                                                                                         :type             "crossfilter"}
                                                                                        click-bhv))))
                                            column-name

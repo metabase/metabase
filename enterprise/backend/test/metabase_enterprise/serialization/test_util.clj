@@ -143,7 +143,11 @@
                                                                      (mb.viz/with-entity-click-action
                                                                       ~'numeric-field-id
                                                                       ::mb.viz/card
-                                                                      ~'card-id)
+                                                                      ~'card-id
+                                                                      (mb.viz/fk-parameter-mapping
+                                                                       "Category"
+                                                                       ~'category-field-id
+                                                                       ~'numeric-field-id))
                                                                      (mb.viz/with-entity-click-action
                                                                       ~'name-field-id
                                                                       ::mb.viz/dashboard
@@ -153,7 +157,6 @@
                                                                       (mb.viz/url-click-action "/price-info"))
                                                                      (mb.viz/with-click-action
                                                                       (mb.viz/column-ref-for-id ~'latitude-field-id)
-                                                                      ;; TODO: add checks for param mappings
                                                                       (mb.viz/crossfilter-click-action {}))
                                                                      mb.viz/db-form)}]
                    DashboardCardSeries [~'_ {:dashboardcard_id   ~'dashcard-with-click-actions

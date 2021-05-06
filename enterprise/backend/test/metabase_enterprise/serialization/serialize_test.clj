@@ -17,7 +17,8 @@
   [[_ & ids]]
   (testing (format "\nids = %s" (pr-str ids))
     (doseq [id ids]
-      (is (string? id)))))
+      (cond (map? id) (all-ids-are-fully-qualified-names? id)
+            (some? id) (is (string? id))))))
 
 (deftest serialization-test
   (ts/with-world
