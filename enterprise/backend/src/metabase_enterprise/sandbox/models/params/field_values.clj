@@ -2,7 +2,6 @@
   (:require [clojure.core.memoize :as memoize]
             [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase-enterprise.sandbox.api.table :as sandbox.api.table]
-            [metabase.api.common :as api]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.params.field-values :as params.field-values]
@@ -12,12 +11,16 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
-(def ^:private ^{:arglist '([user-id last-updated field])} fetch-sandboxed-field-values*
+(def ^:private ^{:arglist '([last-updated field])} fetch-sandboxed-field-values*
   (memoize/ttl
-   ;; use a custom key fn for memoization so two Field maps with different keys but the same `:id` still have the same
-   ;; cache key.
-   ^{::memoize/args-fn (fn [[current-user-id updated-at field]]
-                         [current-user-id updated-at (u/the-id field)])}
+   ;; use a custom key fn for memoization. The custom key includes current User ID and a hash of their permissions
+   ;; set, so we cache per-User (and so changes to that User's permissions will result in a cache miss), and Field ID
+   ;; instead of an entire Field object (so maps with slightly different keys are still considered equal)
+   ^{::memoize/args-fn (fn [[updated-at field]]
+                         [api/*current-user-id*
+                          (hash @api/*current-user-permissions-set*)
+                          updated-at
+                          (u/the-id field) ])}
    (fn [_ _ field]
      {:values   (field-values/distinct-values field)
       :field_id (u/the-id field)})
@@ -32,7 +35,6 @@
 (defn- fetch-sandboxed-field-values
   [field]
   (fetch-sandboxed-field-values*
-   api/*current-user-id*
    (db/select-one-field :updated_at FieldValues :field_id (u/the-id field))
    field))
 
