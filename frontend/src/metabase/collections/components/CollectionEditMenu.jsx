@@ -14,7 +14,7 @@ export default function CollectionEditMenu({ isRoot, collection, tooltip }) {
     items.push({
       title: t`Edit this collection`,
       icon: "edit_document",
-      link: `/collection/${collectionId}/edit`,
+      link: `${baseUrl}/edit`,
       event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Collection Click`,
     });
     items.push({
