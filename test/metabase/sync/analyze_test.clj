@@ -1,5 +1,6 @@
 (ns metabase.sync.analyze-test
   (:require [clojure.test :refer :all]
+            [metabase.api.table :as table-api]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -230,12 +231,18 @@
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (mt/with-temp* [Table [table (fake-table)]
-                    Field [field (fake-field table)]]
-      (set-table-visibility-type-via-api! table "hidden")
-      (set-table-visibility-type-via-api! table nil)
-      (is (= true
-             (fake-field-was-analyzed? field))))))
+    (let [original-submit (var-get #'table-api/submit-task)
+          finished?       (promise)]
+      (with-redefs [table-api/submit-task (fn [task]
+                                            @(original-submit task)
+                                            (deliver finished? true))]
+        (mt/with-temp* [Table [table (fake-table)]
+                        Field [field (fake-field table)]]
+          (set-table-visibility-type-via-api! table "hidden")
+          (set-table-visibility-type-via-api! table nil)
+          (deref finished? 1000 ::timeout)
+          (is (= true
+                 (fake-field-was-analyzed? field))))))))
 
 (deftest dont-analyze-rehidden-table-test
   (testing "re-hiding a table should not cause it to be analyzed"
