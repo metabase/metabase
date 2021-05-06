@@ -2,6 +2,7 @@
   (:require [clojure.core.memoize :as memoize]
             [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase-enterprise.sandbox.api.table :as sandbox.api.table]
+            [metabase.api.common :as api]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.params.field-values :as params.field-values]
@@ -10,6 +11,8 @@
             [pretty.core :as pretty]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
+
+(comment api/keep-me)
 
 (def ^:private ^{:arglist '([last-updated field])} fetch-sandboxed-field-values*
   (memoize/ttl
