@@ -76,14 +76,13 @@
       (partial = (str/lower-case password))
       (iterator-seq (.. reader lines iterator)))))
 
-(def ^{:arglists '([password])} is-valid?
+(defn is-valid?
   "Check that a password both meets complexity standards, and is not present in the common passwords list.
   Common password list is ignored if minimum password complexity is set to :weak"
-  (every-pred
-    is-complex?
-    #(or
-       (= :weak (config/config-kw :mb-password-complexity))
-       (is-uncommon? %))))
+  [password]
+  (and (is-complex? password)
+       (or (= (config/config-kw :mb-password-complexity) :weak)
+           (is-uncommon? password))))
 
 (defn verify-password
   "Verify if a given unhashed password + salt matches the supplied hashed-password. Returns `true` if matched, `false`

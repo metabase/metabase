@@ -54,15 +54,15 @@
 
 (deftest is-valid?-normal-test
   (testing "Do some tests with the default (:normal) password requirements"
-    (doseq [[input expected] {"ABC"              false
-                              "ABCDEF"           false
-                              "ABCDE1"           false
-                              "123456"           false
-                              "passw0rd"         false
-                              "PASSW0RD"         false
-                              "unc0mmonpw"       true
-                              "pa$$w0®∂"         true
-                              "s6n!8z-6.gcJe"    true}]
+    (doseq [[input expected] {"ABC"           false
+                              "ABCDEF"        false
+                              "ABCDE1"        false
+                              "123456"        false
+                              "passw0rd"      false
+                              "PASSW0RD"      false
+                              "unc0mmonpw"    true
+                              "pa$$w0®∂"      true
+                              "s6n!8z-6.gcJe" true}]
       (testing (pr-str (list 'is-valid? input))
         (is (= expected
                (pwu/is-valid? input)))))))
@@ -71,10 +71,10 @@
   (testing "Do some tests with password complexity requirements set to :weak.
             Common password list should not be checked."
     (mt/with-temp-env-var-value [:mb-password-complexity "weak"]
-      (doseq [[input expected] {"ABC"              false
-                                "ABCDEF"           true
-                                "ABCDE1"           true
-                                "passw0rd"         true}]
+      (doseq [[input expected] {"ABC"      false
+                                "ABCDEF"   true
+                                "ABCDE1"   true
+                                "passw0rd" true}]
         (testing (pr-str (list 'is-valid? input))
           (is (= expected
                  (pwu/is-valid? input))))))))
