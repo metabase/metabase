@@ -60,21 +60,21 @@ describe("metabase/lib/expressions/typeinferencer", () => {
 
   it("should infer the result of numeric functions", () => {
     expect(type("SQRT(2)")).toEqual("number");
-    expect(type("ABS(Latitude)")).toEqual("number");
-    expect(type("FLOOR(Total / 2.45)")).toEqual("number");
+    expect(type("ABS([Latitude])")).toEqual("number");
+    expect(type("FLOOR([Total] / 2.45)")).toEqual("number");
   });
 
   it("should infer the result of string functions", () => {
-    expect(type("Ltrim(Name)")).toEqual("string");
-    expect(type("Concat(Upper(LastN), FirstN)")).toEqual("string");
-    expect(type("SUBSTRING(Product, 0, 3)")).toEqual("string");
-    expect(type("Length(Category)")).toEqual("number");
-    expect(type("Length(Category) > 0")).toEqual("boolean");
+    expect(type("Ltrim([Name])")).toEqual("string");
+    expect(type("Concat(Upper([LastN]), [FirstN])")).toEqual("string");
+    expect(type("SUBSTRING([Product], 0, 3)")).toEqual("string");
+    expect(type("Length([Category])")).toEqual("number");
+    expect(type("Length([Category]) > 0")).toEqual("boolean");
   });
 
   it.skip("should infer the result of CASE", () => {
-    expect(type("CASE(X, 1, 2)")).toEqual("number");
-    expect(type("CASE(Y, 'this', 'that')")).toEqual("string");
+    expect(type("CASE([X], 1, 2)")).toEqual("number");
+    expect(type("CASE([Y], 'this', 'that')")).toEqual("string");
     expect(type("CASE(BigSale, Price>100, Price>200)")).toEqual("boolean");
   });
 });
