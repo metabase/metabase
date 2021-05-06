@@ -440,17 +440,31 @@ describe("collection permissions", () => {
         cy.signInAsAdmin();
       });
 
-      it.skip("shouldn't record history steps when there was no diff (metabase#1926)", () => {
+      it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
         cy.signInAsAdmin();
         cy.createDashboard("foo").then(({ body }) => {
           visitAndEditDashboard(body.id);
         });
+
         // Save the dashboard without any changes made to it (TODO: we should probably disable "Save" button in the first place)
         saveDashboard();
-        // Take a look at the generated history - there shouldn't be anything other than "First revision" (dashboard created)
-        cy.icon("ellipsis").click();
-        cy.findByText("Revision history").click();
-        cy.findAllByRole("button", { name: "Revert" }).should("not.exist");
+
+        cy.icon("pencil").click();
+        cy.findByPlaceholderText(
+          "Write here, and use Markdown if you'd like",
+        ).type("a");
+        saveDashboard();
+
+        openRevisionHistory();
+
+        // This accounts for:
+        // 1. First revision.
+        // 2. added a card.
+        // 3. rearranged the cards. (TODO: consider fixing this as cards we never rearranged)
+        // There is no fourth entry for editing the textbox as this
+        // change currently creates a revision item with a `null` description.
+        // TODO: consider generating a description for edited textboxes
+        cy.findAllByText("Bobby Tables").should("have.length", 3);
       });
 
       it.skip("dashboard should update properly on revert (metabase#6884)", () => {
@@ -612,9 +626,15 @@ function assertOnRequest(xhr_alias) {
 function visitAndEditDashboard(id) {
   cy.visit(`/dashboard/${id}`);
   cy.icon("pencil").click();
+  cy.icon("string").click();
 }
 
 function saveDashboard() {
   clickButton("Save");
   cy.findByText("You're editing this dashboard.").should("not.exist");
+}
+
+function openRevisionHistory() {
+  cy.icon("ellipsis").click();
+  cy.findByText("Revision history").click();
 }

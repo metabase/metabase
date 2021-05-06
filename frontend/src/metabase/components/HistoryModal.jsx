@@ -24,7 +24,7 @@ export default class HistoryModal extends Component {
     onClose: PropTypes.func.isRequired,
   };
 
-  revisionDescription(revision) {
+  getRevisionDescription(revision) {
     if (revision.is_creation) {
       return t`First revision.`;
     } else if (revision.is_reversion) {
@@ -50,29 +50,37 @@ export default class HistoryModal extends Component {
             </tr>
           </thead>
           <tbody>
-            {revisions.map((revision, index) => (
-              <tr key={revision.id}>
-                <td className={cellClassName}>
-                  {formatDate(revision.timestamp)}
-                </td>
-                <td className={cellClassName}>{revision.user.common_name}</td>
-                <td className={cellClassName}>
-                  <span>{this.revisionDescription(revision)}</span>
-                </td>
-                <td className={cellClassName}>
-                  {index !== 0 && onRevert && (
-                    <ActionButton
-                      actionFn={() => onRevert(revision)}
-                      className="Button Button--small Button--danger text-uppercase"
-                      normalText={t`Revert`}
-                      activeText={t`Reverting…`}
-                      failedText={t`Revert failed`}
-                      successText={t`Reverted`}
-                    />
-                  )}
-                </td>
-              </tr>
-            ))}
+            {revisions.map((revision, index) => {
+              const revisionDescription = this.getRevisionDescription(revision);
+
+              if (revisionDescription) {
+                return (
+                  <tr key={revision.id}>
+                    <td className={cellClassName}>
+                      {formatDate(revision.timestamp)}
+                    </td>
+                    <td className={cellClassName}>
+                      {revision.user.common_name}
+                    </td>
+                    <td className={cellClassName}>
+                      <span>{revisionDescription}</span>
+                    </td>
+                    <td className={cellClassName}>
+                      {index !== 0 && onRevert && (
+                        <ActionButton
+                          actionFn={() => onRevert(revision)}
+                          className="Button Button--small Button--danger text-uppercase"
+                          normalText={t`Revert`}
+                          activeText={t`Reverting…`}
+                          failedText={t`Revert failed`}
+                          successText={t`Reverted`}
+                        />
+                      )}
+                    </td>
+                  </tr>
+                );
+              }
+            })}
           </tbody>
         </table>
       </ModalContent>
