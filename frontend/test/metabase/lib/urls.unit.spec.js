@@ -54,28 +54,32 @@ describe("urls", () => {
   });
 
   describe("extractEntityId", () => {
-    it("should correctly extract entity ID", () => {
-      const testCases = [
-        { slug: "33-metabase-ga", id: 33 },
-        { slug: "330-pricing-v2-traction", id: 330 },
-        { slug: "274-queries-run-in-the-last-24-weeks", id: 274 },
-      ];
+    const testCases = [
+      { slug: "33-metabase-ga", id: 33 },
+      { slug: "330-pricing-v2-traction", id: 330 },
+      { slug: "274-queries-run-in-the-last-24-weeks", id: 274 },
+      { slug: "no-id-here", id: undefined },
+      { slug: undefined, id: undefined },
+    ];
 
-      testCases.forEach(({ slug, id }) => {
+    testCases.forEach(({ slug, id }) => {
+      it(`should return "${id}" id if slug is "${slug}"`, () => {
         expect(extractEntityId(slug)).toBe(id);
       });
     });
   });
 
   describe("extractCollectionId", () => {
-    it("should correctly extract collection ID", () => {
-      const testCases = [
-        { slug: "23-customer-success", id: 274 },
-        { slug: "root", id: "root" },
-        { slug: "users", id: "users" },
-      ];
+    const testCases = [
+      { slug: "23-customer-success", id: 23 },
+      { slug: "root", id: "root" },
+      { slug: "users", id: "users" },
+      { slug: "no-id-here", id: undefined },
+      { slug: undefined, id: undefined },
+    ];
 
-      testCases.forEach(({ slug, id }) => {
+    testCases.forEach(({ slug, id }) => {
+      it(`should return "${id}" id if slug is "${slug}"`, () => {
         expect(extractCollectionId(slug)).toBe(id);
       });
     });

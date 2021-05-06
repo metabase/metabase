@@ -197,7 +197,8 @@ export function browseTable(table) {
 }
 
 export function extractEntityId(slug) {
-  return parseInt(slug, 10);
+  const id = parseInt(slug, 10);
+  return Number.isSafeInteger(id) ? id : undefined;
 }
 
 export function extractCollectionId(slug) {

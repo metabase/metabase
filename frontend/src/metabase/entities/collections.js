@@ -104,6 +104,8 @@ const Collections = createEntity({
         // these are listed in order of priority
         (state, { collectionId }) => collectionId,
         (state, { params }) => (params ? params.collectionId : undefined),
+        (state, { params }) =>
+          params ? Urls.extractCollectionId(params.slug) : undefined,
         (state, { location }) =>
           location && location.query ? location.query.collectionId : undefined,
         () => ROOT_COLLECTION.id,
