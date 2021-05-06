@@ -387,7 +387,10 @@ export class AdminPinMessage extends React.Component {
     }
 
     const link = (
-      <Link className="link" to={Urls.collection()}>{t`Our analytics`}</Link>
+      <Link
+        className="link"
+        to={Urls.collection({ id: "root" })}
+      >{t`Our analytics`}</Link>
     );
 
     return (

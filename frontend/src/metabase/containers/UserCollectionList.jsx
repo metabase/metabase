@@ -21,7 +21,7 @@ const UserCollectionList = () => (
     <Box py={2}>
       <BrowserCrumbs
         crumbs={[
-          { title: ROOT_COLLECTION.name, to: Urls.collection() },
+          { title: ROOT_COLLECTION.name, to: Urls.collection({ id: "root" }) },
           { title: PERSONAL_COLLECTIONS.name },
         ]}
       />
