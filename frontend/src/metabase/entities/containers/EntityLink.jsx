@@ -3,7 +3,7 @@ import React from "react";
 import Link from "metabase/components/Link";
 import EntityObjectLoader from "./EntityObjectLoader";
 
-const EntityLink = ({ entityType, entityId, name = "name" }) => (
+const EntityLink = ({ entityType, entityId, name = "name", ...linkProps }) => (
   <EntityObjectLoader
     entityType={entityType}
     entityId={entityId}
@@ -13,7 +13,7 @@ const EntityLink = ({ entityType, entityId, name = "name" }) => (
   >
     {({ object }) =>
       object ? (
-        <Link to={object.getUrl()}>
+        <Link {...linkProps} to={object.getUrl()}>
           <span>{object.getName()}</span>
         </Link>
       ) : null
