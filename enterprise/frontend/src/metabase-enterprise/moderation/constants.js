@@ -1,20 +1,21 @@
 import { t } from "ttag";
 
 export const ACTIONS = {
-  verification: {
-    type: "verification",
+  verified: {
+    type: "verified",
     icon: "verified",
     color: "brand",
   },
-  flag: {
-    type: "flag",
+  misleading: {
+    type: "misleading",
     icon: "warning_colorized",
     color: "accent5",
   },
-  question: {
-    type: "question",
+  confusing: {
+    type: "confusing",
     icon: "clarification",
     color: "accent2",
+    moderationReviewStatus: "confusing",
   },
 };
 
@@ -22,25 +23,25 @@ export const MODERATION_TEXT = {
   cancel: t`Cancel`,
   actionCreationPlaceholder: t`You can add details if you'd like`,
   user: {
-    verification: {},
+    verified: {},
     flag: {},
-    question: {},
+    confusing: {},
   },
   moderator: {
     action: t`Moderate`,
-    verification: {
+    verified: {
       action: t`Verify this`,
       actionCreationDescription: t`Everything look correct here? Verify this question to let others know.`,
       actionCreationLabel: t`Add a note if you’d like`,
       actionCreationButton: t`Verify`,
     },
-    flag: {
+    misleading: {
       action: t`This is misleading`,
       actionCreationDescription: t`Add a warning badge to this question and notify its editors that something’s off here.`,
       actionCreationLabel: t`Explain what’s wrong or misleading`,
       actionCreationButton: t`Flag as misleading`,
     },
-    question: {
+    confusing: {
       action: t`This is confusing`,
       actionCreationDescription: "need text 1",
       actionCreationLabel: "need text 2",

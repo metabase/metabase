@@ -63,5 +63,6 @@ export const PLUGIN_MODERATION_COMPONENTS = {
 };
 
 export const PLUGIN_MODERATION_SERVICE = {
-  getModerationStatusIcon: _.noop,
+  getStatusIconForReview: _.noop,
+  getColorForReview: _.noop,
 };
