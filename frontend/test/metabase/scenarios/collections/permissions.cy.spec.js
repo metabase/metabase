@@ -464,7 +464,9 @@ describe("collection permissions", () => {
         // There is no fourth entry for editing the textbox as this
         // change currently creates a revision item with a `null` description.
         // TODO: consider generating a description for edited textboxes
-        const revisionHistoryEntries = cy.findAllByText("Bobby Tables").parent()
+        const revisionHistoryEntries = cy
+          .findAllByText("Bobby Tables")
+          .parent();
 
         revisionHistoryEntries.should("have.length", 3);
 

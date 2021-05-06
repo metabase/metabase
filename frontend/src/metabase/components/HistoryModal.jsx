@@ -34,10 +34,6 @@ export default class HistoryModal extends Component {
     }
   }
 
-  shouldRenderRevertButton(onRevert, hasSkippedMostRecentRevisionRevertButton) {
-    return onRevert && hasSkippedMostRecentRevisionRevertButton
-  }
-
   render() {
     const { revisions, onRevert, onClose } = this.props;
     const cellClassName = "p1 border-bottom";
@@ -46,7 +42,7 @@ export default class HistoryModal extends Component {
     // because we are omitting revision entries that
     // don't have descriptions.
     // They may be the very top entry so we have to use dedicated logic.
-    let hasSkippedMostRecentRevisionRevertButton = false
+    let hasSkippedMostRecentRevisionRevertButton = false;
 
     return (
       <ModalContent title={t`Revision history`} onClose={onClose}>
@@ -64,7 +60,8 @@ export default class HistoryModal extends Component {
               const revisionDescription = this.getRevisionDescription(revision);
 
               if (revisionDescription) {
-                const shouldRenderActionButton = this.shouldRenderRevertButton(onRevert, hasSkippedMostRecentRevisionRevertButton);
+                const shouldRenderRevertButton =
+                  onRevert && hasSkippedMostRecentRevisionRevertButton;
                 hasSkippedMostRecentRevisionRevertButton = true;
 
                 return (
@@ -79,7 +76,7 @@ export default class HistoryModal extends Component {
                       <span>{revisionDescription}</span>
                     </td>
                     <td className={cellClassName}>
-                      {shouldRenderActionButton && (
+                      {shouldRenderRevertButton && (
                         <ActionButton
                           actionFn={() => onRevert(revision)}
                           className="Button Button--small Button--danger text-uppercase"
