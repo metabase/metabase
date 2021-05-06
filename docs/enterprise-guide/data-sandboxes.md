@@ -131,6 +131,10 @@ This goes for both saved or unsaved SQL queries. The reason is that Metabase doe
 
 An important distinction to make is that you can use a saved SQL query in the _creation_ of a sandbox. One of the options for setting up a data sandbox allows you to display the results of a saved question instead of the raw table. In this situation, you might choose to use a SQL query to supply the results that you'd like to display to a specific user group instead of the raw table itself.
 
+#### Data sandboxes and public sharing don't play well together
+
+As sandboxing works by adding filters at query run time based on user parameters, enabling public sharing should be avoided. A public question or dashboard will show the anonymous viewers all the contents of these as Metabase does not have any parameter to filter with.
+
 ---
 
 ## Next: embedding Metabase in your web app
