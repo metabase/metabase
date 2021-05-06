@@ -29,7 +29,7 @@ describe("URLs", () => {
     });
   });
 
-  describe.only("collections", () => {
+  describe("collections", () => {
     ["/", "/collection/root"].forEach(url => {
       it(`should slugify collection name when opening it from "${url}"`, () => {
         cy.visit(url);
