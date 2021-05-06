@@ -34,13 +34,23 @@ export default class HistoryModal extends Component {
     }
   }
 
+  shouldRenderRevisionEntry({ diff }) {
+    // diff may be null in "First revision"
+    if (diff === null) {
+      return true;
+    }
+
+    const { before, after } = diff;
+    return before !== null && after !== null;
+  }
+
   render() {
     const { revisions, onRevert, onClose } = this.props;
     const cellClassName = "p1 border-bottom";
 
     // We must keep track of having skipped the Revert button
-    // because we are omitting revision entries that
-    // don't have descriptions.
+    // because we are omitting certain revision entries,
+    // see function shouldRenderRevisionEntry
     // They may be the very top entry so we have to use dedicated logic.
     let hasSkippedMostRecentRevisionRevertButton = false;
 
@@ -57,9 +67,7 @@ export default class HistoryModal extends Component {
           </thead>
           <tbody>
             {revisions.map((revision, index) => {
-              const revisionDescription = this.getRevisionDescription(revision);
-
-              if (revisionDescription) {
+              if (this.shouldRenderRevisionEntry(revision)) {
                 const shouldRenderRevertButton =
                   onRevert && hasSkippedMostRecentRevisionRevertButton;
                 hasSkippedMostRecentRevisionRevertButton = true;
@@ -73,7 +81,7 @@ export default class HistoryModal extends Component {
                       {revision.user.common_name}
                     </td>
                     <td className={cellClassName}>
-                      <span>{revisionDescription}</span>
+                      <span>{this.getRevisionDescription(revision)}</span>
                     </td>
                     <td className={cellClassName}>
                       {shouldRenderRevertButton && (

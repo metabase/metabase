@@ -448,26 +448,22 @@ describe("collection permissions", () => {
 
         // Save the dashboard without any changes made to it (TODO: we should probably disable "Save" button in the first place)
         saveDashboard();
-
         cy.icon("pencil").click();
-        cy.findByPlaceholderText(
-          "Write here, and use Markdown if you'd like",
-        ).type("a");
         saveDashboard();
 
         openRevisionHistory();
+
+        const revisionHistoryEntries = cy
+          .findAllByText("Bobby Tables")
+          .parent();
 
         // This accounts for:
         // 1. First revision.
         // 2. added a card.
         // 3. rearranged the cards. (TODO: consider fixing this as cards we never rearranged)
-        // There is no fourth entry for editing the textbox as this
-        // change currently creates a revision item with a `null` description.
-        // TODO: consider generating a description for edited textboxes
-        const revisionHistoryEntries = cy
-          .findAllByText("Bobby Tables")
-          .parent();
 
+        // Revision history entries from saving no change
+        // should not be rendered.
         revisionHistoryEntries.should("have.length", 3);
 
         // Topmost visible revision history entry
@@ -639,7 +635,6 @@ function assertOnRequest(xhr_alias) {
 function visitAndEditDashboard(id) {
   cy.visit(`/dashboard/${id}`);
   cy.icon("pencil").click();
-  cy.icon("string").click();
 }
 
 function saveDashboard() {
