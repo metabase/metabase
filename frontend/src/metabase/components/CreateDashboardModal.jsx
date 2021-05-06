@@ -28,21 +28,26 @@ const mapDispatchToProps = {
 )
 export default class CreateDashboardModal extends Component {
   static propTypes = {
+    onSaved: PropTypes.func,
     onClose: PropTypes.func,
   };
 
+  onSaved = dashboard => {
+    const { onClose, onChangeLocation } = this.props;
+    onChangeLocation(Urls.dashboard(dashboard.id));
+    if (onClose) {
+      onClose();
+    }
+  };
+
   render() {
-    const { initialCollectionId, onClose, onChangeLocation } = this.props;
+    const { initialCollectionId, onSaved, onClose } = this.props;
     return (
       <Dashboard.ModalForm
+        overwriteOnInitialValuesChange
         dashboard={{ collection_id: initialCollectionId }}
         onClose={onClose}
-        onSaved={dashboard => {
-          onChangeLocation(Urls.dashboard(dashboard.id));
-          if (onClose) {
-            onClose();
-          }
-        }}
+        onSaved={typeof onSaved === "function" ? onSaved : this.onSaved}
       />
     );
   }
