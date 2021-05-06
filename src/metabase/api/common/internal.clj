@@ -84,7 +84,7 @@
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
   [route-str docstr param->schema]
-  (str (format "## `%s`" route-str)
+  (str (format "#### `%s`" route-str)
        (when (seq docstr)
          (str "\n\n" docstr))
        (format-route-schema-dox param->schema route-str)))
