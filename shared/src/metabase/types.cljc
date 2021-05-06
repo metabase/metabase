@@ -1,18 +1,51 @@
 (ns metabase.types
   "The Metabase Hierarchical Type System (MHTS). This is a hierarchy where types derive from one or more parent types,
-   which in turn derive from their own parents. This makes it possible to add new types without needing to add
-   corresponding mappings in the frontend or other places. For example, a Database may want a type called something
-   like `:type/CaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
-   continue to treat it as such until further notice."
+  which in turn derive from their own parents. This makes it possible to add new types without needing to add
+  corresponding mappings in the frontend or other places. For example, a Database may want a type called something
+  like `:type/PostgresCaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
+  continue to treat it as such until further notice.
+
+  There are a few different keyword hierarchies below:
+
+  ### Data (Base/Effective) Types -- types starting with `:type/`
+
+  The 'base type' represents the actual data type of the column in the data warehouse. The 'effective type' is the
+  data type we treat this column as; it may be the same as base type or something different if the column has a
+  coercion strategy (see below). Example: a `VARCHAR` column might have a base type of `:type/Text`, but store
+  ISO-8601 timestamps; we might choose to interpret this column as a timestamp column by giving it an effective type
+  of `:type/DateTime` and the coercion strategy `:Coercion/ISO8601->DateTime`
+
+  ### Coercion Strategies -- keys starting with `:Coercion/`
+
+  These strategies tell us how to coerce a column from its base type to it effective type when the two differ. For
+  example, `:Coercion/ISO8601->DateTime` can be used to tell us how to interpret a `VARCHAR` column (base type =
+  `:type/Text`) as a `:type/DateTime` column (effective type). This depends of the database, but we might do something
+  like using a `parse_timestamp()` function whenever we fetch this column.
+
+  ### :Semantic Types -- types starting with `:Semantic/`
+
+  These types represent the semantic meaning/interpretation/purpose of a column in the data warehouse, for example
+  `:Semantic/UpdatedTimestamp`. This affects things like how we display this column or how we generate automagic
+  dashboards. How is this different from Base/Effective type? Suppose we have an `updated_at` `TIMESTAMP` column; its
+  data type is `TIMESTAMP` and thus its base type would be `:type/DateTime`. There is no such thing as an
+  `UPDATED_AT_TIMESTAMP` data type; the fact that this column is used to record update timestamps is purely a semantic
+  one.
+
+  :Semantic types descend from Effective type(s) that are allowed to have this semantic type. For example,
+  `:Semantic/UpdatedTimestamp` descends from `:type/DateTime`, which means a column with an effective type of
+  `:type/DateTime` can have a semantic type of`:Semantic/UpdatedTimestamp`; however a `:type/Boolean` cannot -- this
+  would make no sense. (Unless maybe `false` meant `1970-01-01T00:00:00Z` and `true` meant `1970-01-01T00:00:01Z`, but
+  I think we can agree that's dumb.)
+
+  ### Relation Type -- types starting with `:Relation/`
+
+  Types that have to do with whether this column is a primary key or foreign key. These are currently stored in the
+  `semantic_type` column, but we'll split them out into a separate `relation_type` column in the future.
+
+  ### Entity Types -- keys starting with `:entity/`
+
+  These are used to record the semantic purpose of a Table."
   (:require [metabase.shared.util :as shared.u]))
-
-;; NOTE: be sure to update frontend/test/metabase-bootstrap.js when updating this
-
-(derive :type/Collection :type/*)
-
-(derive :type/Dictionary :type/Collection)
-(derive :type/Array :type/Collection)
-
 
 ;;; Table (entity) Types
 
@@ -32,24 +65,49 @@
 
 (derive :type/Integer :type/Number)
 (derive :type/BigInteger :type/Integer)
-(derive :type/Quantity :type/Integer)
 
+(derive :Semantic/Quantity :Semantic/*)
+(derive :Semantic/Quantity :type/Integer)
+
+;; `:type/Float` means any number with a decimal place! It doesn't explicitly mean a 32-bit or 64-bit floating-point
+;; number. That's why there's no `:type/Double`.
 (derive :type/Float :type/Number)
+;; `:type/Decimal` means a column that is actually stored as an arbitrary-precision decimal type, e.g. `BigDecimal` or
+;; `DECIMAL`. For fixed-precision columns, just use `:type/Float`
 (derive :type/Decimal :type/Float)
-(derive :type/Share :type/Float)
 
-(derive :type/Currency :type/Float)
-(derive :type/Income :type/Currency)
-(derive :type/Discount :type/Currency)
-(derive :type/Price :type/Currency)
-(derive :type/GrossMargin :type/Currency)
-(derive :type/Cost :type/Currency)
+(derive :Semantic/Share :Semantic/*)
+(derive :Semantic/Share :type/Float)
 
-(derive :type/Coordinate :type/Float)
-(derive :type/Latitude :type/Coordinate)
-(derive :type/Longitude :type/Coordinate)
+;; `:type/Currency` -- an actual currency data type, for example Postgres `money`.
+;; `:Semantic/Currency` -- a column that should be interpreted as money.
+;;
+;; `money` (base type `:type/Currency`) columns will likely have a semantic type `:Semantic/Currency` or a descendant
+;; thereof like `:Semantic/Income`, but other floating-point data type columns can be interpreted as currency as well;
+;; a `DECIMAL` (base type `:type/Decimal`) column can also have a semantic type `:Semantic/Currency`.
+(derive :type/Currency :type/Decimal)
+(derive :Semantic/Currency :Semantic/*)
+(derive :Semantic/Currency :type/Float)
+(derive :Semantic/Income :Semantic/Currency)
+(derive :Semantic/Discount :Semantic/Currency)
+(derive :Semantic/Price :Semantic/Currency)
+(derive :Semantic/GrossMargin :Semantic/Currency)
+(derive :Semantic/Cost :Semantic/Currency)
 
-(derive :type/Score :type/Number)
+;; :Semantic/Location -- anything having to do with a location, e.g. country, city, or coordinates.
+(derive :Semantic/Location :Semantic/*)
+(derive :Semantic/Coordinate :Semantic/Location)
+(derive :Semantic/Coordinate :type/Float)
+(derive :Semantic/Latitude :Semantic/Coordinate)
+(derive :Semantic/Longitude :Semantic/Coordinate)
+
+(derive :Semantic/Score :Semantic/*)
+(derive :Semantic/Score :type/Number)
+
+;; TODO -- Is a Duration a Data Type, or a :Semantic Type, or both? I think Postgres has a `duration` column. But
+;; couldn't I store a 'Duration' as an integer?
+;;
+;; TODO -- Shouldn't `:type/Duration` derive from `:type/Temporal`, since it's time-related?
 (derive :type/Duration :type/Number)
 
 ;;; Text Types
@@ -58,24 +116,47 @@
 
 (derive :type/UUID :type/Text)
 
-(derive :type/URL :type/Text)
-(derive :type/ImageURL :type/URL)
-(derive :type/AvatarURL :type/ImageURL)
+(derive :Semantic/URL :Semantic/*)
+(derive :Semantic/URL :type/Text)
+(derive :Semantic/ImageURL :Semantic/URL)
+(derive :Semantic/AvatarURL :Semantic/ImageURL)
 
-(derive :type/Email :type/Text)
+(derive :Semantic/Email :Semantic/*)
+(derive :Semantic/Email :type/Text)
 
-(derive :type/City :type/Text)
-(derive :type/State :type/Text)
-(derive :type/Country :type/Text)
-(derive :type/ZipCode :type/Text)
+;; Semantic types deriving from `:Semantic/Category` should be marked as 'category' Fields during sync, i.e. they
+;; should have their FieldValues cached and synced. See
+;; `metabase.sync.analyze.classifiers.category/field-should-be-category?`
+(derive :Semantic/Category :Semantic/*)
 
-(derive :type/Name :type/Text)
-(derive :type/Title :type/Text)
-(derive :type/Description :type/Text)
-(derive :type/Comment :type/Text)
+(derive :Semantic/Address :Semantic/Location)
 
-(derive :type/SerializedJSON :type/Text)
-(derive :type/SerializedJSON :type/Collection)
+(derive :Semantic/City :Semantic/Address)
+(derive :Semantic/City :Semantic/Category)
+(derive :Semantic/City :type/Text)
+
+(derive :Semantic/State :Semantic/Address)
+(derive :Semantic/State :Semantic/Category)
+(derive :Semantic/State :type/Text)
+
+(derive :Semantic/Country :Semantic/Address)
+(derive :Semantic/Country :Semantic/Category)
+(derive :Semantic/Country :type/Text)
+
+(derive :Semantic/ZipCode :Semantic/Address)
+;;  ZIP code might be stored as text, or maybe as an integer.
+(derive :Semantic/ZipCode :type/Text)
+(derive :Semantic/ZipCode :type/Integer)
+
+(derive :Semantic/Name :Semantic/Category)
+(derive :Semantic/Name :type/Text)
+(derive :Semantic/Title :Semantic/Category)
+(derive :Semantic/Title :type/Text)
+
+(derive :Semantic/Description :Semantic/*)
+(derive :Semantic/Description :type/Text)
+(derive :Semantic/Comment :Semantic/*)
+(derive :Semantic/Comment :type/Text)
 
 (derive :type/PostgresEnum :type/Text)
 
@@ -107,37 +188,48 @@
 
 ;; TODO -- shouldn't we have a `:type/LocalDateTime` as well?
 
-(derive :type/CreationTimestamp :type/DateTime)
-(derive :type/CreationTime :type/Time)
-(derive :type/CreationTime :type/CreationTimestamp)
-(derive :type/CreationDate :type/Date)
-(derive :type/CreationDate :type/CreationTimestamp)
+(derive :Semantic/CreationTemporal :Semantic/*)
+(derive :Semantic/CreationTimestamp :Semantic/CreationTemporal)
+(derive :Semantic/CreationTimestamp :type/DateTime)
+(derive :Semantic/CreationTime :Semantic/CreationTemporal)
+(derive :Semantic/CreationTime :type/Time)
+(derive :Semantic/CreationDate :Semantic/CreationTemporal)
+(derive :Semantic/CreationDate :type/Date)
 
-(derive :type/JoinTimestamp :type/DateTime)
-(derive :type/JoinTime :type/Date) ; TODO - shouldn't this be derived from `:type/Time` ?
-(derive :type/JoinTime :type/JoinTimestamp)
-(derive :type/JoinDate :type/Date)
-(derive :type/JoinDate :type/JoinTimestamp)
+(derive :Semantic/JoinTemporal :Semantic/*)
+(derive :Semantic/JoinTimestamp :Semantic/JoinTemporal)
+(derive :Semantic/JoinTimestamp :type/DateTime)
+(derive :Semantic/JoinTime :Semantic/JoinTemporal)
+(derive :Semantic/JoinTime :type/Time)
+(derive :Semantic/JoinDate :Semantic/JoinTemporal)
+(derive :Semantic/JoinDate :type/Date)
 
-(derive :type/CancelationTimestamp :type/DateTime)
-(derive :type/CancelationTime :type/Date)
-(derive :type/CancelationTime :type/CancelationTimestamp)
-(derive :type/CancelationDate :type/Date)
-(derive :type/CancelationDate :type/CancelationTimestamp)
+(derive :Semantic/CancelationTemporal :Semantic/*)
+(derive :Semantic/CancelationTimestamp :Semantic/CancelationTemporal)
+(derive :Semantic/CancelationTimestamp :type/DateTime)
+(derive :Semantic/CancelationTime :Semantic/CancelationTemporal)
+(derive :Semantic/CancelationTime :type/Date)
+(derive :Semantic/CancelationDate :Semantic/CancelationTemporal)
+(derive :Semantic/CancelationDate :type/Date)
 
-(derive :type/DeletionTimestamp :type/DateTime)
-(derive :type/DeletionTime :type/Date)
-(derive :type/DeletionTime :type/DeletionTimestamp)
-(derive :type/DeletionDate :type/Date)
-(derive :type/DeletionDate :type/DeletionTimestamp)
+(derive :Semantic/DeletionTemporal :Semantic/*)
+(derive :Semantic/DeletionTimestamp :Semantic/DeletionTemporal)
+(derive :Semantic/DeletionTimestamp :type/DateTime)
+(derive :Semantic/DeletionTime :Semantic/DeletionTemporal)
+(derive :Semantic/DeletionTime :type/Time)
+(derive :Semantic/DeletionDate :Semantic/DeletionTemporal)
+(derive :Semantic/DeletionDate :type/Date)
 
-(derive :type/UpdatedTimestamp :type/DateTime)
-(derive :type/UpdatedTime :type/Date)
-(derive :type/UpdatedTime :type/UpdatedTimestamp)
-(derive :type/UpdatedDate :type/Date)
-(derive :type/UpdatedDate :type/UpdatedTimestamp)
+(derive :Semantic/UpdatedTemporal :Semantic/*)
+(derive :Semantic/UpdatedTimestamp :Semantic/UpdatedTemporal)
+(derive :Semantic/UpdatedTimestamp :type/DateTime)
+(derive :Semantic/UpdatedTime :Semantic/UpdatedTemporal)
+(derive :Semantic/UpdatedTime :type/Time)
+(derive :Semantic/UpdatedDate :Semantic/UpdatedTemporal)
+(derive :Semantic/UpdatedDate :type/Date)
 
-(derive :type/Birthdate :type/Date)
+(derive :Semantic/Birthdate :Semantic/*)
+(derive :Semantic/Birthdate :type/Date)
 
 
 ;;; Other
@@ -153,50 +245,60 @@
 (derive :type/IPAddress :type/TextLike)
 (derive :type/MongoBSONID :type/TextLike)
 
-;;; "Virtual" Types
+;; data type `:type/IPAddress` = something like a Postgres `inet` column.
+;; semantic type `:Semantic/IPAddress` = a text or `inet` column that should be displayed as an IP address
+(derive :Semantic/IPAddress :Semantic/*)
+(derive :Semantic/IPAddress :type/Text)
+(derive :Semantic/IPAddress :type/IPAddress)
 
-(derive :type/Address :type/*)
-(derive :type/City :type/Address)
-(derive :type/State :type/Address)
-(derive :type/Country :type/Address)
-(derive :type/ZipCode :type/Address)
+;;; Structured/Collections
 
-;;; Structured
+(derive :type/Collection :type/*)
 
-(derive :type/Structured :type/*)
-(derive :type/SerializedJSON :type/Structured)
-(derive :type/XML :type/Structured)
+(derive :type/Dictionary :type/Collection)
+(derive :type/Array :type/Collection)
 
+;; `:type/SerializedJSON` currently means a column that is JSON data, e.g. a Postgres JSON column, *or* a text column
+;; that should be interpreted as JSON. `SerializedJSON` is a bit of a misnomer.
+;;
+;; TODO -- rename `:type/SerializedJSON` to `:type/JSON`
+(derive :type/SerializedJSON :type/Collection)
 
-;;; Legacy Semantic Types. These will hopefully be going away in the future when we add columns like `:is_pk` and
-;;; `:cardinality`
+;; `:type/XML` -- an actual native XML data column
+(derive :type/XML :type/Collection)
 
-(derive :type/Special :type/*)
+;; `:Semantic/Structured` columns are ones that are stored as text, but should be treated as a `:type/Collection`
+;; column (e.g. JSON or XML). These should probably be coercion strategies instead, e.g.
+;;
+;;    base type         = :type/Text
+;;    coercion strategy = :Coercion/SerializedJSON
+;;    effective type    = :type/JSON
+;;
+;; but for the time being we'll have to live with these being "weird" semantic types.
+(derive :Semantic/Structured :Semantic/*)
+(derive :Semantic/Structured :type/Text)
 
-(derive :type/FK :type/Special)
-(derive :type/PK :type/Special)
+(derive :Semantic/SerializedJSON :Semantic/Structured)
+(derive :Semantic/XML :Semantic/Structured)
 
-(derive :type/Category :type/Special)
+;; Other
 
-(derive :type/Name :type/Category)
-(derive :type/Title :type/Category)
+(derive :Semantic/User :Semantic/*)
+(derive :Semantic/Author :Semantic/User)
+(derive :Semantic/Owner :Semantic/User)
 
-(derive :type/City :type/Category)
-(derive :type/State :type/Category)
-(derive :type/Country :type/Category)
+(derive :Semantic/Product :Semantic/Category)
+(derive :Semantic/Company :Semantic/Category)
+(derive :Semantic/Subscription :Semantic/Category)
 
-(derive :type/User :type/*)
-(derive :type/Author :type/User)
-(derive :type/Owner :type/User)
+(derive :Semantic/Source :Semantic/Category)
 
-(derive :type/Product :type/Category)
-(derive :type/Company :type/Category)
-(derive :type/Subscription :type/Category)
+;;; Relation types
 
-(derive :type/Source :type/Category)
+(derive :Relation/FK :Relation/*)
+(derive :Relation/PK :Relation/*)
 
-(derive :type/Boolean :type/Category)
-(derive :type/Enum :type/Category)
+;;; Coercion strategies
 
 (derive :Coercion/String->Temporal :Coercion/*)
 (derive :Coercion/ISO8601->Temporal :Coercion/String->Temporal)
