@@ -1,3 +1,5 @@
+/* eslint-disable react/prop-types */
+
 import React from "react";
 import Radio from "metabase/components/Radio";
 
@@ -9,14 +11,18 @@ A standard radio button group.
 `;
 
 const PROPS = {
-  value: 0,
-  options: [{ name: "Gadget", value: 0 }, { name: "Gizmo", value: 1 }],
+  options: [{ name: "Gadget", initValue: 0 }, { name: "Gizmo", value: 1 }],
 };
 
+function RadioWrapper(props) {
+  const [value, setValue] = React.useState(props.initValue);
+  return <Radio {...props} value={value} onChange={setValue} />;
+}
+
 export const examples = {
-  default: <Radio {...PROPS} />,
-  underlined: <Radio {...PROPS} underlined />,
-  "show buttons": <Radio {...PROPS} showButtons />,
-  vertical: <Radio {...PROPS} vertical />,
-  bubble: <Radio {...PROPS} bubble />,
+  default: <RadioWrapper {...PROPS} />,
+  underlined: <RadioWrapper {...PROPS} underlined />,
+  "show buttons": <RadioWrapper {...PROPS} showButtons />,
+  vertical: <RadioWrapper {...PROPS} vertical />,
+  bubble: <RadioWrapper {...PROPS} bubble />,
 };

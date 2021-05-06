@@ -1,3 +1,5 @@
+/* eslint-disable react/prop-types */
+
 import React from "react";
 import Toggle from "metabase/components/Toggle";
 
@@ -8,7 +10,11 @@ export const description = `
 A standard toggle.
 `;
 
+function ToggleWrapper(props) {
+  const [value, setValue] = React.useState(false);
+  return <Toggle {...props} value={value} onChange={setValue} />;
+}
+
 export const examples = {
-  off: <Toggle value={false} />,
-  on: <Toggle value={true} />,
+  Toggle: <ToggleWrapper />,
 };

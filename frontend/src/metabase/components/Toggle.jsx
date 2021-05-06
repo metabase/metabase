@@ -20,9 +20,9 @@ export default class Toggle extends Component {
   };
 
   render() {
-    const { value, small, className, color, onChange, ...props } = this.props;
+    const { value, small, className, color, ...props } = this.props;
     return (
-      <a
+      <div
         {...props}
         className={cx(
           styles.toggle,
@@ -34,7 +34,9 @@ export default class Toggle extends Component {
           className,
         )}
         style={{ color: color || null }}
-        onClick={onChange ? this.handleClick : null}
+        tabIndex="0"
+        onClick={this.handleClick}
+        onKeyUp={e => e.key === "Enter" && this.handleClick()}
       />
     );
   }

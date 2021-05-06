@@ -85,7 +85,11 @@ export default class Radio extends Component {
               py={py}
               xspace={xspace}
               yspace={yspace}
+              tabIndex="0"
               onClick={e => onChange(optionValueFn(option))}
+              onKeyUp={e =>
+                e.key === "Enter" && onChange(optionValueFn(option))
+              }
             >
               {option.icon && <Icon name={option.icon} mr={1} />}
               <input
