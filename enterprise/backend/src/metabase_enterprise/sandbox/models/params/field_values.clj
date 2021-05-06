@@ -23,8 +23,8 @@
                          [api/*current-user-id*
                           (hash @api/*current-user-permissions-set*)
                           updated-at
-                          (u/the-id field) ])}
-   (fn [_ _ field]
+                          (u/the-id field)])}
+   (fn [_ field]
      {:values   (field-values/distinct-values field)
       :field_id (u/the-id field)})
    ;; TODO -- shouldn't we return sandboxed human-readable values as well??
