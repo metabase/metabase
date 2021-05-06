@@ -7,8 +7,9 @@ import * as Urls from "metabase/lib/urls";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
+import Collection from "metabase/entities/collections";
+import Schema from "metabase/entities/schemas";
 
 import { color } from "metabase/lib/colors";
 
@@ -29,11 +30,8 @@ ItemLocation.propTypes = {
 
 const QuestionLocation = ({ item }) => {
   const collection = item.getCollection();
-
   return jt`Saved question in ${(
-    <LocationLink to={Urls.collection(collection.id)}>
-      {collection.name}
-    </LocationLink>
+    <Collection.Link id={collection.id} LinkComponent={LocationLink} />
   )}`;
 };
 
@@ -45,9 +43,7 @@ const TableLocation = ({ item }) => (
   <span>
     {jt`Table in ${(
       <React.Fragment>
-        <LocationLink to={Urls.browseDatabase({ id: item.database_id })}>
-          <Database.Name id={item.database_id} />
-        </LocationLink>
+        <Database.Link id={item.database_id} LinkComponent={LocationLink} />
         {item.table_schema && (
           <Schema.ListLoader
             query={{ dbId: item.database_id }}
