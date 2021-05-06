@@ -191,28 +191,15 @@
   [dashboard]
   (update dashboard :ordered_cards add-query-average-duration-to-dashcards))
 
-(defn- hydrate-non-sandboxed-param-values
-  [{:keys [param_fields] :as dashboard}]
-  ;; We need to do this manually to ensure sandboxing is respected.
-  ;; If the user doesn't have full read access, assume they are sandboxed
-  (assoc dashboard :param_values (->> param_fields
-                                      vals
-                                      (filter mi/can-read?)
-                                      (map u/the-id)
-                                      set
-                                      params/field-ids->param-field-values
-                                      not-empty)))
-
 (defn- get-dashboard
   "Get Dashboard with ID."
   [id]
   (-> (Dashboard id)
       api/check-404
-      (hydrate [:ordered_cards :card :series] :can_write :param_fields)
+      (hydrate [:ordered_cards :card :series] :can_write :param_fields :param_values)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
-      hydrate-non-sandboxed-param-values
       add-query-average-durations))
 
 
