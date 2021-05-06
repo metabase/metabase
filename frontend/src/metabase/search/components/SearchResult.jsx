@@ -106,7 +106,7 @@ const CollectionLink = styled(Link)`
 
 function CollectionBadge({ collection }) {
   return (
-    <CollectionLink to={Urls.collection(collection.id)}>
+    <CollectionLink to={Urls.collection(collection)}>
       {collection.name}
     </CollectionLink>
   );
