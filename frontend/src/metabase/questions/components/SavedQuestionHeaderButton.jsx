@@ -31,6 +31,7 @@ function SavedQuestionHeaderButton({ className, question, onClick, active }) {
       icon={icon}
       active={active}
       iconSize={24}
+      data-testid="saved-question-header-button"
     >
       {question.displayName()}
     </StyledButton>

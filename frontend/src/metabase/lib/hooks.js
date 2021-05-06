@@ -1,11 +1,13 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 
+// wraps the given async function in a promise that does not resolve
+// after the component has unmounted
 export function useAsyncFunction(fn) {
   const [isPending, setIsPending] = useState(false);
   const isUnmountedRef = useRef(false);
 
   useEffect(() => {
-    () => {
+    return () => {
       isUnmountedRef.current = true;
     };
   }, []);
@@ -17,15 +19,15 @@ export function useAsyncFunction(fn) {
         return fn(...args)
           .then(res => {
             if (!isUnmountedRef.current) {
+              setIsPending(false);
               resolve(res);
             }
-            setIsPending(false);
           })
           .catch(err => {
             if (!isUnmountedRef.current) {
+              setIsPending(false);
               reject(err);
             }
-            setIsPending(false);
           });
       });
   }, [fn]);

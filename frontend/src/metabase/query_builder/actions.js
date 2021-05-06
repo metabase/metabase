@@ -734,6 +734,7 @@ export const setParameterValue = createAction(
   },
 );
 
+// refetches the card without triggering a run of the card's query
 export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
