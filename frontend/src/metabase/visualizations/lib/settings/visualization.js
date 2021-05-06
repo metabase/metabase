@@ -13,12 +13,14 @@ import { t } from "ttag";
 import type { Settings, SettingDefs, WidgetDef } from "../settings";
 import type { Series } from "metabase-types/types/Visualization";
 import type { VisualizationSettings } from "metabase-types/types/Card";
+import moment from "moment-timezone";
+import {dashcard_locale_title} from "./dashcard_locales"
 
 const COMMON_SETTINGS = {
   "card.title": {
     title: t`Title`,
     widget: "input",
-    getDefault: series => (series.length === 1 ? series[0].card.name : null),
+    getDefault: series => (series.length === 1 ? dashcard_locale_title(moment.locale(), series[0].card.name) : null),
     dashboard: true,
     useRawSeries: true,
   },
