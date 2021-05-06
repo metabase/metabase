@@ -62,16 +62,17 @@
   [password]
   (password-has-char-counts? (active-password-complexity) password))
 
-(def ^java.io.File common-passwords-file
+(def ^java.net.URL common-passwords-url
   "A set of ~12k common passwords to reject, that otherwise meet Metabase's default complexity requirements.
   Sourced from Dropbox's zxcvbn repo: https://github.com/dropbox/zxcvbn/blob/master/data/passwords.txt"
-  (io/file (io/resource "common_passwords.txt")))
+  (io/resource "common_passwords.txt"))
 
 (defn- is-uncommon?
   "Check if a given password is not present in the common passwords set. Case-insensitive search since
   the list only contains lower-case passwords."
   [password]
-  (with-open [reader (java.io.BufferedReader. (java.io.FileReader. common-passwords-file))]
+  (with-open [is (.openStream common-passwords-url)
+              reader (java.io.BufferedReader. (java.io.InputStreamReader. is))]
     (not-any?
       (partial = (str/lower-case password))
       (iterator-seq (.. reader lines iterator)))))
