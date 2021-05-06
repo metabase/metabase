@@ -64,7 +64,6 @@ import { getSensibleDisplays } from "metabase/visualizations";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
-import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 
@@ -1285,19 +1284,6 @@ export const loadObjectDetailFKReferences = createThunkAction(
 
 export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
   "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
-
-// DEPRECATED: use metabase/entities/questions
-export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";
-export const archiveQuestion = createThunkAction(
-  ARCHIVE_QUESTION,
-  (questionId, archived = true) => async (dispatch, getState) => {
-    const card = getState().qb.card;
-
-    await dispatch(Questions.actions.setArchived({ id: card.id }, archived));
-
-    dispatch(push(Urls.collection(card.collection_id)));
-  },
-);
 
 export const VIEW_NEXT_OBJECT_DETAIL = "metabase/qb/VIEW_NEXT_OBJECT_DETAIL";
 export const viewNextObjectDetail = () => {
