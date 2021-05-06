@@ -318,9 +318,22 @@ export function tokenize(expression) {
         if (!char) {
           break;
         }
-        const message = t`Invalid character: ${char}`;
         const pos = index;
-        errors.push({ message, pos });
+        if (char === "]") {
+          const prev = tokens[tokens.length - 1];
+          const ref =
+            prev && prev.type === TOKEN.Identifier
+              ? source.slice(prev.start, prev.end)
+              : null;
+          console.log({ prev, ref });
+          const message = ref
+            ? t`Missing an opening bracket for ${ref}`
+            : t`Missing an opening bracket`;
+          errors.push({ message, pos });
+        } else {
+          const message = t`Invalid character: ${char}`;
+          errors.push({ message, pos });
+        }
         ++index;
       }
     }
