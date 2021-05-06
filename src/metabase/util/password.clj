@@ -5,7 +5,7 @@
             [clojure.string :as str]
             [metabase.config :as config]
             [metabase.util :as u])
-  (:import [java.io BufferedReader FileReader]))
+  (:import [java.io File BufferedReader FileReader]))
 
 (defn- count-occurrences
   "Return a map of the counts of each class of character for `password`.
