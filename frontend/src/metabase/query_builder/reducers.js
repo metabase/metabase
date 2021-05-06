@@ -13,6 +13,7 @@ import {
   SET_MODAL_SNIPPET,
   SET_SNIPPET_COLLECTION_ID,
   CLOSE_QB_NEWB_MODAL,
+  SOFT_RELOAD_CARD,
   RELOAD_CARD,
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
@@ -232,6 +233,7 @@ export const card = handleActions(
     [INITIALIZE_QB]: {
       next: (state, { payload }) => (payload ? payload.card : null),
     },
+    [SOFT_RELOAD_CARD]: { next: (state, { payload }) => payload },
     [RELOAD_CARD]: { next: (state, { payload }) => payload },
     [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.card },
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
