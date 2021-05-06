@@ -60,7 +60,7 @@ export default function Header({
           !collection.personal_owner_id && (
             <CollectionEditMenu
               tooltip={t`Edit collection`}
-              collectionId={collectionId}
+              collection={collection}
               isAdmin={isAdmin}
               isRoot={isRoot}
             />
