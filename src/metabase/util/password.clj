@@ -62,7 +62,7 @@
   [password]
   (password-has-char-counts? (active-password-complexity) password))
 
-(def ^File common-passwords-file
+(def ^java.io.File common-passwords-file
   "A set of ~12k common passwords to reject, that otherwise meet Metabase's default complexity requirements.
   Sourced from Dropbox's zxcvbn repo: https://github.com/dropbox/zxcvbn/blob/master/data/passwords.txt"
   (io/file (io/resource "common_passwords.txt")))
