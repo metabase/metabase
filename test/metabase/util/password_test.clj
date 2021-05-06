@@ -2,7 +2,10 @@
   (:require [clojure.test :refer :all]
             [environ.core :as environ]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util.password :as pwu]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; Password Complexity testing
 
@@ -67,7 +70,7 @@
 (deftest is-valid?-weak-test
   (testing "Do some tests with password complexity requirements set to :weak.
             Common password list should not be checked."
-    (with-redefs [environ/env (assoc environ/env :mb-password-complexity "weak")]
+    (mt/with-temp-env-var-value [:mb-password-complexity "weak"]
       (doseq [[input expected] {"ABC"              false
                                 "ABCDEF"           true
                                 "ABCDE1"           true

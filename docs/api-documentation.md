@@ -2663,7 +2663,7 @@ Reset password with a reset token.
 
 *  **`token`** value must be a non-blank string.
 
-*  **`password`** Insufficient password strength
+*  **`password`** Password is insufficiently complex, or is too common
 
 *  **`request`** 
 
@@ -2741,7 +2741,7 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 
 *  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
 
-*  **`password`** Insufficient password strength
+*  **`password`** Password is insufficiently complex, or is too common
 
 *  **`name`** 
 
@@ -3106,7 +3106,7 @@ Update a user's password.
 
 *  **`id`** 
 
-*  **`password`** Insufficient password strength
+*  **`password`** Password is insufficiently complex, or is too common
 
 *  **`old_password`** 
 
@@ -3165,4 +3165,4 @@ Endpoint that checks if the supplied password meets the currently configured pas
 
 ##### PARAMS:
 
-*  **`password`** Insufficient password strength
+*  **`password`** Password is insufficiently complex, or is too common
