@@ -53,7 +53,12 @@ import {
   getSnippetCollectionId,
 } from "./selectors";
 
-import { MetabaseApi, CardApi, UserApi } from "metabase/services";
+import {
+  MetabaseApi,
+  CardApi,
+  UserApi,
+  ModerationReviewApi,
+} from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -729,6 +734,18 @@ export const setParameterValue = createAction(
   },
 );
 
+// refetches the card without triggering a run of the card's query
+export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
+export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
+  return async (dispatch, getState) => {
+    const card = getState().qb.card;
+    const action = await dispatch(
+      Questions.actions.fetch({ id: card.id }, { reload: true }),
+    );
+    return Questions.HACK_getObjectFromAction(action);
+  };
+});
+
 // reloadCard
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
@@ -1351,3 +1368,8 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
+
+export async function createModerationReview(reviewParams) {
+  await ModerationReviewApi.create(reviewParams);
+  return softReloadCard();
+}
