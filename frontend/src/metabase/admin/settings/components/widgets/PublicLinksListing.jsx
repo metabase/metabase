@@ -147,7 +147,7 @@ export const PublicLinksDashboardListing = () => (
     load={DashboardApi.listPublic}
     revoke={DashboardApi.deletePublicLink}
     type={t`Public Dashboard Listing`}
-    getUrl={({ id }) => Urls.dashboard(id)}
+    getUrl={dashboard => Urls.dashboard(dashboard)}
     getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
     noLinksMessage={t`No dashboards have been publicly shared yet.`}
   />
@@ -168,7 +168,7 @@ export const EmbeddedDashboardListing = () => (
   <div className="bordered rounded full" style={{ maxWidth: 820 }}>
     <PublicLinksListing
       load={DashboardApi.listEmbeddable}
-      getUrl={({ id }) => Urls.dashboard(id)}
+      getUrl={dashboard => Urls.dashboard(dashboard)}
       type={t`Embedded Dashboard Listing`}
       noLinksMessage={t`No dashboards have been embedded yet.`}
     />
