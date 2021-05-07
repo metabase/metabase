@@ -42,7 +42,7 @@ export default class HistoryModal extends Component {
     }
 
     const { before, after } = diff;
-    return before !== null && after !== null;
+    return before !== null || after !== null;
   }
 
   render() {
