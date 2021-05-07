@@ -1094,14 +1094,16 @@ exports[`ProgressBar should render "Default" correctly 1`] = `
 exports[`Radio should render "bubble" correctly 1`] = `
 <ul
   className="Radio__BubbleList-sc-1y1p5xd-6 glBcvi Radio__BaseList-sc-1y1p5xd-0 kGqskW"
+  role="radiogroup"
 >
   <li
+    aria-checked={true}
     aria-selected={true}
     className="Radio__BubbleItem-sc-1y1p5xd-7 gROdwm Radio__BaseItem-sc-1y1p5xd-1 gUPocx"
     mb={null}
     mr={1}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={true}
     tabIndex="0"
   >
@@ -1118,12 +1120,13 @@ exports[`Radio should render "bubble" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-checked={false}
     aria-selected={false}
     className="Radio__BubbleItem-sc-1y1p5xd-7 gsefvY Radio__BaseItem-sc-1y1p5xd-1 fLjBva"
     mb={null}
     mr={null}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={false}
     tabIndex="0"
   >
@@ -1145,14 +1148,16 @@ exports[`Radio should render "bubble" correctly 1`] = `
 exports[`Radio should render "default" correctly 1`] = `
 <ul
   className="Radio__NormalList-sc-1y1p5xd-2 text-bold cakGpL Radio__BaseList-sc-1y1p5xd-0 kGqskW"
+  role="radiogroup"
 >
   <li
+    aria-checked={true}
     aria-selected={true}
     className="Radio__NormalItem-sc-1y1p5xd-3 lnYbWW Radio__BaseItem-sc-1y1p5xd-1 bnxYLr"
     mb={null}
     mr={3}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={true}
     tabIndex="0"
   >
@@ -1169,12 +1174,13 @@ exports[`Radio should render "default" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-checked={false}
     aria-selected={false}
     className="Radio__NormalItem-sc-1y1p5xd-3 iIAYuU Radio__BaseItem-sc-1y1p5xd-1 kiDbHp"
     mb={null}
     mr={null}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={false}
     tabIndex="0"
   >
@@ -1196,14 +1202,16 @@ exports[`Radio should render "default" correctly 1`] = `
 exports[`Radio should render "show buttons" correctly 1`] = `
 <ul
   className="Radio__NormalList-sc-1y1p5xd-2 cakGpL Radio__BaseList-sc-1y1p5xd-0 kGqskW"
+  role="radiogroup"
 >
   <li
+    aria-checked={true}
     aria-selected={true}
     className="Radio__NormalItem-sc-1y1p5xd-3 lnYbWW Radio__BaseItem-sc-1y1p5xd-1 bnxYLr"
     mb={null}
     mr={3}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={true}
     tabIndex="0"
   >
@@ -1223,12 +1231,13 @@ exports[`Radio should render "show buttons" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-checked={false}
     aria-selected={false}
     className="Radio__NormalItem-sc-1y1p5xd-3 iIAYuU Radio__BaseItem-sc-1y1p5xd-1 fwIeaq"
     mb={null}
     mr={null}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={false}
     tabIndex="0"
   >
@@ -1253,14 +1262,16 @@ exports[`Radio should render "show buttons" correctly 1`] = `
 exports[`Radio should render "underlined" correctly 1`] = `
 <ul
   className="Radio__UnderlinedList-sc-1y1p5xd-4 yPTIp Radio__NormalList-sc-1y1p5xd-2 Radio__UnderlinedList-sc-1y1p5xd-4 yPTIp text-bold cakGpL Radio__BaseList-sc-1y1p5xd-0 kGqskW"
+  role="radiogroup"
 >
   <li
+    aria-checked={true}
     aria-selected={true}
     className="Radio__UnderlinedItem-sc-1y1p5xd-5 kaIiHA Radio__NormalItem-sc-1y1p5xd-3 lnYbWW Radio__BaseItem-sc-1y1p5xd-1 ljpocb"
     mb={null}
     mr={3}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={true}
     tabIndex="0"
   >
@@ -1277,12 +1288,13 @@ exports[`Radio should render "underlined" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-checked={false}
     aria-selected={false}
     className="Radio__UnderlinedItem-sc-1y1p5xd-5 icIYCp Radio__NormalItem-sc-1y1p5xd-3 iIAYuU Radio__BaseItem-sc-1y1p5xd-1 iVApZB"
     mb={null}
     mr={null}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={false}
     tabIndex="0"
   >
@@ -1304,14 +1316,16 @@ exports[`Radio should render "underlined" correctly 1`] = `
 exports[`Radio should render "vertical" correctly 1`] = `
 <ul
   className="Radio__NormalList-sc-1y1p5xd-2 cakGpL Radio__BaseList-sc-1y1p5xd-0 dVUlxC"
+  role="radiogroup"
 >
   <li
+    aria-checked={true}
     aria-selected={true}
     className="Radio__NormalItem-sc-1y1p5xd-3 lnYbWW Radio__BaseItem-sc-1y1p5xd-1 dsZxQm"
     mb={1}
     mr={null}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={true}
     tabIndex="0"
   >
@@ -1331,12 +1345,13 @@ exports[`Radio should render "vertical" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-checked={false}
     aria-selected={false}
     className="Radio__NormalItem-sc-1y1p5xd-3 iIAYuU Radio__BaseItem-sc-1y1p5xd-1 fwIeaq"
     mb={null}
     mr={null}
     onClick={[Function]}
-    onKeyUp={[Function]}
+    onKeyDown={[Function]}
     selected={false}
     tabIndex="0"
   >
@@ -2089,11 +2104,13 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
 `;
 
 exports[`Toggle should render "Toggle" correctly 1`] = `
-<div
+<a
+  aria-checked={false}
   className="no-decoration"
   onChange={[Function]}
   onClick={[Function]}
-  onKeyUp={[Function]}
+  onKeyDown={[Function]}
+  role="switch"
   style={
     Object {
       "color": null,
