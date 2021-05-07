@@ -59,7 +59,7 @@ class DashboardCopyModal extends React.Component {
           copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
         }
         onClose={onClose}
-        onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard.id))}
+        onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard))}
         {...props}
       />
     );
