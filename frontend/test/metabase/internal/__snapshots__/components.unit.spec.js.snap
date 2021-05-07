@@ -1101,15 +1101,17 @@ exports[`Radio should render "bubble" correctly 1`] = `
     mb={null}
     mr={1}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={true}
+    tabIndex="0"
   >
     <input
       checked={true}
       className="Form-radio"
-      id="radio-5-0"
+      id="radio-5-undefined"
       name="radio-5"
       type="radio"
-      value={0}
+      value={undefined}
     />
     <span>
       Gadget
@@ -1121,7 +1123,9 @@ exports[`Radio should render "bubble" correctly 1`] = `
     mb={null}
     mr={null}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={false}
+    tabIndex="0"
   >
     <input
       checked={false}
@@ -1148,15 +1152,17 @@ exports[`Radio should render "default" correctly 1`] = `
     mb={null}
     mr={3}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={true}
+    tabIndex="0"
   >
     <input
       checked={true}
       className="Form-radio"
-      id="radio-1-0"
+      id="radio-1-undefined"
       name="radio-1"
       type="radio"
-      value={0}
+      value={undefined}
     />
     <span>
       Gadget
@@ -1168,7 +1174,9 @@ exports[`Radio should render "default" correctly 1`] = `
     mb={null}
     mr={null}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={false}
+    tabIndex="0"
   >
     <input
       checked={false}
@@ -1195,18 +1203,20 @@ exports[`Radio should render "show buttons" correctly 1`] = `
     mb={null}
     mr={3}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={true}
+    tabIndex="0"
   >
     <input
       checked={true}
       className="Form-radio"
-      id="radio-3-0"
+      id="radio-3-undefined"
       name="radio-3"
       type="radio"
-      value={0}
+      value={undefined}
     />
     <label
-      htmlFor="radio-3-0"
+      htmlFor="radio-3-undefined"
     />
     <span>
       Gadget
@@ -1218,7 +1228,9 @@ exports[`Radio should render "show buttons" correctly 1`] = `
     mb={null}
     mr={null}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={false}
+    tabIndex="0"
   >
     <input
       checked={false}
@@ -1248,15 +1260,17 @@ exports[`Radio should render "underlined" correctly 1`] = `
     mb={null}
     mr={3}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={true}
+    tabIndex="0"
   >
     <input
       checked={true}
       className="Form-radio"
-      id="radio-2-0"
+      id="radio-2-undefined"
       name="radio-2"
       type="radio"
-      value={0}
+      value={undefined}
     />
     <span>
       Gadget
@@ -1268,7 +1282,9 @@ exports[`Radio should render "underlined" correctly 1`] = `
     mb={null}
     mr={null}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={false}
+    tabIndex="0"
   >
     <input
       checked={false}
@@ -1295,18 +1311,20 @@ exports[`Radio should render "vertical" correctly 1`] = `
     mb={1}
     mr={null}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={true}
+    tabIndex="0"
   >
     <input
       checked={true}
       className="Form-radio"
-      id="radio-4-0"
+      id="radio-4-undefined"
       name="radio-4"
       type="radio"
-      value={0}
+      value={undefined}
     />
     <label
-      htmlFor="radio-4-0"
+      htmlFor="radio-4-undefined"
     />
     <span>
       Gadget
@@ -1318,7 +1336,9 @@ exports[`Radio should render "vertical" correctly 1`] = `
     mb={null}
     mr={null}
     onClick={[Function]}
+    onKeyUp={[Function]}
     selected={false}
+    tabIndex="0"
   >
     <input
       checked={false}
@@ -2068,27 +2088,18 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
 </div>
 `;
 
-exports[`Toggle should render "off" correctly 1`] = `
-<a
+exports[`Toggle should render "Toggle" correctly 1`] = `
+<div
   className="no-decoration"
-  onClick={null}
+  onChange={[Function]}
+  onClick={[Function]}
+  onKeyUp={[Function]}
   style={
     Object {
       "color": null,
     }
   }
-/>
-`;
-
-exports[`Toggle should render "on" correctly 1`] = `
-<a
-  className="no-decoration"
-  onClick={null}
-  style={
-    Object {
-      "color": null,
-    }
-  }
+  tabIndex="0"
 />
 `;
 
