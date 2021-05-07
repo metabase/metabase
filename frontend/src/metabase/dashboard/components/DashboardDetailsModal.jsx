@@ -43,6 +43,7 @@ class DashboardDetailsModal extends React.Component {
           setDashboardAttributes({ id, attributes });
           onChangeLocation(Urls.dashboard(dashboard));
         }}
+        overwriteOnInitialValuesChange
         {...props}
       />
     );
