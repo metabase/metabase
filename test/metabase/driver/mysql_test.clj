@@ -74,9 +74,9 @@
       ;; trigger a full sync on this database so fields are categorized correctly
       (sync/sync-database! (mt/db))
       (testing "By default TINYINT(1) should be a boolean"
-        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type :type/Category}
-                 {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
-                 {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
+        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type :Semantic/Category}
+                 {:name "id", :base_type :type/Integer, :semantic_type :Relation/PK}
+                 {:name "thing", :base_type :type/Text, :semantic_type :Semantic/Category}}
                (db->fields (mt/db)))))
 
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
@@ -84,9 +84,9 @@
                                     :details (assoc (:details (mt/db))
                                                     :additional-options "tinyInt1isBit=false")}]
           (sync/sync-database! db)
-          (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :type/Quantity}
-                   {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
-                   {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
+          (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :Semantic/Quantity}
+                   {:name "id", :base_type :type/Integer, :semantic_type :Relation/PK}
+                   {:name "thing", :base_type :type/Text, :semantic_type :Semantic/Category}}
                  (db->fields db))))))))
 
 (tx/defdataset ^:private year-db
@@ -99,7 +99,7 @@
     (mt/dataset year-db
       (testing "By default YEAR"
         (is (= #{{:name "year_column", :base_type :type/Date, :semantic_type nil}
-                 {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
+                 {:name "id", :base_type :type/Integer, :semantic_type :Relation/PK}}
                (db->fields (mt/db)))))
       (let [table  (db/select-one Table :db_id (u/id (mt/db)))
             fields (db/select Field :table_id (u/id table) :name "year_column")]

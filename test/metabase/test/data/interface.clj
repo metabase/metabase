@@ -37,9 +37,9 @@
 
 (def ^:private FieldDefinitionSchema
   {:field-name                         su/NonBlankString
-   :base-type                          (s/cond-pre {:native su/NonBlankString} su/FieldType)
-   (s/optional-key :semantic-type)     (s/maybe su/FieldType)
-   (s/optional-key :effective-type)    (s/maybe su/FieldType)
+   :base-type                          (s/cond-pre {:native su/NonBlankString} su/FieldDataType)
+   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticType)
+   (s/optional-key :effective-type)    (s/maybe su/FieldDataType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
    (s/optional-key :visibility-type)   (s/maybe (apply s/enum field/visibility-types))
    (s/optional-key :fk)                (s/maybe su/KeywordOrString)

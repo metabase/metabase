@@ -244,7 +244,7 @@
                                      :fields       [(merge
                                                      (field-details (Field (mt/id :categories :id)))
                                                      {:table_id          (mt/id :categories)
-                                                      :semantic_type     "type/PK"
+                                                      :semantic_type     "Relation/PK"
                                                       :name              "ID"
                                                       :display_name      "ID"
                                                       :database_type     "BIGINT"
@@ -256,7 +256,7 @@
                                                     (merge
                                                      (field-details (Field (mt/id :categories :name)))
                                                      {:table_id          (mt/id :categories)
-                                                      :semantic_type     "type/Name"
+                                                      :semantic_type     "Semantic/Name"
                                                       :name              "NAME"
                                                       :display_name      "Name"
                                                       :database_type     "VARCHAR"
@@ -299,12 +299,12 @@
 (deftest autocomplete-suggestions-test
   (testing "GET /api/database/:id/autocomplete_suggestions"
     (doseq [[prefix expected] {"u"   [["USERS" "Table"]
-                                      ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
+                                      ["USER_ID" "CHECKINS :type/Integer :Relation/FK"]]
                                "c"   [["CATEGORIES" "Table"]
                                       ["CHECKINS" "Table"]
-                                      ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+                                      ["CATEGORY_ID" "VENUES :type/Integer :Relation/FK"]]
                                "cat" [["CATEGORIES" "Table"]
-                                      ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
+                                      ["CATEGORY_ID" "VENUES :type/Integer :Relation/FK"]]}]
       (is (= expected
              ((mt/user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (mt/id)) :prefix prefix))))))
 

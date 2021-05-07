@@ -352,10 +352,10 @@
 
 (defn- key-col?
   "Workaround for our leaky type system which conflates types with properties."
-  [{:keys [base_type semantic_type name]}]
-  (and (isa? base_type :type/Number)
-       (or (#{:type/PK :type/FK} semantic_type)
-           (let [name (str/lower-case name)]
+  [{base-type :base_type, semantic-type :semantic_type, field-name :name}]
+  (and (isa? base-type :type/Number)
+       (or (#{:Relation/PK :Relation/FK} semantic-type)
+           (let [name (str/lower-case field-name)]
              (or (= name "id")
                  (str/starts-with? name "id_")
                  (str/ends-with? name "_id"))))))
@@ -368,7 +368,7 @@
                         (fn [{:keys [semantic_type target] :as field}]
                           (cond
                             ;; This case is mostly relevant for native queries
-                            (#{:type/PK :type/FK} fieldspec)
+                            (#{:Relation/PK :Relation/FK} fieldspec)
                             (isa? semantic_type fieldspec)
 
                             target
@@ -1231,7 +1231,7 @@
                                         :from     [Field]
                                         :where    [:and [:in :table_id candidates]
                                                    [:= :active true]
-                                                   [:or [:not= :semantic_type "type/PK"]
+                                                   [:or [:not= :semantic_type "Relation/PK"]
                                                     [:= :semantic_type nil]]]
                                         :group-by [:table_id]
                                         :having   [:= :%count.* 1]}))
@@ -1242,7 +1242,7 @@
                                         :from     [Field]
                                         :where    [:and [:in :table_id (keys field-count)]
                                                    [:= :active true]
-                                                   [:in :semantic_type ["type/PK" "type/FK"]]]
+                                                   [:in :semantic_type ["Relation/PK" "Relation/FK"]]]
                                         :group-by [:table_id]})
                              (filter (fn [{:keys [table_id count]}]
                                        (= count (field-count table_id))))

@@ -27,7 +27,7 @@
                      [:value 50 {:base_type         :type/BigInteger
                                  :effective_type    :type/BigInteger
                                  :coercion_strategy nil
-                                 :semantic_type     :type/PK
+                                 :semantic_type     :Relation/PK
                                  :database_type     "BIGINT"
                                  :name              "ID"}]]})
          (wrap-value-literals
@@ -38,13 +38,13 @@
                      [:> $id [:value 50 {:base_type         :type/BigInteger
                                          :effective_type    :type/BigInteger
                                          :coercion_strategy nil
-                                         :semantic_type     :type/PK
+                                         :semantic_type     :Relation/PK
                                          :database_type     "BIGINT"
                                          :name              "ID"}]]
                      [:< $price [:value 5 {:base_type         :type/Integer
                                            :effective_type    :type/Integer
                                            :coercion_strategy nil
-                                           :semantic_type     :type/Category
+                                           :semantic_type     :Semantic/Category
                                            :database_type     "INTEGER"
                                            :name              "PRICE"}]]]})
          (wrap-value-literals

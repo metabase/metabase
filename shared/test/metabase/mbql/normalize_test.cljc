@@ -1042,7 +1042,7 @@
                         [{:name          "name"
                           :display_name  "Name"
                           :base_type     :type/Text
-                          :semantic_type :type/Name
+                          :semantic_type :Semantic/Name
                           :fingerprint   {:global {:distinct-count 100}
                                           :type   {:type/Text {:percent-json   0.0
                                                                :percent-url    0.0
@@ -1053,7 +1053,7 @@
                                             :display_name  "Name"
                                             :description   nil
                                             :base_type     "type/Text"
-                                            :semantic_type "type/Name"
+                                            :semantic_type "Semantic/Name"
                                             :fingerprint   {"global" {"distinct-count" 100}
                                                             "type"   {"type/Text" {"percent-json"   0.0
                                                                                    "percent-url"    0.0
@@ -1066,7 +1066,7 @@
                         [{:name          "name"
                           :display_name  "Name"
                           :base_type     :type/Text
-                          :semantic_type :type/Name
+                          :semantic_type :Semantic/Name
                           :fingerprint   {:global {:distinct-count 100}
                                           :type   {:type/Text {:percent-json   0.0
                                                                :percent-url    0.0
@@ -1077,7 +1077,7 @@
                                     :display_name  "Name"
                                     :description   nil
                                     :base_type     "type/Text"
-                                    :semantic_type "type/Name"
+                                    :semantic_type "Semantic/Name"
                                     :fingerprint   {"global" {"distinct-count" 100}
                                                     "type"   {"type/Text" {"percent-json"   0.0
                                                                            "percent-url"    0.0

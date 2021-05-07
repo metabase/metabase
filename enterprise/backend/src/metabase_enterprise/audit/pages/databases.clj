@@ -39,7 +39,7 @@
   [datetime-unit :- common/DateTimeUnitStr]
   {:metadata [[:date          {:display_name "Date",          :base_type (common/datetime-unit-str->base-type datetime-unit)}]
               [:database_id   {:display_name "Database ID",   :base_type :type/Integer, :remapped_to   :database_name}]
-              [:database_name {:display_name "Database Name", :base_type :type/Name,    :remapped_from :database_id}]
+              [:database_name {:display_name "Database Name", :base_type :Semantic/Name,    :remapped_from :database_id}]
               [:count         {:display_name "Count",         :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with      [[:qx {:select    [[(common/grouped-datetime datetime-unit :qe.started_at) :date]

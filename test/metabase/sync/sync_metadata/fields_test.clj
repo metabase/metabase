@@ -130,7 +130,7 @@
     (mt/with-temp-copy-of-db
       (letfn [(get-semantic-type [] (db/select-one-field :semantic_type Field, :id (mt/id :venues :id)))]
         (testing "Semantic type should be :id to begin with"
-          (is (= :type/PK
+          (is (= :Relation/PK
                  (get-semantic-type))))
         (testing "Clear out the semantic type"
           (db/update! Field (mt/id :venues :id), :semantic_type nil)
@@ -138,16 +138,16 @@
                  (get-semantic-type))))
         (testing "Calling sync-table! should set the semantic type again"
           (sync/sync-table! (Table (mt/id :venues)))
-          (is (= :type/PK
+          (is (= :Relation/PK
                  (get-semantic-type))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
-          (db/update! Field (mt/id :venues :id), :semantic_type :type/Latitude)
-          (is (= :type/Latitude
+          (db/update! Field (mt/id :venues :id), :semantic_type :Semantic/Latitude)
+          (is (= :Semantic/Latitude
                  (get-semantic-type))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
           (db/update! Field (mt/id :venues :id), :semantic_type nil)
           (sync/sync-table! (Table (mt/id :venues)))
-          (is (= :type/PK
+          (is (= :Relation/PK
                  (get-semantic-type))))))))
 
 (deftest fk-relationships-test
@@ -177,13 +177,13 @@
         (testing "before"
           (is (= {:step-info         {:total-fks 3, :updated-fks 0, :total-failed 0}
                   :task-details      {:total-fks 3, :updated-fks 0, :total-failed 0}
-                  :semantic-type     :type/FK
+                  :semantic-type     :Relation/FK
                   :fk-target-exists? true}
                  (state))))
         (db/update! Field (mt/id :checkins :user_id), :semantic_type nil, :fk_target_field_id nil)
         (testing "after"
           (is (= {:step-info         {:total-fks 3, :updated-fks 1, :total-failed 0}
                   :task-details      {:total-fks 3, :updated-fks 1, :total-failed 0}
-                  :semantic-type     :type/FK
+                  :semantic-type     :Relation/FK
                   :fk-target-exists? true}
                  (state))))))))

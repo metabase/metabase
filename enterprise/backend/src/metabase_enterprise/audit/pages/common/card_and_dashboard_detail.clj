@@ -38,7 +38,7 @@
   [model-entity :- (s/cond-pre (class Card) (class Dashboard)), model-id :- su/IntGreaterThanZero]
   {:metadata [[:timestamp   {:display_name "Edited on",   :base_type :type/DateTime}]
               [:user_id     {:display_name "User ID",     :base_type :type/Integer, :remapped_to   :user_name}]
-              [:user_name   {:display_name "Edited by",   :base_type :type/Name,    :remapped_from :user_id}]
+              [:user_name   {:display_name "Edited by",   :base_type :Semantic/Name,    :remapped_from :user_id}]
               [:change_made {:display_name "Change made", :base_type :type/Text}]
               [:revision_id {:display_name "Revision ID", :base_type :type/Integer}]]
    :results (for [revision (revision/revisions+details model-entity model-id)]
@@ -53,7 +53,7 @@
   [model :- ModelName, model-id :- su/IntGreaterThanZero]
   {:metadata [[:when    {:display_name "When",    :base_type :type/DateTime}]
               [:user_id {:display_name "User ID", :base_type :type/Integer, :remapped_to   :who}]
-              [:who     {:display_name "Who",     :base_type :type/Name,    :remapped_from :user_id}]]
+              [:who     {:display_name "Who",     :base_type :Semantic/Name,    :remapped_from :user_id}]]
    :results (common/reducible-query
               {:select    [[:vl.timestamp :when]
                            :vl.user_id

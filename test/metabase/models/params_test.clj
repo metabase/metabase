@@ -29,12 +29,12 @@
   (testing "make sure that we can hydrate the `name_field` property for PK Fields"
     (is (= {:name          "ID"
             :table_id      (mt/id :venues)
-            :semantic_type :type/PK
+            :semantic_type :Relation/PK
             :name_field    {:id               (mt/id :venues :name)
                             :table_id         (mt/id :venues)
                             :display_name     "Name"
                             :base_type        :type/Text
-                            :semantic_type    :type/Name
+                            :semantic_type    :Semantic/Name
                             :has_field_values :list}}
            (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (hydrate :name_field)
@@ -50,7 +50,7 @@
   (testing "It shouldn't hydrate for Fields that aren't PKs"
     (is (= {:name          "PRICE"
             :table_id      (mt/id :venues)
-            :semantic_type :type/Category
+            :semantic_type :Semantic/Category
             :name_field    nil}
            (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :price))
                (hydrate :name_field)
@@ -59,7 +59,7 @@
   (testing "Or if it *is* a PK, but no name Field is available for that Table, it shouldn't hydrate"
     (is (= {:name          "ID"
             :table_id      (mt/id :checkins)
-            :semantic_type :type/PK
+            :semantic_type :Relation/PK
             :name_field    nil}
            (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
                (hydrate :name_field)
@@ -82,13 +82,13 @@
                                    :table_id         (mt/id :venues)
                                    :display_name     "ID"
                                    :base_type        :type/BigInteger
-                                   :semantic_type    :type/PK
+                                   :semantic_type    :Relation/PK
                                    :has_field_values :none
                                    :name_field       {:id               (mt/id :venues :name)
                                                       :table_id         (mt/id :venues)
                                                       :display_name     "Name"
                                                       :base_type        :type/Text
-                                                      :semantic_type    :type/Name
+                                                      :semantic_type    :Semantic/Name
                                                       :has_field_values :list}
                                    :dimensions       []}}
              (-> (hydrate card :param_fields)
@@ -102,13 +102,13 @@
                                    :table_id         (mt/id :venues)
                                    :display_name     "ID"
                                    :base_type        :type/BigInteger
-                                   :semantic_type    :type/PK
+                                   :semantic_type    :Relation/PK
                                    :has_field_values :none
                                    :name_field       {:id               (mt/id :venues :name)
                                                       :table_id         (mt/id :venues)
                                                       :display_name     "Name"
                                                       :base_type        :type/Text
-                                                      :semantic_type    :type/Name
+                                                      :semantic_type    :Semantic/Name
                                                       :has_field_values :list}
                                    :dimensions       []}}
              (-> (hydrate dashboard :param_fields)

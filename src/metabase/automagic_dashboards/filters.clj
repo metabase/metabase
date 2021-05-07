@@ -40,12 +40,12 @@
   (cond-> 0
     (some-> fingerprint :global :distinct-count (< 10)) inc
     (some-> fingerprint :global :distinct-count (> 20)) dec
-    ((descendants :type/Category) semantic_type)        inc
+    ((descendants :Semantic/Category) semantic_type)        inc
     (field/unix-timestamp? field)                       inc
     (isa? base_type :type/Temporal)                     inc
     ((descendants :type/Temporal) semantic_type)        inc
-    (isa? semantic_type :type/CreationTimestamp)        inc
-    (#{:type/State :type/Country} semantic_type)        inc))
+    (isa? semantic_type :Semantic/CreationTimestamp)        inc
+    (#{:Semantic/State :Semantic/Country} semantic_type)        inc))
 
 (defn- interleave-all
   [& colls]
@@ -71,7 +71,7 @@
   (->> fields
        (filter (fn [{:keys [semantic_type] :as field}]
                  (or (datetime? field)
-                     (isa? semantic_type :type/Category))))
+                     (isa? semantic_type :Semantic/Category))))
        sort-by-interestingness))
 
 (defn- candidates-for-filtering
@@ -119,9 +119,9 @@
   [{:keys [base_type semantic_type] :as field}]
   (cond
     (datetime? field)                   "date/all-options"
-    (isa? semantic_type :type/State)    "location/state"
-    (isa? semantic_type :type/Country)  "location/country"
-    (isa? semantic_type :type/Category) "category"))
+    (isa? semantic_type :Semantic/State)    "location/state"
+    (isa? semantic_type :Semantic/Country)  "location/country"
+    (isa? semantic_type :Semantic/Category) "category"))
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]

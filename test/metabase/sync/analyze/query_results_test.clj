@@ -55,12 +55,12 @@
    :query    {:source-table (str "card__" (u/get-id card))}})
 
 (def ^:private venue-name->semantic-types
-  {:id          :type/PK
-   :name        :type/Name
-   :price       :type/Category
-   :category_id :type/FK
-   :latitude    :type/Latitude
-   :longitude   :type/Longitude})
+  {:id          :Relation/PK
+   :name        :Semantic/Name
+   :price       :Semantic/Category
+   :category_id :Relation/FK
+   :latitude    :Semantic/Latitude
+   :longitude   :Semantic/Longitude})
 
 (deftest mbql-result-metadata-test
   (testing "Getting the result metadata for a card backed by an MBQL query should use the fingerprints from the related fields"

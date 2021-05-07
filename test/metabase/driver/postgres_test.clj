@@ -286,7 +286,7 @@
                     ["venues"
                      [{:field-name "address", :base-type {:native "json"}, :effective-type :type/Structured}]
                      [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
-        (is (= :type/SerializedJSON
+        (is (= :Semantic/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
 (mt/defdataset ^:private with-uuid
@@ -350,7 +350,7 @@
 
 (mt/defdataset ^:private ip-addresses
   [["addresses"
-    [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
+    [{:field-name "ip", :base-type {:native "inet"}, :effective-type :Semantic/IPAddress}]
     [[(hsql/raw "'192.168.1.1'::inet")]
      [(hsql/raw "'10.4.4.15'::inet")]]]])
 

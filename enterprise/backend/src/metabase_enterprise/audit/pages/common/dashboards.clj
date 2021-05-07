@@ -9,13 +9,13 @@
   "Dashboard table!"
   [query-string & [where-clause]]
   {:metadata [[:dashboard_id              {:display_name "Dashboard ID",         :base_type :type/Integer, :remapped_to :title}]
-              [:title                     {:display_name "Title",                :base_type :type/Title,   :remapped_from :dashboard_id}]
+              [:title                     {:display_name "Title",                :base_type :Semantic/Title,   :remapped_from :dashboard_id}]
               [:saved_by_id               {:display_name "Saved by User ID",     :base_type :type/Text,    :remapped_to :saved_by}]
               [:saved_by                  {:display_name "Saved by",             :base_type :type/Text,    :remapped_from :saved_by_id}]
               [:saved_on                  {:display_name "Saved on",             :base_type :type/DateTime}]
               [:last_edited_on            {:display_name "Last edited on",       :base_type :type/DateTime}]
               [:cards                     {:display_name "Cards",                :base_type :type/Integer}]
-              [:public_link               {:display_name "Public Link",          :base_type :type/URL}]
+              [:public_link               {:display_name "Public Link",          :base_type :Semantic/URL}]
               [:average_execution_time_ms {:display_name "Avg. exec. time (ms)", :base_type :type/Decimal}]
               [:total_views               {:display_name "Total views",          :base_type :type/Integer}]]
    :results  (common/reducible-query

@@ -11,7 +11,7 @@
    rf))
 
 (defn convert-id-to-string
-  "Converts any ID (:type/PK and :type/FK) in a result to a string to handle a number > 2^51
+  "Converts any ID (:Relation/PK and :Relation/FK) in a result to a string to handle a number > 2^51
   or < -2^51, the JavaScript float mantissa. This will allow proper display of large numbers,
   like IDs from services like social media. All ID numbers are converted to avoid the performance
   penalty of a comparison based on size."
@@ -48,8 +48,8 @@
                                                                  ;; initialized)
                                                                  (db/select-one [Field :base_type :semantic_type]
                                                                    :id field-id))]
-                                                (when (and (or (isa? (:semantic_type field) :type/PK)
-                                                               (isa? (:semantic_type field) :type/FK))
+                                                (when (and (or (isa? (:semantic_type field) :Relation/PK)
+                                                               (isa? (:semantic_type field) :Relation/FK))
                                                            (or (isa? (:base_type field) :type/Integer)
                                                                (isa? (:base_type field) :type/Number)))
                                                   idx)))

@@ -67,7 +67,7 @@
                                 [{:name         "count"
                                   :display_name "Count"
                                   :base_type    :type/BigInteger
-                                  :semantic_type :type/Number
+                                  :semantic_type :Semantic/Quantity
                                   :field_ref    [:aggregation 0]}])})
            (add-source-metadata
             (mt/mbql-query venues
@@ -85,7 +85,7 @@
                                 [{:name         "avg"
                                   :display_name "Average of ID"
                                   :base_type    :type/BigInteger
-                                  :semantic_type :type/PK
+                                  :semantic_type :Relation/PK
                                   :settings     nil
                                   :field_ref    [:aggregation 0]}])})
            (add-source-metadata
@@ -111,7 +111,7 @@
                                   [{:name         "some_generated_name"
                                     :display_name "My Cool Ag"
                                     :base_type    :type/BigInteger
-                                    :semantic_type :type/PK
+                                    :semantic_type :Relation/PK
                                     :settings     nil
                                     :field_ref    [:aggregation 0]}])})
              (add-source-metadata
@@ -126,7 +126,7 @@
       (is (= [{:name         "some_generated_name"
                :display_name "Average of ID"
                :base_type    :type/BigInteger
-               :semantic_type :type/PK
+               :semantic_type :Relation/PK
                :settings     nil
                :field_ref    [:aggregation 0]}]
              (source-metadata
@@ -139,7 +139,7 @@
       (is (= [{:name         "avg"
                :display_name "My Cool Ag"
                :base_type    :type/BigInteger
-               :semantic_type :type/PK
+               :semantic_type :Relation/PK
                :settings     nil
                :field_ref    [:aggregation 0]}]
              (source-metadata

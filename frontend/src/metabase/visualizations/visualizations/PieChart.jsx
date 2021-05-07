@@ -94,7 +94,7 @@ export default class PieChart extends Component {
           ["Widget", 5061],
         ],
         cols: [
-          { name: "Category", base_type: "type/Category" },
+          { name: "Category", base_type: "Semantic/Category" },
           { name: "Count", base_type: "type/Integer" },
         ],
       },

@@ -221,7 +221,7 @@ describe("scenarios > question > new", () => {
       });
       // set Quantity to `Entity Key`
       cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
-        semantic_type: "type/PK",
+        semantic_type: "Relation/PK",
       });
 
       openOrdersTable();

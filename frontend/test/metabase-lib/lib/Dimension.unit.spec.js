@@ -250,7 +250,7 @@ describe("Dimension", () => {
           name: "TOTAL",
           display_name: "Total",
           base_type: "type/Float",
-          semantic_type: "type/Currency",
+          semantic_type: "Semantic/Currency",
           field_ref: ["field", ORDERS.TOTAL.id, null],
         });
       });
@@ -355,7 +355,7 @@ describe("Dimension", () => {
           name: "TITLE",
           display_name: "Title",
           base_type: "type/Text",
-          semantic_type: "type/Category",
+          semantic_type: "Semantic/Category",
           fk_field_id: ORDERS.PRODUCT_ID.id,
           field_ref: [
             "field",
@@ -572,7 +572,7 @@ describe("Dimension", () => {
           name: "TOTAL",
           display_name: "Total",
           base_type: "type/Float",
-          semantic_type: "type/Currency",
+          semantic_type: "Semantic/Currency",
           field_ref: [
             "field",
             ORDERS.TOTAL.id,
@@ -665,7 +665,7 @@ describe("Dimension", () => {
           name: "TOTAL",
           display_name: "Total",
           base_type: "type/Float",
-          semantic_type: "type/Currency",
+          semantic_type: "Semantic/Currency",
           field_ref: ["field", ORDERS.TOTAL.id, { "join-alias": "join1" }],
         });
       });
@@ -728,7 +728,7 @@ describe("Dimension", () => {
         it("should retain aggregated semantic types", () => {
           const { semantic_type } = sumOf(ORDERS.TOTAL).column();
 
-          expect(semantic_type).toBe("type/Currency");
+          expect(semantic_type).toBe("Semantic/Currency");
         });
       });
 

@@ -257,7 +257,7 @@ describe("scenarios > dashboard > chained filter", () => {
     });
 
     cy.request("PUT", `/api/field/${PRODUCTS.EAN}`, {
-      special_type: "type/PK",
+      special_type: "Relation/PK",
     });
 
     cy.createQuestion({

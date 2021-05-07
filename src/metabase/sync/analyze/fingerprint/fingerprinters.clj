@@ -116,20 +116,20 @@
   [_]
   global-fingerprinter)
 
-(defmethod fingerprinter [:type/* :type/FK]
+(defmethod fingerprinter [:type/* :Relation/FK]
   [_]
   global-fingerprinter)
 
-(defmethod fingerprinter [:type/* :type/PK]
+(defmethod fingerprinter [:type/* :Relation/PK]
   [_]
   (constant-fingerprinter nil))
 
-(prefer-method fingerprinter [:type/* :type/FK] [:type/Number :type/*])
-(prefer-method fingerprinter [:type/* :type/FK] [:type/Text :type/*])
-(prefer-method fingerprinter [:type/* :type/PK] [:type/Number :type/*])
-(prefer-method fingerprinter [:type/* :type/PK] [:type/Text :type/*])
-(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/PK])
-(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/FK])
+(prefer-method fingerprinter [:type/* :Relation/FK] [:type/Number :type/*])
+(prefer-method fingerprinter [:type/* :Relation/FK] [:type/Text :type/*])
+(prefer-method fingerprinter [:type/* :Relation/PK] [:type/Number :type/*])
+(prefer-method fingerprinter [:type/* :Relation/PK] [:type/Text :type/*])
+(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :Relation/PK])
+(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :Relation/FK])
 
 (defn- with-global-fingerprinter
   [fingerprinter]

@@ -46,5 +46,5 @@
     (is (= nil
            (:preview_display
             (no-preview-display/infer-no-preview-display
-             (assoc long-text-field :semantic_type :type/Name)
+             (assoc long-text-field :semantic_type :Semantic/Name)
              (:fingerprint long-text-field)))))))

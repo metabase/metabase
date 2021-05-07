@@ -76,20 +76,20 @@
 ;; SELECT *
 ;; FROM metabase_field
 ;; WHERE active = true
-;;   AND (semantic_type NOT IN ('type/PK') OR semantic_type IS NULL)
+;;   AND (semantic_type NOT IN ('Relation/PK') OR semantic_type IS NULL)
 ;;   AND preview_display = true
 ;;   AND visibility_type <> 'retired'
 ;;   AND table_id = 1
 ;;   AND ((fingerprint_version < 1 AND
-;;         base_type IN ("type/Longitude", "type/Latitude", "type/Integer"))
+;;         base_type IN ("Semantic/Longitude", "Semantic/Latitude", "type/Integer"))
 ;;        OR
 ;;        (fingerprint_version < 2 AND
-;;         base_type IN ("type/Text", "type/SerializedJSON")))
+;;         base_type IN ("type/Text", "type/JSON")))
 
-(s/defn ^:private base-types->descendants :- #{su/FieldTypeKeywordOrString}
-  "Given a set of BASE-TYPES return an expanded set that includes those base types as well as all of their
-   descendants. These types are converted to strings so HoneySQL doesn't confuse them for columns."
-  [base-types :- #{su/FieldType}]
+(s/defn ^:private base-types->descendants :- #{su/FieldDataTypeKeywordOrString}
+  "Given a set of `base-types` return an expanded set that includes those base types as well as all of their
+  descendants. These types are converted to strings so HoneySQL doesn't confuse them for columns."
+  [base-types :- #{su/FieldDataType}]
   (->> (for [base-type base-types]
          (cons base-type (descendants base-type)))
        (reduce set/union)
@@ -139,7 +139,7 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb.u/isa :semantic_type :type/PK)]
+    [:not (mdb.u/isa :semantic_type :Relation/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
    [:not= :base_type "type/Structured"]])

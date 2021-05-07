@@ -267,7 +267,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     // 1. set "Rating" Field type to: "Category"
 
     cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
-      semantic_type: "type/Category",
+      semantic_type: "Semantic/Category",
     });
     // 2. create a question based on Reviews
     cy.request("POST", `/api/card`, {

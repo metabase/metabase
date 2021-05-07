@@ -70,8 +70,8 @@
 (s/defn ^:private resolve-default-strategy :- [(s/one (s/enum :bin-width :num-bins) "strategy")
                                                (s/one {:bin-width s/Num, :num-bins su/IntGreaterThanZero} "opts")]
   "Determine the approprate strategy & options to use when `:default` strategy was specified."
-  [metadata :- {(s/optional-key :semantic_type) (s/maybe su/FieldType), s/Any s/Any}, min-value :- s/Num, max-value :- s/Num]
-  (if (isa? (:semantic_type metadata) :type/Coordinate)
+  [metadata :- {(s/optional-key :semantic_type) (s/maybe su/FieldSemanticOrRelationType), s/Any s/Any}, min-value :- s/Num, max-value :- s/Num]
+  (if (isa? (:semantic_type metadata) :Semantic/Coordinate)
     (let [bin-width (public-settings/breakout-bin-width)]
       [:bin-width
        {:bin-width bin-width

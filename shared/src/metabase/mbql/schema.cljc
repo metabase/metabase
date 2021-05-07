@@ -236,8 +236,8 @@
   filter clauses based on the Field in the clause."
   ;; TODO -- these should use `lisp-case` like everything else in MBQL.
   {(s/optional-key :database_type) (s/maybe helpers/NonBlankString)
-   (s/optional-key :base_type)     (s/maybe helpers/FieldType)
-   (s/optional-key :semantic_type) (s/maybe helpers/FieldType)
+   (s/optional-key :base_type)     (s/maybe helpers/FieldDataType)
+   (s/optional-key :semantic_type) (s/maybe helpers/FieldSemanticOrRelationType)
    (s/optional-key :unit)          (s/maybe DateTimeUnit)
    (s/optional-key :name)          (s/maybe helpers/NonBlankString)
    s/Keyword                       s/Any})
@@ -316,7 +316,7 @@
    "Found :binning keys at the top level of :field options. binning-related options belong under the :binning key."))
 
 (def ^:private FieldOptions
-  (-> {(s/optional-key :base-type)     (s/maybe helpers/FieldType)
+  (-> {(s/optional-key :base-type)     (s/maybe helpers/FieldDataType)
        ;;
        ;; replaces `fk->`
        ;;
@@ -880,11 +880,11 @@
   `:source-query`s."
   ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
   {:name                           helpers/NonBlankString
-   :base_type                      helpers/FieldType
+   :base_type                      helpers/FieldDataType
    ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
    ;; able to remove this as a requirement
    :display_name                   helpers/NonBlankString
-   (s/optional-key :semantic_type) (s/maybe helpers/FieldType)
+   (s/optional-key :semantic_type) (s/maybe helpers/FieldSemanticOrRelationType)
    ;; you'll need to provide this in order to use BINNING
    (s/optional-key :fingerprint)   (s/maybe helpers/Map)
    s/Any                           s/Any})

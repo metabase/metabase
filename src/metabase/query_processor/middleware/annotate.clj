@@ -26,7 +26,7 @@
   {:name                           s/Str
    :display_name                   s/Str
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   :base_type                      su/FieldType
+   :base_type                      su/FieldDataType
    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
    ;; from the metadata but that's for another day
    ;; where this column came from in the original query.
@@ -139,7 +139,7 @@
 
     (mbql.u/is-clause? :length expression)
     {:base_type     :type/BigInteger
-     :semantic_type :type/Number}
+     :semantic_type :Semantic/Quantity}
 
     (mbql.u/is-clause? :case expression)
     (->> expression
@@ -158,8 +158,7 @@
      :semantic_type nil}
 
     :else
-    {:base_type     :type/Float
-     :semantic_type :type/Number}))
+    {:base_type :type/Float}))
 
 (defn- col-info-for-expression
   [inner-query [_ expression-name :as clause]]
@@ -379,19 +378,19 @@
     (merge
      (col-info-for-aggregation-clause inner-query args)
      {:base_type     :type/BigInteger
-      :semantic_type :type/Number}
+      :semantic_type :Semantic/Quantity}
      (ag->name-info inner-query &match))
 
     [:count-where _]
     (merge
      {:base_type     :type/Integer
-      :semantic_type :type/Number}
+      :semantic_type :Semantic/Quantity}
      (ag->name-info inner-query &match))
 
     [:share _]
     (merge
      {:base_type     :type/Float
-      :semantic_type :type/Number}
+      :semantic_type :Semantic/Share}
      (ag->name-info inner-query &match))
 
     ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
@@ -404,10 +403,10 @@
      (when (mbql.preds/Aggregation? &match)
        (ag->name-info inner-query &match)))
 
+    ;; TODO -- case doesn't necessarily return a FLOAT, does it??
     [:case _ & _]
     (merge
-     {:base_type     :type/Float
-      :semantic_type :type/Number}
+     {:base_type :type/*}
      (ag->name-info inner-query &match))
 
     ;; get name/display-name of this ag

@@ -154,7 +154,7 @@
     (when (some? value)
       (condp #(isa? %2 %1) base-type
         :type/UUID         (UUID/fromString value)
-        :type/IPAddress    (hx/cast :inet value)
+        :Semantic/IPAddress    (hx/cast :inet value)
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))
 
@@ -229,7 +229,7 @@
    :float4        :type/Float
    :float8        :type/Float
    :geometry      :type/*
-   :inet          :type/IPAddress
+   :inet          :Semantic/IPAddress
    :int           :type/Integer
    :int2          :type/Integer
    :int4          :type/Integer
@@ -280,12 +280,12 @@
 
 (defmethod sql-jdbc.sync/column->semantic-type :postgres
   [_ database-type _]
-  ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON semantic-type
+  ;; this is really, really simple right now.  if its postgres :json type then it's :Semantic/SerializedJSON semantic-type
   (case database-type
-    "json"  :type/SerializedJSON
-    "jsonb" :type/SerializedJSON
-    "xml"   :type/XML
-    "inet"  :type/IPAddress
+    "json"  :Semantic/SerializedJSON
+    "jsonb" :Semantic/SerializedJSON
+    "xml"   :Semantic/XML
+    "inet"  :Semantic/IPAddress
     nil))
 
 (def ^:private ssl-params

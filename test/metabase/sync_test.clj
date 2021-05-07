@@ -29,12 +29,12 @@
              :fields #{{:name              "id"
                         :database-type     "SERIAL"
                         :base-type         :type/Integer
-                        :semantic-type     :type/PK
+                        :semantic-type     :Relation/PK
                         :database-position 0}
                        {:name              "title"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :semantic-type     :type/Title
+                        :semantic-type     :Semantic/Title
                         :database-position 1}
                        {:name              "studio"
                         :database-type     "VARCHAR"
@@ -45,7 +45,7 @@
              :fields #{{:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :semantic-type     :type/PK
+                        :semantic-type     :Relation/PK
                         :database-position 0}
                        {:name              "name"
                         :database-type     "VARCHAR"
@@ -128,7 +128,7 @@
     :database_type     "SERIAL"
     :base_type         :type/Integer
     :effective_type    :type/Integer
-    :semantic_type     :type/PK
+    :semantic_type     :Relation/PK
     :database_position 0
     :position          0}))
 
@@ -141,7 +141,7 @@
     :base_type          :type/Text
     :effective_type          :type/Text
     :fk_target_field_id true
-    :semantic_type      :type/FK
+    :semantic_type      :Relation/FK
     :database_position  2
     :position           2}))
 
@@ -153,7 +153,7 @@
     :database_type     "VARCHAR"
     :base_type         :type/Text
     :effective_type    :type/Text
-    :semantic_type     :type/Title
+    :semantic_type     :Semantic/Title
     :database_position 1
     :position          1}))
 
@@ -165,7 +165,7 @@
     :database_type     "VARCHAR"
     :base_type         :type/Text
     :effective_type    :type/Text
-    :semantic_type     :type/Name
+    :semantic_type     :Semantic/Name
     :database_position 1
     :position          1}))
 
@@ -178,7 +178,7 @@
     :database_type     "VARCHAR"
     :base_type         :type/Text
     :effective_type    :type/Text
-    :semantic_type     :type/PK
+    :semantic_type     :Relation/PK
     :database_position 0
     :position          0}))
 

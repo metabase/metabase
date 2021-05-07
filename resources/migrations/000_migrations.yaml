@@ -8007,6 +8007,7 @@ databaseChangeLog:
                   name: coercion_strategy
                   type: varchar(255)
                   remarks: 'A strategy to coerce the base_type into the effective_type.'
+
   - changeSet:
       id: 286
       author: dpsutton
@@ -8339,6 +8340,89 @@ databaseChangeLog:
               WHERE base_type IN ('ArrayField', 'BigIntegerField', 'BooleanField', 'CharField', 'DateField',
                                   'DateTimeField', 'DecimalField', 'DictionaryField', 'FloatField', 'IntegerField',
                                   'TextField', 'TimeField', 'UUIDField', 'UnknownField');
+
+  - changeSet:
+      id: 307
+      author: camsaul
+      comment: Added 0.40.0 -- Move semantic types into their own hierarchy
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET semantic_type = (CASE semantic_type
+                                    WHEN 'type/PK'                   THEN 'Relation/PK'
+                                    WHEN 'type/FK'                   THEN 'Relation/FK'
+                                    WHEN 'type/*'                    THEN 'Semantic/*'
+                                    WHEN 'type/Address'              THEN 'Semantic/Address'
+                                    WHEN 'type/Author'               THEN 'Semantic/Author'
+                                    WHEN 'type/AvatarURL'            THEN 'Semantic/AvatarURL'
+                                    WHEN 'type/Birthdate'            THEN 'Semantic/Birthdate'
+                                    WHEN 'type/CancelationDate'      THEN 'Semantic/CancelationDate'
+                                    WHEN 'type/CancelationTime'      THEN 'Semantic/CancelationTime'
+                                    WHEN 'type/CancelationTimestamp' THEN 'Semantic/CancelationTimestamp'
+                                    WHEN 'type/Category'             THEN 'Semantic/Category'
+                                    WHEN 'type/City'                 THEN 'Semantic/City'
+                                    WHEN 'type/Comment'              THEN 'Semantic/Comment'
+                                    WHEN 'type/Company'              THEN 'Semantic/Company'
+                                    WHEN 'type/Coordinate'           THEN 'Semantic/Coordinate'
+                                    WHEN 'type/Cost'                 THEN 'Semantic/Cost'
+                                    WHEN 'type/Country'              THEN 'Semantic/Country'
+                                    WHEN 'type/CreationDate'         THEN 'Semantic/CreationDate'
+                                    WHEN 'type/CreationTime'         THEN 'Semantic/CreationTime'
+                                    WHEN 'type/CreationTimestamp'    THEN 'Semantic/CreationTimestamp'
+                                    WHEN 'type/Currency'             THEN 'Semantic/Currency'
+                                    WHEN 'type/DeletionDate'         THEN 'Semantic/DeletionDate'
+                                    WHEN 'type/DeletionTime'         THEN 'Semantic/DeletionTime'
+                                    WHEN 'type/DeletionTimestamp'    THEN 'Semantic/DeletionTimestamp'
+                                    WHEN 'type/Description'          THEN 'Semantic/Description'
+                                    WHEN 'type/Discount'             THEN 'Semantic/Discount'
+                                    WHEN 'type/Duration'             THEN 'Semantic/Duration'
+                                    WHEN 'type/Email'                THEN 'Semantic/Email'
+                                    WHEN 'type/Enum'                 THEN 'Semantic/Enum'
+                                    WHEN 'type/GrossMargin'          THEN 'Semantic/GrossMargin'
+                                    WHEN 'type/IPAddress'            THEN 'Semantic/IPAddress'
+                                    WHEN 'type/ImageURL'             THEN 'Semantic/ImageURL'
+                                    WHEN 'type/Income'               THEN 'Semantic/Income'
+                                    WHEN 'type/JoinDate'             THEN 'Semantic/JoinDate'
+                                    WHEN 'type/JoinTime'             THEN 'Semantic/JoinTime'
+                                    WHEN 'type/JoinTimestamp'        THEN 'Semantic/JoinTimestamp'
+                                    WHEN 'type/Latitude'             THEN 'Semantic/Latitude'
+                                    WHEN 'type/Location'             THEN 'Semantic/Location'
+                                    WHEN 'type/Longitude'            THEN 'Semantic/Longitude'
+                                    WHEN 'type/Name'                 THEN 'Semantic/Name'
+                                    WHEN 'type/Owner'                THEN 'Semantic/Owner'
+                                    WHEN 'type/Price'                THEN 'Semantic/Price'
+                                    WHEN 'type/Product'              THEN 'Semantic/Product'
+                                    WHEN 'type/Quantity'             THEN 'Semantic/Quantity'
+                                    WHEN 'type/Score'                THEN 'Semantic/Score'
+                                    WHEN 'type/SerializedJSON'       THEN 'Semantic/SerializedJSON'
+                                    WHEN 'type/Share'                THEN 'Semantic/Share'
+                                    WHEN 'type/Source'               THEN 'Semantic/Source'
+                                    WHEN 'type/State'                THEN 'Semantic/State'
+                                    WHEN 'type/Subscription'         THEN 'Semantic/Subscription'
+                                    WHEN 'type/Title'                THEN 'Semantic/Title'
+                                    WHEN 'type/URL'                  THEN 'Semantic/URL'
+                                    WHEN 'type/UpdatedDate'          THEN 'Semantic/UpdatedDate'
+                                    WHEN 'type/UpdatedTime'          THEN 'Semantic/UpdatedTime'
+                                    WHEN 'type/UpdatedTimestamp'     THEN 'Semantic/UpdatedTimestamp'
+                                    WHEN 'type/User'                 THEN 'Semantic/User'
+                                    WHEN 'type/XML'                  THEN 'Semantic/XML'
+                                    WHEN 'type/ZipCode'              THEN 'Semantic/ZipCode'
+                                    ELSE NULL
+                                   END)
+              WHERE semantic_type IS NOT NULL;
+
+  - changeSet:
+      id: 308
+      author: camsaul
+      comment: Added 0.40.0 -- Move semantic types into their own hierarchy
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET base_type = 'type/Text',
+                  semantic_type = 'Semantic/SerializedJSON'
+              WHERE base_type = 'type/SerializedJSON';
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

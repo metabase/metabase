@@ -140,7 +140,7 @@
   [{:keys [id]}]
   (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (db/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
+      (db/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :Relation/PK)))))
 
 (defn schema-exists?
   "Does `database` have any tables with `schema`?"

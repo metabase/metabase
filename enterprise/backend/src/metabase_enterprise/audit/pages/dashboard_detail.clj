@@ -24,7 +24,7 @@
 (s/defn ^:internal-query-fn cards
   [dashboard-id :- su/IntGreaterThanZero]
   {:metadata [[:card_id             {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
-              [:card_name           {:display_name "Title",                :base_type :type/Name,    :remapped_from :card_id}]
+              [:card_name           {:display_name "Title",                :base_type :Semantic/Name,    :remapped_from :card_id}]
               [:collection_id       {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]
               [:collection_name     {:display_name "Collection",           :base_type :type/Text,    :remapped_from :collection_id}]
               [:created_at          {:display_name  "Created At",          :base_type :type/DateTime}]
@@ -34,7 +34,7 @@
               [:table_name          {:display_name "Table",                :base_type :type/Text,    :remapped_from :table_id}]
               [:avg_running_time_ms {:display_name "Avg. exec. time (ms)", :base_type :type/Number}]
               [:cache_ttl           {:display_name "Cache TTL",            :base_type :type/Number}]
-              [:public_link         {:display_name "Public Link",          :base_type :type/URL}]
+              [:public_link         {:display_name "Public Link",          :base_type :Semantic/URL}]
               [:total_views         {:display_name "Total Views",          :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with      [[:card {:select [:card.*

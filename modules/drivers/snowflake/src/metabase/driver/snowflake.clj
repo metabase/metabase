@@ -95,7 +95,7 @@
     :CHARACTER                  :type/Text
     :STRING                     :type/Text
     :TEXT                       :type/Text
-    :GEOGRAPHY                  :type/SerializedJSON
+    :GEOGRAPHY                  :type/Text ; TODO -- semantic type should be Semantic/SerializedJSON
     :BINARY                     :type/*
     :VARBINARY                  :type/*
     :BOOLEAN                    :type/Boolean

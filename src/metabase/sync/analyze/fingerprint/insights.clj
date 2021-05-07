@@ -228,7 +228,7 @@
                                          (assoc col :position idx)))
                           (group-by (fn [{:keys [base_type semantic_type unit] :as field}]
                                       (cond
-                                        (#{:type/FK :type/PK} semantic_type) :others
+                                        (#{:Relation/FK :Relation/PK} semantic_type) :others
                                         (= unit :year)                       :datetimes
                                         (u.date/extract-units unit)          :numbers
                                         (field/unix-timestamp? field)        :datetimes

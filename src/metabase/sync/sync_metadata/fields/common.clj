@@ -25,26 +25,25 @@
     (s/optional-key :id)            su/IntGreaterThanZero
     (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithOptionalID)}))
 
-
 (s/defn field-metadata-name-for-logging :- s/Str
   "Return a 'name for logging' for a map that conforms to the `TableMetadataField` schema.
 
       (field-metadata-name-for-logging table field-metadata) ; -> \"Table 'venues' Field 'name'\""
-  [table :- i/TableInstance, field-metadata :- TableMetadataFieldWithOptionalID]
+  [table :- i/TableInstance field-metadata :- TableMetadataFieldWithOptionalID]
   (format "%s %s '%s'" (sync-util/name-for-logging table) (trs "Field") (:name field-metadata)))
 
 (defn canonical-name
   "Return the lower-cased 'canonical' name that should be used to uniquely identify `field` -- this is done to ignore
-  case differences when syncing, e.g. we will consider `FIELD` and `field` to mean the same thing."
+  case differences when syncing, e.g. we will consider `field` and `field` to mean the same thing."
   [field]
   (str/lower-case (:name field)))
 
-(s/defn semantic-type :- (s/maybe su/FieldType)
+(s/defn semantic-type :- (s/maybe su/FieldSemanticOrRelationType)
   "Determine a the appropriate `semantic-type` for a Field with `field-metadata`."
   [field-metadata :- (s/maybe i/TableMetadataField)]
   (and field-metadata
        (or (:semantic-type field-metadata)
-           (when (:pk? field-metadata) :type/PK))))
+           (when (:pk? field-metadata) :Relation/PK))))
 
 (s/defn matching-field-metadata :- (s/maybe TableMetadataFieldWithOptionalID)
   "Find Metadata that matches `field-metadata` from a set of `other-metadata`, if any exists. Useful for finding the

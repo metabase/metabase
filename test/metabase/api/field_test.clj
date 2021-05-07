@@ -50,7 +50,7 @@
                                      :caveats                 nil
                                      :points_of_interest      nil
                                      :show_in_getting_started false})
-                 :semantic_type    "type/Name"
+                 :semantic_type    "Semantic/Name"
                  :name             "NAME"
                  :display_name     "Name"
                  :position         1
@@ -93,14 +93,14 @@
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:name            "something else"
                                                                                        :display_name    "yay"
                                                                                        :description     "foobar"
-                                                                                       :semantic_type   :type/Name
+                                                                                       :semantic_type   :Semantic/Name
                                                                                        :visibility_type :sensitive})
           (let [updated-val (simple-field-details (Field field-id))]
             (testing "updated value"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
                       :description        "foobar"
-                      :semantic_type      :type/Name
+                      :semantic_type      :Semantic/Name
                       :visibility_type    :sensitive
                       :fk_target_field_id nil}
                      updated-val)))
@@ -118,15 +118,15 @@
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
-    (testing "when we set the semantic-type from `:type/FK` to something else, make sure `:fk_target_field_id` is set to nil"
+    (testing "when we set the semantic-type from `:Relation/FK` to something else, make sure `:fk_target_field_id` is set to nil"
       (mt/with-temp* [Field [{fk-field-id :id}]
-                      Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id fk-field-id}]]
+                      Field [{field-id :id} {:semantic_type :Relation/FK, :fk_target_field_id fk-field-id}]]
         (let [original-val (boolean (db/select-one-field :fk_target_field_id Field, :id field-id))]
           (testing "before API call"
             (is (= true
                    original-val)))
-          ;; unset the :type/FK semantic-type
-          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :type/Name})
+          ;; unset the :Relation/FK semantic-type
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type :Semantic/Name})
           (testing "after API call"
             (is (= nil
                    (db/select-one-field :fk_target_field_id Field, :id field-id)))))))))
@@ -136,8 +136,8 @@
     (testing "check that you *can* set `:fk_target_field_id` if it *is* the proper base type"
       (mt/with-temp Field [{field-id :id} {:base_type :type/Integer}]
         (mt/user-http-request :crowberto :put 200 (str "field/" field-id)
-                              {:semantic_type :type/Quantity})
-        (is (= :type/Quantity
+                              {:semantic_type :Semantic/Quantity})
+        (is (= :Semantic/Quantity
                (db/select-one-field :semantic_type Field, :id field-id)))))))
 
 (defn- field->field-values
@@ -375,7 +375,7 @@
   (testing "PUT /api/field/:id"
     (testing "When an FK field gets it's semantic_type removed, we should clear the external dimension"
       (mt/with-temp* [Field [{field-id-1 :id} {:name          "Field Test 1"
-                                               :semantic_type :type/FK}]
+                                               :semantic_type :Relation/FK}]
                       Field [{field-id-2 :id} {:name "Field Test 2"}]]
         (create-dimension-via-API! field-id-1
           {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
@@ -397,7 +397,7 @@
   (testing "PUT /api/field/:id"
     (testing "Updating unrelated properties should not affect a Field's `:dimensions`"
       (mt/with-temp* [Field [{field-id-1 :id} {:name          "Field Test 1"
-                                               :semantic_type :type/FK}]
+                                               :semantic_type :Relation/FK}]
                       Field [{field-id-2 :id} {:name "Field Test 2"}]]
         ;; create the Dimension
         (create-dimension-via-API! field-id-1
@@ -423,14 +423,14 @@
   (testing "When removing the FK semantic type, the fk_target_field_id should be cleared as well"
     (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                     Field [{field-id-2 :id} {:name               "Field Test 2"
-                                             :semantic_type      :type/FK
+                                             :semantic_type      :Relation/FK
                                              :fk_target_field_id field-id-1}]]
       (testing "before change"
         (is (= {:name               "Field Test 2"
                 :display_name       "Field Test 2"
                 :description        nil
                 :visibility_type    :normal
-                :semantic_type      :type/FK
+                :semantic_type      :Relation/FK
                 :fk_target_field_id true}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
@@ -448,7 +448,7 @@
     (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                     Field [{field-id-2 :id} {:name "Field Test 2"}]
                     Field [{field-id-3 :id} {:name               "Field Test 3"
-                                             :semantic_type      :type/FK
+                                             :semantic_type      :Relation/FK
                                              :fk_target_field_id field-id-1}]]
       (let [before-change (simple-field-details (Field field-id-3))]
         (testing "before change"
@@ -456,7 +456,7 @@
                   :display_name       "Field Test 3"
                   :description        nil
                   :visibility_type    :normal
-                  :semantic_type      :type/FK
+                  :semantic_type      :Relation/FK
                   :fk_target_field_id true}
                  (mt/boolean-ids-and-timestamps before-change))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
@@ -466,7 +466,7 @@
                     :display_name       "Field Test 3"
                     :description        nil
                     :visibility_type    :normal
-                    :semantic_type      :type/FK
+                    :semantic_type      :Relation/FK
                     :fk_target_field_id true}
                    (mt/boolean-ids-and-timestamps after-change)))
             (is (not= (:fk_target_field_id before-change)
@@ -485,14 +485,14 @@
                 :semantic_type      nil
                 :fk_target_field_id false}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
-      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :Relation/FK
                                                                              :fk_target_field_id field-id-1})
       (testing "after change"
         (is (= {:name               "Field Test 2"
                 :display_name       "Field Test 2"
                 :description        nil
                 :visibility_type    :normal
-                :semantic_type      :type/FK
+                :semantic_type      :Relation/FK
                 :fk_target_field_id true}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2)))))))))
 
@@ -501,14 +501,14 @@
     (testing "fk_target_field_id and FK should remain unchanged on updates of other fields"
       (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                       Field [{field-id-2 :id} {:name               "Field Test 2"
-                                               :semantic_type      :type/FK
+                                               :semantic_type      :Relation/FK
                                                :fk_target_field_id field-id-1}]]
         (testing "before change"
           (is (= {:name               "Field Test 2"
                   :display_name       "Field Test 2"
                   :description        nil
                   :visibility_type    :normal
-                  :semantic_type      :type/FK
+                  :semantic_type      :Relation/FK
                   :fk_target_field_id true}
                  (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:description "foo"})
@@ -517,7 +517,7 @@
                   :display_name       "Field Test 2"
                   :description        "foo"
                   :visibility_type    :normal
-                  :semantic_type      :type/FK
+                  :semantic_type      :Relation/FK
                   :fk_target_field_id true}
                  (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))))))
 

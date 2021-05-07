@@ -21,10 +21,10 @@
 
 ;; Check that our `base-types->descendants` function properly returns a set of descendants including parent type
 (deftest base-type->descendats-test
-  (is (= #{"type/URL" "type/ImageURL" "type/AvatarURL"}
-         (#'fingerprint/base-types->descendants #{:type/URL})))
-  (is (= #{"type/ImageURL" "type/AvatarURL"}
-         (#'fingerprint/base-types->descendants #{:type/ImageURL :type/AvatarURL}))))
+  (is (= #{"Semantic/URL" "Semantic/ImageURL" "Semantic/AvatarURL"}
+         (#'fingerprint/base-types->descendants #{:Semantic/URL})))
+  (is (= #{"Semantic/ImageURL" "Semantic/AvatarURL"}
+         (#'fingerprint/base-types->descendants #{:Semantic/ImageURL :Semantic/AvatarURL}))))
 
 
 ;; Make sure we generate the correct HoneySQL WHERE clause based on whatever is in
@@ -34,34 +34,34 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb.u/isa :semantic_type :type/PK)]
+            [:not (mdb.u/isa :semantic_type :Relation/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not= :base_type "type/Structured"]
            [:or
             [:and
              [:< :fingerprint_version 1]
-             [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
-         (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/URL}}]
+             [:in :base_type #{"Semantic/URL" "Semantic/ImageURL" "Semantic/AvatarURL"}]]]]}
+         (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:Semantic/URL}}]
            (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))
 
   (is (= {:where
           [:and
            [:= :active true]
            [:or
-            [:not (mdb.u/isa :semantic_type :type/PK)]
+            [:not (mdb.u/isa :semantic_type :Relation/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not= :base_type "type/Structured"]
            [:or
             [:and
              [:< :fingerprint_version 2]
-             [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
-                               "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost"}]]
+             [:in :base_type #{"type/Decimal" "Semantic/Latitude" "Semantic/Longitude" "Semantic/Coordinate" "Semantic/Currency" "type/Float"
+                               "Semantic/Share" "Semantic/Income" "Semantic/Price" "Semantic/Discount" "Semantic/GrossMargin" "Semantic/Cost"}]]
             [:and
              [:< :fingerprint_version 1]
-             [:in :base_type #{"type/ImageURL" "type/AvatarURL"}]]]]}
-         (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/ImageURL :type/AvatarURL}
+             [:in :base_type #{"Semantic/ImageURL" "Semantic/AvatarURL"}]]]]}
+         (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:Semantic/ImageURL :Semantic/AvatarURL}
                                                                                      2 #{:type/Float}}]
            (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))
   (testing "our SQL generation code is clever enough to remove version checks when a newer version completely eclipses them"
@@ -69,20 +69,20 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:not (mdb.u/isa :semantic_type :Relation/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not= :base_type "type/Structured"]
              [:or
               [:and
                [:< :fingerprint_version 2]
-               [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
-                                 "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost"}]]
+               [:in :base_type #{"type/Decimal" "Semantic/Latitude" "Semantic/Longitude" "Semantic/Coordinate" "Semantic/Currency" "type/Float"
+                                 "Semantic/Share" "Semantic/Income" "Semantic/Price" "Semantic/Discount" "Semantic/GrossMargin" "Semantic/Cost"}]]
               ;; no type/Float stuff should be included for 1
               [:and
                [:< :fingerprint_version 1]
-               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]}
-           (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/Float :type/URL}
+               [:in :base_type #{"Semantic/URL" "Semantic/ImageURL" "Semantic/AvatarURL"}]]]]}
+           (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/Float :Semantic/URL}
                                                                                        2 #{:type/Float}}]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
   (testing "our SQL generation code is also clever enough to completely skip completely eclipsed versions"
@@ -90,33 +90,33 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.u/isa :semantic_type :type/PK)]
+              [:not (mdb.u/isa :semantic_type :Relation/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not= :base_type "type/Structured"]
              [:or
               [:and
                [:< :fingerprint_version 4]
-               [:in :base_type #{"type/Decimal" "type/Latitude" "type/Longitude" "type/Coordinate" "type/Currency" "type/Float"
-                                 "type/Share" "type/Income" "type/Price" "type/Discount" "type/GrossMargin" "type/Cost"}]]
+               [:in :base_type #{"type/Decimal" "Semantic/Latitude" "Semantic/Longitude" "Semantic/Coordinate" "Semantic/Currency" "type/Float"
+                                 "Semantic/Share" "Semantic/Income" "Semantic/Price" "Semantic/Discount" "Semantic/GrossMargin" "Semantic/Cost"}]]
               [:and
                [:< :fingerprint_version 3]
-               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]
+               [:in :base_type #{"Semantic/URL" "Semantic/ImageURL" "Semantic/AvatarURL"}]]
               ;; version 2 can be eliminated completely since everything relevant there is included in 4
-              ;; The only things that should go in 1 should be `:type/City` since `:type/Coordinate` is included in 4
+              ;; The only things that should go in 1 should be `:Semantic/City` since `:Semantic/Coordinate` is included in 4
               [:and
                [:< :fingerprint_version 1]
-               [:in :base_type #{"type/City"}]]]]}
-           (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/Coordinate :type/City}
-                                                                                       2 #{:type/Coordinate}
-                                                                                       3 #{:type/URL}
+               [:in :base_type #{"Semantic/City"}]]]]}
+           (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:Semantic/Coordinate :Semantic/City}
+                                                                                       2 #{:Semantic/Coordinate}
+                                                                                       3 #{:Semantic/URL}
                                                                                        4 #{:type/Float}}]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
   (testing "when refingerprinting doesn't check for versions"
     (is (= {:where [:and
                     [:= :active true]
                     [:or
-                     [:not (mdb.u/isa :semantic_type :type/PK)]
+                     [:not (mdb.u/isa :semantic_type :Relation/PK)]
                      [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
                     [:not= :base_type "type/Structured"]]}

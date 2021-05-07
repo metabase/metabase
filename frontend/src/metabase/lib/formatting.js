@@ -66,7 +66,7 @@ export type FormattingOptions = {
   type?: "axis" | "cell" | "tooltip",
   jsx?: boolean,
   remap?: boolean,
-  // render links for type/URLs, type/Email, etc
+  // render links for Semantic/URLs, Semantic/Email, etc
   rich?: boolean,
   compact?: boolean,
   // always format as the start value rather than the range, e.x. for bar histogram

@@ -83,14 +83,14 @@
 
 (deftest resolve-default-strategy-test
   (is (= [:num-bins {:num-bins 8, :bin-width 28.28321}]
-         (#'binning/resolve-default-strategy {:semantic_type :type/Income} 12.061602936923117 238.32732001721533))))
+         (#'binning/resolve-default-strategy {:semantic_type :Semantic/Income} 12.061602936923117 238.32732001721533))))
 
 ;; Try an end-to-end test of the middleware
 (defn- test-field []
   (field/map->FieldInstance
    {:database_type  "DOUBLE"
     :table_id       (mt/id :checkins)
-    :semantic_type  :type/Income
+    :semantic_type  :Semantic/Income
     :name           "TOTAL"
     :display_name   "Total"
     :fingerprint    {:global {:distinct-count 10000}

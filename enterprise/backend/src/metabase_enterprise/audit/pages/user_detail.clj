@@ -14,7 +14,7 @@
   to a single result.
   (TODO - in the designs, this is pivoted; should we do that here in Clojure-land?)"
   [user-id :- su/IntGreaterThanZero]
-  {:metadata [[:name             {:display_name "Name",             :base_type :type/Name}]
+  {:metadata [[:name             {:display_name "Name",             :base_type :Semantic/Name}]
               [:role             {:display_name "Role",             :base_type :type/Text}]
               [:groups           {:display_name "Groups",           :base_type :type/Text}]
               [:date_joined      {:display_name "Date Joined",      :base_type :type/DateTime}]
@@ -78,7 +78,7 @@
   "Return the 10 most-viewed Dashboards for a given User, in descending order."
   [user-id :- su/IntGreaterThanZero]
   {:metadata [[:dashboard_id   {:display_name "Dashboard ID", :base_type :type/Integer, :remapped_to   :dashboard_name}]
-              [:dashboard_name {:display_name "Dashboard",    :base_type :type/Name,    :remapped_from :dashboard_id}]
+              [:dashboard_name {:display_name "Dashboard",    :base_type :Semantic/Name,    :remapped_from :dashboard_id}]
               [:count          {:display_name "Views",        :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:select    [[:d.id :dashboard_id]
@@ -97,7 +97,7 @@
   "Return the 10 most-viewed Questions for a given User, in descending order."
   [user-id :- su/IntGreaterThanZero]
   {:metadata [[:card_id   {:display_name "Card ID", :base_type :type/Integer, :remapped_to   :card_name}]
-              [:card_name {:display_name "Query",   :base_type :type/Name,    :remapped_from :card_id}]
+              [:card_name {:display_name "Query",   :base_type :Semantic/Name,    :remapped_from :card_id}]
               [:count     {:display_name "Views",   :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:select    [[:d.id :card_id]
@@ -196,7 +196,7 @@
 (s/defn ^:internal-query-fn created-questions
   [user-id :- su/IntGreaterThanZero]
   {:metadata [[:card_id             {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
-              [:card_name           {:display_name "Title",                :base_type :type/Name,    :remapped_from :card_id}]
+              [:card_name           {:display_name "Title",                :base_type :Semantic/Name,    :remapped_from :card_id}]
               [:collection_id       {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]
               [:collection_name     {:display_name "Collection",           :base_type :type/Text,    :remapped_from :collection_id}]
               [:created_at          {:display_name "Created At",           :base_type :type/DateTime}]
@@ -206,7 +206,7 @@
               [:table_name          {:display_name "Table",                :base_type :type/Text,    :remapped_from :table_id}]
               [:avg_running_time_ms {:display_name "Avg. exec. time (ms)", :base_type :type/Number}]
               [:cache_ttl           {:display_name "Cache TTL",            :base_type :type/Number}]
-              [:public_link         {:display_name "Public Link",          :base_type :type/URL}]
+              [:public_link         {:display_name "Public Link",          :base_type :Semantic/URL}]
               [:total_views         {:display_name "Total Views",          :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with      [cards/avg-exec-time

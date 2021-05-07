@@ -52,7 +52,7 @@
   "Deprecated: use `most-popular-with-avg-speed` instead."
   []
   {:metadata [[:dashboard_id   {:display_name "Dashboard ID", :base_type :type/Integer, :remapped_to   :dashboard_name}]
-              [:dashboard_name {:display_name "Dashboard",    :base_type :type/Title,   :remapped_from :dashboard_id}]
+              [:dashboard_name {:display_name "Dashboard",    :base_type :Semantic/Title,   :remapped_from :dashboard_id}]
               [:views          {:display_name "Views",        :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:select    [[:d.id :dashboard_id]
@@ -69,7 +69,7 @@
   "10 most popular dashboards with their average speed."
   []
   {:metadata [[:dashboard_id     {:display_name "Dashboard ID",                 :base_type :type/Integer, :remapped_to   :dashboard_name}]
-              [:dashboard_name   {:display_name "Dashboard",                    :base_type :type/Title,   :remapped_from :dashboard_id}]
+              [:dashboard_name   {:display_name "Dashboard",                    :base_type :Semantic/Title,   :remapped_from :dashboard_id}]
               [:views            {:display_name "Views",                        :base_type :type/Integer}]
               [:avg_running_time {:display_name "Avg. Question Load Time (ms)", :base_type :type/Decimal}]]
    :results  (common/reducible-query
@@ -109,7 +109,7 @@
   "Query that returns the 10 Dashboards that have the slowest average execution times, in descending order."
   []
   {:metadata [[:dashboard_id     {:display_name "Dashboard ID",                 :base_type :type/Integer, :remapped_to   :dashboard_name}]
-              [:dashboard_name   {:display_name "Dashboard",                    :base_type :type/Title,   :remapped_from :dashboard_id}]
+              [:dashboard_name   {:display_name "Dashboard",                    :base_type :Semantic/Title,   :remapped_from :dashboard_id}]
               [:avg_running_time {:display_name "Avg. Question Load Time (ms)", :base_type :type/Decimal}]]
    :results  (common/reducible-query
               {:with      [[:card_running_time {:select   [:qe.card_id
@@ -132,7 +132,7 @@
   "Query that returns the 10 Cards that appear most often in Dashboards, in descending order."
   []
   {:metadata [[:card_id   {:display_name "Card ID", :base_type :type/Integer, :remapped_to   :card_name}]
-              [:card_name {:display_name "Card",    :base_type :type/Title,   :remapped_from :card_id}]
+              [:card_name {:display_name "Card",    :base_type :Semantic/Title,   :remapped_from :card_id}]
               [:count     {:display_name "Count",   :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:select   [[:c.id :card_id]

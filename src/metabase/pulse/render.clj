@@ -44,8 +44,8 @@
                                  :src   (:image-src image-bundle)}])]]]]})))
 
 (defn- number-field?
-  [{base-type :base_type, semantic-type :semantic_type}]
-  (some #(isa? % :type/Number) [base-type semantic-type]))
+  [{effective-type :effective_type}]
+  (some #(isa? % :type/Number) effective-type))
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."

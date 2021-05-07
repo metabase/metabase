@@ -183,7 +183,7 @@
 ;; the data shouldn't be bad.
 (defmigration ^{:author "camsaul", :added "0.29.0", :catch? true} mark-category-fields-as-list
   (db/update-where! Field {:has_field_values nil
-                           :semantic_type     (mdb.u/isa :type/Category)
+                           :semantic_type     (mdb.u/isa :Semantic/Category)
                            :active           true}
     :has_field_values "list"))
 

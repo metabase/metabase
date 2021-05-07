@@ -8,11 +8,11 @@
             [toucan.db :as db]))
 
 (deftest semantic-type-for-name-and-base-type-test
-  (doseq [[input expected] {["id"      :type/Integer] :type/PK
+  (doseq [[input expected] {["id"      :type/Integer] :Relation/PK
                             ;; other pattern matches based on type/regex (remember, base_type matters in matching!)
-                            ["rating"  :type/Integer] :type/Score
+                            ["rating"  :type/Integer] :Semantic/Score
                             ["rating"  :type/Boolean] nil
-                            ["country" :type/Text]    :type/Country
+                            ["country" :type/Text]    :Semantic/Country
                             ["country" :type/Integer] nil}]
     (testing (pr-str (cons 'semantic-type-for-name-and-base-type input))
       (is (= expected
@@ -26,7 +26,7 @@
                                                         :unknown-type  :type/Amazing
                                                         :fallback-type :type/*}
                                                        {:column        :semantic_type
-                                                        :unknown-type  :type/Amazing
+                                                        :unknown-type  :Semantic/Amazing
                                                         :fallback-type nil}
                                                        {:column        :coercion_strategy
                                                         :unknown-type  :Coercion/Amazing

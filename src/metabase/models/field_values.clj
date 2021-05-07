@@ -9,7 +9,7 @@
             [toucan.models :as models]))
 
 (def ^Integer category-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
+  "Fields with less than this many distinct values should automatically be given a semantic type of `:Semantic/Category`.
   This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
   frontend behavior such as widget choices."
   (int 30))

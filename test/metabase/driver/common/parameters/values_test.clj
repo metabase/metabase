@@ -107,7 +107,7 @@
                      :parent_id     nil
                      :table_id      (mt/id :checkins)
                      :base_type     :type/BigInteger
-                     :semantic_type :type/PK})
+                     :semantic_type :Relation/PK})
             :value {:type  :id
                     :value 5}}
            (value-for-tag

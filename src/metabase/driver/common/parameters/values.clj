@@ -251,7 +251,7 @@
   to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
   special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
   UUID fields."
-  [effective-type :- su/FieldType value]
+  [effective-type :- su/FieldDataType value]
   (cond
     (isa? effective-type :type/UUID)
     (UUID/fromString value)

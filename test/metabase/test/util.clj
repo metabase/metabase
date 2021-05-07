@@ -363,7 +363,7 @@
   example, Database/Table/Field rows related to the test DBs can be temporarily tweaked in this way.
 
     ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
-    (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :semantic_type \"type/FK\"}
+    (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :semantic_type \"Relation/FK\"}
       (do-something))"
   {:style/indent 3}
   [model object-or-id column->temp-value & body]

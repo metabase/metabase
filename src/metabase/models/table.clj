@@ -26,7 +26,7 @@
   `:database`     - use the same order as in the table definition in the DB;
   `:alphabetical` - order alphabetically by name;
   `:custom`       - the user manually set the order in the data model
-  `:smart`        - Try to be smart and order like you'd usually want it: first PK, followed by `:type/Name`s, then
+  `:smart`        - Try to be smart and order like you'd usually want it: first PK, followed by `:Semantic/Name`s, then
                     `:type/Temporal`s, and from there on in alphabetical order."
   #{:database :alphabetical :custom :smart})
 
@@ -86,8 +86,8 @@
                   {:order-by (case (:field_order table)
                                :custom       [[:custom_position :asc]]
                                :smart        [[(hsql/call :case
-                                                 (mdb.u/isa :semantic_type :type/PK)       0
-                                                 (mdb.u/isa :semantic_type :type/Name)     1
+                                                 (mdb.u/isa :semantic_type :Relation/PK)       0
+                                                 (mdb.u/isa :semantic_type :Semantic/Name)     1
                                                  (mdb.u/isa :semantic_type :type/Temporal) 2
                                                  :else                                    3)
                                                :asc]
@@ -153,7 +153,7 @@
   [{:keys [id]}]
   (db/select-one-id Field
     :table_id        id
-    :semantic_type   (mdb.u/isa :type/PK)
+    :semantic_type   (mdb.u/isa :Relation/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
 
 

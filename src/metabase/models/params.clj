@@ -74,7 +74,7 @@
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
   [fields]
-  (filter #(isa? (:semantic_type %) :type/PK) fields))
+  (filter #(isa? (:semantic_type %) :Relation/PK) fields))
 
 (def ^:private Field:params-columns-only
   "Form for use in Toucan `db/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
@@ -86,20 +86,20 @@
   ['Field :id :table_id :display_name :base_type :semantic_type :has_field_values])
 
 (defn- fields->table-id->name-field
-  "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
+  "Given a sequence of `fields,` return a map of Table ID -> to a `:Semantic/Name` Field in that Table, if one exists. In
   cases where more than one name Field exists for a Table, this just adds the first one it finds."
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
     (u/key-by :table_id (-> (db/select Field:params-columns-only
                               :table_id      [:in table-ids]
-                              :semantic_type (mdb.u/isa :type/Name))
+                              :semantic_type (mdb.u/isa :Semantic/Name))
                             ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
                             ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                             ;; `list` instead of `auto-list`.)
                             (hydrate :has_field_values)))))
 
 (defn add-name-field
-  "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
+  "For all `fields` that are `:Relation/PK` Fields, look for a `:Semantic/Name` Field belonging to the same Table. For each
   Field, if a matching name Field exists, add it under the `:name_field` key. This is so the Fields can be used in
   public/embedded field values search widgets. This only includes the information needed to power those widgets, and
   no more."
@@ -108,7 +108,7 @@
   (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
     (for [field fields]
       ;; add matching `:name_field` if it's a PK
-      (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
+      (assoc field :name_field (when (isa? (:semantic_type field) :Relation/PK)
                                  (table-id->name-field (:table_id field)))))))
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we

@@ -28,7 +28,7 @@
           :coercion-strategy (:coercion_strategy field)
           :base-type         (:base_type field)
           :semantic-type     (:semantic_type field)
-          :pk?               (isa? (:semantic_type field) :type/PK)
+          :pk?               (isa? (:semantic_type field) :Relation/PK)
           :field-comment     (:description field)
           :database-position (:database_position field)})
        ;; make a map of parent-id -> set of child Fields

@@ -30,8 +30,8 @@
   {:name                           s/Str
    :display_name                   s/Str
    (s/optional-key :description)   (s/maybe su/NonBlankString)
-   :base_type                      su/FieldTypeKeywordOrString
-   (s/optional-key :semantic_type) (s/maybe su/FieldTypeKeywordOrString)
+   :base_type                      su/FieldDataTypeKeywordOrString
+   (s/optional-key :semantic_type) (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
    (s/optional-key :unit)          (s/maybe DateTimeUnitKeywordOrString)
    (s/optional-key :fingerprint)   (s/maybe i/Fingerprint)
    (s/optional-key :id)            (s/maybe su/IntGreaterThanZero)
@@ -58,10 +58,10 @@
    col
    :semantic_type
    (fn [original-value]
-     ;; If we already know the semantic type, becouse it is stored, don't classify again, but try to refine semantic
-     ;; type set upstream for aggregation cols (which come back as :type/Number).
+     ;; If we already know the semantic type, because it is stored, don't classify again, but try to refine semantic
+     ;; type set upstream for aggregation cols (which come back as :Semantic/Quantity).
      (case original-value
-       (nil :type/Number) (classify-name/infer-semantic-type col)
+       (nil :Semantic/Quantity) (classify-name/infer-semantic-type col)
        original-value))))
 
 (s/defn ^:private col->ResultColumnMetadata :- ResultColumnMetadata

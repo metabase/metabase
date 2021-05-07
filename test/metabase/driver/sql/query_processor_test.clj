@@ -81,7 +81,7 @@
                               :order-by     [[:asc $id]]
                               :filter       [:=
                                              &c.categories.name
-                                             [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
+                                             [:value "BBQ" {:base_type :type/Text, :semantic_type :Semantic/Name, :database_type "VARCHAR"}]]
                               :fields       [$id $name $category_id $latitude $longitude $price]
                               :limit        100
                               :joins        [{:source-table $$categories
@@ -144,7 +144,7 @@
                                                [:starts-with
                                                 &v.venues.name
                                                 [:value "F" {:base_type     :type/Text
-                                                             :semantic_type :type/Name
+                                                             :semantic_type :Semantic/Name
                                                              :database_type "VARCHAR"}]]
                                                [:> [:field "user_id" {:base-type :type/Integer}] 0]]
                                 :joins        [{:source-table $$venues

@@ -991,7 +991,7 @@ describeWithToken("formatting > sandboxes", () => {
       // Remap REVIEWS.PRODUCT_ID Field Type to ORDERS.ID
       cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
         table_id: REVIEWS_ID,
-        special_type: "type/FK",
+        special_type: "Relation/FK",
         name: "PRODUCT_ID",
         fk_target_field_id: ORDERS.ID,
         display_name: "Product ID",

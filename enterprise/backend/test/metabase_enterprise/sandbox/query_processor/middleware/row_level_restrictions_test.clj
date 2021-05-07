@@ -169,7 +169,7 @@
                                                               [:value 5 {:base_type         :type/Integer
                                                                          :effective_type    :type/Integer
                                                                          :coercion_strategy nil
-                                                                         :semantic_type     :type/FK
+                                                                         :semantic_type     :Relation/FK
                                                                          :database_type     "INTEGER"
                                                                          :name              "USER_ID"}]]]
                                               ::row-level-restrictions/gtap?        true}
@@ -182,7 +182,7 @@
                                                                [:value 1 {:base_type         :type/Integer
                                                                           :effective_type    :type/Integer
                                                                           :coercion_strategy nil
-                                                                          :semantic_type     :type/Category
+                                                                          :semantic_type     :Semantic/Category
                                                                           :database_type     "INTEGER"
                                                                           :name              "PRICE"}]]
                                                 ::row-level-restrictions/gtap?        true}

@@ -353,7 +353,7 @@
       (let [metadata  [{:base_type    :type/Integer
                         :display_name "Count Chocula"
                         :name         "count_chocula"
-                        :semantic_type :type/Number}]
+                        :semantic_type :Semantic/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -367,7 +367,7 @@
             (is (= [{:base_type    :type/Integer
                      :display_name "Count Chocula"
                      :name         "count_chocula"
-                     :semantic_type :type/Number}]
+                     :semantic_type :Semantic/Quantity}]
                    (db/select-one-field :result_metadata Card :name card-name)))))))))
 
 (deftest save-card-with-empty-result-metadata-test
@@ -399,7 +399,7 @@
     (let [metadata  [{:base_type    :type/Integer
                       :display_name "Count Chocula"
                       :name         "count_chocula"
-                      :semantic_type :type/Number
+                      :semantic_type :Semantic/Quantity
                       :fingerprint  {:global {:distinct-count 285},
                                      :type {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
           card-name (mt/random-name)]
@@ -417,7 +417,7 @@
               (is (= [{:base_type    :type/Integer
                        :display_name "Count Chocula"
                        :name         "count_chocula"
-                       :semantic_type :type/Number
+                       :semantic_type :Semantic/Quantity
                        :fingerprint  {:global {:distinct-count 285},
                                       :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
@@ -428,7 +428,7 @@
       (let [metadata  [{:base_type    :type/BigInteger
                         :display_name "Count Chocula"
                         :name         "count_chocula"
-                        :semantic_type :type/Quantity}]
+                        :semantic_type :Semantic/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -443,7 +443,7 @@
               (is (= [{:base_type    :type/BigInteger
                        :display_name "Count"
                        :name         "count"
-                       :semantic_type :type/Quantity
+                       :semantic_type :Semantic/Quantity
                        :fingerprint  {:global {:distinct-count 1
                                                :nil%           0.0},
                                       :type   {:type/Number {:min 100.0
@@ -461,7 +461,7 @@
       (let [metadata  [{:base_type    :type/Integer
                         :display_name "Count Chocula"
                         :name         "count_chocula"
-                        :semantic_type :type/Quantity}]
+                        :semantic_type :Semantic/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -483,7 +483,7 @@
                 (is (= [{:base_type    (count-base-type)
                          :display_name "Count"
                          :name         "count"
-                         :semantic_type :type/Quantity
+                         :semantic_type :Semantic/Quantity
                          :fingerprint  {:global {:distinct-count 1
                                                  :nil%           0.0},
                                         :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
@@ -686,7 +686,7 @@
   (let [metadata [{:base_type    :type/Integer
                    :display_name "Count Chocula"
                    :name         "count_chocula"
-                   :semantic_type :type/Number}]]
+                   :semantic_type :Semantic/Quantity}]]
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
@@ -698,14 +698,14 @@
         (is (= [{:base_type    :type/Integer
                  :display_name "Count Chocula"
                  :name         "count_chocula"
-                 :semantic_type :type/Number}]
+                 :semantic_type :Semantic/Quantity}]
                (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
 
 (deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
   (let [metadata [{:base_type    :type/BigInteger
                    :display_name "Count Chocula"
                    :name         "count_chocula"
-                   :semantic_type :type/Quantity}]]
+                   :semantic_type :Semantic/Quantity}]]
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
@@ -717,7 +717,7 @@
         (is (= [{:base_type    :type/BigInteger
                  :display_name "Count"
                  :name         "count"
-                 :semantic_type :type/Quantity
+                 :semantic_type :Semantic/Quantity
                  :fingerprint  {:global {:distinct-count 1
                                          :nil%           0.0},
                                 :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}

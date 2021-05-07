@@ -424,7 +424,7 @@
                      (fn [thunk [source dest]]
                        (fn []
                          (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
-                                                                                :semantic_type      "type/FK"}
+                                                                                :semantic_type      "Relation/FK"}
                            (thunk))))
                      f
                      {[:checkins :user_id]   [:users :id]

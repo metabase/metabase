@@ -222,7 +222,7 @@
                    :order-by     [[:asc $id]]
                    :filter       [:=
                                   &test_data_categories__via__cat.categories.name
-                                  [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
+                                  [:value "BBQ" {:base_type :type/Text, :semantic_type :Semantic/Name, :database_type "VARCHAR"}]]
                    :fields       [$id $name $category_id $latitude $longitude $price]
                    :limit        100
                    :joins        [{:source-table $$categories

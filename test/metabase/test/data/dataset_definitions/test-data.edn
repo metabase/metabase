@@ -128,13 +128,13 @@
              :fk            :categories}
             {:field-name    "latitude"
              :base-type     :type/Float
-             :semantic-type :type/Latitude}
+             :semantic-type :Semantic/Latitude}
             {:field-name    "longitude"
              :base-type     :type/Float
-             :semantic-type :type/Longitude}
+             :semantic-type :Semantic/Longitude}
             {:field-name    "price"
              :base-type     :type/Integer
-             :semantic-type :type/Category}]
+             :semantic-type :Semantic/Category}]
   [["Red Medicine" 4 10.0646 -165.374 3]                               ;   1
    ["Stout Burgers & Beers" 11 34.0996 -118.329 2]                     ;   2
    ["The Apple Pan" 11 34.0406 -118.428 2]                             ;   3

@@ -289,7 +289,7 @@ export default class Field extends Base {
     if (displayFieldId != null) {
       return this.metadata.field(displayFieldId);
     }
-    // this enables "implicit" remappings from type/PK to type/Name on the same table,
+    // this enables "implicit" remappings from Relation/PK to Semantic/Name on the same table,
     // used in FieldValuesWidget, but not table/object detail listings
     if (this.name_field) {
       return this.name_field;

@@ -148,7 +148,7 @@
                        :mbql [:field nil {:binning (merge {:strategy strategy}
                                                           (when param
                                                             {strategy param}))}]
-                       :type "type/Coordinate"})
+                       :type "Semantic/Coordinate"})
                     [default-entry
                      [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
                      [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
@@ -156,7 +156,7 @@
                      [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
               {:name dont-bin-str
                :mbql nil
-               :type "type/Coordinate"})))))
+               :type "Semantic/Coordinate"})))))
 
 (def ^:private dimension-options-for-response
   (m/map-keys str dimension-options))
@@ -175,7 +175,7 @@
   (create-dim-index-seq "type/Number"))
 
 (def ^:private coordinate-dimension-indexes
-  (create-dim-index-seq "type/Coordinate"))
+  (create-dim-index-seq "Semantic/Coordinate"))
 
 (defn- dimension-index-for-type [dim-type pred]
   (first (m/find-first (fn [[k v]]
@@ -189,7 +189,7 @@
   (dimension-index-for-type "type/Number" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (def ^:private coordinate-default-index
-  (dimension-index-for-type "type/Coordinate" #(.contains ^String (str (:name %)) (str auto-bin-str))))
+  (dimension-index-for-type "Semantic/Coordinate" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (defn- supports-numeric-binning? [driver]
   (and driver (driver/supports? driver :binning)))
@@ -200,20 +200,20 @@
   (and (types/temporal-field? field)
        (not (isa? base_type :type/Time))))
 
-(defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
+(defn- assoc-field-dimension-options
+  [driver {base-type :base_type, semantic-type :semantic_type, :keys [fingerprint], :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
                                        (supports-date-binning? field)
                                        [date-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value
-                                            (isa? semantic_type :type/Coordinate)
+                                            (isa? semantic-type :Semantic/Coordinate)
                                             (supports-numeric-binning? driver))
                                        [coordinate-default-index coordinate-dimension-indexes]
 
                                        (and min_value max_value
-                                            (isa? base_type :type/Number)
-                                            (or (nil? semantic_type) (isa? semantic_type :type/Number))
+                                            (isa? base-type :type/Number)
                                             (supports-numeric-binning? driver))
                                        [numeric-default-index numeric-dimension-indexes]
 
@@ -314,8 +314,8 @@
   type confuses the frontend and it can really used in the same way"
   [{:keys [fields] :as metadata-response}]
   (assoc metadata-response :fields (for [{:keys [semantic_type] :as field} fields]
-                                     (if (or (isa? semantic_type :type/PK)
-                                             (isa? semantic_type :type/FK))
+                                     (if (or (isa? semantic_type :Relation/PK)
+                                             (isa? semantic_type :Relation/FK))
                                        (assoc field :semantic_type nil)
                                        field))))
 

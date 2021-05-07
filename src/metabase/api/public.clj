@@ -342,7 +342,7 @@
 
   *  `search-field-id` and `field-id` are both the same Field
   *  `search-field-id` is equal to the other Field's Dimension's `human-readable-field-id`
-  *  field is a `:type/PK` Field and search field is a `:type/Name` Field belonging to the same Table.
+  *  field is a `:Relation/PK` Field and search field is a `:Semantic/Name` Field belonging to the same Table.
 
   If none of these conditions are met, you are not allowed to use the search field in combination with the other
   field, and an 400 exception will be thrown."
@@ -353,8 +353,8 @@
        (db/exists? Dimension :field_id field-id, :human_readable_field_id search-field-id)
        ;; just do a couple small queries to figure this out, we could write a fancy query to join Field against itself
        ;; and do this in one but the extra code complexity isn't worth it IMO
-       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :semantic_type (mdb.u/isa :type/PK))]
-         (db/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.u/isa :type/Name))))))
+       (when-let [table-id (db/select-one-field :table_id Field :id field-id, :semantic_type (mdb.u/isa :Relation/PK))]
+         (db/exists? Field :id search-field-id, :table_id table-id, :semantic_type (mdb.u/isa :Semantic/Name))))))
 
 
 (defn- check-field-is-referenced-by-dashboard

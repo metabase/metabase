@@ -14,8 +14,8 @@
             [toucan.db :as db]))
 
 (def ^:private FieldTypeInfo
-  {:base-type                      (s/maybe su/FieldType)
-   (s/optional-key :semantic-type) (s/maybe su/FieldType)
+  {:base-type                      (s/maybe su/FieldDataType)
+   (s/optional-key :semantic-type) (s/maybe su/FieldSemanticOrRelationType)
    s/Keyword                       s/Any})
 
 (def ^:private FieldIDOrName->TypeInfo
@@ -39,8 +39,7 @@
      (into {} (for [{id :id, :as field}
                     (db/select [Field :id :base_type :effective_type :semantic_type]
                       :id [:in (set field-ids)])]
-                [id (set/rename-keys (select-keys field
-                                                  [:base_type :effective_type :semantic_type])
+                [id (set/rename-keys (select-keys field [:base_type :effective_type :semantic_type])
                                      {:base_type      :base-type
                                       :effective_type :effective-type
                                       :semantic_type  :semantic-type})])))))

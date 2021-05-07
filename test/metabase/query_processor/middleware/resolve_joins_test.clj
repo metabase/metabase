@@ -257,14 +257,14 @@
                              [{:name          "USER_ID"
                                :display_name  "User ID"
                                :base_type     :type/Integer
-                               :semantic_type :type/FK
+                               :semantic_type :Relation/FK
                                :id            %checkins.user_id
                                :field_ref     $checkins.user_id
                                :fingerprint   {:global {:distinct-count 15, :nil% 0.0}}}
                               {:name          "sum"
                                :display_name  "Sum of ID"
                                :base_type     :type/Decimal
-                               :semantic_type :type/PK
+                               :semantic_type :Relation/PK
                                :field_ref     [:aggregation 0]
                                :fingerprint   nil}]}]
                    :limit  10}))))))

@@ -46,12 +46,12 @@
     ;; ok, NOW run the analysis process
     (analyze/analyze-table! table)
     ;; fields *SHOULD* have semantic types now
-    (is (= #{{:name "LATITUDE", :semantic_type :type/Latitude, :last_analyzed true}
-             {:name "ID", :semantic_type :type/PK, :last_analyzed false}
-             {:name "PRICE", :semantic_type :type/Category, :last_analyzed true}
-             {:name "LONGITUDE", :semantic_type :type/Longitude, :last_analyzed true}
-             {:name "CATEGORY_ID", :semantic_type :type/Category, :last_analyzed true}
-             {:name "NAME", :semantic_type :type/Name, :last_analyzed true}}
+    (is (= #{{:name "LATITUDE", :semantic_type :Semantic/Latitude, :last_analyzed true}
+             {:name "ID", :semantic_type :Relation/PK, :last_analyzed false}
+             {:name "PRICE", :semantic_type :Semantic/Category, :last_analyzed true}
+             {:name "LONGITUDE", :semantic_type :Semantic/Longitude, :last_analyzed true}
+             {:name "CATEGORY_ID", :semantic_type :Semantic/Category, :last_analyzed true}
+             {:name "NAME", :semantic_type :Semantic/Name, :last_analyzed true}}
            (set (for [field (db/select [Field :name :semantic_type :last_analyzed] :table_id (u/get-id table))]
                   (into {} (update field :last_analyzed boolean))))))))
 
@@ -124,7 +124,7 @@
           [values expected] values->expected]
     (testing (str group "\n")
       (testing (pr-str values)
-        (is (= (when expected :type/SerializedJSON)
+        (is (= (when expected :Semantic/SerializedJSON)
                (classified-semantic-type values)))))))
 
 (deftest classify-emails-test
@@ -136,7 +136,7 @@
                                ["true"]                                                          false
                                ["false"]                                                         false}]
       (testing (pr-str values)
-        (is (= (when expected :type/Email)
+        (is (= (when expected :Semantic/Email)
                (classified-semantic-type values)))))))
 
 

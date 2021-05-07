@@ -350,7 +350,7 @@ describe("data_grid", () => {
             name: "M1",
             display_name: "Metric",
             base_type: TYPE.Integer,
-            semantic_type: "type/Currency",
+            semantic_type: "Semantic/Currency",
           },
         ],
       );
@@ -373,7 +373,7 @@ describe("data_grid", () => {
             name: "M1",
             display_name: "Metric",
             base_type: TYPE.Integer,
-            semantic_type: "type/Currency",
+            semantic_type: "Semantic/Currency",
           },
         ],
       );
@@ -402,7 +402,7 @@ describe("data_grid", () => {
             name: "M2",
             display_name: "Metric 2",
             base_type: TYPE.Integer,
-            semantic_type: "type/Currency",
+            semantic_type: "Semantic/Currency",
           },
         ],
       );

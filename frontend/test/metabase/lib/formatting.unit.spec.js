@@ -236,7 +236,7 @@ describe("formatting", () => {
         formatValue("foobar@example.com", {
           jsx: true,
           rich: true,
-          column: { semantic_type: "type/PK" },
+          column: { semantic_type: "Relation/PK" },
         }),
       ).toEqual("foobar@example.com");
     });
@@ -337,7 +337,7 @@ describe("formatting", () => {
         }),
       ).toEqual("data:text/plain;charset=utf-8,hello%20world");
     });
-    it("should return link component for type/URL and  view_as = link", () => {
+    it("should return link component for Semantic/URL and  view_as = link", () => {
       const formatted = formatUrl("http://whatever", {
         jsx: true,
         rich: true,

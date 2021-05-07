@@ -9,12 +9,12 @@
 
 (def ^:private ^:const ^Double percent-valid-threshold
   "Fields that have at least this percent of values that are satisfy some predicate (such as `u/email?`)
-   should be given the corresponding semantic type (such as `:type/Email`)."
+   should be given the corresponding semantic type (such as `:Semantic/Email`)."
   0.95)
 
 (def ^:private ^Double lower-percent-valid-threshold
   "Fields that have at least this lower percent of values that satisfy some predicate (such as `u/state?`) should be
-  given the corresponding semantic type (such as `:type/State`)"
+  given the corresponding semantic type (such as `:Semantic/State`)"
   0.7)
 
 (s/defn ^:private percent-key-above-threshold? :- s/Bool
@@ -27,13 +27,13 @@
 (def ^:private percent-key->semantic-type
   "Map of keys inside the `TextFingerprint` to the corresponding semantic types we should mark a Field as if the value of
   the key is over `percent-valid-thresold`."
-  {:percent-json  [:type/SerializedJSON percent-valid-threshold]
-   :percent-url   [:type/URL            percent-valid-threshold]
-   :percent-email [:type/Email          percent-valid-threshold]
-   :percent-state [:type/State          lower-percent-valid-threshold]})
+  {:percent-json  [:Semantic/SerializedJSON percent-valid-threshold]
+   :percent-url   [:Semantic/URL            percent-valid-threshold]
+   :percent-email [:Semantic/Email          percent-valid-threshold]
+   :percent-state [:Semantic/State          lower-percent-valid-threshold]})
 
-(s/defn ^:private infer-semantic-type-for-text-fingerprint :- (s/maybe su/FieldType)
-  "Check various percentages inside the TEXT-FINGERPRINT and return the corresponding semantic type to mark the Field
+(s/defn ^:private infer-semantic-type-for-text-fingerprint :- (s/maybe su/FieldSemanticType)
+  "Check various percentages inside the `text-fingerprint` and return the corresponding semantic type to mark the Field
   as if the percent passes the threshold."
   [text-fingerprint :- i/TextFingerprint]
   (some (fn [[percent-key [semantic-type threshold]]]

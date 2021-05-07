@@ -86,6 +86,6 @@
             {:name              "My Field"
              :database-type     "Integer"
              :base-type         :type/Integer
-             :semantic-type     :type/Price
+             :semantic-type     :Semantic/Price
              :id                1
              :database-position 0})))))

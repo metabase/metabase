@@ -19,7 +19,7 @@
               :database-type     "SERIAL"
               :base-type         :type/Integer
               :effective-type    :type/Integer
-              :semantic-type     :type/PK
+              :semantic-type     :Relation/PK
               :pk?               true}
              {:name              "buyer"
               :database-type     "OBJECT"
@@ -61,7 +61,7 @@
                                                           :database-type     "DECIMAL"
                                                           :base-type         :type/Decimal
                                                           :effective-type    :type/Decimal
-                                                          :semantic-type     :type/Category
+                                                          :semantic-type     :Semantic/Category
                                                           :pk?               false}
                                                          {:name              "age"
                                                           :database-type     "INT"

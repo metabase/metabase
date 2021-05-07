@@ -1,5 +1,5 @@
 (ns metabase.sync.analyze.classifiers.category
-  "Classifier that determines whether a Field should be marked as a `:type/Category` and/or as a `list` Field based on
+  "Classifier that determines whether a Field should be marked as a `:Semantic/Category` and/or as a `list` Field based on
   the number of distinct values it has.
 
   As of Metabase v0.29, the Category now longer has any use inside of the Metabase backend; it is used
@@ -25,8 +25,8 @@
       (isa? base_type :type/Float)
       ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
       ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
-      (isa? semantic_type :type/PK)
-      (isa? semantic_type :type/FK)))
+      (isa? semantic_type :Relation/PK)
+      (isa? semantic_type :Relation/FK)))
 
 (s/defn ^:private field-should-be-category? :- (s/maybe s/Bool)
   [fingerprint :- (s/maybe i/Fingerprint), field :- su/Map]
@@ -65,5 +65,5 @@
   (when (and fingerprint
              (not (cannot-be-category-or-list? field)))
     (cond-> field
-      (field-should-be-category? fingerprint field)  (assoc :semantic_type :type/Category)
+      (field-should-be-category? fingerprint field)  (assoc :semantic_type :Semantic/Category)
       (field-should-be-auto-list? fingerprint field) (assoc :has_field_values :auto-list))))

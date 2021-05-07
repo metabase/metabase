@@ -52,7 +52,7 @@
                 (sync-util/name-for-logging dest-table)
                 (sync-util/name-for-logging dest-field)))
     (db/update! Field (u/get-id source-field)
-      :semantic_type      :type/FK
+      :semantic_type      :Relation/FK
       :fk_target_field_id (u/get-id dest-field))
     true))
 

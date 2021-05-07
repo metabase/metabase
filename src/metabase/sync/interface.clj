@@ -23,10 +23,10 @@
   "Schema for a given Field as provided in `describe-table`."
   {:name                               su/NonBlankString
    :database-type                      (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
-   :base-type                          su/FieldType
+   :base-type                          su/FieldDataType
    :database-position                  su/IntGreaterThanOrEqualToZero
-   (s/optional-key :semantic-type)     (s/maybe su/FieldType)
-   (s/optional-key :effective-type)    (s/maybe su/FieldType)
+   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
+   (s/optional-key :effective-type)    (s/maybe su/FieldDataType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
    (s/optional-key :field-comment)     (s/maybe su/NonBlankString)
    (s/optional-key :pk?)               s/Bool

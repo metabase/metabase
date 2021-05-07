@@ -67,7 +67,7 @@
 
 (s/defn field-distinct-values
   "Return the distinct values of `field`.
-   This is used to create a `FieldValues` object for `:type/Category` Fields."
+   This is used to create a `FieldValues` object for `:Semantic/Category` Fields."
   ([field]
    (field-distinct-values field absolute-max-distinct-values-limit))
 

@@ -376,7 +376,7 @@
 (deftest test-19
   (mt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
-                  Field    [_ {:table_id table-id :semantic_type :type/PK}]
+                  Field    [_ {:table_id table-id :semantic_type :Relation/PK}]
                   Field    [_ {:table_id table-id}]]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
@@ -390,9 +390,9 @@
 (deftest test-20
   (mt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
-                  Field    [_ {:table_id table-id :semantic_type :type/PK}]
-                  Field    [_ {:table_id table-id :semantic_type :type/FK}]
-                  Field    [_ {:table_id table-id :semantic_type :type/FK}]]
+                  Field    [_ {:table_id table-id :semantic_type :Relation/PK}]
+                  Field    [_ {:table_id table-id :semantic_type :Relation/FK}]
+                  Field    [_ {:table_id table-id :semantic_type :Relation/FK}]]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
         (is (= {:list-like?  false
@@ -408,7 +408,7 @@
 (deftest test-21
   (testing "Identity"
     (is (= :d1
-           (-> [{:d1 {:field_type [:type/Category] :score 100}}]
+           (-> [{:d1 {:field_type [:Semantic/Category] :score 100}}]
                (#'magic/most-specific-definition)
                first
                key)))))
@@ -416,8 +416,8 @@
 (deftest test-22
   (testing "Base case: more ancestors"
     (is (= :d2
-           (-> [{:d1 {:field_type [:type/Category] :score 100}}
-                {:d2 {:field_type [:type/State] :score 100}}]
+           (-> [{:d1 {:field_type [:Semantic/Category] :score 100}}
+                {:d2 {:field_type [:Semantic/State] :score 100}}]
                (#'magic/most-specific-definition)
                first
                key)))))
@@ -425,9 +425,9 @@
 (deftest test-23
   (testing "Break ties based on the number of additional filters"
     (is (= :d3
-           (-> [{:d1 {:field_type [:type/Category] :score 100}}
-                {:d2 {:field_type [:type/State] :score 100}}
-                {:d3 {:field_type [:type/State]
+           (-> [{:d1 {:field_type [:Semantic/Category] :score 100}}
+                {:d2 {:field_type [:Semantic/State] :score 100}}
+                {:d3 {:field_type [:Semantic/State]
                       :named      "foo"
                       :score      100}}]
                (#'magic/most-specific-definition)
@@ -437,9 +437,9 @@
 (deftest test-24
   (testing "Break ties on score"
     (is (= :d2
-           (-> [{:d1 {:field_type [:type/Category] :score 100}}
-                {:d2 {:field_type [:type/State] :score 100}}
-                {:d3 {:field_type [:type/State] :score 90}}]
+           (-> [{:d1 {:field_type [:Semantic/Category] :score 100}}
+                {:d2 {:field_type [:Semantic/State] :score 100}}
+                {:d3 {:field_type [:Semantic/State] :score 90}}]
                (#'magic/most-specific-definition)
                first
                key)))))
@@ -447,9 +447,9 @@
 (deftest test-25
   (testing "Number of additional filters has precedence over score"
     (is (= :d3
-           (-> [{:d1 {:field_type [:type/Category] :score 100}}
-                {:d2 {:field_type [:type/State] :score 100}}
-                {:d3 {:field_type [:type/State]
+           (-> [{:d1 {:field_type [:Semantic/Category] :score 100}}
+                {:d2 {:field_type [:Semantic/State] :score 100}}
+                {:d3 {:field_type [:Semantic/State]
                       :named      "foo"
                       :score      0}}]
                (#'magic/most-specific-definition)

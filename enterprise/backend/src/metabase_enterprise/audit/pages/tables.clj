@@ -20,7 +20,7 @@
 ;; ORDER BY executions {{asc-or-desc}}
 (defn- query-counts [asc-or-desc]
   {:metadata [[:table_id   {:display_name "Table ID",   :base_type :type/Integer, :remapped_to   :table_name}]
-              [:table_name {:display_name "Table",      :base_type :type/Title,   :remapped_from :table_id}]
+              [:table_name {:display_name "Table",      :base_type :Semantic/Title,   :remapped_from :table_id}]
               [:executions {:display_name "Executions", :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with [[:table_executions {:select [[:t.id :table_id]
@@ -61,7 +61,7 @@
                [:schema_id          {:display_name "Schema ID",          :base_type :type/Text,   :remapped_to   :schema_name}]
                [:table_schema       {:display_name "Schema",             :base_type :type/Text,    :remapped_from :schema_id}]
                [:table_id           {:display_name "Table ID",           :base_type :type/Integer, :remapped_to   :table_name}]
-               [:table_name         {:display_name "Table Name in DB",   :base_type :type/Name,    :remapped_from :table_id}]
+               [:table_name         {:display_name "Table Name in DB",   :base_type :Semantic/Name,    :remapped_from :table_id}]
                [:table_display_name {:display_name "Table Display Name", :base_type :type/Text}]]
     :results (common/reducible-query
                (->

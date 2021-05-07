@@ -71,7 +71,7 @@
               (is (empty? (get-in query [:query :expressions])))))))
       (testing "pre-existing json fields are still marked as `:type/Text`"
         (let [table (table/map->TableInstance {:id 1234})
-              fields [(field/map->FieldInstance {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
+              fields [(field/map->FieldInstance {:id 4321, :base_type :type/Text, :semantic_type :Semantic/SerializedJSON})]]
           (with-redefs [driver/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
@@ -79,10 +79,10 @@
 (deftest text-field?-test
   (testing "recognizes fields suitable for fingerprinting"
     (doseq [field [{:base_type :type/Text}
-                   {:base_type :type/Text :semantic_type :type/State}
-                   {:base_type :type/Text :semantic_type :type/URL}]]
+                   {:base_type :type/Text, :semantic_type :Semantic/State}
+                   {:base_type :type/Text, :semantic_type :Semantic/URL}]]
       (is (#'metadata-queries/text-field? field)))
     (doseq [field [{:base_type :type/Structured} ; json fields in pg
-                   {:base_type :type/Text :semantic_type :type/SerializedJSON} ; "legacy" json fields in pg
-                   {:base_type :type/Text :semantic_type :type/XML}]]
+                   {:base_type :type/Text, :semantic_type :Semantic/SerializedJSON} ; "legacy" json fields in pg
+                   {:base_type :type/Text, :semantic_type :Semantic/XML}]]
       (is (not (#'metadata-queries/text-field? field))))))

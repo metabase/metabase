@@ -11,7 +11,7 @@ function seriesWithColumn(col) {
           {
             name: "foo",
             base_type: "type/Float",
-            semantic_type: "type/Currency",
+            semantic_type: "Semantic/Currency",
             ...col,
           },
         ],

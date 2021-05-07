@@ -46,7 +46,7 @@
     (with-temp-sample-dataset-db [db]
       (is (= {:description      "The name of the user who owns an account"
               :database_type    "VARCHAR"
-              :semantic_type    :type/Name
+              :semantic_type    :Semantic/Name
               :name             "NAME"
               :has_field_values :search
               :active           true

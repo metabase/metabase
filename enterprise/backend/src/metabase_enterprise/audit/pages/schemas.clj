@@ -25,7 +25,7 @@
 (defn ^:internal-query-fn ^:deprecated most-queried
   "Query that returns the top 10 most-queried schemas, in descending order."
   []
-  {:metadata [[:schema     {:display_name "Schema",     :base_type :type/Title}]
+  {:metadata [[:schema     {:display_name "Schema",     :base_type :Semantic/Title}]
               [:executions {:display_name "Executions", :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with     [[:counts {:select    [[:db.name :db_name]
@@ -67,7 +67,7 @@
 (defn ^:internal-query-fn ^:deprecated slowest-schemas
   "Query that returns the top 10 schemas with the slowest average query execution time in descending order."
   []
-  {:metadata [[:schema           {:display_name "Schema",                    :base_type :type/Title}]
+  {:metadata [[:schema           {:display_name "Schema",                    :base_type :Semantic/Title}]
               [:avg_running_time {:display_name "Average Running Time (ms)", :base_type :type/Decimal}]]
    :results  (common/reducible-query
               {:with     [[:counts {:select    [[:db.name :db_name]
@@ -117,9 +117,9 @@
    (table nil))
   ([query-string :- (s/maybe s/Str)]
    {:metadata [[:database_id   {:display_name "Database ID",   :base_type :type/Integer, :remapped_to   :database}]
-               [:database      {:display_name "Database",      :base_type :type/Title,   :remapped_from :database_id}]
+               [:database      {:display_name "Database",      :base_type :Semantic/Title,   :remapped_from :database_id}]
                [:schema_id     {:display_name "Schema ID",     :base_type :type/Text,    :remapped_to   :schema}]
-               [:schema        {:display_name "Schema",        :base_type :type/Title,   :remapped_from :schema_id}]
+               [:schema        {:display_name "Schema",        :base_type :Semantic/Title,   :remapped_from :schema_id}]
                [:tables        {:display_name "Tables",        :base_type :type/Integer}]
                [:saved_queries {:display_name "Saved Queries", :base_type :type/Integer}]]
     :results  (common/reducible-query

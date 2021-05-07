@@ -107,7 +107,7 @@ export default class Map extends Component {
         ],
         cols: [
           {
-            semantic_type: "type/State",
+            semantic_type: "Semantic/State",
             name: "STATE",
             source: "breakout",
             display_name: "State",
@@ -115,7 +115,7 @@ export default class Map extends Component {
           },
           {
             base_type: "type/Integer",
-            semantic_type: "type/Number",
+            semantic_type: "Semantic/Quantity",
             name: "count",
             display_name: "count",
             source: "aggregation",

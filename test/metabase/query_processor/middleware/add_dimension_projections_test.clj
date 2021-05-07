@@ -110,7 +110,7 @@
    col-defaults
    {:table_id      4
     :schema_name   "PUBLIC"
-    :semantic_type :type/PK
+    :semantic_type :Relation/PK
     :name          "ID"
     :id            12
     :display_name  "ID"
@@ -121,7 +121,7 @@
    col-defaults
    {:table_id      4
     :schema_name   "PUBLIC"
-    :semantic_type :type/Name
+    :semantic_type :Semantic/Name
     :name          "NAME"
     :id            15
     :display_name  "Name"
@@ -132,7 +132,7 @@
    col-defaults
    {:table_id      4
     :schema_name   "PUBLIC"
-    :semantic_type :type/FK
+    :semantic_type :Relation/FK
     :name          "CATEGORY_ID"
     :id            11
     :display_name  "Category ID"
@@ -143,7 +143,7 @@
    col-defaults
    {:table_id      4
     :schema_name   "PUBLIC"
-    :semantic_type :type/Category
+    :semantic_type :Semantic/Category
     :name          "PRICE"
     :id            16
     :display_name  "Price"
@@ -171,7 +171,7 @@
    {:description     "The name of the product as it should be displayed to customers."
     :table_id        3
     :schema_name     nil
-    :semantic_type   :type/Category
+    :semantic_type   :Semantic/Category
     :name            "CATEGORY"
     :fk_field_id     32
     :id              27

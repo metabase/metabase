@@ -59,7 +59,7 @@
   "Query that returns the 10 most active Users (by number of query executions) in descending order."
   []
   {:metadata [[:user_id {:display_name "User ID",          :base_type :type/Integer, :remapped_to   :name}]
-              [:name    {:display_name "Name",             :base_type :type/Name,    :remapped_from :user_id}]
+              [:name    {:display_name "Name",             :base_type :type/Text,    :remapped_from :user_id}]
               [:count   {:display_name "Query Executions", :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:with      [[:qe_count {:select   [[:%count.* :count]
@@ -84,7 +84,7 @@
   "Query that returns the 10 Users with the most saved objects in descending order."
   []
   {:metadata [[:user_id   {:display_name "User ID",       :base_type :type/Integer, :remapped_to :user_name}]
-              [:user_name {:display_name "Name",          :base_type :type/Name,    :remapped_from :user_id}]
+              [:user_name {:display_name "Name",          :base_type :type/Text,    :remapped_from :user_id}]
               [:saves     {:display_name "Saved Objects", :base_type :type/Integer}]]
    :results  (common/reducible-query
                {:with      [[:card_saves       {:select   [:creator_id
@@ -119,7 +119,7 @@
   "Query that returns the total time spent executing queries, broken out by User, for the top 10 Users."
   []
   {:metadata [[:user_id           {:display_name "User ID",                   :base_type :type/Integer, :remapped_to   :name}]
-              [:name              {:display_name "Name",                      :base_type :type/Name,    :remapped_from :user_id}]
+              [:name              {:display_name "Name",                      :base_type :type/Text,    :remapped_from :user_id}]
               [:execution_time_ms {:display_name "Total Execution Time (ms)", :base_type :type/Decimal}]]
    :results  (common/reducible-query
                {:with      [[:exec_time {:select   [[:%sum.running_time :execution_time_ms]
@@ -147,7 +147,7 @@
 
   ([query-string :- (s/maybe s/Str)]
    {:metadata [[:user_id          {:display_name "User ID",          :base_type :type/Integer, :remapped_to :name}]
-               [:name             {:display_name "Name",             :base_type :type/Name,    :remapped_from :user_id}]
+               [:name             {:display_name "Name",             :base_type :type/Text,    :remapped_from :user_id}]
                [:role             {:display_name "Role",             :base_type :type/Text}]
                [:groups           {:display_name "Groups",           :base_type :type/Text}]
                [:date_joined      {:display_name "Date Joined",      :base_type :type/DateTime}]

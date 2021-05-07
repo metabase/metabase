@@ -16,15 +16,15 @@
       (let [ids       (map second (#'add-implicit-clauses/sorted-implicit-fields-for-table (mt/id :venues)))
             id->field (u/key-by :id (db/select [Field :id :position :name :semantic_type] :id [:in ids]))]
         (is (= [ ;; sorted first because it has lowest positon
-                {:position -1, :name "PRICE", :semantic_type :type/Category}
+                {:position -1, :name "PRICE", :semantic_type :Semantic/Category}
                 ;; PK
-                {:position 0, :name "ID", :semantic_type :type/PK}
+                {:position 0, :name "ID", :semantic_type :Relation/PK}
                 ;; Name
-                {:position 1, :name "NAME", :semantic_type :type/Name}
+                {:position 1, :name "NAME", :semantic_type :Semantic/Name}
                 ;; The rest are sorted by name
-                {:position 2, :name "CATEGORY_ID", :semantic_type :type/FK}
-                {:position 3, :name "LATITUDE", :semantic_type :type/Latitude}
-                {:position 4, :name "LONGITUDE", :semantic_type :type/Longitude}]
+                {:position 2, :name "CATEGORY_ID", :semantic_type :Relation/FK}
+                {:position 3, :name "LATITUDE", :semantic_type :Semantic/Latitude}
+                {:position 4, :name "LONGITUDE", :semantic_type :Semantic/Longitude}]
                (for [id ids]
                  (into {} (dissoc (id->field id) :id)))))))))
 
@@ -74,9 +74,9 @@
   (testing "We should add sorted implicit Fields for a query with no aggregations"
     (is (= (:query
             (mt/mbql-query venues
-              {:fields [ ;; :type/PK Fields should get sorted first
+              {:fields [ ;; :Relation/PK Fields should get sorted first
                         $id
-                        ;; followed by :type/Name Fields
+                        ;; followed by :Semantic/Name Fields
                         $name
                         ;; followed by other Fields sorted by name
                         $category_id $latitude $longitude $price]}))
@@ -136,14 +136,14 @@
                                                          :condition    [:= $category_id &c.categories.id]
                                                          :alias        "c"}]}
                        :source-metadata [{:table_id     $$venues
-                                          :semantic_type :type/PK
+                                          :semantic_type :Relation/PK
                                           :name         "ID"
                                           :field_ref    $id
                                           :id           %id
                                           :display_name "ID"
                                           :base_type    :type/BigInteger}
                                          {:table_id     $$categories
-                                          :semantic_type :type/Name
+                                          :semantic_type :Semantic/Name
                                           :name         "NAME"
                                           :field_ref    field-ref
                                           :id           %categories.name

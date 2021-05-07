@@ -62,8 +62,8 @@
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
     (with-redefs [i/column->semantic-type (fn [_ _ column-name]
                                            (when (= (str/lower-case column-name) "longitude")
-                                             :type/Longitude))]
-      (is (= [["longitude" :type/Longitude]]
+                                             :Semantic/Longitude))]
+      (is (= [["longitude" :Semantic/Longitude]]
              (->> (describe-table/describe-table (or driver/*driver* :h2) (mt/id) (Table (mt/id :venues)))
                   :fields
                   (filter :semantic-type)

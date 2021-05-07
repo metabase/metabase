@@ -21,11 +21,11 @@ const EXAMPLE_SECTIONS = _.chain(field_semantic_types)
       name: item.name,
       value: item.id,
       icon:
-        item.id === "type/FK"
+        item.id === "Relation/FK"
           ? "connections"
-          : item.id === "type/Name"
+          : item.id === "Semantic/Name"
           ? "string"
-          : item.id === "type/PK"
+          : item.id === "Relation/PK"
           ? "unknown"
           : null,
       description: item.description,

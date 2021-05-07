@@ -31,7 +31,7 @@
                                                                   :base-type     :type/Integer}
                                                                  {:name          "weight"
                                                                   :database-type "DECIMAL"
-                                                                  :semantic-type :type/Category
+                                                                  :semantic-type :Semantic/Category
                                                                   :base-type     :type/Decimal}}}}}
                              {:name          "buyer"
                               :database-type "OBJECT"
@@ -98,13 +98,13 @@
                                   :display_name  "Name"
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
-                                  :semantic_type :type/Name})
+                                  :semantic_type :Semantic/Name})
                           (merge mock-util/field-defaults
                                  {:name          "id"
                                   :display_name  "ID"
                                   :database_type "SERIAL"
                                   :base_type     :type/Integer
-                                  :semantic_type :type/PK})]
+                                  :semantic_type :Relation/PK})]
            :display_name "Employees"})
    (merge mock-util/table-defaults
           {:name         "transactions"
@@ -137,7 +137,7 @@
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
                                   :parent_id     true
-                                  :semantic_type :type/Name})
+                                  :semantic_type :Semantic/Name})
                           (merge mock-util/field-defaults
                                  {:name          "age"
                                   :display_name  "Age"
@@ -156,7 +156,7 @@
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
                                   :parent_id     true
-                                  :semantic_type :type/Name})
+                                  :semantic_type :Semantic/Name})
                           (merge mock-util/field-defaults
                                  {:name          "toucan"
                                   :display_name  "Toucan"
@@ -168,5 +168,5 @@
                                   :database_type "DECIMAL"
                                   :base_type     :type/Decimal
                                   :parent_id     true
-                                  :semantic_type :type/Category})]
+                                  :semantic_type :Semantic/Category})]
            :display_name "Transactions"})])

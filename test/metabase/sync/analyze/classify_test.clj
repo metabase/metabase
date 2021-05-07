@@ -74,7 +74,7 @@
                                      :last_analyzed       nil}]]
       (is (nil? (:semantic_type (Field (u/get-id field)))))
       (classify/classify-fields-for-db! db [table] (constantly nil))
-      (is (= :type/Income (:semantic_type (Field (u/get-id field)))))))
+      (is (= :Semantic/Income (:semantic_type (Field (u/get-id field)))))))
   (testing "We can classify decimal fields that have specially handled infinity values"
     (tt/with-temp* [Database [db]
                     Table    [table {:db_id (u/get-id db)}]
@@ -90,7 +90,7 @@
                                      :last_analyzed       nil}]]
       (is (nil? (:semantic_type (Field (u/get-id field)))))
       (classify/classify-fields-for-db! db [table] (constantly nil))
-      (is (= :type/Income (:semantic_type (Field (u/get-id field))))))))
+      (is (= :Semantic/Income (:semantic_type (Field (u/get-id field))))))))
 
 (defn- ->field [field]
   (field/map->FieldInstance
@@ -100,22 +100,22 @@
 
 (deftest run-classifiers-test
   (testing "Fields marked state are not overridden"
-    (let [field (->field {:name "state", :base_type :type/Text, :semantic_type :type/State})]
-      (is (= :type/State (:semantic_type (classify/run-classifiers field nil))))))
+    (let [field (->field {:name "state", :base_type :type/Text, :semantic_type :Semantic/State})]
+      (is (= :Semantic/State (:semantic_type (classify/run-classifiers field nil))))))
   (testing "Fields with few values are marked as category and list"
     (let [field      (->field {:name "state", :base_type :type/Text})
           classified (classify/run-classifiers field {:global
                                                       {:distinct-count
                                                        (dec field-values/category-cardinality-threshold)
                                                        :nil% 0.3}})]
-      (is (= {:has_field_values :auto-list, :semantic_type :type/Category}
+      (is (= {:has_field_values :auto-list, :semantic_type :Semantic/Category}
              (select-keys classified [:has_field_values :semantic_type])))))
   (testing "Earlier classifiers prevent later classifiers"
     (let [field       (->field {:name "site_url" :base_type :type/Text})
           fingerprint {:global {:distinct-count 4
                                 :nil%           0}}
           classified  (classify/run-classifiers field fingerprint)]
-      (is (= {:has_field_values :auto-list, :semantic_type :type/URL}
+      (is (= {:has_field_values :auto-list, :semantic_type :Semantic/URL}
              (select-keys classified [:has_field_values :semantic_type])))))
   (testing "Classififying using fingerprinters can override previous classifications"
     (testing "Classify state fields on fingerprint rather than name"
@@ -124,10 +124,10 @@
                                   :nil%           0}
                          :type   {:type/Text {:percent-state 0.98}}}
             classified  (classify/run-classifiers field fingerprint)]
-        (is (= {:has_field_values :auto-list, :semantic_type :type/State}
+        (is (= {:has_field_values :auto-list, :semantic_type :Semantic/State}
                (select-keys classified [:has_field_values :semantic_type])))))
     (let [field       (->field {:name "order_status" :base_type :type/Text})
           fingerprint {:type {:type/Text {:percent-json 0.99}}}]
-      (is (= :type/SerializedJSON
-             ;; this will be marked as :type/Category based on name, but fingerprinters should override
+      (is (= :Semantic/SerializedJSON
+             ;; this will be marked as :Semantic/Category based on name, but fingerprinters should override
              (:semantic_type (classify/run-classifiers field fingerprint)))))))

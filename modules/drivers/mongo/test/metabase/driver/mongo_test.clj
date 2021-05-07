@@ -163,9 +163,9 @@
     (mt/dataset all-null-columns
       ;; do a full sync on the DB to get the correct semantic type info
       (sync/sync-database! (mt/db))
-      (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :semantic_type :type/PK}
+      (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :semantic_type :Relation/PK}
               {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :semantic_type nil}
-              {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Name}]
+              {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :Semantic/Name}]
              (map
               (partial into {})
               (db/select [Field :name :database_type :base_type :semantic_type]
@@ -203,22 +203,22 @@
 (deftest sync-fields-test
   (mt/test-driver :mongo
     (testing "Test that Fields got synced correctly, and types are correct"
-      (is (= [[{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}]
-              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+      (is (= [[{:semantic_type :Relation/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type :Semantic/Name,      :base_type :type/Text,     :name "name"}]
+              [{:semantic_type :Relation/PK,        :base_type :type/Integer,  :name "_id"}
                {:semantic_type nil,             :base_type :type/Instant,  :name "date"}
-               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
+               {:semantic_type :Semantic/Category,  :base_type :type/Integer,  :name "user_id"}
                {:semantic_type nil,             :base_type :type/Integer,  :name "venue_id"}]
-              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+              [{:semantic_type :Relation/PK,        :base_type :type/Integer,  :name "_id"}
                {:semantic_type nil,             :base_type :type/Instant,  :name "last_login"}
-               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:semantic_type :type/Category,  :base_type :type/Text,     :name "password"}]
-              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "category_id"}
-               {:semantic_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
-               {:semantic_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
-               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
+               {:semantic_type :Semantic/Name,      :base_type :type/Text,     :name "name"}
+               {:semantic_type :Semantic/Category,  :base_type :type/Text,     :name "password"}]
+              [{:semantic_type :Relation/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type :Semantic/Category,  :base_type :type/Integer,  :name "category_id"}
+               {:semantic_type :Semantic/Latitude,  :base_type :type/Float,    :name "latitude"}
+               {:semantic_type :Semantic/Longitude, :base_type :type/Float,    :name "longitude"}
+               {:semantic_type :Semantic/Name,      :base_type :type/Text,     :name "name"}
+               {:semantic_type :Semantic/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
                     (vec (for [field (db/select [Field :name :base_type :semantic_type]
                                        :active   true

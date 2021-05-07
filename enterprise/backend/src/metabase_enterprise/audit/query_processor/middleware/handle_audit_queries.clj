@@ -50,7 +50,7 @@
   "Schema for the expected format for `:metadata` returned by an internal query function."
   (su/non-empty
    [[(s/one su/KeywordOrString "field name")
-     (s/one {:base_type su/FieldType, :display_name su/NonBlankString, s/Keyword s/Any}
+     (s/one {:base_type su/FieldDataType, :display_name su/NonBlankString, s/Keyword s/Any}
             "field metadata")]]))
 
 (defn- check-results-and-metadata-keys-match

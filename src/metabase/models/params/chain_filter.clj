@@ -9,8 +9,8 @@
 
   1. Human-readable values remapping where you go assign string values to things like enum integers
 
-  2. Implicit PK Field-> [Name] Field remapping. This happens automatically for any Field with `:type/PK` semantic type
-  that has another Field with `:type/Name` semantic type in the same Table. e.g. `venue.id` is automatically
+  2. Implicit PK Field-> [Name] Field remapping. This happens automatically for any Field with `:Relation/PK` semantic type
+  that has another Field with `:Semantic/Name` semantic type in the same Table. e.g. `venue.id` is automatically
   remapped (displayed) as `venue.name`.
 
   3. Explicit FK Field->Field remapping. FK Fields can be manually remapped to a Field in the Table they point to.
@@ -491,8 +491,8 @@
                                                                    [Field :dest] [:= :dest.table_id :table.id]]
                                                        :where     [:and
                                                                    [:= :source.id field-id]
-                                                                   (mdb.u/isa :source.semantic_type :type/PK)
-                                                                   (mdb.u/isa :dest.semantic_type :type/Name)]
+                                                                   (mdb.u/isa :source.semantic_type :Relation/PK)
+                                                                   (mdb.u/isa :dest.semantic_type :Semantic/Name)]
                                                        :limit     1})]}
                                             :ids]]
                                   :limit  1})]

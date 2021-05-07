@@ -104,11 +104,8 @@
 (derive :Semantic/Score :Semantic/*)
 (derive :Semantic/Score :type/Number)
 
-;; TODO -- Is a Duration a Data Type, or a :Semantic Type, or both? I think Postgres has a `duration` column. But
-;; couldn't I store a 'Duration' as an integer?
-;;
-;; TODO -- Shouldn't `:type/Duration` derive from `:type/Temporal`, since it's time-related?
-(derive :type/Duration :type/Number)
+(derive :Semantic/Duration :Semantic/*)
+(derive :Semantic/Duration :type/Number)
 
 ;;; Text Types
 
@@ -128,6 +125,7 @@
 ;; should have their FieldValues cached and synced. See
 ;; `metabase.sync.analyze.classifiers.category/field-should-be-category?`
 (derive :Semantic/Category :Semantic/*)
+(derive :Semantic/Enum :Semantic/*)
 
 (derive :Semantic/Address :Semantic/Location)
 
@@ -235,7 +233,6 @@
 ;;; Other
 
 (derive :type/Boolean :type/*)
-(derive :type/Enum :type/*)
 (derive :type/DruidHyperUnique :type/*)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
@@ -258,11 +255,8 @@
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
 
-;; `:type/SerializedJSON` currently means a column that is JSON data, e.g. a Postgres JSON column, *or* a text column
-;; that should be interpreted as JSON. `SerializedJSON` is a bit of a misnomer.
-;;
-;; TODO -- rename `:type/SerializedJSON` to `:type/JSON`
-(derive :type/SerializedJSON :type/Collection)
+;; `:type/JSON` currently means a column that is JSON data, e.g. a Postgres JSON column
+(derive :type/JSON :type/Collection)
 
 ;; `:type/XML` -- an actual native XML data column
 (derive :type/XML :type/Collection)

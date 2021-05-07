@@ -31,7 +31,7 @@ export const BooleanColumn = (col = {}) =>
 export const DateTimeColumn = (col = {}) =>
   Column({ base_type: "type/DateTime", semantic_type: null, ...col });
 export const NumberColumn = (col = {}) =>
-  Column({ base_type: "type/Integer", semantic_type: "type/Number", ...col });
+  Column({ base_type: "type/Integer", semantic_type: "Semantic/Quantity", ...col });
 export const StringColumn = (col = {}) =>
   Column({ base_type: "type/Text", semantic_type: null, ...col });
 

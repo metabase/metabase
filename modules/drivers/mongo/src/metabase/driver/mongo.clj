@@ -96,7 +96,7 @@
     ;; 1. url?
     (and (string? field-value)
          (u/url? field-value))
-    :type/URL
+    :Semantic/URL
 
     ;; 2. json?
     (and (string? field-value)
@@ -105,7 +105,7 @@
     (when-let [j (u/ignore-exceptions (json/parse-string field-value))]
       (when (or (map? j)
                 (sequential? j))
-        :type/SerializedJSON))))
+        :Semantic/SerializedJSON))))
 
 (defn- find-nested-fields [field-value nested-fields]
   (loop [[k & more-keys] (keys field-value)

@@ -17,7 +17,7 @@
    {:name            "latitude"
     :display_name    "Latitude"
     :base_type       :type/Float
-    :semantic_type   :type/Latitude
+    :semantic_type   :Semantic/Latitude
     :visibility_type :normal}
    {:name            "last_login"
     :display_name    "Last Login"
@@ -56,7 +56,7 @@
 (def ^:private description-col {:name         "desc_col"
                                 :display_name "Description Column"
                                 :base_type    :type/Text
-                                :semantic_type :type/Description
+                                :semantic_type :Semantic/Description
                                 :visibility_type :normal})
 (def ^:private detail-col      {:name            "detail_col"
                                 :display_name    "Details Column"
@@ -179,7 +179,7 @@
               {:name         "rating"
                :display_name "Rating"
                :base_type    :type/Integer
-               :semantic_type :type/Category
+               :semantic_type :Semantic/Category
                :remapped_to  "rating_desc"}
               {:name          "rating_desc"
                :display_name  "Rating Desc"

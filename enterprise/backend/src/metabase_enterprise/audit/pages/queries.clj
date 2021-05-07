@@ -23,7 +23,7 @@
   "Query that returns the 10 most-popular Cards based on number of query executions, in descending order."
   []
   {:metadata [[:card_id    {:display_name "Card ID",    :base_type :type/Integer, :remapped_to   :card_name}]
-              [:card_name  {:display_name "Card",       :base_type :type/Title,   :remapped_from :card_id}]
+              [:card_name  {:display_name "Card",       :base_type :Semantic/Title,   :remapped_from :card_id}]
               [:executions {:display_name "Executions", :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:select   [[:c.id :card_id]
@@ -39,7 +39,7 @@
   "Query that returns the 10 slowest-running Cards based on average query execution time, in descending order."
   []
   {:metadata [[:card_id          {:display_name "Card ID",                :base_type :type/Integer, :remapped_to   :card_name}]
-              [:card_name        {:display_name "Card",                   :base_type :type/Title,   :remapped_from :card_id}]
+              [:card_name        {:display_name "Card",                   :base_type :Semantic/Title,   :remapped_from :card_id}]
               [:avg_running_time {:display_name "Avg. Running Time (ms)", :base_type :type/Decimal}]]
    :results  (common/reducible-query
               {:select   [[:c.id :card_id]
@@ -57,7 +57,7 @@
    (table nil))
   ([query-string :- (s/maybe s/Str)]
    {:metadata [[:card_id         {:display_name "Card ID",       :base_type :type/Integer, :remapped_to   :card_name}]
-               [:card_name       {:display_name "Name",          :base_type :type/Name,    :remapped_from :card_id}]
+               [:card_name       {:display_name "Name",          :base_type :Semantic/Name,    :remapped_from :card_id}]
                [:collection_id   {:display_name "Collection ID", :base_type :type/Integer, :remapped_to   :collection_name}]
                [:collection_name {:display_name "Collection",    :base_type :type/Text,    :remapped_from :collection_id}]
                [:database_id     {:display_name "Database ID",   :base_type :type/Integer, :remapped_to   :database_name}]
@@ -66,7 +66,7 @@
                [:table_name      {:display_name "Table",         :base_type :type/Text,    :remapped_from :table_id}]
                [:user_id         {:display_name "Created By ID", :base_type :type/Integer, :remapped_to   :user_name}]
                [:user_name       {:display_name "Created By",    :base_type :type/Text,    :remapped_from :user_id}]
-               [:public_link     {:display_name "Public Link",   :base_type :type/URL}]
+               [:public_link     {:display_name "Public Link",   :base_type :Semantic/URL}]
                [:cache_ttl       {:display_name "Cache TTL",     :base_type :type/Number}]
                [:total_views     {:display_name "Views",         :base_type :type/Integer}]]
     :results  (common/reducible-query

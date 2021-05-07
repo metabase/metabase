@@ -29,13 +29,13 @@
   [{:name         "ID"
     :display_name "ID"
     :base_type    :type/BigInteger
-    :semantic_type :type/PK
+    :semantic_type :Relation/PK
     :fingerprint  (:id mutil/venue-fingerprints)
     :field_ref    [:field "ID" {:base-type :type/BigInteger}]}
    {:name         "NAME"
     :display_name "Name"
     :base_type    :type/Text
-    :semantic_type :type/Name
+    :semantic_type :Semantic/Name
     :fingerprint  (:name mutil/venue-fingerprints)
     :field_ref    [:field "NAME" {:base-type :type/Text}]}
    {:name         "PRICE"
@@ -53,13 +53,13 @@
    {:name         "LATITUDE"
     :display_name "Latitude"
     :base_type    :type/Float
-    :semantic_type :type/Latitude
+    :semantic_type :Semantic/Latitude
     :fingerprint  (:latitude mutil/venue-fingerprints)
     :field_ref    [:field "LATITUDE" {:base-type :type/Float}]}
    {:name         "LONGITUDE"
     :display_name "Longitude"
     :base_type    :type/Float
-    :semantic_type :type/Longitude
+    :semantic_type :Semantic/Longitude
     :fingerprint  (:longitude mutil/venue-fingerprints)
     :field_ref    [:field "LONGITUDE" {:base-type :type/Float}]}])
 
@@ -120,7 +120,7 @@
    {:base_type    :type/Integer
     :display_name "count"
     :name         "count"
-    :semantic_type :type/Quantity
+    :semantic_type :Semantic/Quantity
     :fingerprint  {:global {:distinct-count 3
                             :nil%           0.0},
                    :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}])
@@ -204,7 +204,7 @@
               {:base_type    :type/BigInteger
                :display_name "Count"
                :name         "count"
-               :semantic_type :type/Quantity
+               :semantic_type :Semantic/Quantity
                :fingerprint  {:global {:distinct-count 3
                                        :nil%           0.0},
                               :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}

@@ -675,13 +675,13 @@
 ;; not allowed if search field isn't a NAME
 (deftest search-field-not-allowed-if-search-field-isnt-a-name
   (is (thrown? Exception
-               (mt/with-temp-vals-in-db Field (mt/id :venues :name) {:semantic_type "type/Latitude"}
+               (mt/with-temp-vals-in-db Field (mt/id :venues :name) {:semantic_type "Semantic/Latitude"}
                  (#'public-api/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :name))))))
 
 
 (deftest not-allowed-if-search-field-belongs-to-a-different-table
   (is (thrown? Exception
-               (mt/with-temp-vals-in-db Field (mt/id :categories :name) {:semantic_type "type/Name"}
+               (mt/with-temp-vals-in-db Field (mt/id :categories :name) {:semantic_type "Semantic/Name"}
                  (#'public-api/check-search-field-is-allowed (mt/id :venues :id) (mt/id :categories :name))))))
 
 

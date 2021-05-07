@@ -60,7 +60,7 @@ export default class FieldRemapping extends React.Component {
     const { field } = this.props;
 
     const hasForeignKeys =
-      field.semantic_type === "type/FK" && this.getForeignKeys().length > 0;
+      field.semantic_type === "Relation/FK" && this.getForeignKeys().length > 0;
 
     // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -84,7 +84,7 @@ export default class FieldRemapping extends React.Component {
     if (fkTargetFields) {
       // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in Field.js?
       const nameField = fkTargetFields.find(
-        field => field.semantic_type === "type/Name",
+        field => field.semantic_type === "Semantic/Name",
       );
       return nameField ? nameField.id : null;
     } else {

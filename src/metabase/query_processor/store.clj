@@ -107,12 +107,12 @@
     :display_name                       su/NonBlankString
     :description                        (s/maybe s/Str)
     :database_type                      su/NonBlankString
-    :base_type                          su/FieldType
+    :base_type                          su/FieldDataType
     ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
     ;; would make everything just use base_type.
-    (s/optional-key :effective_type)    (s/maybe su/FieldType)
+    (s/optional-key :effective_type)    (s/maybe su/FieldDataType)
     (s/optional-key :coercion_strategy) (s/maybe su/CoercionStrategy)
-    :semantic_type                      (s/maybe su/FieldType)
+    :semantic_type                      (s/maybe su/FieldSemanticOrRelationType)
     :fingerprint                        (s/maybe su/Map)
     :parent_id                          (s/maybe su/IntGreaterThanZero)
     s/Any                               s/Any}))

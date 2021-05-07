@@ -137,7 +137,7 @@ describe("metabase/lib/click-behavior", () => {
           "type/Date",
           "type/DateTime",
           "type/Boolean",
-          "type/Enum",
+          "Semantic/Enum",
           "type/Text",
         ].map(base_type => ({ base_type })),
         parameter: [
