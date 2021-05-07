@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 
 import colors from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
@@ -23,7 +24,7 @@ export default function PaginationControls({
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (
           <React.Fragment>
-            <span className="text-light">&nbsp;of&nbsp;</span>
+            <span className="text-light">&nbsp;{t`of`}&nbsp;</span>
             <span data-testid="pagination-total">{total}</span>
           </React.Fragment>
         )}
