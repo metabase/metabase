@@ -36,7 +36,6 @@ function ModerationIssueActionMenu({
           iconSize: 18,
           className: `text-${color}`,
           action: () => onAction(type),
-          // todo  -- fn to change title when issue exists
           title: MODERATION_TEXT.moderator[type].action,
         };
       })}
