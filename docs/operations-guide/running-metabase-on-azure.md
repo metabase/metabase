@@ -1,6 +1,6 @@
 # Running Metabase on Microsoft Azure
 
-This guide will cover the basics for running your Metabase instance in Microsoft Azure thanks to the power and flexibility of Docker Containers. At the end of this guide you will have set up a Metabase instance with its own database, ready to be scaled in case you need more power.
+This guide covers the basics for running your Metabase instance in Microsoft Azure using Docker.
 
 - [Running Metabase on Microsoft Azure](#running-metabase-on-microsoft-azure)
   - [Step 1: Create the resource group (resource grouping)](#step-1-create-the-resource-group-resource-grouping)
@@ -17,7 +17,6 @@ This guide will cover the basics for running your Metabase instance in Microsoft
     - [Scale-up vs Scale-out](#scale-up-vs-scale-out)
     - [CORS](#cors)
     - [Database name](#database-name)
-
 
 ## Step 1: Create the resource group (resource grouping)
 
@@ -64,13 +63,14 @@ In the next page you will have to select the way you will use the service. Choos
 
 On the next screen, select or enter the following:
 
-- Resource group: the one you are including all your components
-- Server name: a unique name for your database
-- Data Source: can be left as `None`
-- Location: the same one you used for your Resource Group and VNET
-- Version: use the latest one you can
-- Compute + Storage: you can re-dimension your database,  but you must select the `General Purpose` tier, as it's the only tier that provides a Private Link.
-- choose an admin username and password of your choice
+- **Resource group**: the one you are including all your components.
+- **Server name**: a unique name for your database.
+- **Data Source**: can be left as `None`.
+- **Location**: the same one you used for your Resource Group and VNET.
+- **Version**: use the latest one you can.
+- **Compute + Storage**: you can re-dimension your database,  but you must select the `General Purpose` tier, as it's the only tier that provides a Private Link.
+
+Then choose an admin username and password of your choice.
 
 Click **Next** until you get to the final page, then click **Create**. It'll take some time for Azure to create the database. Once the creation is complete, click on the **Go to resource** button.
 
@@ -89,9 +89,10 @@ Now click on the button of the top with a plus sign that says **Private endpoint
 
 ![Azure PrivateLink config](images/AZPrivateLink.png)
 
-Now go to the last step and click **Create**. Once the link finishes its creation, you will need two more things to go to the next step:
-1) Go to the database Connection Security item and deny all public network access
-2) go to the VNET component and in the **Connected devices** settings option, you will now see that a device connected to the network with an IP Address (take note of that IP Address as it will be needed in the next step)
+Now go to the last step and click **Create**. Once the endpoint is created, you will need do two things before proceeding:
+
+1) Go to the database Connection Security item and **deny all public network access**.
+2) Go to the VNET component. In the **Connected devices** settings, you should see a device connected to the network. Take note of the IP address, as you'll need it in Step 5.
 
 ## Step 5: Create web application (deploy Metabase)
 
@@ -99,23 +100,24 @@ At last, the step where all the magic comes together: go to your resource group 
 ![Azure web app](images/AZMarketplaceWebApp.png)
 
 Now set up the following values on the page (resource group should be the same as in the first step):
-- Name: choose any name, but is has to be unique as the subdomain is shared across all Azure deployments
-- Publish: Docker Container
-- Operating System: Linux
-- Region: same as the one on the previous steps
-- App Service Plan: if you don't have one already, it will create a new one automatically
-- SKU and Size: change it to a Production level plan with **AT LEAST** 200 total ACU and 3.5GB of memory, click **Apply** after choosing the specs
+- **Name**: The name must be unique, as the subdomain is shared across all Azure deployments.
+- **Publish**: Docker Container.
+- **Operating System**: Linux.
+- **Region**: Use the same region as the previous steps.
+- **App Service Plan**: If you don't have one a service plan, Azure will create a new one automatically.
+- **SKU and Size**: Set a Production level plan with **AT LEAST** 200 total ACU and 3.5GB of memory, and click **Apply**.
 
 Now go to the next step where you will select:
-- Options: single container
-- Image source: DockerHub
-- Access Type: Public
-- Image and tag: metabase/metabase:latest (or choose any other docker image tag of your preference, like our Enterprise Edition that has super-powers). If you want to see which is the latest Metabase version you can check in our [Community Edition Dockerhub repository](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated) and also our [Enterprise Edition Dockerhub Repository](https://hub.docker.com/r/metabase/metabase-enterprise/tags?page=1&ordering=last_updated)
-- Startup command: empty
 
-Click next till you get to the last section and click on **Create** to initialize the creation of your application and wait till it's over.
+- **Options**: Single container.
+- **Image source**: DockerHub.
+- **Access Type**: Public.
+- **Image and tag**: metabase/metabase:latest (or choose any other docker image tag of your preference, like our Enterprise Edition). To find the latest version, check our [Community Edition Dockerhub repository](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated) and also our [Enterprise Edition Dockerhub Repository](https://hub.docker.com/r/metabase/metabase-enterprise/tags?page=1&ordering=last_updated).
+- **Startup command**:  Leave this field empty.
 
-Now go to te application configuration page and click on Settings --> Networking on the left side of the page, where a page will appear and you will have to click on **Click here to configure** under **VNET integration**.
+Click **Next** until you get to the last section, then click **Create**, and wait while your application initializes.
+
+Now go to the application configuration page and click on **Settings** -> **Networking** on the left side of the page. On the next page, click on **Click here to configure** under **VNET integration**.
 
 ![Azure VNET integration](images/AZVNETintegration.png)
 
@@ -123,27 +125,30 @@ Now click on the huge plus sign next to **Add VNET** and select the VNET that yo
 
 ![Azure VNET public subnet](images/AZVNETPublicSubnet.png)
 
-Now go back to te application configuration page and click on Settings --> Configuration on the left side of the page where you will see a few Application Settings already configure.
+Return to the application configuration page and click on **Settings** -> **Configuration** on the left side of the page. You should see a few Application Settings already configured.
 
 Here you will need to add the [Enviroment Variables]() for connecting Metabase to its [PostgreSQL Application Database](), but make sure that you use the **MB_DB_CONNECTION_URI** as PostgreSQL in Azure is configured by default with SSL so currently the only way of passing those parameters is by using the full URI.
 
 Also, take into account that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows: `postgresql://databasePrivateIPAddress:port/postgres?user=user@name_of_your_database_engine&password=configuredpassword&ssl=true&sslmode=required`.
 
-Lets put an example, if you got this information from the previous steps:
-1) database private IP address: 10.0.2.4
-2) database port: 5432 (in the case of Postgres, MySQL/MariaDB default port is 3306)
-3) name of the database server: metabase-app-database
-4) username of the database: metabase
-5) password: Password1!
+For example, if your values are:
+
+1) **database private IP address**: 10.0.2.4
+2) **database port**: 5432 (in the case of Postgres, MySQL/MariaDB default port is 3306)
+3) **name of the database server**: metabase-app-database
+4) **username of the database**: metabase
+5) **password**: Password1!
 
 then my connection string will be: `postgresql://10.0.2.4:5432/postgres?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require`
 
-Click on save and the instance will restart. After this step you will be able to access your Metabase in the URL that you have in the "Overview" tab in the web app under the URL section (will be the name you chose in the first step of the config of the web app + .azurewebsites.net as Azure handles all the deployment and domain)
+Click **Save** and the instance will restart. 
+
+Once it finishes, you should be able to visit your Metabase at the URL shown in the the "Overview" tab in the web app (under the URL section). 
 
 ## Additional configurations
 ### How to enable Health checks
 
-Enabling health checking in Metabase is a good practice. You can tell the "host" when Metabase is ready to server your customers by just doing a simple configuration: go to your web app -> Monitoring -> Health Check -> Enable health check and include in the path `/api/health`.
+Enabling health checking in Metabase is a good practice.  Go to your **web app** -> **Monitoring** -> **Health Check** -> **Enable health check**, and include in the path `/api/health`.
 
 ### How to update
 
@@ -165,17 +170,17 @@ If you want to see the logs of your deployment, you need to go to the web app th
 
 ### Custom domains
 
-You can go to Settings -> custom domains in your web app use a custom domain that you have in Azure, with your own certificates
+In your Azure web app, visit **Settings** -> **Custom domains** to use a custom domain with your own certificates.
 
 ### Scale-up vs Scale-out
 
-Azure provides an easy way in which you can increase the server's horsepower by doing a Scale-up. Simply choose a pricing tier with more RAM and CPU count and restart the instance. This approach is easier than scaling out and you should choose this option first before scaling out.
+Azure provides an easy way to increase the server's capacity by doing a Scale-up. Simply choose a pricing tier with more RAM and CPU count and restart the instance. This approach is easier than scaling out and you should choose this option first before scaling out.
 
-In case you know what you are doing and want to have a highly-available Metabase deployment, you can tell your web app to scale-out (more servers serving the application in parallel). Simply go to Scale-out and use the slider to ask for more instances or use a custom autoscaling policy (like more servers during your work hours and less during night, or anything you come up with)
+For a highly-available Metabase deployment, you can tell your web app to scale-out (more servers serving the application in parallel). Simply go to Scale-out and use the slider to ask for more instances, or use a custom autoscaling policy (like using more servers during your work hours and fewer during off hours).
 
 ### CORS
 
-In case you are using embedding, you might have to enable CORS in Settings -> CORS in the web application. You will need to fill the origin domains from where you are embedding so Azure knows that they need to enable cross requests from there.
+In case you're embedding Metabase, you might need to enable CORS in **Settings** -> **CORS** in the web application. You'll need to fill the origin domains for the app with the embedded Metabase, so Azure knows to enable cross requests from those domains.
 
 ### Database name
 
