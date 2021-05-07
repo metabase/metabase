@@ -43,7 +43,7 @@
                       :source        :aggregation
                       :display_name  "Count"
                       :name          "count"
-                      :semantic_type :type/Number}]}
+                      :semantic_type :Semantic/Quantity}]}
              (-> (mt/format-rows-by [str int int]
                    (mt/run-mbql-query venues
                      {:aggregation [[:count]]

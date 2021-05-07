@@ -5,7 +5,7 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.files :as files]
-            [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
+            [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString tru]]
             [metabase.util.schema :as su]
             [metabase.util.yaml :as yaml]
             [schema.coerce :as sc]
@@ -40,9 +40,11 @@
   "Turn `x` into proper type name."
   [x]
   (cond
-    (keyword? x)      x
-    (ga-dimension? x) x
-    :else             (keyword "type" x)))
+    (keyword? x)                              x
+    (ga-dimension? x)                         x
+    (isa? (keyword "Relation" x) :Relation/*) (keyword "Relation" x)
+    (isa? (keyword "Semantic" x) :Semantic/*) (keyword "Semantic" x)
+    :else                                     (keyword "type" x)))
 
 (defn ->entity
   "Turn `x` into proper entity name."
@@ -54,7 +56,9 @@
 
 (defn- field-type?
   [t]
-  (isa? t :type/*))
+  (or (isa? t :type/*)
+      (isa? t :Semantic/*)
+      (isa? t :Relation/*)))
 
 (defn- table-type?
   [t]
@@ -303,7 +307,12 @@
             (load-rule-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) rules)
 
             entity-type
-            (assoc-in rules (concat path [entity-type ::leaf]) (yaml/load (partial make-rule entity-type) f))
+            (try
+              (assoc-in rules (concat path [entity-type ::leaf]) (yaml/load (partial make-rule entity-type) f))
+              (catch Throwable e
+                (throw (ex-info (tru "Error loading rules file at path {0}" f)
+                                {:path f}
+                                e))))
 
             :else
             rules)))

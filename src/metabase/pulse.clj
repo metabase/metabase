@@ -25,14 +25,12 @@
             [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
 
-
 (def ^:private parameters-impl
   (u/prog1 (or (u/ignore-exceptions
                  (classloader/require 'metabase-enterprise.pulse)
                  (some-> (resolve 'metabase-enterprise.pulse/ee-strategy-parameters-impl)
                          var-get))
                i/default-parameters-impl)))
-
 
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
