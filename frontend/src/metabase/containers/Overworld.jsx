@@ -194,7 +194,7 @@ class Overworld extends React.Component {
                       >
                         <Link
                           data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${pin.model}`}
-                          to={Urls.dashboard(pin.id)}
+                          to={Urls.dashboard(pin)}
                           hover={{ color: color("brand") }}
                         >
                           <Card hoverable p={3}>
