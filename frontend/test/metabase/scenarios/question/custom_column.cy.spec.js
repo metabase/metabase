@@ -4,6 +4,7 @@ import {
   _typeUsingGet,
   _typeUsingPlaceholder,
   openOrdersTable,
+  openProductsTable,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
 
@@ -412,6 +413,28 @@ describe("scenarios > question > custom columns", () => {
       expect(xhr.response.body.error).to.not.exist;
     });
     cy.contains("37.65");
+  });
+
+  describe("data type", () => {
+    it("should understand string functions", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .type("concat([Category], [Title])")
+          .blur();
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "CategoryTitle",
+        );
+        cy.findByRole("button", { name: "Done" }).click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("CategoryTitle")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByPlaceholderText("Enter some text");
+    });
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
