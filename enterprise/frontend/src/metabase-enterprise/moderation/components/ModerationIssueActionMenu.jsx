@@ -3,21 +3,34 @@ import PropTypes from "prop-types";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
-import { getModerationActionsList } from "metabase-enterprise/moderation";
+import {
+  getModerationIssueTypes,
+  getModerationRequestActionTypes,
+  getColor,
+  getModerationStatusIcon,
+} from "metabase-enterprise/moderation";
 
-function ModerationIssueActionMenu({ className, onAction }) {
-  const moderationActionsList = getModerationActionsList();
+function ModerationIssueActionMenu({
+  className,
+  triggerClassName,
+  onAction,
+  issue,
+}) {
+  const types = issue
+    ? getModerationRequestActionTypes()
+    : getModerationIssueTypes();
 
   return (
     <EntityMenu
       triggerChildren={MODERATION_TEXT.moderator.action}
       triggerProps={{
         iconRight: "chevrondown",
-        round: true,
-        className: "text-brand border-brand",
+        className: triggerClassName,
       }}
       className={className}
-      items={moderationActionsList.map(({ type, icon, color }) => {
+      items={types.map(type => {
+        const color = getColor(type);
+        const icon = getModerationStatusIcon(type);
         return {
           icon,
           iconSize: 18,
@@ -32,7 +45,9 @@ function ModerationIssueActionMenu({ className, onAction }) {
 
 ModerationIssueActionMenu.propTypes = {
   className: PropTypes.string,
+  triggerClassName: PropTypes.string,
   onAction: PropTypes.func,
+  issue: PropTypes.object,
 };
 
 export default ModerationIssueActionMenu;
