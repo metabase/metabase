@@ -422,7 +422,7 @@
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q] (query-model-set (search-context q nil nil nil nil nil)))
+  [q archived-string table-db-id] (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
