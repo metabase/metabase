@@ -9,6 +9,7 @@ import Icon from "metabase/components/Icon";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -24,25 +25,22 @@ const mapDispatchToProps = {
 )
 class DashboardMoveModal extends React.Component {
   render() {
-    const { onClose, setDashboardCollection } = this.props;
+    const { params, onClose, setDashboardCollection } = this.props;
+    const dashboardId = Urls.extractEntityId(params.slug);
     return (
       <CollectionMoveModal
         title={t`Move dashboard to...`}
         onClose={onClose}
         onMove={async destination => {
-          await setDashboardCollection(
-            { id: this.props.params.dashboardId },
-            destination,
-            {
-              notify: {
-                message: (
-                  <DashboardMoveToast
-                    collectionId={destination.id || ROOT_COLLECTION.id}
-                  />
-                ),
-              },
+          await setDashboardCollection({ id: dashboardId }, destination, {
+            notify: {
+              message: (
+                <DashboardMoveToast
+                  collectionId={destination.id || ROOT_COLLECTION.id}
+                />
+              ),
             },
-          );
+          });
           onClose();
         }}
       />
