@@ -15,8 +15,13 @@ const TimelineContainer = styled.div`
 `;
 
 const TimelineItem = styled.div`
+  display: flex;
+  align-items: start;
+  justify-content: start;
   transform: translateX(-${props => props.leftShift}px);
   white-space: pre-line;
+  width: 100%;
+  margin-bottom: 1rem;
 `;
 
 // shift the border down slightly so that it doesn't appear above the top-most icon
@@ -56,14 +61,10 @@ const Timeline = ({ className, items = [], renderFooter }) => {
         const isNotLastEvent = index !== sortedFormattedItems.length - 1;
 
         return (
-          <TimelineItem
-            key={key}
-            leftShift={halfIconSize}
-            className="flex align-start justify-start mb2"
-          >
+          <TimelineItem key={key} leftShift={halfIconSize}>
             {isNotLastEvent && <Border borderShift={halfIconSize} />}
             <Icon className="relative text-light" name={icon} size={iconSize} />
-            <div className="ml1">
+            <div className="ml1 flex-1">
               <div className="text-bold">{title}</div>
               <div className="text-medium text-small">{formattedTimestamp}</div>
               <div>{description}</div>
