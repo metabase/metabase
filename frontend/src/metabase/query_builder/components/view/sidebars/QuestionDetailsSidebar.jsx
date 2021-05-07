@@ -3,7 +3,10 @@ import PropTypes from "prop-types";
 import QuestionDetailsSidebarPanel from "metabase/query_builder/components/view/sidebars/QuestionDetailsSidebarPanel";
 import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
 import { SIDEBAR_VIEWS } from "./constants";
-const { CreateModerationIssuePanel } = PLUGIN_MODERATION_COMPONENTS;
+const {
+  CreateModerationIssuePanel,
+  OpenModerationIssuesPanel,
+} = PLUGIN_MODERATION_COMPONENTS;
 
 QuestionDetailsSidebar.propTypes = {
   question: PropTypes.object.isRequired,
@@ -23,17 +26,21 @@ function QuestionDetailsSidebar({
   const { name, props: viewProps } = view;
   const id = question.id();
 
+  const setBaseView = () => setView({ name: SIDEBAR_VIEWS.DETAILS });
+
   switch (name) {
     case SIDEBAR_VIEWS.CREATE_ISSUE_PANEL:
       return (
         <CreateModerationIssuePanel
           {...viewProps}
-          onReturn={() => setView({ name: SIDEBAR_VIEWS.DETAILS })}
+          onReturn={setBaseView}
           createModerationReview={createModerationReview}
           itemId={id}
           itemType="card"
         />
       );
+    case SIDEBAR_VIEWS.OPEN_ISSUES_PANEL:
+      return <OpenModerationIssuesPanel onReturn={setBaseView} />;
     case SIDEBAR_VIEWS.DETAILS:
     default:
       return (
