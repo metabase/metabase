@@ -71,12 +71,18 @@ export default class Radio extends Component {
     }
 
     return (
-      <List {...props} vertical={vertical} showButtons={showButtons}>
+      <List
+        {...props}
+        vertical={vertical}
+        showButtons={showButtons}
+        role="radiogroup"
+      >
         {options.map((option, index) => {
           const selected = value === optionValueFn(option);
           const last = index === options.length - 1;
           return (
             <Item
+              aria-checked={selected}
               key={optionKeyFn(option)}
               selected={selected}
               last={last}
@@ -87,7 +93,7 @@ export default class Radio extends Component {
               yspace={yspace}
               tabIndex="0"
               onClick={e => onChange(optionValueFn(option))}
-              onKeyUp={e =>
+              onKeyDown={e =>
                 e.key === "Enter" && onChange(optionValueFn(option))
               }
             >

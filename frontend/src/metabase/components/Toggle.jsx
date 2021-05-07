@@ -22,7 +22,10 @@ export default class Toggle extends Component {
   render() {
     const { value, small, className, color, ...props } = this.props;
     return (
-      <div
+      <a
+        tabIndex="0"
+        role="switch"
+        aria-checked={value}
         {...props}
         className={cx(
           styles.toggle,
@@ -34,9 +37,8 @@ export default class Toggle extends Component {
           className,
         )}
         style={{ color: color || null }}
-        tabIndex="0"
         onClick={this.handleClick}
-        onKeyUp={e => e.key === "Enter" && this.handleClick()}
+        onKeyDown={e => e.key === "Enter" && this.handleClick()}
       />
     );
   }
