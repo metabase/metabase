@@ -53,5 +53,14 @@ describe("URLs", () => {
       cy.findByText("All personal collections");
       cy.url().should("match", /\/collection\/users$/);
     });
+
+    it("should slugify users' personal collection URLs", () => {
+      cy.visit("/collection/users");
+      cy.findByText("Robert Tableton").click();
+      cy.url().should(
+        "match",
+        /\/collection\/8-robert-tableton-s-personal-collection$/,
+      );
+    });
   });
 });

@@ -1,5 +1,7 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Box, Flex } from "grid-styled";
+import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -11,12 +13,18 @@ import Link from "metabase/components/Link";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 
 import User from "metabase/entities/users";
-import {
+import Collection, {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 
-const UserCollectionList = () => (
+function mapStateToProps(state) {
+  return {
+    collectionsById: state.entities.collections,
+  };
+}
+
+const UserCollectionList = ({ collectionsById }) => (
   <Box px={4}>
     <Box py={2}>
       <BrowserCrumbs
@@ -38,7 +46,9 @@ const UserCollectionList = () => (
                   user.personal_collection_id && (
                     <GridItem w={1 / 3} key={user.personal_collection_id}>
                       <Link
-                        to={Urls.userCollection(user.personal_collection_id)}
+                        to={Urls.collection(
+                          collectionsById[user.personal_collection_id],
+                        )}
                       >
                         <Card p={2} hoverable>
                           <Flex align="center">
@@ -63,4 +73,6 @@ const UserCollectionList = () => (
   </Box>
 );
 
-export default UserCollectionList;
+export default Collection.loadList()(
+  connect(mapStateToProps)(UserCollectionList),
+);

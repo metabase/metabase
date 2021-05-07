@@ -147,10 +147,6 @@ export function embedDashboard(token) {
   return `${siteUrl}/embed/dashboard/${token}`;
 }
 
-export function userCollection(userCollectionId) {
-  return `/collection/${userCollectionId}/`;
-}
-
 export function accountSettings() {
   return `/user/edit_current`;
 }
