@@ -20,12 +20,12 @@ const TimelineItem = styled.div`
 `;
 
 // shift the border down slightly so that it doesn't appear above the top-most icon
+// also using a negative `bottom` to connect the border with the event icon beneath it
 const Border = styled.div`
   position: absolute;
   top: ${props => props.borderShift}px;
-  left: 0;
-  right: 0;
-  bottom: -${props => props.borderShift}px;
+  left: ${props => props.borderShift}px;
+  bottom: calc(-1rem - ${props => props.borderShift}px);
   border-left: 1px solid ${color("border")};
 `;
 
@@ -50,10 +50,10 @@ const Timeline = ({ className, items = [], renderFooter }) => {
       bottomShift={halfIconSize}
       className={className}
     >
-      <Border borderShift={halfIconSize} />
       {sortedFormattedItems.map((item, index) => {
         const { icon, title, description, formattedTimestamp } = item;
         const key = item.key == null ? index : item.key;
+        const isNotLastEvent = index !== sortedFormattedItems.length - 1;
 
         return (
           <TimelineItem
@@ -61,7 +61,8 @@ const Timeline = ({ className, items = [], renderFooter }) => {
             leftShift={halfIconSize}
             className="flex align-start justify-start mb2"
           >
-            <Icon className="text-light" name={icon} size={iconSize} />
+            {isNotLastEvent && <Border borderShift={halfIconSize} />}
+            <Icon className="relative text-light" name={icon} size={iconSize} />
             <div className="ml1">
               <div className="text-bold">{title}</div>
               <div className="text-medium text-small">{formattedTimestamp}</div>
