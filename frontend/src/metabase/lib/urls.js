@@ -27,7 +27,7 @@ export const newPulse = () => `/pulse/create`;
 export const newCollection = collectionId =>
   `collection/${collectionId}/new_collection`;
 
-export function question(cardId, hash = "", query = "") {
+export function question(card, hash = "", query = "") {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
   }
@@ -43,8 +43,8 @@ export function question(cardId, hash = "", query = "") {
     query = "?" + query;
   }
   // NOTE that this is for an ephemeral card link, not an editable card
-  return cardId != null
-    ? `/question/${cardId}${query}${hash}`
+  return card
+    ? `/question/${card.id}-${slugify(card.name)}${query}${hash}`
     : `/question${query}${hash}`;
 }
 

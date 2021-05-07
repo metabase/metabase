@@ -229,8 +229,8 @@ export const getRoutes = store => (
             component={NewQueryOptions}
           />
           <Route path="notebook" component={QueryBuilder} />
-          <Route path=":cardId" component={QueryBuilder} />
-          <Route path=":cardId/notebook" component={QueryBuilder} />
+          <Route path=":slug" component={QueryBuilder} />
+          <Route path=":slug/notebook" component={QueryBuilder} />
         </Route>
 
         <Route path="/ready" component={PostSetupApp} />
@@ -348,10 +348,10 @@ export const getRoutes = store => (
       }
     />
     <Route
-      path="/card/:cardId"
+      path="/card/:slug"
       onEnter={({ location, params }, replace) =>
         replace({
-          pathname: `/question/${params.cardId}`,
+          pathname: `/question/${params.slug}`,
           hash: location.hash,
         })
       }

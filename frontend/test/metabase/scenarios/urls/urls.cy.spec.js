@@ -40,6 +40,14 @@ describe("URLs", () => {
     });
   });
 
+  describe("questions", () => {
+    it("should slugify question URLs", () => {
+      cy.visit("/collection/root");
+      cy.findByText("Orders").click();
+      cy.location("pathname").should("eq", "/question/1-orders");
+    });
+  });
+
   describe("collections", () => {
     ["/", "/collection/root"].forEach(url => {
       it(`should slugify collection name when opening it from "${url}"`, () => {
