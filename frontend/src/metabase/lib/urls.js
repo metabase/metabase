@@ -69,12 +69,13 @@ export function newQuestion({ mode, ...options } = {}) {
   }
 }
 
-export function dashboard(dashboardId, { addCardWithId } = {}) {
+export function dashboard(dashboard, { addCardWithId } = {}) {
+  const slug = `${dashboard.id}-${slugify(dashboard.name)}`;
   return addCardWithId != null
     ? // NOTE: no-color-literals rule thinks #add is a color, oops
       // eslint-disable-next-line no-color-literals
-      `/dashboard/${dashboardId}#add=${addCardWithId}`
-    : `/dashboard/${dashboardId}`;
+      `/dashboard/${slug}#add=${addCardWithId}`
+    : `/dashboard/${slug}`;
 }
 
 export function modelToUrl(model, modelId) {

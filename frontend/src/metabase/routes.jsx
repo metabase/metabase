@@ -209,7 +209,7 @@ export const getRoutes = store => (
         <Route path="activity" component={HomepageApp} />
 
         <Route
-          path="dashboard/:dashboardId"
+          path="dashboard/:slug"
           title={t`Dashboard`}
           component={DashboardApp}
         >

@@ -29,6 +29,14 @@ describe("URLs", () => {
     });
   });
 
+  describe.only("dashboards", () => {
+    it("should slugify dashboard URLs", () => {
+      cy.visit("/collection/root");
+      cy.findByText("Orders in a dashboard").click();
+      cy.url().should("match", /\/dashboard\/1-orders-in-a-dashboard$/);
+    });
+  });
+
   describe("collections", () => {
     ["/", "/collection/root"].forEach(url => {
       it(`should slugify collection name when opening it from "${url}"`, () => {
