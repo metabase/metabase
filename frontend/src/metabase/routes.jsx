@@ -356,7 +356,7 @@ export const getRoutes = store => (
         })
       }
     />
-    <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+    <Redirect from="/dash/:dashboardId" to="/dashboard/:slug" />
     <Redirect
       from="/collections/permissions"
       to="/admin/permissions/collections"
