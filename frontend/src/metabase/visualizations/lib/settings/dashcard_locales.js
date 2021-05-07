@@ -28,9 +28,13 @@ const TITLE_LOCALES_BN = {
       'en': 'Condition of Rooms',
       'bn': 'শ্রেণীকক্ষের অবস্থা'
   },
+  'admin.dashboard.toilet.condition': {
+      'en': 'Condition of toilets',
+      'bn': 'টয়লেটের অবস্থা'
+  },
   'admin.dashboard.school.profile.completion': {
       'en': 'Profile completion percentage of schools',
-      'bn': 'টয়লেটের অবস্থা'
+      'bn': 'বিদ্যালয়ের প্রোফাইল পূরণের শতাংশ'
   }, 
   'admin.dashboard.teacher.approved.post': {
       'en': 'Approved Posts',
@@ -76,5 +80,8 @@ const TITLE_LOCALES_BN = {
 
 export function dashcard_locale_title (locale, title_key) {
     locale = locale === 'bn'? locale: 'en';
-    return TITLE_LOCALES_BN[title_key][locale];
+    if(title_key in TITLE_LOCALES_BN) {
+        return TITLE_LOCALES_BN[title_key][locale];
+    }
+    return title_key;
 }
