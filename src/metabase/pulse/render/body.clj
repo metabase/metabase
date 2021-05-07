@@ -79,14 +79,16 @@
   [remapping-lookup card cols include-bar?]
   {:row       (for [maybe-remapped-col cols
                     :when              (show-in-table? maybe-remapped-col)
-                    :let               [{effective-type :effective_type :as col} (if (:remapped_to maybe-remapped-col)
-                                                                                   (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                                                                   maybe-remapped-col)
+                    :let               [{effective-type :effective_type, base-type :base_type, :as col}
+                                        (if (:remapped_to maybe-remapped-col)
+                                          (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                          maybe-remapped-col)
+
                                         col-name (column-name card col)]
                     ;; If this column is remapped from another, it's already
                     ;; in the output and should be skipped
                     :when              (not (:remapped_from maybe-remapped-col))]
-                (if (isa? effective-type :type/Number)
+                (if (isa? (or effective-type base-type) :type/Number)
                   (common/->NumericWrapper col-name)
                   col-name))
    :bar-width (when include-bar? 99)})

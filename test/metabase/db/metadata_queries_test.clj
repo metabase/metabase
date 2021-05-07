@@ -76,13 +76,15 @@
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
 
-(deftest text-field?-test
+(deftest optimizable-text-field?-test
   (testing "recognizes fields suitable for fingerprinting"
     (doseq [field [{:base_type :type/Text}
                    {:base_type :type/Text, :semantic_type :Semantic/State}
                    {:base_type :type/Text, :semantic_type :Semantic/URL}]]
-      (is (#'metadata-queries/text-field? field)))
+      (testing field
+        (is (#'metadata-queries/optimizable-text-field? field))))
     (doseq [field [{:base_type :type/Structured} ; json fields in pg
                    {:base_type :type/Text, :semantic_type :Semantic/SerializedJSON} ; "legacy" json fields in pg
                    {:base_type :type/Text, :semantic_type :Semantic/XML}]]
-      (is (not (#'metadata-queries/text-field? field))))))
+      (testing field
+        (is (not (#'metadata-queries/optimizable-text-field? field)))))))

@@ -251,14 +251,17 @@
 ;;; Structured/Collections
 
 (derive :type/Collection :type/*)
+(derive :type/Structured :type/*)
 
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
 
 ;; `:type/JSON` currently means a column that is JSON data, e.g. a Postgres JSON column
+(derive :type/JSON :type/Structured)
 (derive :type/JSON :type/Collection)
 
 ;; `:type/XML` -- an actual native XML data column
+(derive :type/XML :type/Structured)
 (derive :type/XML :type/Collection)
 
 ;; `:Semantic/Structured` columns are ones that are stored as text, but should be treated as a `:type/Collection`

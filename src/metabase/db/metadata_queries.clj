@@ -98,20 +98,20 @@
   (s/maybe {(s/optional-key :truncation-size) s/Int
             (s/optional-key :rff)             s/Any}))
 
-(defn- text-field?
+(defn- optimizable-text-field?
   "Identify text fields which can accept our substring optimization.
 
   JSON and XML fields are now marked as `:type/Structured` but in the past were marked as `:type/Text` so its not
   enough to just check the base type."
   [{:keys [base_type semantic_type]}]
   (and (= base_type :type/Text)
-       (not (isa? semantic_type :type/Structured))))
+       (not (isa? semantic_type :Semantic/Structured))))
 
 (defn- table-rows-sample-query
   "Returns the mbql query to query a table for sample rows"
   [table fields {:keys [truncation-size] :as _opts}]
   (let [driver             (-> table table/database driver.u/database->driver)
-        text-fields        (filter text-field? fields)
+        text-fields        (filter optimizable-text-field? fields)
         field->expressions (when (and truncation-size (driver/supports? driver :expressions))
                              (into {} (for [field text-fields]
                                         [field [(str (gensym "substring"))
