@@ -20,7 +20,7 @@ const mapStateToProps = (state, props) => {
     dashboard,
     initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
       ...props,
-      collectionId: dashboard.collection_id,
+      collectionId: dashboard && dashboard.collection_id,
     }),
   };
 };
