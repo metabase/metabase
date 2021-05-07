@@ -731,7 +731,7 @@ export default class Question {
     ) {
       return Urls.question(null, this._serializeForUrl({ clean }), query);
     } else {
-      return Urls.question(this.id(), "", query);
+      return Urls.question(this.card(), "", query);
     }
   }
 

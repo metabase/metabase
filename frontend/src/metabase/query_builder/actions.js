@@ -313,6 +313,7 @@ export const initializeQB = (location, params) => {
 
     const { currentUser } = getState();
 
+    const cardId = Urls.extractEntityId(params.slug);
     let card, originalCard;
     const uiControls: UiControls = {
       isEditing: false,
@@ -335,7 +336,7 @@ export const initializeQB = (location, params) => {
 
     let preserveParameters = false;
     let snippetFetch;
-    if (params.cardId || serializedCard) {
+    if (cardId || serializedCard) {
       // existing card being loaded
       try {
         // if we have a serialized card then unpack and use it
@@ -351,8 +352,8 @@ export const initializeQB = (location, params) => {
         }
 
         // load the card either from `cardId` parameter or the serialized card
-        if (params.cardId) {
-          card = await loadCard(params.cardId);
+        if (cardId) {
+          card = await loadCard(cardId);
           // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
           originalCard = Utils.copy(card);
           // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
@@ -407,7 +408,7 @@ export const initializeQB = (location, params) => {
         uiControls.isEditing = !!options.edit;
 
         // if this is the users first time loading a saved card on the QB then show them the newb modal
-        if (params.cardId && currentUser.is_qbnewb) {
+        if (cardId && currentUser.is_qbnewb) {
           uiControls.isShowingNewbModal = true;
           MetabaseAnalytics.trackEvent("QueryBuilder", "Show Newb Modal");
         }

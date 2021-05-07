@@ -46,7 +46,6 @@ export const NotFound = () => (
       illustrationElement={<img src={NoResults} />}
       title={t`We're a little lost...`}
       message={t`The page you asked for couldn't be found.`}
-      link={Urls.question()}
     />
   </ErrorPageWrapper>
 );

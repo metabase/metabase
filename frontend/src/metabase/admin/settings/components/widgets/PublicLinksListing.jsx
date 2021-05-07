@@ -158,7 +158,7 @@ export const PublicLinksQuestionListing = () => (
     load={CardApi.listPublic}
     revoke={CardApi.deletePublicLink}
     type={t`Public Card Listing`}
-    getUrl={({ id }) => Urls.question(id)}
+    getUrl={question => Urls.question(question)}
     getPublicUrl={({ public_uuid }) => Urls.publicQuestion(public_uuid)}
     noLinksMessage={t`No questions have been publicly shared yet.`}
   />
@@ -179,7 +179,7 @@ export const EmbeddedQuestionListing = () => (
   <div className="bordered rounded full" style={{ maxWidth: 820 }}>
     <PublicLinksListing
       load={CardApi.listEmbeddable}
-      getUrl={({ id }) => Urls.question(id)}
+      getUrl={question => Urls.question(question)}
       type={t`Embedded Card Listing`}
       noLinksMessage={t`No questions have been embedded yet.`}
     />
