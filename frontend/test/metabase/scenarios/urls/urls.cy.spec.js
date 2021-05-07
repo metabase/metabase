@@ -13,27 +13,30 @@ describe("URLs", () => {
         cy.visit(url);
         cy.findByText("Sample Dataset").click();
         cy.findByText("Sample Dataset");
-        cy.url().should("match", /\/browse\/1-sample-dataset$/);
+        cy.location("pathname").should("eq", "/browse/1-sample-dataset");
       });
     });
 
     [
-      `browse/${SAVED_QUESTIONS_VIRTUAL_DB_ID}`,
-      `browse/${SAVED_QUESTIONS_VIRTUAL_DB_ID}-saved-questions`,
+      `/browse/${SAVED_QUESTIONS_VIRTUAL_DB_ID}`,
+      `/browse/${SAVED_QUESTIONS_VIRTUAL_DB_ID}-saved-questions`,
     ].forEach(url => {
       it("should open 'Saved Questions' database correctly", () => {
         cy.visit(url);
         cy.findByText("Saved Questions");
-        cy.url().should("include", url);
+        cy.location("pathname").should("eq", url);
       });
     });
   });
 
-  describe.only("dashboards", () => {
+  describe("dashboards", () => {
     it("should slugify dashboard URLs", () => {
       cy.visit("/collection/root");
       cy.findByText("Orders in a dashboard").click();
-      cy.url().should("match", /\/dashboard\/1-orders-in-a-dashboard$/);
+      cy.location("pathname").should(
+        "eq",
+        "/dashboard/1-orders-in-a-dashboard",
+      );
     });
   });
 
@@ -42,16 +45,16 @@ describe("URLs", () => {
       it(`should slugify collection name when opening it from "${url}"`, () => {
         cy.visit(url);
         cy.findByText("First collection").click();
-        cy.url().should("match", /\/collection\/9-first-collection$/);
+        cy.location("pathname").should("eq", "/collection/9-first-collection");
       });
     });
 
     it("should slugify current user's personal collection name correctly", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection").click();
-      cy.url().should(
-        "match",
-        /\/collection\/1-bobby-tables-s-personal-collection$/,
+      cy.location("pathname").should(
+        "eq",
+        "/collection/1-bobby-tables-s-personal-collection",
       );
     });
 
@@ -59,21 +62,21 @@ describe("URLs", () => {
       cy.visit("/collection/root");
       cy.findByText("Other users' personal collections").click();
       cy.findByText("All personal collections");
-      cy.url().should("match", /\/collection\/users$/);
+      cy.location("pathname").should("eq", "/collection/users");
     });
 
     it("should slugify users' personal collection URLs", () => {
       cy.visit("/collection/users");
       cy.findByText("Robert Tableton").click();
-      cy.url().should(
-        "match",
-        /\/collection\/8-robert-tableton-s-personal-collection$/,
+      cy.location("pathname").should(
+        "eq",
+        "/collection/8-robert-tableton-s-personal-collection",
       );
     });
 
     it("should open slugified URLs correctly", () => {
       cy.visit("/collection/9-first-collection");
-      cy.get("[class*=PageHeading]").should("have.text", "First Collection");
+      cy.get("[class*=PageHeading]").should("have.text", "First collection");
 
       cy.visit("/collection/1-bobby-tables-s-personal-collection");
       cy.get("[class*=PageHeading]").should(
