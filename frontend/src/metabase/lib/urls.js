@@ -78,12 +78,22 @@ export function dashboard(dashboard, { addCardWithId } = {}) {
     : `/dashboard/${slug}`;
 }
 
+function prepareModel(item) {
+  if (item.model_object) {
+    return item.model_object;
+  }
+  return {
+    id: item.model_id,
+    ...item.details,
+  };
+}
+
 export function modelToUrl(item) {
   switch (item.model) {
     case "card":
-      return question(item.model_id);
+      return question(prepareModel(item));
     case "dashboard":
-      return dashboard(item.model_object);
+      return dashboard(prepareModel(item));
     case "pulse":
       return pulse(item.model_id);
     default:
