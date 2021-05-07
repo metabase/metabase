@@ -60,6 +60,8 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
 export const PLUGIN_MODERATION_COMPONENTS = {
   ModerationIssueActionMenu: PluginPlaceholder,
   CreateModerationIssuePanel: PluginPlaceholder,
+  OpenModerationIssuesButton: PluginPlaceholder,
+  OpenModerationIssuesPanel: PluginPlaceholder,
 };
 
 export const PLUGIN_MODERATION_SERVICE = {
