@@ -1,66 +1,87 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { connect } from "react-redux";
+import _ from "underscore";
+
+import { revertToRevision } from "metabase/query_builder/actions";
+import { getRevisionDescription } from "metabase/lib/revisions";
 
 import Revision from "metabase/entities/revisions";
 import Timeline from "metabase/components/Timeline";
+import ActionButton from "metabase/components/ActionButton";
 
-_QuestionActivityTimeline.propTypes = {
+QuestionActivityTimeline.propTypes = {
   question: PropTypes.object,
   className: PropTypes.string,
   revisions: PropTypes.array,
-  canRevert: PropTypes.bool,
+  revertToRevision: PropTypes.func.isRequired,
 };
 
-function _QuestionActivityTimeline({
+function QuestionActivityTimeline({
   question,
   className,
   revisions,
-  canRevert,
+  revertToRevision,
 }) {
-  const items = [
-    {
-      icon: "verified",
-      title: "John Someone verified this",
-      description: "idk lol",
-      timestamp: Date.now(),
-      numComments: 5,
-    },
-    {
+  const events = revisions.map((revision, index) => {
+    // const canRevert = question.canWrite();
+    return {
+      timestamp: revision.timestamp,
       icon: "pencil",
-      title: "Foo edited this",
-      description: "Did a thing.",
-      timestamp: Date.now(),
-    },
-    {
-      icon: "warning_colorized",
-      title: "Someone McSomeone thinks something looks wrong",
-      description:
-        "Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not",
-      timestamp: Date.now(),
-    },
-    {
-      icon: "clarification",
-      title: "Someone is confused",
-      description:
-        "Something something something something something something something something something something something something?",
-      timestamp: Date.now(),
-      numComments: 123,
-    },
-  ];
+      title: t`${revision.user.common_name} edited this`,
+      description: getRevisionDescription(revision),
+      // showFooter: index !== 0 && canRevert,
+      showFooter: false,
+      revision,
+    };
+  });
 
   return (
     <div className={className}>
       <div className="text-medium text-bold pb2">{t`Activity`}</div>
-      <Timeline items={items} />
+      <Timeline
+        items={events}
+        renderFooter={item =>
+          renderQuestionActivityTimelineFooter(item, revertToRevision)
+        }
+      />
     </div>
   );
 }
 
-export const QuestionActivityTimeline = Revision.loadList({
-  query: (state, props) => ({
-    model_type: "card",
-    model_id: props.question.id(),
+export default _.compose(
+  Revision.loadList({
+    query: (state, props) => ({
+      model_type: "card",
+      model_id: props.question.id(),
+    }),
+    wrapped: true,
   }),
-  wrapped: true, // what does this do
-})(_QuestionActivityTimeline);
+  connect(
+    null,
+    () => {
+      return {
+        revertToRevision,
+      };
+    },
+  ),
+)(QuestionActivityTimeline);
+
+// this looks ugly, so not showing it for now
+function renderQuestionActivityTimelineFooter(item, revertToRevision) {
+  if (item.showFooter) {
+    return (
+      <div className="py1 flex justify-end">
+        <ActionButton
+          actionFn={() => revertToRevision(item.revision)}
+          className="Button-borderless text-error"
+          normalText={t`Revert`}
+          activeText={t`Reverting…`}
+          failedText={t`Revert failed`}
+          successText={t`Reverted`}
+        />
+      </div>
+    );
+  }
+}

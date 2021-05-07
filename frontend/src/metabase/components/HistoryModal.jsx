@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
+import { getRevisionDescription } from "metabase/lib/revisions";
 
 import moment from "moment";
 
@@ -23,16 +24,6 @@ export default class HistoryModal extends Component {
     onRevert: PropTypes.func,
     onClose: PropTypes.func.isRequired,
   };
-
-  revisionDescription(revision) {
-    if (revision.is_creation) {
-      return t`First revision.`;
-    } else if (revision.is_reversion) {
-      return t`Reverted to an earlier revision and ${revision.description}`;
-    } else {
-      return revision.description;
-    }
-  }
 
   render() {
     const { revisions, onRevert, onClose } = this.props;
@@ -57,7 +48,7 @@ export default class HistoryModal extends Component {
                 </td>
                 <td className={cellClassName}>{revision.user.common_name}</td>
                 <td className={cellClassName}>
-                  <span>{this.revisionDescription(revision)}</span>
+                  <span>{getRevisionDescription(revision)}</span>
                 </td>
                 <td className={cellClassName}>
                   {index !== 0 && onRevert && (

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/questions/components/QuestionActionButtons";
 import ClampedText from "metabase/components/ClampedText";
-import { QuestionActivityTimeline } from "metabase/questions/components/QuestionActivityTimeline";
+import QuestionActivityTimeline from "metabase/questions/components/QuestionActivityTimeline";
 import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
 import { SIDEBAR_VIEWS } from "./constants";
 
