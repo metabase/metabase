@@ -453,7 +453,7 @@ describe("collection permissions", () => {
 
         openRevisionHistory();
 
-        cy.findByText("Bobby Tables");
+        cy.findByText("First revision.");
 
         cy.findAllByText("Revert").should("not.exist");
       });
