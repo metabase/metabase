@@ -103,7 +103,7 @@ export default class Activity extends Component {
             <span>
               {t`created an alert about - `}
               <Link
-                to={Urls.modelToUrl(item.model, item.model_id)}
+                to={Urls.modelToUrl(item)}
                 data-metabase-event={
                   "Activity Feed;Header Clicked;Database -> " + item.topic
                 }
@@ -128,7 +128,7 @@ export default class Activity extends Component {
             <span>
               {t`deleted an alert about - `}
               <Link
-                to={Urls.modelToUrl(item.model, item.model_id)}
+                to={Urls.modelToUrl(item)}
                 data-metabase-event={
                   "Activity Feed;Header Clicked;Database -> " + item.topic
                 }
@@ -183,7 +183,10 @@ export default class Activity extends Component {
             <span>
               {t`added a question to the dashboard - `}
               <Link
-                to={Urls.dashboard(item.model_id)}
+                to={Urls.dashboard({
+                  id: item.model_id,
+                  name: item.details.name,
+                })}
                 data-metabase-event={
                   "Activity Feed;Header Clicked;Dashboard -> " + item.topic
                 }
@@ -208,7 +211,10 @@ export default class Activity extends Component {
             <span>
               {t`removed a question from the dashboard - `}
               <Link
-                to={Urls.dashboard(item.model_id)}
+                to={Urls.dashboard({
+                  id: item.model_id,
+                  name: item.details.name,
+                })}
                 data-metabase-event={
                   "Activity Feed;Header Clicked;Dashboard -> " + item.topic
                 }
@@ -448,18 +454,14 @@ export default class Activity extends Component {
       case "card-create":
       case "card-update":
         description.body = item.details.name;
-        description.bodyLink = item.model_exists
-          ? Urls.modelToUrl(item.model, item.model_id)
-          : null;
+        description.bodyLink = item.model_exists ? Urls.modelToUrl(item) : null;
         break;
       case "card-delete":
         description.body = item.details.name;
         break;
       case "dashboard-create":
         description.body = item.details.name;
-        description.bodyLink = item.model_exists
-          ? Urls.modelToUrl(item.model, item.model_id)
-          : null;
+        description.bodyLink = item.model_exists ? Urls.modelToUrl(item) : null;
         break;
       case "dashboard-delete":
         description.body = item.details.name;
@@ -484,9 +486,7 @@ export default class Activity extends Component {
         break;
       case "pulse-create":
         description.body = item.details.name;
-        description.bodyLink = item.model_exists
-          ? Urls.modelToUrl(item.model, item.model_id)
-          : null;
+        description.bodyLink = item.model_exists ? Urls.modelToUrl(item) : null;
         break;
       case "pulse-delete":
         description.body = item.details.name;

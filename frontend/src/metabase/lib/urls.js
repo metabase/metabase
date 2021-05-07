@@ -78,14 +78,14 @@ export function dashboard(dashboard, { addCardWithId } = {}) {
     : `/dashboard/${slug}`;
 }
 
-export function modelToUrl(model, modelId) {
-  switch (model) {
+export function modelToUrl(item) {
+  switch (item.model) {
     case "card":
-      return question(modelId);
+      return question(item.model_id);
     case "dashboard":
-      return dashboard(modelId);
+      return dashboard(item.model_object);
     case "pulse":
-      return pulse(modelId);
+      return pulse(item.model_id);
     default:
       return null;
   }
