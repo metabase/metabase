@@ -98,6 +98,7 @@ describe("scenarios > admin > databases > table", () => {
       }).then(({ body: { id: QUESTION_ID } }) => {
         turnTableVisibilityOff(PRODUCTS_ID);
         cy.visit(`/question/${QUESTION_ID}/notebook`);
+        cy.findByText("Products");
         cy.findByText("Quantity is equal to 1");
         cy.findByText("Rating is greater than 3");
       });
