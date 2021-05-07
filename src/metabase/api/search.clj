@@ -387,6 +387,16 @@
        :table_db_id (:table-db-id search-ctx)
        :models      (:models search-ctx) })))
 
+(defn- query-model-set [search-ctx]
+  "Queries all models with respect to query for one result, to see if we get a result or not"
+  {:models
+   (map #((first %) :model)
+   (filter not-empty
+           (for [model search-config/searchable-models]
+             (let [search-query (search-query-for-model model search-ctx)
+                   query-with-limit (h/limit search-query 1)]
+               (db/query query-with-limit)))))})
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -410,11 +420,15 @@
     (some? limit)       (assoc :limit-int (Integer/parseInt limit))
     (some? offset)      (assoc :offset-int (Integer/parseInt offset))))
 
+(api/defendpoint GET "/models"
+  "Get the set of models that a search query will return"
+  [q] (query-model-set (search-context q nil nil nil nil nil)))
+
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
   For the list of models, check `metabase.search.config/searchable-models.
 
-  To search in archived models, pass in `archived=true`.
+  To search in archived portions of models, pass in `archived=true`.
   If you want, while searching tables, only tables of a certain DB id,
   pass in a DB id value to `table_db_id`.
 
