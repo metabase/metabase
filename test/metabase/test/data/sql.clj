@@ -205,12 +205,23 @@
             pk-field-name (pk-sql-type driver)
             (str/join
              ", "
-             (for [{:keys [field-name base-type field-comment]} field-definitions]
+             (for [{:keys [field-name base-type field-comment] :as field} field-definitions]
                (str (format "%s %s"
                             (quot field-name)
-                            (if (map? base-type)
-                              (:native base-type)
-                              (field-base-type->sql-type driver base-type)))
+                            (or (cond
+                                  (and (map? base-type) (string? (:native base-type)))
+                                  (:native base-type)
+
+                                  (and (map? base-type) (map? (:native base-type)))
+                                  (get-in base-type [:native driver])
+
+                                  base-type
+                                  (field-base-type->sql-type driver base-type))
+                                (throw (ex-info (format "Missing datatype for field %s for driver: %s"
+                                                        field-name driver)
+                                                {:field field
+                                                 :driver driver
+                                                 :database-name database-name}))))
                     (when-let [comment (inline-column-comment-sql driver field-comment)]
                       (str " " comment)))))
             pk-field-name

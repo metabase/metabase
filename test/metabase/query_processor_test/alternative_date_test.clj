@@ -240,6 +240,43 @@
      ["bar" "20200421164300"]
      ["baz" "20210421164300"]]]])
 
+(mt/defdataset yyyymmddhhss-binary-times
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_bytes"
+              :base-type {:native {:postgres "BYTEA"
+                                   :h2 "BYTEA"
+                                   :mysql "VARBINARY(100)"
+                                   :sqlite "BLOB"}}
+              :effective-type :type/DateTime
+              :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
+    [["foo" (.getBytes "20190421164300")]
+     ["bar" (.getBytes "20200421164300")]
+     ["baz" (.getBytes "20210421164300")]]]])
+
+#_(ns-unmap *ns* 'yyyymmddhhss-binary-times)
+(mt/set-test-drivers! #{:sqlite})
+
+(deftest yyyymmddhhmmss-binary-dates
+  (mt/test-drivers #{:postgres :h2 :mysql :sqlite}
+    (is (= (case driver/*driver*
+             :postgres
+             [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+              [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+              [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]
+             (:h2 :mysql :sqlserver)
+             [[1 "foo" #t "2019-04-21T16:43"]
+              [2 "bar" #t "2020-04-21T16:43"]
+              [3 "baz" #t "2021-04-21T16:43"]]
+             [])
+           (sort-by
+            first
+            (mt/rows (mt/dataset yyyymmddhhss-binary-times
+                                 (qp/process-query
+                                  (assoc (mt/mbql-query times)
+                                         :middleware {:format-rows? false})))))))))
+
 (deftest yyyymmddhhmmss-dates
   (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery :snowflake :redshift :sqlserver :presto}
     (is (= (case driver/*driver*
