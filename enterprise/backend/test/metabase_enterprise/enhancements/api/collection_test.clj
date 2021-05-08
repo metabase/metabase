@@ -1,13 +1,11 @@
 (ns metabase-enterprise.enhancements.api.collection-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [NativeQuerySnippet]]
-             [test :as mt]]
-            [metabase.models
-             [collection :as collection]
-             [permissions :as perms]
-             [permissions-group :as group]]
-            [metabase.public-settings.metastore-test :as metastore-test]))
+            [metabase.models :refer [NativeQuerySnippet]]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.test :as mt]))
 
 (deftest ee-disabled-snippets-graph-test
   (testing "GET /api/collection/root/items?namespace=snippets"

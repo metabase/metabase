@@ -4,14 +4,12 @@
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
-            [metabase.util
-             [files :as files]
-             [i18n :as i18n :refer [deferred-trs LocalizedString]]
-             [schema :as su]
-             [yaml :as yaml]]
-            [schema
-             [coerce :as sc]
-             [core :as s]]
+            [metabase.util.files :as files]
+            [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
+            [metabase.util.schema :as su]
+            [metabase.util.yaml :as yaml]
+            [schema.coerce :as sc]
+            [schema.core :as s]
             [schema.spec.core :as spec])
   (:import [java.nio.file Files Path]))
 

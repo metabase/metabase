@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import ExternalLink from "metabase/components/ExternalLink";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -59,17 +60,17 @@ export default class Setup extends Component {
     return (
       <div className="SetupHelp bordered border-dashed p2 rounded mb4">
         {t`If you feel stuck`},{" "}
-        <a
+        <ExternalLink
           className="link"
           href={MetabaseSettings.docsUrl("setting-up-metabase")}
           target="_blank"
-        >{t`our getting started guide`}</a>{" "}
+        >{t`our getting started guide`}</ExternalLink>{" "}
         {t`is just a click away.`}
       </div>
     );
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     // If we are entering the scheduling step, we need to scroll to the top of scheduling step container
     if (
       this.props.activeStep !== nextProps.activeStep &&
@@ -143,7 +144,7 @@ export default class Setup extends Component {
                 stepNumber={DATABASE_CONNECTION_STEP_NUMBER}
               />
 
-              {/* Have the ref for scrolling in componentWillReceiveProps */}
+              {/* Have the ref for scrolling in UNSAFE_componentWillReceiveProps */}
               <div ref="databaseSchedulingStepContainer">
                 {/* Show db scheduling step only if the user has explicitly set the "Let me choose when Metabase syncs and scans" toggle to true */}
                 {databaseDetails &&

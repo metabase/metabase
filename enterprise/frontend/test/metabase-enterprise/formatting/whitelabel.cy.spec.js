@@ -1,20 +1,22 @@
 import {
   restore,
-  signInAsAdmin,
-  signOut,
-  signInAsNormalUser,
   openOrdersTable,
   describeWithToken,
-} from "../../../../../frontend/test/__support__/cypress";
+} from "__support__/cypress";
 
-const main_color = {
-  // brown - button, links, chart
-  hex: "8B572A",
-  rgb: "(139, 87, 42)",
+// Define colors that we use for whitelabeling
+// If rbg values exist, it's because we explicit test those
+const colors = {
+  primary: { hex: "8B572A", rgb: [139, 87, 42] },
+  nav: { hex: "284E07", rgb: [40, 78, 7] },
+  accent1: { hex: "417505" },
+  accent2: { hex: "7ED321" },
+  additional1: { hex: "B8E986" },
+  additional2: { hex: "50E3C2" },
+  additional3: { hex: "4A90E2" },
+  additional4: { hex: "082CBE" },
+  additional5: { hex: "F8E71C", rgb: [248, 231, 28] },
 };
-
-//green - nav bar
-const header_color = "rgb(40, 78, 7)";
 
 function changeThemeColor(location, colorhex) {
   cy.get("td")
@@ -23,11 +25,13 @@ function changeThemeColor(location, colorhex) {
   cy.get(`div[title='#${colorhex}']`).click();
   cy.findByText("Done").click();
 }
+
 function checkFavicon() {
   cy.request("/api/setting/application-favicon-url")
     .its("body")
     .should("include", "https://cdn.ecosia.org/assets/images/ico/favicon.ico");
 }
+
 function checkLogo() {
   cy.readFile(
     "enterprise/frontend/test/metabase-enterprise/_support_/logo.jpeg",
@@ -38,53 +42,19 @@ function checkLogo() {
 }
 
 describeWithToken("formatting > whitelabel", () => {
-  before(restore);
-
-  describe("Changes to company name work", () => {
-    beforeEach(signOut);
-
-    it("should change company name", () => {
-      signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
-      cy.findByPlaceholderText("Metabase")
-        .clear()
-        .type("Test Co");
-      // *** In html, is not text, only value
-      cy.findByText("Application Name").click();
-
-      cy.findByText("Saved");
-      cy.get("input").should("have.value", "Test Co");
-    });
-
-    it("should show new name on activity page as admin", () => {
-      signInAsAdmin();
-      cy.visit("/activity");
-      cy.findByText("Test Co is up and running.");
-      cy.findByText("Metabase is up and running.").should("not.exist");
-    });
-
-    it("should show new name when logged out", () => {
-      cy.visit("/");
-      cy.wait(2000).findByText("Sign in to Test Co");
-    });
-
-    it("should show new name on activity page as user", () => {
-      signInAsNormalUser();
-      cy.visit("/activity");
-      cy.findByText("Test Co is up and running.");
-      cy.findByText("Metabase is up and running.").should("not.exist");
-    });
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
   });
 
-  describe("Changes to theme colors work", () => {
-    it("should change theme colors in admin panel", () => {
-      signInAsAdmin();
+  describe("admin", () => {
+    it("should be able to set colors using color-picker dialog", () => {
       cy.visit("/admin/settings/whitelabel");
 
-      // Select color with squares
-      changeThemeColor(1, main_color.hex);
+      cy.log("Select color with squares");
+      changeThemeColor(1, colors.primary.hex);
 
-      // Select color by entering rgb
+      cy.log("Select color by entering rgb value");
       cy.get("td")
         .eq(5)
         .click();
@@ -92,27 +62,20 @@ describeWithToken("formatting > whitelabel", () => {
         .find("input")
         .eq(1)
         .clear()
-        .type("40");
+        .type(colors.nav.rgb[0]);
       cy.get(".sketch-picker")
         .find("input")
         .eq(2)
         .clear()
-        .type("78");
+        .type(colors.nav.rgb[1]);
       cy.get(".sketch-picker")
         .find("input")
         .eq(3)
         .clear()
-        .type("7");
+        .type(colors.nav.rgb[2]);
       cy.findByText("Done").click();
 
-      // Select colors with squares
-      changeThemeColor(9, "417505");
-      changeThemeColor(13, "7ED321");
-      changeThemeColor(17, "B8E986");
-      changeThemeColor(21, "50E3C2");
-      changeThemeColor(25, "4A90E2");
-
-      // Select color by typing hex code
+      cy.log("Select color by typing hex code");
       cy.get("td")
         .eq(29)
         .click();
@@ -120,122 +83,173 @@ describeWithToken("formatting > whitelabel", () => {
         .find("input")
         .first()
         .clear()
-        .type("082CBE");
+        .type(colors.additional4.hex);
       cy.findByText("Done").click();
+    });
+  });
 
-      changeThemeColor(33, "F8E71C");
+  describe("company name", () => {
+    const COMPANY_NAME = "Test Co";
 
-      cy.get(".Icon-close").should("have.length", 10);
+    beforeEach(() => {
+      cy.log("Change company name");
+      cy.visit("/admin/settings/whitelabel");
+      cy.findByPlaceholderText("Metabase")
+        .clear()
+        .type(COMPANY_NAME);
+      // Helps scroll the page up in order to see "Saved" notification
+      cy.findByText("Application Name").click();
+      cy.findByText("Saved");
+      cy.findByDisplayValue(COMPANY_NAME);
+      cy.log("Company name has been updated!");
     });
 
-    it("should show color changes on admin's dashboard", () => {
-      signInAsAdmin();
+    it("changes should reflect in different parts of UI", () => {
+      cy.log("New company should show up on activity page");
+      cy.visit("/activity");
+      cy.findByText(`${COMPANY_NAME} is up and running.`);
+      cy.findByText("Metabase is up and running.").should("not.exist");
+
+      cy.log("New company should show up when logged out");
+      cy.signOut();
       cy.visit("/");
-      cy.get(`[style='background-color: ${header_color};']`);
+      cy.findByText(`Sign in to ${COMPANY_NAME}`);
+
+      cy.log("New company should show up for a normal user");
+      cy.signInAsNormalUser();
+      cy.visit("/activity");
+      cy.findByText(`${COMPANY_NAME} is up and running.`);
+      cy.findByText("Metabase is up and running.").should("not.exist");
+    });
+  });
+
+  describe("company color theme", () => {
+    beforeEach(() => {
+      cy.request("PUT", "/api/setting/application-colors", {
+        value: {
+          accent1: `#${colors.accent1.hex}`,
+          accent2: `#${colors.accent2.hex}`,
+          accent3: `#${colors.additional1.hex}`,
+          accent4: `#${colors.additional2.hex}`,
+          accent5: `#${colors.additional3.hex}`,
+          accent6: `#${colors.additional4.hex}`,
+          accent7: `#${colors.additional5.hex}`,
+          brand: `#${colors.primary.hex}`,
+          nav: `#${colors.nav.hex}`,
+        },
+      });
     });
 
-    it("should show color changes when signed out", () => {
-      signOut();
+    it("should reflect color changes", () => {
+      cy.signOut();
       cy.visit("/");
-      cy.get(
-        `[style='width: 16px; height: 16px; background-color: rgb${main_color.rgb}; border: 2px solid rgb${main_color.rgb};']`,
+
+      // Note that if we have modified the logo, the entire background turns the brand color.
+      // But if we _haven't_, as is the case now, then the existing logo is branded
+      // As is the "Remember me" and "Sign in" inputs
+      cy.get(".Icon.text-brand").should(
+        "have.css",
+        "color",
+        `rgb(${colors.primary.rgb.join(", ")})`,
       );
-    });
 
-    it("should show color changes on user's dashboard", () => {
-      signInAsNormalUser();
+      cy.findByLabelText("Email address").type("some@email.com");
+      cy.findByLabelText("Password").type("1234");
+      cy.get(".Button--primary").should(
+        "have.css",
+        "background-color",
+        `rgb(${colors.primary.rgb.join(", ")})`,
+      );
+
+      cy.log("Normal users should have a green header");
+      cy.signInAsNormalUser();
       cy.visit("/");
-      cy.get(`[style='background-color: ${header_color};']`);
+      cy.get(".Nav").should(
+        "have.css",
+        "background-color",
+        `rgb(${colors.nav.rgb.join(", ")})`,
+      );
+
+      cy.log(
+        "Admin users should also have a green header, but yellow in the admin panel",
+      );
+      cy.signInAsAdmin();
+      cy.visit("/");
+      cy.get(".Nav").should(
+        "have.css",
+        "background-color",
+        `rgb(${colors.nav.rgb.join(", ")})`,
+      );
+      cy.visit("/admin");
+      cy.get(".Nav").should(
+        "have.css",
+        "background-color",
+        `rgb(${colors.additional5.rgb.join(", ")})`,
+      );
     });
 
     it.skip("should show color changes reflected in q visualizations (metabase-enterprise #470)", () => {
       // *** Test should pass when issue #470 is resolved
-      signInAsNormalUser();
+      cy.signInAsNormalUser();
       openOrdersTable();
-      cy.wait(3000)
-        .findAllByText("Summarize")
+      cy.findAllByText("Summarize")
         .first()
         .click();
-      cy.wait(1000)
-        .findByText("Price")
-        .click();
+      cy.findByText("Price").click();
       cy.findByText("Done").click();
 
-      cy.get(`div[fill='#${main_color.hex};']`);
+      cy.get(`div[fill='#${colors.primary.hex};']`);
       cy.get(`rect[fill='#509EE3']`).should("not.exist");
     });
   });
 
-  describe("Changes to logo work", () => {
-    it("should add a logo", () => {
-      signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
-
-      cy.server();
+  describe("company logo", () => {
+    beforeEach(() => {
+      cy.log("Add a logo");
       cy.readFile(
         "enterprise/frontend/test/metabase-enterprise/_support_/logo.jpeg",
         "base64",
       ).then(logo_data => {
         cy.request("PUT", "/api/setting/application-logo-url", {
-          placeholder:
-            "enterprise/frontend/test/metabase-enterprise/_support_/logo.jpeg",
-          default: "app/assets/img/logo.svg",
-          description:
-            "For best results, use an SVG file with a transparent background.",
-          display_name: "Logo",
-          env_name: "MB_APPLICATION_LOGO_URL",
-          is_env_setting: false,
-          type: "string",
           value: `data:image/jpeg;base64,${logo_data}`,
-          originalValue: null,
         });
       });
     });
 
-    it("should reflect logo change on admin's dashboard", () => {
-      signInAsAdmin();
+    it("changes should reflect on admin's dashboard", () => {
       cy.visit("/");
       checkLogo();
     });
 
-    it("should reflect logo change while signed out", () => {
+    it("changes should reflect while signed out", () => {
+      cy.signOut();
       cy.visit("/");
       checkLogo();
     });
 
-    it("should reflect logo change on user's dashboard", () => {
-      signInAsNormalUser();
+    it("changes should reflect on user's dashboard", () => {
+      cy.signInAsNormalUser();
       cy.visit("/");
       checkLogo();
     });
   });
 
-  describe("Changes to favicon work", () => {
-    it("should add a favicon", () => {
-      signInAsAdmin();
+  describe("favicon", () => {
+    beforeEach(() => {
       cy.visit("/admin/settings/whitelabel");
 
-      cy.server();
-
+      cy.log("Add favicon");
       cy.findByPlaceholderText("frontend_client/favicon.ico").type(
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
       cy.get("ul")
         .eq(2)
         .click("right");
-      cy.wait(10).findByText("Saved");
-
+      cy.findByText("Saved");
       checkFavicon();
     });
-
-    it("should reflect favicon change in API", () => {
-      signInAsAdmin();
-      cy.visit("/");
-      checkFavicon();
-    });
-
-    it("should reflect favicon change in HTML", () => {
-      signInAsNormalUser();
+    it("should show up in user's HTML", () => {
+      cy.signInAsNormalUser();
       cy.visit("/");
       cy.get('head link[rel="icon"]')
         .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')

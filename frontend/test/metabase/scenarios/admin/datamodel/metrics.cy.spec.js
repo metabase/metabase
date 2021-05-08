@@ -1,9 +1,12 @@
-import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > metrics", () => {
-  before(restore);
   beforeEach(() => {
-    signInAsAdmin();
+    restore();
+    cy.signInAsAdmin();
     cy.viewport(1400, 860);
   });
 
@@ -24,7 +27,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       });
       cy.findByText("Add filters to narrow your answer").click();
 
-      cy.log("**Fails in v0.36.0 and v0.36.3. It exists in v0.35.4**");
+      cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
       popover().within(() => {
         cy.findByText("Custom Expression");
       });
@@ -40,50 +43,23 @@ describe("scenarios > admin > datamodel > metrics", () => {
   });
 
   describe("with metrics", () => {
-    before(() => {
+    beforeEach(() => {
       // CREATE METRIC
-      signInAsAdmin();
-      cy.visit("/admin");
-      cy.contains("Data Model").click();
-      cy.contains("Metrics").click();
-      cy.contains("New metric").click();
-      cy.contains("Select a table").click();
-      popover()
-        .contains("Orders")
-        .click({ force: true }); // this shouldn't be needed, but there were issues with reordering as loads happeend
-
-      cy.url().should("match", /metric\/create$/);
-      cy.contains("Create Your Metric");
-
-      // filter to orders with total under 100
-      cy.contains("Add filters").click();
-      cy.contains("Total").click();
-      cy.contains("Equal to").click();
-      cy.contains("Less than").click();
-      cy.get('[placeholder="Enter a number"]').type("100");
-      popover()
-        .contains("Add filter")
-        .click();
-
-      //
-      cy.contains("Result: 12765");
-
-      // fill in name/description
-      cy.get('[name="name"]').type("orders <100");
-      cy.get('[name="description"]').type(
-        "Count of orders with a total under $100.",
-      );
-
-      // saving bounces you back and you see new metric in the list
-      cy.contains("Save changes").click();
-      cy.url().should("match", /datamodel\/metrics$/);
-      cy.contains("orders <100");
-      cy.contains("Count, Filtered by Total");
+      cy.request("POST", "/api/metric", {
+        definition: {
+          aggregation: ["count"],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          "source-table": ORDERS_ID,
+        },
+        name: "orders < 100",
+        description: "Count of orders with a total under $100.",
+        table_id: ORDERS_ID,
+      });
     });
 
     it("should show no questions based on a new metric", () => {
       cy.visit("/reference/metrics/1/questions");
-      cy.findAllByText("Questions about orders <100");
+      cy.findAllByText("Questions about orders < 100");
       cy.findByText("Loading...");
       cy.findByText("Loading...").should("not.exist");
       cy.findByText(
@@ -112,8 +88,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
       // Check the list
       cy.visit("/reference/metrics/1/questions");
       cy.findByText("Our analysis").should("not.exist");
-      cy.findAllByText("Questions about orders <100");
-      cy.findByText("Orders, orders <100, Filtered by Total");
+      cy.findAllByText("Questions about orders < 100");
+      cy.findByText("Orders, orders < 100, Filtered by Total");
     });
 
     it("should show the metric detail view for a specific id", () => {
@@ -127,7 +103,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.contains("Data Model").click();
       cy.contains("Metrics").click();
 
-      cy.contains("orders <100")
+      cy.contains("orders < 100")
+        .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")
@@ -152,24 +129,23 @@ describe("scenarios > admin > datamodel > metrics", () => {
         .click();
 
       // confirm that the preview updated
-      cy.contains("Result: 18703");
+      cy.contains("Result: 18758");
 
       // update name and description, set a revision note, and save the update
-      cy.get('[name="name"]')
-        .clear()
-        .type("orders >10");
-      cy.get('[name="description"]')
-        .clear()
-        .type("Count of orders with a total over $10.");
+      cy.get('[name="name"]').type("{selectall}orders > 10");
+      cy.get('[name="description"]').type(
+        "{selectall}Count of orders with a total over $10.",
+      );
       cy.get('[name="revision_message"]').type("time for a change");
       cy.contains("Save changes").click();
 
       // get redirected to previous page and see the new metric name
       cy.url().should("match", /datamodel\/metrics$/);
-      cy.contains("orders >10");
+      cy.contains("orders > 10");
 
       // clean up
-      cy.contains("orders >10")
+      cy.contains("orders > 10")
+        .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")
@@ -186,54 +162,39 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
   describe("custom metrics", () => {
     it("should save the metric using custom expressions (metabase#13022)", () => {
-      cy.visit("/admin/datamodel/metrics");
-      cy.findByText("New metric").click();
-
-      cy.log("**Create new metric based on Custom Expression**");
-      cy.findByText("Select a table").click();
-      popover().within(() => {
-        cy.findByText("Sample Dataset");
-        cy.findByText("Orders").click();
-      });
-      // "Count" is selected by defauult
-      cy.get(".QueryOption")
-        .contains("Count")
-        .click();
-      // Override it with "Custom Expression"
-      popover().within(() => {
-        cy.findByText("Custom Expression").click();
-        cy.get("[contenteditable='true']")
-          .click()
-          .clear()
-          .type("Sum([Discount] * [Quantity])", { delay: 100 });
-        cy.findByPlaceholderText("Name (required)")
-          .click()
-          .type("CE", { delay: 100 });
-        cy.findByText("Done").click();
+      cy.request("POST", "/api/metric", {
+        name: "13022_Metric",
+        desription: "desc",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              [
+                "sum",
+                [
+                  "*",
+                  ["field", ORDERS.DISCOUNT, null],
+                  ["field", ORDERS.QUANTITY, null],
+                ],
+              ],
+              { "display-name": "CE" },
+            ],
+          ],
+        },
       });
 
-      const metricName = "Test CE Metric";
-      // Give it a name
-      cy.findByPlaceholderText("Something descriptive but not too long").type(
-        metricName,
+      cy.log(
+        "**Navigate to the metrics page and assert the metric was indeed saved**",
       );
-      // and description
-      cy.findByPlaceholderText(
-        "This is a good place to be more specific about less obvious metric rules",
-      ).type("Description");
-      // Save the custom metric
-      cy.findByText("Save changes")
-        .should("not.be.disabled")
-        .click();
-
-      cy.log("**Refresh the page and assert**");
-      cy.reload();
-      cy.location("pathname").should("eq", "/admin/datamodel/metrics");
+      cy.visit("/admin/datamodel/metrics");
       cy.findByText(
         'Unexpected input given to normalize. Expected type to be "object", found "string".',
       ).should("not.exist");
 
-      cy.findByText(metricName);
+      cy.findByText("13022_Metric"); // Name
+      cy.findByText("Orders, CE"); // Definition
     });
   });
 });

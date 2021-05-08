@@ -2,13 +2,11 @@
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
-            [metabase.sync
-             [fetch-metadata :as fetch-metadata]
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.sync.fetch-metadata :as fetch-metadata]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -54,7 +52,7 @@
                 (sync-util/name-for-logging dest-table)
                 (sync-util/name-for-logging dest-field)))
     (db/update! Field (u/get-id source-field)
-      :special_type       :type/FK
+      :semantic_type      :type/FK
       :fk_target_field_id (u/get-id dest-field))
     true))
 

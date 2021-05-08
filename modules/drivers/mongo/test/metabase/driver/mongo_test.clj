@@ -2,19 +2,18 @@
   "Tests for Mongo driver."
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [query-processor-test :as qp.t :refer [rows]]
-             [test :as mt]]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver
-             [mongo :as mongo]
-             [util :as driver.u]]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
+            [metabase.driver :as driver]
+            [metabase.driver.mongo :as mongo]
+            [metabase.driver.util :as driver.u]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.t :refer [rows]]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [taoensso.nippy :as nippy]
             [toucan.db :as db])
@@ -79,7 +78,7 @@
                                             :display_name "count"
                                             :base_type    :type/Integer
                                             :source       :native
-                                            :field_ref    [:field-literal "count" :type/Integer]}]
+                                            :field_ref    [:field "count" {:base-type :type/Integer}]}]
                         :native_form      {:collection "venues"
                                            :query      native-query}
                         :results_timezone "UTC"}}
@@ -103,42 +102,53 @@
   (mt/test-driver :mongo
     (is (= {:schema nil
             :name   "venues"
-            :fields #{{:name          "name"
-                       :database-type "java.lang.String"
-                       :base-type     :type/Text
+            :fields #{{:name              "name"
+                       :database-type     "java.lang.String"
+                       :base-type         :type/Text
                        :database-position 1}
-                      {:name          "latitude"
-                       :database-type "java.lang.Double"
-                       :base-type     :type/Float
+                      {:name              "latitude"
+                       :database-type     "java.lang.Double"
+                       :base-type         :type/Float
                        :database-position 3}
-                      {:name          "longitude"
-                       :database-type "java.lang.Double"
-                       :base-type     :type/Float
+                      {:name              "longitude"
+                       :database-type     "java.lang.Double"
+                       :base-type         :type/Float
                        :database-position 4}
-                      {:name          "price"
-                       :database-type "java.lang.Long"
-                       :base-type     :type/Integer
+                      {:name              "price"
+                       :database-type     "java.lang.Long"
+                       :base-type         :type/Integer
                        :database-position 5}
-                      {:name          "category_id"
-                       :database-type "java.lang.Long"
-                       :base-type     :type/Integer
+                      {:name              "category_id"
+                       :database-type     "java.lang.Long"
+                       :base-type         :type/Integer
                        :database-position 2}
-                      {:name          "_id"
-                       :database-type "java.lang.Long"
-                       :base-type     :type/Integer
-                       :pk?           true
+                      {:name              "_id"
+                       :database-type     "java.lang.Long"
+                       :base-type         :type/Integer
+                       :pk?               true
                        :database-position 0}}}
            (driver/describe-table :mongo (mt/db) (Table (mt/id :venues)))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
-    (testing "Can we filter against nested columns?"
-      (mt/dataset geographical-tips
+    (mt/dataset geographical-tips
+      (testing "Can we filter against nested columns?"
         (is (= [[16]]
                (mt/rows
                  (mt/run-mbql-query tips
                    {:aggregation [[:count]]
-                    :filter      [:= $tips.source.username "tupac"]}))))))))
+                    :filter      [:= $tips.source.username "tupac"]})))))
+
+      (testing "Can we breakout against nested columns?"
+        (is (= [[nil 297]
+                ["amy" 20]
+                ["biggie" 11]
+                ["bob" 20]]
+               (mt/rows
+                 (mt/run-mbql-query tips
+                   {:aggregation [[:count]]
+                    :breakout    [$tips.source.username]
+                    :limit       4}))))))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
 (tx/defdataset ^:private all-null-columns
@@ -151,12 +161,14 @@
 (deftest all-num-columns-test
   (mt/test-driver :mongo
     (mt/dataset all-null-columns
-      (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
-              {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :special_type nil}
-              {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :special_type :type/Name}]
+      ;; do a full sync on the DB to get the correct semantic type info
+      (sync/sync-database! (mt/db))
+      (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :semantic_type :type/PK}
+              {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :semantic_type nil}
+              {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Name}]
              (map
               (partial into {})
-              (db/select [Field :name :database_type :base_type :special_type]
+              (db/select [Field :name :database_type :base_type :semantic_type]
                 :table_id (mt/id :bird_species)
                 {:order-by [:name]})))))))
 
@@ -171,7 +183,8 @@
                 [5 "Brite Spot Family Restaurant"]]
                (vec (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
                               [(Field (mt/id :venues :id))
-                               (Field (mt/id :venues :name))])))))))))
+                               (Field (mt/id :venues :name))]
+                              (constantly conj))))))))))
 
 
 ;; ## Big-picture tests for the way data should look post-sync
@@ -190,24 +203,24 @@
 (deftest sync-fields-test
   (mt/test-driver :mongo
     (testing "Test that Fields got synced correctly, and types are correct"
-      (is (= [[{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:special_type :type/Name,      :base_type :type/Text,     :name "name"}]
-              [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:special_type nil,             :base_type :type/Instant,  :name "date"}
-               {:special_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
-               {:special_type nil,             :base_type :type/Integer,  :name "venue_id"}]
-              [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:special_type nil,             :base_type :type/Instant,  :name "last_login"}
-               {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:special_type :type/Category,  :base_type :type/Text,     :name "password"}]
-              [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:special_type :type/Category,  :base_type :type/Integer,  :name "category_id"}
-               {:special_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
-               {:special_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
-               {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
-               {:special_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
+      (is (= [[{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}]
+              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type nil,             :base_type :type/Instant,  :name "date"}
+               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
+               {:semantic_type nil,             :base_type :type/Integer,  :name "venue_id"}]
+              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type nil,             :base_type :type/Instant,  :name "last_login"}
+               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
+               {:semantic_type :type/Category,  :base_type :type/Text,     :name "password"}]
+              [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "category_id"}
+               {:semantic_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
+               {:semantic_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
+               {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
+               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
-                    (vec (for [field (db/select [Field :name :base_type :special_type]
+                    (vec (for [field (db/select [Field :name :base_type :semantic_type]
                                        :active   true
                                        :table_id (mt/id table-name)
                                        {:order-by [:name]})]
@@ -267,11 +280,11 @@
 (deftest xrays-test
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
-      (is (= true
-             (->> (magic/automagic-analysis (Field (mt/id :venues :price)) {})
-                  :ordered_cards
-                  (mapcat (comp :breakout :query :dataset_query :card))
-                  (not-any? #{[:binning-strategy [:field-id (mt/id :venues :price)] "default"]})))))))
+      (is (empty?
+           (mbql.u/match-one (->> (magic/automagic-analysis (Field (mt/id :venues :price)) {})
+                                  :ordered_cards
+                                  (mapcat (comp :breakout :query :dataset_query :card)))
+             [:field _ (_ :guard :binning)]))))))
 
 (deftest no-values-test
   (mt/test-driver :mongo
@@ -288,7 +301,7 @@
                          [3 "Artisan"  nil]]}
                  (->
                   (mt/run-mbql-query categories
-                    {:order-by [[:asc [:field-id $id]]]
+                    {:order-by [[:asc $id]]
                      :limit    3})
                   qp.t/data
                   (select-keys [:columns :rows])))))))))

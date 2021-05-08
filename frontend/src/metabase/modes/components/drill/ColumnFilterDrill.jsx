@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { t } from "ttag";
 
@@ -38,8 +36,10 @@ export default function QuickFilterDrill({
   return [
     {
       name: "filter-column",
-      section: "filter",
-      title: t`Filter`,
+      section: "summarize",
+      title: t`Filter by this column`,
+      buttonType: "horizontal",
+      icon: "filter",
       // eslint-disable-next-line react/display-name
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <FilterPopover

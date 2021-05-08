@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.desugar
   (:require [medley.core :as m]
-            [metabase.mbql
-             [predicates :as mbql.preds]
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.mbql.predicates :as mbql.preds]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
             [schema.core :as s]))
 
 (s/defn ^:private desugar* :- mbql.s/Query

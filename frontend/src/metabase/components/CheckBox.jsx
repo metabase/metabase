@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
@@ -5,6 +6,7 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon";
 
 import { color as c, normal as defaultColors } from "metabase/lib/colors";
+import { KEYCODE_SPACE } from "metabase/lib/keyboard";
 
 export default class CheckBox extends Component {
   static propTypes = {
@@ -34,6 +36,12 @@ export default class CheckBox extends Component {
       });
     }
   }
+
+  onKeyPress = e => {
+    if (e.keyCode === KEYCODE_SPACE) {
+      this.onClick(e);
+    }
+  };
 
   render() {
     const {
@@ -67,6 +75,10 @@ export default class CheckBox extends Component {
         onClick={e => {
           this.onClick(e);
         }}
+        onKeyPress={this.onKeyPress}
+        role="checkbox"
+        aria-checked={checked}
+        tabIndex="0"
       >
         {(checked || indeterminate) && !noIcon && (
           <Icon

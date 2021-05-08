@@ -15,6 +15,10 @@ const webpack = require("@cypress/webpack-preprocessor");
 module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
+
+  /********************************************************************
+   **                          WEBPACK                               **
+   ********************************************************************/
   const { resolve } = require("../../webpack.config.js");
   const options = {
     webpackOptions: { resolve },
@@ -22,4 +26,17 @@ module.exports = (on, config) => {
   };
 
   on("file:preprocessor", webpack(options));
+
+  /********************************************************************
+   **                         BROWSERS                               **
+   ********************************************************************/
+
+  //  Open dev tools in Chrome by default
+  on("before:browser:launch", (browser = {}, launchOptions) => {
+    if (browser.name === "chrome") {
+      launchOptions.args.push("--auto-open-devtools-for-tabs");
+
+      return launchOptions;
+    }
+  });
 };

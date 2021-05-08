@@ -1,15 +1,18 @@
 (ns metabase.test.data.vertica
   "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
-  (:require [clojure.java.jdbc :as jdbc]
-            [colorize.core :as colorize]
+  (:require [clojure.data.csv :as csv]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [java-time :as t]
+            [medley.core :as m]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]
-             [sql-jdbc :as sql-jdbc.tx]]
-            [metabase.test.data.sql-jdbc
-             [execute :as execute]
-             [load-data :as load-data]]))
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+            [metabase.test.data.sql-jdbc.execute :as execute]
+            [metabase.test.data.sql-jdbc.load-data :as load-data]
+            [metabase.util :as u]
+            [metabase.util.files :as files]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
@@ -24,7 +27,7 @@
                               :type/Decimal        "NUMERIC"
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
-                              :type/Text           "VARCHAR(254)"
+                              :type/Text           "VARCHAR(1024)"
                               :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
@@ -56,28 +59,94 @@
 (defn- dbspec []
   (sql-jdbc.conn/connection-details->spec :vertica @db-connection-details))
 
-(defn- do-with-retries
-  "Attempt to execute `thunk` up to `num-retries` times. If it throws an Exception, execute `on-fail` and try again if
-  any retries remain."
-  [thunk on-fail num-retries]
-  (if-not (pos? num-retries)
-    (thunk)
-    (try
-      (thunk)
-      (catch Throwable e
-        (on-fail)
-        (do-with-retries thunk on-fail (dec num-retries))))))
+;; TODO = explain...
+
+(defmulti ^:private value->csv
+  {:arglists '([value])}
+  class)
+
+(defmethod value->csv :default
+  [v]
+  (str v))
+
+(defmethod value->csv java.time.ZonedDateTime
+  [t]
+  (value->csv (t/offset-date-time t)))
+
+(defmethod value->csv String
+  [s]
+  ;; escape commas
+  (str/escape s {\, "\\,"}))
+
+(defmethod value->csv honeysql.types.SqlCall
+  [call]
+  (throw (ex-info "Cannot insert rows containing HoneySQL calls: insert the appropriate raw value instead"
+                  {:call call})))
+
+(defn- dump-table-rows-to-csv!
+  "Dump a sequence of rows (as vectors) to a CSV file."
+  [{:keys [field-definitions rows]} ^String filename]
+  (try
+    (let [column-names (cons "id" (mapv :field-name field-definitions))
+          rows-with-id (for [[i row] (m/indexed rows)]
+                         (cons (inc i) (for [v row]
+                                         (value->csv v))))
+          csv-rows     (cons column-names rows-with-id)]
+      (try
+        (with-open [writer (java.io.FileWriter. (java.io.File. filename))]
+          (csv/write-csv writer csv-rows))
+        (catch Throwable e
+          (throw (ex-info "Error writing rows to CSV" {:rows (take 10 csv-rows)} e)))))
+    (catch Throwable e
+      (throw (ex-info "Error dumping rows to CSV" {:filename filename} e)))))
+
+(defn- load-rows-from-csv!
+  "Load rows from a CSV file into a Table."
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name rows], :as tabledef} filename]
+  (let [table-identifier (sql.tx/qualify-and-quote :vertica database-name table-name)]
+    (with-open [conn (jdbc/get-connection (dbspec))]
+      (letfn [(execute! [sql]
+                (try
+                  (jdbc/execute! {:connection conn} sql)
+                  (catch Throwable e
+                    (throw (ex-info "Error executing SQL" {:sql sql, :spec (dbspec)} e)))))
+              (actual-rows []
+                (u/ignore-exceptions
+                 (jdbc/query {:connection conn}
+                             (format "SELECT * FROM %s ORDER BY id ASC;" table-identifier))))]
+        (try
+          ;; make sure the Table is empty
+          (execute! (format "TRUNCATE TABLE %s" table-identifier))
+          ;; load the rows from the CSV file
+          (let [[num-rows-inserted] (execute! (format "COPY %s FROM LOCAL '%s' DELIMITER ','"
+                                                      table-identifier
+                                                      filename))]
+            ;; it should return the number of rows inserted; make sure this matches what we expected
+            (when-not (= num-rows-inserted (count rows))
+              (throw (ex-info (format "Expected %d rows to be inserted, but only %d were" (count rows) num-rows-inserted)
+                              {:inserted-rows (take 100 (actual-rows))}))))
+          ;; make sure SELECT COUNT(*) matches as well
+          (let [[{actual-num-rows :count}] (jdbc/query {:connection conn}
+                                                       (format "SELECT count(*) FROM %s;" table-identifier))]
+            (when-not (= actual-num-rows (count rows))
+              (throw (ex-info (format "Expected count(*) to return %d, but only got" (count rows) actual-num-rows)
+                              {:inserted-rows (take 100 (actual-rows))}))))
+          ;; success!
+          :ok
+          (catch Throwable e
+            (throw (ex-info "Error loading rows from CSV file"
+                            {:filename filename
+                             :rows     (take 10 (str/split-lines (slurp filename)))}
+                            e))))))))
 
 (defmethod load-data/load-data! :vertica
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
-  ;; try a few times to load the data, Vertica is very fussy and it doesn't always work the first time
-  (do-with-retries
-   #(load-data/load-data-one-at-a-time-add-ids! driver dbdef tabledef)
-   (fn []
-     (println (colorize/red "\n\nVertica failed to load data, let's try again...\n\n"))
-     (let [sql (format "TRUNCATE TABLE %s" (sql.tx/qualify-and-quote :vertica database-name table-name))]
-       (jdbc/execute! (dbspec) sql)))
-   5))
+  [driver dbdef {:keys [rows], :as tabledef}]
+  (try
+    (let [filename (str (files/get-path (System/getProperty "java.io.tmpdir") "vertica-rows.csv"))]
+      (dump-table-rows-to-csv! tabledef filename)
+      (load-rows-from-csv! driver dbdef tabledef filename))
+    (catch Throwable e
+      (throw (ex-info "Error loading rows" {:rows (take 10 rows)} e)))))
 
 (defmethod sql.tx/pk-sql-type :vertica [& _] "INTEGER")
 
@@ -86,24 +155,12 @@
 
 (defmethod tx/has-questionable-timezone-support? :vertica [_] true)
 
-
 (defmethod tx/before-run :vertica
   [_]
   ;; Close all existing sessions connected to our test DB
   (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
   ;; Increase the connection limit; the default is 5 or so which causes tests to fail when too many connections are made
   (jdbc/execute! (dbspec) (format "ALTER DATABASE \"%s\" SET MaxClientSessions = 1000;" (db-name))))
-
-(defmethod tx/create-db! :vertica
-  [driver dbdef & options]
-  ;; try a few times to create the DB. Vertica is very fussy and sometimes you need to try a few times to get it to
-  ;; work correctly.
-  (do-with-retries
-   #(apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)
-   (fn []
-     (println (colorize/red "\n\nVertica failed to create a DB, again. Let's try again...\n\n"))
-     (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();"))
-   5))
 
 (defmethod tx/aggregate-column-info :vertica
   ([driver ag-type]

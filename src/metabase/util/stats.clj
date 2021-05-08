@@ -5,17 +5,15 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [email :as email]
-             [models :refer [Card Collection Dashboard DashboardCard Database Field Metric PermissionsGroup Pulse
-                             PulseCard PulseChannel QueryCache QueryExecution Segment Table User]]
-             [public-settings :as public-settings]
-             [util :as u]]
             [metabase.api.session :as session-api]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.email :as email]
             [metabase.integrations.slack :as slack]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric PermissionsGroup Pulse PulseCard PulseChannel QueryCache QueryExecution Segment Table User]]
             [metabase.models.humanization :as humanization]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 

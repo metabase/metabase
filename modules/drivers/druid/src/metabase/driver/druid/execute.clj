@@ -4,15 +4,13 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase.driver.druid.query-processor :as druid.qp]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]))
 
 (defn- resolve-timezone
@@ -157,7 +155,13 @@
                      query)
         query-type (or query-type
                        (keyword (namespace ::druid.qp/query) (name (:queryType query))))
-        results    (execute* details query)
+        results    (try
+                     (execute* details query)
+                     (catch Throwable e
+                       (throw (ex-info (tru "Error executing query")
+                                       {:type  qp.error-type/db
+                                        :query query}
+                                       e))))
         result     (try (post-process query-type projections
                                       {:timezone   (resolve-timezone mbql-query)
                                        :middleware middleware}

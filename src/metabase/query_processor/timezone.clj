@@ -2,9 +2,8 @@
   "Functions for fetching the timezone for the current query."
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]])
   (:import java.time.ZonedDateTime))

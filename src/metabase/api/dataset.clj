@@ -4,24 +4,20 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
             [metabase.api.common :as api]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models
-             [card :refer [Card]]
-             [database :as database :refer [Database]]
-             [query :as query]]
-            [metabase.query-processor
-             [streaming :as qp.streaming]
-             [util :as qputil]]
-            [metabase.query-processor.middleware
-             [constraints :as qp.constraints]
-             [permissions :as qp.perms]]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.database :as database :refer [Database]]
+            [metabase.models.query :as query]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.pivot :as pivot]
+            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -37,26 +33,33 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(api/defendpoint ^:streaming POST "/"
-  "Execute a query and retrieve the results in the usual format."
-  [:as {{:keys [database], query-type :type, :as query} :body}]
-  {database (s/maybe s/Int)}
-  ;; database is required unless this is an `internal` query.
-  ;; don't permissions check the 'database' if it's the virtual database. That database doesn't actually exist :-)
-  (when (and (not= query-type "internal")
+(defn- run-query-async
+  [{:keys [database], :as query}
+   & {:keys [context export-format qp-runner]
+      :or   {context       :ad-hoc
+             export-format :api
+             qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
+  (when (and (not= (:type query) "internal")
              (not= database mbql.s/saved-questions-virtual-database-id))
     (when-not database
-      (throw (Exception. (str (tru "`database` is required for all queries whose type is not `internal`.")))))
+      (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
+                      {:status-code 400, :query query})))
     (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         info           {:executed-by api/*current-user-id*
-                        :context     :ad-hoc
+                        :context     context
                         :card-id     source-card-id
-                        :nested?     (boolean source-card-id)}
-        query          (update query :middleware assoc :js-int-to-string? true)]
-    (qp.streaming/streaming-response [context :api]
-      (qp/process-query-and-save-with-max-results-constraints! query info context))))
+                        :nested?     (boolean source-card-id)}]
+    (binding [qp.perms/*card-id* source-card-id]
+      (qp.streaming/streaming-response [context export-format]
+        (qp-runner query info context)))))
+
+(api/defendpoint ^:streaming POST "/"
+  "Execute a query and retrieve the results in the usual format."
+  [:as {{:keys [database], query-type :type, :as query} :body}]
+  {database (s/maybe s/Int)}
+  (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -65,9 +68,9 @@
   "Schema for valid export formats for downloading query results."
   (apply s/enum (map u/qualified-name (qp.streaming/export-formats))))
 
-(defn export-format->context
+(s/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
-  in `export-foramt`.
+  in `export-format`.
 
     (export-format->context :json) ;-> :json-download"
   [export-format]
@@ -86,8 +89,6 @@
   {query         su/JSONString
    export-format ExportFormat}
   (let [{:keys [database] :as query} (json/parse-string query keyword)]
-    (when-not (= database mbql.s/saved-questions-virtual-database-id)
-      (api/read-check Database database))
     (let [query (-> (assoc query :async? true)
                     (dissoc :constraints)
                     (update :middleware #(-> %
@@ -96,8 +97,11 @@
                                                     :format-rows? false))))
           info  {:executed-by api/*current-user-id*
                  :context     (export-format->context export-format)}]
-      (qp.streaming/streaming-response [context export-format]
-        (qp/process-query-and-save-execution! query info context)))))
+      (run-query-async
+       query
+       :export-format export-format
+       :context       (export-format->context export-format)
+       :qp-runner     qp/process-query-and-save-execution!))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
@@ -121,5 +125,18 @@
   (qp.perms/check-current-user-has-adhoc-native-query-perms query)
   (qp/query->native-with-spliced-params query))
 
+(api/defendpoint ^:streaming POST "/pivot"
+  "Generate a pivoted dataset for an ad-hoc query"
+  [:as {{:keys      [database]
+         query-type :type
+         :as        query} :body}]
+  {database (s/maybe s/Int)}
+  (when-not database
+    (throw (Exception. (str (tru "`database` is required for all queries.")))))
+  (api/read-check Database database)
+  (let [info {:executed-by api/*current-user-id*
+              :context     :ad-hoc}]
+    (qp.streaming/streaming-response [context :api]
+      (pivot/run-pivot-query (assoc query :async? true) info context))))
 
 (api/define-routes)

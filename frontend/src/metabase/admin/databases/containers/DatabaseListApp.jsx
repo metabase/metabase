@@ -1,5 +1,4 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -18,11 +17,18 @@ import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 
 import Database from "metabase/entities/databases";
 
-import { getDeletes, getDeletionError } from "../selectors";
+import {
+  getDeletes,
+  getDeletionError,
+  getIsAddingSampleDataset,
+  getAddSampleDatasetError,
+} from "../selectors";
 import { deleteDatabase, addSampleDataset } from "../database";
 
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
+  isAddingSampleDataset: getIsAddingSampleDataset(state),
+  addSampleDatasetError: getAddSampleDatasetError(state),
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
@@ -52,7 +58,7 @@ export default class DatabaseList extends Component {
     deletionError: PropTypes.object,
   };
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (!this.props.created && newProps.created) {
       this.refs.createdDatabaseModal.open();
     }
@@ -62,10 +68,14 @@ export default class DatabaseList extends Component {
     const {
       databases,
       hasSampleDataset,
+      isAddingSampleDataset,
+      addSampleDatasetError,
       created,
       engines,
       deletionError,
     } = this.props;
+
+    const error = deletionError || addSampleDatasetError;
 
     return (
       <div className="wrapper">
@@ -76,9 +86,9 @@ export default class DatabaseList extends Component {
           >{t`Add database`}</Link>
           <h2 className="PageTitle">{t`Databases`}</h2>
         </section>
-        {deletionError && (
+        {error && (
           <section>
-            <FormMessage formError={deletionError} />
+            <FormMessage formError={error} />
           </section>
         )}
         <section>
@@ -158,10 +168,18 @@ export default class DatabaseList extends Component {
                   "border-top": databases && databases.length > 0,
                 })}
               >
-                <a
-                  className="text-light text-brand-hover no-decoration"
-                  onClick={() => this.props.addSampleDataset()}
-                >{t`Bring the sample dataset back`}</a>
+                {isAddingSampleDataset ? (
+                  <span className="text-light no-decoration">
+                    {t`Restoring the sample dataset...`}
+                  </span>
+                ) : (
+                  <a
+                    className="text-light text-brand-hover no-decoration"
+                    onClick={() => this.props.addSampleDataset()}
+                  >
+                    {t`Bring the sample dataset back`}
+                  </a>
+                )}
               </span>
             </div>
           ) : null}

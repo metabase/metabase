@@ -1,22 +1,21 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
-  (:require [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [sync :as sync]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :as field :refer [Field]]
-             [table :refer [Table]]]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [clojure.tools.reader.edn :as edn]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [interface :as tx]]
+            [metabase.sync :as sync]
+            [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.impl.verify :as verify]
+            [metabase.test.data.interface :as tx]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.timezone :as tu.tz]
+            [metabase.util :as u]
             [potemkin :as p]
             [toucan.db :as db]))
 
@@ -41,9 +40,12 @@
       (let [driver (driver/the-driver driver)]
         (or
          (@locks driver)
-         (do
-           (swap! locks update driver #(or % (Object.)))
-           (@locks driver)))))))
+         (locking driver->create-database-lock
+           (or
+            (@locks driver)
+            (do
+              (swap! locks update driver #(or % (Object.)))
+              (@locks driver)))))))))
 
 (defmulti get-or-create-database!
   "Create DBMS database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
@@ -64,25 +66,26 @@
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
                                                       (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
-      (doseq [{:keys [field-name visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
+      (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
         (let [field (delay (or (tx/metabase-instance field-definition @table)
-                               (throw (Exception. (format "Field '%s' not loaded from definition:\n"
+                               (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
                                                           field-name
                                                           (u/pprint-to-str field-definition))))))]
-          (when visibility-type
-            (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
-            (db/update! Field (:id @field) :visibility_type (name visibility-type)))
-          (when special-type
-            (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-            (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
+          (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
+            (when-let [v (get field-definition property)]
+              (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
+              (db/update! Field (:id @field) (keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
-  (u/minutes->ms 4)) ; 4 minutes
+  (u/minutes->ms 30)) ; Redshift is slow
 
 (def ^:private sync-timeout-ms
   "Max amount of time to wait for sync to complete."
-  (u/minutes->ms 5)) ; five minutes
+  (u/minutes->ms 15))
+
+(defonce ^:private reference-sync-durations
+  (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
 (defn- create-database! [driver {:keys [database-name table-definitions], :as database-definition}]
   {:pre [(seq database-name)]}
@@ -101,23 +104,29 @@
       (try
         ;; sync newly added DB
         (u/with-timeout sync-timeout-ms
-          (u/profile (format "Sync %s Database %s" driver database-name)
-            (sync/sync-database! db)
-            (verify-data-loaded-correctly driver database-definition db)
-            ;; add extra metadata for fields
-            (try
-              (add-extra-metadata! database-definition db)
-              (catch Throwable e
-                (println "Error adding extra metadata:" e)))))
+          (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
+                                       "NONE")
+                quick-sync? (not= database-name "test-data")]
+            (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
+                               (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
+              ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+              (sync/sync-database! db (when quick-sync? {:scan :schema}))
+              ;; add extra metadata for fields
+              (try
+                (add-extra-metadata! database-definition db)
+                (catch Throwable e
+                  (println "Error adding extra metadata:" e))))))
         ;; make sure we're returing an up-to-date copy of the DB
-        (Database (u/get-id db))
+        (Database (u/the-id db))
         (catch Throwable e
-          (db/delete! Database :id (u/get-id db))
-          (throw (ex-info "Failed to create test database"
-                          {:driver             driver
-                           :database-name      database-name
-                           :connection-details connection-details}
-                          e)))))
+          (let [e (ex-info "Failed to create test database"
+                           {:driver             driver
+                            :database-name      database-name
+                            :connection-details connection-details}
+                           e)]
+            (println (u/pprint-to-str 'red (Throwable->map e)))
+            (db/delete! Database :id (u/the-id db))
+            (throw e)))))
     (catch Throwable e
       (let [message (format "Failed to create %s '%s' test database" driver database-name)]
         (println message "\n" e)
@@ -251,6 +260,10 @@
   (copy-db-tables! old-db-id new-db-id)
   (copy-db-fks! old-db-id new-db-id))
 
+(def ^:dynamic *db-is-temp-copy?*
+  "Whether the current test database is a temp copy created with the `with-temp-copy-of-db` macro."
+  false)
+
 (defn do-with-temp-copy-of-db
   "Internal impl of `data/with-temp-copy-of-db`. Run `f` with a temporary Database that copies the details from the
   standard test database, and syncs it."
@@ -260,8 +273,10 @@
     (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
       (try
         (copy-db-tables-and-fields! old-db-id new-db-id)
-        (do-with-db new-db f)
-        (finally (db/delete! Database :id new-db-id))))))
+        (binding [*db-is-temp-copy?* true]
+          (do-with-db new-db f))
+        (finally
+          (db/delete! Database :id new-db-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -289,7 +304,7 @@
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
-                                 (assert (db/exists? Database :id (u/get-id db)))
+                                 (assert (db/exists? Database :id (u/the-id db)))
                                  db))))]
     (binding [*get-db* #(get-db-for-driver (tx/driver))]
       (f))))

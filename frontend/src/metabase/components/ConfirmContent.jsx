@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import ModalContent from "metabase/components/ModalContent";

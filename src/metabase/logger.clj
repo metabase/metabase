@@ -1,8 +1,7 @@
 (ns metabase.logger
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
-            [clj-time
-             [coerce :as coerce]
-             [format :as time]]
+            [clj-time.coerce :as coerce]
+            [clj-time.format :as time]
             [metabase.config :refer [local-process-uuid]])
   (:import org.apache.commons.lang3.exception.ExceptionUtils
            [org.apache.logging.log4j.core Appender Filter Layout LogEvent LoggerContext]

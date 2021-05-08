@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { t } from "ttag";
@@ -16,6 +17,7 @@ import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbed
 
 import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
+import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
 export default class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {
@@ -180,6 +182,23 @@ export default class QueryModals extends React.Component {
     ) : modal === "embed" ? (
       <Modal full onClose={onCloseModal}>
         <QuestionEmbedWidget card={this.props.card} onClose={onCloseModal} />
+      </Modal>
+    ) : modal === "clone" ? (
+      <Modal onClose={onCloseModal}>
+        <EntityCopyModal
+          entityType="questions"
+          entityObject={this.props.card}
+          copy={async formValues => {
+            const object = await this.props.onCreate({
+              ...this.props.card,
+              ...formValues,
+              description: formValues.description || null,
+            });
+            return { payload: { object } };
+          }}
+          onClose={onCloseModal}
+          onSaved={() => onOpenModal("saved")}
+        />
       </Modal>
     ) : null;
   }

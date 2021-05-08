@@ -1,12 +1,11 @@
 (ns metabase.events.sync-database
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase
-             [events :as events]
-             [sync :as sync]
-             [util :as u]]
+            [metabase.events :as events]
             [metabase.models.database :refer [Database]]
+            [metabase.sync :as sync]
             [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 
 (def ^:const sync-database-topics

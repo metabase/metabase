@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import React, { Component } from "react";
 
 import TimeGroupingPopover from "metabase/query_builder/components/TimeGroupingPopover";

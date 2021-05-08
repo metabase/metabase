@@ -15,7 +15,8 @@
                              {:name          "ts"
                               :database-type "BIGINT"
                               :base-type     :type/BigInteger
-                              :special-type  :type/UNIXTimestampMilliseconds}
+                              :effective-type :type/DateTime
+                              :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime}
                              {:name          "toucan"
                               :database-type "OBJECT"
                               :base-type     :type/Dictionary
@@ -30,7 +31,7 @@
                                                                   :base-type     :type/Integer}
                                                                  {:name          "weight"
                                                                   :database-type "DECIMAL"
-                                                                  :special-type  :type/Category
+                                                                  :semantic-type :type/Category
                                                                   :base-type     :type/Decimal}}}}}
                              {:name          "buyer"
                               :database-type "OBJECT"
@@ -97,13 +98,13 @@
                                   :display_name  "Name"
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
-                                  :special_type  :type/Name})
+                                  :semantic_type :type/Name})
                           (merge mock-util/field-defaults
                                  {:name          "id"
                                   :display_name  "ID"
                                   :database_type "SERIAL"
                                   :base_type     :type/Integer
-                                  :special_type  :type/PK})]
+                                  :semantic_type :type/PK})]
            :display_name "Employees"})
    (merge mock-util/table-defaults
           {:name         "transactions"
@@ -112,7 +113,8 @@
                                   :display_name  "Ts"
                                   :database_type "BIGINT"
                                   :base_type     :type/BigInteger
-                                  :special_type  :type/UNIXTimestampMilliseconds})
+                                  :effective_type :type/DateTime
+                                  :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime})
                           (merge mock-util/field-defaults
                                  {:name          "id"
                                   :display_name  "ID"
@@ -135,7 +137,7 @@
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
                                   :parent_id     true
-                                  :special_type  :type/Name})
+                                  :semantic_type :type/Name})
                           (merge mock-util/field-defaults
                                  {:name          "age"
                                   :display_name  "Age"
@@ -154,7 +156,7 @@
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
                                   :parent_id     true
-                                  :special_type  :type/Name})
+                                  :semantic_type :type/Name})
                           (merge mock-util/field-defaults
                                  {:name          "toucan"
                                   :display_name  "Toucan"
@@ -166,5 +168,5 @@
                                   :database_type "DECIMAL"
                                   :base_type     :type/Decimal
                                   :parent_id     true
-                                  :special_type  :type/Category})]
+                                  :semantic_type :type/Category})]
            :display_name "Transactions"})])

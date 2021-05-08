@@ -54,6 +54,22 @@ describe("pie chart", () => {
     getAllByText("123"); // should multiply the count in the center by `scale`
   });
 
+  it("should obey number separator settings", () => {
+    const cols = [
+      StringColumn({ name: "name" }),
+      NumberColumn({ name: "count" }),
+    ];
+    const column_settings = { '["name","count"]': { number_separators: ", " } };
+    const series = [
+      {
+        card: { display: "pie", visualization_settings: { column_settings } },
+        data: { rows: [["foo", 0.501], ["bar", 0.499]], cols },
+      },
+    ];
+    const { getAllByText } = render(<Visualization rawSeries={series} />);
+    getAllByText("50,1%");
+  });
+
   it("should show a condensed tooltip for squashed slices", () => {
     const rows = [["foo", 0.5], ["bar", 0.49], ["baz", 0.002], ["qux", 0.008]];
     const { container, getAllByText, queryAllByText } = render(

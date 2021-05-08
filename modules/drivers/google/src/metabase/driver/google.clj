@@ -1,12 +1,11 @@
 (ns metabase.driver.google
   "Shared logic for various Google drivers, including BigQuery and Google Analytics."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]
             [toucan.db :as db])
@@ -59,7 +58,7 @@
   "Creates the application name string, separated out from the `def` below so it's testable with different values"
   [{:keys [tag ^String hash branch]}]
   (let [encoded-hash (some-> hash (.getBytes "UTF-8") codec/base64-encode)]
-    (format "Metabase/%s (GPN:Metabse; %s %s)"
+    (format "Metabase/%s (GPN:Metabase; %s %s)"
             (or tag "?")
             (or encoded-hash "?")
             (or branch "?"))))

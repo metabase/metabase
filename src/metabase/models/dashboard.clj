@@ -1,34 +1,31 @@
 (ns metabase.models.dashboard
-  (:require [clojure
-             [data :refer [diff]]
-             [set :as set]
-             [string :as str]]
-            [clojure.core.async :as a]
+  (:require [clojure.core.async :as a]
+            [clojure.data :refer [diff]]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [events :as events]
-             [public-settings :as public-settings]
-             [util :as u]]
             [metabase.automagic-dashboards.populate :as magic.populate]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [collection :as collection]
-             [dashboard-card :as dashboard-card :refer [DashboardCard]]
-             [field-values :as field-values]
-             [interface :as i]
-             [params :as params]
-             [permissions :as perms]
-             [revision :as revision]]
+            [metabase.events :as events]
+            [metabase.models.card :as card :refer [Card]]
+            [metabase.models.collection :as collection]
+            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+            [metabase.models.field-values :as field-values]
+            [metabase.models.interface :as i]
+            [metabase.models.params :as params]
+            [metabase.models.permissions :as perms]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
+            [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
-            [metabase.util
-             [i18n :as ui18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models]))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -41,7 +38,7 @@
                :from      [[DashboardCard :dashcard]]
                :left-join [[Card :card] [:= :dashcard.card_id :card.id]]
                :where     [:and
-                           [:= :dashcard.dashboard_id (u/get-id dashboard-or-id)]
+                           [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
                            [:or
                             [:= :card.archived false]
                             [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
@@ -58,7 +55,7 @@
                     {:parameters parameters}))))
 
 (defn- pre-delete [dashboard]
-  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard)))
+  (db/delete! 'Revision :model "Dashboard" :model_id (u/the-id dashboard)))
 
 (defn- pre-insert [dashboard]
   (let [defaults  {:parameters []}
@@ -72,6 +69,51 @@
     (assert-valid-parameters dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
+(defn- update-dashboard-subscription-pulses!
+  "Updates the pulses' names and syncs the PulseCards"
+  [dashboard]
+  (let [dashboard-id (u/the-id dashboard)
+        affected     (db/query
+                      {:select    [[:p.id :pulse-id] [:pc.card_id :card-id]]
+                       :modifiers [:distinct]
+                       :from      [[Pulse :p]]
+                       :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
+                       :where     [:= :p.dashboard_id dashboard-id]})]
+    (when-let [pulse-ids (seq (distinct (map :pulse-id affected)))]
+      (let [correct-card-ids     (->> (db/query {:select    [:dc.card_id]
+                                                 :modifiers [:distinct]
+                                                 :from      [[DashboardCard :dc]]
+                                                 :where     [:and
+                                                             [:= :dc.dashboard_id dashboard-id]
+                                                             [:not= :dc.card_id nil]]})
+                                      (map :card_id)
+                                      set)
+            stale-card-ids       (->> affected
+                                      (keep :card-id)
+                                      set)
+            cards-to-add         (set/difference correct-card-ids stale-card-ids)
+            card-id->dashcard-id (when (seq cards-to-add)
+                                   (db/select-field->id :card_id DashboardCard :dashboard_id dashboard-id
+                                                        :card_id [:in cards-to-add]))
+            positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
+                                                      (range)))
+            new-pulse-cards      (for [pulse-id                         pulse-ids
+                                       [[card-id dashcard-id] position] (map vector
+                                                                             card-id->dashcard-id
+                                                                             (positions-for pulse-id))]
+                                   {:pulse_id          pulse-id
+                                    :card_id           card-id
+                                    :dashboard_card_id dashcard-id
+                                    :position          position})]
+        (db/transaction
+          (db/update-where! Pulse {:dashboard_id dashboard-id}
+            :name (:name dashboard))
+          (pulse-card/bulk-create! new-pulse-cards))))))
+
+(defn- post-update
+  [dashboard]
+  (update-dashboard-subscription-pulses! dashboard))
+
 (u/strict-extend (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
@@ -80,6 +122,7 @@
           :pre-delete  pre-delete
           :pre-insert  pre-insert
           :pre-update  pre-update
+          :post-update post-update
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
   ;; You can read/write a Dashboard if you can read/write its parent Collection
@@ -180,7 +223,7 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (Dashboard (u/get-id dashboard-or-id))]
+  (let [dash (Dashboard (u/the-id dashboard-or-id))]
     (params/dashboard->param-field-ids (hydrate dash [:ordered_cards :card]))))
 
 
@@ -206,10 +249,10 @@
   [dashboard-or-id card-or-id-or-nil & [dashcard-options]]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
         dashboard-card      (-> (assoc dashcard-options
-                                  :dashboard_id (u/get-id dashboard-or-id)
-                                  :card_id      (when card-or-id-or-nil (u/get-id card-or-id-or-nil)))
+                                  :dashboard_id (u/the-id dashboard-or-id)
+                                  :card_id      (when card-or-id-or-nil (u/the-id card-or-id-or-nil)))
                                 ;; if :series info gets passed in make sure we pass it along as a sequence of IDs
-                                (update :series #(filter identity (map u/get-id %))))]
+                                (update :series #(filter identity (map u/the-id %))))]
     (u/prog1 (dashboard-card/create-dashboard-card! dashboard-card)
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
@@ -222,7 +265,7 @@
   {:style/indent 1}
   [dashboard-or-id dashcards]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
-        dashcard-ids        (db/select-ids DashboardCard, :dashboard_id (u/get-id dashboard-or-id))]
+        dashcard-ids        (db/select-ids DashboardCard, :dashboard_id (u/the-id dashboard-or-id))]
     (doseq [{dashcard-id :id, :as dashboard-card} dashcards]
       ;; ensure the dashcard we are updating is part of the given dashboard
       (when (contains? dashcard-ids dashcard-id)

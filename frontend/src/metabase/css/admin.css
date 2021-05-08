@@ -265,13 +265,13 @@
   color: white !important;
 }
 
-.TableEditor-field-special-type,
+.TableEditor-field-semantic-type,
 .TableEditor-field-target {
   margin-top: 3px;
   /*color: var(--color-accent1);*/
 }
 
-.TableEditor-field-special-type .ColumnarSelector-row:hover,
+.TableEditor-field-semantic-type .ColumnarSelector-row:hover,
 .TableEditor-field-target .ColumnarSelector-row:hover {
   background-color: var(--color-brand) !important;
   color: white !important;

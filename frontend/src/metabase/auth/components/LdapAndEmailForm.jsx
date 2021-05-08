@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { connect } from "react-redux";
@@ -36,6 +37,7 @@ export default class LdapAndEmailForm extends Component {
               }
               placeholder={t`youlooknicetoday@email.com`}
               validate={ldapEnabled ? validate.required() : validate.email()}
+              autoFocus
             />
             <FormField
               name="password"

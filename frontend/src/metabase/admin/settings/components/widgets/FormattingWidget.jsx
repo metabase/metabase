@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
@@ -17,7 +18,7 @@ const SETTING_TYPES = [
       "time_style",
     ],
     column: {
-      special_type: TYPE.Temporal,
+      semantic_type: TYPE.Temporal,
       unit: "second",
     },
   },
@@ -27,7 +28,7 @@ const SETTING_TYPES = [
     settings: ["number_separators"],
     column: {
       base_type: TYPE.Number,
-      special_type: TYPE.Number,
+      semantic_type: TYPE.Number,
     },
   },
   {
@@ -36,7 +37,7 @@ const SETTING_TYPES = [
     settings: ["currency_style", "currency", "currency_in_header"],
     column: {
       base_type: TYPE.Number,
-      special_type: TYPE.Currency,
+      semantic_type: TYPE.Currency,
     },
   },
 ];
@@ -57,8 +58,7 @@ class FormattingWidget extends React.Component {
               value={value[type]}
               onChange={settings => onChange({ ...value, [type]: settings })}
               column={column}
-              whitelist={new Set(settings)}
-              noReset
+              allowlist={new Set(settings)}
             />
           </div>
         ))}

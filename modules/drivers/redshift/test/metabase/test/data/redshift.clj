@@ -1,11 +1,9 @@
 (ns metabase.test.data.redshift
   (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]))
 

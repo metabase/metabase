@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { withRouter } from "react-router";
@@ -18,7 +17,8 @@ import Radio from "metabase/components/Radio";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { GTAPApi } from "metabase/services";
-import RetinaImage from "react-retina-image";
+
+import { UNKNOWN_ERROR_MESSAGE } from "metabase/components/form/FormMessage";
 
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import QuestionLoader from "metabase/containers/QuestionLoader";
@@ -48,6 +48,7 @@ type State = {
   gtap: ?GTAP,
   attributesOptions: ?(string[]),
   simple: boolean,
+  error: ?string,
 };
 
 @withRouter
@@ -61,9 +62,10 @@ export default class GTAPModal extends React.Component {
     gtap: null,
     attributesOptions: null,
     simple: true,
+    error: null,
   };
-  // $FlowFixMe: componentWillMount expected to return void
-  async componentWillMount() {
+
+  async UNSAFE_componentWillMount() {
     const { params } = this.props;
 
     GTAPApi.attributes().then(attributesOptions =>
@@ -120,10 +122,21 @@ export default class GTAPModal extends React.Component {
     if (!gtap) {
       throw new Error("No GTAP");
     }
-    if (gtap.id != null) {
-      await GTAPApi.update(gtap);
-    } else {
-      await GTAPApi.create(gtap);
+    try {
+      if (gtap.id != null) {
+        await GTAPApi.update(gtap);
+      } else {
+        await GTAPApi.create(gtap);
+      }
+    } catch (error) {
+      console.error("Error saving GTAP", error);
+      const message = error
+        ? error.data
+          ? error.data.message || JSON.stringify(error.data)
+          : JSON.stringify(error)
+        : UNKNOWN_ERROR_MESSAGE;
+      this.setState({ error: message });
+      throw new Error(message);
     }
     this.close();
   };
@@ -254,6 +267,11 @@ export default class GTAPModal extends React.Component {
               {t`Save`}
             </ActionButton>
           </div>
+          {this.state.error && (
+            <div className="flex align-center my2 text-error">
+              {this.state.error}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -432,8 +450,12 @@ const TargetName = ({ gtap, target }: { gtap: GTAP, target: any }) => {
 
 const AttributeOptionsEmptyState = ({ title }) => (
   <div className="flex align-center rounded bg-slate-extra-light p2">
-    <RetinaImage
+    <img
       src="app/assets/img/attributes_illustration.png"
+      srcSet="
+        app/assets/img/attributes_illustration.png    1x,
+        app/assets/img/attributes_illustration@2x.png 2x,
+      "
       className="mr2"
     />
     <div>

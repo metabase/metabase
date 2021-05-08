@@ -7,16 +7,13 @@
    TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
    At some point this ought to be reworked to be case-insensitive and cleaned up."
   (:require [clojure.tools.logging :as log]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.models
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.segment :refer [Segment]]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 

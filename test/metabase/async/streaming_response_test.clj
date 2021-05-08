@@ -2,15 +2,14 @@
   (:require [clj-http.client :as http]
             [clojure.core.async :as a]
             [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [http-client :as test-client]
-             [models :refer [Database]]
-             [test :as mt]
-             [util :as u]]
             [metabase.async.streaming-response :as streaming-response]
             [metabase.async.streaming-response.thread-pool :as thread-pool]
-            [metabase.query-processor.context :as context])
+            [metabase.driver :as driver]
+            [metabase.http-client :as test-client]
+            [metabase.models :refer [Database]]
+            [metabase.query-processor.context :as context]
+            [metabase.test :as mt]
+            [metabase.util :as u])
   (:import java.util.concurrent.Executors
            org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
 

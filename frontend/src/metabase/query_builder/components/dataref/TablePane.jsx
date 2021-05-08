@@ -47,7 +47,7 @@ export default class TablePane extends React.Component {
     fetchMetadata: PropTypes.func.isRequired,
   };
 
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     try {
       await Promise.all([
         this.props.fetchForeignKeys({ id: this.props.tableId }),

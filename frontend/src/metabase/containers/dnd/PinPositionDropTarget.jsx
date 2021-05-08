@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { DropTarget } from "react-dnd";
 import cx from "classnames";

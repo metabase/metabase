@@ -1,12 +1,10 @@
 (ns metabase.pulse.render.body-test
-  (:require [clojure
-             [test :refer :all]
-             [walk :as walk]]
+  (:require [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [hiccup.core :refer [html]]
-            [metabase.pulse.render
-             [body :as body]
-             [common :as common]
-             [test-util :as render.tu]]))
+            [metabase.pulse.render.body :as body]
+            [metabase.pulse.render.common :as common]
+            [metabase.pulse.render.test-util :as render.tu]))
 
 (def ^:private pacific-tz "America/Los_Angeles")
 
@@ -14,22 +12,22 @@
   [{:name            "ID",
     :display_name    "ID",
     :base_type       :type/BigInteger
-    :special_type    nil
+    :semantic_type   nil
     :visibility_type :normal}
    {:name            "latitude"
     :display_name    "Latitude"
     :base_type       :type/Float
-    :special_type    :type/Latitude
+    :semantic_type   :type/Latitude
     :visibility_type :normal}
    {:name            "last_login"
     :display_name    "Last Login"
     :base_type       :type/DateTime
-    :special_type    nil
+    :semantic_type   nil
     :visibility_type :normal}
    {:name            "name"
     :display_name    "Name"
     :base_type       :type/Text
-    :special_type    nil
+    :semantic_type   nil
     :visibility_type :normal}])
 
 (def ^:private test-data
@@ -49,62 +47,63 @@
    #{4}])
 
 (defn- prep-for-html-rendering'
-  [cols rows bar-column max-value]
-  (let [results (#'body/prep-for-html-rendering pacific-tz {} {:cols cols :rows rows} bar-column max-value (count cols))]
+  [cols rows bar-column min-value max-value]
+  (let [results (#'body/prep-for-html-rendering pacific-tz {} {:cols cols :rows rows} (count cols)
+                                                {:bar-column bar-column :min-value min-value :max-value max-value})]
     [(first results)
      (col-counts results)]))
 
 (def ^:private description-col {:name         "desc_col"
                                 :display_name "Description Column"
                                 :base_type    :type/Text
-                                :special_type :type/Description
+                                :semantic_type :type/Description
                                 :visibility_type :normal})
 (def ^:private detail-col      {:name            "detail_col"
                                 :display_name    "Details Column"
                                 :base_type       :type/Text
-                                :special_type    nil
+                                :semantic_type    nil
                                 :visibility_type :details-only})
 
 (def ^:private sensitive-col   {:name            "sensitive_col"
                                 :display_name    "Sensitive Column"
                                 :base_type       :type/Text
-                                :special_type    nil
+                                :semantic_type    nil
                                 :visibility_type :sensitive})
 
 (def ^:private retired-col     {:name            "retired_col"
                                 :display_name    "Retired Column"
                                 :base_type       :type/Text
-                                :special_type    nil
+                                :semantic_type    nil
                                 :visibility_type :retired})
 
 ;; Testing the format of headers
 (deftest header-result
   (is (= default-header-result
-         (prep-for-html-rendering' test-columns test-data nil nil))))
+         (prep-for-html-rendering' test-columns test-data nil nil nil))))
 
 (deftest header-result-2
   (let [cols-with-desc (conj test-columns description-col)
         data-with-desc (mapv #(conj % "Desc") test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' cols-with-desc data-with-desc nil nil)))))
+           (prep-for-html-rendering' cols-with-desc data-with-desc nil nil nil)))))
 
 (deftest header-result-3
   (let [cols-with-details (conj test-columns detail-col)
         data-with-details (mapv #(conj % "Details") test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' cols-with-details data-with-details nil nil)))))
+           (prep-for-html-rendering' cols-with-details data-with-details nil nil nil)))))
 
 (deftest header-result-4
   (let [cols-with-sensitive (conj test-columns sensitive-col)
         data-with-sensitive (mapv #(conj % "Sensitive") test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil)))))
+           (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil nil)))))
 
 (deftest header-result-5
   (let [columns-with-retired (conj test-columns retired-col)
         data-with-retired    (mapv #(conj % "Retired") test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' columns-with-retired data-with-retired nil nil)))))
+           (prep-for-html-rendering' columns-with-retired data-with-retired nil nil nil)))))
 
 (deftest prefers-col-visualization-settings-for-header
   (testing "Users can give columns custom names. Use those if they exist."
@@ -114,13 +113,13 @@
           cols    [{:name            "last_login"
                     :display_name    "Last Login"
                     :base_type       :type/DateTime
-                    :special_type    nil
+                    :semantic_type    nil
                     :visibility_type :normal
                     :field_ref       [:field-id 321]}
                    {:name            "name"
                     :display_name    "Name"
                     :base_type       :type/Text
-                    :special_type    nil
+                    :semantic_type    nil
                     :visibility_type :normal}]]
 
       ;; card contains custom column names
@@ -129,8 +128,6 @@
              (first (#'body/prep-for-html-rendering pacific-tz
                                                     card
                                                     {:cols cols :rows []}
-                                                    nil
-                                                    nil
                                                     (count test-columns)))))
 
       ;; card does not contain custom column names
@@ -139,35 +136,34 @@
              (first (#'body/prep-for-html-rendering pacific-tz
                                                     {}
                                                     {:cols cols :rows []}
-                                                    nil
-                                                    nil
                                                     (count test-columns))))))))
 
 ;; When including a bar column, bar-width is 99%
 (deftest bar-width
   (is (= (assoc-in default-header-result [0 :bar-width] 99)
-         (prep-for-html-rendering' test-columns test-data second 40.0))))
+         (prep-for-html-rendering' test-columns test-data second 0 40.0))))
 
 ;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
 (deftest narrow-the-columns
   (is (= [{:row [(number "ID") (number "Latitude")]
            :bar-width 99}
           #{2}]
-         (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 40.0 ))))
+         (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 0 40.0))))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
   (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} nil nil (count test-columns))))))
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} (count test-columns))))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
   (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} second 40 (count test-columns))))))
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} (count test-columns)
+                                               {:bar-column second, :min-value 0, :max-value 40})))))
 
 (defn- add-rating
   "Injects `RATING-OR-COL` and `DESCRIPTION-OR-COL` into `COLUMNS-OR-ROW`"
@@ -183,12 +179,12 @@
               {:name         "rating"
                :display_name "Rating"
                :base_type    :type/Integer
-               :special_type :type/Category
+               :semantic_type :type/Category
                :remapped_to  "rating_desc"}
               {:name          "rating_desc"
                :display_name  "Rating Desc"
                :base_type     :type/Text
-               :special_type  nil
+               :semantic_type  nil
                :remapped_from "rating"}))
 
 (def ^:private test-data-with-remapping
@@ -202,7 +198,7 @@
   (is (= [{:row [(number "ID") (number "Latitude") "Rating Desc" "Last Login" "Name"]
            :bar-width nil}
           #{5}]
-         (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil))))
+         (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil nil))))
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
@@ -212,8 +208,6 @@
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}
-                                                         nil
-                                                         nil
                                                          (count test-columns-with-remapping)))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
@@ -235,19 +229,18 @@
            [(boolean (re-find #"Showing.*10.*of.*100.*columns" html-output))
             (boolean (re-find #"Showing .* of .* rows" html-output))]))))
 
-(def ^:private test-columns-with-date-special-type
+(def ^:private test-columns-with-date-semantic-type
   (update test-columns 2 merge {:base_type    :type/Text
-                                :special_type :type/DateTime}))
+                                :effective_type :type/DateTime
+                                :coercion_strategy :Coercion/ISO8601->DateTime}))
 
-(deftest cols-with-special-types
+(deftest cols-with-semantic-types
   (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
-                                               {:cols test-columns-with-date-special-type :rows test-data}
-                                               nil
-                                               nil
+                                               {:cols test-columns-with-date-semantic-type :rows test-data}
                                                (count test-columns))))))
 
 (defn- render-scalar-value [results]
@@ -260,7 +253,7 @@
          (render-scalar-value {:cols [{:name         "ID",
                                        :display_name "ID",
                                        :base_type    :type/BigInteger
-                                       :special_type nil}]
+                                       :semantic_type nil}]
                                :rows [[10]]}))))
 
 (deftest renders-float
@@ -268,7 +261,7 @@
          (render-scalar-value {:cols [{:name         "floatnum",
                                        :display_name "FLOATNUM",
                                        :base_type    :type/Float
-                                       :special_type nil}]
+                                       :semantic_type nil}]
                                :rows [[10.12345]]}))))
 
 (deftest renders-string
@@ -276,14 +269,14 @@
          (render-scalar-value {:cols [{:name         "stringvalue",
                                        :display_name "STRINGVALUE",
                                        :base_type    :type/Text
-                                       :special_type nil}]
+                                       :semantic_type nil}]
                                :rows [["foo"]]}))))
 (deftest renders-date
   (is (= "Apr 1, 2014"
          (render-scalar-value {:cols [{:name         "date",
                                        :display_name "DATE",
                                        :base_type    :type/DateTime
-                                       :special_type nil}]
+                                       :semantic_type nil}]
                                :rows [["2014-04-01T08:30:00.0000"]]}))))
 
 (defn- replace-style-maps [hiccup-map]
@@ -356,11 +349,11 @@
   [{:name         "Price",
     :display_name "Price",
     :base_type    :type/BigInteger
-    :special_type nil}
+    :semantic_type nil}
    {:name         "NumPurchased",
     :display_name "NumPurchased",
     :base_type    :type/BigInteger
-    :special_type nil}])
+    :semantic_type nil}])
 
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"

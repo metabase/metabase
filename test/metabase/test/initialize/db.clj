@@ -1,9 +1,8 @@
 (ns metabase.test.initialize.db
   (:require [clojure.java.jdbc :as jdbc]
-            [metabase
-             [db :as mdb]
-             [task :as task]
-             [util :as u]]
+            [metabase.db :as mdb]
+            [metabase.task :as task]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (defn init! []

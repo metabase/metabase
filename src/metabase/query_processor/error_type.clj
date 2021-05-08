@@ -50,6 +50,10 @@
   "The current user does not have required permissions to run the current query."
   :parent client)
 
+(deferror bad-configuration
+  "Something related to configuration (e.g. of a sandbox/GTAP) is preventing us from being able to run the query."
+  :parent client)
+
 (deferror invalid-query
   "Generic ancestor type for errors with the query map itself."
   :parent client)
@@ -72,7 +76,7 @@
 ;;;; ### Server-Side Errors
 
 (deferror server
-  "Generic ancestor type for all unexpected server-side errors. Equivalent of a HTTP 5xx status code."
+  "Generic ancestor type for all *unexpected* server-side errors. Equivalent of a HTTP 5xx status code."
   :parent :error)
 
 (defn server-error?
@@ -92,7 +96,7 @@
   :parent server)
 
 (deferror driver
-  "Generic ancestor type for all errors related to bad drivers and uncaught Exceptions in driver code."
+  "Generic ancestor type for all unexpected errors related to bad drivers and uncaught Exceptions in driver code."
   :parent qp)
 
 ;;;; #### Data Warehouse (DB) Errors

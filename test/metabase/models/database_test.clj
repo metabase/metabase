@@ -1,18 +1,17 @@
 (ns metabase.models.database-test
   (:require [cheshire.core :refer [decode encode]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [models :refer [Database]]
-             [task :as task]
-             [test :as mt]]
-            [metabase.middleware.session :as mw.session]
-            [metabase.models
-             [database :as mdb]
-             [permissions :as perms]
-             [user :as user]]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.driver.util :as driver.u]
+            [metabase.models :refer [Database]]
+            [metabase.models.database :as mdb]
+            [metabase.models.permissions :as perms]
+            [metabase.models.user :as user]
             [metabase.plugins.classloader :as classloader]
+            [metabase.server.middleware.session :as mw.session]
+            [metabase.task :as task]
+            [metabase.test :as mt]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -127,3 +126,30 @@
                   "id"          2
                   "engine"      "bigquery"}
                  (encode-decode bq-db))))))))
+
+;; register a dummy "driver" for the sole purpose of running sensitive-fields-test
+(driver/register! :test-sensitive-driver, :parent #{:h2})
+
+;; define a couple custom connection properties for this driver, one of which has :type :password
+(defmethod driver/connection-properties :test-sensitive-driver
+  [_]
+  [{:name         "custom-field-1"
+    :display-name "Custom Field 1"
+    :placeholder  "Not particularly secret field"
+    :type         :string
+    :required     true}
+   {:name         "custom-field-2-secret"
+    :display-name "Custom Field 2"
+    :placeholder  "Has some secret stuff in it"
+    :type         :password
+    :required     true}])
+
+(deftest sensitive-fields-test
+  (testing "get-sensitive-fields returns the custom :password type field in addition to all default ones"
+    (is (= (conj driver.u/default-sensitive-fields :custom-field-2-secret)
+           (driver.u/sensitive-fields :test-sensitive-driver))))
+  (testing "get-sensitive-fields-for-db returns default fields for null or empty database map"
+    (is (= driver.u/default-sensitive-fields
+           (mdb/sensitive-fields-for-db nil)))
+    (is (= driver.u/default-sensitive-fields
+           (mdb/sensitive-fields-for-db {})))))

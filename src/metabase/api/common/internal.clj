@@ -3,13 +3,11 @@
    These are primarily used as the internal implementation of `defendpoint`."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
             metabase.async.streaming-response
-            [metabase.util
-             [i18n :as ui18n :refer [tru]]
-             [schema :as su]]
+            [metabase.config :as config]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
@@ -113,7 +111,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn parse-int
-  "Parse VALUE (presumabily a string) as an Integer, or throw a 400 exception. Used to automatically to parse `id`
+  "Parse `value` (presumabily a string) as an Integer, or throw a 400 exception. Used to automatically to parse `id`
   parameters in `defendpoint` functions."
   [^String value]
   (try (Integer/parseInt value)
@@ -170,7 +168,7 @@
        (map second)
        (map keyword)))
 
-(defn typify-args
+(defn- typify-args
   "Given a sequence of keyword `args`, return a sequence of `[:arg pattern :arg pattern ...]` for args that have
   matching types."
   [args]
@@ -178,11 +176,11 @@
        (mapcat route-param-regex)
        (filterv identity)))
 
-(defn typify-route
+(defn add-route-param-regexes
   "Expand a `route` string like \"/:id\" into a Compojure route form that uses regexes to match parameters whose name
   matches a regex from `auto-parse-arg-name-patterns`.
 
-    (typify-route \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]"
+    (add-route-param-regexes \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]"
   [route]
   (if (vector? route)
     route

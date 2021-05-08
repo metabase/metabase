@@ -1,17 +1,14 @@
 (ns metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [expectations :refer [expect]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [sync :as sync]]
-            [metabase.models
-             [database :as mdb :refer [Database]]
-             [task-history :refer [TaskHistory]]]
+            [metabase.driver :as driver]
+            [metabase.models.database :as mdb :refer [Database]]
+            [metabase.models.task-history :refer [TaskHistory]]
+            [metabase.sync :as sync]
             [metabase.sync.util :as sync-util :refer :all]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -106,32 +103,33 @@
     (assert (integer? (:duration task-history)))
     (tu/boolean-ids-and-timestamps (dissoc task-history :duration))))
 
-(let [process-name (tu/random-name)
-      step-1-name  (tu/random-name)
-      step-2-name  (tu/random-name)]
-  (expect
-    {:valid-operation-metadata? true
-     :valid-step-metadata?      [true true]
-     :step-names                [step-1-name step-2-name]
-     :operation-history         (merge default-task-history
-                                       {:task process-name, :task_details nil})
-     :step-1-history            (merge default-task-history
-                                       {:task step-1-name, :task_details {:foo "bar"}})
-     :step-2-history            (merge default-task-history
-                                       {:task step-2-name, :task_details nil})}
-    (let [sync-steps [(create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
+(deftest task-history-test
+  (let [process-name (tu/random-name)
+        step-1-name  (tu/random-name)
+        step-2-name  (tu/random-name)
+        sync-steps   [(create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
                       (create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
-          mock-db    (mdb/map->DatabaseInstance {:name "test", :id 1, :engine :h2})
-          [results]  (:operation-results
+        mock-db      (mdb/map->DatabaseInstance {:name "test", :id 1, :engine :h2})
+        [results]    (:operation-results
                       (call-with-operation-info #(run-sync-operation process-name mock-db sync-steps)))]
-
-      {:valid-operation-metadata? (validate-times results)
-       :valid-step-metadata?      (map (comp validate-times second) (:steps results))
-       :step-names                (map first (:steps results))
-       ;; Check that the TaskHistory was stored for the operation and each of the steps
-       :operation-history         (fetch-task-history-row process-name)
-       :step-1-history            (fetch-task-history-row step-1-name)
-       :step-2-history            (fetch-task-history-row step-2-name)})))
+    (testing "valid operation metadata?"
+      (is (= true
+             (validate-times results))))
+    (testing "valid step metadata?"
+      (is (= [true true]
+             (map (comp validate-times second) (:steps results)))))
+    (testing "step names"
+      (is (= [step-1-name step-2-name]
+             (map first (:steps results)))))
+    (testing "operation history"
+      (is (= (merge default-task-history {:task process-name, :task_details nil})
+             (fetch-task-history-row process-name))))
+    (testing "step 1 history"
+      (is (= (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}})
+             (fetch-task-history-row step-1-name))))
+    (testing "step 2 history"
+      (is (= (merge default-task-history {:task step-2-name, :task_details nil})
+             (fetch-task-history-row step-2-name))))))
 
 (defn- create-test-sync-summary [step-name log-summary-fn]
   (let [start (t/zoned-date-time)]
@@ -191,3 +189,59 @@
         (testing "has-step-duration?"
           (is (= true
                  (str/includes? results "4.0 s"))))))))
+
+(deftest error-handling-test
+  (testing "A ConnectException will cause sync to stop"
+    (mt/dataset sample-dataset
+      (let [expected           (java.io.IOException.
+                                "outer"
+                                (java.net.ConnectException.
+                                 "inner, this one triggers the failure"))
+            actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+                                 (sync-util/run-sync-operation
+                                  "sync"
+                                  (mt/db)
+                                  [(sync-util/create-sync-step "failure-step"
+                                                               (fn [_]
+                                                                 (throw expected)))
+                                   (sync-util/create-sync-step "should-not-run"
+                                                               (fn [_]
+                                                                 {}))]))
+            [step-name result] (first (:steps actual))]
+        (is (= 1 (count (:steps actual))))
+        (is (= "failure-step" step-name))
+        (is (= {:throwable expected :log-summary-fn nil}
+               (dissoc result :start-time :end-time))))))
+
+  (doseq [ex [(java.io.IOException.
+               "outer, does not trigger"
+               (java.net.SocketException. "inner, this one does not trigger"))
+              (java.lang.IllegalArgumentException. "standalone, does not trigger")
+              (java.sql.SQLException.
+               "outer, does not trigger"
+               (java.sql.SQLException.
+                "inner, does not trigger"
+                (java.lang.IllegalArgumentException.
+                 "third level, does not trigger")))]]
+    (testing "Other errors will not cause sync to stop"
+      (let [actual             (sync-util/sync-operation :sync-error-handling (mt/db) "sync error handling test"
+                                 (sync-util/run-sync-operation
+                                  "sync"
+                                  (mt/db)
+                                  [(sync-util/create-sync-step "failure-step"
+                                                               (fn [_]
+                                                                 (throw ex)))
+                                   (sync-util/create-sync-step "should-continue"
+                                                               (fn [_]
+                                                                 {}))]))]
+
+        ;; make sure we've ran two steps. the first one will have thrown an exception,
+        ;; but it wasn't an exception that can cause an abort.
+        (is (= 2 (count (:steps actual))))
+        (let [[step-name result] (first (:steps actual))]
+          (is (= "failure-step" step-name))
+          (is (= {:throwable ex :log-summary-fn nil}
+                 (dissoc result :start-time :end-time))))
+        (let [[step-name result] (second (:steps actual))]
+          (is (= "should-continue" step-name))
+          (is (= {:log-summary-fn nil} (dissoc result :start-time :end-time))))))))

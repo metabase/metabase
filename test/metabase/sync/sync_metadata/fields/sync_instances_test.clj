@@ -1,9 +1,8 @@
 (ns metabase.sync.sync-metadata.fields.sync-instances-test
   (:require [clojure.test :refer :all]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.sync.sync-metadata.fields :as sync-fields]
             [metabase.test.mock.toucanery :as toucanery]

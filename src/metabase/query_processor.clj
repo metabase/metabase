@@ -6,58 +6,58 @@
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; calling one variations of
   `process-userland-query` (see documentation below)."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
+            [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor
-             [context :as context]
-             [error-type :as error-type]
-             [reducible :as qp.reducible]
-             [store :as qp.store]]
-            [metabase.query-processor.middleware
-             [add-dimension-projections :as add-dim]
-             [add-implicit-clauses :as implicit-clauses]
-             [add-implicit-joins :as add-implicit-joins]
-             [add-rows-truncated :as add-rows-truncated]
-             [add-source-metadata :as add-source-metadata]
-             [add-timezone-info :as add-timezone-info]
-             [annotate :as annotate]
-             [auto-bucket-datetimes :as bucket-datetime]
-             [auto-parse-filter-values :as auto-parse-filter-values]
-             [binning :as binning]
-             [cache :as cache]
-             [catch-exceptions :as catch-exceptions]
-             [check-features :as check-features]
-             [constraints :as constraints]
-             [cumulative-aggregations :as cumulative-ags]
-             [desugar :as desugar]
-             [expand-macros :as expand-macros]
-             [fetch-source-query :as fetch-source-query]
-             [format-rows :as format-rows]
-             [large-int-id :as large-int-id]
-             [limit :as limit]
-             [mbql-to-native :as mbql-to-native]
-             [normalize-query :as normalize]
-             [optimize-datetime-filters :as optimize-datetime-filters]
-             [parameters :as parameters]
-             [permissions :as perms]
-             [pre-alias-aggregations :as pre-alias-ags]
-             [process-userland-query :as process-userland-query]
-             [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
-             [resolve-database-and-driver :as resolve-database-and-driver]
-             [resolve-fields :as resolve-fields]
-             [resolve-joined-fields :as resolve-joined-fields]
-             [resolve-joins :as resolve-joins]
-             [resolve-referenced :as resolve-referenced]
-             [resolve-source-table :as resolve-source-table]
-             [results-metadata :as results-metadata]
-             [splice-params-in-response :as splice-params-in-response]
-             [store :as store]
-             [validate :as validate]
-             [wrap-value-literals :as wrap-value-literals]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.middleware.add-dimension-projections :as add-dim]
+            [metabase.query-processor.middleware.add-implicit-clauses :as implicit-clauses]
+            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
+            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
+            [metabase.query-processor.middleware.add-timezone-info :as add-timezone-info]
+            [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.middleware.auto-bucket-datetimes :as bucket-datetime]
+            [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
+            [metabase.query-processor.middleware.binning :as binning]
+            [metabase.query-processor.middleware.cache :as cache]
+            [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
+            [metabase.query-processor.middleware.check-features :as check-features]
+            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-ags]
+            [metabase.query-processor.middleware.desugar :as desugar]
+            [metabase.query-processor.middleware.expand-macros :as expand-macros]
+            [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+            [metabase.query-processor.middleware.format-rows :as format-rows]
+            [metabase.query-processor.middleware.large-int-id :as large-int-id]
+            [metabase.query-processor.middleware.limit :as limit]
+            [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
+            [metabase.query-processor.middleware.normalize-query :as normalize]
+            [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
+            [metabase.query-processor.middleware.parameters :as parameters]
+            [metabase.query-processor.middleware.permissions :as perms]
+            [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-ags]
+            [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
+            [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
+            [metabase.query-processor.middleware.resolve-database-and-driver :as resolve-database-and-driver]
+            [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
+            [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
+            [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
+            [metabase.query-processor.middleware.resolve-referenced :as resolve-referenced]
+            [metabase.query-processor.middleware.resolve-source-table :as resolve-source-table]
+            [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
+            [metabase.query-processor.middleware.store :as store]
+            [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
+            [metabase.query-processor.middleware.validate :as validate]
+            [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
+            [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]))
 
@@ -76,7 +76,10 @@
   "The default set of middleware applied to queries ran via `process-query`."
   [#'mbql-to-native/mbql->native
    #'check-features/check-features
-   #'optimize-datetime-filters/optimize-datetime-filters
+   #'limit/limit
+   #'cache/maybe-return-cached-results
+   #'optimize-temporal-filters/optimize-temporal-filters
+   #'validate-temporal-bucketing/validate-temporal-bucketing
    #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
@@ -89,7 +92,6 @@
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
    #'large-int-id/convert-id-to-string
-   #'limit/limit
    #'format-rows/format-rows
    #'desugar/desugar
    #'binning/update-binning-strategy
@@ -97,6 +99,7 @@
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
+   #'upgrade-field-literals/upgrade-field-literals
    #'add-source-metadata/add-source-metadata-for-source-queries
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
@@ -110,7 +113,6 @@
    #'resolve-database-and-driver/resolve-database-and-driver
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
-   #'cache/maybe-return-cached-results
    #'validate/validate-query
    #'normalize/normalize
    #'add-rows-truncated/add-rows-truncated
@@ -176,7 +178,7 @@
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."
   [{query-type :type, :as query}]
-  (when-not (= query-type :query)
+  (when-not (= (mbql.u/normalize-token query-type) :query)
     (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
              {:type error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
@@ -184,7 +186,7 @@
   (qp.store/with-store
     (let [preprocessed (query->preprocessed query)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (seq (annotate/merged-column-info preprocessed nil))))))
+        (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled

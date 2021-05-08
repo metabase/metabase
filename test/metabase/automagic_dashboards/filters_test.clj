@@ -1,29 +1,31 @@
 (ns metabase.automagic-dashboards.filters-test
-  (:require [expectations :refer :all]
-            [metabase.automagic-dashboards.filters :as filters :refer :all]))
+  (:require [clojure.test :refer :all]
+            [metabase.automagic-dashboards.filters :as filters]))
 
-;; Replace range with the more specific `:=`.
-(expect
-  [:and
-   [:= [:field-id 2] 42]
-   [:= [:fk-> [:field-id 1] [:field-id 9]] "foo"]]
-  (inject-refinement [:and
-                      [:= [:fk-> [:field-id 1] [:field-id 9]] "foo"]
-                      [:and
-                       [:> [:field-id 2] 10]
-                       [:< [:field-id 2] 100]]]
-                     [:= [:field-id 2] 42]))
+(deftest replace-date-range-test
+  (testing "Replace range with the more specific `:=`."
+    (is (= [:and
+            [:= [:field 2 nil] 42]
+            [:= [:field 9 {:source-field 1}] "foo"]]
+           (filters/inject-refinement
+            [:and
+             [:= [:field 9 {:source-field 1}] "foo"]
+             [:and
+              [:> [:field 2 nil] 10]
+              [:< [:field 2 nil] 100]]]
+            [:= [:field 2 nil] 42])))))
 
-;; If there's no overlap between filter clauses, just merge using `:and`.
-(expect
-  [:and
-   [:= [:field-id 3] 42]
-   [:= [:fk-> [:field-id 1] [:field-id 9]] "foo"]
-   [:> [:field-id 2] 10]
-   [:< [:field-id 2] 100]]
-  (inject-refinement [:and
-                      [:= [:fk-> [:field-id 1] [:field-id 9]] "foo"]
-                      [:and
-                       [:> [:field-id 2] 10]
-                       [:< [:field-id 2] 100]]]
-                     [:= [:field-id 3] 42]))
+(deftest merge-using-and-test
+  (testing "If there's no overlap between filter clauses, just merge using `:and`."
+    (is (= [:and
+            [:= [:field 3 nil] 42]
+            [:= [:field 9 {:source-field 1}] "foo"]
+            [:> [:field 2 nil] 10]
+            [:< [:field 2 nil] 100]]
+           (filters/inject-refinement
+            [:and
+             [:= [:field 9 {:source-field 1}] "foo"]
+             [:and
+              [:> [:field 2 nil] 10]
+              [:< [:field 2 nil] 100]]]
+            [:= [:field 3 nil] 42])))))

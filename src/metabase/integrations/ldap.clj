@@ -2,17 +2,14 @@
   (:require [cheshire.core :as json]
             [clj-ldap.client :as ldap]
             [clojure.tools.logging :as log]
-            [metabase.integrations.ldap
-             [default-implementation :as default-impl]
-             [interface :as i]]
-            [metabase.models
-             [setting :as setting :refer [defsetting]]
-             [user :refer [User]]]
+            [metabase.integrations.ldap.default-implementation :as default-impl]
+            [metabase.integrations.ldap.interface :as i]
+            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import [com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException]))
 
@@ -86,17 +83,6 @@
                (when-not (DN/isValidDN (name k))
                  (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
              (setting/set-json! :ldap-group-mappings new-value)))
-
-(defsetting ldap-sync-user-attributes
-  (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
-  :type :boolean
-  :default true)
-
-;; TODO - maybe we want to add a csv setting type?
-(defsetting ldap-sync-user-attributes-blacklist
-  (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
-  :default "userPassword,dn,distinguishedName"
-  :type    :csv)
 
 (defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."

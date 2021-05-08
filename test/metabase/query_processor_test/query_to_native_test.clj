@@ -1,11 +1,10 @@
 (ns metabase.query-processor-test.query-to-native-test
   "Tests around the `query->native` function."
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [schema.core :as s]))
 
 (deftest query->native-test
@@ -17,7 +16,7 @@
                          " \"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\","
                          " \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                          "FROM \"PUBLIC\".\"VENUES\" "
-                         "LIMIT 1048576")
+                         "LIMIT 1048575")
             :params nil}
            (qp/query->native (mt/mbql-query venues))))))
 

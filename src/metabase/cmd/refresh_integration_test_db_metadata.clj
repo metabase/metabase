@@ -1,13 +1,11 @@
 (ns metabase.cmd.refresh-integration-test-db-metadata
   (:require [clojure.java.io :as io]
             [environ.core :refer [env]]
-            [metabase
-             [db :as mdb]
-             [sample-data :as sample-data]
-             [sync :as sync]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]]
+            [metabase.db :as mdb]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.sample-data :as sample-data]
+            [metabase.sync :as sync]
             [toucan.db :as db]))
 
 (defn- test-fixture-db-path
@@ -29,11 +27,11 @@
     (mdb/setup-db!)
     (sample-data/add-sample-dataset!)
     (sample-data/update-sample-dataset-if-needed!)
-    ;; clear out all Fingerprints so we force analysis to run again. Clear out special type and has_field_values as
+    ;; clear out all Fingerprints so we force analysis to run again. Clear out semantic type and has_field_values as
     ;; well so we can be sure those will be set to the correct values
     (db/debug-print-queries
       (db/update! Field {:set {:fingerprint_version 0
-                               :special_type        nil
+                               :semantic_type       nil
                                :has_field_values    nil
                                :fk_target_field_id  nil}}))
     ;; now re-run sync

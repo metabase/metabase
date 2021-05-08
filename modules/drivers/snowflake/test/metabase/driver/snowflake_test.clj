@@ -1,57 +1,50 @@
 (ns metabase.driver.snowflake-test
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure
-             [set :as set]
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [driver :as driver]
-             [models :refer [Table]]
-             [query-processor :as qp]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
-            [metabase.models
-             [database :refer [Database]]]
-            [metabase.test.data
-             [dataset-definitions :as dataset-defs]
-             [sql :as sql.tx]]
+            [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.models :refer [Table]]
+            [metabase.models.database :refer [Database]]
+            [metabase.query-processor :as qp]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
+            [metabase.test.data.dataset-definitions :as dataset-defs]
+            [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
-;;
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (testing "Create DB DDL statements"
-      (is (= "DROP DATABASE IF EXISTS \"v2_test-data\"; CREATE DATABASE \"v2_test-data\";"
+      (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
              (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition dataset-defs/test-data)))))
 
     (testing "Create Table DDL statements"
       (is (= (map
               #(str/replace % #"\s+" " ")
-              ["DROP TABLE IF EXISTS \"v2_test-data\".\"PUBLIC\".\"users\";"
-               "CREATE TABLE \"v2_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+              ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"last_login\" TIMESTAMP_LTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
-               "DROP TABLE IF EXISTS \"v2_test-data\".\"PUBLIC\".\"categories\";"
-               "CREATE TABLE \"v2_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 PRIMARY KEY (\"id\")) ;"
-               "DROP TABLE IF EXISTS \"v2_test-data\".\"PUBLIC\".\"venues\";"
-               "CREATE TABLE \"v2_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"category_id\" INTEGER, \"latitude\" FLOAT, \"longitude\" FLOAT, \"price\" INTEGER, PRIMARY KEY (\"id\")) ;"
-               "DROP TABLE IF EXISTS \"v2_test-data\".\"PUBLIC\".\"checkins\";"
-               "CREATE TABLE \"v2_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
+               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
+               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
                 \"user_id\" INTEGER, \"venue_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
-               "ALTER TABLE \"v2_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"gory_id_categories_-1524018980\"
-                FOREIGN KEY (\"category_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
-               "ALTER TABLE \"v2_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_-230440067\"
-                FOREIGN KEY (\"user_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"users\" (\"id\");"
-               "ALTER TABLE \"v2_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"kins_venue_id_venues_621212269\"
-                FOREIGN KEY (\"venue_id\") REFERENCES \"v2_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
+               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
+                FOREIGN KEY (\"category_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
+               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
+                FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
+               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
+                FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
              (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
-                                                                 (update :database-name #(str "v2_" %)))))))))
+                                                                 (update :database-name #(str "v3_" %)))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
 ;; bug in the JDBC driver -- Cam
@@ -167,7 +160,7 @@
                      {:database   (mt/id)
                       :type       :native
                       :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
-                                                       "FROM \"v2_test-data\".\"PUBLIC\".\"users\" "
+                                                       "FROM \"v3_test-data\".\"PUBLIC\".\"users\" "
                                                        "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
                                                        "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
                                    :template-tags {:filter_date {:name         "filter_date"

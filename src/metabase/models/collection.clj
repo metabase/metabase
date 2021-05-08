@@ -8,20 +8,17 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
-            [metabase.models
-             [interface :as i]
-             [permissions :as perms :refer [Permissions]]]
             [metabase.models.collection.root :as collection.root]
+            [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :as ui18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]])
+            [toucan.db :as db]
+            [toucan.models :as models])
   (:import metabase.models.collection.root.RootCollection))
 
 (comment collection.root/keep-me)
@@ -240,7 +237,7 @@
 
   Because the result may include `nil` for the Root Collection, or may be `:all`, MAKE SURE YOU HANDLE THOSE
   SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
-  `collection-ids->honeysql-filter-clause` to generate appropriate HoneySQL."
+  `visible-collection-ids->honeysql-filter-clause` to generate appropriate HoneySQL."
   [permissions-set :- #{perms/UserPath}]
   (if (contains? permissions-set "/")
     :all
@@ -989,3 +986,54 @@
                                :errors               {:collection_id msg}
                                :allowed-namespaces   allowed-namespaces
                                :collection-namespace collection-namespace})))))))
+
+(defn collections->tree
+  "Convert a flat sequence of Collections into a tree structure e.g.
+
+    (collections->tree [A B C D E F G])
+    ;; ->
+    [{:name     \"A\"
+      :children [{:name \"B\"}
+                 {:name     \"C\"
+                  :children [{:name     \"D\"
+                              :children [{:name \"E\"}]}
+                             {:name     \"F\"
+                              :children [{:name \"G\"}]}]}]}
+     {:name \"H\"}]"
+  [collections]
+  (let [all-visible-ids (set (map :id collections))]
+    (transduce
+     identity
+     (fn ->tree
+       ;; 1. We'll use a map representation to start off with to make building the tree easier. Keyed by Collection ID
+       ;; e.g.
+       ;;
+       ;; {1 {:name "A"
+       ;;     :children {2 {:name "B"}, ...}}}
+       ([] {})
+       ;; 2. For each as we come across it, put it in the correct location in the tree. Convert it's `:location` (e.g.
+       ;; `/1/`) plus its ID to a key path e.g. `[1 :children 2]`
+       ;;
+       ;; If any ancestor Collections are not present in `collections`, just remove their IDs from the path,
+       ;; effectively "pulling" a Collection up to a higher level. e.g. if we have A > B > C and we can't see B then
+       ;; the tree should come back as A > C.
+       ([m collection]
+        (let [path (as-> (location-path->ids (:location collection)) ids
+                     (filter all-visible-ids ids)
+                     (concat ids [(:id collection)])
+                     (interpose :children ids))]
+          (update-in m path merge collection)))
+       ;; 3. Once we've build the entire tree structure, go in and convert each ID->Collection map into a flat sequence,
+       ;; sorted by the lowercased Collection name. Do this recursively for the `:children` of each Collection e.g.
+       ;;
+       ;; {1 {:name "A"
+       ;;     :children {2 {:name "B"}, ...}}}
+       ;; ->
+       ;; [{:name "A"
+       ;;   :children [{:name "B"}, ...]}]
+       ([m]
+        (->> (vals m)
+             (map #(update % :children ->tree))
+             (sort-by (fn [{coll-name :name, coll-id :id}]
+                        [((fnil u/lower-case-en "") coll-name) coll-id])))))
+     collections)))

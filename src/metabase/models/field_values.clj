@@ -2,16 +2,14 @@
   (:require [clojure.tools.logging :as log]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (def ^Integer category-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`.
+  "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
   This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
   frontend behavior such as widget choices."
   (int 30))
@@ -245,8 +243,8 @@
   [field-ids]
   (let [fields (when (seq field-ids)
                  (filter field-should-have-field-values?
-                         (db/select ['Field :name :id :base_type :special_type :visibility_type :table_id
-                                     :has_field_values]
+                         (db/select ['Field :name :id :base_type :effective_type :coercion_strategy
+                                     :semantic_type :visibility_type :table_id :has_field_values]
                            :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
     (doseq [{table-id :table_id, :as field} fields]

@@ -4,9 +4,8 @@
             [metabase.api.common :as api]
             [metabase.models.task-history :as task-history :refer [TaskHistory]]
             [metabase.task :as task]
-            [metabase.util
-             [i18n :as ui18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 

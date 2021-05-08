@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
@@ -226,7 +224,7 @@ export default class NativeQuery extends AtomicQuery {
       this._originalQuestion,
       updateIn(
         this._datasetQuery,
-        ["native", "template_tags"],
+        ["native", "template-tags"],
         templateTags => {
           const entries = Array.from(Object.entries(templateTags));
           const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
@@ -303,10 +301,7 @@ export default class NativeQuery extends AtomicQuery {
   ): DimensionOptions {
     const dimensions = this.templateTags()
       .filter(tag => tag.type === "dimension")
-      .map(
-        tag =>
-          new TemplateTagDimension(null, [tag.name], this.metadata(), this),
-      )
+      .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
       .filter(dimensionFilter);
     return new DimensionOptions({
       dimensions: dimensions,
@@ -360,7 +355,7 @@ export default class NativeQuery extends AtomicQuery {
       for (const tag of tagsBySnippetId[snippet.id] || []) {
         if (tag["snippet-name"] !== snippet.name) {
           queryText = queryText.replace(
-            new RegExp(`\{\{\\s*${tag.name}\\s*\}\}`, "g"),
+            new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
             `{{snippet: ${snippet.name}}}`,
           );
         }

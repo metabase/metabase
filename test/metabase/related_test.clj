@@ -2,16 +2,15 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [models :refer [Card Collection Metric Segment]]
-             [related :as r :refer :all]
-             [sync :as sync]
-             [test :as mt]]
+            [metabase.models :refer [Card Collection Metric Segment]]
+            [metabase.related :as r :refer :all]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.data.one-off-dbs :as one-off-dbs]))
 
 (deftest collect-context-bearing-forms-test
-  (is (= #{[:field-id 1] [:metric 1] [:field-id 2] [:segment 1]}
-         (#'r/collect-context-bearing-forms [[:> [:field-id 1] 3]
+  (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
+         (#'r/collect-context-bearing-forms [[:> [:field 1 nil] 3]
                                              ["and" [:= ["FIELD-ID" 2] 2]
                                               ["segment" 1]]
                                              [:metric 1]]))))
@@ -20,15 +19,15 @@
 (deftest similiarity-test
   (mt/with-temp* [Card [{card-id-1 :id}
                         {:dataset_query (mt/mbql-query venues
-                                          {:aggregation  [:sum $price]
+                                          {:aggregation  [[:sum $price]]
                                            :breakout     [$category_id]})}]
                   Card [{card-id-2 :id}
                         {:dataset_query (mt/mbql-query venues
-                                          {:aggregation [:sum $longitude]
+                                          {:aggregation [[:sum $longitude]]
                                            :breakout    [$category_id]})}]
                   Card [{card-id-3 :id}
                         {:dataset_query (mt/mbql-query venues
-                                          {:aggregation  [:sum $longitude]
+                                          {:aggregation  [[:sum $longitude]]
                                            :breakout     [$latitude]})}]]
     (let [cards {1 card-id-1
                  2 card-id-2
@@ -47,11 +46,11 @@
                   Metric     [{metric-id-a :id} (mt/$ids venues
                                                   {:table_id   $$venues
                                                    :definition {:source-table $$venues
-                                                                :aggregation  [:sum $price]}})]
+                                                                :aggregation  [[:sum $price]]}})]
                   Metric     [{metric-id-b :id} (mt/$ids venues
                                                   {:table_id   $$venues
                                                    :definition {:source-table $$venues
-                                                                :aggregation  [:count]}})]
+                                                                :aggregation  [[:count]]}})]
                   Segment    [{segment-id-a :id} (mt/$ids venues
                                                    {:table_id   $$venues
                                                     :definition {:source-table $$venues
@@ -59,23 +58,23 @@
                   Segment    [{segment-id-b :id} (mt/$ids venues
                                                    {:table_id   $$venues
                                                     :definition {:source-table $$venues
-                                                                 :filter       [:!= [:field-id (mt/id :venues :name)] nil]}})]
+                                                                 :filter       [:!= $name nil]}})]
                   Card       [{card-id-a :id :as card-a}
                               {:table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues
-                                                {:aggregation [:sum $price]
+                                                {:aggregation [[:sum $price]]
                                                  :breakout    [$category_id]})}]
                   Card       [{card-id-b :id :as card-b}
                               {:table_id      (mt/id :venues)
                                :collection_id collection-id
                                :dataset_query (mt/mbql-query venues
-                                                {:aggregation [:sum $longitude]
+                                                {:aggregation [[:sum $longitude]]
                                                  :breakout    [$category_id]})}]
                   Card       [{card-id-c :id :as card-c}
                               {:table_id      (mt/id :venues)
                                :dataset_query (mt/mbql-query venues
-                                                {:aggregation [:sum $longitude]
-                                                 :breakout    [[:field-id (mt/id :venues :name)]
+                                                {:aggregation [[:sum $longitude]]
+                                                 :breakout    [$name
                                                                $latitude]})}]]
     (binding [*world* {:collection-id collection-id
                        :metric-id-a   metric-id-a

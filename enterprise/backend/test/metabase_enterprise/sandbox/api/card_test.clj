@@ -1,13 +1,11 @@
 (ns metabase-enterprise.sandbox.api.card-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Card Collection Database PermissionsGroup PermissionsGroupMembership Table]]
-             [test :as mt]
-             [util :as u]]
             [metabase.api.card-test :as card-api.test]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as perms-group]]))
+            [metabase.models :refer [Card Collection Database PermissionsGroup PermissionsGroupMembership Table]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (deftest users-with-segmented-perms-test
   (testing "Users with segmented permissions should be able to save cards"

@@ -1,11 +1,10 @@
 (ns metabase.test.initialize.plugins
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [metabase
-             [plugins :as plugins]
-             [util :as u]]
+            [metabase.plugins :as plugins]
             [metabase.plugins.initialize :as plugins.init]
             [metabase.test.data.env.impl :as tx.env.impl]
+            [metabase.util :as u]
             [yaml.core :as yaml]))
 
 (defn- driver-plugin-manifest [driver]

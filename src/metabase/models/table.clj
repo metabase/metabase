@@ -1,21 +1,18 @@
 (ns metabase.models.table
   (:require [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [field-values :refer [FieldValues]]
-             [humanization :as humanization]
-             [interface :as i]
-             [metric :refer [Metric retrieve-metrics]]
-             [permissions :as perms :refer [Permissions]]
-             [segment :refer [retrieve-segments Segment]]]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [metabase.db.util :as mdb.u]
+            [metabase.driver :as driver]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :refer [FieldValues]]
+            [metabase.models.humanization :as humanization]
+            [metabase.models.interface :as i]
+            [metabase.models.metric :refer [Metric retrieve-metrics]]
+            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.segment :refer [retrieve-segments Segment]]
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -73,9 +70,8 @@
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
-(defn field-order-rule
+(def field-order-rule
   "How should we order fields."
-  [_]
   [[:position :asc] [:%lower.name :asc]])
 
 (defn update-field-positions!
@@ -90,10 +86,10 @@
                   {:order-by (case (:field_order table)
                                :custom       [[:custom_position :asc]]
                                :smart        [[(hsql/call :case
-                                                 (mdb/isa :special_type :type/PK)       0
-                                                 (mdb/isa :special_type :type/Name)     1
-                                                 (mdb/isa :special_type :type/Temporal) 2
-                                                 :else                                  3)
+                                                 (mdb.u/isa :semantic_type :type/PK)       0
+                                                 (mdb.u/isa :semantic_type :type/Name)     1
+                                                 (mdb.u/isa :semantic_type :type/Temporal) 2
+                                                 :else                                    3)
                                                :asc]
                                               [:%lower.name :asc]]
                                :database     [[:database_position :asc]]
@@ -123,12 +119,12 @@
 
 (defn ^:hydrate fields
   "Return the Fields belonging to a single `table`."
-  [{:keys [id] :as table}]
+  [{:keys [id]}]
   (db/select Field
     :table_id        id
     :active          true
     :visibility_type [:not= "retired"]
-    {:order-by (field-order-rule table)}))
+    {:order-by field-order-rule}))
 
 (defn metrics
   "Retrieve the Metrics for a single `table`."
@@ -143,11 +139,11 @@
 (defn field-values
   "Return the FieldValues for all Fields belonging to a single `table`."
   {:hydrate :field_values, :arglists '([table])}
-  [{:keys [id] :as table}]
+  [{:keys [id]}]
   (let [field-ids (db/select-ids Field
                     :table_id        id
                     :visibility_type "normal"
-                    {:order-by (field-order-rule table)})]
+                    {:order-by field-order-rule})]
     (when (seq field-ids)
       (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
 
@@ -157,7 +153,7 @@
   [{:keys [id]}]
   (db/select-one-id Field
     :table_id        id
-    :special_type    (mdb/isa :type/PK)
+    :semantic_type   (mdb.u/isa :type/PK)
     :visibility_type [:not-in ["sensitive" "retired"]]))
 
 
@@ -195,7 +191,7 @@
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
-        {:order-by       (field-order-rule tables)}))
+        {:order-by       field-order-rule}))
     tables))
 
 

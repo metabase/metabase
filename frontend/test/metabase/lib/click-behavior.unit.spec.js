@@ -107,7 +107,7 @@ describe("metabase/lib/click-behavior", () => {
               "template-tags": {
                 my_field_filter: {
                   default: null,
-                  dimension: ["field-id", PRODUCTS.CATEGORY.id],
+                  dimension: ["field", PRODUCTS.CATEGORY.id, null],
                   "display-name": "My Field Filter",
                   id: "foo123",
                   name: "my_field_filter",
@@ -165,7 +165,7 @@ describe("metabase/lib/click-behavior", () => {
         [
           "category",
           {
-            column: [{ base_type: "type/Text" }],
+            column: [{ base_type: "type/Integer" }, { base_type: "type/Text" }],
             parameter: [{ type: "category" }],
             userAttribute: [{ name: "attr" }],
           },
@@ -359,7 +359,7 @@ describe("metabase/lib/click-behavior", () => {
                   "template-tags": {
                     my_field_filter: {
                       default: null,
-                      dimension: ["field-id", field.id],
+                      dimension: ["field", field.id, null],
                       "display-name": "My Field Filter",
                       id: "foo123",
                       name: "my_field_filter",

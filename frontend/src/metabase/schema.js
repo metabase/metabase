@@ -100,3 +100,7 @@ CollectionSchema.define({
 export const parseSchemaId = id => String(id || "").split(":");
 export const generateSchemaId = (dbId, schemaName) =>
   `${dbId}:${schemaName || ""}`;
+
+export const LoginHistorySchema = new schema.Entity("loginHistory", undefined, {
+  idAttribute: ({ timestamp }) => `${timestamp}`,
+});

@@ -1,13 +1,18 @@
 import {
   restore,
-  signInAsAdmin,
   openOrdersTable,
+  openReviewsTable,
   popover,
 } from "__support__/cypress";
+import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID, REVIEWS } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > metadata", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
   it("should correctly show remapped column value", () => {
     // go directly to Data Model page for Sample Dataset
@@ -29,7 +34,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
     );
 
-    cy.log("**Name of the product should be displayed instead of its ID**");
+    cy.log("Name of the product should be displayed instead of its ID");
     openOrdersTable();
     cy.findAllByText("Awesome Concrete Shoes");
   });
@@ -68,10 +73,56 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
     cy.findByText("Save").click();
 
-    cy.log("**Numeric ratings should be remapped to custom strings**");
-    cy.visit("/question/new?database=1&table=4");
+    cy.log("Numeric ratings should be remapped to custom strings");
+    openReviewsTable();
     Object.values(customMap).forEach(rating => {
       cy.findAllByText(rating);
     });
+  });
+
+  it.skip("should not include date when metric is binned by hour of day (metabase#14124)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+
+    cy.createQuestion({
+      name: "14124",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "hour-of-day" }],
+        ],
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}`);
+
+      cy.findByText("Created At: Hour of day");
+
+      cy.log("Reported failing in v0.37.2");
+      cy.findByText(/^3:00 AM$/);
+    });
+  });
+
+  it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
+    // Remap fields
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: "type/PK",
+    });
+    cy.request("PUT", `/api/field/${REVIEWS.CREATED_AT}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: ORDERS.CREATED_AT,
+    });
+
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    cy.get(".List-section-header")
+      .contains("Created At")
+      .click();
+    cy.get(".List-section--expanded .List-item-title")
+      .contains("Created At")
+      .should("have.length", 1);
   });
 });

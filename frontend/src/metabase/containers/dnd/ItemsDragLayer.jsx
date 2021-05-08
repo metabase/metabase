@@ -1,9 +1,10 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { DragLayer } from "react-dnd";
 import _ from "underscore";
 
 import BodyComponent from "metabase/components/BodyComponent";
-import { NormalItem } from "metabase/components/CollectionLanding";
+import NormalItem from "metabase/collections/components/NormalItem";
 
 // NOTE: our verison of react-hot-loader doesn't play nice with react-dnd's DragLayer, so we exclude files named `*DragLayer.jsx` in webpack.config.js
 

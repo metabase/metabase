@@ -2,38 +2,30 @@
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
-            [metabase.mbql
-             [normalize :as mbql.normalize]
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.mbql.schema.helpers :as mbql.s.helpers]
-            [metabase.util
-             [i18n :as ui18n :refer [deferred-trs tru]]
-             [schema :as su]]
+            [metabase.db.util :as mdb.u]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private FieldIDOrLiteral
-  (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal))
-
-(s/defn unwrap-field-clause :- FieldIDOrLiteral
-  "Unwrap a Field clause if needed, returning underlying `:field-id` or `:field-literal`. Also handles unwrapped
-  integers for legacy compatiblity.
+(s/defn unwrap-field-clause :- mbql.s/field
+  "Unwrap something that contains a `:field` clause, such as a template tag, Also handles unwrapped integers for
+  legacy compatibility.
 
     (unwrap-field-clause [:field-id 100]) ; -> [:field-id 100]"
   [field-form]
   (if (integer? field-form)
-    [:field-id field-form]
-    (mbql.u/unwrap-field-clause field-form)))
+    [:field field-form nil]
+    (mbql.u/match-one field-form :field)))
 
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field-id` clause if needed."
@@ -43,10 +35,11 @@
     field-id-or-form
 
     (integer? field-id-or-form)
-    [:field-id field-id-or-form]
+    [:field field-id-or-form nil]
 
     :else
-    (throw (IllegalArgumentException. (str (deferred-trs "Don't know how to wrap:") " " field-id-or-form)))))
+    (throw (ex-info (trs "Don''t know how to wrap Field ID.")
+                    {:form field-id-or-form}))))
 
 (s/defn field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
@@ -57,13 +50,13 @@
                           :field_id [:in param-field-ids]))))
 
 (defn- template-tag->field-form
-  "Fetch the `field-id` or `fk->` form from `dashcard` referenced by `template-tag`.
+  "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
-    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field-id 100]"
+    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
   [[_ tag] dashcard]
   (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(s/defn param-target->field-clause :- (s/maybe FieldIDOrLiteral)
+(s/defn param-target->field-clause :- (s/maybe mbql.s/field)
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target dashcard]
@@ -81,7 +74,7 @@
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
   [fields]
-  (filter #(isa? (:special_type %) :type/PK) fields))
+  (filter #(isa? (:semantic_type %) :type/PK) fields))
 
 (def ^:private Field:params-columns-only
   "Form for use in Toucan `db/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
@@ -90,7 +83,7 @@
   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
 
     (db/select Field:params-columns-only)"
-  ['Field :id :table_id :display_name :base_type :special_type :has_field_values])
+  ['Field :id :table_id :display_name :base_type :semantic_type :has_field_values])
 
 (defn- fields->table-id->name-field
   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
@@ -98,8 +91,8 @@
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
     (u/key-by :table_id (-> (db/select Field:params-columns-only
-                              :table_id     [:in table-ids]
-                              :special_type (mdb/isa :type/Name))
+                              :table_id      [:in table-ids]
+                              :semantic_type (mdb.u/isa :type/Name))
                             ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
                             ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                             ;; `list` instead of `auto-list`.)
@@ -115,7 +108,7 @@
   (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
     (for [field fields]
       ;; add matching `:name_field` if it's a PK
-      (assoc field :name_field (when (isa? (:special_type field) :type/PK)
+      (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
                                  (table-id->name-field (:table_id field)))))))
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we
@@ -173,7 +166,7 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private dashboard->parameter-mapping-field-clauses :- (s/maybe #{FieldIDOrLiteral})
+(s/defn ^:private dashboard->parameter-mapping-field-clauses :- (s/maybe #{mbql.s/field})
   "Return set of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
   looking at the appropriate `:parameter_mappings` entries for its Dashcards."
   [dashboard]
@@ -202,7 +195,7 @@
   (let [dashboard (hydrate dashboard [:ordered_cards :card])]
     (set/union
      (set (mbql.u/match (seq (dashboard->parameter-mapping-field-clauses dashboard))
-            [:field-id id]
+            [:field (id :guard integer?) _]
             id))
      (dashboard->card-param-field-ids dashboard))))
 
@@ -223,8 +216,8 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn card->template-tag-field-clauses :- #{FieldIDOrLiteral}
-  "Return a set of `:field-id`/`:field-literal` clauses referenced in template tag parameters in `card`."
+(s/defn card->template-tag-field-clauses :- #{mbql.s/field}
+  "Return a set of `:field` clauses referenced in template tag parameters in `card`."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
              :when                      dimension
@@ -234,10 +227,10 @@
 
 (s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced in template tag parameters in `card`. This is mostly used for determining
-  Fields referenced by Cards for purposes other than processing queries. Filters out `:field-literal` clauses."
+  Fields referenced by Cards for purposes other than processing queries. Filters out `:field` clauses using names."
   [card]
   (set (mbql.u/match (seq (card->template-tag-field-clauses card))
-         [:field-id id]
+         [:field (id :guard integer?) _]
          id)))
 
 (defmethod param-values "Card" [card]

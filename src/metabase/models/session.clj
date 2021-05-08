@@ -1,10 +1,8 @@
 (ns metabase.models.session
-  (:require [buddy.core
-             [codecs :as codecs]
-             [nonce :as nonce]]
-            [metabase.middleware
-             [misc :as mw.misc]
-             [util :as mw.util]]
+  (:require [buddy.core.codecs :as codecs]
+            [buddy.core.nonce :as nonce]
+            [metabase.server.middleware.misc :as mw.misc]
+            [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.models :as models]))
@@ -20,7 +18,7 @@
 
 (defn- pre-insert [session]
   (cond-> (assoc session :created_at :%now)
-    (some-> mw.misc/*request* mw.util/embedded?) (assoc :anti_csrf_token (random-anti-csrf-token))))
+    (some-> mw.misc/*request* request.u/embedded?) (assoc :anti_csrf_token (random-anti-csrf-token))))
 
 (defn- post-insert [{anti-csrf-token :anti_csrf_token, :as session}]
   (let [session-type (if anti-csrf-token :full-app-embed :normal)]

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t, jt, ngettext, msgid } from "ttag";
 import { getIn } from "icepick";
@@ -22,6 +23,7 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 import ClickMappings, {
   withUserAttributes,
   clickTargetObjectType,
+  isMappableColumn,
 } from "metabase/dashboard/components/ClickMappings";
 
 import {
@@ -550,6 +552,7 @@ function CrossfilterOptions({
         isDash
         clickBehavior={clickBehavior}
         updateSettings={updateSettings}
+        excludeParametersSources
       />
     </SidebarContent>
   );
@@ -832,7 +835,9 @@ const CustomLinkText = ({
 
 const ValuesYouCanReference = withUserAttributes(
   ({ dashcard, parameters, userAttributes }) => {
-    const columns = dashcard.card.result_metadata.map(c => c.name);
+    const columns = dashcard.card.result_metadata
+      .filter(isMappableColumn)
+      .map(c => c.name);
     const parameterNames = parameters.map(p => p.name);
     const sections = [
       {

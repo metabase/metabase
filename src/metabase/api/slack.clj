@@ -5,9 +5,8 @@
             [metabase.config :as config]
             [metabase.integrations.slack :as slack]
             [metabase.models.setting :as setting]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (api/defendpoint PUT "/settings"

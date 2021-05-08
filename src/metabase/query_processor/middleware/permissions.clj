@@ -3,41 +3,52 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
-            [metabase.models
-             [card :refer [Card]]
-             [interface :as mi]
-             [permissions :as perms]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.interface :as mi]
+            [metabase.models.permissions :as perms]
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
+
+(def ^:dynamic *card-id*
+  "ID of the Card currently being executed, if there is one. Bind this in a Card-execution context so we will use
+  Card [Collection] perms checking rather than ad-hoc perms checking."
+  nil)
+
+(defn- perms-exception
+  ([required-perms]
+   (perms-exception (tru "You do not have permissions to run this query.") required-perms))
+
+  ([message required-perms & [additional-ex-data]]
+   (ex-info message
+            (merge {:type                 error-type/missing-required-permissions
+                    :required-permissions required-perms
+                    :actual-permissions   @*current-user-permissions-set*
+                    :permissions-error?   true}
+                   additional-ex-data))))
 
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
   (let [{collection-id :collection_id, :as card} (or (db/select-one [Card :collection_id] :id card-id)
                                                      (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                                                     {:type error-type/invalid-query})))]
+                                                                     {:type    error-type/invalid-query
+                                                                      :card-id card-id})))]
     (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
     (when-not (mi/can-read? card)
-      (throw (ex-info (tru "You do not have permissions to view Card {0}." card-id)
-                      {:type error-type/missing-required-permissions})))))
-
-(defn- perms-exception [required-perms]
-  (ex-info (tru "You do not have permissions to run this query.")
-    {:type                 error-type/missing-required-permissions
-     :required-permissions required-perms
-     :actual-permissions   @*current-user-permissions-set*
-     :permissions-error?   true}))
+      (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
+                              (mi/perms-objects-set card :read)
+                              {:card-id *card-id*})))))
 
 (declare check-query-permissions*)
 
 (s/defn ^:private check-ad-hoc-query-perms
-  [{:keys [gtap-perms], :as outer-query}]
+  {:arglists '([outer-query context])}
+  [outer-query {:keys [gtap-perms]}]
   ;; *If* we're using a GTAP, the User is obviously allowed to run its source query. So subtract the set of
   ;; perms required to run the source query. (See further discussion in
   ;; metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions)
@@ -52,12 +63,12 @@
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{{:keys [card-id]} :info, :as outer-query} :- su/Map]
+  [outer-query :- su/Map context]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-    (if card-id
-      (check-card-read-perms card-id)
-      (check-ad-hoc-query-perms outer-query))))
+    (if *card-id*
+      (check-card-read-perms *card-id*)
+      (check-ad-hoc-query-perms outer-query context))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
@@ -66,7 +77,7 @@
   'publishing' a Card)."
   [qp]
   (fn [query rff context]
-    (check-query-permissions* query)
+    (check-query-permissions* query context)
     (qp query rff context)))
 
 

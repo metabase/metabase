@@ -1,7 +1,7 @@
 import { TYPE } from "metabase/lib/types";
 import { t } from "ttag";
 
-export const field_special_types = [
+export const field_semantic_types = [
   /* Overall Row */
   {
     id: TYPE.PK,
@@ -209,6 +209,21 @@ export const field_special_types = [
     section: t`Date and Time`,
   },
   {
+    id: TYPE.UpdatedDate,
+    name: t`Updated date`,
+    section: t`Date and Time`,
+  },
+  {
+    id: TYPE.UpdatedTime,
+    name: t`Updated time`,
+    section: t`Date and Time`,
+  },
+  {
+    id: TYPE.UpdatedTimestamp,
+    name: t`Updated timestamp`,
+    section: t`Date and Time`,
+  },
+  {
     id: TYPE.JoinDate,
     name: t`Join date`,
     section: t`Date and Time`,
@@ -221,16 +236,6 @@ export const field_special_types = [
   {
     id: TYPE.JoinTimestamp,
     name: t`Join timestamp`,
-    section: t`Date and Time`,
-  },
-  {
-    id: TYPE.UNIXTimestampMilliseconds,
-    name: t`UNIX Timestamp (Milliseconds)`,
-    section: t`Date and Time`,
-  },
-  {
-    id: TYPE.UNIXTimestampSeconds,
-    name: t`UNIX Timestamp (Seconds)`,
     section: t`Date and Time`,
   },
 
@@ -276,7 +281,7 @@ export const field_special_types = [
   },
 ];
 
-export const field_special_types_map = field_special_types.reduce(
+export const field_semantic_types_map = field_semantic_types.reduce(
   (map, type) => Object.assign({}, map, { [type.id]: type }),
   {},
 );

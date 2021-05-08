@@ -152,14 +152,6 @@ textarea {
   border: 1px solid red !important;
 }
 
-@keyframes spin {
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes spin-reverse {
-  100% {
-    transform: rotate(-360deg);
-  }
+.no-outline * {
+  outline: none;
 }

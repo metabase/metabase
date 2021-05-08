@@ -6,12 +6,12 @@
   Note that this is not the same thing as initializing *drivers* -- drivers are initialized lazily when first needed;
   this step on the other hand runs at launch time and sets up that lazy load logic."
   (:require [clojure.tools.logging :as log]
-            [metabase.plugins
-             [dependencies :as deps]
-             [init-steps :as init-steps]
-             [lazy-loaded-driver :as lazy-loaded-driver]]
+            [metabase.plugins.dependencies :as deps]
+            [metabase.plugins.init-steps :as init-steps]
+            [metabase.plugins.lazy-loaded-driver :as lazy-loaded-driver]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [trs]]
+            [schema.core :as s]))
 
 (defonce ^:private initialized-plugin-names (atom #{}))
 
@@ -41,18 +41,17 @@
         (init! plugin-info)))
     :ok))
 
-(defn- initialized? [{plugin-name :name}]
+(defn- initialized? [{{plugin-name :name} :info}]
   (@initialized-plugin-names plugin-name))
 
-(defonce ^:private plugin-initialization-lock (Object.))
-
-(defn init-plugin-with-info!
+(s/defn init-plugin-with-info!
   "Initiaize plugin using parsed info from a plugin maifest. Returns truthy if plugin was successfully initialized;
   falsey otherwise."
-  [info]
+  [info :- {:info     {:name s/Str, :version s/Str, s/Keyword s/Any}
+            s/Keyword s/Any}]
   (or
    (initialized? info)
-   (locking plugin-initialization-lock
+   (locking initialized-plugin-names
      (or
       (initialized? info)
       (init! info)))))

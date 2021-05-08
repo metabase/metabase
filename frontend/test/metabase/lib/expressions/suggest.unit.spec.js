@@ -64,6 +64,8 @@ const FILTER_FUNCTIONS = [
   { text: "contains(", type: "functions" },
   { text: "endsWith(", type: "functions" },
   { text: "interval(", type: "functions" },
+  { text: "isempty(", type: "functions" },
+  { text: "isnull(", type: "functions" },
   { text: "startsWith(", type: "functions" },
 ];
 const EXPRESSION_OPERATORS = [
@@ -146,6 +148,10 @@ describe("metabase/lib/expression/suggest", () => {
       return cleanSuggestions(suggest_(...args).suggestions);
     }
 
+    function uncleanSuggest(...args) {
+      return suggest_(...args).suggestions;
+    }
+
     function helpText(...args) {
       return suggest_(...args).helpText;
     }
@@ -156,6 +162,7 @@ describe("metabase/lib/expression/suggest", () => {
           ...FIELDS_CUSTOM,
           ...FIELDS_CUSTOM_NON_NUMERIC,
           ...[
+            { type: "functions", text: "case(" },
             { type: "functions", text: "coalesce(" },
             ...NUMERIC_FUNCTIONS,
             ...STRING_FUNCTIONS_EXCLUDING_REGEX,
@@ -167,7 +174,9 @@ describe("metabase/lib/expression/suggest", () => {
       it("should suggest numeric fields after an aritmetic", () => {
         expect(suggest({ source: "1 + ", ...expressionOpts })).toEqual([
           ...FIELDS_CUSTOM,
-          ...NUMERIC_FUNCTIONS,
+          ...[{ type: "functions", text: "case(" }, ...NUMERIC_FUNCTIONS].sort(
+            suggestionSort,
+          ),
           OPEN_PAREN,
         ]);
       });
@@ -175,6 +184,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(suggest({ source: "1 + C", ...expressionOpts })).toEqual([
           { type: "fields", text: "[C] " },
           { type: "fields", text: "[count] " },
+          { type: "functions", text: "case(" },
           { type: "functions", text: "ceil(" },
         ]);
       });
@@ -241,6 +251,7 @@ describe("metabase/lib/expression/suggest", () => {
           [
             { text: "[Count] ", type: "fields" },
             { text: "[Total] ", type: "fields" },
+            { type: "functions", text: "case(" },
             { text: "coalesce(", type: "functions" },
             ...STRING_FUNCTIONS,
             ...NUMERIC_FUNCTIONS,
@@ -304,15 +315,18 @@ describe("metabase/lib/expression/suggest", () => {
         expect(suggest({ source: "average(c", ...aggregationOpts })).toEqual([
           { type: "fields", text: "[C] " },
           { type: "fields", text: "[count] " },
-          // { text: "case(", type: "functions" },
+          { text: "case(", type: "functions" },
           // { text: "coalesce(", type: "functions" },
           { text: "ceil(", type: "functions" },
         ]);
       });
       it("should suggest aggregations and metrics after an operator", () => {
         expect(suggest({ source: "1 + ", ...aggregationOpts })).toEqual([
-          ...AGGREGATION_FUNCTIONS,
-          ...NUMERIC_FUNCTIONS,
+          ...[
+            { type: "functions", text: "case(" },
+            ...AGGREGATION_FUNCTIONS,
+            ...NUMERIC_FUNCTIONS,
+          ].sort(suggestionSort),
           ...METRICS_CUSTOM,
           OPEN_PAREN,
         ]);
@@ -323,6 +337,7 @@ describe("metabase/lib/expression/suggest", () => {
           { type: "aggregations", text: "CountIf(" },
           { type: "aggregations", text: "CumulativeCount " },
           { type: "aggregations", text: "CumulativeSum(" },
+          { type: "functions", text: "case(" },
           { type: "functions", text: "ceil(" },
         ]);
       });
@@ -335,8 +350,11 @@ describe("metabase/lib/expression/suggest", () => {
             startRule: "aggregation",
           }),
         ).toEqual([
-          ...AGGREGATION_FUNCTIONS,
-          ...NUMERIC_FUNCTIONS,
+          ...[
+            { type: "functions", text: "case(" },
+            ...AGGREGATION_FUNCTIONS,
+            ...NUMERIC_FUNCTIONS,
+          ].sort(suggestionSort),
           ...METRICS_ORDERS,
           OPEN_PAREN,
         ]);
@@ -350,6 +368,19 @@ describe("metabase/lib/expression/suggest", () => {
         });
         expect(name).toEqual("sum");
         expect(example).toEqual("Sum([Subtotal])");
+      });
+
+      it("should give us the prefix trim regex in expressions that actually trims", () => {
+        expect(
+          "no".replace(
+            uncleanSuggest({
+              source: "no",
+              query: ORDERS.query(),
+              startRule: "boolean",
+            })[0].prefixTrim,
+            "",
+          ),
+        ).toEqual("");
       });
     });
 
@@ -369,8 +400,11 @@ describe("metabase/lib/expression/suggest", () => {
           suggest({ source: "", query: ORDERS.query(), startRule: "boolean" }),
         ).toEqual([
           ...FIELDS_ORDERS,
-          ...FILTER_FUNCTIONS,
-          ...UNARY_BOOLEAN_OPERATORS,
+          ...[
+            { type: "functions", text: "case(" },
+            ...FILTER_FUNCTIONS,
+            ...UNARY_BOOLEAN_OPERATORS,
+          ].sort(suggestionSort),
           OPEN_PAREN,
           ...SEGMENTS_ORDERS,
         ]);

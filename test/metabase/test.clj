@@ -3,39 +3,36 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
-  (:require [clojure
-             data
-             [test :refer :all]
-             [walk :as walk]]
+  (:require clojure.data
+            [clojure.test :refer :all]
+            [clojure.tools.macro :as tools.macro]
+            [environ.core :as env]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [email-test :as et]
-             [http-client :as http]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+            [metabase.email-test :as et]
+            [metabase.http-client :as http]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor
-             [context :as qp.context]
-             [reducible :as qp.reducible]
-             [test-util :as qp.test-util]]
-            [metabase.test
-             [data :as data]
-             [initialize :as initialize]
-             [util :as tu]]
-            [metabase.test.data
-             [datasets :as datasets]
-             [env :as tx.env]
-             [interface :as tx]
-             [users :as test-users]]
-            [metabase.test.util
-             [async :as tu.async]
-             [i18n :as i18n.tu]
-             [log :as tu.log]
-             [timezone :as tu.tz]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.server.middleware.session :as mw.session]
+            [metabase.test.data :as data]
+            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data.env :as tx.env]
+            [metabase.test.data.impl :as data.impl]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.users :as test-users]
+            [metabase.test.initialize :as initialize]
+            [metabase.test.util :as tu]
+            [metabase.test.util.async :as tu.async]
+            [metabase.test.util.i18n :as i18n.tu]
+            [metabase.test.util.log :as tu.log]
+            [metabase.test.util.timezone :as tu.tz]
+            [metabase.util :as u]
             [potemkin :as p]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -44,6 +41,7 @@
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
 (comment
   data/keep-me
+  data.impl/keep-me
   datasets/keep-me
   driver/keep-me
   et/keep-me
@@ -51,6 +49,7 @@
   i18n.tu/keep-me
   initialize/keep-me
   mt.tu/keep-me
+  mw.session/keep-me
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
@@ -79,6 +78,9 @@
   with-db
   with-temp-copy-of-db]
 
+ [data.impl
+  *db-is-temp-copy?*]
+
  [datasets
   test-driver
   test-drivers
@@ -102,7 +104,8 @@
   authenticate
   build-url
   client
-  client-full-response]
+  client-full-response
+  derecordize]
 
  [i18n.tu
   with-mock-i18n-bundles
@@ -110,6 +113,9 @@
 
  [initialize
   initialize-if-needed!]
+
+ [mw.session
+  with-current-user]
 
  [qp
   process-query
@@ -122,14 +128,17 @@
   first-row
   format-rows-by
   formatted-rows
+  nest-query
   normal-drivers
   normal-drivers-except
   normal-drivers-with-feature
   normal-drivers-without-feature
   rows
-  rows+column-names]
+  rows+column-names
+  with-bigquery-fks]
 
  [qp.test-util
+  store-contents
   with-database-timezone-id
   with-everything-store
   with-report-timezone-id
@@ -145,11 +154,14 @@
   user->credentials
   user->id
   user-http-request
+  with-group
+  with-group-for-user
   with-test-user]
 
  [tt
   with-temp
-  with-temp*]
+  with-temp*
+  with-temp-defaults]
 
  [tu
   boolean-ids-and-timestamps
@@ -164,7 +176,9 @@
   round-all-decimals
   scheduler-current-tasks
   throw-if-called
+  with-column-remappings
   with-discarded-collections-perms-changes
+  with-env-keys-renamed-by
   with-locale
   with-log-level
   with-log-messages
@@ -204,7 +218,8 @@
   get-dataset-definition
   has-questionable-timezone-support?
   has-test-extensions?
-  metabase-instance]
+  metabase-instance
+  sorts-nil-first?]
 
  [tx.env
   set-test-drivers!
@@ -213,7 +228,10 @@
 ;; ee-only stuff
 (u/ignore-exceptions
   (classloader/require 'metabase-enterprise.sandbox.test-util)
-  (eval '(potemkin/import-vars [metabase-enterprise.sandbox.test-util with-gtaps])))
+  (eval '(potemkin/import-vars [metabase-enterprise.sandbox.test-util
+                                with-gtaps
+                                with-gtaps-for-user
+                                with-user-attributes])))
 
 ;; TODO -- move this stuff into some other namespace and refer to it here
 
@@ -244,7 +262,7 @@
 
     * `:result`   ­ final result
     * `:pre`      ­ `query` after preprocessing
-    * `:metadata` ­ `metadata` after post-processing
+    * `:metadata` ­ `metadata` after post-processing. Should be a map e.g. with `:cols`
     * `:post`     ­ `rows` after post-processing transduction"
   ([middleware-fn]
    (test-qp-middleware middleware-fn {}))
@@ -259,13 +277,17 @@
    (test-qp-middleware middleware-fn query metadata rows nil))
 
   ([middleware-fn query metadata rows {:keys [run async?], :as context}]
+   {:pre [((some-fn nil? map?) metadata)]}
    (let [async-qp (qp.reducible/async-qp
                    (qp.reducible/combine-middleware
                     (if (sequential? middleware-fn)
                       middleware-fn
                       [middleware-fn])))
          context  (merge
-                   {:timeout 500
+                   ;; CI is S U P E R  S L O W so give this a longer timeout.
+                   {:timeout (if (env/env :ci)
+                               5000
+                               500)
                     :runf    (fn [query rff context]
                                (try
                                  (when run (run))
@@ -283,16 +305,6 @@
             :pre      (-> result :data :pre)
             :post     (-> result :data :rows)
             :metadata (update result :data #(dissoc % :pre :rows))}))))))
-
-(defn derecordize
-  "Convert all record types in `form` to plain maps, so tests won't fail."
-  [form]
-  (walk/postwalk
-   (fn [form]
-     (if (record? form)
-       (into {} form)
-       form))
-   form))
 
 (def ^{:arglists '([toucan-model])} object-defaults
   "Return the default values for columns in an instance of a `toucan-model`, excluding ones that differ between
@@ -318,3 +330,24 @@
    (fn [toucan-model]
      (initialize/initialize-if-needed! :db)
      (db/resolve-model toucan-model))))
+
+(defn are+-message [expr arglist args]
+  (pr-str
+   (second
+    (macroexpand-1
+     (list
+      `tools.macro/symbol-macrolet
+      (vec (apply concat (map-indexed (fn [i arg]
+                                        [arg (nth args i)])
+                                      arglist)))
+      expr)))))
+
+(defmacro are+
+  "Like `clojure.test/are` but includes a message for easier test failure debugging. (Also this is somewhat more
+  efficient since it generates far less code ­ it uses `doseq` rather than repeating the entire test each time.)"
+  {:style/indent 2}
+  [argv expr & args]
+  `(doseq [args# ~(mapv vec (partition (count argv) args))
+           :let [~argv args#]]
+     (is ~expr
+         (are+-message '~expr '~argv args#))))

@@ -1,29 +1,25 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
             [metabase.db.spec :as dbspec]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc
-             [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :refer [trs]]
-             [ssh :as ssh]])
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [deferred-tru trs]]
+            [metabase.util.ssh :as ssh])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]))
 
@@ -79,6 +75,12 @@
 
 (defmethod driver/supports? [:mysql :full-join] [_ _] false)
 
+(def default-ssl-cert-details
+  "Server SSL certificate chain, in PEM format."
+  {:name         "ssl-cert"
+   :display-name (deferred-tru "Server SSL certificate chain")
+   :placeholder  ""})
+
 (defmethod driver/connection-properties :mysql
   [_]
   (ssh/with-tunnel-config
@@ -88,6 +90,7 @@
      driver.common/default-user-details
      driver.common/default-password-details
      driver.common/default-ssl-details
+     default-ssl-cert-details
      (assoc driver.common/default-additional-options-details
        :placeholder  "tinyInt1isBit=false")]))
 
@@ -121,10 +124,9 @@
     #".*"                               ; default
     message))
 
-(defmethod driver/db-default-timezone :mysql
-  [_ db]
-  (let [spec                                   (sql-jdbc.conn/db->pooled-connection-spec db)
-        sql                                    (str "SELECT @@GLOBAL.time_zone AS global_tz,"
+(defmethod sql-jdbc.sync/db-default-timezone :mysql
+  [_ spec]
+  (let [sql                                    (str "SELECT @@GLOBAL.time_zone AS global_tz,"
                                                     " @@system_time_zone AS system_tz,"
                                                     " time_format("
                                                     "   timediff("
@@ -167,6 +169,10 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))
 
+(defmethod sql.qp/cast-temporal-string [:mysql :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (hx/->datetime expr))
+
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
 
@@ -184,26 +190,37 @@
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
-
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
 ;; explanation of format specifiers
 ;; this will generate a SQL statement casting the TIME to a DATETIME so date_format doesn't fail:
 ;; date_format(CAST(mytime AS DATETIME), '%Y-%m-%d %H') AS mytime
 (defn- trunc-with-format [format-str expr]
-  (str-to-date format-str (date-format format-str (hx/cast :DATETIME expr))))
+  (str-to-date format-str (date-format format-str (hx/->datetime expr))))
+
+(defn- ->date [expr]
+  (if (hx/is-of-type? expr "date")
+    expr
+    (-> (hsql/call :date expr)
+        (hx/with-database-type-info "date"))))
+
+(defn make-date
+  "Create and return a date based on  a year and a number of days value."
+  [year-expr number-of-days]
+  (-> (hsql/call :makedate year-expr number-of-days)
+      (hx/with-database-type-info "date")))
 
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))
 (defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (hx/minute expr))
 (defmethod sql.qp/date [:mysql :hour]            [_ _ expr] (trunc-with-format "%Y-%m-%d %H" expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (hx/hour expr))
-(defmethod sql.qp/date [:mysql :day]             [_ _ expr] (hsql/call :date expr))
+(defmethod sql.qp/date [:mysql :day]             [_ _ expr] (->date expr))
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] (hsql/call :dayofmonth expr))
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] (hsql/call :dayofyear expr))
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (hsql/call :makedate (hx/year expr) 1))
+(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (make-date (hx/year expr) 1))
 
 (defmethod sql.qp/date [:mysql :day-of-week]
   [_ _ expr]
@@ -287,12 +304,13 @@
    :useCompression       true})
 
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
-  [_ {ssl? :ssl, :keys [additional-options], :as details}]
+  [_ {ssl? :ssl, :keys [additional-options ssl-cert], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
   ;; around this by including `useSSL=true`. Check if that's there, and if it is, assume SSL status. See #9629
   ;;
   ;; TODO - should this be fixed by a data migration instead?
-  (let [ssl? (or ssl? (some-> additional-options (str/includes? "useSSL=true")))]
+  (let [ssl?      (or ssl? (some-> additional-options (str/includes? "useSSL=true")))
+        ssl-cert? (and ssl? (some? ssl-cert))]
     (when (and ssl?
                (not (some->  additional-options (str/includes? "trustServerCertificate"))))
       (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
@@ -300,7 +318,7 @@
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
      {:useSSL (boolean ssl?)}
-     (let [details (-> details
+     (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
        (-> (dbspec/mysql details)

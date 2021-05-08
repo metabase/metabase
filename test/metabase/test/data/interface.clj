@@ -9,20 +9,17 @@
             [clojure.tools.reader.edn :as edn]
             [environ.core :refer [env]]
             [medley.core :as m]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [query-processor :as qp]
-             [util :as u]]
-            [metabase.models
-             [database :refer [Database]]
-             [field :as field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor :as qp]
             [metabase.test.initialize :as initialize]
-            [metabase.util
-             [date-2 :as u.date]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [schema.core :as s]
@@ -32,19 +29,21 @@
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p.types/defrecord+ FieldDefinition [field-name base-type special-type visibility-type fk field-comment])
+(p.types/defrecord+ FieldDefinition [field-name base-type effective-type coercion-strategy semantic-type visibility-type fk field-comment])
 
 (p.types/defrecord+ TableDefinition [table-name field-definitions rows table-comment])
 
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions])
 
 (def ^:private FieldDefinitionSchema
-  {:field-name                       su/NonBlankString
-   :base-type                        (s/cond-pre {:native su/NonBlankString} su/FieldType)
-   (s/optional-key :special-type)    (s/maybe su/FieldType)
-   (s/optional-key :visibility-type) (s/maybe (apply s/enum field/visibility-types))
-   (s/optional-key :fk)              (s/maybe su/KeywordOrString)
-   (s/optional-key :field-comment)   (s/maybe su/NonBlankString)})
+  {:field-name                         su/NonBlankString
+   :base-type                          (s/cond-pre {:native su/NonBlankString} su/FieldType)
+   (s/optional-key :semantic-type)     (s/maybe su/FieldType)
+   (s/optional-key :effective-type)    (s/maybe su/FieldType)
+   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
+   (s/optional-key :visibility-type)   (s/maybe (apply s/enum field/visibility-types))
+   (s/optional-key :fk)                (s/maybe su/KeywordOrString)
+   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)})
 
 (def ^:private ValidFieldDefinition
   (s/constrained FieldDefinitionSchema (partial instance? FieldDefinition)))
@@ -257,7 +256,6 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
   and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
@@ -336,12 +334,12 @@
   ([_ aggregation-type]
    ;; TODO - Can `:cum-count` be used without args as well ??
    (assert (= aggregation-type :count))
-   {:base_type    :type/BigInteger
-    :special_type :type/Number
-    :name         "count"
-    :display_name "Count"
-    :source       :aggregation
-    :field_ref    [:aggregation 0]})
+   {:base_type     :type/BigInteger
+    :semantic_type :type/Number
+    :name          "count"
+    :display_name  "Count"
+    :source        :aggregation
+    :field_ref     [:aggregation 0]})
 
   ([driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
@@ -385,9 +383,10 @@
 ;; TODO - not sure everything below belongs in this namespace
 
 (s/defn ^:private dataset-field-definition :- ValidFieldDefinition
-  [field-definition-map :- DatasetFieldDefinition]
+  [{:keys [coercion-strategy base-type] :as field-definition-map} :- DatasetFieldDefinition]
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
+  ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 
 (s/defn ^:private dataset-table-definition :- ValidTableDefinition

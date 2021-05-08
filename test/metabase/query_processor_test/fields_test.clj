@@ -1,9 +1,8 @@
 (ns metabase.query-processor-test.fields-test
   "Tests for the `:fields` clause."
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor-test :as qp.test]
-             [test :as mt]]))
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]))
 
 (deftest fields-clause-test
   (mt/test-drivers (mt/normal-drivers)

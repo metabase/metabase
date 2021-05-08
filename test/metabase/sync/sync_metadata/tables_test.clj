@@ -1,12 +1,11 @@
 (ns metabase.sync.sync-metadata.tables-test
   "Test for the logic that syncs Table models with the metadata fetched from a DB."
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Database Table]]
-             [test :as mt]
-             [util :as u]]
+            [metabase.models :refer [Database Table]]
             [metabase.sync.sync-metadata.tables :as sync-tables]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (tx/defdataset ^:private db-with-some-cruft

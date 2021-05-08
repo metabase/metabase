@@ -3,26 +3,21 @@
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase
-             [events :as events]
-             [related :as related]
-             [util :as u]]
-            [metabase.api
-             [common :as api]
-             [query-description :as qd]]
+            [metabase.api.common :as api]
+            [metabase.api.query-description :as qd]
+            [metabase.events :as events]
             [metabase.mbql.normalize :as normalize]
-            [metabase.models
-             [interface :as mi]
-             [metric :as metric :refer [Metric]]
-             [revision :as revision]
-             [table :refer [Table]]]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.models.interface :as mi]
+            [metabase.models.metric :as metric :refer [Metric]]
+            [metabase.models.revision :as revision]
+            [metabase.models.table :refer [Table]]
+            [metabase.related :as related]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (api/defendpoint POST "/"
   "Create a new `Metric`."

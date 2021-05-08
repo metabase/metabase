@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.large-int-id-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
-            [metabase.query-processor.middleware.large-int-id :as large-int-id]))
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.large-int-id :as large-int-id]
+            [metabase.test :as mt]))
 
 (deftest convert-ids
   (let [query (mt/mbql-query users
@@ -114,6 +113,6 @@
                 (mt/test-qp-middleware
                  large-int-id/convert-id-to-string
                  {:type       :query
-                  :query      {:fields [[:field-id (mt/id :venues :id)]]}
+                  :query      {:fields [[:field (mt/id :venues :id) nil]]}
                   :middleware {:js-int-to-string? true}}
                  rows))))))))

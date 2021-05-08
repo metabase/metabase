@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Route, IndexRoute } from "react-router";
 import { connect } from "react-redux";

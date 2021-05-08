@@ -1,5 +1,3 @@
-/* @flow */
-
 import { assocIn } from "icepick";
 
 import MetabaseAnalytics from "metabase/lib/analytics";

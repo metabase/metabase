@@ -1,12 +1,11 @@
 (ns metabase.query-processor-test.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor-test :as qp.test]
-             [test :as mt]
-             [util :as u]]
             [metabase.models.field :refer [Field]]
-            [metabase.test.util :as tu]))
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 ;;; ---------------------------------------------- :details-only fields ----------------------------------------------
 

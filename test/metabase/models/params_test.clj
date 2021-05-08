@@ -1,26 +1,25 @@
 (ns metabase.models.params-test
   "Tests for the utility functions for dealing with parameters in `metabase.models.params`."
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Card Field]]
-             [test :as mt]]
             [metabase.api.public-test :as public-test]
+            [metabase.models :refer [Card Field]]
             [metabase.models.params :as params]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]
+            [metabase.test :as mt]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.util.test :as tt]))
 
 (deftest wrap-field-id-if-needed-test
-  (doseq [[x expected] {10                                 [:field-id 10]
-                        [:field-id 10]                     [:field-id 10]
-                        [:field-literal "name" :type/Text] [:field-literal "name" :type/Text]}]
+  (doseq [[x expected] {10                                      [:field 10 nil]
+                        [:field 10 nil]                         [:field 10 nil]
+                        [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
     (testing x
       (is (= expected
              (params/wrap-field-id-if-needed x)))))
   (testing "Should throw Exception if form is invalid"
-    (is (thrown?
-         java.lang.IllegalArgumentException
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Don't know how to wrap Field ID"
          (params/wrap-field-id-if-needed nil)))))
 
 
@@ -28,16 +27,16 @@
 
 (deftest hydrate-name-field-test
   (testing "make sure that we can hydrate the `name_field` property for PK Fields"
-    (is (= {:name         "ID"
-            :table_id     (mt/id :venues)
-            :special_type :type/PK
-            :name_field   {:id               (mt/id :venues :name)
-                           :table_id         (mt/id :venues)
-                           :display_name     "Name"
-                           :base_type        :type/Text
-                           :special_type     :type/Name
-                           :has_field_values :list}}
-           (-> (db/select-one [Field :name :table_id :special_type], :id (mt/id :venues :id))
+    (is (= {:name          "ID"
+            :table_id      (mt/id :venues)
+            :semantic_type :type/PK
+            :name_field    {:id               (mt/id :venues :name)
+                            :table_id         (mt/id :venues)
+                            :display_name     "Name"
+                            :base_type        :type/Text
+                            :semantic_type    :type/Name
+                            :has_field_values :list}}
+           (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (hydrate :name_field)
                mt/derecordize))))
 
@@ -49,20 +48,20 @@
                (call-count))))))
 
   (testing "It shouldn't hydrate for Fields that aren't PKs"
-    (is (= {:name         "PRICE"
-            :table_id     (mt/id :venues)
-            :special_type :type/Category
-            :name_field   nil}
-           (-> (db/select-one [Field :name :table_id :special_type], :id (mt/id :venues :price))
+    (is (= {:name          "PRICE"
+            :table_id      (mt/id :venues)
+            :semantic_type :type/Category
+            :name_field    nil}
+           (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :price))
                (hydrate :name_field)
                mt/derecordize))))
 
   (testing "Or if it *is* a PK, but no name Field is available for that Table, it shouldn't hydrate"
-    (is (= {:name         "ID"
-            :table_id     (mt/id :checkins)
-            :special_type :type/PK
-            :name_field   nil}
-           (-> (db/select-one [Field :name :table_id :special_type], :id (mt/id :checkins :id))
+    (is (= {:name          "ID"
+            :table_id      (mt/id :checkins)
+            :semantic_type :type/PK
+            :name_field    nil}
+           (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
                (hydrate :name_field)
                mt/derecordize)))))
 
@@ -78,18 +77,18 @@
                                           :template-tags {"name" {:name         "name"
                                                                   :display_name "Name"
                                                                   :type         :dimension
-                                                                  :dimension    [:field-id (mt/id :venues :id)]}}}}}]
+                                                                  :dimension    [:field (mt/id :venues :id) nil]}}}}}]
       (is (= {(mt/id :venues :id) {:id               (mt/id :venues :id)
                                    :table_id         (mt/id :venues)
                                    :display_name     "ID"
                                    :base_type        :type/BigInteger
-                                   :special_type     :type/PK
+                                   :semantic_type    :type/PK
                                    :has_field_values :none
                                    :name_field       {:id               (mt/id :venues :name)
                                                       :table_id         (mt/id :venues)
                                                       :display_name     "Name"
                                                       :base_type        :type/Text
-                                                      :special_type     :type/Name
+                                                      :semantic_type    :type/Name
                                                       :has_field_values :list}
                                    :dimensions       []}}
              (-> (hydrate card :param_fields)
@@ -103,13 +102,13 @@
                                    :table_id         (mt/id :venues)
                                    :display_name     "ID"
                                    :base_type        :type/BigInteger
-                                   :special_type     :type/PK
+                                   :semantic_type    :type/PK
                                    :has_field_values :none
                                    :name_field       {:id               (mt/id :venues :name)
                                                       :table_id         (mt/id :venues)
                                                       :display_name     "Name"
                                                       :base_type        :type/Text
-                                                      :special_type     :type/Name
+                                                      :semantic_type    :type/Name
                                                       :has_field_values :list}
                                    :dimensions       []}}
              (-> (hydrate dashboard :param_fields)
@@ -120,14 +119,14 @@
   (let [card {:dataset_query (mt/native-query {:template-tags {"id"   {:name         "id"
                                                                        :display_name "ID"
                                                                        :type         :dimension
-                                                                       :dimension    [:field-id (mt/id :venues :id)]}
+                                                                       :dimension    [:field (mt/id :venues :id) nil]}
                                                                "name" {:name         "name"
                                                                        :display_name "Name"
                                                                        :type         :dimension
-                                                                       :dimension    [:field-literal "name" :type/Text]}}})}]
+                                                                       :dimension    [:field "name" {:base-type :type/Text}]}}})}]
     (testing "card->template-tag-field-clauses"
-      (is (= #{[:field-id (mt/id :venues :id)]
-               [:field-literal "name" :type/Text]}
+      (is (= #{[:field (mt/id :venues :id) nil]
+               [:field "name" {:base-type :type/Text}]}
              (params/card->template-tag-field-clauses card))))
 
     (testing "card->template-tag-field-ids"

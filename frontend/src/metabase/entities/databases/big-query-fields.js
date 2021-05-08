@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t, jt } from "ttag";
 
@@ -113,6 +114,12 @@ export default function getFieldsForBigQuery(details) {
         name: "use-jvm-timezone",
         "display-name": "Use JVM Time Zone",
         default: false,
+        type: "boolean",
+      },
+      {
+        name: "include-user-id-and-hash",
+        "display-name": "Include User ID and query hash in queries",
+        default: true,
         type: "boolean",
       },
     ],

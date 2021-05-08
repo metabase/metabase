@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import {
@@ -18,12 +19,14 @@ export default function ClauseStep({
   canRemove,
   isLastOpened = false,
   initialAddText = null,
+  tetherOptions = null,
   ...props
 }) {
   return (
     <NotebookCell color={color}>
       {items.map((item, index) => (
         <PopoverWithTrigger
+          tetherOptions={tetherOptions}
           triggerElement={
             <NotebookCellItem color={color}>
               {renderName(item, index)}
@@ -51,6 +54,7 @@ export default function ClauseStep({
             initialAddText={items.length === 0 && initialAddText}
           />
         }
+        tetherOptions={tetherOptions}
         sizeToFit
         isInitiallyOpen={isLastOpened}
       >

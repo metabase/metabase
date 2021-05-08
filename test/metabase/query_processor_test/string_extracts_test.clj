@@ -1,14 +1,15 @@
 (ns metabase.query-processor-test.string-extracts-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor-test :refer :all]
-             [test :as mt]]
+            [metabase.query-processor-test :refer :all]
+            [metabase.test :as mt]
             [metabase.test.data :as data]))
 
 (defn- test-string-extract
-  [expr]
+  [expr & [filter]]
   (->> {:expressions {"test" expr}
         :fields      [[:expression "test"]]
+        ;; filter clause is optional
+        :filter      filter
         ;; To ensure stable ordering
         :order-by    [[:asc [:field-id (data/id :venues :id)]]]
         :limit       1}
@@ -47,7 +48,7 @@
     (is (= "Red Medicin" (test-string-extract [:substring [:field-id (data/id :venues :name)]
                                                1 [:- [:length [:field-id (data/id :venues :name)]] 1]])))))
 
-(deftest test-replacea
+(deftest test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "Red Baloon" (test-string-extract [:replace [:field-id (data/id :venues :name)] "Medicine" "Baloon"])))))
 
@@ -79,3 +80,17 @@
                 (mt/run-mbql-query venues)
                 (mt/formatted-rows [identity int])
                 first)))))
+
+(deftest replace-escaping-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :expressions)
+    (is (= "Larry's The Prime Rib" (test-string-extract
+                                    [:replace [:field-id (data/id :venues :name)] "Lawry's" "Larry's"]
+                                    [:= [:field-id (data/id :venues :name)] "Lawry's The Prime Rib"])))))
+
+(deftest regex-match-first-escaping-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :expressions :regex)
+    (is (= "Taylor's" (test-string-extract
+                       [:regex-match-first [:field-id (data/id :venues :name)] "^Taylor's"]
+                       [:= [:field-id (data/id :venues :name)] "Taylor's Prime Steak House"])))))
