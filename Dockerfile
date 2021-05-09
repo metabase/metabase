@@ -1,7 +1,6 @@
 ###################
 # STAGE 1.1: builder frontend
 ###################
-
 FROM node:12.20.1-alpine as frontend
 
 WORKDIR /app/source
@@ -42,6 +41,8 @@ RUN lein deps
 
 FROM adoptopenjdk/openjdk11:alpine as builder
 
+ARG ENV=production
+
 ARG MB_EDITION=oss
 
 WORKDIR /app/source
@@ -72,6 +73,10 @@ COPY --from=backend /root/. /root/
 
 # add the rest of the source
 COPY . .
+
+RUN apk add --no-cache patch
+
+RUN if [ "$ENV" = "staging" ] ; then patch -p1 < staging.patch; fi
 
 # build the app
 RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build

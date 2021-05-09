@@ -1,0 +1,46 @@
+diff --git a/frontend/src/metabase/lib/colors.js b/frontend/src/metabase/lib/colors.js
+--- a/frontend/src/metabase/lib/colors.js	(revision 7de6ce26faf314f59e8f877403af058b1243d902)
++++ b/frontend/src/metabase/lib/colors.js	(date 1620494583209)
+@@ -14,8 +14,8 @@
+ // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
+ /* eslint-disable no-color-literals */
+ const colors = {
+-  brand: "#509EE3",
+-  "brand-light": "#DDECFA",
++  brand: "#7de34d",
++  "brand-light": "#dffadc",
+   accent1: "#88BF4D",
+   accent2: "#A989C5",
+   accent3: "#EF8C8C",
+@@ -23,7 +23,7 @@
+   accent5: "#F2A86F",
+   accent6: "#98D9D9",
+   accent7: "#7172AD",
+-  "admin-navbar": "#7172AD",
++  "admin-navbar": "#73ad6f",
+   white: "#FFFFFF",
+   black: "#2E353B",
+   success: "#84BB4C",
+diff --git a/frontend/src/metabase/css/core/colors.css b/frontend/src/metabase/css/core/colors.css
+--- a/frontend/src/metabase/css/core/colors.css	(revision 05a0ebdd153965e17082c90077b7ff1ac167ee56)
++++ b/frontend/src/metabase/css/core/colors.css	(date 1620511972584)
+@@ -2,8 +2,8 @@
+  * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
+  */
+ :root {
+-  --color-brand: #509ee3;
+-  --color-brand-light: #ddecfa;
++  --color-brand: #7de34d;
++  --color-brand-light: #dffadc;
+   --color-accent1: #88bf4d;
+   --color-accent2: #a989c5;
+   --color-accent3: #ef8c8c;
+@@ -11,7 +11,7 @@
+   --color-accent5: #f2a86f;
+   --color-accent6: #98d9d9;
+   --color-accent7: #7172ad;
+-  --color-admin-navbar: #7172ad;
++  --color-admin-navbar: #73ad6f;
+   --color-white: #ffffff;
+   --color-black: #2e353b;
+   --color-success: #84bb4c;
