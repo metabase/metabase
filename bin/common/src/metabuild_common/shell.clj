@@ -21,7 +21,7 @@
       (throw (ex-info (format "Timed out after %d ms." timeout-ms) {})))
     result))
 
-(def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
+(def ^:private command-timeout-ms (* 60 60 1000)) ; 60 minutes
 
 (defn sh*
   "Run a shell command. Like `clojure.java.shell/sh`, but prints output to stdout/stderr and returns a map with keys
