@@ -7,8 +7,8 @@ diff --git a/frontend/src/metabase/lib/colors.js b/frontend/src/metabase/lib/col
  const colors = {
 -  brand: "#509EE3",
 -  "brand-light": "#DDECFA",
-+  brand: "#7de34d",
-+  "brand-light": "#dffadc",
++  brand: "#73ad6f",
++  "brand-light": "#add6ab",
    accent1: "#88BF4D",
    accent2: "#A989C5",
    accent3: "#EF8C8C",
@@ -17,7 +17,7 @@ diff --git a/frontend/src/metabase/lib/colors.js b/frontend/src/metabase/lib/col
    accent6: "#98D9D9",
    accent7: "#7172AD",
 -  "admin-navbar": "#7172AD",
-+  "admin-navbar": "#73ad6f",
++  "admin-navbar": "#266e69",
    white: "#FFFFFF",
    black: "#2E353B",
    success: "#84BB4C",
@@ -30,8 +30,8 @@ diff --git a/frontend/src/metabase/css/core/colors.css b/frontend/src/metabase/c
  :root {
 -  --color-brand: #509ee3;
 -  --color-brand-light: #ddecfa;
-+  --color-brand: #7de34d;
-+  --color-brand-light: #dffadc;
++  --color-brand: #73ad6f;
++  --color-brand-light: #add6ab;
    --color-accent1: #88bf4d;
    --color-accent2: #a989c5;
    --color-accent3: #ef8c8c;
@@ -40,7 +40,7 @@ diff --git a/frontend/src/metabase/css/core/colors.css b/frontend/src/metabase/c
    --color-accent6: #98d9d9;
    --color-accent7: #7172ad;
 -  --color-admin-navbar: #7172ad;
-+  --color-admin-navbar: #73ad6f;
++  --color-admin-navbar: #266e69;
    --color-white: #ffffff;
    --color-black: #2e353b;
    --color-success: #84bb4c;
