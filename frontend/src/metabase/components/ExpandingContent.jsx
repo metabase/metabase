@@ -1,4 +1,6 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import cx from "classnames";
 
 class ExpandingContent extends Component {
   constructor({ isInitiallyOpen }) {
@@ -17,7 +19,7 @@ class ExpandingContent extends Component {
     animateOpacity: true,
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setOpen(nextProps.isOpen);
   }
   componentDidMount() {
@@ -60,6 +62,7 @@ class ExpandingContent extends Component {
           maxHeight: !animateHeight || isOpen ? maxHeight : 0,
           opacity: !animateOpacity || isOpen ? 1 : 0,
         }}
+        className={cx({ "overflow-hidden": !isOpen })}
       >
         {children}
       </div>

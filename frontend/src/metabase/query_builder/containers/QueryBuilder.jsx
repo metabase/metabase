@@ -1,5 +1,4 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
@@ -175,7 +174,7 @@ export default class QueryBuilder extends Component {
     this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.initializeQB(this.props.location, this.props.params);
   }
 
@@ -183,7 +182,7 @@ export default class QueryBuilder extends Component {
     window.addEventListener("resize", this.handleResize);
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (
       nextProps.uiControls.isShowingDataReference !==
         this.props.uiControls.isShowingDataReference ||

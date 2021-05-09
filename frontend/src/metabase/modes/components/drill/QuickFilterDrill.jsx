@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { jt } from "ttag";
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
@@ -14,13 +12,15 @@ import type {
 function getFiltersForColumn(column) {
   if (
     isa(column.base_type, TYPE.Number) ||
-    isa(column.base_type, TYPE.Temporal)
+    isa(column.base_type, TYPE.Temporal) ||
+    // change to semantic_type or ideally effective_type if that is known after merging into master
+    isa(column.special_type, TYPE.Temporal)
   ) {
     return [
       { name: "<", operator: "<" },
+      { name: ">", operator: ">" },
       { name: "=", operator: "=" },
       { name: "≠", operator: "!=" },
-      { name: ">", operator: ">" },
     ];
   } else {
     return [{ name: "=", operator: "=" }, { name: "≠", operator: "!=" }];
@@ -44,14 +44,16 @@ export default function QuickFilterDrill({
 
   const { value, column } = clicked;
 
-  if (isPK(column.special_type)) {
+  if (isPK(column.semantic_type)) {
     return [];
   }
-  if (isFK(column.special_type)) {
+  if (isFK(column.semantic_type)) {
     return [
       {
         name: "view-fks",
-        section: "filter",
+        section: "standalone_filter",
+        buttonType: "horizontal",
+        icon: "filter",
         title: (
           <span>
             {jt`View this ${singularize(
@@ -68,6 +70,7 @@ export default function QuickFilterDrill({
   return operators.map(({ name, operator }) => ({
     name: operator,
     section: "filter",
+    buttonType: "token-filter",
     title: <span className="h2">{name}</span>,
     question: () => question.filter(operator, column, value),
   }));

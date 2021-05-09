@@ -4,9 +4,8 @@
             [java-time :as t]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [trs]]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import [java.sql Connection PreparedStatement ResultSet Types]
            javax.sql.DataSource))

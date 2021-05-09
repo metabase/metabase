@@ -36,17 +36,14 @@
     {:metadata ...
      :results  (fn [context] ...)
      :xform    ...}"
-  (:require [clojure
-             [data :as data]
-             [string :as str]]
+  (:require [clojure.data :as data]
+            [clojure.string :as str]
             [metabase.api.common :as api]
             [metabase.public-settings.metastore :as metastore]
-            [metabase.query-processor
-             [context :as context]
-             [error-type :as error-type]]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def ^:private ResultsMetadata

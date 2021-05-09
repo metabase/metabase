@@ -2,23 +2,19 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [types :as types]
-             [util :as u]]
             [metabase.driver.common :as driver.common]
             [metabase.driver.druid.js :as js]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [interface :as i]
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :as ui18n :refer [trs tru]]]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.types :as types]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :as ui18n :refer [trs tru]]
             [schema.core :as s]))
 
 (def ^:private ^:const topN-max-results
@@ -83,19 +79,19 @@
     ag-type
 
     :else
-    (throw (Exception. "Unknown aggregation type!"))))
+    (throw (ex-info (tru "Unknown aggregation type!") {:aggregation ag}))))
 
 (defmethod ->rvalue :aggregation
   [[_ index]]
-  (ag-clause->rvalue (nth (:aggregation *query*) index)))
+  (ag-clause->rvalue (or (nth (:aggregation *query*) index)
+                         (throw (ex-info (tru "No aggregation at index {0}" index)
+                                         {:index index, :query *query*})))))
 
-(defmethod ->rvalue :field-id
-  [[_ field-id]]
-  (:name (qp.store/field field-id)))
-
-(defmethod ->rvalue :datetime-field
-  [[_ field]]
-  (->rvalue field))
+(defmethod ->rvalue :field
+  [[_ id-or-name]]
+  (if (integer? id-or-name)
+    (:name (qp.store/field id-or-name))
+    id-or-name))
 
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
@@ -123,17 +119,15 @@
   {:arglists '([field-clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(defmethod dimension-or-metric? :field-id
-  [[_ field-id]]
-  (let [{base-type :base_type, database-type :database_type} (qp.store/field field-id)]
+(defmethod dimension-or-metric? :field
+  [[_ id-or-name options]]
+  (let [{base-type :base_type, database-type :database_type} (if (integer? id-or-name)
+                                                               (qp.store/field id-or-name)
+                                                               {:base_type (:base-type options)})]
     (cond
       (str/includes? database-type "[metric]") :metric
       (isa? base-type :type/DruidHyperUnique)  :metric
       :else                                    :dimension)))
-
-(defmethod dimension-or-metric? :datetime-field
-  [[_ field]]
-  (dimension-or-metric? field))
 
 (defn- random-query-id []
   (str (java.util.UUID/randomUUID)))
@@ -165,7 +159,7 @@
 ;;; ---------------------- handle-filter. See http://druid.io/docs/latest/querying/filters.html ----------------------
 
 (def ^:private ^{:arglists '([clause])} field?
-  (partial mbql.u/is-clause? #{:field-id :datetime-field}))
+  (partial mbql.u/is-clause? :field))
 
 (defn- filter:and
   [filters]
@@ -188,9 +182,9 @@
 (defn- filter:nil?
   [clause-or-field]
   (if (mbql.u/is-clause? #{:+ :- :/ :*} clause-or-field)
-    (filter:and (for [arg   (rest clause-or-field)
-                      :when (field? arg)]
-                  (filter:nil? arg)))
+    (filter:and (vec (for [arg   (rest clause-or-field)
+                           :when (field? arg)]
+                       (filter:nil? arg))))
     (filter:= clause-or-field (case (dimension-or-metric? clause-or-field)
                                 :dimension nil
                                 :metric    0))))
@@ -233,15 +227,15 @@
 (defmulti ^:private parse-filter
   "Parse an MBQL `filter-clause` and generate an appropriate Druid filter map.
 
-    (parse-filter [:= [:field-id 1] 2]) ; -> {:type :selector, :dimension \"venue_price\", :value 2}"
+    (parse-filter [:= [:field 1 null] 2]) ; -> {:type :selector, :dimension \"venue_price\", :value 2}"
   {:arglists '([filter-clause])}
   ;; dispatch function first checks to make sure this is a valid filter clause, then dispatches off of the clause name
   ;; if it is.
   (fn [[clause-name & args, :as filter-clause]]
-    (let [fields (filter (partial mbql.u/is-clause? #{:field-id :datetime-field}) args)]
+    (let [fields (mbql.u/match args :field)]
       ;; and make sure none of the Fields are datetime Fields We'll handle :timestamp separately. It needs to go in
       ;; :intervals instead
-      (when (not-any? (partial mbql.u/is-clause? :datetime-field) fields)
+      (when (empty? (mbql.u/match fields [:field _ (_ :guard :temporal-unit)]))
         clause-name))))
 
 (defmethod parse-filter nil
@@ -311,6 +305,16 @@
   (when-let [subclause (parse-filter subclause)]
     (filter:not subclause)))
 
+(s/defn ^:private add-datetime-units* :- mbql.s/DateTimeValue
+  "Return a `relative-datetime` clause with `n` units added to it."
+  [absolute-or-relative-datetime :- mbql.s/DateTimeValue
+   n                             :- s/Num]
+  (if (mbql.u/is-clause? :relative-datetime absolute-or-relative-datetime)
+    (let [[_ original-n unit] absolute-or-relative-datetime]
+      [:relative-datetime (+ n original-n) unit])
+    (let [[_ t unit] absolute-or-relative-datetime]
+      [:absolute-datetime (u.date/add t unit n) unit])))
+
 (defn- add-datetime-units
   "Adding `n` `:default` units doesn't make sense. So if an `:absoulte-datetime` has `:default` as its unit, add `n`
   milliseconds, because that is the smallest unit Druid supports."
@@ -320,7 +324,7 @@
     [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
 
     _
-    (mbql.u/add-datetime-units clause n)))
+    (add-datetime-units* clause n)))
 
 (defn- ->absolute-timestamp ^java.time.temporal.Temporal [clause]
   (mbql.u/match-one clause
@@ -337,14 +341,14 @@
     nil))
 
 (defmulti ^:private filter-clause->intervals
-  "Generate query intervals as appropriate from a `filter-clause` containing a `:datetime-field`. `:intervals` are
+  "Generate query intervals as appropriate from a `filter-clause` containing a temporal `:field`. `:intervals` are
   specified seperately from other things we think of as filter clauses in Druid. For temporal filter clauses, this
   returns a sequence of min/max datetime tuples; like `[#t 2019-01-01 #t 2019-10-01]`; for irrelevant filter
   clauses, the methods are skipped entirely."
   {:arglists '([filter-clause])}
-  (fn [clause]
-    (when (mbql.u/match-one clause :datetime-field)
-      (mbql.u/dispatch-by-clause-name-or-class clause))))
+  (fn [filter-clause]
+    (when (mbql.u/match-one filter-clause [:field _ (_ :guard :temporal-unit)])
+      (mbql.u/dispatch-by-clause-name-or-class filter-clause))))
 
 (defmethod filter-clause->intervals :default
   [_]
@@ -427,10 +431,10 @@
   strings)."
   [intervals]
   (when-let [intervals (seq (filter some? intervals))]
-    (for [[min-value max-value] intervals]
-      (format "%s/%s"
-              (or (some-> min-value u.date/format) "-5000")
-              (or (some-> max-value u.date/format) "5000")))))
+    (vec (for [[min-value max-value] intervals]
+           (format "%s/%s"
+                   (or (some-> min-value u.date/format) "-5000")
+                   (or (some-> max-value u.date/format) "5000"))))))
 
 (defn- handle-filter
   [_ {filter-clause :filter} druid-query]
@@ -747,11 +751,11 @@
 (defn- expression->actual-ags
   "Return a flattened list of actual aggregations that are needed for `expression`."
   [[_ & args]]
-  (apply concat (for [arg   args
-                      :when (not (number? arg))]
-                  (if (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-                    (expression->actual-ags arg)
-                    [arg]))))
+  (vec (reduce concat (for [arg   args
+                            :when (not (number? arg))]
+                        (if (mbql.u/is-clause? #{:+ :- :/ :*} arg)
+                          (expression->actual-ags arg)
+                          [arg])))))
 
 (defn- unwrap-name
   [x]
@@ -903,12 +907,7 @@
   [this]
   (->rvalue this))
 
-(defmethod ->dimension-rvalue :field-id
-  [this]
-  (->rvalue this))
-
-(defmethod ->dimension-rvalue :datetime-field
-  [[_ _ unit]]
+(defn- temporal-dimension-rvalue [unit]
   {:type         :extraction
    :dimension    :__time
    ;; :timestamp is a special case, and we need to do an 'extraction' agat the secret special value :__time to get
@@ -918,6 +917,11 @@
                    :timestamp)
    :extractionFn (unit->extraction-fn unit)})
 
+(defmethod ->dimension-rvalue :field
+  [[_ _ {:keys [temporal-unit]} :as clause]]
+  (if temporal-unit
+    (temporal-dimension-rvalue temporal-unit)
+    (->rvalue clause)))
 
 (defmulti ^:private handle-breakout
   {:arglists '([query-type original-query druid-query])}
@@ -934,11 +938,12 @@
 
 (defn- field-clause->name
   [field-clause]
-  (when field-clause
-    (let [id (mbql.u/field-clause->id-or-literal field-clause)]
-      (if (integer? id)
-        (:name (qp.store/field id))
-        id))))
+  (mbql.u/match-one field-clause
+    [:field (id :guard integer?) _]
+    (:name (qp.store/field id))
+
+    [:field (field-name :guard string?) _]
+    field-name))
 
 (defmethod handle-breakout ::topN
   [_ {[breakout-field] :breakout} druid-query]
@@ -1005,16 +1010,16 @@
 (defmethod handle-order-by ::groupBy
   [_ {:keys [order-by]} druid-query]
   (assoc-in druid-query [:query :limitSpec :columns] (vec (for [[direction field] order-by]
-                                                              {:dimension (->rvalue field)
-                                                               :direction (case direction
-                                                                            :desc :descending
-                                                                            :asc  :ascending)}))))
+                                                            {:dimension (->rvalue field)
+                                                             :direction (case direction
+                                                                          :desc :descending
+                                                                          :asc  :ascending)}))))
 (defn- datetime-field?
   "Similar to `types/temporal-field?` but works on field ids wrapped in a datetime or on fields that happen to be a
   datetime"
   [field]
   (when field
-    (or (mbql.u/is-clause? :datetime-field field)
+    (or (mbql.u/match-one field [:field _ (_ :guard :temporal-unit)])
         (types/temporal-field? (qp.store/field (second field))))))
 
 ;; Handle order by timstamp field
@@ -1089,11 +1094,18 @@
   {:arglists '([query-type original-query druid-query])}
   query-type-dispatch-fn)
 
+(defn- adjust-limit
+  "No joke, Druid queries do not work if limit is `1048575`, but they work if limit is `1048576`. They fail with an
+  'Invalid type marker byte 0x3c for expected value token` error. So if we see the updated `absolute-max-results` from
+  #15414, adjust it back to the old known working value. had to work around."
+  [limit]
+  (cond-> limit
+    (= limit i/absolute-max-results) inc))
+
 (defmethod handle-limit ::scan
   [_ {limit :limit} druid-query]
-  (if-not limit
-    druid-query
-    (assoc-in druid-query [:query :limit] limit)))
+  (cond-> druid-query
+    limit (assoc-in [:query :limit] (adjust-limit limit))))
 
 (defmethod handle-limit ::timeseries
   [_ {limit :limit} druid-query]
@@ -1105,18 +1117,14 @@
 
 (defmethod handle-limit ::topN
   [_ {limit :limit} druid-query]
-  (if-not limit
-    druid-query
-    (assoc-in druid-query [:query :threshold] limit)))
+  (cond-> druid-query
+    limit (assoc-in [:query :threshold] (adjust-limit limit))))
 
 (defmethod handle-limit ::groupBy
   [_ {limit :limit} druid-query]
-  (if-not limit
-    (-> druid-query
-        (assoc-in [:query :limitSpec :type]  :default))
-    (-> druid-query
-        (assoc-in [:query :limitSpec :type]  :default)
-        (assoc-in [:query :limitSpec :limit] limit))))
+  (cond-> druid-query
+    true  (assoc-in [:query :limitSpec :type]  :default)
+    limit (assoc-in [:query :limitSpec :limit] (adjust-limit limit))))
 
 
 ;;; -------------------------------------------------- handle-page ---------------------------------------------------
@@ -1146,11 +1154,16 @@
   (let [breakouts (condp = (count breakout-fields)
                     0 :none
                     1 :one
-                      :many)
+                    :many)
         agg?      (boolean ag-type)
-        ts?       (and (mbql.u/is-clause? :datetime-field (first breakout-fields))  ; Checks whether the query is a timeseries
-                       (contains? timeseries-units (:unit (first breakout-fields))) ; (excludes x-of-y type breakouts)
-                       (nil? limit))]                                               ; (excludes queries with LIMIT)
+        ts?       (boolean
+                   (and
+                    ;; Checks whether the query is a timeseries
+                    (mbql.u/match-one (first breakout-fields) [:field _ (_ :guard :temporal-unit)])
+                    ;; (excludes x-of-y type breakouts)
+                    (contains? timeseries-units (:unit (first breakout-fields)))
+                    ;; (excludes queries with LIMIT)
+                    (nil? limit)))]
     (match [breakouts agg? ts?]
       [:none  false    _] ::scan
       [:none  true     _] ::total

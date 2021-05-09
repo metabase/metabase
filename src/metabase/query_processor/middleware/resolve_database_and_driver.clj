@@ -1,12 +1,10 @@
 (ns metabase.query-processor.middleware.resolve-database-and-driver
-  (:require [metabase
-             [driver :as driver]
-             [util :as u]]
+  (:require [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.query-processor
-             [error-type :as error-type]
-             [store :as qp.store]]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
 (defn- resolve-database* [{database-id :database, :as query}]

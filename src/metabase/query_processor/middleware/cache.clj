@@ -14,17 +14,14 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.query-processor
-             [context :as context]
-             [util :as qputil]]
-            [metabase.query-processor.middleware.cache-backend
-             [db :as backend.db]
-             [interface :as i]]
+            [metabase.config :as config]
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.middleware.cache-backend.db :as backend.db]
+            [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]])
   (:import org.eclipse.jetty.io.EofException))
 
@@ -130,15 +127,15 @@
         ([]
          (rf))
 
-        ([acc]
-         ;; if results are in the 'normal format' then use the final metadata from the cache rather than
-         ;; whatever `acc` is right now since we don't run the entire post-processing pipeline for cached results
-         (let [normal-format? (and (map? acc) (seq (get-in acc [:data :cols])))
-               acc*           (-> (if normal-format?
-                                    @final-metadata
-                                    acc)
+        ([result]
+         (let [normal-format? (and (map? (unreduced result))
+                                   (seq (get-in (unreduced result) [:data :cols])))
+               result*        (-> (if normal-format?
+                                    (merge-with merge @final-metadata (unreduced result))
+                                    (unreduced result))
                                   (assoc :cached true, :updated_at last-ran))]
-           (rf acc*)))
+           (rf (cond-> result*
+                 (reduced? result) reduced))))
 
         ([acc row]
          (if (map? row)

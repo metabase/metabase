@@ -1,10 +1,9 @@
-import { signInAsAdmin, restore, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/cypress";
 
 describe("scenarios > admin > databases > edit", () => {
-  before(restore);
-
   beforeEach(() => {
-    signInAsAdmin();
+    restore();
+    cy.signInAsAdmin();
     cy.server();
     cy.route("GET", "/api/database/*").as("databaseGet");
     cy.route("PUT", "/api/database/*").as("databaseUpdate");
@@ -40,16 +39,48 @@ describe("scenarios > admin > databases > edit", () => {
       cy.findByText("Connection");
       cy.findByText("Scheduling");
     });
+
+    it("`auto_run_queries` toggle should be ON by default for `SAMPLE_DATASET`", () => {
+      cy.visit("/admin/databases/1");
+
+      cy.findByLabelText(
+        "Automatically run queries when doing simple filtering and summarizing",
+      ).should("have.attr", "aria-checked", "true");
+    });
+
+    it("should respect the settings for automatic query running (metabase#13187)", () => {
+      cy.log("Turn off `auto run queries`");
+      cy.request("PUT", "/api/database/1", {
+        auto_run_queries: false,
+      });
+
+      cy.visit("/admin/databases/1");
+
+      cy.log("Reported failing on v0.36.4");
+      cy.findByLabelText(
+        "Automatically run queries when doing simple filtering and summarizing",
+      ).should("have.attr", "aria-checked", "false");
+    });
   });
 
   describe("Scheduling tab", () => {
+    beforeEach(() => {
+      // Turn on scheduling without relying on the previous test(s)
+      cy.request("PUT", "/api/database/1", {
+        details: {
+          "let-user-control-scheduling": true,
+        },
+        engine: "h2",
+      });
+    });
+
     it("shows the initial scheduling settings correctly", () => {
       cy.visit("/admin/databases/1");
 
       cy.findByText("Scheduling").click();
 
       cy.findByText("Database syncing")
-        .parent()
+        .closest(".Form-field")
         .findByText("Hourly");
 
       cy.findByText("Regularly, on a schedule")
@@ -63,7 +94,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.findByText("Scheduling").click();
 
       cy.findByText("Database syncing")
-        .parent()
+        .closest(".Form-field")
         .as("sync");
 
       cy.get("@sync")
@@ -166,7 +197,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.visit("/admin/databases/1");
       cy.findByText("Remove this database").click();
       modal().within(() => {
-        cy.get("input").type("DELETE");
+        cy.get("input").type("Sample Dataset");
         cy.get(".Button.Button--danger").click();
       });
 

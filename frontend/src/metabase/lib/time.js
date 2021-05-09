@@ -1,4 +1,5 @@
 import moment from "moment-timezone";
+import { t } from "ttag";
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
@@ -16,7 +17,7 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("hour"),
   "day-of-week": value =>
     moment()
-      .day(value - 1)
+      .weekday(value - 1)
       .startOf("day"),
   "day-of-month": value =>
     moment("2016-01-01") // initial date must be in month with 31 days to format properly
@@ -69,5 +70,52 @@ export function parseTime(value) {
     ]);
   } else {
     return moment.utc(value);
+  }
+}
+
+export function formatHourAMPM(hour) {
+  if (hour > 12) {
+    const newHour = hour - 12;
+    return t`${newHour}:00 PM`;
+  } else if (hour === 0) {
+    return t`12:00 AM`;
+  } else if (hour === 12) {
+    return t`12:00 PM`;
+  } else {
+    return t`${hour}:00 AM`;
+  }
+}
+
+export function formatDay(day) {
+  switch (day) {
+    case "mon":
+      return t`Monday`;
+    case "tue":
+      return t`Tuesday`;
+    case "wed":
+      return t`Wednesday`;
+    case "thu":
+      return t`Thursday`;
+    case "fri":
+      return t`Friday`;
+    case "sat":
+      return t`Saturday`;
+    case "sun":
+      return t`Sunday`;
+    default:
+      return day;
+  }
+}
+
+export function formatFrame(frame) {
+  switch (frame) {
+    case "first":
+      return t`first`;
+    case "last":
+      return t`last`;
+    case "mid":
+      return t`15th (Midpoint)`;
+    default:
+      return frame;
   }
 }

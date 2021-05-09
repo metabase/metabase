@@ -1,15 +1,11 @@
-import {
-  restore,
-  signInAsAdmin,
-  openProductsTable,
-  signInAsNormalUser,
-  popover,
-} from "__support__/cypress";
 //Replaces HomepageApp.e2e.spec.js
+import { restore, openProductsTable, popover } from "__support__/cypress";
 
 describe("metabase > scenarios > home > activity-page", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
   it("should show test startup activity ", () => {
     cy.visit("/activity");
@@ -19,13 +15,13 @@ describe("metabase > scenarios > home > activity-page", () => {
   });
 
   it("should show new activity", () => {
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
 
     // Make and a save new question
     openProductsTable();
     cy.findByText("Rating").click();
     popover().within(() => {
-      cy.findByText("Filter").click();
+      cy.findByText("Filter by this column").click();
       cy.findByPlaceholderText("Enter a number").type("5");
       cy.findByText("Update filter").click();
     });
@@ -44,7 +40,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     cy.get(".Card").should("have.length", 1);
 
     // See activity on activity page
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.visit("/activity");
 
     cy.findAllByText("joined!").should("have.length", 2);

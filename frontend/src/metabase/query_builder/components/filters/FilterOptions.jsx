@@ -7,6 +7,8 @@ import { getFilterOptions, setFilterOptions } from "metabase/lib/query/filter";
 import CheckBox from "metabase/components/CheckBox";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import type { FieldFilter } from "metabase-types/types/Query";
+
 const OPTION_NAMES = {
   "include-current": filter => {
     const period = (
@@ -98,7 +100,11 @@ export default class FilterOptions extends Component {
             className="flex align-center"
             onClick={() => this.toggleOptionValue(name)}
           >
-            <CheckBox color="purple" checked={this.getOptionValue(name)} />
+            <CheckBox
+              color="purple"
+              checked={this.getOptionValue(name)}
+              onChange={() => this.toggleOptionValue(name)}
+            />
             <label className="ml1">{this.getOptionName(name)}</label>
           </div>
         ))}

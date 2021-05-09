@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 import { setIn } from "icepick";
 
@@ -37,6 +35,7 @@ export type MappingsByParameter = {
 
 export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
+export const getIsSharing = state => !!state.dashboard.isSharing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
 export const getClickBehaviorSidebarDashcard = state => {
   const { clickBehaviorSidebarDashcardId, dashcards } = state.dashboard;
@@ -252,3 +251,15 @@ export const makeGetParameterMappingOptions = () => {
   );
   return getParameterMappingOptions;
 };
+
+export const getDefaultParametersById = createSelector(
+  [getDashboard],
+  dashboard =>
+    ((dashboard && dashboard.parameters) || []).reduce((map, parameter) => {
+      if (parameter.default) {
+        map[parameter.id] = parameter.default;
+      }
+
+      return map;
+    }, {}),
+);

@@ -1,5 +1,3 @@
-/* @flow */
-
 export const activeAndNewByTime = () => ({
   card: {
     name: "Active members and new members per day",

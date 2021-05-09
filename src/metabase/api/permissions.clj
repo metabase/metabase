@@ -1,20 +1,16 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
   (:require [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase
-             [metabot :as metabot]
-             [util :as u]]
-            [metabase.api
-             [common :as api]
-             [permission-graph :as pg]]
-            [metabase.models
-             [permissions :as perms]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]]
+            [metabase.api.common :as api]
+            [metabase.api.permission-graph :as pg]
+            [metabase.metabot :as metabot]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |

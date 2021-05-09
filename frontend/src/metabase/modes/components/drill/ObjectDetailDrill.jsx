@@ -1,5 +1,3 @@
-/* @flow */
-
 import { isFK, isPK } from "metabase/lib/schema_metadata";
 import { t } from "ttag";
 import type {
@@ -36,6 +34,8 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "object-detail",
       section: "details",
       title: t`View details`,
+      buttonType: "horizontal",
+      icon: "document",
       default: true,
       question: () =>
         field ? question.drillPK(field, clicked && clicked.value) : question,

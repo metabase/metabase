@@ -1,9 +1,22 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
 import ClauseStep from "./ClauseStep";
 
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
+
+const aggTetherOptions = {
+  attachment: "top left",
+  targetAttachment: "bottom left",
+  offset: "0 10px",
+  constraints: [
+    {
+      to: "scrollParent",
+      attachment: "together",
+    },
+  ],
+};
 
 export default function AggregateStep({
   color,
@@ -17,6 +30,7 @@ export default function AggregateStep({
       color={color}
       initialAddText={t`Pick the metric you want to see`}
       items={query.aggregations()}
+      tetherOptions={aggTetherOptions}
       renderPopover={aggregation => (
         <AggregationPopover
           query={query}

@@ -1,9 +1,8 @@
 (ns metabase.query-processor-test.page-test
   "Tests for the `:page` clause."
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor-test :refer :all]
-             [test :as mt]]
+            [metabase.query-processor-test :refer :all]
+            [metabase.test :as mt]
             [metabase.test.data :as data]))
 
 (deftest page-test
@@ -23,9 +22,9 @@
                  (get-page 1))))
 
         (testing "get the second page"
-          (= [[ 6 "Bakery"]
-              [ 7 "Bar"]
-              [ 8 "Beer Garden"]
-              [ 9 "Breakfast / Brunch"]
-              [10 "Brewery"]]
-             (get-page 2)))))))
+          (is (= [[ 6 "Bakery"]
+                  [ 7 "Bar"]
+                  [ 8 "Beer Garden"]
+                  [ 9 "Breakfast / Brunch"]
+                  [10 "Brewery"]]
+                 (get-page 2))))))))

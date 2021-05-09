@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
 
@@ -32,6 +33,7 @@ class CustomForm extends React.Component {
     pristine: PropTypes.bool,
     error: PropTypes.string,
     onChangeField: PropTypes.func,
+    disablePristineSubmit: PropTypes.bool,
   };
 
   getChildContext() {
@@ -50,6 +52,7 @@ class CustomForm extends React.Component {
       style,
       onChangeField,
     } = this.props;
+    const { disablePristineSubmit } = form;
     const formFields = form.fields(values);
     const formFieldsByName = _.indexBy(formFields, "name");
 
@@ -68,6 +71,7 @@ class CustomForm extends React.Component {
       pristine,
       error,
       onChangeField,
+      disablePristineSubmit,
     };
   }
 
@@ -127,7 +131,7 @@ export class CustomFormField extends React.Component {
       "normalize",
     );
   }
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     if (this.context.registerFormField) {
       this.context.registerFormField(this._getFieldDefinition());
     }
@@ -166,18 +170,21 @@ export class CustomFormField extends React.Component {
 export const CustomFormSubmit = (
   { children, ...props },
   {
-    values,
     submitting,
     invalid,
     pristine,
     handleSubmit,
     submitTitle,
     renderSubmit,
+    disablePristineSubmit,
   },
 ) => {
   const title = children || submitTitle || t`Submit`;
-  // NOTE: need a way to configure if "pristine" forms can be submitted
-  const canSubmit = !(submitting || invalid); // || pristine );
+  const canSubmit = !(
+    submitting ||
+    invalid ||
+    (pristine && disablePristineSubmit)
+  );
   if (renderSubmit) {
     return renderSubmit({ canSubmit, title, handleSubmit });
   } else {
@@ -204,6 +211,7 @@ CustomFormSubmit.contextTypes = {
   handleSubmit: PropTypes.func,
   submitTitle: PropTypes.string,
   renderSubmit: PropTypes.func,
+  disablePristineSubmit: PropTypes.bool,
 };
 
 export const CustomFormMessage = (props, { error }) =>

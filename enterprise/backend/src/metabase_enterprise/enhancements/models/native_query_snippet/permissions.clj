@@ -1,10 +1,9 @@
 (ns metabase-enterprise.enhancements.models.native-query-snippet.permissions
   "EE implementation of NativeQuerySnippet permissions."
   (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
-            [metabase.models
-             [interface :as i]
-             [permissions :as perms]]
+            [metabase.models.interface :as i]
             [metabase.models.native-query-snippet.permissions :as snippet.perms]
+            [metabase.models.permissions :as perms]
             [metabase.util.schema :as su]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]

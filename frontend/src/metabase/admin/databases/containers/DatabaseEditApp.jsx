@@ -1,5 +1,4 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -113,12 +112,12 @@ export default class DatabaseEditApp extends Component {
     location: PropTypes.object,
   };
 
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     await this.props.reset();
     await this.props.initializeDatabase(this.props.params.databaseId);
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     const isNew = !nextProps.database || !nextProps.database.id;
     if (isNew) {
       // Update the current creation step (= active tab) if adding a new database

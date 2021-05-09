@@ -3,36 +3,31 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase
-             [events :as events]
-             [related :as related]
-             [util :as u]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as magic.populate]
+            [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :as collection]
-             [dashboard :as dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard delete-dashboard-card!]]
-             [dashboard-favorite :refer [DashboardFavorite]]
-             [field :refer [Field]]
-             [interface :as mi]
-             [params :as params]
-             [query :as query :refer [Query]]
-             [revision :as revision]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :as collection]
+            [metabase.models.dashboard :as dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard delete-dashboard-card!]]
+            [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
+            [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [util :as qp-util]]
+            [metabase.models.query :as query :refer [Query]]
+            [metabase.models.revision :as revision]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.query-processor.util :as qp-util]
+            [metabase.related :as related]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import java.util.UUID))
 
 (defn- hydrate-favorites
@@ -41,10 +36,10 @@
   (let [favorite-dashboard-ids (when (seq dashboards)
                                  (db/select-field :dashboard_id DashboardFavorite
                                    :user_id      api/*current-user-id*
-                                   :dashboard_id [:in (set (map u/get-id dashboards))]))]
+                                   :dashboard_id [:in (set (map u/the-id dashboards))]))]
     (for [dashboard dashboards]
       (assoc dashboard
-        :favorite (contains? favorite-dashboard-ids (u/get-id dashboard))))))
+        :favorite (contains? favorite-dashboard-ids (u/the-id dashboard))))))
 
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
@@ -203,7 +198,7 @@
   (assoc dashboard :param_values (->> param_fields
                                       vals
                                       (filter mi/can-read?)
-                                      (map u/get-id)
+                                      (map u/the-id)
                                       set
                                       params/field-ids->param-field-values
                                       not-empty)))
@@ -322,7 +317,6 @@
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
-
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
@@ -336,7 +330,6 @@
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
     (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})))
-
 
 ;; TODO - we should use schema to validate the format of the Cards :D
 (api/defendpoint PUT "/:id/cards"
@@ -355,7 +348,6 @@
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
 
-
 (api/defendpoint DELETE "/:id/cards"
   "Remove a `DashboardCard` from a Dashboard."
   [id dashcardId]
@@ -363,15 +355,13 @@
   (api/check-not-archived (api/write-check Dashboard id))
   (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
     (api/check-500 (delete-dashboard-card! dashboard-card api/*current-user-id*))
-    {:success true})) ; TODO - why doesn't this return a 204 'No Content' response?
-
+    api/generic-204-no-content))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
   [id]
   (api/read-check Dashboard id)
   (revision/revisions+details Dashboard id))
-
 
 (api/defendpoint POST "/:id/revert"
   "Revert a Dashboard to a prior `Revision`."
@@ -473,6 +463,10 @@
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------
 
+(def ^:const result-limit
+  "How many results to return when chain filtering"
+  100)
+
 (def ^:private ParamMapping
   {:parameter_id su/NonBlankString
    #_:target     #_s/Any
@@ -522,8 +516,8 @@
   (set (for [param parameter-mappings
              :let  [field-clause (params/param-target->field-clause (:target param) (:dashcard param))]
              :when field-clause
-             :let  [field-id (mbql.u/field-clause->id-or-literal field-clause)]
-             :when (integer? field-id)]
+             :let  [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+             :when field-id]
          field-id)))
 
 (defn- param-key->field-ids
@@ -558,7 +552,7 @@
   ([dashboard                   :- su/Map
     param-key                   :- su/NonBlankString
     constraint-param-key->value :- su/Map
-    prefix                      :- (s/maybe su/NonBlankString)]
+    query                       :- (s/maybe su/NonBlankString)]
    (let [dashboard (hydrate dashboard :resolved-params)]
      (when-not (get (:resolved-params dashboard) param-key)
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
@@ -571,9 +565,9 @@
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
        (try
-         (let [results (distinct (mapcat (if (seq prefix)
-                                           #(chain-filter/chain-filter-search % constraints prefix)
-                                           #(chain-filter/chain-filter % constraints))
+         (let [results (distinct (mapcat (if (seq query)
+                                           #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                           #(chain-filter/chain-filter % constraints :limit result-limit))
                                          field-ids))]
            ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
            (if (sequential? (first results))
@@ -594,16 +588,18 @@
   (let [dashboard (api/read-check Dashboard id)]
     (chain-filter dashboard param-key query-params)))
 
-(api/defendpoint GET "/:id/params/:param-key/search/:prefix"
-  "Fetch possible values of the parameter whose ID is `:param-key` that start with with `:prefix`. Optionally restrict
+(api/defendpoint GET "/:id/params/:param-key/search/:query"
+  "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
   these values by passing query parameters like `other-parameter=value` e.g.
 
-    ;; fetch values for Dashboard 1 parameter 'abc' that start with 'Cam' and are possible when parameter 'def' is set
+    ;; fetch values for Dashboard 1 parameter 'abc' that contain 'Cam' and are possible when parameter 'def' is set
     ;; to 100
-     GET /api/dashboard/1/params/abc/search/Cam?def=100"
-  [id param-key prefix :as {:keys [query-params]}]
+     GET /api/dashboard/1/params/abc/search/Cam?def=100
+
+  Currently limited to first 100 results"
+  [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (chain-filter dashboard param-key query-params prefix)))
+    (chain-filter dashboard param-key query-params query)))
 
 (api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in

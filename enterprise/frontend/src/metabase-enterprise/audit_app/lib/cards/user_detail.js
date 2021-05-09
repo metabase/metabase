@@ -1,5 +1,3 @@
-/* @flow */
-
 export const table = (userId: number) => ({
   card: {
     name: "Most-viewed Dashboards",

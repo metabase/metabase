@@ -1,30 +1,25 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [cheshire
-             [core :as json]
-             [generate :as json.generate]]
+  (:require [cheshire.core :as json]
+            [cheshire.generate :as json.generate]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.mongo
-             [execute :as execute]
-             [parameters :as parameters]
-             [query-processor :as qp]
-             [util :refer [with-mongo-connection]]]
+            [metabase.driver.mongo.execute :as execute]
+            [metabase.driver.mongo.parameters :as parameters]
+            [metabase.driver.mongo.query-processor :as qp]
+            [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
-            [monger
-             [collection :as mc]
-             [command :as cmd]
-             [conversion :as m.conversion]
-             [db :as mdb]]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util :as u]
+            [monger.collection :as mc]
+            [monger.command :as cmd]
+            [monger.conversion :as m.conversion]
+            [monger.db :as mdb]
             [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
@@ -96,7 +91,7 @@
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
-(defn- val->special-type [field-value]
+(defn- val->semantic-type [field-value]
   (cond
     ;; 1. url?
     (and (string? field-value)
@@ -127,10 +122,10 @@
                       %))
       (update :types (fn [types]
                        (update types (type field-value) u/safe-inc)))
-      (update :special-types (fn [special-types]
-                               (if-let [st (val->special-type field-value)]
-                                 (update special-types st u/safe-inc)
-                                 special-types)))
+      (update :semantic-types (fn [semantic-types]
+                               (if-let [st (val->semantic-type field-value)]
+                                 (update semantic-types st u/safe-inc)
+                                 semantic-types)))
       (update :nested-fields (fn [nested-fields]
                                (if (map? field-value)
                                  (find-nested-fields field-value nested-fields)
@@ -169,7 +164,7 @@
               :base-type         (class->base-type most-common-object-type)
               :database-position idx}
        (= :_id field-kw)           (assoc :pk? true)
-       (:special-types field-info) (assoc :special-type (->> (:special-types field-info)
+       (:semantic-types field-info) (assoc :semantic-type (->> (:semantic-types field-info)
                                                              (filterv #(some? (first %)))
                                                              (sort-by second)
                                                              last
@@ -186,8 +181,8 @@
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
    sample. The results will look something like:
 
-      {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :special-types nil, :nested-fields nil},
-       :severity {:count 200, :len nil, :types {java.lang.Long 200}, :special-types nil, :nested-fields nil}}"
+      {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil},
+       :severity {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil}}"
   [^com.mongodb.DB conn, table]
   (try
     (->> (mc/find-maps conn (:name table))

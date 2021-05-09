@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Flex } from "grid-styled";
 
@@ -87,7 +88,7 @@ const CollectionItem = props => {
 };
 
 CollectionItem.defaultProps = {
-  iconName: "all",
+  iconName: "folder",
 };
 
 export default CollectionItem;

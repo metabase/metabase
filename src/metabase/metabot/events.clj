@@ -2,13 +2,11 @@
   "Logic related to handling Slack events, running commands for events that are messages to the MetaBot, and posting the
   response on Slack."
   (:require [cheshire.core :as json]
-            [clojure
-             [edn :as edn]
-             [string :as str]]
+            [clojure.edn :as edn]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.metabot
-             [command :as metabot.cmd]
-             [slack :as metabot.slack]]
+            [metabase.metabot.command :as metabot.cmd]
+            [metabase.metabot.slack :as metabot.slack]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
 

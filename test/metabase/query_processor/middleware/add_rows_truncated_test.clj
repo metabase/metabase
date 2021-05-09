@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.add-rows-truncated-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
-            [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]))
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
+            [metabase.test :as mt]))
 
 (defn- add-rows-truncated [query rows]
   (:result

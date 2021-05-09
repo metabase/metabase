@@ -68,7 +68,7 @@ contain attributes for each user's first name, last name, and email. The asserti
         </saml2:Attribute>
         <saml2:Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
             <saml2:AttributeValue xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xs:string">
-              cam@metabse.com
+              cam@metabase.com
             </saml2:AttributeValue>
         </saml2:Attribute>
     </saml2:AttributeStatement>
@@ -189,6 +189,10 @@ Once you have configured SAML authentication, you can choose to disable the opti
 ### New user notification emails
 
 When users log in to Metabase for the first time via SSO, this will automatically create a Metabase account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, you can turn this toggle off at the bottom of the Authentication page.
+
+### Example code using SAML
+
+You can find example code that uses SAML authentication in the [SSO examples repository](https://github.com/metabase/sso-examples).
 
 ---
 

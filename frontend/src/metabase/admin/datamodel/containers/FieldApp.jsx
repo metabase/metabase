@@ -1,11 +1,9 @@
-/* @flow */
-
 /**
  * Settings editor for a single database field. Lets you change field type, visibility and display values / remappings.
  *
  * TODO Atte Keinänen 7/6/17: This uses the standard metadata API; we should migrate also other parts of admin section
  */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Link } from "react-router";
 import { connect } from "react-redux";
@@ -27,9 +25,12 @@ import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import Section, { SectionHeader } from "../components/Section";
 import SelectSeparator from "../components/SelectSeparator";
 
+import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
+import { isFK } from "metabase/lib/types";
+
 import {
   FieldVisibilityPicker,
-  SpecialTypeAndTargetPicker,
+  SemanticTypeAndTargetPicker,
 } from "../components/database/ColumnItem";
 import FieldRemapping from "../components/FieldRemapping";
 import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
@@ -114,8 +115,7 @@ export default class FieldApp extends React.Component {
     params: any,
   };
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       databaseId,
       tableId,
@@ -307,7 +307,7 @@ const FieldGeneralPane = ({
 
     <Section>
       <SectionHeader title={t`Field Type`} />
-      <SpecialTypeAndTargetPicker
+      <SemanticTypeAndTargetPicker
         className="flex align-center"
         field={field}
         updateField={onUpdateFieldProperties}
@@ -316,6 +316,35 @@ const FieldGeneralPane = ({
       />
     </Section>
 
+    {!isFK(field.semantic_type) && is_coerceable(field.base_type) && (
+      <Section>
+        <SectionHeader title={t`Cast to a specific data type`} />
+        <Select
+          className="inline-block"
+          placeholder={t`Select a conversion`}
+          searchProp="name"
+          value={field.coercion_strategy}
+          onChange={({ target: { value } }) =>
+            onUpdateFieldProperties({
+              coercion_strategy: value,
+            })
+          }
+          options={[
+            ...coercions_for_type(field.base_type).map(c => ({
+              id: c,
+              name: c,
+            })),
+            {
+              id: null,
+              name: t`Don't cast`,
+            },
+          ]}
+          optionValueFn={field => field.id}
+          optionNameFn={field => field.name.replace("Coercion/", "")}
+          optionIconFn={field => null}
+        />
+      </Section>
+    )}
     <Section>
       <SectionHeader
         title={t`Filtering on this field`}
@@ -369,7 +398,7 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
       value={(field && field.settings) || {}}
       onChange={onUpdateFieldSettings}
       column={field}
-      blacklist={
+      denylist={
         new Set(
           ["column_title"].concat(isCurrency(field) ? ["number_style"] : []),
         )

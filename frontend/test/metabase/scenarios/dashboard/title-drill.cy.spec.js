@@ -1,8 +1,10 @@
-import { signIn, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > dashboard > title drill", () => {
-  before(restore);
-  beforeEach(signIn);
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
   it("should let you click through the title to the query builder", () => {
     createDashboard(dashId => {
@@ -19,13 +21,9 @@ describe("scenarios > dashboard > title drill", () => {
 });
 
 function createDashboard(callback) {
-  cy.request("POST", "/api/card", {
+  cy.createNativeQuestion({
     name: "Q1",
-    dataset_query: {
-      type: "native",
-      native: { query: 'SELECT 1 as "foo", 2 as "bar"', "template-tags": {} },
-      database: 1,
-    },
+    native: { query: 'SELECT 1 as "foo", 2 as "bar"', "template-tags": {} },
     display: "bar",
     visualization_settings: {
       "graph.dimensions": ["foo"],

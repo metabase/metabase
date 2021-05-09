@@ -1,16 +1,13 @@
 (ns metabase.task.send-anonymous-stats
   "Contains a Metabase task which periodically sends anonymous usage information to the Metabase team."
   (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite
-             [jobs :as jobs]
-             [triggers :as triggers]]
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [metabase
-             [public-settings :as public-settings]
-             [task :as task]]
-            [metabase.util
-             [i18n :refer [trs]]
-             [stats :as stats]]))
+            [clojurewerkz.quartzite.triggers :as triggers]
+            [metabase.public-settings :as public-settings]
+            [metabase.task :as task]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.stats :as stats]))
 
 ;; if we can collect usage data, do so and send it home
 (jobs/defjob SendAnonymousUsageStats [_]

@@ -26,10 +26,30 @@ describe("formatting", () => {
       expect(formatNumber(-10)).toEqual("-10");
       expect(formatNumber(-99999999)).toEqual("-99,999,999");
     });
+    it("should format large numbers correctly with non-default number separator", () => {
+      const options = { number_separators: ",." };
+      expect(formatNumber(10.1, options)).toEqual("10,1");
+      expect(formatNumber(99999999.9, options)).toEqual("99.999.999,9");
+      expect(formatNumber(-10.1, options)).toEqual("-10,1");
+      expect(formatNumber(-99999999.9, options)).toEqual("-99.999.999,9");
+    });
     it("should format to 2 significant digits", () => {
       expect(formatNumber(1 / 3)).toEqual("0.33");
       expect(formatNumber(-1 / 3)).toEqual("-0.33");
       expect(formatNumber(0.0001 / 3)).toEqual("0.000033");
+    });
+    describe("in enclosing negative mode", () => {
+      it("should format -4 as (4)", () => {
+        expect(formatNumber(-4, { negativeInParentheses: true })).toEqual(
+          "(4)",
+        );
+      });
+      it("should format 7 as 7", () => {
+        expect(formatNumber(7, { negativeInParentheses: true })).toEqual("7");
+      });
+      it("should format 0 as 0", () => {
+        expect(formatNumber(0, { negativeInParentheses: true })).toEqual("0");
+      });
     });
     describe("in compact mode", () => {
       it("should format 0 as 0", () => {
@@ -155,26 +175,26 @@ describe("formatting", () => {
     it("should format numbers with commas", () => {
       expect(
         formatValue(12345, {
-          column: { base_type: TYPE.Number, special_type: TYPE.Number },
+          column: { base_type: TYPE.Number, semantic_type: TYPE.Number },
         }),
       ).toEqual("12,345");
     });
     it("should format zip codes without commas", () => {
       expect(
         formatValue(12345, {
-          column: { base_type: TYPE.Number, special_type: TYPE.ZipCode },
+          column: { base_type: TYPE.Number, semantic_type: TYPE.ZipCode },
         }),
       ).toEqual("12345");
     });
     it("should format latitude and longitude columns correctly", () => {
       expect(
         formatValue(37.7749, {
-          column: { base_type: TYPE.Number, special_type: TYPE.Latitude },
+          column: { base_type: TYPE.Number, semantic_type: TYPE.Latitude },
         }),
       ).toEqual("37.77490000° N");
       expect(
         formatValue(-122.4194, {
-          column: { base_type: TYPE.Number, special_type: TYPE.Longitude },
+          column: { base_type: TYPE.Number, semantic_type: TYPE.Longitude },
         }),
       ).toEqual("122.41940000° W");
     });
@@ -186,7 +206,7 @@ describe("formatting", () => {
         ),
       ).toEqual(true);
     });
-    it("should not return a component for links in jsx + rich mode if there's click behavior", () => {
+    it("should not return an ExternalLink for links in jsx + rich mode if there's click behavior", () => {
       const formatted = formatValue("http://metabase.com/", {
         jsx: true,
         rich: true,
@@ -198,8 +218,10 @@ describe("formatting", () => {
         },
         clicked: {},
       });
+      // it's not actually a link
       expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
-      expect(formatted).toEqual("foo");
+      // but it's formatted as a link
+      expect(formatted.props.className).toEqual("link link--wrappable");
     });
     it("should return a component for email addresses in jsx + rich mode", () => {
       expect(
@@ -209,12 +231,12 @@ describe("formatting", () => {
         ),
       ).toEqual(true);
     });
-    it("should not add mailto prefix if there's a different special type", () => {
+    it("should not add mailto prefix if there's a different semantic type", () => {
       expect(
         formatValue("foobar@example.com", {
           jsx: true,
           rich: true,
-          column: { special_type: "type/PK" },
+          column: { semantic_type: "type/PK" },
         }),
       ).toEqual("foobar@example.com");
     });
@@ -236,13 +258,13 @@ describe("formatting", () => {
         formatValue(24, {
           date_style: null,
           time_enabled: "minutes",
-          time_style: "k:mm",
+          time_style: "HH:mm",
           column: {
             base_type: "type/DateTime",
             unit: "hour-of-day",
           },
         }),
-      ).toEqual("24:00");
+      ).toEqual("00:00");
     });
   });
 
@@ -276,7 +298,7 @@ describe("formatting", () => {
           formatUrl("myproto:some-custom-thing", {
             jsx: true,
             rich: true,
-            column: { special_type: TYPE.URL },
+            column: { semantic_type: TYPE.URL },
           }),
           ExternalLink,
         ),
@@ -287,7 +309,7 @@ describe("formatting", () => {
         formatUrl("invalid-blah-blah-blah", {
           jsx: true,
           rich: true,
-          column: { special_type: TYPE.URL },
+          column: { semantic_type: TYPE.URL },
         }),
       ).toEqual("invalid-blah-blah-blah");
     });
@@ -319,7 +341,7 @@ describe("formatting", () => {
       const formatted = formatUrl("http://whatever", {
         jsx: true,
         rich: true,
-        column: { special_type: TYPE.URL },
+        column: { semantic_type: TYPE.URL },
         view_as: "link",
       });
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);

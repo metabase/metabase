@@ -46,7 +46,9 @@
   ;; * `result-chan` will get the result of `(f)`, *after* `done-chan` is closed
   (let [done-chan   (a/promise-chan)
         result-chan (a/promise-chan)
-        f*          (bound-fn []
+        binds       (clojure.lang.Var/getThreadBindingFrame)
+        f*          (fn []
+                      (clojure.lang.Var/resetThreadBindingFrame binds)
                       (let [result (try
                                      (f)
                                      (catch Throwable e
@@ -56,7 +58,7 @@
                         (when (some? result)
                           (a/>!! result-chan result)))
                       (a/close! result-chan))
-        futur       (.submit ^ThreadPoolExecutor (var-get (resolve 'clojure.core.async/thread-macro-executor)) ^Runnable f*)]
+        futur       (.submit ^ThreadPoolExecutor @#'a/thread-macro-executor ^Runnable f*)]
     ;; if `result-chan` gets a result/closed *before* `done-chan`, it means it was closed by the caller, so we should
     ;; cancel the thread running `f*`
     (a/go

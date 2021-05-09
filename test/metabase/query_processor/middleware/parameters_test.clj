@@ -2,14 +2,12 @@
   "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
   SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.mbql.normalize :as normalize]
-            [metabase.models
-             [card :refer [Card]]
-             [native-query-snippet :refer [NativeQuerySnippet]]]
-            [metabase.query-processor.middleware.parameters :as parameters])
+            [metabase.models.card :refer [Card]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.query-processor.middleware.parameters :as parameters]
+            [metabase.test :as mt])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest move-top-level-params-to-inner-query-test
@@ -210,7 +208,7 @@
                                    "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
                                    "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                  "FROM \"PUBLIC\".\"VENUES\" "
-                                 "LIMIT 1048576")]
+                                 "LIMIT 1048575")]
         (is (= (mt/native-query
                 {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params nil})
                (substitute-params

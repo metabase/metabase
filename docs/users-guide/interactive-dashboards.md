@@ -31,7 +31,6 @@ SQL questions will only have the option to **Go to a custom destination**, and *
 
 If your dashboard has a filter, you'll also see an option to [update the filter](#use-a-chart-to-filter-a-dashboard).
 
-
 ### Open the action menu
 
 For questions composed using the query builder, the default click behavior is to open the **action menu**, which presents people with the option to [drill through the data](https://www.metabase.com/blog/drilling-through-data/index.html):
@@ -86,6 +85,8 @@ For example, we could type a URL like this:
 
 Next we’ll click **Done**, then **Save** our dashboard. Now when we click our chart, we’ll be taken to the URL that we entered above, with the value of the clicked bar inserted into the URL.
 
+To learn more, check out [Custom destinations: choose what happens when people click on charts in your dashboard](https://www.metabase.com/learn/building-analytics/dashboards/custom-destinations.html).
+
 ### Use a chart to filter a dashboard
 
 If your dashboard contains at least one filter, you can set things up so that clicking on a chart in the dashboard will update a filter.
@@ -111,6 +112,8 @@ Metabase will list the filters you can update. Here we select the **Category** f
 Click **Done** in the sidebar, then **Save** your dashboard. 
 
 Now we can use our navigation question (Orders by product category) to interactively filter the data across your dashboard. When people click on a value in the navigation question, Metabase will send the clicked value to the filter, and update every card on the dashboard by filtering them for the clicked value - every card except for the navigation question: Orders by product category. The reason we don't want the navigation question to update is so that we can click on other bars to update the filter with a different value.
+
+To learn more, check out [Cross-filtering: using a chart to update a dashboard filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering.html).
 
 ---
 

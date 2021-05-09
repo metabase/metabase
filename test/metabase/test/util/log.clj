@@ -14,7 +14,7 @@
 
 (def ^:private ^:dynamic *suppressed* false)
 
-(defn do-with-suppressed-output
+(defn ^:deprecated do-with-suppressed-output
   "Impl for `suppress-output` macro; don't use this directly."
   [f]
   (if *suppressed*
@@ -40,9 +40,13 @@
               (doseq [[^Logger logger, ^Level old-level] @logger->original-level]
                 (.setLevel logger old-level)))))))))
 
-(defmacro suppress-output
+(defmacro ^:deprecated suppress-output
   "Execute `body` with all logging/`*out*`/`*err*` messages suppressed. Useful for avoiding cluttering up test output
-  for tests with stacktraces and error messages from tests that are supposed to fail."
+  for tests with stacktraces and error messages from tests that are supposed to fail.
+
+  DEPRECATED -- you don't need to do this anymore. Tests now have a default log level of `CRITICAL` which means error
+  logging will be suppressed by default. This macro predates the current test logging levels. You can remove usages of
+  this macro."
   {:style/indent 0}
   [& body]
   `(do-with-suppressed-output (fn [] ~@body)))
@@ -104,8 +108,13 @@
 
     (with-log-level [metabase.query-processor :debug]
       ...)"
+  {:arglists '([level & body]
+               [[namespace level] & body])}
   [level & body]
-  `(do-with-log-messages-for-level ~level (fn [] ~@body)))
+  `(do-with-log-messages-for-level ~(if (sequential? level)
+                                      `(quote ~level)
+                                      level)
+                                   (fn [] ~@body)))
 
 (defmacro with-log-messages-for-level
   "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at a

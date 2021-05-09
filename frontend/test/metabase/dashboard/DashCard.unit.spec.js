@@ -4,7 +4,7 @@ jest.unmock("metabase/components/ExplicitSize");
 
 import React from "react";
 import renderer from "react-test-renderer";
-import { render } from "enzyme";
+import { render } from "@testing-library/react";
 import { assocIn } from "icepick";
 
 import DashCard, {
@@ -40,18 +40,12 @@ describe.skip("DashCard", () => {
       renderer.create(<DashCard {...DEFAULT_PROPS} />).toJSON(),
     ).toMatchSnapshot();
   });
+
+  // `.Card--slow` gives slow loading cards yellow border
+  // This is not tested in Cypress only because the delay in card rendering would prolong the total test time.
   it("should render slow card with Card--slow className", () => {
     const props = assocIn(DEFAULT_PROPS, ["slowCards", 1], true);
     const dashCard = render(<DashCard {...props} />);
-    expect(dashCard.hasClass("Card--recent")).toBe(false);
-    expect(dashCard.hasClass("Card--unmapped")).toBe(false);
     expect(dashCard.hasClass("Card--slow")).toBe(true);
-  });
-  it("should render new card with Card--recent className", () => {
-    const props = assocIn(DEFAULT_PROPS, ["dashcard", "isAdded"], true);
-    const dashCard = render(<DashCard {...props} />);
-    expect(dashCard.hasClass("Card--recent")).toBe(true);
-    expect(dashCard.hasClass("Card--unmapped")).toBe(false);
-    expect(dashCard.hasClass("Card--slow")).toBe(false);
   });
 });

@@ -31,3 +31,5 @@ export const getPulseCardPreviews = state => state.pulse.cardPreviews;
 
 export const getPulseId = (state, props) =>
   props.params.pulseId ? parseInt(props.params.pulseId) : null;
+
+export const getPulseList = state => state.pulse.pulseList;

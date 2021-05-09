@@ -161,6 +161,15 @@ export default {
     code: "BRL",
     name_plural: "Brazilian reals",
   },
+  BTC: {
+    symbol: "BTC",
+    name: "Bitcoin",
+    symbol_native: "BTC",
+    decimal_digits: 8,
+    rounding: 0,
+    code: "BTC",
+    name_plural: "Bitcoins",
+  },
   BWP: {
     symbol: "BWP",
     name: "Botswanan Pula",
@@ -296,15 +305,6 @@ export default {
     code: "DZD",
     name_plural: "Algerian dinars",
   },
-  EEK: {
-    symbol: "Ekr",
-    name: "Estonian Kroon",
-    symbol_native: "kr",
-    decimal_digits: 2,
-    rounding: 0,
-    code: "EEK",
-    name_plural: "Estonian kroons",
-  },
   EGP: {
     symbol: "EGP",
     name: "Egyptian Pound",
@@ -331,6 +331,15 @@ export default {
     rounding: 0,
     code: "ETB",
     name_plural: "Ethiopian birrs",
+  },
+  ETH: {
+    symbol: "ETH",
+    name: "Ethereum",
+    symbol_native: "ETH",
+    decimal_digits: 8,
+    rounding: 0,
+    code: "ETH",
+    name_plural: "Ethereum",
   },
   GBP: {
     symbol: "£",
@@ -502,6 +511,15 @@ export default {
     rounding: 0,
     code: "KES",
     name_plural: "Kenyan shillings",
+  },
+  KGS: {
+    symbol: "KGS",
+    name: "Kyrgyz Som",
+    symbol_native: "сом",
+    decimal_digits: 2,
+    rounding: 0,
+    code: "KGS",
+    name_plural: "Kyrgyz soms",
   },
   KHR: {
     symbol: "KHR",

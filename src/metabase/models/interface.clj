@@ -2,15 +2,15 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
+            [clojure.walk :as walk]
+            [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as normalize]
-            [metabase.util
-             [cron :as cron-util]
-             [encryption :as encryption]
-             [i18n :refer [trs tru]]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.util :as u]
+            [metabase.util.cron :as cron-util]
+            [metabase.util.encryption :as encryption]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
@@ -85,15 +85,51 @@
   :in  (comp json-in maybe-normalize)
   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
+(def ^:private MetricSegmentDefinition
+  {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
+   (s/optional-key :aggregation) (s/maybe [mbql.s/Aggregation])
+   s/Keyword                     s/Any})
+
+(def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
+  (s/validator MetricSegmentDefinition))
+
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
-  (when definition
-    (normalize/normalize-fragment [:query] definition)))
+  (when (seq definition)
+    (u/prog1 (normalize/normalize-fragment [:query] definition)
+      (validate-metric-segment-definition <>))))
 
 ;; For inner queries like those in Metric definitions
 (models/add-type! :metric-segment-definition
   :in  (comp json-in normalize-metric-segment-definition)
   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
+
+(defn- normalize-visualization-settings [viz-settings]
+  ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
+  ;; to modern MBQL clauses so things work correctly
+  (letfn [(normalize-column-settings-key [k]
+            (some-> k u/qualified-name json/parse-string normalize/normalize json/generate-string))
+          (normalize-column-settings [column-settings]
+            (into {} (for [[k v] column-settings]
+                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
+          (mbql-field-clause? [form]
+            (and (vector? form)
+                 (#{"field-id" "fk->" "datetime-field" "joined-field" "binning-strategy" "field"
+                    "aggregation" "expression"}
+                  (first form))))
+          (normalize-mbql-clauses [form]
+            (walk/postwalk
+             (fn [form]
+               (cond-> form
+                 (mbql-field-clause? form) normalize/normalize))
+             form))]
+    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings"))
+      (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
+      true                                 normalize-mbql-clauses)))
+
+(models/add-type! :visualization-settings
+  :in  json-in
+  :out (comp normalize-visualization-settings json-out-without-keywordization))
 
 ;; For DashCard parameter lists
 (defn- normalize-parameter-mapping-targets [parameter-mappings]
@@ -159,17 +195,15 @@
 
 ;; use now() for Postgres and H2. now() for MySQL/MariaDB only returns second resolution. So use now(6) which uses the
 ;; max (nanosecond) resolution.
-(def ^:private now
-  (delay
-    (case (mdb/db-type)
-      :mysql (hsql/call :now 6)
-      :%now)))
+(defn- now []
+  (classloader/require 'metabase.driver.sql.query-processor)
+  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
-  (assoc obj :created_at @now))
+  (assoc obj :created_at (now)))
 
 (defn- add-updated-at-timestamp [obj & _]
-  (assoc obj :updated_at @now))
+  (assoc obj :updated_at (now)))
 
 (models/add-property! :timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
@@ -190,7 +224,7 @@
 
   (perms-objects-set [this ^clojure.lang.Keyword read-or-write]
     "Return a set of permissions object paths that a user must have access to in order to access this object. This
-    should be something like #{\"/db/1/schema/public/table/20/\"}. READ-OR-WRITE will be either `:read` or `:write`,
+    should be something like #{\"/db/1/schema/public/table/20/\"}. `read-or-write` will be either `:read` or `:write`,
     depending on which permissions set we're fetching (these will be the same sets for most models; they can ignore
     this param).")
 

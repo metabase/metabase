@@ -6,13 +6,11 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -146,7 +144,8 @@
     (or (some-> (premium-embedding-token) valid-token->features)
         #{})
     (catch Throwable e
-      (log/error e (trs "Error validating token"))
+      (log/error (trs "Error validating token") ":" (ex-message e))
+      (log/debug e (trs "Error validating token"))
       #{})))
 
 (defsetting hide-embed-branding?

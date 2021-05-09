@@ -2,10 +2,9 @@
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
   (:require [clojure.java.jdbc :as jdbc]
             [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.honeysql-extensions :as hx]))
 
@@ -44,6 +43,12 @@
   [driver _]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
+(defmethod driver/db-default-timezone :sql-jdbc
+  [driver database]
+  (when (not= (get-method sql-jdbc.sync/db-default-timezone driver)
+              (get-method sql-jdbc.sync/db-default-timezone :sql-jdbc))
+    (sql-jdbc.sync/db-default-timezone driver (sql-jdbc.conn/db->pooled-connection-spec database))))
+
 (defmethod driver/execute-reducible-query :sql-jdbc
   [driver query chans respond]
   (sql-jdbc.execute/execute-reducible-query driver query chans respond))
@@ -63,3 +68,15 @@
 (defmethod driver/describe-table-fks :sql-jdbc
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
+
+(defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (hx/->timestamp expr))
+
+(defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->Date]
+  [_driver _semantic_type expr]
+  (hx/->date expr))
+
+(defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->Time]
+  [_driver _semantic_type expr]
+  (hx/->time expr))

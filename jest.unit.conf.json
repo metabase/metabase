@@ -17,7 +17,6 @@
   ],
   "setupFiles": [
     "<rootDir>/frontend/test/jest-setup.js",
-    "<rootDir>/frontend/test/enzyme-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js",
     "<rootDir>/frontend/test/register-visualizations.js"
   ],
@@ -31,6 +30,7 @@
   "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
-    "/frontend/src/metabase/visualizations/lib/errors.js"
+    "/frontend/src/metabase/visualizations/lib/errors.js",
+    "/frontend/src/cljs/"
   ]
 }

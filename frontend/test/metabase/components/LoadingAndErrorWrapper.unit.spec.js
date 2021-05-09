@@ -1,43 +1,42 @@
 import React from "react";
-import { shallow, mount } from "enzyme";
+import { render, screen } from "@testing-library/react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 describe("LoadingAndErrorWrapper", () => {
   describe("Loading", () => {
     it("should display a loading message if given a true loading prop", () => {
-      const wrapper = shallow(<LoadingAndErrorWrapper loading={true} />);
+      render(<LoadingAndErrorWrapper loading={true} />);
 
-      expect(wrapper.text()).toMatch(/Loading/);
+      screen.getByText("Loading...");
     });
 
     it("should display a given child if loading is false", () => {
       const Child = () => <div>Hey</div>;
 
-      const wrapper = shallow(
+      render(
         <LoadingAndErrorWrapper loading={false} error={null}>
           {() => <Child />}
         </LoadingAndErrorWrapper>,
       );
-      expect(wrapper.find(Child).length).toEqual(1);
+      screen.getByText("Hey");
     });
 
     it("shouldn't fail if loaded with null children and no wrapper", () => {
-      mount(<LoadingAndErrorWrapper loading={false} noWrapper />);
+      render(<LoadingAndErrorWrapper loading={false} noWrapper />);
     });
 
     it("should display a given scene during loading", () => {
       const Scene = () => <div>Fun load animation</div>;
 
-      const wrapper = shallow(
+      render(
         <LoadingAndErrorWrapper
           loading={true}
           error={null}
           loadingScenes={[<Scene />]}
         />,
       );
-
-      expect(wrapper.find(Scene).length).toEqual(1);
+      screen.getByText("Fun load animation");
     });
 
     describe("cycling", () => {
@@ -46,7 +45,7 @@ describe("LoadingAndErrorWrapper", () => {
 
         const interval = 6000;
 
-        const wrapper = mount(
+        render(
           <LoadingAndErrorWrapper
             loading={true}
             error={null}
@@ -55,22 +54,16 @@ describe("LoadingAndErrorWrapper", () => {
           />,
         );
 
-        const instance = wrapper.instance();
-        const spy = jest.spyOn(instance, "cycleLoadingMessage");
-
-        expect(wrapper.text()).toMatch(/One/);
-
+        screen.getByText("One");
         jest.runTimersToTime(interval);
-        expect(spy).toHaveBeenCalled();
-        expect(wrapper.text()).toMatch(/Two/);
 
+        screen.getByText("Two");
         jest.runTimersToTime(interval);
-        expect(spy).toHaveBeenCalled();
-        expect(wrapper.text()).toMatch(/Three/);
 
+        screen.getByText("Three");
         jest.runTimersToTime(interval);
-        expect(spy).toHaveBeenCalled();
-        expect(wrapper.text()).toMatch(/One/);
+
+        screen.getByText("One");
       });
     });
   });
@@ -82,11 +75,8 @@ describe("LoadingAndErrorWrapper", () => {
         message: "Big error here folks",
       };
 
-      const wrapper = mount(
-        <LoadingAndErrorWrapper loading={true} error={error} />,
-      );
-
-      expect(wrapper.text()).toMatch(error.message);
+      render(<LoadingAndErrorWrapper loading={true} error={error} />);
+      screen.getByText(error.message);
     });
   });
 });

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import {
   assoc,
   dissoc,
@@ -61,6 +59,7 @@ import {
   EmbedApi,
   AutoApi,
   MetabaseApi,
+  maybeUsePivotEndpoint,
 } from "metabase/services";
 
 import {
@@ -85,6 +84,7 @@ const dashboard = new schema.Entity("dashboard", {
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
+export const SET_SHARING = "metabase/dashboard/SET_SHARING";
 
 // NOTE: this is used in metabase/redux/metadata but can't be imported directly due to circular reference
 export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
@@ -159,6 +159,7 @@ function getDashboardType(id) {
 
 export const initialize = createAction(INITIALIZE);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
+export const setSharing = createAction(SET_SHARING);
 
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
@@ -567,7 +568,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "public") {
       result = await fetchDataOrError(
-        PublicApi.dashboardCardQuery(
+        maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
           {
             uuid: dashcard.dashboard_id,
             cardId: card.id,
@@ -581,7 +582,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "embed") {
       result = await fetchDataOrError(
-        EmbedApi.dashboardCardQuery(
+        maybeUsePivotEndpoint(EmbedApi.dashboardCardQuery, card)(
           {
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -594,14 +595,14 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
-        MetabaseApi.dataset(
+        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
           { ...datasetQuery, ignore_cache: ignoreCache },
           queryOptions,
         ),
       );
     } else {
       result = await fetchDataOrError(
-        CardApi.query(
+        maybeUsePivotEndpoint(CardApi.query, card)(
           {
             cardId: card.id,
             parameters: datasetQuery.parameters,
@@ -971,14 +972,14 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       previousCard,
     );
 
-    // clicking graph title with a filter applied loses display type and visualization settings; see #5278
-    const cardWithVizSettings = {
-      ...cardAfterClick,
-      display: cardAfterClick.display || previousCard.display,
-      visualization_settings:
+    const cardWithVizSettings = new Question(cardAfterClick)
+      .setDisplay(cardAfterClick.display || previousCard.display)
+      .setSettings(
         cardAfterClick.visualization_settings ||
-        previousCard.visualization_settings,
-    };
+          previousCard.visualization_settings,
+      )
+      .lockDisplay()
+      .card();
 
     const url = questionUrlWithParameters(
       cardWithVizSettings,
@@ -1013,6 +1014,16 @@ const isEditing = handleActions(
     [INITIALIZE]: { next: state => null },
     [SET_EDITING_DASHBOARD]: {
       next: (state, { payload }) => (payload ? payload : null),
+    },
+  },
+  {},
+);
+
+const isSharing = handleActions(
+  {
+    [INITIALIZE]: { next: state => false },
+    [SET_SHARING]: {
+      next: (state, { payload }) => payload || false,
     },
   },
   {},
@@ -1314,6 +1325,7 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
 export default combineReducers({
   dashboardId,
   isEditing,
+  isSharing,
   dashboards,
   dashcards,
   editingParameterId,

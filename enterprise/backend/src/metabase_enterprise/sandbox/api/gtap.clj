@@ -5,9 +5,8 @@
             [metabase.api.common :as api]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -64,7 +63,6 @@
   (db/delete! GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
 
-
 (defn- +check-sandboxes-enabled
   "Wrap the Ring handler to make sure sandboxes are enabled before allowing access to the API endpoints."
   [handler]
@@ -72,7 +70,7 @@
     (if-not (metastore/enable-sandboxes?)
       (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
                            " "
-                           (tru "Please check you have set a valid Entrprise token and try again."))
+                           (tru "Please check you have set a valid Enterprise token and try again."))
                {:status-code 403}))
       (handler request respond raise))))
 

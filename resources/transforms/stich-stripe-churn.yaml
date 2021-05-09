@@ -6,9 +6,18 @@ steps:
     source: Subscriptions
     description: Truncate the dates we'll be using
     expressions:
-      Month: [datetime-field, [dimension, CreationTimestamp], month]
-      StartMonth: [datetime-field, [dimension, CreationTimestamp], month]
-      CancelationMonth: [datetime-field, [dimension, CancelationTimestamp], month]
+      Month:
+        - dimension
+        - CreationTimestamp
+        - temporal-unit: month
+      StartMonth:
+        - dimension
+        - CreationTimestamp
+        - temporal-unit: month
+      CancelationMonth:
+        - dimension
+        - CancelationTimestamp
+        - temporal-unit: month
   Calendar:
     source: SubscriptionsCleanedUp
     description: Build a calendar of all the months we have data for. Note this assumes at least one new subscription each month

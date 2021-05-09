@@ -49,7 +49,7 @@ export default class FieldPane extends Component {
     updateQuestion: PropTypes.func.isRequired,
   };
 
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const { field, fetchTableMetadata, fetchFieldValues } = this.props;
     await fetchTableMetadata(field.table_id);
     if (field.has_field_values === "list") {

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Box } from "grid-styled";
 import Card from "metabase/components/Card";
@@ -28,6 +29,7 @@ const BulkActionBar = ({ children, showing }) => (
           opacity,
           transform: `translateY(${translateY}px)`,
         }}
+        data-testid="bulk-action-bar"
       >
         <Card>{children}</Card>
       </FixedBottomBar>

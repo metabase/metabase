@@ -4,6 +4,7 @@ import "metabase/visualizations/index";
 import {
   getComputedSettings,
   getSettingsWidgets,
+  mergeSettings,
 } from "metabase/visualizations/lib/settings";
 
 describe("settings framework", () => {
@@ -170,6 +171,50 @@ describe("settings framework", () => {
       expect(onChangeSettings.mock.calls).toEqual([
         [{ foo: "bar", bar: "bar" }],
       ]);
+    });
+  });
+
+  describe("mergeSettings (metabase#14597)", () => {
+    it("should merge with second overriding first", () => {
+      expect(
+        mergeSettings({ foo: { a: 1 }, bar: { b: 1 } }, { foo: { c: 1 } }),
+      ).toEqual({ foo: { c: 1 }, bar: { b: 1 } });
+    });
+
+    it("should merge column settings", () => {
+      expect(
+        mergeSettings(
+          { column_settings: { col1: { set1: "val1", set2: "val2" } } },
+          {
+            column_settings: { col1: { set1: "val3" }, col2: { set3: "val4" } },
+          },
+        ),
+      ).toEqual({
+        column_settings: {
+          col1: { set1: "val3", set2: "val2" },
+          col2: { set3: "val4" },
+        },
+      });
+    });
+
+    it("should merge series settings", () => {
+      expect(
+        mergeSettings(
+          { series_settings: { s1: { set1: "val1", set2: "val2" } } },
+          { series_settings: { s1: { set1: "val3" }, s2: { set3: "val4" } } },
+        ),
+      ).toEqual({
+        series_settings: {
+          s1: { set1: "val3", set2: "val2" },
+          s2: { set3: "val4" },
+        },
+      });
+    });
+
+    it("should merge when only one setting has the nested key", () => {
+      expect(
+        mergeSettings({}, { column_settings: { col1: { set1: "val" } } }),
+      ).toEqual({ column_settings: { col1: { set1: "val" } } });
     });
   });
 });

@@ -1,10 +1,9 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("scenarios > admin > databases > list", () => {
-  before(restore);
-
   beforeEach(() => {
-    signInAsAdmin();
+    restore();
+    cy.signInAsAdmin();
     cy.server();
   });
 
@@ -51,6 +50,13 @@ describe("scenarios > admin > databases > list", () => {
     cy.get(".ModalBody input").type("DELETE");
     cy.get(".ModalBody")
       .contains("button", "Delete")
+      .should("be.disabled");
+    cy.get(".ModalBody input")
+      .clear()
+      .type("Sample Dataset");
+
+    cy.get(".ModalBody")
+      .contains("button", "Delete")
       .click();
     cy.wait("@delete");
 
@@ -60,6 +66,7 @@ describe("scenarios > admin > databases > list", () => {
   it("should let you bring back the sample dataset", () => {
     cy.route("POST", "/api/database/sample_dataset").as("sample_dataset");
 
+    cy.request("DELETE", "/api/database/1").as("delete");
     cy.visit("/admin/databases");
     cy.contains("Bring the sample dataset back").click();
     cy.wait("@sample_dataset");

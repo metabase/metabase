@@ -9,9 +9,8 @@
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
-            [metabase.pulse.render
-             [common :as common]
-             [style :as style]]
+            [metabase.pulse.render.common :as common]
+            [metabase.pulse.render.style :as style]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec

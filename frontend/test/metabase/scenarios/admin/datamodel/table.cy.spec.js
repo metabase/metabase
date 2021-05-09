@@ -1,9 +1,10 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
-// Ported from `databases.e2e.spec.js`
+import { restore } from "__support__/cypress";
 
 describe("scenarios > admin > databases > table", () => {
-  before(restore);
-  beforeEach(signInAsAdmin);
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
   it("should see four tables in sample database", () => {
     cy.visit("/admin/datamodel/database/1");
@@ -36,7 +37,7 @@ describe("scenarios > admin > databases > table", () => {
       cy.findAllByText("Foreign Key");
 
       cy.get("input[value='Tax']");
-      cy.findAllByText("No special type");
+      cy.findAllByText("No semantic type");
 
       cy.get("input[value='Discount']");
       cy.findByText("Discount");

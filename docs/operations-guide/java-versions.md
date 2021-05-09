@@ -2,7 +2,7 @@
 
 Metabase requires a Java Runtime Environment (JRE).
 
-We recommend the latest LTS version of JRE from [AdoptOpenJDK](https://adoptopenjdk.net/releases.html) with HotSpot JVM and x64 architecture, but any [supported version](https://adoptopenjdk.net/support.html) should work, including other types of JVM and architecture, and other distributions such as [OpenJDK](https://openjdk.java.net/), [Amazon Corretto](https://aws.amazon.com/corretto/) and [Oracle Java](https://www.java.com/).
+We recommend the latest LTS version of JRE from [AdoptOpenJDK](https://adoptopenjdk.net/releases.html) with HotSpot JVM and x64 architecture, but any [supported version](https://adoptopenjdk.net/support.html) should work, including other types of JVM and architecture, and other distributions such as [OpenJDK](https://openjdk.java.net/), [Amazon Corretto](https://aws.amazon.com/corretto/), [Zulu OpenJDK](https://www.azul.com/downloads/zulu-community), and [Oracle Java](https://www.java.com/).
 
 **Note** When using a "headless" version, the JVM needs to have AWT classes, which are sometimes not included. Otherwise Pulses and other functionality might not work correctly or not at all.
 

@@ -1,9 +1,8 @@
 (ns metabase.query-processor-test.native-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]]))
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]))
 
 (deftest native-test
   (is (= {:rows
@@ -22,12 +21,13 @@
            ["Dwight Gresham"]
            ["Broen Olujimi"]
            ["Rüstem Hebel"]]
-          :cols[{:display_name "NAME"
-                 :source       :native
-                 :field_ref    [:field-literal "NAME" :type/Text]
-                 :name         "NAME"
-                 :base_type    :type/Text}]}
+          :cols
+          [{:display_name "NAME"
+            :source       :native
+            :field_ref    [:field "NAME" {:base-type :type/Text}]
+            :name         "NAME"
+            :base_type    :type/Text}]}
          (qp.test/rows-and-cols
-           (qp/process-query
-            (mt/native-query
-              {:query "select name from users;"}))))))
+          (qp/process-query
+           (mt/native-query
+            {:query "select name from users;"}))))))

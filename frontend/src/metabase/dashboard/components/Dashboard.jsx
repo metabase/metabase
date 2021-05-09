@@ -1,7 +1,5 @@
-/* @flow */
-
 // TODO: merge with metabase/dashboard/containers/Dashboard.jsx
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
@@ -13,6 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
+import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import EmptyState from "metabase/components/EmptyState";
 
 import DashboardControls from "../hoc/DashboardControls";
@@ -52,6 +51,7 @@ type Props = {
   isEditable: boolean,
   isEditing: boolean,
   isEditingParameter: boolean,
+  isSharing: boolean,
 
   parameters: Parameter[],
   parameterValues: ParameterValues,
@@ -73,6 +73,7 @@ type Props = {
 
   setEditingParameter: (parameterId: ?ParameterId) => void,
   setEditingDashboard: (isEditing: false | DashboardWithCards) => void,
+  setSharing: (isSharing: boolean) => void,
 
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   removeParameter: (parameterId: ParameterId) => void,
@@ -117,6 +118,10 @@ type Props = {
 
   onChangeLocation: string => void,
   setErrorPage: (error: ApiError) => void,
+
+  onCancel: () => void,
+  onSharingClick: () => void,
+  onEmbeddingClick: () => void,
 };
 
 type State = {
@@ -146,16 +151,21 @@ export default class Dashboard extends Component {
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
+    setSharing: PropTypes.func.isRequired,
 
     onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
     onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
     onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
 
     onChangeLocation: PropTypes.func.isRequired,
+
+    onSharingClick: PropTypes.func.isRequired,
+    onEmbeddingClick: PropTypes.func.isRequired,
   };
 
   static defaultProps = {
     isEditable: true,
+    isSharing: false,
   };
 
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
@@ -163,7 +173,7 @@ export default class Dashboard extends Component {
     this.loadDashboard(this.props.dashboardId);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (this.props.dashboardId !== nextProps.dashboardId) {
       this.loadDashboard(nextProps.dashboardId);
     } else if (
@@ -218,6 +228,16 @@ export default class Dashboard extends Component {
     });
   };
 
+  onCancel = () => {
+    this.props.setSharing(false);
+  };
+
+  onSharingClick = () => {
+    this.props.setSharing(true);
+  };
+
+  onEmbeddingClick = () => {};
+
   render() {
     let {
       dashboard,
@@ -228,6 +248,7 @@ export default class Dashboard extends Component {
       location,
       isFullscreen,
       isNightMode,
+      isSharing,
       hideParameters,
     } = this.props;
     const { error } = this.state;
@@ -264,7 +285,7 @@ export default class Dashboard extends Component {
         className={cx("Dashboard flex-full", {
           "Dashboard--fullscreen": isFullscreen,
           "Dashboard--night": isNightMode,
-          "full-height": isEditing, // prevents header from scrolling so we can have a fixed sidebar
+          "full-height": isEditing || isSharing, // prevents header from scrolling so we can have a fixed sidebar
         })}
         loading={!dashboard}
         error={error}
@@ -281,11 +302,13 @@ export default class Dashboard extends Component {
                 setDashboardAttribute={this.setDashboardAttribute}
                 addParameter={this.props.addParameter}
                 parametersWidget={parametersWidget}
+                onSharingClick={this.onSharingClick}
+                onEmbeddingClick={this.onEmbeddingClick}
               />
             </header>
             <div
               className={cx("flex shrink-below-content-size flex-full", {
-                "flex-basis-none": isEditing,
+                "flex-basis-none": isEditing || isSharing,
               })}
             >
               <div className="flex-auto overflow-x-hidden">
@@ -313,7 +336,7 @@ export default class Dashboard extends Component {
                   )}
                 </div>
               </div>
-              <Sidebars {...this.props} />
+              <Sidebars {...this.props} onCancel={this.onCancel} />
             </div>
           </div>
         )}
@@ -322,25 +345,30 @@ export default class Dashboard extends Component {
   }
 }
 
-function Sidebars({
-  dashboard,
-  parameters,
-  showAddParameterPopover,
-  removeParameter,
-  editingParameter,
-  isEditingParameter,
-  clickBehaviorSidebarDashcard,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardVisualizationSettings,
-  onUpdateDashCardColumnSettings,
-  hideClickBehaviorSidebar,
-  setEditingParameter,
-  setParameter,
-  setParameterName,
-  setParameterDefaultValue,
-  dashcardData,
-  setParameterFilteringParameters,
-}) {
+function Sidebars(props) {
+  const {
+    dashboard,
+    parameters,
+    showAddParameterPopover,
+    removeParameter,
+    editingParameter,
+    isEditingParameter,
+    clickBehaviorSidebarDashcard,
+    onReplaceAllDashCardVisualizationSettings,
+    onUpdateDashCardVisualizationSettings,
+    onUpdateDashCardColumnSettings,
+    hideClickBehaviorSidebar,
+    setEditingParameter,
+    setParameter,
+    setParameterName,
+    setParameterDefaultValue,
+    dashcardData,
+    setParameterFilteringParameters,
+    isSharing,
+    isEditing,
+    isFullscreen,
+    onCancel,
+  } = props;
   if (clickBehaviorSidebarDashcard) {
     return (
       <ClickBehaviorSidebar
@@ -370,7 +398,10 @@ function Sidebars({
       <ParameterSidebar
         parameter={parameter}
         otherParameters={otherParameters}
-        remove={() => removeParameter(editingParameterId)}
+        remove={() => {
+          setEditingParameter(null);
+          removeParameter(editingParameterId);
+        }}
         done={() => setEditingParameter(null)}
         showAddParameterPopover={showAddParameterPopover}
         setParameter={setParameter}
@@ -381,6 +412,17 @@ function Sidebars({
         setFilteringParameters={ids =>
           setParameterFilteringParameters(editingParameterId, ids)
         }
+      />
+    );
+  }
+
+  // SharingSidebar should only show if we're not editing or in fullscreen
+  if (!isEditing && !isFullscreen && isSharing) {
+    return (
+      <SharingSidebar
+        dashboard={dashboard}
+        params={props.params}
+        onCancel={onCancel}
       />
     );
   }

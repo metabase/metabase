@@ -1,47 +1,69 @@
 import React from "react";
-import { shallow } from "enzyme";
+import { render, screen, fireEvent } from "@testing-library/react";
+
+import MetabaseSettings from "metabase/lib/settings";
 import ProfileLink from "metabase/nav/components/ProfileLink";
+
+const REGULAR_ITEMS = [
+  "Account settings",
+  "Activity",
+  "Help",
+  "About Metabase",
+  "Sign out",
+];
+const ADMIN_ITEMS = [...REGULAR_ITEMS, "Admin"];
+const HOSTED_ITEMS = [...ADMIN_ITEMS, "Manage Metabase Cloud"];
 
 describe("ProfileLink", () => {
   describe("options", () => {
-    describe("normal user", () => {
-      it("should show the proper set of items", () => {
-        const normalUser = { is_superuser: false };
-        const wrapper = shallow(<ProfileLink user={normalUser} context={""} />);
+    ["regular", "hosted"].forEach(testCase => {
+      describe(`${testCase} instance`, () => {
+        beforeEach(() => {
+          jest.spyOn(MetabaseSettings, "isHosted");
+          MetabaseSettings.isHosted = jest.fn(() => false);
+        });
 
-        expect(
-          wrapper
-            .instance()
-            .generateOptionsForUser()
-            .map(o => o.title),
-        ).toEqual([
-          "Account settings",
-          "Activity",
-          "Help",
-          "About Metabase",
-          "Sign out",
-        ]);
-      });
-    });
-    describe("admin", () => {
-      it("should show the proper set of items", () => {
-        const admin = { is_superuser: true };
-        const wrapper = shallow(<ProfileLink user={admin} context={""} />);
+        afterEach(() => {
+          MetabaseSettings.isHosted.mockRestore();
+        });
 
-        expect(
-          wrapper
-            .instance()
-            .generateOptionsForUser()
-            .map(o => o.title),
-        ).toEqual([
-          "Account settings",
-          "Admin",
-          "Activity",
-          "Help",
-          "About Metabase",
-          "Sign out",
-        ]);
+        if (testCase === "hosted") {
+          beforeEach(() => {
+            MetabaseSettings.isHosted = jest.fn(() => true);
+          });
+        }
+
+        describe("normal user", () => {
+          it("should show the proper set of items", () => {
+            const normalUser = { is_superuser: false };
+            render(<ProfileLink user={normalUser} context={""} />);
+
+            assertOn(REGULAR_ITEMS);
+          });
+        });
+
+        describe("admin", () => {
+          it("should show the proper set of items", () => {
+            const admin = { is_superuser: true };
+            render(<ProfileLink user={admin} context={""} />);
+
+            testCase === "hosted"
+              ? assertOn(HOSTED_ITEMS)
+              : assertOn(ADMIN_ITEMS);
+          });
+        });
       });
     });
   });
 });
+
+function assertOn(items) {
+  const SETTINGS = screen.getByRole("img", { name: /gear/i });
+  fireEvent.click(SETTINGS);
+
+  items.forEach(title => {
+    screen.getByText(title);
+  });
+
+  expect(screen.getAllByRole("listitem").length).toEqual(items.length);
+}

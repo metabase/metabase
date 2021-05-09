@@ -2,36 +2,30 @@
   "Presto driver. See https://prestodb.io/docs/current/ for complete dox."
   (:require [buddy.core.codecs :as codecs]
             [clj-http.client :as http]
-            [clojure
-             [set :as set]
-             [string :as str]]
             [clojure.core.async :as a]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql
-             [core :as hsql]
-             [helpers :as h]]
+            [honeysql.core :as hsql]
+            [honeysql.helpers :as h]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql
-             [query-processor :as sql.qp]
-             [util :as sql.u]]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor
-             [context :as context]
-             [store :as qp.store]
-             [timezone :as qp.timezone]
-             [util :as qputil]]
-            [metabase.util
-             [date-2 :as u.date]
-             [honeysql-extensions :as hx]
-             [i18n :refer [trs tru]]
-             [schema :as su]
-             [ssh :as ssh]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
+            [metabase.util.ssh :as ssh]
             [schema.core :as s])
   (:import java.sql.Time
            [java.time OffsetDateTime ZonedDateTime]))
@@ -199,12 +193,14 @@
 (def ^:private presto-metadata-sync-query-timeout
   (u/minutes->ms 2))
 
-(defmethod sql-jdbc.sync/execute-query-for-sync :presto
-  [_ details query]
+(defn- execute-query-for-sync
+  [details query]
   (let [result-chan (a/promise-chan)
         query       (if (string? query)
                       query
-                      (first query))]
+                      (do
+                        (assert (empty? (second query)) "Presto doesn't allow parameterized queries")
+                        (first query)))]
     (execute-presto-query details query nil (fn [cols rows]
                                               (a/>!! result-chan {:cols cols, :rows rows})))
     (let [[val] (a/alts!! [result-chan (a/timeout presto-metadata-sync-query-timeout)])]
@@ -215,7 +211,7 @@
 
 (s/defmethod driver/can-connect? :presto
   [driver {:keys [catalog] :as details} :- PrestoConnectionDetails]
-  (let [{[[v]] :rows} (sql-jdbc.sync/execute-query-for-sync :presto details
+  (let [{[[v]] :rows} (execute-query-for-sync details
                         (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'"
                                 (sql.u/quote-name driver :database catalog)))]
     (= v "information_schema")))
@@ -228,14 +224,22 @@
   "Return a set of all schema names in this `database`."
   [driver {{:keys [catalog schema] :as details} :details :as database}]
   (let [sql            (str "SHOW SCHEMAS FROM " (sql.u/quote-name driver :database catalog))
-        {:keys [rows]} (sql-jdbc.sync/execute-query-for-sync :presto details sql)]
+        {:keys [rows]} (execute-query-for-sync details sql)]
     (set (map first rows))))
+
+(defn- have-select-privilege? [driver details schema table-name]
+  (try
+    (let [sql-args (sql-jdbc.describe-database/simple-select-probe-query driver schema table-name)]
+      ;; if the query completes without throwing an Exception, we can SELECT from this table
+      (execute-query-for-sync details sql-args)
+      true)
+    (catch Throwable _
+      false)))
 
 (defn- describe-schema [driver {{:keys [catalog user] :as details} :details :as db} {:keys [schema]}]
   (let [sql (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))]
-    (set (for [[table-name & _] (:rows (sql-jdbc.sync/execute-query-for-sync :presto details sql))
-               :when (sql-jdbc.sync/have-select-privilege? driver details {:table_schem schema
-                                                                           :table_name  table-name})]
+    (set (for [[table-name & _] (:rows (execute-query-for-sync details sql))
+               :when            (have-select-privilege? driver details schema table-name)]
            {:name   table-name
             :schema schema}))))
 
@@ -250,7 +254,7 @@
 (defmethod driver/describe-table :presto
   [driver {{:keys [catalog] :as details} :details} {schema :schema, table-name :name}]
   (let [sql            (str "DESCRIBE " (sql.u/quote-name driver :table catalog schema table-name))
-        {:keys [rows]} (sql-jdbc.sync/execute-query-for-sync :presto details sql)]
+        {:keys [rows]} (execute-query-for-sync details sql)]
     {:schema schema
      :name   table-name
      :fields (set (for [[idx [name type]] (m/indexed rows)]

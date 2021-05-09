@@ -1,9 +1,15 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 import ResizeObserver from "resize-observer-polyfill";
 
 import cx from "classnames";
+import _ from "underscore";
+
+// After adding throttling for resize re-renders, our Cypress tests became flaky
+// due to queried DOM elements are getting detached after re-renders
+const throttleDuration = window.Cypress ? 0 : 500;
 
 export default ({ selector, wrapped } = {}) => ComposedComponent =>
   class extends Component {
@@ -88,7 +94,9 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
       }
     }
 
-    _updateSize = () => {
+    // if _currentElement's dimensions change too frequently this function
+    // can freeze the application
+    _updateSize = _.throttle(() => {
       const element = this._getElement();
       if (element) {
         const { width, height } = element.getBoundingClientRect();
@@ -96,7 +104,7 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
           this.setState({ width, height });
         }
       }
-    };
+    }, throttleDuration);
 
     render() {
       if (wrapped) {

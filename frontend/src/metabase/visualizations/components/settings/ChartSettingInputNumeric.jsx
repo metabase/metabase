@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import cx from "classnames";
@@ -10,7 +11,7 @@ export default class ChartSettingInputNumeric extends Component {
     };
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
       value: String(nextProps.value == null ? "" : nextProps.value),
     });

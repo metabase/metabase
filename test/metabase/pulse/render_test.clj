@@ -1,13 +1,11 @@
 (ns metabase.pulse.render-test
-  (:require [expectations :refer [expect]]
-            [metabase
-             [pulse :as pulse]
-             [query-processor :as qp]]
+  (:require [clojure.test :refer :all]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.pulse :as pulse]
             [metabase.pulse.render :as render]
-            [metabase.test.data :as data]
-            [toucan.util.test :as tt]))
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]))
 
 ;; Let's make sure rendering Pulses actually works
 
@@ -19,13 +17,13 @@
    (render/render-pulse-card-for-display (pulse/defaulted-timezone card) card results)))
 
 (defn- render-results [query]
-  (tt/with-temp Card [card {:dataset_query query}]
+  (mt/with-temp Card [card {:dataset_query query}]
     (render-pulse-card card)))
 
-;; if the pulse rendered correctly it will have this one row that says "November 2015" (not sure why)
-(expect
-  (mbql.u/match-one (render-results
-                     (data/mbql-query checkins
-                       {:aggregation  [[:count]]
-                        :breakout     [!month.date]}))
-    [:td _ "November 2015"]))
+(deftest render-test
+  (testing "if the pulse rendered correctly it will have this one row that says \"November 2015\" (not sure why)"
+    (is (some? (mbql.u/match-one (render-results
+                                  (mt/mbql-query checkins
+                                    {:aggregation [[:count]]
+                                     :breakout    [!month.date]}))
+                 [:td _ "November 2015"])))))

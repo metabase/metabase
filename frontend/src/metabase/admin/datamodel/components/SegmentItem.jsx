@@ -22,14 +22,18 @@ export default class SegmentItem extends Component {
 
     return (
       <tr className="mt1 mb3">
-        <td className="px1 text-wrap">
+        <td className="px1 py1 text-wrap">
           <span className="flex align-center">
-            <Icon name={segment.getIcon()} className="mr1" />
-            {segment.name}
+            <Icon
+              size={12}
+              name={segment.getIcon()}
+              className="mr1 text-medium"
+            />
+            <span className="text-dark text-bold">{segment.name}</span>
           </span>
         </td>
-        <td className="px1 text-wrap">{description}</td>
-        <td className="px1 text-centered">
+        <td className="px1 py1 text-wrap">{description}</td>
+        <td className="px1 py1 text-centered">
           <ObjectActionSelect
             object={segment}
             objectType="segment"

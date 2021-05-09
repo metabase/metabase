@@ -1,27 +1,23 @@
 (ns metabase.models.user-test
-  (:require [clojure
-             [set :as set]
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [http-client :as http]
-             [test :as mt]
-             [util :as u]]
-            [metabase.models
-             [collection :as collection :refer [Collection]]
-             [collection-test :as collection-test]
-             [database :refer [Database]]
-             [permissions :as perms]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [session :refer [Session]]
-             [table :refer [Table]]
-             [user :as user :refer [User]]]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.http-client :as http]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.collection-test :as collection-test]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.session :refer [Session]]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.user :as user :refer [User]]
+            [metabase.test :as mt]
             [metabase.test.data.users :as test-users]
+            [metabase.util :as u]
             [metabase.util.password :as u.password]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 ;;; Tests for permissions-set
 

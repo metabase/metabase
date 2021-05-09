@@ -1,21 +1,21 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 function addTextBox(string) {
-  cy.get(".Icon-pencil").click();
-  cy.get(".Icon-string").click();
+  cy.icon("pencil").click();
+  cy.icon("string").click();
   cy.findByPlaceholderText("Write here, and use Markdown if you'd like").type(
     string,
   );
 }
 
 describe("scenarios > dashboard > text-box", () => {
-  before(restore);
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
   describe("Editing", () => {
     beforeEach(() => {
-      restore();
-      signInAsAdmin();
-
       // Create text box card
       cy.visit("/dashboard/1");
       addTextBox("Text *text* __text__");
@@ -23,8 +23,8 @@ describe("scenarios > dashboard > text-box", () => {
 
     it("should render edit and preview actions when editing", () => {
       // Check edit options
-      cy.get(".Icon-edit_document");
-      cy.get(".Icon-eye");
+      cy.icon("edit_document");
+      cy.icon("eye");
     });
 
     it("should not render edit and preview actions when not editing", () => {
@@ -32,8 +32,8 @@ describe("scenarios > dashboard > text-box", () => {
       cy.findByText("Save").click();
       cy.findByText("You are editing a dashboard").should("not.exist");
       cy.contains("Text text text");
-      cy.get(".Icon-edit_document").should("not.exist");
-      cy.get(".Icon-eye").should("not.exist");
+      cy.icon("edit_document").should("not.exist");
+      cy.icon("eye").should("not.exist");
     });
 
     it("should switch between rendered markdown and textarea input", () => {
@@ -45,13 +45,8 @@ describe("scenarios > dashboard > text-box", () => {
 
   describe("when text-box is the only element on the dashboard", () => {
     beforeEach(() => {
-      restore(); // restore before each so we can reuse dashboard id
-      signInAsAdmin();
-      // Create dashboard
       cy.server();
-      cy.request("POST", "/api/dashboard", {
-        name: "Test Dashboard",
-      });
+      cy.createDashboard("Test Dashboard");
     });
 
     // fixed in metabase#11358

@@ -2,15 +2,13 @@
   "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
   the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
-  (:require [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+  (:require [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def ^:private Joins
@@ -44,7 +42,7 @@
 
 (s/defn ^:private resolve-fields! :- (s/eq nil)
   [joins :- Joins]
-  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field-id id] id)))
+  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field (id :guard integer?) _] id)))
 
 (s/defn ^:private resolve-tables! :- (s/eq nil)
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
@@ -64,9 +62,11 @@
 (defn- source-metadata->fields [{:keys [alias], :as join} source-metadata]
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
-             {:join join})))
-  (for [{field-name :name, base-type :base_type} source-metadata]
-    [:joined-field alias [:field-literal field-name base-type]]))
+                    {:join join})))
+  (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
+    (if field-id
+      [:field field-id   {:join-alias alias}]
+      [:field field-name {:base-type base-type, :join-alias alias}])))
 
 (s/defn ^:private handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
@@ -76,9 +76,8 @@
    (when (= fields :all)
      {:fields (if source-query
                (source-metadata->fields join source-metadata)
-               (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                 (mbql.u/->joined-field alias field)))})))
-
+               (for [[_ id-or-name opts] (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                 [:field id-or-name (assoc opts :join-alias alias)]))})))
 
 (s/defn ^:private resolve-references-and-deduplicate :- mbql.s/Joins
   [joins :- Joins]
@@ -130,22 +129,11 @@
     (cond-> inner-query
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 
-(defn- check-join-aliases [{:keys [joins], :as query}]
-  (let [aliases (set (map :alias joins))]
-    (doseq [alias (mbql.u/match query [:joined-field alias _] alias)]
-      (when-not (aliases alias)
-        (throw
-         (IllegalArgumentException.
-           (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
-                alias aliases)))))))
-
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [{:keys [joins], :as query} :- mbql.s/MBQLQuery]
-  (u/prog1 (-> query
-               (update :joins resolve-references-and-deduplicate)
-               (update :joins resolve-join-source-queries)
-               merge-joins-fields)
-    (check-join-aliases (dissoc <> :source-query))))
+  (-> query
+      (update :joins (comp resolve-join-source-queries resolve-references-and-deduplicate))
+      merge-joins-fields))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

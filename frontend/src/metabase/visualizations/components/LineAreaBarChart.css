@@ -179,6 +179,7 @@
 }
 
 .LineAreaBarChart .dc-chart .voronoi {
+  cursor: pointer;
   fill: transparent;
 }
 

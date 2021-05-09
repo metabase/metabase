@@ -2,15 +2,13 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.set :as set]
             [medley.core :as m]
-            [metabase.models
-             [interface :as i]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]
-             [user :as user :refer [User]]]
+            [metabase.models.interface :as i]
+            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+            [metabase.models.user :as user :refer [User]]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 ;; ## Static Definitions
 

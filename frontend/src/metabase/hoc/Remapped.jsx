@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -23,12 +24,12 @@ export default ComposedComponent =>
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
-    componentWillMount() {
+    UNSAFE_componentWillMount() {
       if (this.props.column) {
         this.props.fetchRemapping(this.props.value, this.props.column.id);
       }
     }
-    componentWillReceiveProps(nextProps) {
+    UNSAFE_componentWillReceiveProps(nextProps) {
       if (
         nextProps.column &&
         (this.props.value !== nextProps.value ||

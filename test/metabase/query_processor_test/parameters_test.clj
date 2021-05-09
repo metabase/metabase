@@ -2,12 +2,11 @@
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :refer [Card]]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]))
+            [metabase.driver :as driver]
+            [metabase.models :refer [Card]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (defn- run-count-query [query]
   (or (ffirst
@@ -149,3 +148,40 @@
             results (qp/process-query query)]
         (is (= [[1]]
                (mt/formatted-rows [int] results)))))))
+
+(deftest native-with-spliced-params-test
+  (testing "Make sure we can convert a parameterized query to a native query with spliced params"
+    (testing "Multiple values"
+      (mt/dataset airports
+        (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX')"
+                :params nil}
+               (qp/query->native-with-spliced-params
+                {:type       :native
+                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                              :template-tags {"country"
+                                              {:name         "country"
+                                               :display-name "Country"
+                                               :type         :dimension
+                                               :dimension    [:field-id (mt/id :country :name)]
+                                               :widget-type  :category}}}
+                 :database   (mt/id)
+                 :parameters [{:type   :location/country
+                               :target [:dimension [:template-tag "country"]]
+                               :value  ["US" "MX"]}]})))))
+
+    (testing "Comma-separated numbers"
+      (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
+              :params []}
+             (qp/query->native-with-spliced-params
+              {:type       :native
+               :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
+                            :template-tags {"price"
+                                            {:name         "price"
+                                             :display-name "Price"
+                                             :type         :dimension
+                                             :dimension    [:field-id (mt/id :venues :price)]
+                                             :widget-type  :category}}}
+               :database   (mt/id)
+               :parameters [{:type   :category
+                             :target [:dimension [:template-tag "price"]]
+                             :value  [1 2]}]}))))))

@@ -18,7 +18,7 @@
                                             :display_name "ID"
                                             :base_type    :type/BigInteger
                                             :source       :native
-                                            :field_ref    [:field-literal "ID" :type/BigInteger]}]
+                                            :field_ref    [:field "ID" {:base-type :type/BigInteger}]}]
                         :native_form      {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                         :results_timezone "UTC"}}
            (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
@@ -37,17 +37,17 @@
                                             :display_name "ID"
                                             :source       :native
                                             :base_type    :type/BigInteger
-                                            :field_ref    [:field-literal "ID" :type/BigInteger]}
+                                            :field_ref    [:field "ID" {:base-type :type/BigInteger}]}
                                            {:name         "NAME"
                                             :display_name "NAME"
                                             :source       :native
                                             :base_type    :type/Text
-                                            :field_ref    [:field-literal "NAME" :type/Text]}
+                                            :field_ref    [:field "NAME" {:base-type :type/Text}]}
                                            {:name         "CATEGORY_ID"
                                             :display_name "CATEGORY_ID"
                                             :source       :native
                                             :base_type    :type/Integer
-                                            :field_ref    [:field-literal "CATEGORY_ID" :type/Integer]}]
+                                            :field_ref    [:field "CATEGORY_ID" {:base-type :type/Integer}]}]
                         :native_form      {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                         :results_timezone "UTC"}}
            (-> (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import { createSelector } from "reselect";
 
 import { push } from "react-router-redux";
@@ -786,7 +784,7 @@ export const getCollectionsPermissionsGrid = createSelector(
 
     return {
       type: "collection",
-      icon: "collection",
+      icon: "folder",
       crumbs,
       groups,
       permissions: {

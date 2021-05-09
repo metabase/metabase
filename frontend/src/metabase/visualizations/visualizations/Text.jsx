@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import styles from "./Text.css";
@@ -103,7 +102,7 @@ export default class Text extends Component {
     },
   };
 
-  componentWillReceiveProps(newProps: VisualizationProps) {
+  UNSAFE_componentWillReceiveProps(newProps: VisualizationProps) {
     // dashboard is going into edit mode
     if (!this.props.isEditing && newProps.isEditing) {
       this.onEdit();

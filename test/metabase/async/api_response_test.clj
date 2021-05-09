@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
             [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [metabase.async.api-response :as async-response]
             [metabase.test.util.async :as tu.async]
             [ring.core.protocols :as ring.protocols]
@@ -55,41 +54,46 @@
 
 ;;; ------------------------------ Normal responses: message sent to the input channel -------------------------------
 
-;; check that response is actually written to the output stream
-(expect
-  {:success true}
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [os os-closed-chan]} input-chan]
-      (a/>!! input-chan {:success true})
-      (wait-for-close os-closed-chan)
-      (os->response os))))
+(deftest write-response-to-output-stream-test
+  (testing "check that response is actually written to the output stream"
+    (tu.async/with-chans [input-chan]
+      (with-response [{:keys [os os-closed-chan]} input-chan]
+        (a/>!! input-chan {:success true})
+        (wait-for-close os-closed-chan)
+        (is (= {:success true}
+               (os->response os)))))))
 
-;; when we send a single message to the input channel, it should get closed automatically by the async code
-(expect
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [os-closed-chan]} input-chan]
-      ;; send the result to the input channel
-      (a/>!! input-chan {:success true})
-      (wait-for-close os-closed-chan)
-      ;; now see if input-chan is closed
-      (wait-for-close input-chan))))
+(deftest close-input-channel-test
+  (testing "when we send a single message to the input channel, it should get closed automatically by the async code"
+    (tu.async/with-chans [input-chan]
+      (with-response [{:keys [os-closed-chan]} input-chan]
+        ;; send the result to the input channel
+        (a/>!! input-chan {:success true})
+        (is (= true
+               (wait-for-close os-closed-chan)))
+        ;; now see if input-chan is closed
+        (is (= true
+               (wait-for-close input-chan)))))))
 
-;; when we send a message to the input channel, output-chan should *also* get closed
-(expect
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [os-closed-chan output-chan]} input-chan]
-      ;; send the result to the input channel
-      (a/>!! input-chan {:success true})
-      (wait-for-close os-closed-chan)
-      ;; now see if output-chan is closed
-      (wait-for-close output-chan))))
+(deftest close-output-channel-test
+  (testing "when we send a message to the input channel, output-chan should *also* get closed"
+    (tu.async/with-chans [input-chan]
+      (with-response [{:keys [os-closed-chan output-chan]} input-chan]
+        ;; send the result to the input channel
+        (a/>!! input-chan {:success true})
+        (is (= true
+               (wait-for-close os-closed-chan)))
+        ;; now see if output-chan is closed
+        (is (= true
+               (wait-for-close output-chan)))))))
 
-;; ...and the output-stream should be closed as well
-(expect
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [os-closed-chan]} input-chan]
-      (a/>!! input-chan {:success true})
-      (wait-for-close os-closed-chan))))
+(deftest close-output-stream-test
+  (testing "...and the output-stream should be closed as well"
+    (tu.async/with-chans [input-chan]
+      (with-response [{:keys [os-closed-chan]} input-chan]
+        (a/>!! input-chan {:success true})
+        (is (= true
+               (wait-for-close os-closed-chan)))))))
 
 
 ;;; ----------------------------------------- Input-chan closed unexpectedly -----------------------------------------
@@ -110,7 +114,6 @@
 
         (testing "An error should be written to the output stream"
           (is (schema= {:message (s/eq "Input channel unexpectedly closed.")
-                        :type    (s/eq "class java.lang.InterruptedException")
                         :_status (s/eq 500)
                         :trace   s/Any
                         s/Any    s/Any}
@@ -119,29 +122,33 @@
 
 ;;; ------------------------------ Output-chan closed early (i.e. API request canceled) ------------------------------
 
-;; If output-channel gets closed (presumably because the API request is canceled), input-chan should also get closed
-(expect
- (tu.async/with-chans [input-chan]
-   (with-response [{:keys [output-chan]} input-chan]
-     (a/close! output-chan)
-     (wait-for-close input-chan))))
+(deftest close-input-chan-when-output-chan-gets-closed-test
+  (testing (str "If output-channel gets closed (presumably because the API request is canceled), input-chan should "
+                "also get closed")
+    (tu.async/with-chans [input-chan]
+      (with-response [{:keys [output-chan]} input-chan]
+        (a/close! output-chan)
+        (is (= true
+               (wait-for-close input-chan)))))))
 
-;; if output chan gets closed, output-stream should also get closed
-(expect
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [output-chan os-closed-chan]} input-chan]
-      (a/close! output-chan)
-      (wait-for-close os-closed-chan))))
+(deftest close-output-stream-when-output-chan-gets-closed-test
+  (testing "if output chan gets closed, output-stream should also get closed"
+    (tu.async/with-chans [input-chan]
+      (with-response [{:keys [output-chan os-closed-chan]} input-chan]
+        (a/close! output-chan)
+        (is (= true
+               (wait-for-close os-closed-chan)))))))
 
-;; we shouldn't bother writing anything to the output stream if output-chan is closed because it should already be
-;; closed
-(expect
-  nil
-  (tu.async/with-chans [input-chan]
-    (with-response [{:keys [output-chan os os-closed-chan]} input-chan]
-      (a/close! output-chan)
-      (wait-for-close os-closed-chan)
-      (os->response os))))
+(deftest dont-write-to-output-stream-when-closed-test
+  (testing (str "we shouldn't bother writing anything to the output stream if output-chan is closed because it should "
+                "already be closed")
+    (tu.async/with-chans [input-chan]
+      (with-response [{:keys [output-chan os os-closed-chan]} input-chan]
+        (a/close! output-chan)
+        (is (= true
+               (wait-for-close os-closed-chan)))
+        (is (= nil
+               (os->response os)))))))
 
 
 ;;; --------------------------------------- input chan message is an Exception ---------------------------------------
@@ -153,7 +160,6 @@
         (a/>!! input-chan (Exception. "Broken"))
         (wait-for-close os-closed-chan)
         (is (schema= {:message  (s/eq "Broken")
-                      :type     (s/eq "class java.lang.Exception")
                       :trace    s/Any
                       :_status  (s/eq 500)
                       s/Keyword s/Any}
@@ -172,7 +178,6 @@
                  (wait-for-close os-closed-chan)))
           (testing "error should be written to output stream"
             (is (schema= {:message  (s/eq "No response after waiting 50.0 ms. Canceling request.")
-                          :type     (s/eq "class java.util.concurrent.TimeoutException")
                           :_status  (s/eq 500)
                           :trace    s/Any
                           s/Keyword s/Any}

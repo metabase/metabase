@@ -2,11 +2,10 @@
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.driver.druid.execute :as druid.execute]
-            [metabase.timeseries-query-processor-test.util :as tqpt]))
+            [metabase.test :as mt]
+            [metabase.timeseries-query-processor-test.util :as tqpt]
+            [metabase.util :as u]))
 
 (deftest results-order-test
   (mt/test-driver :druid

@@ -1,26 +1,23 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
-            [metabase-enterprise.serialization
-             [dump :as dump]
-             [load :as load]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
-             [field :as field :refer [Field]]
-             [metric :refer [Metric]]
-             [pulse :refer [Pulse]]
-             [segment :refer [Segment]]
-             [table :refer [Table]]
-             [user :refer [User]]]
-            [metabase.util
-             [i18n :refer [deferred-trs trs]]
-             [schema :as su]]
+            [metabase-enterprise.serialization.dump :as dump]
+            [metabase-enterprise.serialization.load :as load]
+            [metabase.db :as mdb]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.user :refer [User]]
+            [metabase.plugins :as plugins]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-trs trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -41,6 +38,7 @@
 (s/defn load
   "Load serialized metabase instance as created by `dump` command from directory `path`."
   [path context :- Context]
+  (plugins/load-plugins!)               ;
   (mdb/setup-db!)
   (when-not (load/compatible? path)
     (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
@@ -58,37 +56,71 @@
         (log/error (trs "Error loading dump: {0}" (.getMessage e)))))))
 
 (defn- select-entities-in-collections
-  [model collections]
-  (db/select model {:where [:or [:= :collection_id nil]
+  ([model collections]
+   (select-entities-in-collections model collections :all))
+  ([model collections state]
+   (let [state-filter (case state
+                        :all nil
+                        :active [:= :archived false])]
+     (db/select model {:where [:and
+                               [:or [:= :collection_id nil]
                                 (if (not-empty collections)
-                                  [:in :collection_id (map u/get-id collections)]
-                                  false)]}))
+                                  [:in :collection_id (map u/the-id collections)]
+                                  false)]
+                               state-filter]}))))
+
+(defn- select-segments-in-tables
+  ([tables]
+   (select-segments-in-tables tables :all))
+  ([tables state]
+   (case state
+     :all
+     (mapcat #(db/select Segment :table_id (u/the-id %)) tables)
+     :active
+     (filter
+      #(not (:archived %))
+      (mapcat #(db/select Segment :table_id (u/the-id %)) tables)))))
+
+(defn- select-collections
+  ([users]
+   (select-collections users :active))
+  ([users state]
+   (let [state-filter (case state
+                        :all nil
+                        :active [:= :archived false])]
+     (db/select Collection
+                       {:where [:and
+                                [:or
+                                 [:= :personal_owner_id nil]
+                                 [:= :personal_owner_id (some-> users first u/the-id)]]
+                                state-filter]}))))
 
 (defn dump
   "Serialized metabase instance into directory `path`."
-  [path user]
-  (mdb/setup-db!)
-  (let [users       (if user
-                      (let [user (db/select-one User
-                                   :email        user
-                                   :is_superuser true)]
-                        (assert user (trs "{0} is not a valid user" user))
-                        [user])
-                      [])
-        collections (db/select Collection
-                      {:where [:or [:= :personal_owner_id nil]
-                                   [:= :personal_owner_id (some-> users first u/get-id)]]})]
-    (dump/dump path
-               (Database)
-               (Table)
-               (field/with-values (Field))
-               (Metric)
-               (Segment)
-               collections
-               (select-entities-in-collections Card collections)
-               (select-entities-in-collections Dashboard collections)
-               (select-entities-in-collections Pulse collections)
-               users))
-  (dump/dump-settings path)
-  (dump/dump-dependencies path)
-  (dump/dump-dimensions path))
+  ([path user]
+   (dump path user :active))
+  ([path user state]
+   (mdb/setup-db!)
+   (let [users       (if user
+                       (let [user (db/select-one User
+                                    :email        user
+                                    :is_superuser true)]
+                         (assert user (trs "{0} is not a valid user" user))
+                         [user])
+                       [])
+         tables (Table)
+         collections (Collection)] ;(select-collections users state)]
+     (dump/dump path
+                (Database)
+                tables
+                (field/with-values (Field))
+                (Metric)
+                (select-segments-in-tables tables state)
+                collections
+                (select-entities-in-collections Card collections state)
+                (select-entities-in-collections Dashboard collections state)
+                (select-entities-in-collections Pulse collections state)
+                users))
+   (dump/dump-settings path)
+   (dump/dump-dependencies path)
+   (dump/dump-dimensions path)))

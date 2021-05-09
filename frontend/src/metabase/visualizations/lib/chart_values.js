@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { moveToFront } from "metabase/lib/dom";
-import { isHistogramBar } from "./renderer_utils";
+import { isHistogramBar, xValueForWaterfallTotal } from "./renderer_utils";
 
 /*
 There's a lot of messy logic in this function. Its purpose is to place text labels at the appropriate place over a chart.
@@ -46,8 +46,12 @@ export function onRenderValueLabels(
   }
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
 
+  function isBarLike(display) {
+    return display === "bar" || display === "waterfall";
+  }
+
   let barWidth;
-  const barCount = displays.filter(d => d === "bar").length;
+  const barCount = displays.filter(isBarLike).length;
   if (barCount > 0) {
     barWidth = parseFloat(
       chart
@@ -82,7 +86,7 @@ export function onRenderValueLabels(
       })
       .value();
 
-    return data
+    data = data
       .map(([x, y], i) => {
         const isLocalMin =
           // first point or prior is greater than y
@@ -90,12 +94,36 @@ export function onRenderValueLabels(
           // last point point or next is greater than y
           (i === data.length - 1 || data[i + 1][1] > y);
         const showLabelBelow = isLocalMin && display === "line";
-        const rotated = barCount > 1 && display === "bar" && barWidth < 40;
+        const rotated = barCount > 1 && isBarLike(display) && barWidth < 40;
         const hidden =
-          !showAll && barCount > 1 && display === "bar" && barWidth < 20;
+          !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
         return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
       })
-      .filter(d => !(display === "bar" && d.y === 0));
+      .filter(d => !(isBarLike(display) && d.y === 0));
+
+    if (display === "waterfall" && data.length > 0) {
+      let total = 0;
+      data.forEach(d => {
+        d.cumulativeY = d.y + total;
+        total += d.y;
+      });
+      if (chart.settings["waterfall.show_total"]) {
+        data = [
+          ...data,
+          {
+            ...data[0],
+            x: xValueForWaterfallTotal({
+              settings: chart.settings,
+              series: chart.series,
+            }),
+            y: total,
+            cumulativeY: total,
+          },
+        ];
+      }
+    }
+
+    return data;
   });
 
   // Count max points in a single series to estimate when labels should be hidden
@@ -132,20 +160,20 @@ export function onRenderValueLabels(
 
   // Ordinal bar charts and histograms need extra logic to center the label.
   const xShifts = displays.map((display, index) => {
-    if (display !== "bar") {
+    if (!isBarLike(display)) {
       return 0;
     }
-    const barIndex = displays.slice(0, index).filter(d => d === "bar").length;
+    const barIndex = displays.slice(0, index).filter(isBarLike).length;
     let xShift = 0;
 
     if (xScale.rangeBand) {
-      if (display === "bar") {
+      if (isBarLike(display)) {
         const xShiftForSeries = xScale.rangeBand() / barCount;
         xShift += (barIndex + 0.5) * xShiftForSeries;
       } else {
         xShift += xScale.rangeBand() / 2;
       }
-      if (displays.some(d => d === "bar") && displays.some(d => d !== "bar")) {
+      if (displays.some(isBarLike) && displays.some(d => !isBarLike(d))) {
         xShift += (chart._rangeBandPadding() * xScale.rangeBand()) / 2;
       }
     } else if (
@@ -177,14 +205,19 @@ export function onRenderValueLabels(
     return xShift;
   });
 
-  const xyPos = ({ x, y, showLabelBelow, seriesIndex }) => {
+  const xyPos = ({ x, y, showLabelBelow, cumulativeY, seriesIndex }) => {
+    const display = displays[seriesIndex];
+    const yy = display === "waterfall" ? cumulativeY : y;
     const yScale = yScaleForSeries(seriesIndex);
     const xPos = xShifts[seriesIndex] + xScale(x);
-    let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
+    let yPos = yScale(yy) + (showLabelBelow ? 18 : -8);
+    if (y < 0 && display === "waterfall") {
+      yPos += 25;
+    }
     // if the yPos is below the x axis, move it to be above the data point
     const [yMax] = yScale.range();
     if (yPos > yMax) {
-      yPos = yScale(y) - 8;
+      yPos = yScale(yy) - 8;
     }
     return {
       xPos,
@@ -232,6 +265,7 @@ export function onRenderValueLabels(
         .attr("class", klass)
         .text(({ y, seriesIndex }) =>
           formatYValue(y, {
+            negativeInParentheses: displays[seriesIndex] === "waterfall",
             compact: compact === null ? compactForSeries[seriesIndex] : compact,
           }),
         ),
@@ -239,7 +273,7 @@ export function onRenderValueLabels(
   };
 
   const nthForSeries = datas.map((data, index) => {
-    if (showAll || (barCount > 1 && displays[index] === "bar")) {
+    if (showAll || (barCount > 1 && isBarLike(displays[index]))) {
       // show all is turned on or this is a bar in a grouped bar chart
       return 1;
     }
@@ -276,7 +310,8 @@ export function onRenderValueLabels(
     .flatten()
     .filter(
       d =>
-        displays[d.seriesIndex] === "line" || displays[d.seriesIndex] === "bar",
+        displays[d.seriesIndex] === "line" ||
+        isBarLike(displays[d.seriesIndex]),
     )
     .map(d => ({ d, ...xyPos(d) }))
     .groupBy(({ xPos }) => xPos)

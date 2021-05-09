@@ -11,7 +11,7 @@ function seriesWithColumn(col) {
           {
             name: "foo",
             base_type: "type/Float",
-            special_type: "type/Currency",
+            semantic_type: "type/Currency",
             ...col,
           },
         ],
@@ -34,15 +34,15 @@ describe("column settings", () => {
     const computed = getComputedSettings(defs, series, stored);
     expect(computed.column(series[0].data.cols[0]).currency).toEqual("BTC");
   });
-  it("should find by column 'field-id' ref", () => {
+  it("should find by column 'field' ID ref", () => {
     const series = seriesWithColumn({
       id: 42,
-      field_ref: ["field-id", 42],
+      field_ref: ["field", 42, null],
     });
     const defs = { ...columnSettings() };
     const stored = {
       column_settings: {
-        '["ref",["field-id",42]]': {
+        '["ref",["field",42,null]]': {
           currency: "BTC",
         },
       },
@@ -53,12 +53,12 @@ describe("column settings", () => {
   // DISABLED to match legacy behavior until we determine the best way to reference columns
   xit("should find by column 'field-literal' ref", () => {
     const series = seriesWithColumn({
-      field_ref: ["field-literal", "foo", "type/Float"],
+      field_ref: ["field", "foo", { "base-type": "type/Float" }],
     });
     const defs = { ...columnSettings() };
     const stored = {
       column_settings: {
-        '["ref",["field-literal","foo","type/Float"]]': {
+        '["ref",["field","foo",{"base-type":"type/Float"}]]': {
           currency: "BTC",
         },
       },
@@ -68,7 +68,7 @@ describe("column settings", () => {
   });
   it("should find by column name if it also has a 'field-literal' ref", () => {
     const series = seriesWithColumn({
-      field_ref: ["field-literal", "foo", "type/Float"],
+      field_ref: ["field", "foo", { "base-type": "type/Float" }],
     });
     const defs = { ...columnSettings() };
     const stored = {
@@ -100,7 +100,7 @@ describe("column settings", () => {
     const series = seriesWithColumn({
       unit: "hour-of-day",
       base_type: "type/DateTime",
-      special_type: undefined,
+      semantic_type: undefined,
     });
     const defs = { ...columnSettings() };
     const computed = getComputedSettings(defs, series, {});

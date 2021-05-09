@@ -41,14 +41,13 @@ Just like with data access permissions, collection permissions are *additive*, m
 ### Permissions and sub-collections
 One nuance with how collections permissions work has to do with sub-collections. A user group can be given access to a collection located somewhere within one or more sub-collections *without* having to have access to every collection "above" it. E.g., if a user group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group does *not* have access to, the "Super Secret Collection" would show up at the top-most level that the group *does* have access to.
 
+To learn more, check out our Learn article on [working with collection permissions](https://www.metabase.com/learn/organization/organization/collection-permissions.html).
+
 ### Personal collections
-![Personal collections](images/collections/personal-collections.png)
 
 Each user has a personal collection where they're always allowed to save things, even if they don't have Curate permissions for any other collections. Administrators can see and edit the contents of every user's personal collection (even those belonging to other Administrators) by clicking on the "All personal collections" link from the "Our analytics" collection.
 
 A personal collection works just like any other collection except that its permissions can't be changed. If a sub-collection within a personal collection is moved to a different collection, it will inherit the permissions of that collection.
-
-![Personal collection detail](images/collections/personal-collection-detail.png)
 
 ### Archiving collections
 Users with curate permission for a collection can archive collections. Click the edit icon in the top-right of the collection screen and select `Archive this collection` to archive it. This will also archive all questions, dashboards, pulses, and all other sub-collections and their contents. Importantly, this will also remove any archived questions from all dashboards and Pulses that use them.

@@ -2,10 +2,9 @@
   "Code for creating / destroying a SQLServer database from a `DatabaseDefinition`."
   (:require [clojure.java.jdbc :as jdbc]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]
-             [sql-jdbc :as sql-jdbc.tx]]))
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]))
 
 (sql-jdbc.tx/add-test-extensions! :sqlserver)
 
@@ -19,7 +18,7 @@
                                    :type/Integer        "INTEGER"
                                    ;; TEXT is considered deprecated -- see
                                    ;; https://msdn.microsoft.com/en-us/library/ms187993.aspx
-                                   :type/Text           "VARCHAR(254)"
+                                   :type/Text           "VARCHAR(1024)"
                                    :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:sqlserver base-type] [_ _] database-type))
 

@@ -11,9 +11,8 @@
             [metabase.driver.impl :as impl]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
             [toucan.db :as db])
@@ -204,7 +203,6 @@
 
 (defmethod initialize! :default [_]) ; no-op
 
-
 (defmulti display-name
   "A nice name for the driver that we'll display to in the admin panel, e.g. \"PostgreSQL\" for `:postgres`. Default
   implementation capitializes the name of the driver, e.g. `:presto` becomes \"Presto\".
@@ -220,7 +218,6 @@
 (defmethod display-name :default [driver]
   (str/capitalize (name driver)))
 
-
 (defmulti can-connect?
   "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
   database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB
@@ -230,17 +227,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti ^{:deprecated "0.34.2"} date-add
-  "DEPRECATED -- this method is only used or implemented by `:sql` drivers. It has been superseded by
-  `metabase.driver.sql.query-processor/add-interval-honeysql-form`. Use/implement that method instead. DO NOT use or
-  implement this method for non-`:sql` drivers.
-
-  This method will be removed at some point in the future."
-  {:arglists '([driver hsql-form amount unit])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-
 (defmulti describe-database
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
   model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
@@ -248,7 +234,6 @@
   {:arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
 
 (defmulti describe-table
   "Return a map containing information that describes the physical schema of `table` (i.e. the fields contained
@@ -279,7 +264,6 @@
 
 (defmethod describe-table-fks ::driver [_ _ _]
   nil)
-
 
 (def ConnectionDetailsProperty
   "Schema for a map containing information about a connection property we should ask the user to supply when setting up
@@ -429,9 +413,7 @@
 (defmethod supports? :default [_ _] false)
 
 (defmethod supports? [::driver :basic-aggregations] [_ _] true)
-
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
-
 
 (defmulti ^:deprecated format-custom-field-name
   "Prior to Metabase 0.33.0, you could specifiy custom names for aggregations in MBQL by wrapping the clause in a
@@ -458,7 +440,6 @@
 (defmethod format-custom-field-name ::driver [_ custom-field-name]
   custom-field-name)
 
-
 (defmulti humanize-connection-error-message
   "Return a humanized (user-facing) version of an connection error message.
   Generic error messages are provided in `metabase.driver.common/connection-error-messages`; return one of these
@@ -471,7 +452,6 @@
 
 (defmethod humanize-connection-error-message ::driver [_ message]
   message)
-
 
 (defmulti mbql->native
   "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
@@ -490,7 +470,6 @@
   {:arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
 
 (defmulti splice-parameters-into-native-query
   "For a native query that has separate parameters, such as a JDBC prepared statement, e.g.
@@ -522,7 +501,6 @@
   [_ query]
   query)
 
-
 ;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
@@ -534,7 +512,6 @@
 
 (defmethod notify-database-updated ::driver [_ _]
   nil) ; no-op
-
 
 (defmulti sync-in-context
   "Drivers may provide this function if they need to do special setup before a sync operation such as
@@ -548,7 +525,6 @@
   :hierarchy #'hierarchy)
 
 (defmethod sync-in-context ::driver [_ _ f] (f))
-
 
 (defmulti table-rows-seq
   "Return a sequence of *all* the rows in a given `table`, which is guaranteed to have at least `:name` and `:schema`
@@ -617,4 +593,12 @@
   "Return start of week for given database"
   {:added "0.37.0" :arglists '([driver])}
   dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti incorporate-ssh-tunnel-details
+  "A multimethod for driver-specific behavior required to incorporate details for an opened SSH tunnel into the DB
+  details. In most cases, this will simply involve updating the :host and :port (to point to the tunnel entry point,
+  instead of the backing database server), but some drivers may have more specific behavior."
+  {:added "0.39.0" :arglists '([driver db-details])}
+  dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)

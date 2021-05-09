@@ -10,6 +10,8 @@ import Toggle from "metabase/components/Toggle";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
+import ExternalLink from "metabase/components/ExternalLink";
+
 export default class PreferencesStep extends Component {
   state = { errorMessage: null };
 
@@ -86,11 +88,11 @@ export default class PreferencesStep extends Component {
           <form onSubmit={this.formSubmitted.bind(this)} noValidate>
             <div className="Form-field">
               {t`In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics.`}{" "}
-              <a
+              <ExternalLink
                 className="link"
                 href={MetabaseSettings.docsUrl("information-collection")}
                 target="_blank"
-              >{t`Here's a full list of everything we track and why.`}</a>
+              >{t`Here's a full list of everything we track and why.`}</ExternalLink>
             </div>
 
             <div className="Form-field mr4">

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -19,7 +20,10 @@ export default class ChartTooltip extends Component {
     }
     if (Array.isArray(hovered.data)) {
       // Array of key, value, col: { data: [{ key, value, col }], element, event }
-      return hovered.data;
+      return hovered.data.map(d => ({
+        ...d,
+        key: d.key || getFriendlyName(d.col),
+      }));
     } else if (hovered.value !== undefined || hovered.dimensions) {
       // ClickObject: { value, column, dimensions: [{ value, column }], element, event }
       const dimensions = [];

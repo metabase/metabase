@@ -1,5 +1,3 @@
-/* @flow */
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { t } from "ttag";
 import type {
@@ -31,6 +29,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "compare-dashboard",
       section: "auto",
       icon: "bolt",
+      buttonType: "token",
       title: t`Compare to the rest`,
       url: () => {
         const filters = query

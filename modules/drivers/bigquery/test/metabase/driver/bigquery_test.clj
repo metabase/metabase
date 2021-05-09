@@ -1,15 +1,15 @@
 (ns metabase.driver.bigquery-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :refer [Field Table]]
-             [query-processor :as qp]
-             [sync :as sync]
-             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.driver.bigquery :as bigquery]
+            [metabase.models :refer [Field Table]]
+            [metabase.query-processor :as qp]
+            [metabase.sync :as sync]
+            [metabase.test :as mt]
             [metabase.test.data.bigquery :as bigquery.tx]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 (deftest table-rows-sample-test
   (mt/test-driver
@@ -21,8 +21,9 @@
              [4 "Wurstküche"]
              [5 "Brite Spot Family Restaurant"]]
             (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                                                     [(Field (mt/id :venues :id))
-                                                      (Field (mt/id :venues :name))])
+                   [(Field (mt/id :venues :id))
+                    (Field (mt/id :venues :name))]
+                   (constantly conj))
                  (sort-by first)
                  (take 5)))))
 
@@ -36,7 +37,8 @@
                        #'bigquery/page-callback        page-callback}
          (let [actual (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
                              [(Field (mt/id :venues :id))
-                              (Field (mt/id :venues :name))])
+                              (Field (mt/id :venues :name))]
+                             (constantly conj))
                            (sort-by first)
                            (take 5))]
          (is (= [[1 "Red Medicine"]
@@ -60,11 +62,11 @@
       (mt/with-temp-copy-of-db
         (try
           (bigquery.tx/execute!
-           (str "CREATE VIEW `v2_test_data.%s` "
+           (str "CREATE VIEW `v3_test_data.%s` "
                 "AS "
                 "SELECT v.id AS id, v.name AS venue_name, c.name AS category_name "
-                "FROM `%s.v2_test_data.venues` v "
-                "LEFT JOIN `%s.v2_test_data.categories` c "
+                "FROM `%s.v3_test_data.venues` v "
+                "LEFT JOIN `%s.v3_test_data.categories` c "
                 "ON v.category_id = c.id "
                 "ORDER BY v.id ASC "
                 "LIMIT 3")
@@ -73,7 +75,7 @@
            (bigquery.tx/project-id))
           (f view-name)
           (finally
-            (bigquery.tx/execute! "DROP VIEW IF EXISTS `v2_test_data.%s`" view-name)))))))
+            (bigquery.tx/execute! "DROP VIEW IF EXISTS `v3_test_data.%s`" view-name)))))))
 
 (defmacro ^:private with-view [[view-name-binding] & body]
   `(do-with-view (fn [~(or view-name-binding '_)] ~@body)))
@@ -97,14 +99,27 @@
                 [2 "Stout Burgers & Beers" "Burger"]
                 [3 "The Apple Pan" "Burger"]]
                (mt/rows
-                 (qp/process-query
-                  {:database (mt/id)
-                   :type     :query
-                   :query    {:source-table (mt/id view-name)
-                              :order-by     [[:asc (mt/id view-name :id)]]}}))))))))
+                 (mt/run-mbql-query nil
+                   {:source-table (mt/id view-name)
+                    :order-by     [[:asc (mt/id view-name :id)]]}))))))))
 
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery
     (testing "We should be able to query a Table that has a :type/Integer column marked as a PK or FK"
       (is (= [["1" "Plato Yeshua" "2014-04-01T08:30:00Z"]]
              (mt/rows (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1, :order-by [[:asc $id]]}))))))))
+
+(deftest return-errors-test
+  (mt/test-driver :bigquery
+    (testing "If a Query fails, we should return the error right away (#14918)"
+      (let [before-ms (System/currentTimeMillis)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Error executing query"
+             (qp/process-query
+              {:database (mt/id)
+               :type     :native
+               :native   {:query "SELECT abc FROM 123;"}})))
+        (testing "Should return the error *before* the query timeout"
+          (let [duration-ms (- (System/currentTimeMillis) before-ms)]
+            (is (< duration-ms (u/seconds->ms @#'bigquery/query-timeout-seconds)))))))))

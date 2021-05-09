@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
@@ -51,13 +52,13 @@ export default class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
 
   static propTypes = {
-    sections: PropTypes.array.isRequired,
+    sections: PropTypes.object.isRequired,
     activeSection: PropTypes.object,
     activeSectionName: PropTypes.string,
     updateSetting: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.initializeSettings();
   }
 

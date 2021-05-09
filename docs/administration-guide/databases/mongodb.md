@@ -7,6 +7,10 @@ This article covers:
 - [Connecting to a MongoDB Atlas cluster](#connecting-to-a-mongodb-atlas-cluster).
 - [General connectivity concerns](#general-connectivity-concerns).
 
+## How does MongoDB work in Metabase
+
+Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will scan the first 200 documents of each collection in your MongoDB. This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would be put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/datawarehouse.html).
+
 ## Connecting to MongoDB
 
 Go to Admin -> Databases, and click the **Add database** button. Select MongoDB from the dropdown.
@@ -96,3 +100,4 @@ To make sure you are using the correct connection configuration:
 
 - **Connect using `DNS SRV`**, which is the recommended method for newer Atlas clusters.
 - **Have you checked your cluster host whitelist?** When testing a connection but seeing failure, have you tried setting the IP whitelist to `0.0.0.0/0`? Whitelisting this address allows connections from any IP addresses. If you know the IP address(es) or CIDR block of clients, use that instead.
+- **Connect to the secondary server**. When connecting to a cluster, always use the `?readPreference=secondary` argument in the connection string, which allows Metabase to read from a secondary server instead of consuming resources from the primary server.

@@ -17,7 +17,7 @@
 
   * Update instance metadata -- logic is in `metabase.sync.sync-metadata.fields.sync-metadata`. Update metadata
     properties of `Field` instances in the application database as needed -- this includes the base type, database type,
-    special type, and comment/remark (description) properties. This primarily affects Fields that were not newly
+    semantic type, and comment/remark (description) properties. This primarily affects Fields that were not newly
     created; newly created Fields are given appropriate metadata when first synced (by `sync-instances`).
 
   A note on terminology used in `metabase.sync.sync-metadata.fields.*` namespaces:
@@ -39,16 +39,13 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require [metabase.models.table :as table]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.sync.sync-metadata.fields
-             [fetch-metadata :as fetch-metadata]
-             [sync-instances :as sync-instances]
-             [sync-metadata :as sync-metadata]]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.sync.interface :as i]
+            [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
+            [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
+            [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
+            [metabase.sync.util :as sync-util]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

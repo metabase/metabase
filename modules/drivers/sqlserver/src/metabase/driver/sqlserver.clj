@@ -1,22 +1,23 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:require [honeysql.core :as hsql]
+  (:require [clojure.tools.logging :as log]
+            [honeysql.core :as hsql]
+            [honeysql.helpers :as h]
             [java-time :as t]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
-            [metabase.driver
-             [common :as driver.common]
-             [sql :as sql]]
-            [metabase.driver.sql-jdbc
-             [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.driver.common :as driver.common]
+            [metabase.driver.sql :as sql]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [trs]])
   (:import [java.sql Connection ResultSet Time Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.util.Date))
@@ -121,7 +122,7 @@
 
 (defmethod sql.qp/date [:sqlserver :minute]
   [_ _ expr]
-  (hx/cast :smalldatetime expr))
+  (hx/maybe-cast :smalldatetime expr))
 
 (defmethod sql.qp/date [:sqlserver :minute-of-hour]
   [_ _ expr]
@@ -137,7 +138,11 @@
 
 (defmethod sql.qp/date [:sqlserver :day]
   [_ _ expr]
-  (hx/->date expr))
+  ;; `::optimized-bucketing?` is added by `optimized-temporal-buckets`; this signifies that we can use more efficient
+  ;; SQL functions like `day()` that don't return a full DATE. See `optimized-temporal-buckets` below for more info.
+  (if (::optimized-bucketing? sql.qp/*field-options*)
+    (hx/day expr)
+    (hsql/call :DateFromParts (hx/year expr) (hx/month expr) (hx/day expr))))
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_ _ expr]
@@ -163,7 +168,9 @@
 
 (defmethod sql.qp/date [:sqlserver :month]
   [_ _ expr]
-  (hsql/call :datefromparts (hx/year expr) (hx/month expr) 1))
+  (if (::optimized-bucketing? sql.qp/*field-options*)
+    (hx/month expr)
+    (hsql/call :DateFromParts (hx/year expr) (hx/month expr) 1)))
 
 (defmethod sql.qp/date [:sqlserver :month-of-year]
   [_ _ expr]
@@ -176,7 +183,7 @@
   [_ _ expr]
   (date-add :quarter
             (hx/dec (date-part :quarter expr))
-            (hsql/call :datefromparts (hx/year expr) 1 1)))
+            (hsql/call :DateFromParts (hx/year expr) 1 1)))
 
 (defmethod sql.qp/date [:sqlserver :quarter-of-year]
   [_ _ expr]
@@ -184,7 +191,9 @@
 
 (defmethod sql.qp/date [:sqlserver :year]
   [_ _ expr]
-  (hsql/call :datefromparts (hx/year expr) 1 1))
+  (if (::optimized-bucketing? sql.qp/*field-options*)
+    (hx/year expr)
+    (hsql/call :DateFromParts (hx/year expr) 1 1)))
 
 (defmethod sql.qp/add-interval-honeysql-form :sqlserver
   [_ hsql-form amount unit]
@@ -197,6 +206,10 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
 
+(defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (hx/->datetime expr))
+
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
   [_ _ honeysql-form {value :limit}]
   (assoc honeysql-form :modifiers [(format "TOP %d" value)]))
@@ -207,6 +220,84 @@
                                                  (* items (dec page))
                                                  items))))
 
+(defn- optimized-temporal-buckets
+  "If `field-clause` is being truncated temporally to `:year`, `:month`, or `:day`, return a optimized set of
+  replacement `:field` clauses that we can use to generate more efficient SQL. Otherwise returns `nil`.
+
+    (optimized-temporal-buckets [:field 1 {:temporal-unit :month])
+    ;; ->
+    [[:field 1 {:temporal-unit :year, ::optimized-bucketing? true}]
+     [:field 1 {:temporal-unit :month, ::optimized-bucketing? true}]]
+
+  How is this used? Without optimization, we used to generate SQL like
+
+    SELECT DateFromParts(year(field), month(field), 1), count(*)
+    FROM table
+    GROUP BY DateFromParts(year(field), month(field), 1)
+    ORDER BY DateFromParts(year(field), month(field), 1) ASC
+
+  The optimized SQL we generate instead looks like
+
+    SELECT DateFromParts(year(field), month(field), 1), count(*)
+    FROM table
+    GROUP BY year(field), month(field)
+    ORDER BY year(field) ASC, month(field) ASC
+
+  The `year`, `month`, and `day` can make use of indexes whereas `DateFromParts` cannot. The optimized version of the
+  query is much more efficient. See #9934 for more details."
+  [field-clause]
+  (when (mbql.u/is-clause? :field field-clause)
+    (let [[_ id-or-name {:keys [temporal-unit], :as opts}] field-clause]
+      (when (#{:year :month :day} temporal-unit)
+        (mapv
+         (fn [unit]
+           [:field id-or-name (assoc opts :temporal-unit unit, ::optimized-bucketing? true)])
+         (case temporal-unit
+           :year  [:year]
+           :month [:year :month]
+           :day   [:year :month :day]))))))
+
+(defn- optimize-breakout-clauses
+  "Optimize `breakout-clauses` using `optimized-temporal-buckets`, if possible."
+  [breakout-clauses]
+  (vec
+   (mapcat
+    (fn [breakout]
+      (or (optimized-temporal-buckets breakout)
+          [breakout]))
+    breakout-clauses)))
+
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :breakout]
+  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  ;; this is basically the same implementation as the default one in the `sql.qp` namespace, the only difference is
+  ;; that we optimize the fields in the GROUP BY clause using `optimize-breakout-clauses`.
+  (let [optimized      (optimize-breakout-clauses breakout-fields)
+        unique-name-fn (mbql.u/unique-name-generator)]
+    (as-> honeysql-form new-hsql
+      ;; we can still use the "unoptimized" version of the breakout for the SELECT... e.g.
+      ;;
+      ;;    SELECT DateFromParts(year(field), month(field), 1)
+      (apply h/merge-select new-hsql (->> breakout-fields
+                                          (remove (set fields-fields))
+                                          (mapv (fn [field-clause]
+                                                  (sql.qp/as driver field-clause unique-name-fn)))))
+      ;; For the GROUP BY, we replace the unoptimized fields with the optimized ones, e.g.
+      ;;
+      ;;    GROUP BY year(field), month(field)
+      (apply h/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
+
+(defn- optimize-order-by-subclauses
+  "Optimize `:order-by` `subclauses` using `optimized-temporal-buckets`, if possible."
+  [subclauses]
+  (vec
+   (mapcat
+    (fn [[direction field :as subclause]]
+      (if-let [optimized (optimized-temporal-buckets field)]
+        (for [optimized-clause optimized]
+          [direction optimized-clause])
+        [subclause]))
+    subclauses)))
+
 ;; From the dox:
 ;;
 ;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
@@ -216,7 +307,10 @@
 ;; but not for `top-level` queries (since it's not needed there)
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by]
   [driver _ honeysql-form {:keys [limit], :as query}]
-  (let [add-limit?    (and (not limit) (pos? sql.qp/*nested-query-level*))
+  ;; similar to the way we optimize GROUP BY above, optimize temporal bucketing in the ORDER BY if possible, because
+  ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
+  (let [query         (update query :order-by optimize-order-by-subclauses)
+        add-limit?    (and (not limit) (pos? sql.qp/*nested-query-level*))
         honeysql-form ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])
                        driver :order-by honeysql-form query)]
     (if-not add-limit?
@@ -357,3 +451,42 @@
 (defmethod sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
   (sql/->prepared-substitution driver (if bool 1 0)))
+
+;; SQL server only supports setting holdability at the connection level, not the statement level, as per
+;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15
+;; and
+;; https://github.com/microsoft/mssql-jdbc/blob/v9.2.1/src/main/java/com/microsoft/sqlserver/jdbc/SQLServerConnection.java#L5349-L5357
+;; an exception is thrown if they do not match, so it's safer to simply NOT try to override it at the statement level,
+;; because it's not supported anyway
+(defmethod sql-jdbc.execute/prepared-statement :sqlserver
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn
+                                sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
+
+;; similar rationale to prepared-statement above
+(defmethod sql-jdbc.execute/statement :sqlserver
+  [_ ^Connection conn]
+  (let [stmt (.createStatement conn
+                               ResultSet/TYPE_FORWARD_ONLY
+                               ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))

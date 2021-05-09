@@ -118,6 +118,8 @@ To link filters, you'll need to set up this parent-child relationship. And you s
 
 Here you can limit the current filter's choices. If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter. In this case, we toggle on the state filter (the parent), to limit the choices for the city filter. When states are selected, the city filter will limit its choices to cities in those states. Click **Done**, then **Save** to save the dashboard.
 
+To learn more, check out [Linking filters in dashboards](https://www.metabase.com/learn/building-analytics/dashboards/linking-filters.html).
+
 ### Best practices
 
 Here are a few tips to get the most out of dashboard filters:

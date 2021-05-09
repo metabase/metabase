@@ -1,0 +1,19 @@
+{
+  "include": [
+    "frontend/src/**/*",
+    "enterprise/frontend/src/**/*",
+    "frontend/test/**/*",
+    "enterprise/frontend/test/**/*"
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "*": [
+        "./frontend/src/*",
+        "./frontend/test/*",
+        "./enterprise/frontend/src/*",
+        "./enterprise/frontend/test/*"
+      ]
+    }
+  }
+}

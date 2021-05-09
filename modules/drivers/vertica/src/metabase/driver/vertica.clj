@@ -2,22 +2,19 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc
-             [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util
-             [date-2 :as u.date]
-             [honeysql-extensions :as hx]
-             [i18n :refer [trs]]])
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [trs]])
   (:import [java.sql ResultSet Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
@@ -31,24 +28,24 @@
 (defmethod sql-jdbc.sync/database-type->base-type :vertica
   [_ database-type]
   ({:Boolean                   :type/Boolean
-     :Integer                   :type/Integer
-     :Bigint                    :type/BigInteger
-     :Varbinary                 :type/*
-     :Binary                    :type/*
-     :Char                      :type/Text
-     :Varchar                   :type/Text
-     :Money                     :type/Decimal
-     :Numeric                   :type/Decimal
-     :Double                    :type/Decimal
-     :Float                     :type/Float
-     :Date                      :type/Date
-     :Time                      :type/Time
-     :TimeTz                    :type/TimeWithLocalTZ
-     :Timestamp                 :type/DateTime
-     :TimestampTz               :type/DateTimeWithLocalTZ
-     :AUTO_INCREMENT            :type/Integer
-     (keyword "Long Varchar")   :type/Text
-     (keyword "Long Varbinary") :type/*} database-type))
+    :Integer                   :type/Integer
+    :Bigint                    :type/BigInteger
+    :Varbinary                 :type/*
+    :Binary                    :type/*
+    :Char                      :type/Text
+    :Varchar                   :type/Text
+    :Money                     :type/Decimal
+    :Numeric                   :type/Decimal
+    :Double                    :type/Decimal
+    :Float                     :type/Float
+    :Date                      :type/Date
+    :Time                      :type/Time
+    :TimeTz                    :type/TimeWithLocalTZ
+    :Timestamp                 :type/DateTime
+    :TimestampTz               :type/DateTimeWithLocalTZ
+    :AUTO_INCREMENT            :type/Integer
+    (keyword "Long Varchar")   :type/Text
+    (keyword "Long Varbinary") :type/*} database-type))
 
 (defmethod sql-jdbc.conn/connection-details->spec :vertica
   [_ {:keys [host port db dbname]

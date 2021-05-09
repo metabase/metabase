@@ -1,11 +1,10 @@
 (ns metabase.query-processor.middleware.format-rows-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [query-processor-test :as qp.test]
-             [test :as mt]]
-            [metabase.query-processor.middleware.format-rows :as format-rows]))
+            [metabase.driver :as driver]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.middleware.format-rows :as format-rows]
+            [metabase.test :as mt]))
 
 (driver/register! ::timezone-driver, :abstract? true)
 
@@ -49,12 +48,11 @@
 
                    ;; TIMEZONE FIXME -- the value of this changes based on whether we are in DST. This is B R O K E N
                    (qp.test/supports-report-timezone? driver/*driver*)
-                   (let [offset (t/zone-offset (t/zoned-date-time (t/local-date) (t/local-time) (t/zone-id "America/Los_Angeles")))]
-                     [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" (str "08:30:00" offset)]
-                      [2 "Felipinho Asklepios" "2014-12-05T00:00:00-08:00" (str "15:15:00" offset)]
-                      [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00-08:00" (str "16:15:00" offset)]
-                      [4 "Simcha Yan"          "2014-01-01T00:00:00-08:00" (str "08:30:00" offset)]
-                      [5 "Quentin Sören"       "2014-10-03T00:00:00-07:00" (str "17:30:00" offset)]])
+                   [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" "08:30:00-08:00"]
+                    [2 "Felipinho Asklepios" "2014-12-05T00:00:00-08:00" "15:15:00-08:00"]
+                    [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00-08:00" "16:15:00-08:00"]
+                    [4 "Simcha Yan"          "2014-01-01T00:00:00-08:00" "08:30:00-08:00"]
+                    [5 "Quentin Sören"       "2014-10-03T00:00:00-07:00" "17:30:00-08:00"]]
 
                    :else
                    [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
@@ -68,6 +66,8 @@
                       :limit    5})))))))))
 
 (deftest format-value-test
+  ;; `t` = original value
+  ;; `expected` = the same value when shifted to `zone`
   (doseq [[t expected zone]
           [[(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "Asia/Tokyo"))
             "2011-04-17T15:00:00Z"
@@ -125,10 +125,8 @@
             "2011-04-18T00:00:00Z"
             "UTC"]
 
-           ;; formatting `OffsetTime` currently doesn't adjust the time into the results timezone, because that can't
-           ;; be done without knowing the date (e.g., because of DST boundaries)
            [(t/offset-time 19 55 0 0 (t/zone-offset 9))
-            "19:55:00+09:00"
+            "10:55:00Z"
             "UTC"]
 
            [(t/offset-time 19 55 0 0 (t/zone-offset 9))
@@ -140,7 +138,7 @@
             "UTC"]
 
            [(t/offset-time 19 55 0 0 (t/zone-offset 0))
-            "19:55:00Z"
+            "04:55:00+09:00"
             "Asia/Tokyo"]
 
            [(t/local-time 19 55)
@@ -158,9 +156,9 @@
                                         ["2019-07-01T13:14:15Z" "US/Pacific"]]]
       (testing (format "system clock = %s; system timezone = %s" clock-instant clock-zone)
         (mt/with-clock (t/mock-clock (t/instant clock-instant) clock-zone)
-          (is (= expected
-                 (format-rows/format-value t (t/zone-id zone)))
-              (format "format %s '%s' with results timezone ID '%s'" (.getName (class t)) t zone))))))
+          (testing (format "\nformat %s '%s' with results timezone ID '%s'" (.getName (class t)) t zone)
+            (is (= expected
+                   (format-rows/format-value t (t/zone-id zone)))))))))
   (testing "can handle infinity dates (#12761)"
     (is (format-rows/format-value java.time.OffsetDateTime/MAX (t/zone-id "UTC")))
     (is (format-rows/format-value java.time.OffsetDateTime/MIN (t/zone-id "UTC")))))

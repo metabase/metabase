@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -10,16 +8,12 @@ import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
-import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
-import * as Urls from "metabase/lib/urls";
 
 import { getDashboardActions } from "./DashboardActions";
 
 import ParametersPopover from "./ParametersPopover";
 import Popover from "metabase/components/Popover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
-import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 
@@ -52,7 +46,7 @@ type Props = {
   refreshPeriod: ?number,
   setRefreshElapsedHook: Function,
 
-  parametersWidget: React$Element<*>,
+  parametersWidget: React.Element,
 
   addCardToDashboard: ({ dashId: DashCardId, cardId: CardId }) => void,
   addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,
@@ -72,6 +66,9 @@ type Props = {
   onFullscreenChange: boolean => void,
 
   onChangeLocation: string => void,
+
+  onSharingClick: void => void,
+  onEmbeddingClick: void => void,
 };
 
 type State = {
@@ -105,6 +102,9 @@ export default class DashboardHeader extends Component {
     onRefreshPeriodChange: PropTypes.func.isRequired,
     onNightModeChange: PropTypes.func.isRequired,
     onFullscreenChange: PropTypes.func.isRequired,
+
+    onSharingClick: PropTypes.func.isRequired,
+    onEmbeddingClick: PropTypes.func.isRequred,
   };
 
   handleEdit(dashboard: DashboardWithCards) {
@@ -182,13 +182,9 @@ export default class DashboardHeader extends Component {
       isEditing,
       isFullscreen,
       isEditable,
-      isAdmin,
       location,
     } = this.props;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
-
-    const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
-    const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
     const buttons = [];
     const extraButtons = [];
@@ -293,15 +289,17 @@ export default class DashboardHeader extends Component {
     if (!isFullscreen && !isEditing) {
       const extraButtonClassNames =
         "bg-brand-hover text-white-hover py2 px3 text-bold block cursor-pointer";
-      extraButtons.push(
-        <Link
-          className={extraButtonClassNames}
-          to={location.pathname + "/details"}
-          data-metabase-event={"Dashboard;EditDetails"}
-        >
-          {t`Change title and description`}
-        </Link>,
-      );
+      if (canEdit) {
+        extraButtons.push(
+          <Link
+            className={extraButtonClassNames}
+            to={location.pathname + "/details"}
+            data-metabase-event={"Dashboard;EditDetails"}
+          >
+            {t`Change title and description`}
+          </Link>,
+        );
+      }
       extraButtons.push(
         <Link
           className={extraButtonClassNames}
@@ -331,34 +329,27 @@ export default class DashboardHeader extends Component {
           </Link>,
         );
       }
-      extraButtons.push(
-        <Link
-          className={extraButtonClassNames}
-          to={location.pathname + "/archive"}
-          data-metabase-event={"Dashboard;Archive"}
-        >
-          {t`Archive`}
-        </Link>,
-      );
+      if (canEdit) {
+        extraButtons.push(
+          <Link
+            className={extraButtonClassNames}
+            to={location.pathname + "/archive"}
+            data-metabase-event={"Dashboard;Archive"}
+          >
+            {t`Archive`}
+          </Link>,
+        );
+      }
     }
 
-    buttons.push(...getDashboardActions(this.props));
-
-    if (
-      !isEditing &&
-      !isFullscreen &&
-      ((isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
-        (isEmbeddingEnabled && isAdmin))
-    ) {
-      buttons.push(
-        <DashboardEmbedWidget key="dashboard-embed" dashboard={dashboard} />,
-      );
-    }
+    buttons.push(...getDashboardActions(this, this.props));
 
     if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
         <PopoverWithTrigger
-          triggerElement={<Icon name="ellipsis" className="text-brand-hover" />}
+          triggerElement={
+            <Icon name="ellipsis" size={20} className="text-brand-hover" />
+          }
         >
           <div className="py1">
             {extraButtons.map((b, i) => (

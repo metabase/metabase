@@ -1,14 +1,11 @@
 {
   "rules": {
-    "jasmine/no-focused-tests": 2,
-    "jasmine/no-suite-dupes": [2, "branch"],
     "import/no-commonjs": 0,
     "no-color-literals": 0
   },
   "env": {
-    "jasmine": true,
     "cypress/globals": true,
     "node": true
   },
-  "plugins": ["jasmine", "cypress"]
+  "plugins": ["cypress"]
 }

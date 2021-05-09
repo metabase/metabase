@@ -1,11 +1,9 @@
 (ns metabase.query-processor.middleware.resolve-referenced-test
   (:require [clojure.test :refer :all]
-            [metabase.models
-             [card :refer [Card]]
-             [database :refer [Database]]]
-            [metabase.query-processor.middleware
-             [parameters-test :refer [card-template-tags]]
-             [resolve-referenced :as referenced]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.database :refer [Database]]
+            [metabase.query-processor.middleware.parameters-test :refer [card-template-tags]]
+            [metabase.query-processor.middleware.resolve-referenced :as referenced]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
             [toucan.db :as db])
@@ -27,7 +25,7 @@
 (deftest resolve-card-resources-test
   (testing "resolve stores source table from referenced card"
     (mt/with-temp Card [mbql-card {:dataset_query (mt/mbql-query venues
-                                                    {:filter [:< [:field-id $price] 3]})}]
+                                                    {:filter [:< $price 3]})}]
       (let [query {:database (mt/id)
                    :native   {:template-tags
                               {"tag-name-not-important1" {:type    :card
@@ -82,7 +80,7 @@
   (testing "fails on query that references an MBQL query from a different database"
     (mt/with-temp* [Database [outer-query-db]
                     Card     [card {:dataset_query (mt/mbql-query venues
-                                                     {:filter [:< [:field-id $price] 3]})}]]
+                                                     {:filter [:< $price 3]})}]]
       (let [card-id     (:id card)
             card-query  (:dataset_query card)
             tag-name    (str "#" card-id)

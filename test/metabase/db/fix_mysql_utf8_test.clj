@@ -1,13 +1,11 @@
 (ns metabase.db.fix-mysql-utf8-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
-            [metabase
-             [db :as mdb]
-             [models :refer [Database]]
-             [test :as mt]]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.db.setup :as mdb.setup]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.models :refer [Database]]
+            [metabase.test :as mt]
             [toucan.db :as db]))
 
 (defn- create-test-db! []
@@ -80,13 +78,13 @@
                                            {:charset "latin1", :collation "latin1_swedish_ci"}]]
         ;; create a new application DB and run migrations.
         (create-test-db!)
-        (jdbc/with-db-connection [conn-spec (test-db-spec)]
-          (mdb/migrate! conn-spec :up)
+        (jdbc/with-db-connection [jdbc-spec (test-db-spec)]
+          (mdb.setup/migrate! jdbc-spec :up)
           (testing (format "Migrating %s charset -> utf8mb4\n" charset)
             ;; Roll back the DB to act as if migrations 107-160 had never been ran
-            (convert-to-charset! conn-spec charset collation)
-            (remove-utf8mb4-migrations! conn-spec)
-            (binding [db/*db-connection* conn-spec]
+            (convert-to-charset! jdbc-spec charset collation)
+            (remove-utf8mb4-migrations! jdbc-spec)
+            (binding [db/*db-connection* jdbc-spec]
               (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
                 (is (= {:character-set charset, :collation collation}
                        (db-charset)
@@ -99,7 +97,7 @@
                     "Shouldn't be able to insert UTF-8 values"))
 
               (testing "If we run the migrations 107-160 then the DB should get converted to utf8mb4"
-                (mdb/migrate! conn-spec :up)
+                (mdb.setup/migrate! jdbc-spec :up)
                 (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
                        (db-charset)
                        (table-charset)

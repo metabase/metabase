@@ -1,5 +1,3 @@
-/* @flow */
-
 export type CollectionId = number;
 
 export type Collection = {

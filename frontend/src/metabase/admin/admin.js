@@ -1,5 +1,3 @@
-/* @flow */
-
 // Reducers needed for admin section (only used in "main" app)
 
 import people from "metabase/admin/people/people";

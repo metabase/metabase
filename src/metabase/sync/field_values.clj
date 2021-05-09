@@ -1,12 +1,10 @@
 (ns metabase.sync.field-values
   "Logic for updating cached FieldValues for fields in a database."
   (:require [clojure.tools.logging :as log]
-            [metabase.models
-             [field :refer [Field]]
-             [field-values :as field-values :refer [FieldValues]]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :as field-values :refer [FieldValues]]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]

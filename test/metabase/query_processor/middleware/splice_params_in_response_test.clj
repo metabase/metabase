@@ -1,10 +1,9 @@
 (ns metabase.query-processor.middleware.splice-params-in-response-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [test :as mt]]
+            [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
+            [metabase.test :as mt]
             [metabase.test.data :as data]))
 
 (defn- do-with-splice-params-call? [f]

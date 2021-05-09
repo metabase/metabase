@@ -1,9 +1,8 @@
 (ns metabase.models.permissions-revision
   (:require [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (models/defmodel PermissionsRevision :permissions_revision)
 

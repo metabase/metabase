@@ -3,28 +3,24 @@
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST PUT]]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [related :as related]
-             [sync :as sync]
-             [types :as types]
-             [util :as u]]
             [metabase.api.common :as api]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [card :refer [Card]]
-             [field :refer [Field]]
-             [field-values :as fv :refer [FieldValues]]
-             [interface :as mi]
-             [table :as table :refer [Table]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :as fv :refer [FieldValues]]
+            [metabase.models.interface :as mi]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.related :as related]
+            [metabase.sync :as sync]
             [metabase.sync.field-values :as sync-field-values]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [schema :as su]]
+            [metabase.types :as types]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]))
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
@@ -114,7 +110,7 @@
             (concat
              (map (fn [[name param]]
                     {:name name
-                     :mbql ["datetime-field" nil param]
+                     :mbql [:field nil {:temporal-unit param}]
                      :type "type/DateTime"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
                   [[(deferred-tru "Minute") "minute"]
@@ -133,9 +129,11 @@
                    [(deferred-tru "Month of Year") "month-of-year"]
                    [(deferred-tru "Quarter of Year") "quarter-of-year"]])
              (conj
-              (mapv (fn [[name params]]
+              (mapv (fn [[name [strategy param]]]
                       {:name name
-                       :mbql (apply vector "binning-strategy" nil params)
+                       :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                          (when param
+                                                            {strategy param}))}]
                        :type "type/Number"})
                     [default-entry
                      [(deferred-tru "10 bins") ["num-bins" 10]]
@@ -145,9 +143,11 @@
                :mbql nil
                :type "type/Number"})
              (conj
-              (mapv (fn [[name params]]
+              (mapv (fn [[name [strategy param]]]
                       {:name name
-                       :mbql (apply vector "binning-strategy" nil params)
+                       :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                          (when param
+                                                            {strategy param}))}]
                        :type "type/Coordinate"})
                     [default-entry
                      [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
@@ -200,29 +200,28 @@
   (and (types/temporal-field? field)
        (not (isa? base_type :type/Time))))
 
-(defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]
+(defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
-
                                        (supports-date-binning? field)
                                        [date-default-index datetime-dimension-indexes]
 
                                        (and min_value max_value
-                                            (isa? special_type :type/Coordinate)
+                                            (isa? semantic_type :type/Coordinate)
                                             (supports-numeric-binning? driver))
                                        [coordinate-default-index coordinate-dimension-indexes]
 
                                        (and min_value max_value
                                             (isa? base_type :type/Number)
-                                            (or (nil? special_type) (isa? special_type :type/Number))
+                                            (or (nil? semantic_type) (isa? semantic_type :type/Number))
                                             (supports-numeric-binning? driver))
                                        [numeric-default-index numeric-dimension-indexes]
 
                                        :else
                                        [nil []])]
     (assoc field
-      :default_dimension_option default-option
-      :dimension_options all-options)))
+           :default_dimension_option default-option
+           :dimension_options        all-options)))
 
 (defn- assoc-dimension-options [resp driver]
   (-> resp
@@ -280,11 +279,13 @@
           (update :base_type keyword)
           (assoc
            :table_id     (str "card__" card-id)
-           :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-           ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
+           :id           (or (:id col)
+                             ;; TODO -- what????
+                             [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
+           ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
            ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
            ;; the dimension options
-           :special_type (keyword (:special_type col)))
+           :semantic_type (keyword (:semantic_type col)))
           add-field-dimension-options))))
 
 (defn root-collection-schema-name
@@ -308,14 +309,14 @@
                                                                            database_id
                                                                            (:result_metadata card))))))
 
-(defn- remove-nested-pk-fk-special-types
-  "This method clears the special_type attribute for PK/FK fields of nested queries. Those fields having a special
+(defn- remove-nested-pk-fk-semantic-types
+  "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
   type confuses the frontend and it can really used in the same way"
   [{:keys [fields] :as metadata-response}]
-  (assoc metadata-response :fields (for [{:keys [special_type] :as field} fields]
-                                     (if (or (isa? special_type :type/PK)
-                                             (isa? special_type :type/FK))
-                                       (assoc field :special_type nil)
+  (assoc metadata-response :fields (for [{:keys [semantic_type] :as field} fields]
+                                     (if (or (isa? semantic_type :type/PK)
+                                             (isa? semantic_type :type/FK))
+                                       (assoc field :semantic_type nil)
                                        field))))
 
 (api/defendpoint GET "/card__:id/query_metadata"
@@ -328,7 +329,7 @@
         api/read-check
         (card->virtual-table :include-fields? true)
         (assoc-dimension-options (driver.u/database->driver database_id))
-        remove-nested-pk-fk-special-types)))
+        remove-nested-pk-fk-semantic-types)))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint

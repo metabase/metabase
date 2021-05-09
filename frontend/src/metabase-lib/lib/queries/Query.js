@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import type { DatasetQuery } from "metabase-types/types/Card";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";

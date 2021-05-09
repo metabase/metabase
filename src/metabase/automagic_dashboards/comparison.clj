@@ -1,17 +1,14 @@
 (ns metabase.automagic-dashboards.comparison
   (:require [medley.core :as m]
-            [metabase
-             [related :as related]
-             [util :as u]]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards
-             [core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title
-                           encode-base64-json metric-name source-name]]
-             [filters :as filters]
-             [populate :as populate]]
+            [metabase.automagic-dashboards.core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title encode-base64-json metric-name source-name]]
+            [metabase.automagic-dashboards.filters :as filters]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.mbql.normalize :as normalize]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qp.util]
+            [metabase.related :as related]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
 
 (def ^:private ^{:arglists '([root])} comparison-name

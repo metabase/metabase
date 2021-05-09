@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>Redirecting...</title>
+<link
+    rel="canonical"
+    href="https://console.aws.amazon.com/elasticbeanstalk/home?region=us-east-1#/newApplication?applicationName=Metabase&tierName=WebServer&platform=Docker&environmentType=LoadBalancing&sourceBundleUrl={{url}}&instanceType=t3a.small"
+    />
+<meta
+    http-equiv="refresh"
+    content="0; url=https://console.aws.amazon.com/elasticbeanstalk/home?region=us-east-1#/newApplication?applicationName=Metabase&tierName=WebServer&platform=Docker&environmentType=LoadBalancing&sourceBundleUrl={{url}}&instanceType=t3a.small"
+    />
+<h1>Redirecting...</h1>
+<a
+    href="https://console.aws.amazon.com/elasticbeanstalk/home?region=us-east-1#/newApplication?applicationName=Metabase&tierName=WebServer&platform=Docker&environmentType=LoadBalancing&sourceBundleUrl={{url}}&instanceType=t3a.small"
+    >
+Click here if you are not redirected.
+</a>
+<script>
+    location =
+        "https://console.aws.amazon.com/elasticbeanstalk/home?region=us-east-1#/newApplication?applicationName=Metabase&tierName=WebServer&platform=Docker&environmentType=LoadBalancing&sourceBundleUrl={{url}}&instanceType=t3a.small";
+</script>

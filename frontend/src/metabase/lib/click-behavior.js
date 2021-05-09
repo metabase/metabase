@@ -11,7 +11,7 @@ import { isa, TYPE } from "metabase/lib/types";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
-} from "metabase/meta/Dashboard";
+} from "metabase/meta/Parameter";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},
@@ -148,17 +148,18 @@ function getTargetsForDashboard(dashboard) {
 
 function baseTypeFilterForParameterType(parameterType) {
   const [typePrefix] = parameterType.split("/");
-  const allowedType = {
-    date: TYPE.Temporal,
-    id: TYPE.Integer,
-    category: TYPE.Text,
-    location: TYPE.Text,
+  const allowedTypes = {
+    date: [TYPE.Temporal],
+    id: [TYPE.Integer],
+    category: [TYPE.Text, TYPE.Integer],
+    location: [TYPE.Text],
   }[typePrefix];
-  if (allowedType === undefined) {
+  if (allowedTypes === undefined) {
     // default to showing everything
     return () => true;
   }
-  return baseType => isa(baseType, allowedType);
+  return baseType =>
+    allowedTypes.some(allowedType => isa(baseType, allowedType));
 }
 
 export function getClickBehaviorDescription(dashcard) {

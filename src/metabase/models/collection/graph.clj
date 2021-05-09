@@ -1,13 +1,12 @@
 (ns metabase.models.collection.graph
   (:require [clojure.data :as data]
-            [honeysql.helpers :as h]
             [metabase.api.common :as api :refer [*current-user-id*]]
-            [metabase.models
-             [collection :as collection :refer [Collection]]
-             [collection-revision :as collection-revision :refer [CollectionRevision]]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :refer [PermissionsGroup]]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.collection-revision :as collection-revision :refer [CollectionRevision]]
+            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -57,16 +56,13 @@
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
   [collection-namespace :- (s/maybe su/KeywordOrString)]
   (let [personal-collection-ids (db/select-ids Collection :personal_owner_id [:not= nil])
-        honeysql-form           (cond-> {:select [[:id :id]]
-                                         :from   [Collection]
-                                         :where  [:= :namespace (u/qualified-name collection-namespace)]}
-                                  (seq personal-collection-ids)
-                                  (h/merge-where [:not-in :id (set personal-collection-ids)]))
-        honeysql-form           (reduce
-                                 (fn [honeysql-form collection-id]
-                                   (h/merge-where honeysql-form [:not [:like :location (format "/%d/%%" collection-id)]]))
-                                 honeysql-form
-                                 personal-collection-ids)]
+        honeysql-form           {:select [[:id :id]]
+                                 :from   [Collection]
+                                 :where  (into [:and
+                                                [:= :namespace (u/qualified-name collection-namespace)]
+                                                [:= :personal_owner_id nil]]
+                                               (for [collection-id personal-collection-ids]
+                                                 [:not [:like :location (hx/literal (format "/%d/%%" collection-id))]]))}]
     (set (map :id (db/query honeysql-form)))))
 
 (s/defn graph :- PermissionsGraph

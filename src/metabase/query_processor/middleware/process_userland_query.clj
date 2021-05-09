@@ -4,9 +4,8 @@
   formatting the results."
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.models
-             [query :as query]
-             [query-execution :as query-execution :refer [QueryExecution]]]
+            [metabase.models.query :as query]
+            [metabase.models.query-execution :as query-execution :refer [QueryExecution]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))

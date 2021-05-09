@@ -1,16 +1,15 @@
 (ns metabase.driver.h2-test
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [models :refer [Database]]
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.db.spec :as db.spec]
+            [metabase.driver :as driver]
             [metabase.driver.h2 :as h2]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models :refer [Database]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util.honeysql-extensions :as hx]))
 
@@ -52,13 +51,7 @@
            (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
                 (catch org.h2.jdbc.JdbcSQLException e
                   (and (re-matches #"Database .+ not found .+" (.getMessage e))
-                       ::exception-thrown))))))
-
-  (testing (str "Check that we can connect to a non-existent Database when we enable potentailly unsafe connections "
-                "(e.g. to the Metabase database)")
-    (binding [mdb/*allow-potentailly-unsafe-connections* true]
-      (is (= true
-             (boolean (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/pigeon_sightings")})))))))
+                       ::exception-thrown)))))))
 
 (deftest db-timezone-id-test
   (mt/test-driver :h2
@@ -77,11 +70,17 @@
 
 (deftest add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
-    (is (= (hsql/call :dateadd (hx/literal "millisecond") (hsql/call :cast 100500.0 (hsql/raw "long")) :%now)
+    (is (= (hsql/call :dateadd
+             (hx/literal "millisecond")
+             (hx/with-database-type-info (hsql/call :cast 100500.0 (hsql/raw "long")) "long")
+             :%now)
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
-    (is (= (hsql/call :dateadd (hx/literal "second") (hsql/call :cast 100.0 (hsql/raw "long")) :%now)
+    (is (= (hsql/call :dateadd
+             (hx/literal "second")
+             (hx/with-database-type-info (hsql/call :cast 100.0 (hsql/raw "long")) "long")
+             :%now)
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
 (deftest clob-test
@@ -95,7 +94,7 @@
           (is (= [{:display_name "NAME"
                    :base_type    :type/Text
                    :source       :native
-                   :field_ref    [:field-literal "NAME" :type/Text]
+                   :field_ref    [:field "NAME" {:base-type :type/Text}]
                    :name         "NAME"}]
                  (mt/cols results))))))))
 
@@ -105,7 +104,7 @@
       (is (= [{:display_name "D"
                :base_type    :type/DateTime
                :source       :native
-               :field_ref    [:field-literal "D" :type/DateTime]
+               :field_ref    [:field "D" {:base-type :type/DateTime}]
                :name         "D"}]
              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
@@ -114,3 +113,37 @@
     (is (= [{:t #t "2020-05-28T18:06-07:00"}]
            (jdbc/query (db.spec/h2 {:db "mem:test_db"})
                        "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
+
+(deftest native-query-parameters-test
+  (testing "Native query parameters should work with filters."
+    (is (= [[693 "2015-12-29T00:00:00Z" 10 90]]
+           (mt/rows
+             (qp/process-query
+              {:database   (mt/id)
+               :type       :native
+               :native     {:query         "select * from checkins where {{date}} order by date desc limit 1;"
+                            :template-tags {"date" {:name         "date"
+                                                    :display-name "date"
+                                                    :type         :dimension
+                                                    :dimension    [:field (mt/id :checkins :date) nil]}}}
+               :parameters [{:type :date/all-options
+                             :target [:dimension [:template-tag "date"]]
+                             :value "past30years"}]}))))))
+
+(defn- pretty-sql [s]
+  (-> s
+      (str/replace #"\"" "")
+      (str/replace #"PUBLIC\." "")))
+
+(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+  (mt/test-driver :h2
+    (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!day.date]})]
+          (is (= (str "SELECT ATTEMPTS.DATE AS DATE, count(*) AS count "
+                      "FROM ATTEMPTS "
+                      "GROUP BY ATTEMPTS.DATE "
+                      "ORDER BY ATTEMPTS.DATE ASC")
+                 (some-> (qp/query->native query) :query pretty-sql))))))))

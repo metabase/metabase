@@ -4,12 +4,10 @@
             [clojure.tools.logging :as log]
             [environ.core :as env]
             [metabase.config :as config]
-            [metabase.plugins
-             [classloader :as classloader]
-             [initialize :as initialize]]
-            [metabase.util
-             [files :as files]
-             [i18n :refer [trs]]]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.plugins.initialize :as initialize]
+            [metabase.util.files :as files]
+            [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
   (:import [java.nio.file Files Path]))
 

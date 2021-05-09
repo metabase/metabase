@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -50,7 +51,7 @@ const Editor = connect(
 )
 @fitViewport
 export default class CollectionsPermissionsApp extends Component {
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.loadCollections();
   }
   render() {

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
@@ -15,7 +16,7 @@ class SegmentListApp extends React.Component {
     const { segments, tableSelector } = this.props;
 
     return (
-      <div className="px3">
+      <div className="px3 pb2">
         <div className="flex py2">
           {tableSelector}
           <Link to={`/admin/datamodel/segment/create`} className="ml-auto">
@@ -25,7 +26,7 @@ class SegmentListApp extends React.Component {
         <table className="AdminTable">
           <thead className="text-bold">
             <tr>
-              <th style={{ minWidth: "200px" }}>{t`Name`}</th>
+              <th style={{ minWidth: "320px" }}>{t`Name`}</th>
               <th className="full">{t`Definition`}</th>
               <th>{t`Actions`}</th>
             </tr>

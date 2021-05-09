@@ -6,15 +6,13 @@
    2.  Sync fields (`metabase.sync.sync-metadata.fields`)
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
    4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
-  (:require [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.sync.sync-metadata
-             [fields :as sync-fields]
-             [fks :as sync-fks]
-             [metabase-metadata :as metabase-metadata]
-             [sync-timezone :as sync-tz]
-             [tables :as sync-tables]]
+  (:require [metabase.sync.interface :as i]
+            [metabase.sync.sync-metadata.fields :as sync-fields]
+            [metabase.sync.sync-metadata.fks :as sync-fks]
+            [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+            [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
+            [metabase.sync.sync-metadata.tables :as sync-tables]
+            [metabase.sync.util :as sync-util]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 

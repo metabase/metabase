@@ -1,23 +1,20 @@
-import {
-  restore,
-  signInAsNormalUser,
-  openOrdersTable,
-  sidebar,
-} from "__support__/cypress";
+import { restore, openOrdersTable, sidebar } from "__support__/cypress";
 
 describe("scenarios > question > trendline", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
 
   it.skip("displays trendline when there are multiple numeric outputs (for simple question) (metabase#12781)", () => {
     // Create question: orders summarized with "Average of Subtotal" and "Sum of Total" by CreatedAt:Year
     openOrdersTable();
-    cy.get(".Icon-notebook").click();
+    cy.icon("notebook").click();
     cy.findByText("Summarize").click();
     cy.findByText("Average of ...").click();
     cy.findByText("Subtotal").click();
 
-    cy.get(".Icon-add")
+    cy.icon("add")
       .last()
       .click();
     cy.findByText("Sum of ...").click();
@@ -39,7 +36,7 @@ describe("scenarios > question > trendline", () => {
     // Change settings to trendline
     cy.findByText("Visualization").click();
     sidebar().within(() => {
-      cy.get(".Icon-line").click();
+      cy.icon("line").click();
     });
     cy.findByText("Display").click();
     cy.findByText("Trend line")
@@ -54,7 +51,7 @@ describe("scenarios > question > trendline", () => {
     // Remove sum of total
     cy.findByText("Data").click();
     sidebar().within(() => {
-      cy.get(".Icon-close")
+      cy.icon("close")
         .last()
         .click();
       cy.findByText("Done").click();

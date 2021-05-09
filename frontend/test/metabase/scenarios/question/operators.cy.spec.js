@@ -1,8 +1,10 @@
-import { restore, signInAsNormalUser, popover } from "__support__/cypress";
+import { restore, popover } from "__support__/cypress";
 
 describe("operators in questions", () => {
-  before(restore);
-  beforeEach(signInAsNormalUser);
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
 
   const expected = {
     text: {

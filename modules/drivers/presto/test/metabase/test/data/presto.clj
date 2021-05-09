@@ -2,19 +2,15 @@
   "Presto driver test extensions."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql
-             [core :as hsql]
-             [helpers :as h]]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [honeysql.core :as hsql]
+            [honeysql.helpers :as h]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.presto :as presto]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]]))
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]))
 
 (sql.tx/add-test-extensions! :presto)
 
@@ -95,7 +91,7 @@
 (defmethod tx/create-db! :presto
   [driver {:keys [table-definitions database-name] :as dbdef} & {:keys [skip-drop-db?]}]
   (let [details  (tx/dbdef->connection-details driver :db dbdef)
-        execute! (partial sql-jdbc.sync/execute-query-for-sync :presto details)]
+        execute! (partial #'presto/execute-query-for-sync details)]
     (doseq [tabledef table-definitions
             :let     [rows       (:rows tabledef)
                       ;; generate an ID for each row because we don't have auto increments
@@ -111,7 +107,7 @@
 (defmethod tx/destroy-db! :presto
   [driver {:keys [database-name table-definitions], :as dbdef}]
   (let [details  (tx/dbdef->connection-details driver :db dbdef)
-        execute! (partial sql-jdbc.sync/execute-query-for-sync :presto details)]
+        execute! (partial #'presto/execute-query-for-sync details)]
     (doseq [{:keys [table-name], :as tabledef} table-definitions]
       (println (format "[Presto] destroying %s.%s" (pr-str database-name) (pr-str table-name)))
       (execute! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef))

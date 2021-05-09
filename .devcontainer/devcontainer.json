@@ -1,0 +1,17 @@
+// https://aka.ms/vscode-remote/devcontainer.json
+{
+	"name": "Node.js",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+
+	// Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+	],
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [3000],
+
+	// Comment out the next line to run as root instead.
+	"remoteUser": "vscode"
+}

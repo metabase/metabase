@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -63,7 +64,7 @@ export default ({
       }
     };
 
-    componentWillReceiveProps({ options, value }) {
+    UNSAFE_componentWillReceiveProps({ options, value }) {
       const filtered = value
         ? options.filter(optionFilter.bind(null, value))
         : [];
