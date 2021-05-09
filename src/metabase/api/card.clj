@@ -583,14 +583,7 @@
   `query-caching-ttl-ratio`. If the TTL is less than a second, this returns `nil` (i.e., the cache should not be
   utilized.)"
   [query]
-  (when-let [average-duration (query/average-execution-time-ms (qputil/query-hash query))]
-    (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
-                                            1000.0)))]
-      (when-not (zero? ttl-seconds)
-        (log/info (trs "Question''s average execution duration is {0}; using ''magic'' TTL of {1}"
-                       (u/format-milliseconds average-duration) (u/format-seconds ttl-seconds))
-                  (u/emoji "💾"))
-        ttl-seconds))))
+  (public-settings/query-caching-ttl-ratio))
 
 (defn query-for-card
   "Generate a query for a saved Card"
