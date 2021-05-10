@@ -127,7 +127,7 @@ Now click on the huge plus sign next to **Add VNET** and select the VNET that yo
 
 Return to the application configuration page and click on **Settings** -> **Configuration** on the left side of the page. You should see a few Application Settings already configured.
 
-Here you will need to add the [Enviroment Variables]() for connecting Metabase to its [PostgreSQL Application Database](), but make sure that you use the **MB_DB_CONNECTION_URI** as PostgreSQL in Azure is configured by default with SSL so currently the only way of passing those parameters is by using the full URI.
+You'll need to add the [Environment Variables]() for connecting Metabase to its [PostgreSQL Application Database](https://www.metabase.com/docs/latest/operations-guide/configuring-application-database.html#postgres). Make sure that you use the full **MB_DB_CONNECTION_URI**.
 
 Also, take into account that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows: `postgresql://databasePrivateIPAddress:port/postgres?user=user@name_of_your_database_engine&password=configuredpassword&ssl=true&sslmode=required`.
 
