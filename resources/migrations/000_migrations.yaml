@@ -8283,7 +8283,7 @@ databaseChangeLog:
             - sql: ALTER SEQUENCE collection_revision_id_seq RENAME TO collection_permission_graph_revision_id_seq
 
   - changeSet:
-      id: 305
+      id: 304
       author: camsaul
       comment: Added 0.40.0 (replaces a data migration dating back to 0.20.0)
       changes:
@@ -8313,7 +8313,7 @@ databaseChangeLog:
                                         'zip_code');
 
   - changeSet:
-      id: 306
+      id: 305
       author: camsaul
       comment: Added 0.40.0 (replaces a data migration dating back to 0.20.0)
       changes:
