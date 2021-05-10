@@ -78,12 +78,12 @@ Click **Next** until you get to the final page, then click **Create**. It'll tak
 
 On the properties page for the Azure for PostgreSQL database, you can manage parameters for your database. You'll create the **Private Endpoint** to the database, so all traffic from the web application is routed internally through Azure's network.
 
-On the left bar, click on **Private endpoint connection** which is situated under **Security**
+On the left menu, click on **Private endpoint connection** which is situated under **Security**
 
 ![Azure Database for PostgreSQL](images/AZPostgreSQLMain.png)
 
-Now click on the button of the top with a plus sign that says **Private endpoint** and a new page opens:
-1) Provide a name for this link (any name that describes what you are trying to do is ok, like `metabase_link`). Select the region where the database lives, click Next.
+Now click on the button of the top bar with a plus sign that says **Private endpoint**. In the page that opens:
+1) Provide a name for this link (any name that describes what you are trying to do is fine, like `metabase_link`). Select the region where the database lives, click **Next**.
 2) On the **Resource** section of the configuration, ensure that **Resource type** is set to `Microsoft.DBforPostgreSQL/servers` which will enable you to select in the dropdown below the server created in the previous step, and leave **Target sub-resource** with the default value
 3) On the **Configuration** section, the only value that needs to be changed is the **Subnet** one, where you need to select the **private** subnet that you created on the first step of this guide, and leave everything else as it is.
 
@@ -91,8 +91,8 @@ Now click on the button of the top with a plus sign that says **Private endpoint
 
 Now go to the last step and click **Create**. Once the endpoint is created, you will need do two things before proceeding:
 
-1) Go to the database Connection Security item and **deny all public network access**.
-2) Go to the VNET component. In the **Connected devices** settings, you should see a device connected to the network. Take note of the IP address, as you'll need it in Step 5.
+1) In the page of database server you just created go to the database **Connection Security** item and **deny all public network access**.
+2) In the page of the VNET you created in the previous step, go to **Connected devices** setting and you should see a device connected to the network. Take note of the IP address, as you'll need it in Step 5 (this is the IP address that the network has given to the database server).
 
 ## Step 5: Create web application (deploy Metabase)
 
@@ -139,7 +139,9 @@ For example, if your values are:
 4) **username of the database**: metabase
 5) **password**: Password1!
 
-then my connection string will be: `postgresql://10.0.2.4:5432/postgres?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require`
+then your connection string would be: 
+
+`postgresql://10.0.2.4:5432/postgres?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require`
 
 Click **Save** and the instance will restart. 
 
@@ -150,23 +152,26 @@ Once it finishes, you should be able to visit your Metabase at the URL shown in 
 
 Enabling health checking in Metabase is a good practice.  Go to your **web app** -> **Monitoring** -> **Health Check** -> **Enable health check**, and include in the path `/api/health`.
 
-### How to update
+### How to upgrade
 
-Simply go to your web app and in Settings -> Container Settings (Classic) and there change the image version of Metabase.
-In the same way you do an upgrade, you can change the Metabase version to Enterprise by switching to v1 instead of v0 in the prefix of the docker image.
+Go to the Metabase web app you created and click in **Settings** -> **Container Settings**.
 
-**Important**: always ensure you have a backup of your Database before doing a version upgrade, *specially*, when upgrading between major versions.
+On the textbox where the Metabase Docker container is, simply change the version of the container based on the available versions in [Dockerhub](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated)
+
+**Important**: always ensure you have a backup of your Database before doing a version upgrade, *specially*, when upgrading between major versions. Also remember that Metabase does not officialy support downgrading versions.
 
 ### How to see the logs
 
-If you want to see the logs of your deployment, you need to go to the web app that you created and you will be able to see the streaming logs in Monitoring -> Log stream.
+Visit your web app in Azure, and navigate to **Monitoring -> Log stream**.
+
+You should be able to see the logs as well inside Metabase by going to Settings -> Admin -> Troubleshooting -> Logs.
 
 ### Performance tuning
 
 - Disable FTP State
 - Change HTTP version to 2.0
 - Enable WebSockets
-- ARR Affinity enabled in case you scale out
+- ARR Affinity enabled
 
 ### Custom domains
 

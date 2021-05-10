@@ -18,7 +18,7 @@ Go to the Azure Active Directory (AD) where your users live and click on **Enter
 
 ![AZEnterpriseApp](images/saml-azure-ad-enterprise-app.png)
 
-In the new page click on **+ Create your own application** and a bar will open in the right side of the page. Enter "Metabase" as the name of the application and select `Integrate any other application you don't find in the gallery (Non-gallery)` as the option and click the **Create** button on the bottom of the bar.
+In the new page click on **+ Create your own application** and a bar will open in the right side of the page. Enter "Metabase" as the name of the application, select `Integrate any other application you don't find in the gallery (Non-gallery)` as the option and click the **Create** button on the bottom of the bar.
 
 ![AZMetabaseApp](images/saml-azure-ad-create.png)
 
@@ -30,11 +30,9 @@ When the "Set up Single Sign-On with SAML" page appears, you'll see an option fo
 
 ![AZAzureStep1](images/saml-azure-step-1.png)
 
-Fill out the following fields as follows:
+Fill out the following fields as follows and click "Save":
 - **Identifier (Entity ID)**: `Metabase`
-- **Reply URL (Assertion Consumer Service URL)**: the value that your Metabase instance reports in the "Configure your identity provider (IdP)"  (it should ends in "/auth/sso").
-
-Click "Save"
+- **Reply URL (Assertion Consumer Service URL)**: go to your Metabase instance in Settings -> Admin-> Authentication -> SAML and insert the value that your Metabase instance reports in the "Configure your identity provider (IdP)" box.
 
 Now, open in a new tab the link that's in "App Federation Metadata Url" from step 3 and save the "Login URL" and "Azure AD Identifier" links from step 4 as you will need them both in the next step.
 
