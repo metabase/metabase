@@ -360,7 +360,10 @@ describe("collection permissions", () => {
                     cy.findByText("Failed").should("not.exist");
                   });
                   assertOnRequest("copyDashboard");
-                  cy.location("pathname").should("eq", "/dashboard/2");
+                  cy.location("pathname").should(
+                    "eq",
+                    "/dashboard/2-orders-in-a-dashboard-duplicate",
+                  );
                   cy.findByText(`Orders in a dashboard - Duplicate`);
                 });
 
