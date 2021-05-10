@@ -480,7 +480,7 @@ describe("collection permissions", () => {
                   cy.findByLabelText("Name").type("Foo");
                   cy.button("Create").click();
                 });
-                cy.url().should("match", /\/dashboard\/\d+$/);
+                cy.url().should("match", /\/dashboard\/\d+-foo$/);
                 saveDashboard();
                 cy.get(".DashboardHeader").findByText(personalCollection);
               });
