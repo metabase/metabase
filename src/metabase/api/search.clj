@@ -352,6 +352,15 @@
     (vec (map search-config/model-name->instance models))
     default))
 
+(defn- query-model-set [search-ctx]
+  "Queries all models with respect to query for one result, to see if we get a result or not"
+  (map #((first %) :model)
+       (filter not-empty
+               (for [model search-config/searchable-models]
+                 (let [search-query (search-query-for-model model search-ctx)
+                       query-with-limit (h/limit search-query 1)]
+                   (db/query query-with-limit))))))
+
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [search-ctx :- SearchContext]
@@ -378,24 +387,15 @@
       ;; We get to do this slicing and dicing with the result data because
       ;; the pagination of search is for UI improvement, not for performance.
       ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-      { :total      (count total-results)
-        :data       (cond->> total-results
-         (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-         (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
-       :limit       (:limit-int search-ctx)
-       :offset      (:offset-int search-ctx)
-       :table_db_id (:table-db-id search-ctx)
-       :models      (:models search-ctx) })))
-
-(defn- query-model-set [search-ctx]
-  "Queries all models with respect to query for one result, to see if we get a result or not"
-  {:models
-   (map #((first %) :model)
-   (filter not-empty
-           (for [model search-config/searchable-models]
-             (let [search-query (search-query-for-model model search-ctx)
-                   query-with-limit (h/limit search-query 1)]
-               (db/query query-with-limit)))))})
+      { :total             (count total-results)
+        :data              (cond->> total-results
+                             (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                             (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+        :available_models  (query-model-set search-ctx)
+        :limit             (:limit-int search-ctx)
+        :offset            (:offset-int search-ctx)
+        :table_db_id       (:table-db-id search-ctx)
+        :models            (:models search-ctx) })))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
