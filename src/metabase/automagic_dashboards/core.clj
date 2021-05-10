@@ -346,9 +346,11 @@
       form))
 
 (defn- field-isa?
-  [{:keys [base_type semantic_type]} t]
-  (or (isa? (keyword semantic_type) t)
-      (isa? (keyword base_type) t)))
+  [{base-type :base_type, semantic-type :semantic_type} a-type]
+  (condp = (namespace a-type)
+    "type"     (isa? (keyword base-type) a-type)
+    "Semantic" (isa? (keyword semantic-type) a-type)
+    "Relation" (isa? (keyword semantic-type) a-type)))
 
 (defn- key-col?
   "Workaround for our leaky type system which conflates types with properties."

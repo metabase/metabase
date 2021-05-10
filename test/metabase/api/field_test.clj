@@ -536,7 +536,7 @@
                   :human_readable_field_id false
                   :field_id                true}
                  (mt/boolean-ids-and-timestamps (dimension-for-field field-id)))))
-        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type "type/AvatarURL"})
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:semantic_type "Semantic/AvatarURL"})
         (testing "after API request"
           (is (= []
                  (dimension-for-field field-id))))))
