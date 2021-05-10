@@ -528,17 +528,22 @@ describe("collection permissions", () => {
         cy.signInAsAdmin();
       });
 
-      it.skip("shouldn't record history steps when there was no diff (metabase#1926)", () => {
+      it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
         cy.signInAsAdmin();
         cy.createDashboard("foo").then(({ body }) => {
           visitAndEditDashboard(body.id);
         });
+
         // Save the dashboard without any changes made to it (TODO: we should probably disable "Save" button in the first place)
         saveDashboard();
-        // Take a look at the generated history - there shouldn't be anything other than "First revision" (dashboard created)
-        cy.icon("ellipsis").click();
-        cy.findByText("Revision history").click();
-        cy.findAllByRole("button", { name: "Revert" }).should("not.exist");
+        cy.icon("pencil").click();
+        saveDashboard();
+
+        openRevisionHistory();
+
+        cy.findByText("First revision.");
+
+        cy.findAllByText("Revert").should("not.exist");
       });
 
       it.skip("dashboard should update properly on revert (metabase#6884)", () => {
@@ -705,4 +710,9 @@ function visitAndEditDashboard(id) {
 function saveDashboard() {
   clickButton("Save");
   cy.findByText("You're editing this dashboard.").should("not.exist");
+}
+
+function openRevisionHistory() {
+  cy.icon("ellipsis").click();
+  cy.findByText("Revision history").click();
 }
