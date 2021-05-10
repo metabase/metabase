@@ -352,8 +352,9 @@
     (vec (map search-config/model-name->instance models))
     default))
 
-(defn- query-model-set [search-ctx]
+(defn- query-model-set
   "Queries all models with respect to query for one result, to see if we get a result or not"
+  [search-ctx]
   (map #((first %) :model)
        (filter not-empty
                (for [model search-config/searchable-models]
