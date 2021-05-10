@@ -255,9 +255,6 @@
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
 
-#_(ns-unmap *ns* 'yyyymmddhhss-binary-times)
-(mt/set-test-drivers! #{:sqlite})
-
 (deftest yyyymmddhhmmss-binary-dates
   (mt/test-drivers #{:postgres :h2 :mysql :sqlite}
     (is (= (case driver/*driver*
