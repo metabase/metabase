@@ -29,7 +29,7 @@ describe("scenarios > visualizations > gauge chart", () => {
                 card_id: questionId,
                 row: 0,
                 col: 0,
-                sizeX: 6,
+                sizeX: 4,
                 sizeY: 4,
                 parameter_mappings: [],
               },
