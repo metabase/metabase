@@ -695,7 +695,7 @@ describe("scenarios > question > native", () => {
         cy.findByText("Rustic Paper Wallet");
         cy.icon("contract").click();
         cy.findByText("Showing 51 rows");
-        cy.get("RunButton").should("not.exist");
+        cy.get(".RunButton").should("not.exist");
       });
 
       it(`number filter should work with the feature flag turned ${testCase}`, () => {
