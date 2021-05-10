@@ -50,7 +50,7 @@ describe("mongodb > user > query", () => {
 
       cy.findByText("Not now").click();
 
-      cy.url().should("match", /\/question\/\d+$/);
+      cy.url().should("match", /\/question\/\d+-mongo-count$/);
     });
 
     it.skip("should correctly apply distinct count on multiple columns (metabase#13097)", () => {
