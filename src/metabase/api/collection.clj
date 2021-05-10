@@ -146,25 +146,31 @@
     :pulse      Pulse
     :snippet    NativeQuerySnippet))
 
+(defn- favorite-state->pred [favorite-state]
+  (case "all" #(true)
+    "is_favorite" #(some shit)
+    "is_not_favorite" #(some shit)
+    #(true)))
+
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [model collections-only?], :as options}    :- CollectionChildrenOptions]
-  (let [item-groups      (into {}
-                               (for [model-kw [:collection :card :dashboard :pulse :snippet]
-                                     ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-                                     :when    (or (not model) (= model model-kw))
-                                     :let     [toucan-model       (model-name->toucan-model model-kw)
-                                               allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                                     :when    (or (= model-kw :collection)
-                                                  (contains? allowed-namespaces (keyword collection-namespace)))]
-                                 [model-kw
-                                  (fetch-collection-children model-kw collection
-                                                             (assoc options :collection-namespace collection-namespace))]))
-        last-edited      (last-edit/fetch-last-edited-info
-                           {:card-ids (->> item-groups :card (map :id))
-                            :dashboard-ids (->> item-groups :dashboard (map :id))})
-        favorites-pred (if (some shit?) #(some shit here) #(some shit here))]
+  [{collection-namespace :namespace, :as collection}                :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [model collections-only? favorite-state], :as options}    :- CollectionChildrenOptions]
+  (let [item-groups    (into {}
+                             (for [model-kw [:collection :card :dashboard :pulse :snippet]
+                                   ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+                                   :when    (or (not model) (= model model-kw))
+                                   :let     [toucan-model       (model-name->toucan-model model-kw)
+                                             allowed-namespaces (collection/allowed-namespaces toucan-model)]
+                                   :when    (or (= model-kw :collection)
+                                                (contains? allowed-namespaces (keyword collection-namespace)))]
+                               [model-kw
+                                (fetch-collection-children model-kw collection
+                                                           (assoc options :collection-namespace collection-namespace))]))
+        last-edited    (last-edit/fetch-last-edited-info
+                         {:card-ids (->> item-groups :card (map :id))
+                          :dashboard-ids (->> item-groups :dashboard (map :id))})
+        favorite-pred (favorite-state->pred favorite-state)]
     (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
              (into []
                    ;; items are grouped by model, needed for last-edit lookup. put model on each one, cat them, then
@@ -176,7 +182,7 @@
                                 (if-let [edit-info (get-in last-edited [model id])]
                                   (assoc item :last-edit-info edit-info)
                                   item))))
-                   (filter favorites-pred item-groups)))))
+                   (filter favorite-pred item-groups)))))
 
 (s/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -194,16 +200,23 @@
   "Fetch a specific Collection's items with the following options:
 
   *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
-  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`."
-  [id model archived limit offset]
-  {model    (s/maybe (apply s/enum valid-model-param-values))
-   archived (s/maybe su/BooleanString)
-   limit    (s/maybe su/IntStringGreaterThanZero)
-   offset   (s/maybe su/IntStringGreaterThanOrEqualToZero)}
+  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
+  *  `favorite_state` - when `is_favorite`, return favorited objects only.
+                   when `is_not_favorite`, return non favorited objects only.
+                   when `all`, return everything.
+  *  `limit` - limit for pagination.
+  *  `offset` - offset for pagination."
+  [id model archived favorite_state limit offset]
+  {model          (s/maybe (apply s/enum valid-model-param-values))
+   archived       (s/maybe su/BooleanString)
+   favorite_state (s/maybe s/Str)
+   limit          (s/maybe su/IntStringGreaterThanZero)
+   offset         (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (api/check-valid-page-params limit offset)
   (let [children-res  (collection-children (api/read-check Collection id)
-                                           {:model     (keyword model)
-                                            :archived? (Boolean/parseBoolean archived)})
+                                           {:model          (keyword model)
+                                            :archived?      (Boolean/parseBoolean archived)
+                                            :favorite-state favorite_state})
         limit-int     (some-> limit Integer/parseInt)
         offset-int    (some-> offset Integer/parseInt) ]
     {:data   (cond->> (vec children-res)
