@@ -27,7 +27,7 @@
                                                         :fallback-type :type/*}
                                                        {:column        :semantic_type
                                                         :unknown-type  :type/Amazing
-                                                        :fallback-type :type/*}
+                                                        :fallback-type nil}
                                                        {:column        :coercion_strategy
                                                         :unknown-type  :Coercion/Amazing
                                                         :fallback-type nil}]]

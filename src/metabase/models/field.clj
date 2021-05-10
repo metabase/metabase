@@ -95,7 +95,7 @@
 
 (models/add-type! ::semantic-type
   :in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:type/*])
-  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:type/*], :fallback-type :type/*))
+  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:type/*], :fallback-type nil))
 
 (models/add-type! ::coercion-strategy
   :in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
