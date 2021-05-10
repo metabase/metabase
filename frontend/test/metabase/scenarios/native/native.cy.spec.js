@@ -648,9 +648,11 @@ describe("scenarios > question > native", () => {
   it.skip("should be able to add new columns after hiding some (metabase#15393)", () => {
     cy.visit("/");
     cy.icon("sql").click();
-    cy.get(".ace_content").type("select 1 as visible, 2 as hidden");
-    cy.get(".NativeQueryEditor .Icon-play")
+    cy.get(".ace_content")
       .as("editor")
+      .type("select 1 as visible, 2 as hidden");
+    cy.get(".NativeQueryEditor .Icon-play")
+      .as("runQuery")
       .click();
     cy.findByText("Settings").click();
     cy.findByTestId("sidebar-left")
@@ -659,9 +661,7 @@ describe("scenarios > question > native", () => {
       .siblings(".Icon-close")
       .click();
     cy.get("@editor").type("{movetoend}, 3 as added");
-    cy.get(".NativeQueryEditor .Icon-play")
-      .as("editor")
-      .click();
+    cy.get("@runQuery").click();
     cy.get("@sidebar").contains(/added/i);
   });
 });
