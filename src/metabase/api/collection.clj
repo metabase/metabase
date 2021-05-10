@@ -79,10 +79,16 @@
   "Valid values for the `?model=` param accepted by endpoints in this namespace."
   #{"card" "collection" "dashboard" "pulse" "snippet"})
 
+(def ^:private valid-favorite-state-values
+  "Valid values for the `?favorite_state=` param accepted by endpoints in this namespace."
+  #{"all" "is_favorite" "is_not_favorite"})
+
+
 (def ^:private CollectionChildrenOptions
-  {:archived? s/Bool
+  {:archived?      s/Bool
+   :favorite-state (s/maybe (apply s/enum (map keyword valid-favorite-state-values)))
    ;; when specified, only return results of this type.
-   :model     (s/maybe (apply s/enum (map keyword valid-model-param-values)))})
+   :model          (s/maybe (apply s/enum (map keyword valid-model-param-values)))})
 
 (defmulti ^:private fetch-collection-children
   "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -147,30 +153,32 @@
     :snippet    NativeQuerySnippet))
 
 (defn- favorite-state->pred [favorite-state]
-  (case "all" #(true)
-    "is_favorite" #(some shit)
-    "is_not_favorite" #(some shit)
-    #(true)))
+  (case favorite-state
+    :all (constantly true)
+    :is_favorite #(= (% :favorite) true)
+    :is_not_favorite #(= (% :favorite) false)
+    (constantly true)))
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection}                :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [model collections-only? favorite-state], :as options}    :- CollectionChildrenOptions]
-  (let [item-groups    (into {}
-                             (for [model-kw [:collection :card :dashboard :pulse :snippet]
-                                   ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-                                   :when    (or (not model) (= model model-kw))
-                                   :let     [toucan-model       (model-name->toucan-model model-kw)
-                                             allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                                   :when    (or (= model-kw :collection)
-                                                (contains? allowed-namespaces (keyword collection-namespace)))]
-                               [model-kw
-                                (fetch-collection-children model-kw collection
-                                                           (assoc options :collection-namespace collection-namespace))]))
-        last-edited    (last-edit/fetch-last-edited-info
-                         {:card-ids (->> item-groups :card (map :id))
-                          :dashboard-ids (->> item-groups :dashboard (map :id))})
-        favorite-pred (favorite-state->pred favorite-state)]
+  (let [favorite-pred (favorite-state->pred favorite-state)
+        item-groups   (into {}
+                            (for [model-kw [:collection :card :dashboard :pulse :snippet]
+                                  ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+                                  :when    (or (not model) (= model model-kw))
+                                  :let     [toucan-model       (model-name->toucan-model model-kw)
+                                            allowed-namespaces (collection/allowed-namespaces toucan-model)]
+                                  :when    (or (= model-kw :collection)
+                                               (contains? allowed-namespaces (keyword collection-namespace)))]
+                              [model-kw
+                               (filter favorite-pred (fetch-collection-children model-kw collection
+                                                          (assoc options :collection-namespace collection-namespace)))]))
+        last-edited   (last-edit/fetch-last-edited-info
+                        {:card-ids (->> item-groups :card (map :id))
+                         :dashboard-ids (->> item-groups :dashboard (map :id))})
+        ]
     (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
              (into []
                    ;; items are grouped by model, needed for last-edit lookup. put model on each one, cat them, then
@@ -182,7 +190,7 @@
                                 (if-let [edit-info (get-in last-edited [model id])]
                                   (assoc item :last-edit-info edit-info)
                                   item))))
-                   (filter favorite-pred item-groups)))))
+                   item-groups))))
 
 (s/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -209,14 +217,14 @@
   [id model archived favorite_state limit offset]
   {model          (s/maybe (apply s/enum valid-model-param-values))
    archived       (s/maybe su/BooleanString)
-   favorite_state (s/maybe s/Str)
+   favorite_state (s/maybe (apply s/enum valid-favorite-state-values))
    limit          (s/maybe su/IntStringGreaterThanZero)
    offset         (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (api/check-valid-page-params limit offset)
   (let [children-res  (collection-children (api/read-check Collection id)
                                            {:model          (keyword model)
                                             :archived?      (Boolean/parseBoolean archived)
-                                            :favorite-state favorite_state})
+                                            :favorite-state (keyword favorite_state)})
         limit-int     (some-> limit Integer/parseInt)
         offset-int    (some-> offset Integer/parseInt) ]
     {:data   (cond->> (vec children-res)
@@ -253,12 +261,13 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [model archived namespace limit offset]
-  {model     (s/maybe (apply s/enum valid-model-param-values))
-   archived  (s/maybe su/BooleanString)
-   namespace (s/maybe su/NonBlankString)
-   limit     (s/maybe su/IntStringGreaterThanZero)
-   offset    (s/maybe su/IntStringGreaterThanOrEqualToZero)}
+  [model archived namespace favorite_state limit offset]
+  {model          (s/maybe (apply s/enum valid-model-param-values))
+   archived       (s/maybe su/BooleanString)
+   namespace      (s/maybe su/NonBlankString)
+   favorite_state (s/maybe (apply s/enum valid-favorite-state-values))
+   limit          (s/maybe su/IntStringGreaterThanZero)
+   offset         (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (api/check-valid-page-params limit offset)
@@ -270,7 +279,8 @@
                           {:model     (if (mi/can-read? root-collection)
                                         (keyword model)
                                         :collection)
-                           :archived? (Boolean/parseBoolean archived)}) ]
+                           :archived? (Boolean/parseBoolean archived)
+                           :favorite-state (keyword favorite_state)})]
     {:data  (cond->> (vec col-children)
               (some? offset-int) (drop offset-int)
               (some? limit-int)  (take limit-int))
