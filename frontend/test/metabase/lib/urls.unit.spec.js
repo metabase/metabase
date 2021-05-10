@@ -71,6 +71,10 @@ describe("urls", () => {
       expect(collection({ id: "users" })).toBe("/collection/users");
     });
 
+    it("should treat `null` ID as a root collection", () => {
+      expect(collection({ id: null })).toBe("/collection/root");
+    });
+
     it("returns correct url", () => {
       expect(collection({ id: 1, slug: "first_collection" })).toBe(
         "/collection/1-first-collection",
