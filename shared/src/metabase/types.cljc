@@ -7,7 +7,7 @@
 
   There are a few different keyword hierarchies below:
 
-  ### Data (Base/Effective) Types -- types starting with `:type/`
+  ### Data (Base/Effective) Types -- keys starting with `:type/` and deriving from `:type/*`, but not `:Semantic/*` or `:Relation/*`
 
   The 'base type' represents the actual data type of the column in the data warehouse. The 'effective type' is the
   data type we treat this column as; it may be the same as base type or something different if the column has a
@@ -22,24 +22,26 @@
   `:type/Text`) as a `:type/DateTime` column (effective type). This depends of the database, but we might do something
   like using a `parse_timestamp()` function whenever we fetch this column.
 
-  ### :Semantic Types -- types starting with `:type/*` and deriving from `:Semantic/*`
+  ### Semantic Types -- types starting with `:type/*` and deriving from `:Semantic/*`
 
-  In the near future we plan to rename these types so they start with `:Semantic/`.
+  NOTE: In the near future we plan to rename the semantic types so they start with `:Semantic/` rather than `:type/`.
 
   These types represent the semantic meaning/interpretation/purpose of a column in the data warehouse, for example
-  `:type/UpdatedTimestamp`. This affects things like how we display this column or how we generate automagic
-  dashboards. How is this different from Base/Effective type? Suppose we have an `updated_at` `TIMESTAMP` column; its
+  `:type/UpdatedTimestamp`. This affects things like how we display this column or how we generate Automagic
+  Dashboards. How is this different from Base/Effective type? Suppose we have an `updated_at` `TIMESTAMP` column; its
   data type is `TIMESTAMP` and thus its base type would be `:type/DateTime`. There is no such thing as an
   `UPDATED_AT_TIMESTAMP` data type; the fact that this column is used to record update timestamps is purely a semantic
   one.
 
-  :Semantic types descend from Effective type(s) that are allowed to have this semantic type. For example,
+  :Semantic types descend from data type(s) that are allowed to have this semantic type. For example,
   `:type/UpdatedTimestamp` descends from `:type/DateTime`, which means a column with an effective type of
   `:type/DateTime` can have a semantic type of`:type/UpdatedTimestamp`; however a `:type/Boolean` cannot -- this
   would make no sense. (Unless maybe `false` meant `1970-01-01T00:00:00Z` and `true` meant `1970-01-01T00:00:01Z`, but
   I think we can agree that's dumb.)
 
-  ### Relation Type -- types starting with `:Relation/`
+  ### Relation Type -- types starting with `:type/*` and deriving from `:Relation/*`
+
+  NOTE: As with Semantic types, in the near future we'll change the relation types so they all start with `:Relation/`.
 
   Types that have to do with whether this column is a primary key or foreign key. These are currently stored in the
   `semantic_type` column, but we'll split them out into a separate `relation_type` column in the future.

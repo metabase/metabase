@@ -72,8 +72,8 @@
   (and (isa? base-type :type/Integer)
        (or
         (nil? semantic-type)
-        (isa? semantic-type :Semantic/Category)
-        (isa? semantic-type :Semantic/Enum))))
+        (isa? semantic-type :type/Category)
+        (isa? semantic-type :type/Enum))))
 
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that

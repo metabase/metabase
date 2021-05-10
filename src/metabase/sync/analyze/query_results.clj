@@ -31,7 +31,7 @@
    :display_name                   s/Str
    (s/optional-key :description)   (s/maybe su/NonBlankString)
    :base_type                      su/FieldTypeKeywordOrString
-   (s/optional-key :semantic_type) (s/maybe su/FieldTypeKeywordOrString)
+   (s/optional-key :semantic_type) (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
    (s/optional-key :unit)          (s/maybe DateTimeUnitKeywordOrString)
    (s/optional-key :fingerprint)   (s/maybe i/Fingerprint)
    (s/optional-key :id)            (s/maybe su/IntGreaterThanZero)
