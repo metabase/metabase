@@ -35,6 +35,11 @@ const SEARCH_FILTERS = [
     icon: "all",
   },
   {
+    name: t`Databases`,
+    filter: "database",
+    icon: "database",
+  },
+  {
     name: t`Tables`,
     filter: "table",
     icon: "table",
