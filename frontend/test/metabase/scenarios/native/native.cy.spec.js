@@ -670,7 +670,6 @@ describe("scenarios > question > native", () => {
 
     describe.skip("Feature flag causes problems with Text and Number filters in Native query (metabase#15981)", () => {
       beforeEach(() => {
-        cy.signInAsNormalUser();
         mockSessionProperty(
           "field-filter-operators-enabled?",
           isFeatureFlagTurnedOn,
