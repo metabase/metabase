@@ -61,7 +61,9 @@ export default class PeopleList extends Component {
     onNextPage: PropTypes.func,
     onPreviousPage: PropTypes.func,
     reload: PropTypes.func.isRequired,
-    total: PropTypes.number.isRequired,
+    metadata: PropTypes.shape({
+      total: PropTypes.number.isRequired,
+    }).isRequired,
   };
 
   componentDidMount() {
@@ -98,10 +100,11 @@ export default class PeopleList extends Component {
       users,
       groups,
       query,
-      total,
+      metadata,
       onNextPage,
       onPreviousPage,
     } = this.props;
+    const { total } = metadata;
 
     const { page, pageSize, status } = query;
 
