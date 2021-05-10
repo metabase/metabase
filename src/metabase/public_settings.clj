@@ -341,7 +341,7 @@
   "Current password complexity requirements"
   :visibility :public
   :setter     :none
-  :getter     (constantly password/active-password-complexity))
+  :getter     password/active-password-complexity)
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"

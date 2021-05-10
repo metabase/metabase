@@ -186,7 +186,7 @@
 (defn target
   "Return the FK target `Field` that this `Field` points to."
   [{:keys [semantic_type fk_target_field_id]}]
-  (when (and (isa? semantic_type :Relation/FK)
+  (when (and (isa? semantic_type :type/FK)
              fk_target_field_id)
     (Field fk_target_field_id)))
 
@@ -282,7 +282,7 @@
   {:batched-hydrate :target}
   [fields]
   (let [target-field-ids (set (for [field fields
-                                    :when (and (isa? (:semantic_type field) :Relation/FK)
+                                    :when (and (isa? (:semantic_type field) :type/FK)
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (u/key-by :id (when (seq target-field-ids)

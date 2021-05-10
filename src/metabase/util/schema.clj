@@ -278,10 +278,10 @@
   (with-api-error-message (s/constrained s/Str u/email? (deferred-tru "Valid email address"))
     (deferred-tru "value must be a valid email address.")))
 
-(def ComplexPassword
-  "Schema for a valid password of sufficient complexity."
-  (with-api-error-message (s/constrained s/Str password/is-complex?)
-    (deferred-tru "Insufficient password strength")))
+(def ValidPassword
+  "Schema for a valid password of sufficient complexity which is not found on a common password list."
+  (with-api-error-message (s/constrained s/Str password/is-valid?)
+    (deferred-tru "Password is insufficiently complex, or is too common")))
 
 (def IntString
   "Schema for a string that can be parsed as an integer.
