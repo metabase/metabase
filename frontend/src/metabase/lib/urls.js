@@ -123,15 +123,14 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   return question(null, query);
 }
 
-export function collection(collection = {}) {
-  const id = collection.id || "root";
-  if (typeof id !== "number") {
-    return `/collection/${id}`;
+export function collection(collection) {
+  if (!collection || typeof collection.id !== "number") {
+    return `/collection/root`;
   }
   const slug = collection.slug
     ? collection.slug.split("_").join("-")
     : slugify(collection.name);
-  return `/collection/${id}-${slug}`;
+  return `/collection/${collection.id}-${slug}`;
 }
 
 export function label(label) {
