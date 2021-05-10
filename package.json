@@ -32,7 +32,7 @@
     "inflection": "^1.7.1",
     "isomorphic-fetch": "^2.2.1",
     "js-cookie": "^2.1.2",
-    "jsrsasign": "10.0.4",
+    "jsrsasign": "^10.2.0",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
