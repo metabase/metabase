@@ -88,22 +88,31 @@ export default function SearchApp({ location }) {
         </Flex>
       )}
       <Box>
-        <Flex align="top">
-          <Box w={2 / 3}>
-            <Search.ListLoader query={query} wrapped>
-              {({ list, total }) => {
-                if (list.length === 0) {
-                  return (
-                    <Card>
-                      <EmptyState
-                        title={t`Didn't find anything`}
-                        message={t`There weren't any results for your search.`}
-                        illustrationElement={<img src={NoResults} />}
-                      />
-                    </Card>
-                  );
-                }
-                return (
+        <Search.ListLoader query={query} wrapped>
+          {({ list, metadata }) => {
+            if (list.length === 0) {
+              return (
+                <Box w={2 / 3}>
+                  <Card>
+                    <EmptyState
+                      title={t`Didn't find anything`}
+                      message={t`There weren't any results for your search.`}
+                      illustrationElement={<img src={NoResults} />}
+                    />
+                  </Card>
+                </Box>
+              );
+            }
+
+            const availableModels = metadata.available_models || [];
+
+            const filters = SEARCH_FILTERS.filter(f =>
+              availableModels.includes(f.filter),
+            );
+
+            return (
+              <Flex align="top">
+                <Box w={2 / 3}>
                   <React.Fragment>
                     <SearchResultSection items={list} />
                     <div className="flex justify-end my2">
@@ -112,52 +121,55 @@ export default function SearchApp({ location }) {
                         pageSize={PAGE_SIZE}
                         page={page}
                         itemsLength={list.length}
-                        total={total}
+                        total={metadata.total}
                         onNextPage={handleNextPage}
                         onPreviousPage={handlePreviousPage}
                       />
                     </div>
                   </React.Fragment>
-                );
-              }}
-            </Search.ListLoader>
-          </Box>
-          <Box ml={[1, 2]} pt={2} px={2}>
-            <Link
-              className="flex align-center"
-              mb={3}
-              color={filter == null ? color("brand") : "inherit"}
-              onClick={() => handleFilterChange(null)}
-              to={{
-                pathname: location.pathname,
-                query: { ...location.query, type: undefined },
-              }}
-            >
-              <Icon name="search" mr={1} />
-              <h4>{t`All results`}</h4>
-            </Link>
-            {SEARCH_FILTERS.map(f => {
-              const isActive = filter === f.filter;
+                  );
+                </Box>
+                <Box ml={[1, 2]} pt={2} px={2}>
+                  {filters.length > 0 ? (
+                    <Link
+                      className="flex align-center"
+                      mb={3}
+                      color={filter == null ? color("brand") : "inherit"}
+                      onClick={() => handleFilterChange(null)}
+                      to={{
+                        pathname: location.pathname,
+                        query: { ...location.query, type: undefined },
+                      }}
+                    >
+                      <Icon name="search" mr={1} />
+                      <h4>{t`All results`}</h4>
+                    </Link>
+                  ) : null}
+                  {filters.map(f => {
+                    const isActive = filter === f.filter;
 
-              return (
-                <Link
-                  key={f.filter}
-                  className="flex align-center"
-                  mb={3}
-                  onClick={() => handleFilterChange(f)}
-                  color={color(isActive ? "brand" : "text-medium")}
-                  to={{
-                    pathname: location.pathname,
-                    query: { ...location.query, type: f.filter },
-                  }}
-                >
-                  <Icon mr={1} name={f.icon} />
-                  <h4>{f.name}</h4>
-                </Link>
-              );
-            })}
-          </Box>
-        </Flex>
+                    return (
+                      <Link
+                        key={f.filter}
+                        className="flex align-center"
+                        mb={3}
+                        onClick={() => handleFilterChange(f)}
+                        color={color(isActive ? "brand" : "text-medium")}
+                        to={{
+                          pathname: location.pathname,
+                          query: { ...location.query, type: f.filter },
+                        }}
+                      >
+                        <Icon mr={1} name={f.icon} />
+                        <h4>{f.name}</h4>
+                      </Link>
+                    );
+                  })}
+                </Box>
+              </Flex>
+            );
+          }}
+        </Search.ListLoader>
       </Box>
     </Box>
   );

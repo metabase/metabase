@@ -79,12 +79,12 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   const loaded = entityDef.selectors.getLoaded(state, { entityQuery });
   const fetched = entityDef.selectors.getFetched(state, { entityQuery });
   const error = entityDef.selectors.getError(state, { entityQuery });
-  const total = entityDef.selectors.getListTotal(state, { entityQuery });
+  const metadata = entityDef.selectors.getListMetadata(state, { entityQuery });
 
   return {
     entityQuery,
     list: entityDef.selectors[selectorName](state, { entityQuery }),
-    total,
+    metadata,
     loading,
     loaded,
     fetched,
