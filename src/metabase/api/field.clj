@@ -22,16 +22,6 @@
 
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
-(def ^:private FieldType
-  "Schema for a valid `Field` type."
-  (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :type/*))
-    "value must be a valid field type."))
-
-(def ^:private CoercionType
-  "Schema for a valid `Coercion` type."
-  (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :Coercion/*))
-    "value must be a valid coercion type."))
-
 (def ^:private FieldVisibilityType
   "Schema for a valid `Field` visibility type."
   (apply s/enum (map name field/visibility-types)))
@@ -74,16 +64,16 @@
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
-       (isa? old-semantic-type :type/FK)
+       (isa? old-semantic-type :Relation/FK)
        (or (nil? new-semantic-type)
-           (not (isa? new-semantic-type :type/FK)))))
+           (not (isa? new-semantic-type :Relation/FK)))))
 
 (defn- internal-remapping-allowed? [base-type semantic-type]
   (and (isa? base-type :type/Integer)
        (or
         (nil? semantic-type)
-        (isa? semantic-type :type/Category)
-        (isa? semantic-type :type/Enum))))
+        (isa? semantic-type :Semantic/Category)
+        (isa? semantic-type :Semantic/Enum))))
 
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that
@@ -105,8 +95,8 @@
    display_name       (s/maybe su/NonBlankString)
    fk_target_field_id (s/maybe su/IntGreaterThanZero)
    points_of_interest (s/maybe su/NonBlankString)
-   semantic_type      (s/maybe FieldType)
-   coercion_strategy  (s/maybe CoercionType)
+   semantic_type      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
+   coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrString)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)}
@@ -300,7 +290,7 @@
   This is used below to seamlessly handle either PK or FK Fields without having to think about which is which in the
   `search-values` and `remapped-value` functions."
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
-  (if (and (isa? semantic-type :type/FK)
+  (if (and (isa? semantic-type :Relation/FK)
            fk-target-field-id)
     (db/select-one Field :id fk-target-field-id)
     field))

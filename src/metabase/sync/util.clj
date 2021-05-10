@@ -45,9 +45,9 @@
 (defonce ^:private operation->db-ids (atom {}))
 
 (defn with-duplicate-ops-prevented
-  "Run F in a way that will prevent it from simultaneously being ran more for a single database more than once for a
-  given OPERATION. This prevents duplicate sync-like operations from taking place for a given DB, e.g. if a user hits
-  the `Sync` button in the admin panel multiple times.
+  "Run `f` in a way that will prevent it from simultaneously being ran more for a single database more than once for a
+  given `operation`. This prevents duplicate sync-like operations from taking place for a given DB, e.g. if a user
+  hits the `Sync` button in the admin panel multiple times.
 
     ;; Only one `sync-db!` for `database-id` will be allowed at any given moment; duplicates will be ignored
     (with-duplicate-ops-prevented :sync database-id
@@ -141,17 +141,24 @@
   [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException
    com.mchange.v2.resourcepool.CannotAcquireResourceException])
 
+(def ^:dynamic *log-execptions-and-continue?*
+  "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default
+  behavior. You can disable this for debugging or test purposes."
+  true)
+
 (defn do-with-error-handling
   "Internal implementation of `with-error-handling`; use that instead of calling this directly."
   ([f]
    (do-with-error-handling "Error running sync step" f))
 
   ([message f]
-   (try
-     (f)
-     (catch Throwable t
-       (log/warn t message)
-       t))))
+   (if *log-execptions-and-continue?*
+     (try
+       (f)
+       (catch Throwable e
+         (log/warn e message)
+         e))
+     (f))))
 
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
@@ -348,10 +355,12 @@
                                                              step-name
                                                              (name-for-logging database))
                      (fn [& args]
-                       (try
-                         (apply sync-fn database args)
-                         (catch Throwable t
-                           {:throwable t}))))
+                       (if *log-execptions-and-continue?*
+                         (try
+                           (apply sync-fn database args)
+                           (catch Throwable e
+                             {:throwable e}))
+                         (apply sync-fn database args))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                  :start-time start-time
