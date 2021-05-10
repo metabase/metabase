@@ -132,7 +132,6 @@ export default function SearchApp({ location }) {
                       />
                     </div>
                   </React.Fragment>
-                  );
                 </Box>
                 <Box ml={[1, 2]} pt={2} px={2}>
                   {filters.length > 0 ? (
