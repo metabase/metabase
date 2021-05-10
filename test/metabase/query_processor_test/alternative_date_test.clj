@@ -245,10 +245,9 @@
               :effective-type :type/Text
               :base-type :type/Text}
              {:field-name "as_bytes"
-              :base-type {:native {:postgres "BYTEA"
-                                   :h2 "BYTEA"
-                                   :mysql "VARBINARY(100)"
-                                   :sqlite "BLOB"}}
+              :base-type {:natives {:postgres "BYTEA"
+                                    :h2       "BYTEA"
+                                    :mysql    "VARBINARY(100)"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
@@ -256,7 +255,7 @@
      ["baz" (.getBytes "20210421164300")]]]])
 
 (deftest yyyymmddhhmmss-binary-dates
-  (mt/test-drivers #{:postgres :h2 :mysql :sqlite}
+  (mt/test-drivers #{:postgres :h2 :mysql}
     (is (= (case driver/*driver*
              :postgres
              [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]

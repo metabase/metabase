@@ -37,7 +37,7 @@
 
 (def ^:private FieldDefinitionSchema
   {:field-name                         su/NonBlankString
-   :base-type                          (s/cond-pre {:native {s/Keyword su/NonBlankString}}
+   :base-type                          (s/cond-pre {:natives {s/Keyword su/NonBlankString}}
                                                    {:native su/NonBlankString}
                                                    su/FieldType)
    (s/optional-key :semantic-type)     (s/maybe su/FieldType)

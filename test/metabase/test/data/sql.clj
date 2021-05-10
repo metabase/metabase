@@ -209,11 +209,11 @@
                (str (format "%s %s"
                             (quot field-name)
                             (or (cond
-                                  (and (map? base-type) (string? (:native base-type)))
+                                  (and (map? base-type) (contains? base-type :native))
                                   (:native base-type)
 
-                                  (and (map? base-type) (map? (:native base-type)))
-                                  (get-in base-type [:native driver])
+                                  (and (map? base-type) (contains? base-type :natives))
+                                  (get-in base-type [:natives driver])
 
                                   base-type
                                   (field-base-type->sql-type driver base-type))
