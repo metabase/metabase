@@ -150,18 +150,21 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [model collections-only?], :as options}    :- CollectionChildrenOptions]
-  (let [item-groups (into {}
-                          (for [model-kw [:collection :card :dashboard :pulse :snippet]
-                                ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-                                :when    (or (not model) (= model model-kw))
-                                :let     [toucan-model       (model-name->toucan-model model-kw)
-                                          allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                                :when    (or (= model-kw :collection)
-                                             (contains? allowed-namespaces (keyword collection-namespace)))]
-                            [model-kw (fetch-collection-children model-kw collection (assoc options :collection-namespace collection-namespace))]))
-        last-edited (last-edit/fetch-last-edited-info
-                     {:card-ids (->> item-groups :card (map :id))
-                      :dashboard-ids (->> item-groups :dashboard (map :id))})]
+  (let [item-groups      (into {}
+                               (for [model-kw [:collection :card :dashboard :pulse :snippet]
+                                     ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+                                     :when    (or (not model) (= model model-kw))
+                                     :let     [toucan-model       (model-name->toucan-model model-kw)
+                                               allowed-namespaces (collection/allowed-namespaces toucan-model)]
+                                     :when    (or (= model-kw :collection)
+                                                  (contains? allowed-namespaces (keyword collection-namespace)))]
+                                 [model-kw
+                                  (fetch-collection-children model-kw collection
+                                                             (assoc options :collection-namespace collection-namespace))]))
+        last-edited      (last-edit/fetch-last-edited-info
+                           {:card-ids (->> item-groups :card (map :id))
+                            :dashboard-ids (->> item-groups :dashboard (map :id))})
+        favorites-pred (if (some shit?) #(some shit here) #(some shit here))]
     (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
              (into []
                    ;; items are grouped by model, needed for last-edit lookup. put model on each one, cat them, then
@@ -173,7 +176,7 @@
                                 (if-let [edit-info (get-in last-edited [model id])]
                                   (assoc item :last-edit-info edit-info)
                                   item))))
-                   item-groups))))
+                   (filter favorites-pred item-groups)))))
 
 (s/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
