@@ -8342,7 +8342,7 @@ databaseChangeLog:
                                   'TextField', 'TimeField', 'UUIDField', 'UnknownField');
 
   - changeSet:
-      id: 307
+      id: 306
       author: camsaul
       comment: Added 0.40.0 -- Move semantic types into their own hierarchy
       changes:
@@ -8413,7 +8413,7 @@ databaseChangeLog:
               WHERE semantic_type IS NOT NULL;
 
   - changeSet:
-      id: 308
+      id: 307
       author: camsaul
       comment: Added 0.40.0 -- Move semantic types into their own hierarchy
       changes:
