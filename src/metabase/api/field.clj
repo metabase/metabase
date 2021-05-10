@@ -64,9 +64,9 @@
 
 (defn- removed-fk-semantic-type? [old-semantic-type new-semantic-type]
   (and (not= old-semantic-type new-semantic-type)
-       (isa? old-semantic-type :Relation/FK)
+       (isa? old-semantic-type :type/FK)
        (or (nil? new-semantic-type)
-           (not (isa? new-semantic-type :Relation/FK)))))
+           (not (isa? new-semantic-type :type/FK)))))
 
 (defn- internal-remapping-allowed? [base-type semantic-type]
   (and (isa? base-type :type/Integer)
@@ -290,7 +290,7 @@
   This is used below to seamlessly handle either PK or FK Fields without having to think about which is which in the
   `search-values` and `remapped-value` functions."
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
-  (if (and (isa? semantic-type :Relation/FK)
+  (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
     (db/select-one Field :id fk-target-field-id)
     field))

@@ -43,7 +43,7 @@
   [field-metadata :- (s/maybe i/TableMetadataField)]
   (and field-metadata
        (or (:semantic-type field-metadata)
-           (when (:pk? field-metadata) :Relation/PK))))
+           (when (:pk? field-metadata) :type/PK))))
 
 (s/defn matching-field-metadata :- (s/maybe TableMetadataFieldWithOptionalID)
   "Find Metadata that matches `field-metadata` from a set of `other-metadata`, if any exists. Useful for finding the
