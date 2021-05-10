@@ -3,7 +3,7 @@ import { infer } from "metabase/lib/expressions/typeinferencer";
 
 describe("metabase/lib/expressions/typeinferencer", () => {
   function resolve(kind, name) {
-    return [kind, name];
+    return ["field", name];
   }
   function compileAs(source, startRule) {
     let mbql = null;
@@ -22,8 +22,21 @@ describe("metabase/lib/expressions/typeinferencer", () => {
     return mbql;
   }
 
+  function mockEnv(fieldRef) {
+    switch (fieldRef[1]) {
+      case "Price":
+        return "number";
+      case "FirstName":
+        return "string";
+      case "BirthDate":
+        return "type/Temporal";
+      case "Location":
+        return "type/Coordinate";
+    }
+  }
+
   function type(expression) {
-    return infer(tryCompile(expression));
+    return infer(tryCompile(expression), mockEnv);
   }
 
   it("should infer the type of primitives", () => {
@@ -70,6 +83,13 @@ describe("metabase/lib/expressions/typeinferencer", () => {
     expect(type("SUBSTRING([Product], 0, 3)")).toEqual("string");
     expect(type("Length([Category])")).toEqual("number");
     expect(type("Length([Category]) > 0")).toEqual("boolean");
+  });
+
+  it("should relay the field type", () => {
+    expect(type("[Price]")).toEqual("number");
+    expect(type("([FirstName])")).toEqual("string");
+    expect(type("[BirthDate]")).toEqual("type/Temporal");
+    expect(type("[Location]")).toEqual("type/Coordinate");
   });
 
   it.skip("should infer the result of CASE", () => {

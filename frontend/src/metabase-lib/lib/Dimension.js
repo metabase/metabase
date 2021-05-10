@@ -1010,21 +1010,32 @@ export class ExpressionDimension extends Dimension {
     if (query) {
       const datasetQuery = query.query();
       const expressions = datasetQuery ? datasetQuery.expressions : {};
-      type = infer(expressions[this.name()]);
+      const env = mbql => {
+        const dimension = Dimension.parseMBQL(
+          mbql,
+          this._metadata,
+          this._query,
+        );
+        return dimension.field().base_type;
+      };
+      type = infer(expressions[this.name()], env);
     } else {
       type = infer(this._args[0]);
     }
 
-    let base_type = "type/Float"; // fallback
-    switch (type) {
-      case MONOTYPE.String:
-        base_type = "type/Text";
-        break;
-      case MONOTYPE.Boolean:
-        base_type = "type/Boolean";
-        break;
-      default:
-        break;
+    let base_type = type;
+    if (!type.startsWith("type/")) {
+      base_type = "type/Float"; // fallback
+      switch (type) {
+        case MONOTYPE.String:
+          base_type = "type/Text";
+          break;
+        case MONOTYPE.Boolean:
+          base_type = "type/Boolean";
+          break;
+        default:
+          break;
+      }
     }
 
     return new Field({
