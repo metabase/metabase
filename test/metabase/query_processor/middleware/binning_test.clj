@@ -141,7 +141,7 @@
                   :type     :query
                   :database (mt/id)}))))))))
 
-(deftest bining-nested-questions-test
+(deftest binning-nested-questions-test
   (mt/with-temp Card [{card-id :id} {:dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (mt/id :venues)}}}]

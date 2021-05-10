@@ -1135,8 +1135,7 @@
   [root [_ field-reference value]]
   (let [field      (field-reference->field root field-reference)
         field-name (field-name field)]
-    (if (or (isa? (:base_type field) :type/Temporal)
-            (field/unix-timestamp? field))
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
       (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
       (tru "{0} is {1}" field-name value))))
 

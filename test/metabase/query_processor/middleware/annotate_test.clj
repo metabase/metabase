@@ -241,7 +241,7 @@
               :field_ref       [:expression "double-price"]}
              (mt/$ids venues
                (#'annotate/col-info-for-field-clause
-                {:expressions {"double-price" [:* $price 2]}}
+                   {:expressions {"double-price" [:* $price 2]}}
                 [:expression "double-price"])))))
 
     (testing "if there is no matching expression it should give a meaningful error message"
@@ -412,52 +412,40 @@
       (select-keys [:base_type :semantic_type])))
 
 (deftest test-string-extracts
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:trim "foo"])))
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:ltrim "foo"])))
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:rtrim "foo"])))
-  (is (= {:base_type     :type/BigInteger
-          :semantic_type :Semantic/Quantity}
+  (is (= {:base_type :type/BigInteger}
          (infered-col-type  [:length "foo"])))
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:upper "foo"])))
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:lower "foo"])))
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:substring "foo" 2])))
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:replace "foo" "f" "b"])))
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:regex-match-first "foo" "f"])))
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:concat "foo" "bar"])))
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type  [:coalesce "foo" "bar"])))
   (is (= {:base_type     :type/Text
           :semantic_type :Semantic/Name}
          (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"]))))
 
 (deftest test-case
-  (is (= {:base_type     :type/Text
-          :semantic_type nil}
+  (is (= {:base_type :type/Text}
          (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] "big"]]])))
   (is (= {:base_type :type/Float}
          (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2]
                                     [:+ [:field (mt/id :venues :price) nil] 1]]]])))
   (testing "Make sure we skip nils when infering case return type"
-    (is (= {:base_type :type/Float}
+    (is (= {:base_type :type/Number}
            (infered-col-type [:case [[[:< [:field (mt/id :venues :price) nil] 10] [:value nil {:base_type :type/Number}]]
                                      [[:> [:field (mt/id :venues :price) nil] 2] 10]]]))))
   (is (= {:base_type :type/Float}
@@ -528,7 +516,7 @@
                                        :limit       10})
                      {})))))
     (testing "named :expressions"
-      (is (= [{:name "prev_month", :display_name "prev_month", :base_type :type/DateTime, :semantic_type nil, :expression_name "prev_month", :source :fields, :field_ref [:expression "prev_month"]}]
+      (is (= [{:name "prev_month", :display_name "prev_month", :base_type :type/DateTime, :expression_name "prev_month", :source :fields, :field_ref [:expression "prev_month"]}]
              (:cols (add-column-info
                      (mt/mbql-query users
                                       {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}

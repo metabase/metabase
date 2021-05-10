@@ -440,7 +440,9 @@
    :else
    Field))
 
-(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp})
+(def arithmetic-expressions
+  "Set of valid arithmetic expression clause keywords."
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp})
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 

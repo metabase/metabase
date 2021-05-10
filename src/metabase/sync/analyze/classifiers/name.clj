@@ -117,7 +117,6 @@
     (assert (or (isa? semantic-type :Semantic/*)
                 (isa? semantic-type :Relation/*)))))
 
-
 (s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationType)
   "If `name` and `base-type` matches a known pattern, return the `semantic_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldDataType]
