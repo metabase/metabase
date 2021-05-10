@@ -1,4 +1,5 @@
 import {
+  collection,
   question,
   extractQueryParams,
   extractEntityId,
@@ -57,6 +58,35 @@ describe("urls", () => {
       const extractedParams2 = extractQueryParams({ foo: ["1", "2"] });
       expect(extractedParams2).toContainEqual(["foo", "1"]);
       expect(extractedParams2).toContainEqual(["foo", "2"]);
+    });
+  });
+
+  describe("collections", () => {
+    it("returns root URL if collection is not passed", () => {
+      expect(collection()).toBe("/collection/root");
+    });
+
+    it("resolves /root and /users collections", () => {
+      expect(collection({ id: "root" })).toBe("/collection/root");
+      expect(collection({ id: "users" })).toBe("/collection/users");
+    });
+
+    it("returns correct url", () => {
+      expect(collection({ id: 1, slug: "first_collection" })).toBe(
+        "/collection/1-first-collection",
+      );
+
+      expect(collection({ id: 1, name: "First collection" })).toBe(
+        "/collection/1-first-collection",
+      );
+
+      expect(
+        collection({
+          id: 1,
+          slug: "first_collection",
+          name: "First collection",
+        }),
+      ).toBe("/collection/1-first-collection");
     });
   });
 

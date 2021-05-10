@@ -127,7 +127,8 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
 
 export function collection(collection) {
   if (!collection || typeof collection.id !== "number") {
-    return `/collection/root`;
+    const id = collection ? collection.id : "root";
+    return `/collection/${id}`;
   }
   const slug = collection.slug
     ? collection.slug.split("_").join("-")
