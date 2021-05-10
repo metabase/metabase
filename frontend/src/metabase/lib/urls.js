@@ -42,10 +42,12 @@ export function question(card, hash = "", query = "") {
   if (query && query.charAt(0) !== "?") {
     query = "?" + query;
   }
-  // NOTE that this is for an ephemeral card link, not an editable card
-  return card
+  if (!card || !card.id) {
+    return `/question${query}${hash}`;
+  }
+  return card.name
     ? `/question/${card.id}-${slugify(card.name)}${query}${hash}`
-    : `/question${query}${hash}`;
+    : `/question/${card.id}${query}${hash}`;
 }
 
 export const extractQueryParams = (query: Object): Array => {
