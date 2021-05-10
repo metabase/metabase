@@ -318,6 +318,12 @@
         (is (= 1 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "2")))))
         (is (= 3 (:total (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1"))))))
 
+    (testing "check that favorite filtering exists"
+      (mt/with-temp* [Collection [collection]
+                      Card       [card2        {:collection_id (u/the-id collection)}]
+                      Card       [card1        {:collection_id (u/the-id collection)}]]
+        (is (= 0 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :favorite_state "is_favorite")))))))
+
     (testing "check that you get to see the children as appropriate"
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
         (perms/grant-collection-read-permissions! (group/all-users) collection)
