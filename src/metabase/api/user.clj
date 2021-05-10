@@ -278,7 +278,7 @@
 (api/defendpoint PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body}]
-  {password su/ComplexPassword}
+  {password su/ValidPassword}
   (check-self-or-superuser id)
   (api/let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
