@@ -664,4 +664,65 @@ describe("scenarios > question > native", () => {
     cy.get("@runQuery").click();
     cy.get("@sidebar").contains(/added/i);
   });
+
+  ["off", "on"].forEach(testCase => {
+    const isFeatureFlagTurnedOn = testCase === "off" ? false : true;
+
+    describe.skip("Feature flag causes problems with Text and Number filters in Native query (metabase#15981)", () => {
+      beforeEach(() => {
+        cy.signInAsNormalUser();
+        mockSessionProperty(
+          "field-filter-operators-enabled?",
+          isFeatureFlagTurnedOn,
+        );
+
+        cy.visit("/");
+        cy.icon("sql").click();
+        cy.get(".ace_content").as("editor");
+
+        cy.intercept("POST", "/api/dataset").as("dataset");
+      });
+
+      it(`text filter should work with the feature flag turned ${testCase}`, () => {
+        cy.get("@editor").type(
+          "select * from PRODUCTS where CATEGORY = {{text_filter}}",
+          {
+            parseSpecialCharSequences: false,
+          },
+        );
+        cy.get("fieldset").type("Gizmo");
+        cy.get(".NativeQueryEditor .Icon-play").click();
+        cy.wait("@dataset");
+        cy.findByText("Rustic Paper Wallet");
+        cy.icon("contract").click();
+        cy.findByText("Showing 51 rows");
+        cy.get("RunButton").should("not.exist");
+      });
+
+      it(`number filter should work with the feature flag turned ${testCase}`, () => {
+        cy.get("@editor").type(
+          "select * from ORDERS where QUANTITY = {{number_filter}}",
+          {
+            parseSpecialCharSequences: false,
+          },
+        );
+        cy.findByTestId("sidebar-right")
+          .as("sidebar")
+          .within(() => {
+            cy.get(".AdminSelect")
+              .contains("Text")
+              .click();
+          });
+        popover()
+          .contains("Number")
+          .click();
+        cy.get("fieldset").type("20");
+        cy.get(".NativeQueryEditor .Icon-play").click();
+        cy.wait("@dataset").then(xhr => {
+          expect(xhr.response.body.error).not.to.exist;
+        });
+        cy.get(".Visualization").contains("23.54");
+      });
+    });
+  });
 });
