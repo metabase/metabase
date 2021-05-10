@@ -203,7 +203,24 @@
                                                                    :dimension    [:field ~'category-field-id nil]
                                                                    :widget-type  "id"
                                                                    :required     true
-                                                                   :default      40}}}}}]]
+                                                                   :default      40}}}}}]
+                   Card       [{~'card-id-filter-agg :id}
+                               {:table_id ~'table-id
+                                :name "Card With Filter After Aggregation"
+                                :collection_id ~'collection-id
+                                :dataset_query {:type     :query
+                                                :database ~'db-id
+                                                :query    {:source-query {:source-table
+                                                                          ~'table-id
+                                                                          :aggregation
+                                                                          [[:aggregation-options
+                                                                            [:count]
+                                                                            {:name "num_per_type"}]]
+                                                                          :breakout
+                                                                          [[:field-id ~'category-field-id]]}
+                                                           :filter [:>
+                                                                    [:field-literal "num_per_type" :type/Integer]
+                                                                    4]}}}]]
      ~@body))
 
 ;; Don't memoize as IDs change in each `with-world` context

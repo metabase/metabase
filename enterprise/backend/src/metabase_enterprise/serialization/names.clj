@@ -218,6 +218,14 @@
   be left off because we wouldn't expect to have failed lookups then."
   false)
 
+(defn fully-qualified-field-name?
+  "Returns true if the given `field-name` is a fully-qualified field name for serialization purposes (as opposed to a
+  reference to an in-query alias or some other form)."
+  [field-name]
+  (and (some? field-name)
+       (str/starts-with? field-name "/databases/")
+       (or (str/includes? field-name "/fks/") (str/includes? field-name "/fields/"))))
+
 (defn fully-qualified-name->context
   "Parse a logical path into a context map."
   [fully-qualified-name]
