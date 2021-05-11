@@ -232,6 +232,11 @@
   (with-api-error-message (s/pred #(isa? % :Coercion/*) (deferred-tru "Valid coercion strategy"))
     (deferred-tru "value must be a valid coercion strategy.")))
 
+(def EntityType
+  "Schema for a valid Table entity type (does it derive from `:entity/*`?"
+  (with-api-error-message (s/pred #(isa? % :entity/*) (deferred-tru "Valid entity type"))
+    (deferred-tru "value must be a valid entity type.")))
+
 (def FieldDataTypeKeywordOrString
   "Like `FieldDataType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
    This is useful especially for validating API input or objects coming out of the DB as it is unlikely

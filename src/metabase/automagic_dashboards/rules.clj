@@ -47,13 +47,21 @@
     (isa? (keyword "Semantic" x) :Semantic/*) (keyword "Semantic" x)
     :else                                     (keyword "type" x)))
 
-(defn ->entity
+(s/defn ->entity :- (s/maybe (s/cond-pre su/EntityType (s/constrained s/Str ga-dimension?)))
   "Turn `x` into proper entity name."
   [x]
   (cond
-    (keyword? x)      x
-    (ga-dimension? x) x
-    :else             (keyword "entity" x)))
+    (keyword? x)
+    (when (isa? x :entity/*)
+      x)
+
+    (string? x)
+    (cond
+      (isa? (keyword "entity" x) :entity/*)
+      (keyword "entity" x)
+
+      (ga-dimension? x)
+      x)))
 
 (defn- field-type?
   [t]

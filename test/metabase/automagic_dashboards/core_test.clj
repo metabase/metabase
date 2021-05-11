@@ -306,10 +306,10 @@
 (deftest test-16
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
-      (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:fk-> (mt/id :checkins) (mt/id :venues :category_id)]]
-                                          :source-table (mt/id :checkins)}
-                                  :type :query
+      (let [q (query/adhoc-query {:query    {:aggregation  [[:count]]
+                                             :breakout     [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
+                                             :source-table (mt/id :checkins)}
+                                  :type     :query
                                   :database (mt/id)})]
         (test-automagic-analysis q)))))
 
