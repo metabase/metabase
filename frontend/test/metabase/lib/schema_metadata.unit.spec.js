@@ -75,7 +75,9 @@ describe("schema_metadata", () => {
         expect(getFieldType({ base_type: TYPE.TextLike })).toEqual(STRING_LIKE);
       });
       it("TYPE.IPAddress", () => {
-        expect(getFieldType({ base_type: TYPE.IPAddress })).toEqual(STRING_LIKE);
+        expect(getFieldType({ base_type: TYPE.IPAddress })).toEqual(
+          STRING_LIKE,
+        );
       });
     });
     it("should know what it doesn't know", () => {
