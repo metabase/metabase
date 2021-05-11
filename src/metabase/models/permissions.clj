@@ -439,6 +439,11 @@
                                       (all-permissions db-ids)
                                       (:db permissions-graph))))))}))
 
+(s/defn paginated-graph :- PermissionsGraph
+  [some shit]
+  ;;;;;;;;;;;;; some shit
+  )
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH UPDATE                                                  |

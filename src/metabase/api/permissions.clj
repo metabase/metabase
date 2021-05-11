@@ -22,9 +22,12 @@
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Permissions."
-  []
+  [user-limit user-offset perm-limit perm-offset]
+  ;;;;;; put the types here
+  (api/check-valid-page-params user-limit user-offset)
+  (api/check-valid-page-params perm-limit perm-offset)
   (api/check-superuser)
-  (perms/graph))
+  (perms/paginated-graph user-limit user-offset perm-limit perm-offset))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
