@@ -27,7 +27,8 @@
   (s/cond-pre (type Table) (type Card)))
 
 (def Bindings
-  "Top-level lexial context mapping source names to their corresponding entity and constituent dimensions. See also `DimensionBindings`."
+  "Top-level lexial context mapping source names to their corresponding entity and constituent dimensions. See also
+  `DimensionBindings`."
   {SourceName {(s/optional-key :entity)     SourceEntity
                (s/required-key :dimensions) DimensionBindings}})
 
@@ -59,7 +60,8 @@
   [entity {:keys [field domain_entity has_many]}]
   (cond
     field (some (fn [col]
-                  (when (or (isa? (field-type col) field)
+                  (when (or (isa? (:semantic_type col) field)
+                            (isa? (:base_type col) field)
                             (= (:name col) (name field)))
                     col))
                 ((some-fn :fields :result_metadata) entity))))

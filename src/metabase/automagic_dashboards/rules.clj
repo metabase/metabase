@@ -43,6 +43,7 @@
     (keyword? x)                              x
     (ga-dimension? x)                         x
     (= x "*")                                 :type/*
+    (namespace (keyword x))                   (keyword x)
     (isa? (keyword "Relation" x) :Relation/*) (keyword "Relation" x)
     (isa? (keyword "Semantic" x) :Semantic/*) (keyword "Semantic" x)
     :else                                     (keyword "type" x)))

@@ -1,6 +1,7 @@
 (ns metabase.test.domain-entities
   (:require [clojure.test :refer :all]
-            [metabase.domain-entities.specs :as de.specs]))
+            [metabase.domain-entities.specs :as de.specs]
+            [metabase.util :as u]))
 
 (def test-domain-entity-specs
   "A test domain specs written against our test DB."
@@ -17,9 +18,9 @@
          :breakout_dimensions ["FK"]
          :metrics             {"Avg Price" {:aggregation [:avg [:dimension "Category"]]}}}
         {:name                "VenuesEnhanced"
-         :required_attributes [{:field "AvgPrice"}
-                               {:field "MinPrice"}
-                               {:field "MaxPrice"}]}]
+         :required_attributes [{:field (u/qualified-name ::de.specs/AvgPrice)}
+                               {:field (u/qualified-name ::de.specs/MinPrice)}
+                               {:field (u/qualified-name ::de.specs/MaxPrice)}]}]
        (map (fn [spec]
               [(:name spec) (-> spec
                                 (#'de.specs/add-to-hiearchy!)

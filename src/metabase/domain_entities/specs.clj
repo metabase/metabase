@@ -2,6 +2,7 @@
   (:require [medley.core :as m]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
+            [metabase.util.schema :as su]
             [metabase.util.yaml :as yaml]
             [schema.coerce :as sc]
             [schema.core :as s]))
@@ -12,9 +13,17 @@
 
 (def FieldType
   "Field type designator -- a keyword derived from `type/*`"
-  (s/constrained s/Keyword
-                                        ;#(isa? % :type/*)
-                 identity))
+  (s/conditional
+   keyword?
+   (s/conditional
+    #(= (namespace %) "type")
+    su/FieldDataType
+
+    #(= (namespace %) "metabase.domain-entities.specs")
+    s/Keyword
+
+    :else
+    su/FieldSemanticOrRelationType)))
 
 (def ^:private DomainEntityReference s/Str)
 
@@ -64,6 +73,17 @@
   (partial m/map-kv-vals (fn [k v]
                            (assoc v :name k))))
 
+(defn ->type
+  "Turn `x` into proper type name."
+  [x]
+  (cond
+    (keyword? x)                              x
+    (= x "*")                                 :type/*
+    (namespace (keyword x))                   (keyword x)
+    (isa? (keyword "Relation" x) :Relation/*) (keyword "Relation" x)
+    (isa? (keyword "Semantic" x) :Semantic/*) (keyword "Semantic" x)
+    :else                                     (keyword "type" x)))
+
 (def ^:private domain-entity-spec-parser
   (sc/coercer!
    DomainEntitySpec
@@ -74,10 +94,10 @@
                             (for [dimension breakout-dimensions]
                               (if (string? dimension)
                                 (do
-                                  (s/validate FieldType (keyword "type" dimension))
+                                  (s/validate FieldType (->type dimension))
                                   [:dimension dimension])
                                 dimension)))
-    FieldType             (partial keyword "type")
+    FieldType             ->type
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
     s/Str                 name}))
 

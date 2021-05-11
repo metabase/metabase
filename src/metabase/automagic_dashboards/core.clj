@@ -350,7 +350,8 @@
   (condp = (namespace a-type)
     "type"     (isa? (keyword base-type) a-type)
     "Semantic" (isa? (keyword semantic-type) a-type)
-    "Relation" (isa? (keyword semantic-type) a-type)))
+    "Relation" (isa? (keyword semantic-type) a-type)
+    false))
 
 (defn- key-col?
   "Workaround for our leaky type system which conflates types with properties."
