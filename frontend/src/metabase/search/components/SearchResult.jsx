@@ -228,7 +228,11 @@ function InfoText({ result }) {
 
 export default function SearchResult({ result, compact }) {
   return (
-    <ResultLink to={result.getUrl()} compact={compact}>
+    <ResultLink
+      to={result.getUrl()}
+      compact={compact}
+      data-testid="search-result-item"
+    >
       <Flex align="start">
         <ItemIcon item={result} type={result.model} />
         <Box>

@@ -352,6 +352,16 @@
     (vec (map search-config/model-name->instance models))
     default))
 
+(defn- query-model-set
+  "Queries all models with respect to query for one result, to see if we get a result or not"
+  [search-ctx]
+  (map #((first %) :model)
+       (filter not-empty
+               (for [model search-config/searchable-models]
+                 (let [search-query (search-query-for-model model search-ctx)
+                       query-with-limit (h/limit search-query 1)]
+                   (db/query query-with-limit))))))
+
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [search-ctx :- SearchContext]
@@ -378,14 +388,15 @@
       ;; We get to do this slicing and dicing with the result data because
       ;; the pagination of search is for UI improvement, not for performance.
       ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-      { :total      (count total-results)
-        :data       (cond->> total-results
-         (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-         (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
-       :limit       (:limit-int search-ctx)
-       :offset      (:offset-int search-ctx)
-       :table_db_id (:table-db-id search-ctx)
-       :models      (:models search-ctx) })))
+      { :total             (count total-results)
+        :data              (cond->> total-results
+                             (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                             (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+        :available_models  (query-model-set search-ctx)
+        :limit             (:limit-int search-ctx)
+        :offset            (:offset-int search-ctx)
+        :table_db_id       (:table-db-id search-ctx)
+        :models            (:models search-ctx) })))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
@@ -410,11 +421,15 @@
     (some? limit)       (assoc :limit-int (Integer/parseInt limit))
     (some? offset)      (assoc :offset-int (Integer/parseInt offset))))
 
+(api/defendpoint GET "/models"
+  "Get the set of models that a search query will return"
+  [q archived-string table-db-id] (query-model-set (search-context q archived-string table-db-id nil nil nil)))
+
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
   For the list of models, check `metabase.search.config/searchable-models.
 
-  To search in archived models, pass in `archived=true`.
+  To search in archived portions of models, pass in `archived=true`.
   If you want, while searching tables, only tables of a certain DB id,
   pass in a DB id value to `table_db_id`.
 
