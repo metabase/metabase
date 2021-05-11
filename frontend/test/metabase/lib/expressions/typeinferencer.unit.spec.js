@@ -27,10 +27,13 @@ describe("metabase/lib/expressions/typeinferencer", () => {
       case "Price":
         return "number";
       case "FirstName":
+      case "LastName":
         return "string";
       case "BirthDate":
+      case "MiscDate":
         return "type/Temporal";
       case "Location":
+      case "Place":
         return "type/Coordinate";
     }
   }
@@ -92,9 +95,18 @@ describe("metabase/lib/expressions/typeinferencer", () => {
     expect(type("[Location]")).toEqual("type/Coordinate");
   });
 
-  it.skip("should infer the result of CASE", () => {
+  it("should infer the result of CASE", () => {
     expect(type("CASE([X], 1, 2)")).toEqual("number");
     expect(type("CASE([Y], 'this', 'that')")).toEqual("string");
-    expect(type("CASE(BigSale, Price>100, Price>200)")).toEqual("boolean");
+    expect(type("CASE([Z], [Price]>100, [Price]>200)")).toEqual("boolean");
+    expect(type("CASE([ABC], [FirstName], [LastName])")).toEqual("string");
+    expect(type("CASE([F], [BirthDate], [MiscDate])")).toEqual("type/Temporal");
+  });
+
+  it("should infer the result of COALESCE", () => {
+    expect(type("COALESCE([Price])")).toEqual("number");
+    expect(type("COALESCE([FirstName], [LastName])")).toEqual("string");
+    expect(type("COALESCE([BirthDate], [MiscDate])")).toEqual("type/Temporal");
+    expect(type("COALESCE([Place], [Location])")).toEqual("type/Coordinate");
   });
 });
