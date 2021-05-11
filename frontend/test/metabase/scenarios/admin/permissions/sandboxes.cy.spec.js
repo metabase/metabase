@@ -146,7 +146,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.findByText("Greater than").click();
         cy.findByPlaceholderText("Enter a number").type("100");
         cy.findByText("Add filter").click();
-        cy.findByText("Visualize").click();
+        cy.button("Visualize").click();
 
         cy.log("Make sure user is still sandboxed");
         cy.get(".TableInteractive-cellWrapper--firstColumn").should(
@@ -219,7 +219,7 @@ describeWithToken("formatting > sandboxes", () => {
           .click();
       });
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.findByText("Count by User → ID");
       cy.findByText("11"); // Sum of orders for user with ID #1
     });
@@ -778,7 +778,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
       cy.findByText(/Products? → ID/).click();
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
 
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;

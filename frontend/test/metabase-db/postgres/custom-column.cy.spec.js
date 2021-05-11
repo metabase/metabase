@@ -48,7 +48,7 @@ describe("postgres > question > custom columns", () => {
         .click();
     });
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.findByText("Arnold Adams");
   });
 

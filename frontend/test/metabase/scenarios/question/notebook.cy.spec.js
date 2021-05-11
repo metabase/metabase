@@ -37,7 +37,7 @@ describe("scenarios > question > notebook", () => {
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
     cy.icon("notebook").click();
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     // there were no changes to the question, so we shouldn't have the option to "Save"
     cy.findByText("Save").should("not.exist");
@@ -231,7 +231,7 @@ describe("scenarios > question > notebook", () => {
       popover().within(() => cy.findByText("A_COLUMN").click());
       popover().within(() => cy.findByText("B_COLUMN").click());
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.queryByText("Visualize").then($el => cy.wrap($el).should("not.exist")); // wait for that screen to disappear to avoid "multiple elements" errors
 
       // check that query worked
@@ -270,7 +270,7 @@ describe("scenarios > question > notebook", () => {
           .click();
       });
       cy.route("POST", "/api/dataset").as("visualization");
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
 
       cy.wait("@visualization").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
@@ -389,7 +389,7 @@ describe("scenarios > question > notebook", () => {
       popover()
         .contains(/Products? → Category/)
         .click();
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
 
       cy.findByText("12928_Q1 + 12928_Q2");
       cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2020");
@@ -735,7 +735,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Add filter").click();
       });
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.findByText("Gadget").should("exist");
       cy.findByText("Gizmo").should("not.exist");
 
@@ -887,7 +887,7 @@ function joinTwoSavedQuestions(ALIAS = "Joined Question") {
         cy.log("Reported in v0.36.0");
         cy.icon("notebook").click();
         cy.url().should("contain", "/notebook");
-        cy.findByText("Visualize").should("exist");
+        cy.button("Visualize").should("exist");
       });
     });
   });

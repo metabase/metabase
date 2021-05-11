@@ -219,7 +219,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Add filter").click();
     cy.contains("Category is not Gizmo");
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     // wait for results to load
     cy.get(".LoadingSpinner").should("not.exist");
     cy.log("The point of failure in 0.37.0-rc3");
@@ -718,7 +718,7 @@ describe("scenarios > question > filter", () => {
       .click();
 
     // check that filter is applied and rows displayed
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.contains("Showing 1,112 rows");
   });
 
@@ -940,7 +940,7 @@ describe("scenarios > question > filter", () => {
       .type("0 < [ID]")
       .blur();
     cy.button("Done").click();
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });

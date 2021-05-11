@@ -86,7 +86,7 @@ describe("scenarios > visualizations > waterfall", () => {
       .blur();
     cy.button("Done").click();
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -100,7 +100,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
