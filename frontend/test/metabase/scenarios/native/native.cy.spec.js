@@ -668,7 +668,7 @@ describe("scenarios > question > native", () => {
   ["off", "on"].forEach(testCase => {
     const isFeatureFlagTurnedOn = testCase === "off" ? false : true;
 
-    describe.skip("Feature flag causes problems with Text and Number filters in Native query (metabase#15981)", () => {
+    describe("Feature flag causes problems with Text and Number filters in Native query (metabase#15981)", () => {
       beforeEach(() => {
         mockSessionProperty(
           "field-filter-operators-enabled?",
@@ -682,7 +682,7 @@ describe("scenarios > question > native", () => {
         cy.intercept("POST", "/api/dataset").as("dataset");
       });
 
-      it(`text filter should work with the feature flag turned ${testCase}`, () => {
+      it.skip(`text filter should work with the feature flag turned ${testCase}`, () => {
         cy.get("@editor").type(
           "select * from PRODUCTS where CATEGORY = {{text_filter}}",
           {
