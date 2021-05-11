@@ -588,7 +588,7 @@ describe("scenarios > dashboard", () => {
         cy.findByPlaceholderText("Enter some text")
           .click()
           .type("Gizmo", { delay: 10 });
-        cy.findByRole("button", { name: "Add filter" })
+        cy.button("Add filter")
           .should("not.be.disabled")
           .click();
         cy.contains("Rustic Paper Wallet");
@@ -728,7 +728,7 @@ describe("scenarios > dashboard", () => {
       popover()
         .findByText("Organic")
         .click();
-      cy.findByRole("button", { name: "Add filter" }).click();
+      cy.button("Add filter").click();
       // Check that the search works
       cy.get("fieldset")
         .contains("Search")

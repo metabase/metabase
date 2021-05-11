@@ -84,7 +84,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.get("[contenteditable=true]")
       .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
-    cy.findByRole("button", { name: "Done" }).click();
+    cy.button("Done").click();
 
     cy.findByText("Visualize").click();
     cy.contains("Visualization").click();

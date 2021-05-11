@@ -605,7 +605,7 @@ describeWithToken("formatting > sandboxes", () => {
             // Save the question
             cy.findByText("Save").click();
             modal().within(() => {
-              cy.findAllByRole("button", { name: "Save" }).click();
+              cy.button("Save").click();
             });
             // Wait for an update so the other queries don't accidentally cancel it
             cy.wait("@questionUpdate");
@@ -749,12 +749,12 @@ describeWithToken("formatting > sandboxes", () => {
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();
       cy.findByText("Grant sandboxed access").click();
-      cy.findAllByRole("button", { name: "Change" }).click();
+      cy.button("Change").click();
       cy.findByText(
         "Use a saved question to create a custom view for this table",
       ).click();
       cy.findByText(QUESTION_NAME).click();
-      cy.findAllByRole("button", { name: "Save" }).click();
+      cy.button("Save").click();
 
       cy.wait("@sandboxTable").then(xhr => {
         expect(xhr.status).to.eq(400);
@@ -822,7 +822,7 @@ describeWithToken("formatting > sandboxes", () => {
             .find(".Icon-close")
             .click();
         });
-      cy.findAllByRole("button", { name: "Done" }).click();
+      cy.button("Done").click();
       // Rerun the query
       cy.icon("play")
         .last()

@@ -90,7 +90,7 @@ describe("postgres > question > custom columns", () => {
       .click();
     cy.findByText("Function Percentile expects 1 argument").should("not.exist");
     cy.get("@description").type("A");
-    cy.findByRole("button", { name: "Done" })
+    cy.button("Done")
       .should("not.be.disabled")
       .click();
     // Todo: Add positive assertions once this is fixed

@@ -99,7 +99,7 @@ describe("scenarios > question > notebook", () => {
       .click()
       .clear()
       .type("contains([Category])", { delay: 50 });
-    cy.findAllByRole("button", { name: "Done" })
+    cy.button("Done")
       .should("not.be.disabled")
       .click();
     cy.contains(/^Function contains expects 2 arguments/i);
@@ -125,7 +125,7 @@ describe("scenarios > question > notebook", () => {
       .click()
       .clear()
       .type("[Price] > 1");
-    cy.findAllByRole("button", { name: "Done" }).click();
+    cy.button("Done").click();
 
     // change the corresponding custom expression
     cy.findByText("Price is greater than 1").click();
@@ -204,7 +204,7 @@ describe("scenarios > question > notebook", () => {
           }
         });
       cy.findByText("wolf.dina@yahoo.com").click();
-      cy.findByRole("button", { name: "Add filter" }).click();
+      cy.button("Add filter").click();
       cy.contains("Showing 1 row");
     });
 
@@ -265,8 +265,7 @@ describe("scenarios > question > notebook", () => {
           .click()
           .type("Sum Divide");
 
-        cy.findAllByRole("button")
-          .contains("Done")
+        cy.button("Done")
           .should("not.be.disabled")
           .click();
       });
@@ -661,7 +660,7 @@ describe("scenarios > question > notebook", () => {
         .click();
       cy.findByText("Greater than").click();
       cy.findByPlaceholderText("Enter a number").type(0);
-      cy.findByRole("button", { name: "Add filter" })
+      cy.button("Add filter")
         .should("not.be.disabled")
         .click();
     });
@@ -773,11 +772,11 @@ describe("scenarios > question > notebook", () => {
         .click()
         .type("Example", { delay: 100 });
 
-      cy.findAllByRole("button", { name: "Done" })
+      cy.button("Done")
         .should("not.be.disabled")
         .click();
 
-      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.button("Visualize").click();
       cy.contains("Example");
       cy.contains("Big");
       cy.contains("Small");
@@ -794,11 +793,11 @@ describe("scenarios > question > notebook", () => {
 
       cy.contains(/^redundant input/i).should("not.exist");
 
-      cy.findAllByRole("button", { name: "Done" })
+      cy.button("Done")
         .should("not.be.disabled")
         .click();
 
-      cy.findAllByRole("button", { name: "Visualize" }).click();
+      cy.button("Visualize").click();
       cy.contains("Showing 97 rows");
     });
 
@@ -825,11 +824,11 @@ describe("scenarios > question > notebook", () => {
         cy.contains(/^expected closing parenthesis/i).should("not.exist");
         cy.contains(/^redundant input/i).should("not.exist");
 
-        cy.findAllByRole("button", { name: "Done" })
+        cy.button("Done")
           .should("not.be.disabled")
           .click();
 
-        cy.findAllByRole("button", { name: "Visualize" }).click();
+        cy.button("Visualize").click();
         cy.contains(filter);
         cy.contains(result);
       });

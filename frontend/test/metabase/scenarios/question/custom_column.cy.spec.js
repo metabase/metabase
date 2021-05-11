@@ -489,7 +489,7 @@ describe("scenarios > question > custom columns", () => {
     cy.get("[contenteditable='true']").type(".5 * [Discount]");
     cy.findByPlaceholderText("Something nice and descriptive").type("Foo");
     cy.findByText("Unknown Field: .5").should("not.exist");
-    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+    cy.button("Done").should("not.be.disabled");
   });
 
   describe.skip("contentedtable field (metabase#15734)", () => {
@@ -506,7 +506,7 @@ describe("scenarios > question > custom columns", () => {
           .blur();
       });
       cy.findByPlaceholderText("Something nice and descriptive").type("Math");
-      cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+      cy.button("Done").should("not.be.disabled");
     });
 
     it("should not accidentally delete CC formula value and/or CC name (metabase#15734-1)", () => {
@@ -515,7 +515,7 @@ describe("scenarios > question > custom columns", () => {
         .type("{movetoend}{leftarrow}{movetostart}{rightarrow}{rightarrow}")
         .blur();
       cy.findByDisplayValue("Math");
-      cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+      cy.button("Done").should("not.be.disabled");
     });
 
     /**
@@ -529,7 +529,7 @@ describe("scenarios > question > custom columns", () => {
         .type("{movetoend}{backspace}")
         .blur();
       cy.findByText("Expected expression");
-      cy.findByRole("button", { name: "Done" }).should("be.disabled");
+      cy.button("Done").should("be.disabled");
       cy.get("@formula").click(); /* [1] */
       cy.findByDisplayValue("Math");
     });
@@ -538,7 +538,7 @@ describe("scenarios > question > custom columns", () => {
       cy.viewport(1260, 800);
       cy.get("@formula").click(); /* [1] */
       cy.findByDisplayValue("Math");
-      cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+      cy.button("Done").should("not.be.disabled");
     });
   });
 
@@ -550,7 +550,7 @@ describe("scenarios > question > custom columns", () => {
         .type("case([Discount] > 0, [Created At], [Product → Created At])")
         .blur();
       cy.findByPlaceholderText("Something nice and descriptive").type("13112");
-      cy.findByRole("button", { name: "Done" }).click();
+      cy.button("Done").click();
     });
     cy.findByText("Filter").click();
     popover()
@@ -567,7 +567,7 @@ describe("scenarios > question > custom columns", () => {
         .type(`concat("State: ", [State])`)
         .blur();
       cy.findByPlaceholderText("Something nice and descriptive").type("13217");
-      cy.findByRole("button", { name: "Done" }).click();
+      cy.button("Done").click();
     });
     cy.findByText("Filter").click();
     popover()
@@ -601,9 +601,9 @@ describe("scenarios > question > custom columns", () => {
       cy.findByPlaceholderText("Something nice and descriptive").type(
         "No discount",
       );
-      cy.findByRole("button", { name: "Done" }).click();
+      cy.button("Done").click();
     });
-    cy.findByRole("button", { name: "Visualize" }).click();
+    cy.button("Visualize").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });

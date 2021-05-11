@@ -579,10 +579,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get(".DashCard .Icon-palette").click({ force: true });
         cy.get(".Modal").within(() => {
           cy.findByText("Reset to defaults").click();
-          cy.findByRole("button", { name: "Done" }).click();
+          cy.button("Done").click();
         });
         // Save the whole dashboard
-        cy.findByRole("button", { name: "Save" }).click();
+        cy.button("Save").click();
         cy.findByText("You're editing this dashboard.").should("not.exist");
         cy.log("Reported failing on v0.38.0 - link gets dropped");
         cy.get(".DashCard").findAllByText(LINK_NAME);
