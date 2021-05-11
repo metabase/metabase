@@ -89,18 +89,28 @@
       (mapcat #(db/select Segment :table_id (u/the-id %)) tables)))))
 
 (defn- select-collections
+  "Selects the collections for a given user-id, or all collections without a personal ID if the passed user-id is nil.
+  If `state` is passed (by default, `:active`), then that will be used to filter for collections that are archived (if
+  the value is passed as `:all`)."
   ([users]
    (select-collections users :active))
   ([users state]
-   (let [state-filter (case state
-                        :all nil
-                        :active [:= :archived false])]
-     (db/select Collection
-                       {:where [:and
-                                [:or
-                                 [:= :personal_owner_id nil]
-                                 [:= :personal_owner_id (some-> users first u/the-id)]]
-                                state-filter]}))))
+   (let [state-filter     (case state
+                            :all nil
+                            :active [:= :archived false])
+         base-collections (db/select Collection {:where [:and [:= :location "/"]
+                                                              [:or [:= :personal_owner_id nil]
+                                                                   [:= :personal_owner_id
+                                                                       (some-> users first u/the-id)]]
+                                                              state-filter]})]
+     (-> (db/select Collection
+                           {:where [:and
+                                    (reduce (fn [acc coll]
+                                              (conj acc [:like :location (format "/%d/%%" (:id coll))]))
+                                            [:or] base-collections)
+                                    state-filter]})
+         (into base-collections)))))
+
 
 (defn dump
   "Serialized metabase instance into directory `path`."
@@ -130,7 +140,7 @@
          metrics     (if (contains? opts :only-db-ids)
                        (db/select Metric :table_id [:in (map :id tables)])
                        (Metric))
-         collections (Collection)] ;(select-collections users state)]
+         collections (select-collections users state)]
      (dump/dump path
                 databases
                 tables

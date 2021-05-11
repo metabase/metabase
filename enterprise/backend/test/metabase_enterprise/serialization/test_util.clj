@@ -1,9 +1,12 @@
 (ns metabase-enterprise.serialization.test-util
   (:require [metabase-enterprise.serialization.names :as names]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Field Metric
-                                     Pulse PulseCard Segment Table]]
+                                     Pulse PulseCard Segment Table User]]
+            [metabase.models.collection :as collection]
             [metabase.shared.models.visualization-settings :as mb.viz]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
+            [toucan.db :as db]
             [toucan.util.test :as tt]
             [metabase-enterprise.serialization.names :refer [fully-qualified-name]]))
 
@@ -22,10 +25,23 @@
                    :dataset_query          {}
                    :archived               false})
 
+(defn crowberto-pc-id
+  "Gets the personal collection ID for :crowberto (needed for tests). Must be public because the `with-world` macro
+  is public."
+  []
+  (db/select-one-field :id Collection :personal_owner_id (mt/user->id :crowberto)))
+
+(defmacro with-temp-dpc
+  "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections
+  can still be deleted."
+  [model-bindings & body]
+  `(binding [collection/*allow-deleting-personal-collections* true]
+     (tt/with-temp* ~model-bindings ~@body)))
+
 (defmacro with-world
   "Run test in the context of a minimal Metabase instance connected to our test database."
   [& body]
-  `(tt/with-temp* [Database   [{~'db-id :id} (into {:name temp-db-name} (-> (data/id)
+  `(with-temp-dpc [Database   [{~'db-id :id} (into {:name temp-db-name} (-> (data/id)
                                                                             Database
                                                                             (dissoc :id :features :name)))]
                    Table      [{~'table-id :id :as ~'table} (-> (data/id :venues)
@@ -47,6 +63,20 @@
                    Collection [{~'collection-id :id} {:name "My Collection"}]
                    Collection [{~'collection-id-nested :id} {:name "My Nested Collection"
                                                              :location (format "/%s/" ~'collection-id)}]
+                   User       [{~'user-id-temp :id} {:email          "felicia@metabase.com"
+                                                     :first_name     "Felicia"
+                                                     :last_name      "Temp"
+                                                     :password       "fiddlesticks"}]
+                   Collection [{~'personal-collection-id :id} {:name              "Felicia's Personal Collection"
+                                                               :personal_owner_id ~'user-id-temp}]
+                   Collection [{~'pc-felicia-nested-id :id} {:name     "Felicia's Nested Collection"
+                                                             :location (format "/%d/" ~'personal-collection-id)}]
+                   Collection [{~'pc-nested-id :id} {:name     "Nested Personal Collection"
+                                                     :location (format "/%d/" (crowberto-pc-id))}]
+                   Collection [{~'pc-deeply-nested-id :id} {:name
+                                                            "Deeply Nested Personal Collection"
+                                                            :location
+                                                            (format "/%d/%d/" (crowberto-pc-id) ~'pc-nested-id)}]
                    Metric     [{~'metric-id :id} {:name "My Metric"
                                                   :table_id ~'table-id
                                                   :definition {:source-table ~'table-id

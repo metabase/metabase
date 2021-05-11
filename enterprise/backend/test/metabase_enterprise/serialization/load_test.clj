@@ -16,8 +16,11 @@
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.util.log :as log]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util.i18n :refer [deferred-trs trs]])
   (:import org.apache.commons.io.FileUtils))
+
+(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
 (defn- delete-directory!
   [file-or-filename]
@@ -105,6 +108,26 @@
   [card {:keys [query-results collections]}]
   (query-res-match query-results card)
   (collection-names-match collections card))
+
+(defn- collection-parent-name [collection]
+  (let [[_ parent-id] (re-matches #".*/(\d+)/$" (:location collection))]
+    (db/select-one-field :name Collection :id (Integer. parent-id))))
+
+(defmethod assert-loaded-entity (type Collection)
+  [collection _]
+  (case (:name collection)
+    "My Nested Collection"              (is (= "My Collection" (collection-parent-name collection)))
+    "My Collection"                     (is (= "/" (:location collection)))
+    "Snippet Collection"                (is (= "/" (:location collection)))
+    "Nested Snippet Collection"         (is (= "Snippet Collection" (collection-parent-name collection)))
+    "Crowberto's Personal Collection"   (is (= "/" (:location collection)))
+    "Nested Personal Collection"        (is (= "Crowberto Corv's Personal Collection"
+                                               (collection-parent-name collection)))
+    "Deeply Nested Personal Collection" (is (= "Nested Personal Collection"
+                                               (collection-parent-name collection)))
+    "Felicia's Personal Collection"     (is false "Should not have loaded different user's PC")
+    "Felicia's Nested Collection"       (is false "Should not have loaded different user's PC"))
+  collection)
 
 (defn- id->name [model id]
   (db/select-one-field :name model :id id))
@@ -253,6 +276,9 @@
                                            [Field         (Field category-pk-field-id)]
                                            [Collection    (Collection collection-id)]
                                            [Collection    (Collection collection-id-nested)]
+                                           [Collection    (Collection personal-collection-id)]
+                                           [Collection         (Collection pc-nested-id)]
+                                           [Collection         (Collection pc-deeply-nested-id)]
                                            [Metric        (Metric metric-id)]
                                            [Segment       (Segment segment-id)]
                                            [Dashboard     (Dashboard dashboard-id)]
@@ -277,14 +303,12 @@
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))
                 (is (or (-> entity :name nil?)
+                        (if-let [loaded (db/select-one model :name (:name entity))]
+                          (assert-loaded-entity loaded fingerprint))
                         (and (-> entity :archived) ; archived card hasn't been dump-loaded
                              (= (:name entity) "My Arch Card"))
-                        (let [loaded (db/select-one model :name (:name entity))]
-                          (is (some? loaded) (format
-                                              "Failed to find loaded entity with type %s and name %s"
-                                              model
-                                              (:name entity)))
-                          (assert-loaded-entity loaded fingerprint)))
+                        ;; Rasta's Personal Collection was not loaded
+                        (= "Felicia's Personal Collection" (:name entity)))
                     (str " failed " (pr-str entity)))))
             fingerprint))))
     (finally
