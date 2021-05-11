@@ -987,5 +987,4 @@ describe("scenarios > question > filter", () => {
     cy.findByText("AL").click();
     cy.button("Add filter").isVisibleInPopover();
   });
-  });
 });
