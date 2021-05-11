@@ -23,8 +23,8 @@ const renderSaveQuestionModal = (question, originalQuestion) => {
   render(
     <Provider store={store}>
       <SaveQuestionModal
-        card={question.card()}
-        originalCard={originalQuestion && originalQuestion.card()}
+        question={question}
+        originalQuestion={originalQuestion && originalQuestion}
         tableMetadata={question.table()}
         onCreate={onCreateMock}
         onSave={onSaveMock}

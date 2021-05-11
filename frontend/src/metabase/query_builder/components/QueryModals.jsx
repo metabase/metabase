@@ -43,8 +43,8 @@ export default class QueryModals extends React.Component {
     return modal === "save" ? (
       <Modal form onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
           onSave={async card => {
@@ -71,8 +71,8 @@ export default class QueryModals extends React.Component {
     ) : modal === "add-to-dashboard-save" ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
           onSave={async card => {
@@ -105,8 +105,8 @@ export default class QueryModals extends React.Component {
     ) : modal === "save-question-before-alert" ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           tableMetadata={this.props.tableMetadata}
           onSave={async card => {
             await this.props.onSave(card, false);
@@ -124,8 +124,8 @@ export default class QueryModals extends React.Component {
     ) : modal === "save-question-before-embed" ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           tableMetadata={this.props.tableMetadata}
           onSave={async card => {
             await this.props.onSave(card, false);

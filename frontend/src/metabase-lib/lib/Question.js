@@ -688,6 +688,9 @@ export default class Question {
   description(): ?string {
     return this._card && this._card.description;
   }
+  setDescription(description) {
+    return this.setCard(assoc(this.card(), "description", description));
+  }
 
   isSaved(): boolean {
     return !!this.id();
