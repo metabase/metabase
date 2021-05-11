@@ -51,6 +51,15 @@
   [response]
   (reduce clear-cookie (wrap-body-if-needed response) [metabase-session-cookie metabase-embedded-session-cookie]))
 
+(defn- use-permanent-cookies?
+  "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
+  [request]
+  (if (config/config-bool :mb-session-cookies)
+    ;; Only allow session cookies if MB_SESSION_COOKIES is set
+    false
+    ;; Otherwise check the user's preference sent in the request
+    (:remember (:body request))))
+
 (defmulti set-session-cookie
   "Add an appropriate cookie to persist a newly created Session to `response`."
   {:arglists '([request response session])}
@@ -65,29 +74,28 @@
   [request response {session-uuid :id} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}]
   (let [response       (wrap-body-if-needed response)
         cookie-options (merge
-                        {:same-site config/mb-session-cookie-samesite
-                         :http-only true
-                         ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
-                         ;; up breaking things
-                         :path      "/" #_ (site-path)}
-                        ;; If the env var `MB_SESSION_COOKIES=true`, do not set the `Max-Age` directive; cookies
-                        ;; with no `Max-Age` and no `Expires` directives are session cookies, and are deleted when
-                        ;; the browser is closed
-                        ;;
-                        ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#Session_cookies
-                        (when-not (config/config-bool :mb-session-cookies)
-                          ;; max-session age-is in minutes; Max-Age= directive should be in seconds
-                          {:max-age (* 60 (config/config-int :max-session-age))})
-                        ;; If the authentication request request was made over HTTPS (hopefully always except for
-                        ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-                        (when (request.u/https? request)
-                          {:secure true})
-                        (when (= config/mb-session-cookie-samesite :none)
-                          (log/warn
-                           (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is")
-                                (deferred-trs "served over an insecure connection. Some browsers will reject ")
-                                (deferred-trs "cookies under these conditions. ")
-                                (deferred-trs "https://www.chromestatus.com/feature/5633521622188032")))))]
+                         {:same-site config/mb-session-cookie-samesite
+                          :http-only true
+                          ;; TODO - we should set `site-path` as well. Don't want to enable this yet so we don't end
+                          ;; up breaking things
+                          :path      "/" #_ (site-path)}
+                         ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
+                         ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
+                         ;; browser is closed.
+                         ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
+                         (when (use-permanent-cookies? request)
+                           ;; max-session age-is in minutes; Max-Age= directive should be in seconds
+                           {:max-age (* 60 (config/config-int :max-session-age))})
+                         ;; If the authentication request request was made over HTTPS (hopefully always except for
+                         ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
+                         (when (request.u/https? request)
+                           {:secure true})
+                         (when (= config/mb-session-cookie-samesite :none)
+                           (log/warn
+                             (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is")
+                                  (deferred-trs "served over an insecure connection. Some browsers will reject ")
+                                  (deferred-trs "cookies under these conditions. ")
+                                  (deferred-trs "https://www.chromestatus.com/feature/5633521622188032")))))]
     (resp/set-cookie response metabase-session-cookie (str session-uuid) cookie-options)))
 
 (s/defmethod set-session-cookie :full-app-embed
