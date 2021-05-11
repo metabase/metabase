@@ -145,9 +145,7 @@
 (derive :type/Country :type/Text)
 
 (derive :type/ZipCode :type/Address)
-;;  ZIP code might be stored as text, or maybe as an integer.
 (derive :type/ZipCode :type/Text)
-(derive :type/ZipCode :type/Integer)
 
 (derive :type/Name :type/Category)
 (derive :type/Name :type/Text)
@@ -241,14 +239,9 @@
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
 
-(derive :type/TextLike :type/*)
+(derive :type/TextLike :Semantic/*)
 (derive :type/IPAddress :type/TextLike)
 (derive :type/MongoBSONID :type/TextLike)
-
-;; data type `:type/IPAddress` = something like a Postgres `inet` column.
-;; semantic type `:type/IPAddress` = a text or `inet` column that should be displayed as an IP address
-(derive :type/IPAddress :Semantic/*)
-(derive :type/IPAddress :type/Text)
 
 ;;; Structured/Collections
 
@@ -388,5 +381,5 @@
      "A map of Type name (as string, without `:type/` namespace) -> qualified type name as string
 
          {\"Temporal\" \"type/Temporal\", ...}"
-     (clj->js (into {} (for [tyype (descendants :type/*)]
+     (clj->js (into {} (for [tyype (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*]))]
                          [(name tyype) (shared.u/qualified-name tyype)])))))
