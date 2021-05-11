@@ -8164,10 +8164,10 @@ jsprim@^1.2.2:
     json-schema "0.2.3"
     verror "1.10.0"
 
-jsrsasign@10.0.4:
-  version "10.0.4"
-  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-10.0.4.tgz#45f62cb9088c5948cd804181d3484c7ab48165e0"
-  integrity sha512-G08GDeAwgVkN5PGE9TnJ/4ixV3zkq560RigOoqrRvVc8H4GjfPVTz54/qGPLHK1KGHGP36/2eaLU1HuXmOJgug==
+jsrsasign@^10.2.0:
+  version "10.2.0"
+  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-10.2.0.tgz#960ab8046d19d3fcbb584368a57d1977cb0b7ffd"
+  integrity sha512-khMrV/10U02DRzmXhjuLQjddUF39GHndaJZ/3YiiKkbyEl1T5M6EQF9nQUq0DFVCHusmd/jl8TWl4mWt+1L5hg==
 
 "jsx-ast-utils@^2.4.1 || ^3.0.0":
   version "3.2.0"
