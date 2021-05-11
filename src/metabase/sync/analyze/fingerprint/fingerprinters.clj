@@ -124,20 +124,20 @@
   [_]
   global-fingerprinter)
 
-(defmethod fingerprinter [:type/* :Semantic/* :type/FK]
+(defmethod fingerprinter [:type/* :Semantic/* :Relation/FK]
   [_]
   global-fingerprinter)
 
-(defmethod fingerprinter [:type/* :Semantic/* :type/PK]
+(defmethod fingerprinter [:type/* :Semantic/* :Relation/PK]
   [_]
   (constant-fingerprinter nil))
 
-(prefer-method fingerprinter [:type/*        :Semantic/* :type/FK]    [:type/Number :Semantic/* :Relation/*])
-(prefer-method fingerprinter [:type/*        :Semantic/* :type/FK]    [:type/Text   :Semantic/* :Relation/*])
-(prefer-method fingerprinter [:type/*        :Semantic/* :type/PK]    [:type/Number :Semantic/* :Relation/*])
-(prefer-method fingerprinter [:type/*        :Semantic/* :type/PK]    [:type/Text   :Semantic/* :Relation/*])
-(prefer-method fingerprinter [:type/DateTime :Semantic/* :Relation/*] [:type/*      :Semantic/* :type/PK])
-(prefer-method fingerprinter [:type/DateTime :Semantic/* :Relation/*] [:type/*      :Semantic/* :type/FK])
+(prefer-method fingerprinter [:type/*        :Semantic/* :Relation/FK] [:type/Number :Semantic/* :Relation/*])
+(prefer-method fingerprinter [:type/*        :Semantic/* :Relation/FK] [:type/Text   :Semantic/* :Relation/*])
+(prefer-method fingerprinter [:type/*        :Semantic/* :Relation/PK] [:type/Number :Semantic/* :Relation/*])
+(prefer-method fingerprinter [:type/*        :Semantic/* :Relation/PK] [:type/Text   :Semantic/* :Relation/*])
+(prefer-method fingerprinter [:type/DateTime :Semantic/* :Relation/*]  [:type/*      :Semantic/* :Relation/PK])
+(prefer-method fingerprinter [:type/DateTime :Semantic/* :Relation/*]  [:type/*      :Semantic/* :Relation/FK])
 
 (defn- with-global-fingerprinter
   [fingerprinter]

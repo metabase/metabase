@@ -20,6 +20,11 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(deftest linked-tables-test
+  (mt/with-test-user :rasta
+    (is (= #{"USERS" "VENUES"}
+           (set (map :name (#'magic/linked-tables (db/select-one Table :id (mt/id :checkins)))))))))
+
 ;;; ------------------- `->reference` -------------------
 
 (deftest ->reference-test

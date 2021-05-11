@@ -73,7 +73,7 @@
   (testing "We should correctly disambiguate multiple competing multimethods (DateTime and FK in this case)"
     (let [field {:base_type     :type/DateTime
                  :semantic_type :Relation/FK}]
-      (is (= [:type/DateTime :Semantic/* :type/FK]
+      (is (= [:type/DateTime :Semantic/* :Relation/FK]
              ((.dispatchFn ^clojure.lang.MultiFn f/fingerprinter) field)))
       (is (= {:global {:distinct-count 3
                        :nil%           0.0}
