@@ -4,7 +4,8 @@
                :cljs [cljs.test :as t :include-macros true])))
 
 (defn- keywords-in-namespace [keyword-namespace]
-  (->> (var-get #'clojure.core/global-hierarchy)
+  (->> #?(:clj (var-get #'clojure.core/global-hierarchy)
+          :cljs @(#'clojure.core/get-global-hierarchy))
        :parents
        keys
        (filter #(= (namespace %) (name keyword-namespace)))))
