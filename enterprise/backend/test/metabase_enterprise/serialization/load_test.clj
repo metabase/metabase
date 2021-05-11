@@ -224,7 +224,7 @@
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
                                :vertica)) ; bare table name doesn't work; it's test_data_venues instead of venues
       (let [fingerprint (ts/with-world
-                          (dump dump-dir (:email (test-users/fetch-user :crowberto)))
+                          (dump dump-dir (:email (test-users/fetch-user :crowberto)) {:only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
                                                                 card-id-root

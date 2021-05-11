@@ -105,8 +105,10 @@
 (defn dump
   "Serialized metabase instance into directory `path`."
   ([path user]
-   (dump path user :active))
-  ([path user state]
+   (dump path user :active {}))
+  ([path user opts]
+   (dump path user :active opts))
+  ([path user state opts]
    (mdb/setup-db!)
    (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
    (let [users       (if user
@@ -116,13 +118,24 @@
                          (assert user (trs "{0} is not a valid user" user))
                          [user])
                        [])
-         tables (Table)
+         databases   (if (contains? opts :only-db-ids)
+                       (db/select Database :id [:in (:only-db-ids opts)])
+                       (Database))
+         tables      (if (contains? opts :only-db-ids)
+                       (db/select Table :db_id [:in (:only-db-ids opts)])
+                       (Table))
+         fields      (if (contains? opts :only-db-ids)
+                       (db/select Field :table_id [:in (map :id tables)])
+                       (Field))
+         metrics     (if (contains? opts :only-db-ids)
+                       (db/select Metric :table_id [:in (map :id tables)])
+                       (Metric))
          collections (Collection)] ;(select-collections users state)]
      (dump/dump path
-                (Database)
+                databases
                 tables
-                (field/with-values (Field))
-                (Metric)
+                (field/with-values fields)
+                metrics
                 (select-segments-in-tables tables state)
                 collections
                 (select-entities-in-collections Card collections state)
