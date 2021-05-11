@@ -55,9 +55,9 @@
   "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
   [request]
   (if (config/config-bool :mb-session-cookies)
-    ;; Only allow session cookies if MB_SESSION_COOKIES is set
+    ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
     false
-    ;; Otherwise check the user's preference sent in the request
+    ;; Otherwise check whether the user selected "remember me" during login
     (:remember (:body request))))
 
 (defmulti set-session-cookie
