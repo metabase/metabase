@@ -62,7 +62,7 @@
 
 (deftest semantic-type-migration-tests
   (testing "updates each of the coercion types"
-    (impl/test-migrations [283 296] [migrate!]
+    (impl/test-migrations [283 307] [migrate!]
       ;; by name hoists results into a map by name so diffs are easier to read than sets.
       (let [by-name  #(into {} (map (juxt :name identity)) %)
             db-id    (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
@@ -115,7 +115,7 @@
                 [{:base_type         :type/Text
                   :effective_type    :type/Text
                   :coercion_strategy nil
-                  :semantic_type     :type/Address
+                  :semantic_type     :Semantic/Address
                   :name              "address"}
                  {:base_type         :type/Text
                   :effective_type    :type/DateTime

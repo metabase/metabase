@@ -19,13 +19,19 @@
 ;;; |                                   TESTS FOR WHICH FIELDS NEED FINGERPRINTING                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Check that our `base-types->descendants` function properly returns a set of descendants including parent type
-(deftest base-type->descendats-test
-  (is (= #{"Semantic/URL" "Semantic/ImageURL" "Semantic/AvatarURL"}
-         (#'fingerprint/base-types->descendants #{:Semantic/URL})))
-  (is (= #{"Semantic/ImageURL" "Semantic/AvatarURL"}
-         (#'fingerprint/base-types->descendants #{:Semantic/ImageURL :Semantic/AvatarURL}))))
-
+(deftest base-type->descendants-test
+  (testing "Check that our `base-types->descendants` function properly returns a set of descendants including parent type"
+    (is (= #{"type/TimeWithZoneOffset" "type/TimeWithLocalTZ" "type/TimeWithTZ"}
+           (#'fingerprint/base-types->descendants #{:type/TimeWithTZ})))
+    (is (= #{"type/DateTimeWithLocalTZ"
+             "type/DateTimeWithTZ"
+             "type/DateTimeWithZoneID"
+             "type/DateTimeWithZoneOffset"
+             "type/Instant"
+             "type/TimeWithLocalTZ"
+             "type/TimeWithTZ"
+             "type/TimeWithZoneOffset"}
+           (#'fingerprint/base-types->descendants #{:type/TimeWithTZ :type/DateTimeWithTZ})))))
 
 ;; Make sure we generate the correct HoneySQL WHERE clause based on whatever is in
 ;; `fingerprint-version->types-that-should-be-re-fingerprinted`
@@ -41,8 +47,8 @@
            [:or
             [:and
              [:< :fingerprint_version 1]
-             [:in :base_type #{"Semantic/URL" "Semantic/ImageURL" "Semantic/AvatarURL"}]]]]}
-         (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:Semantic/URL}}]
+             [:in :base_type #{"type/TimeWithZoneOffset" "type/TimeWithLocalTZ" "type/TimeWithTZ"}]]]]}
+         (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/TimeWithTZ}}]
            (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))
 
   (is (= {:where
@@ -56,14 +62,14 @@
            [:or
             [:and
              [:< :fingerprint_version 2]
-             [:in :base_type #{"type/Decimal" "Semantic/Latitude" "Semantic/Longitude" "Semantic/Coordinate" "Semantic/Currency" "type/Float"
-                               "Semantic/Share" "Semantic/Income" "Semantic/Price" "Semantic/Discount" "Semantic/GrossMargin" "Semantic/Cost"}]]
+             [:in :base_type #{"type/Decimal" "type/Currency" "type/Float"}]]
             [:and
              [:< :fingerprint_version 1]
-             [:in :base_type #{"Semantic/ImageURL" "Semantic/AvatarURL"}]]]]}
-         (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:Semantic/ImageURL :Semantic/AvatarURL}
+             [:in :base_type #{"type/TimeWithZoneOffset" "type/TimeWithLocalTZ" "type/TimeWithTZ"}]]]]}
+         (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/TimeWithZoneOffset :type/TimeWithTZ}
                                                                                      2 #{:type/Float}}]
            (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))
+
   (testing "our SQL generation code is clever enough to remove version checks when a newer version completely eclipses them"
     (is (= {:where
             [:and
@@ -76,15 +82,15 @@
              [:or
               [:and
                [:< :fingerprint_version 2]
-               [:in :base_type #{"type/Decimal" "Semantic/Latitude" "Semantic/Longitude" "Semantic/Coordinate" "Semantic/Currency" "type/Float"
-                                 "Semantic/Share" "Semantic/Income" "Semantic/Price" "Semantic/Discount" "Semantic/GrossMargin" "Semantic/Cost"}]]
+               [:in :base_type #{"type/Decimal" "type/Currency" "type/Float"}]]
               ;; no type/Float stuff should be included for 1
               [:and
                [:< :fingerprint_version 1]
-               [:in :base_type #{"Semantic/URL" "Semantic/ImageURL" "Semantic/AvatarURL"}]]]]}
-           (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/Float :Semantic/URL}
+               [:in :base_type #{"type/PostgresEnum" "type/Text" "type/UUID"}]]]]}
+           (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/Float :type/Text}
                                                                                        2 #{:type/Float}}]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
+
   (testing "our SQL generation code is also clever enough to completely skip completely eclipsed versions"
     (is (= {:where
             [:and
@@ -97,21 +103,21 @@
              [:or
               [:and
                [:< :fingerprint_version 4]
-               [:in :base_type #{"type/Decimal" "Semantic/Latitude" "Semantic/Longitude" "Semantic/Coordinate" "Semantic/Currency" "type/Float"
-                                 "Semantic/Share" "Semantic/Income" "Semantic/Price" "Semantic/Discount" "Semantic/GrossMargin" "Semantic/Cost"}]]
+               [:in :base_type #{"type/Decimal" "type/Currency" "type/Float"}]]
               [:and
                [:< :fingerprint_version 3]
-               [:in :base_type #{"Semantic/URL" "Semantic/ImageURL" "Semantic/AvatarURL"}]]
+               [:in :base_type #{"type/PostgresEnum" "type/Text" "type/UUID"}]]
               ;; version 2 can be eliminated completely since everything relevant there is included in 4
-              ;; The only things that should go in 1 should be `:Semantic/City` since `:Semantic/Coordinate` is included in 4
+              ;; The only things that should go in 1 should be `:type/Integer` since `:type/Decimal` is included in 4
               [:and
                [:< :fingerprint_version 1]
-               [:in :base_type #{"Semantic/City"}]]]]}
-           (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:Semantic/Coordinate :Semantic/City}
-                                                                                       2 #{:Semantic/Coordinate}
-                                                                                       3 #{:Semantic/URL}
+               [:in :base_type #{"type/Integer" "type/BigInteger"}]]]]}
+           (with-redefs [i/fingerprint-version->types-that-should-be-re-fingerprinted {1 #{:type/Decimal :type/Integer}
+                                                                                       2 #{:type/Decimal}
+                                                                                       3 #{:type/Text}
                                                                                        4 #{:type/Float}}]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating)))))
+
   (testing "when refingerprinting doesn't check for versions"
     (is (= {:where [:and
                     [:= :active true]
