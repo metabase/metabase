@@ -424,20 +424,29 @@
           {}
           db-ids))
 
+(defn- permissions->groups [permissions db-ids]
+  (->> permissions
+       (filter (comp #(re-find #"(^/db|^/$)" %) :object))
+       (group-by :group_id)
+       (m/map-vals (fn [group-permissions]
+                     (let [permissions-graph (perms-parse/permissions->graph (map :object group-permissions))]
+                       (if (= :all permissions-graph)
+                         (all-permissions db-ids)
+                         (:db permissions-graph)))))))
+
+
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
   []
   (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
         db-ids      (db/select-ids 'Database)]
     {:revision (perms-revision/latest-id)
-     :groups   (->> permissions
-                    (filter (comp #(re-find #"(^/db|^/$)" %) :object))
-                    (group-by :group_id)
-                    (m/map-vals (fn [group-permissions]
-                                  (let [permissions-graph (perms-parse/permissions->graph (map :object group-permissions))]
-                                    (if (= :all permissions-graph)
-                                      (all-permissions db-ids)
-                                      (:db permissions-graph))))))}))
+     :groups   (permissions->groups permissions db-ids)})
+  [group-limit group-offset db-limit db-offset]
+  (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
+        db-ids      (db/select-ids 'Database)]
+    {:revision (perms-revision/latest-id)
+     :groups   (permissions->groups permissions db-ids)}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH UPDATE                                                  |
