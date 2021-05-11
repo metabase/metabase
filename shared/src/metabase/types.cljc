@@ -239,9 +239,12 @@
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
 
-(derive :type/TextLike :Semantic/*)
-(derive :type/IPAddress :type/TextLike)
+(derive :type/TextLike :type/*)
 (derive :type/MongoBSONID :type/TextLike)
+;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
+;; addresses
+(derive :type/IPAddress :type/TextLike)
+(derive :type/IPAddress :Semantic/*)
 
 ;;; Structured/Collections
 
