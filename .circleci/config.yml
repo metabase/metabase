@@ -716,28 +716,12 @@ jobs:
                   - /home/circleci/metabase/metabase/node_modules
                   - /home/circleci/.cache/Cypress
 
-  fe-tests-unit:
-    executor: clojure-and-node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend unit tests
-          command: run test-unit
-          skip-when-no-change: true
-
   shared-tests-cljs:
     executor: clojure-and-node
     steps:
       - run-yarn-command:
           command-name: Run Cljs tests for shared/ code
           command: run test-cljs
-          skip-when-no-change: true
-
-  fe-tests-timezones:
-    executor: clojure-and-node
-    steps:
-      - run-yarn-command:
-          command-name: Run frontend timezone tests
-          command: run test-timezones
           skip-when-no-change: true
 
   # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
@@ -1169,13 +1153,7 @@ workflows:
       - fe-deps:
           requires:
             - checkout
-      - fe-tests-unit:
-          requires:
-            - fe-deps
       - shared-tests-cljs:
-          requires:
-            - fe-deps
-      - fe-tests-timezones:
           requires:
             - fe-deps
 
