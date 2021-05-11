@@ -34,7 +34,12 @@ Fill out the following fields as follows and click "Save":
 - **Identifier (Entity ID)**: `Metabase`
 - **Reply URL (Assertion Consumer Service URL)**: go to your Metabase instance in Settings -> Admin-> Authentication -> SAML and insert the value that your Metabase instance reports in the "Configure your identity provider (IdP)" box.
 
-Now, open in a new tab the link that's in "App Federation Metadata Url" from step 3 and save the "Login URL" and "Azure AD Identifier" links from step 4 as you will need them both in the next step.
+In a new tab, visit the "App Federation Metadata URL". On the Metadata page, note the:
+
+- "Login URL"
+- "Azure AD Identifier" 
+
+You'll need these URLs to complete the SSO setup in Metabase.
 
 To finish the Azure side of the configuration, click on the **Users and groups** button on the Manage tab and add the users or groups that should have access to Metabase.
 

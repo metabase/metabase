@@ -121,7 +121,7 @@ Now go to the application configuration page and click on **Settings** -> **Netw
 
 ![Azure VNET integration](images/AZVNETintegration.png)
 
-Now click on the huge plus sign next to **Add VNET** and select the VNET that you created on the first step and the public subnet to set the server on the public subnet of the VNET, and click OK.
+Now click on the huge plus sign next to **Add VNET** and select the VNET that you created, and the public subnet. Click **OK**.
 
 ![Azure VNET public subnet](images/AZVNETPublicSubnet.png)
 
