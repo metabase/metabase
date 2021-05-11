@@ -12,7 +12,7 @@
 
 import { onlyOn } from "@cypress/skip-test";
 import { restore, popover } from "__support__/e2e/cypress";
-import { USERS } from "__support__/e2e/cypress_data";
+import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -653,6 +653,21 @@ describe("collection permissions", () => {
         });
       });
     });
+  });
+
+  it("should offer to save items to 'Our analytics' if user has a 'curate' access to it", () => {
+    cy.signInAsAdmin();
+    cy.updateCollectionGraph({
+      [USER_GROUPS.COLLECTION_GROUP]: { root: "write" },
+    });
+    cy.signIn("normal");
+
+    cy.visit("/question/new");
+    cy.findByText("Native query").click();
+    cy.get(".ace_content").type("select * from people");
+    cy.findByText("Save").click();
+
+    cy.get(".AdminSelect").findByText("Our analytics");
   });
 });
 
