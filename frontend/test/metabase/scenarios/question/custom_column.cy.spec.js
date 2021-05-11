@@ -475,7 +475,7 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText("Days");
     });
 
-    it.only("should handle COALESCE", () => {
+    it("should handle COALESCE", () => {
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Custom column").click();
       popover().within(() => {
