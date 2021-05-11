@@ -1,7 +1,9 @@
 (ns metabase.types-test
-  (:require [metabase.types :as sut]
+  (:require [metabase.types :as types]
             #?(:clj [clojure.test :as t]
                :cljs [cljs.test :as t :include-macros true])))
+
+(comment types/keep-me)
 
 (defn- keywords-in-namespace [keyword-namespace]
   (->> #?(:clj (var-get #'clojure.core/global-hierarchy)
