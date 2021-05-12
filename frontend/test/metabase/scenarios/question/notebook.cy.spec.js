@@ -880,7 +880,7 @@ describe("scenarios > question > notebook", () => {
         .click()
         .clear()
         .type('[Category] = "widget', { delay: 50 });
-      cy.findAllByRole("button", { name: "Done" })
+      cy.button("Done")
         .should("not.be.disabled")
         .click();
       cy.findByText("Missing closing quotes");

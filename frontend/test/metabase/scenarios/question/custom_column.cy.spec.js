@@ -427,7 +427,7 @@ describe("scenarios > question > custom columns", () => {
         cy.findByPlaceholderText("Something nice and descriptive").type(
           "CategoryTitle",
         );
-        cy.findByRole("button", { name: "Done" }).click();
+        cy.button("Done").click();
       });
       cy.findByText("Filter").click();
       popover()
@@ -464,7 +464,7 @@ describe("scenarios > question > custom columns", () => {
         cy.findByPlaceholderText("Something nice and descriptive").type(
           "MiscDate",
         );
-        cy.findByRole("button", { name: "Done" }).click();
+        cy.button("Done").click();
       });
       cy.findByText("Filter").click();
       popover()
@@ -485,7 +485,7 @@ describe("scenarios > question > custom columns", () => {
         cy.findByPlaceholderText("Something nice and descriptive").type(
           "MiscDate",
         );
-        cy.findByRole("button", { name: "Done" }).click();
+        cy.button("Done").click();
       });
       cy.findByText("Filter").click();
       popover()

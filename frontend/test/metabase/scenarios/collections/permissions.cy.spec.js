@@ -475,7 +475,7 @@ describe("collection permissions", () => {
                   cy.findByText("Create a new dashboard").click();
                   cy.get(".AdminSelect").findByText(personalCollection);
                   cy.findByLabelText("Name").type("Foo");
-                  cy.findByRole("button", { name: "Create" }).click();
+                  cy.button("Create").click();
                 });
                 cy.url().should("match", /\/dashboard\/\d+$/);
                 saveDashboard();
