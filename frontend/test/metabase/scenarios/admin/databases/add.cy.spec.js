@@ -170,6 +170,18 @@ describe("scenarios > admin > databases > add", () => {
       cy.findByText(/Need help setting up (.*)\?/i);
       cy.findByRole("link", { name: /Our docs can help/i });
     });
+
+    cy.get("#formField-engine").click();
+    cy.findByText("MySQL").click();
+    cy.findByTestId("database-setup-help-card").findByText(
+      "Need help setting up MySQL?",
+    );
+
+    cy.get("#formField-engine").click();
+    cy.findByText("SQLite").click();
+    cy.findByTestId("database-setup-help-card").findByText(
+      "Need help setting up your database?",
+    );
   });
 
   describe("BigQuery", () => {
