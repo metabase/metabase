@@ -79,6 +79,9 @@
   "Valid values for the `?model=` param accepted by endpoints in this namespace."
   #{"card" "collection" "dashboard" "pulse" "snippet"})
 
+; This is basically a union type. defendpoint splits the string if it only gets one
+(def ^:private models-schema (s/conditional #(vector? %) [(s/enum valid-model-param-values)] :else (s/enum valid-model-param-values)))
+
 (def ^:private valid-favorite-state-values
   "Valid values for the `?favorite_state=` param accepted by endpoints in this namespace."
   #{"all" "is_favorite" "is_not_favorite"})
@@ -88,7 +91,7 @@
   {:archived?      s/Bool
    :favorite-state (s/maybe (apply s/enum (map keyword valid-favorite-state-values)))
    ;; when specified, only return results of this type.
-   :model          (s/maybe (apply s/enum (map keyword valid-model-param-values)))})
+   :models         (s/maybe [(apply s/enum (map keyword valid-model-param-values))])})
 
 (defmulti ^:private fetch-collection-children
   "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -111,9 +114,10 @@
 
 (defmethod fetch-collection-children :dashboard
   [_ collection {:keys [archived?]}]
-  (db/select [Dashboard :id :name :description :collection_position]
+  (-> (db/select [Dashboard :id :name :description :collection_position]
     :collection_id (:id collection)
-    :archived      (boolean archived?)))
+    :archived      (boolean archived?))
+      (hydrate :favorite)))
 
 (defmethod fetch-collection-children :pulse
   [_ collection {:keys [archived?]}]
@@ -204,10 +208,13 @@
   [id]
   (collection-detail (api/read-check Collection id)))
 
+(defn- coerce-vec [to-coerce]
+  (if (vector? to-coerce) to-coerce [to-coerce]))
+
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
-  *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
+  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
   *  `favorite_state` - when `is_favorite`, return favorited objects only.
                    when `is_not_favorite`, return non favorited objects only.
@@ -215,14 +222,15 @@
   *  `limit` - limit for pagination.
   *  `offset` - offset for pagination."
   [id models archived favorite_state limit offset]
-  {models         (s/maybe [(apply s/enum valid-model-param-values)])
+  {models         (s/maybe models-schema)
    archived       (s/maybe su/BooleanString)
    favorite_state (s/maybe (apply s/enum valid-favorite-state-values))
    limit          (s/maybe su/IntStringGreaterThanZero)
    offset         (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (api/check-valid-page-params limit offset)
-  (let [children-res  (collection-children (api/read-check Collection id)
-                                           {:models         (apply hash-set (map keyword models))
+  (let [model-kwds    (apply hash-set (map keyword (coerce-vec models)))
+        children-res  (collection-children (api/read-check Collection id)
+                                           {:models         model-kwds
                                             :archived?      (Boolean/parseBoolean archived)
                                             :favorite-state (keyword favorite_state)})
         limit-int     (some-> limit Integer/parseInt)
@@ -262,7 +270,7 @@
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
   [models archived namespace favorite_state limit offset]
-  {models         (s/maybe [(apply s/enum valid-model-param-values)])
+  {models         (s/maybe models-schema)
    archived       (s/maybe su/BooleanString)
    namespace      (s/maybe su/NonBlankString)
    favorite_state (s/maybe (apply s/enum valid-favorite-state-values))
@@ -271,15 +279,16 @@
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (api/check-valid-page-params limit offset)
-  (let [root-collection (assoc collection/root-collection :namespace namespace)
+  (let [model-kwds      (if (mi/can-read? root-collection)
+                          (apply hash-set (map keyword (coerce-vec models)))
+                          #{:collection})
+        root-collection (assoc collection/root-collection :namespace namespace)
         limit-int       (some-> limit Integer/parseInt)
         offset-int      (some-> offset Integer/parseInt)
         col-children    (collection-children
                           root-collection
-                          {:models     (if (mi/can-read? root-collection)
-                                         (apply hash-set (map keyword models))
-                                         #{:collection})
-                           :archived? (Boolean/parseBoolean archived)
+                          {:models         model-kwds)
+                           :archived?      (Boolean/parseBoolean archived)
                            :favorite-state (keyword favorite_state)})]
     {:data  (cond->> (vec col-children)
               (some? offset-int) (drop offset-int)
