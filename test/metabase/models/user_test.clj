@@ -83,7 +83,7 @@
   (when-let [[{[{invite-email :content}] :body}] (get @mt/inbox new-user-email-address)]
     (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)#new" invite-email)]
       (http/client :post 200 "session/reset_password" {:token    reset-token
-                                                       :password "ABC123"}))))
+                                                       :password "p@ssword1"}))))
 
 (defn sent-emails
   "Fetch the emails that have been sent in the form of a map of email address -> sequence of email subjects.
@@ -95,7 +95,6 @@
                                              address)]]
              [address (for [{subject :subject} emails]
                         (str/replace subject (str new-user-first-name " " new-user-last-name) "<New User>"))])))
-
 
 (defn- invite-user-accept-and-check-inboxes!
   "Create user by passing `invite-user-args` to `create-and-invite-user!` or `create-new-google-auth-user!`,

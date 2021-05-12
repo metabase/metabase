@@ -15,7 +15,7 @@ const PermissionsTabs = ({ tab, onChangeTab }) => (
       ]}
       onChange={onChangeTab}
       underlined
-      py={1}
+      py={2}
     />
   </div>
 );

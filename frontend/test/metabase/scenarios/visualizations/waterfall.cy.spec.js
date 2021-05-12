@@ -84,9 +84,9 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.get("[contenteditable=true]")
       .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
-    cy.findByRole("button", { name: "Done" }).click();
+    cy.button("Done").click();
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -100,7 +100,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 

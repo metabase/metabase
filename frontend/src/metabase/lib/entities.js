@@ -405,15 +405,25 @@ export function createEntity(def: EntityDefinition): Entity {
       // for now at least paginated endpoints have a 'data' property that
       // contains the actual entries, if that is on the response we should
       // use that as the 'results'
-      const results = fetched.data ? fetched.data : fetched;
-      const total = fetched.total;
+
+      let results;
+      let metadata = {};
+
+      if (fetched.data) {
+        const { data, ...rest } = fetched;
+        results = data;
+        metadata = rest;
+      } else {
+        results = fetched;
+      }
+
       if (!Array.isArray(results)) {
         throw `Invalid response listing ${entity.name}`;
       }
       return {
         ...entity.normalizeList(results),
+        metadata,
         entityQuery,
-        total,
       };
     }),
 
@@ -489,9 +499,9 @@ export function createEntity(def: EntityDefinition): Entity {
     entities => entities && entities.list,
   );
 
-  const getListTotal = createSelector(
+  const getListMetadata = createSelector(
     [getEntityList],
-    entities => entities && entities.total,
+    entities => entities && entities.metadata,
   );
 
   const getList = createSelector(
@@ -548,7 +558,7 @@ export function createEntity(def: EntityDefinition): Entity {
     getLoading,
     getLoaded,
     getError,
-    getListTotal,
+    getListMetadata,
   };
   entity.selectors = {
     ...defaultSelectors,
@@ -591,11 +601,12 @@ export function createEntity(def: EntityDefinition): Entity {
     }
     if (type === FETCH_LIST_ACTION) {
       if (payload && payload.result) {
+        const { entityQuery, metadata, result: list } = payload;
         return {
           ...state,
-          [getIdForQuery(payload.entityQuery)]: {
-            list: payload.result,
-            total: payload.total,
+          [getIdForQuery(entityQuery)]: {
+            list,
+            metadata,
           },
         };
       }

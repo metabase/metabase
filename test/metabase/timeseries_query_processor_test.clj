@@ -17,12 +17,13 @@
              "venue_category_name"
              "id"
              "count"
+             "unique_users"
              "user_name"
              "user_last_login"]
 
             :rows
-            [["2013-01-03T08:00:00Z" "Kinaree Thai Bistro"       "-118.344" "34.094"  "1" "Thai" "931" 1 "Simcha Yan" "2014-01-01T08:30:00.000Z"]
-             ["2013-01-10T08:00:00Z" "Ruen Pair Thai Restaurant" "-118.306" "34.1021" "2" "Thai" "285" 1 "Kfir Caj"   "2014-07-03T01:30:00.000Z"]]}
+            [["2013-01-03T00:00:00Z" "Kinaree Thai Bistro"       -118.344 34.094  1 "Thai" 931 1 "AQAAAQAAAAEBsA==" "Simcha Yan" "2014-01-01T08:30:00"]
+             ["2013-01-10T00:00:00Z" "Ruen Pair Thai Restaurant" -118.306 34.1021 2 "Thai" 285 1 "AQAAAQAAAAP4IA==" "Kfir Caj"   "2014-07-03T01:30:00"]]}
            (mt/rows+column-names
              (mt/run-mbql-query checkins
                {:limit 2}))))))
@@ -30,23 +31,21 @@
 (deftest fields-test
   (tqp.test/test-timeseries-drivers
     (is (= {:columns ["venue_name" "venue_category_name" "timestamp"],
-            :rows    [["Kinaree Thai Bistro"        "Thai" "2013-01-03T08:00:00Z"]
-                      ["Ruen Pair Thai Restaurant" "Thai"  "2013-01-10T08:00:00Z"]]}
+            :rows    [["Kinaree Thai Bistro"        "Thai" "2013-01-03T00:00:00Z"]
+                      ["Ruen Pair Thai Restaurant" "Thai"  "2013-01-10T00:00:00Z"]]}
            (mt/rows+column-names
              (mt/run-mbql-query checkins
                {:fields [$venue_name $venue_category_name $timestamp]
                 :limit  2}))))))
 
-;; TODO -- `:desc` tests are disabled for now, they don't seem to be working on Druid 0.11.0. Enable once we merge PR
-;; to use Druid 0.17.0
 (deftest order-by-timestamp-test
   (tqp.test/test-timeseries-drivers
     (testing "query w/o :fields"
       (doseq [[direction expected-rows]
-              {#_:desc #_[["693" 1 "2015-12-29T08:00:00Z" "2014-07-03T19:30:00.000Z" "Frans Hevel" "Mexican" "34.0489" "-118.238" "Señor Fish"                "2"]
-                          ["570" 1 "2015-12-26T08:00:00Z" "2014-07-03T01:30:00.000Z" "Kfir Caj"    "Chinese" "37.7949" "-122.406" "Empress of China"          "3"]]
-               :asc  [["2013-01-03T08:00:00Z" "Kinaree Thai Bistro"       "-118.344" "34.094"  "1" "Thai" "931" 1 "Simcha Yan" "2014-01-01T08:30:00.000Z"]
-                      ["2013-01-10T08:00:00Z" "Ruen Pair Thai Restaurant" "-118.306" "34.1021" "2" "Thai" "285" 1 "Kfir Caj"   "2014-07-03T01:30:00.000Z"]]}]
+              {:desc [["2015-12-29T00:00:00Z" "Señor Fish"                -118.238 34.0489 2 "Mexican"   693 1 "AQAAAQAAAAIFIA==" "Frans Hevel"    "2014-07-03T19:30:00"]
+                      ["2015-12-26T00:00:00Z" "Empress of China"          -122.406 37.7949 3 "Chinese"   570 1 "AQAAAQAAAAP4IA==" "Kfir Caj"       "2014-07-03T01:30:00"]]
+               :asc  [["2013-01-03T00:00:00Z" "Kinaree Thai Bistro"       -118.344 34.094  1 "Thai"      931 1 "AQAAAQAAAAEBsA==" "Simcha Yan"     "2014-01-01T08:30:00"]
+                      ["2013-01-10T00:00:00Z" "Ruen Pair Thai Restaurant" -118.306 34.1021 2 "Thai"      285 1 "AQAAAQAAAAP4IA==" "Kfir Caj"       "2014-07-03T01:30:00"]]}]
         (testing direction
           (is (= {:columns ["timestamp"
                             "venue_name"
@@ -56,6 +55,7 @@
                             "venue_category_name"
                             "id"
                             "count"
+                            "unique_users"
                             "user_name"
                             "user_last_login"]
                   :rows    expected-rows}
@@ -65,12 +65,12 @@
                       :limit    2})))))))
 
     (testing "for a query with :fields"
-      (doseq [[direction expected-rows] {#_:desc #_[["Señor Fish" "Mexican"]
-                                                    ["Empress of China" "Chinese"]]
-                                         :asc  [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00Z"]
-                                                ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00Z"]]}]
+      (doseq [[direction expected-rows] {:desc [["Señor Fish"                "Mexican"   "2015-12-29T00:00:00Z"]
+                                                ["Empress of China"          "Chinese"   "2015-12-26T00:00:00Z"]]
+                                         :asc  [["Kinaree Thai Bistro"       "Thai"      "2013-01-03T00:00:00Z"]
+                                                ["Ruen Pair Thai Restaurant" "Thai"      "2013-01-10T00:00:00Z"]]}]
         (testing direction
-          (is (= {:columns ["venue_name" "venue_category_name" "timestamp"],
+          (is (= {:columns ["venue_name" "venue_category_name" "timestamp"]
                   :rows    expected-rows}
                  (mt/rows+column-names
                    (mt/run-mbql-query checkins
@@ -278,11 +278,11 @@
   (tqp.test/test-timeseries-drivers
     (testing "filter ="
       (is (= {:columns ["user_name" "venue_name" "venue_category_name" "timestamp"]
-              :rows    [["Plato Yeshua" "Fred 62"        "Diner"    "2013-03-12T07:00:00Z"]
-                        ["Plato Yeshua" "Dimples"        "Karaoke"  "2013-04-11T07:00:00Z"]
-                        ["Plato Yeshua" "Baby Blues BBQ" "BBQ"      "2013-06-03T07:00:00Z"]
-                        ["Plato Yeshua" "The Daily Pint" "Bar"      "2013-07-25T07:00:00Z"]
-                        ["Plato Yeshua" "Marlowe"        "American" "2013-09-10T07:00:00Z"]]}
+              :rows    [["Plato Yeshua" "Fred 62"        "Diner"    "2013-03-12T00:00:00Z"]
+                        ["Plato Yeshua" "Dimples"        "Karaoke"  "2013-04-11T00:00:00Z"]
+                        ["Plato Yeshua" "Baby Blues BBQ" "BBQ"      "2013-06-03T00:00:00Z"]
+                        ["Plato Yeshua" "The Daily Pint" "Bar"      "2013-07-25T00:00:00Z"]
+                        ["Plato Yeshua" "Marlowe"        "American" "2013-09-10T00:00:00Z"]]}
              (mt/rows+column-names
                (mt/run-mbql-query checkins
                  {:fields [$user_name $venue_name $venue_category_name $timestamp]
@@ -300,7 +300,7 @@
   (tqp.test/test-timeseries-drivers
     (testing "filter AND"
       (is (= {:columns ["user_name" "venue_name" "timestamp"]
-              :rows    [["Plato Yeshua" "The Daily Pint" "2013-07-25T07:00:00Z"]]}
+              :rows    [["Plato Yeshua" "The Daily Pint" "2013-07-25T00:00:00Z"]]}
              (mt/rows+column-names
                (mt/run-mbql-query checkins
                  {:fields [$user_name $venue_name $timestamp]
@@ -489,15 +489,15 @@
 (deftest minute-date-bucketing-test
   (tqp.test/test-timeseries-drivers
     (is (= {:columns ["timestamp" "count"]
-            :rows    [["2013-01-03T08:00:00+00:00" 1]
-                      ["2013-01-10T08:00:00+00:00" 1]
-                      ["2013-01-19T08:00:00+00:00" 1]
-                      ["2013-01-22T08:00:00+00:00" 1]
-                      ["2013-01-23T08:00:00+00:00" 1]]}
+            :rows    [["2013-01-03T00:00:00+00:00" 1]
+                      ["2013-01-10T00:00:00+00:00" 1]
+                      ["2013-01-19T00:00:00+00:00" 1]
+                      ["2013-01-22T00:00:00+00:00" 1]
+                      ["2013-01-23T00:00:00+00:00" 1]]}
            (mt/rows+column-names
              (mt/run-mbql-query checkins
                {:aggregation [[:count]]
-                :breakout    [[:datetime-field $timestamp :minute]]
+                :breakout    [[:field %timestamp {:temporal-unit :minute}]]
                 :limit       5}))))))
 
 (deftest date-bucketing-test
@@ -505,13 +505,12 @@
     (tqp.test/with-flattened-dbdef
       (doseq [[unit expected-rows]
               {:minute-of-hour  [[0 1000]]
-               :hour            [["2013-01-03T08:00:00+00:00" 1]
-                                 ["2013-01-10T08:00:00+00:00" 1]
-                                 ["2013-01-19T08:00:00+00:00" 1]
-                                 ["2013-01-22T08:00:00+00:00" 1]
-                                 ["2013-01-23T08:00:00+00:00" 1]]
-               :hour-of-day     [[7 719]
-                                 [8 281]]
+               :hour            [["2013-01-03T00:00:00+00:00" 1]
+                                 ["2013-01-10T00:00:00+00:00" 1]
+                                 ["2013-01-19T00:00:00+00:00" 1]
+                                 ["2013-01-22T00:00:00+00:00" 1]
+                                 ["2013-01-23T00:00:00+00:00" 1]]
+               :hour-of-day     [[0 1000]]
                :week            [["2012-12-30" 1]
                                  ["2013-01-06" 1]
                                  ["2013-01-13" 1]
@@ -569,7 +568,7 @@
             (let [{:keys [columns rows]} (mt/rows+column-names
                                            (mt/run-mbql-query checkins
                                              {:aggregation [[:count]]
-                                              :breakout    [[:datetime-field $timestamp unit]]
+                                              :breakout    [[:field %timestamp {:temporal-unit unit}]]
                                               :limit       5}))]
               (is (= ["timestamp" "count"]
                      columns))
@@ -581,7 +580,7 @@
             (let [{:keys [columns rows]} (mt/rows+column-names
                                            (mt/run-mbql-query checkins
                                              {:aggregation [[:count]]
-                                              :breakout    [[:datetime-field $timestamp unit]]}))]
+                                              :breakout    [[:field %timestamp {:temporal-unit unit}]]}))]
               (is (= ["timestamp" "count"]
                      columns))
               (is (= expected-rows

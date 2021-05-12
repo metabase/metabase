@@ -804,7 +804,7 @@
 (deftest reset-password-input-validation-test
   (testing "PUT /api/user/:id/password"
     (testing "Test input validations on password change"
-      (is (= {:errors {:password "Insufficient password strength"}}
+      (is (= {:errors {:password "Password is insufficiently complex, or is too common"}}
              (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta)) {}))))
 
     (testing "Make sure that if current password doesn't match we get a 400"

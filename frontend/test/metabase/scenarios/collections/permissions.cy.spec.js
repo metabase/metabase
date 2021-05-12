@@ -1,3 +1,15 @@
+/**
+ * FYI, this test suite contains permission tests for different pages
+ *
+ * - Collections (/collection/root)
+ * - Dashboard (/dashboard/:id)
+ * - Question (/question/:id)
+ *
+ * It's a WIP and most likely it will be split later,
+ * when we're sure about our testing strategy for permissions
+ * See discussion: https://github.com/metabase/metabase/pull/15573
+ */
+
 import { onlyOn } from "@cypress/skip-test";
 import { restore, popover } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
@@ -22,6 +34,19 @@ describe("collection permissions", () => {
             describe(`${user} user`, () => {
               beforeEach(() => {
                 cy.signIn(user);
+              });
+
+              describe("create dashboard", () => {
+                it("should offer to save dashboard to a currently opened collection", () => {
+                  cy.visit("/collection/root");
+                  cy.findByTestId("sidebar").within(() => {
+                    cy.findByText("First collection").click();
+                    cy.findByText("Second collection").click();
+                  });
+                  cy.icon("add").click();
+                  cy.findByText("New dashboard").click();
+                  cy.get(".AdminSelect").findByText("Second collection");
+                });
               });
 
               describe("pin", () => {
@@ -148,7 +173,7 @@ describe("collection permissions", () => {
                     cy.get("[class*=PageHeading]")
                       .as("title")
                       .contains("Second collection");
-                    cy.get("[class*=CollectionSidebar]")
+                    cy.findByTestId("sidebar")
                       .as("sidebar")
                       .within(() => {
                         cy.findByText("First collection");
@@ -285,6 +310,22 @@ describe("collection permissions", () => {
                   cy.location("pathname").should("eq", "/collection/root");
                   cy.findByText("Orders").should("not.exist");
                 });
+
+                it("should be able to add question to dashboard", () => {
+                  popover()
+                    .findByText("Add to dashboard")
+                    .click();
+
+                  cy.get(".Modal")
+                    .as("modal")
+                    .findByText("Orders in a dashboard")
+                    .click();
+
+                  cy.get("@modal").should("not.exist");
+                  // By default, the dashboard contains one question
+                  // After we add a new one, we check there are two questions now
+                  cy.get(".DashCard").should("have.length", 2);
+                });
               });
 
               describe("managing dashboard from the dashboard's edit menu", () => {
@@ -367,22 +408,24 @@ describe("collection permissions", () => {
             });
 
             it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+              const { first_name, last_name } = USERS[user];
               cy.visit("/collection/root");
               openEllipsisMenuFor("Orders in a dashboard");
               popover()
                 .findByText("Duplicate this item")
-                .should("exist");
+                .click();
+              cy.get(".AdminSelect").findByText(
+                `${first_name} ${last_name}'s Personal Collection`,
+              );
             });
 
             ["/", "/collection/root"].forEach(route => {
-              it.skip("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
+              it("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit(route);
                 cy.icon("add").click();
                 cy.findByText("New dashboard").click();
-                cy.findByLabelText("Name")
-                  .click()
-                  .type("Foo");
+
                 // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
                 cy.findByText(
                   `${first_name} ${last_name}'s Personal Collection`,
@@ -398,6 +441,45 @@ describe("collection permissions", () => {
                     .type("third{Enter}");
                   cy.findByText("Third collection").should("not.exist");
                 });
+              });
+            });
+
+            describe("managing question from the question's edit dropdown", () => {
+              it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
+                cy.visit("/question/1");
+                cy.icon("pencil").click();
+                popover()
+                  .findByText("Add to dashboard")
+                  .click();
+
+                cy.get(".Modal").within(() => {
+                  cy.findByText("Orders in a dashboard").should("not.exist");
+                  cy.icon("search").click();
+                  cy.findByPlaceholderText("Search").type(
+                    "Orders in a dashboard{Enter}",
+                  );
+                  cy.findByText("Orders in a dashboard").should("not.exist");
+                });
+              });
+
+              it("should offer personal collection as a save destination for a new dashboard", () => {
+                const { first_name, last_name } = USERS[user];
+                const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
+                cy.visit("/question/1");
+                cy.icon("pencil").click();
+                popover()
+                  .findByText("Add to dashboard")
+                  .click();
+
+                cy.get(".Modal").within(() => {
+                  cy.findByText("Create a new dashboard").click();
+                  cy.get(".AdminSelect").findByText(personalCollection);
+                  cy.findByLabelText("Name").type("Foo");
+                  cy.button("Create").click();
+                });
+                cy.url().should("match", /\/dashboard\/\d+$/);
+                saveDashboard();
+                cy.get(".DashboardHeader").findByText(personalCollection);
               });
             });
 
@@ -419,9 +501,15 @@ describe("collection permissions", () => {
               });
 
               it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+                const { first_name, last_name } = USERS[user];
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
-                popover().findByText("Duplicate");
+                popover()
+                  .findByText("Duplicate")
+                  .click();
+                cy.get(".AdminSelect").findByText(
+                  `${first_name} ${last_name}'s Personal Collection`,
+                );
               });
             });
           });
@@ -440,17 +528,22 @@ describe("collection permissions", () => {
         cy.signInAsAdmin();
       });
 
-      it.skip("shouldn't record history steps when there was no diff (metabase#1926)", () => {
+      it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
         cy.signInAsAdmin();
         cy.createDashboard("foo").then(({ body }) => {
           visitAndEditDashboard(body.id);
         });
+
         // Save the dashboard without any changes made to it (TODO: we should probably disable "Save" button in the first place)
         saveDashboard();
-        // Take a look at the generated history - there shouldn't be anything other than "First revision" (dashboard created)
-        cy.icon("ellipsis").click();
-        cy.findByText("Revision history").click();
-        cy.findAllByRole("button", { name: "Revert" }).should("not.exist");
+        cy.icon("pencil").click();
+        saveDashboard();
+
+        openRevisionHistory();
+
+        cy.findByText("First revision.");
+
+        cy.findAllByText("Revert").should("not.exist");
       });
 
       it.skip("dashboard should update properly on revert (metabase#6884)", () => {
@@ -617,4 +710,9 @@ function visitAndEditDashboard(id) {
 function saveDashboard() {
   clickButton("Save");
   cy.findByText("You're editing this dashboard.").should("not.exist");
+}
+
+function openRevisionHistory() {
+  cy.icon("ellipsis").click();
+  cy.findByText("Revision history").click();
 }

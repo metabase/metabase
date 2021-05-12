@@ -4,6 +4,8 @@ import {
   _typeUsingGet,
   _typeUsingPlaceholder,
   openOrdersTable,
+  openProductsTable,
+  openPeopleTable,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
 
@@ -40,7 +42,7 @@ describe("scenarios > question > custom columns", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.wait("@dataset");
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.get(".Visualization").contains(columnName);
@@ -61,7 +63,7 @@ describe("scenarios > question > custom columns", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.wait("@dataset");
       cy.get(".Visualization").contains(columnName);
     });
@@ -107,7 +109,7 @@ describe("scenarios > question > custom columns", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.wait("@dataset");
     cy.findByText("There was a problem with your question").should("not.exist");
     // This is a pre-save state of the question but the column name should appear
@@ -149,7 +151,7 @@ describe("scenarios > question > custom columns", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.wait("@dataset");
 
     cy.get(".Visualization").within(() => {
@@ -187,11 +189,11 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText("Done").click();
     });
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     // wait for results to load
     cy.get(".LoadingSpinner").should("not.exist");
-    cy.findByText("Visualize").should("not.exist");
+    cy.button("Visualize").should("not.exist");
 
     cy.log(
       "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
@@ -406,12 +408,93 @@ describe("scenarios > question > custom columns", () => {
     cy.get("[class*=NotebookCellItem]")
       .contains(CE_NAME)
       .should("not.exist");
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });
     cy.contains("37.65");
+  });
+
+  describe("data type", () => {
+    it("should understand string functions", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .type("concat([Category], [Title])")
+          .blur();
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "CategoryTitle",
+        );
+        cy.button("Done").click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("CategoryTitle")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByPlaceholderText("Enter some text");
+    });
+
+    it("should relay the type of a date field", () => {
+      openPeopleTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        _typeUsingGet("[contenteditable='true']", "[Birth Date]", 400);
+        _typeUsingPlaceholder("Something nice and descriptive", "DoB");
+        cy.findByText("Done").click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("DoB")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Previous");
+      cy.findByText("Days");
+    });
+
+    it("should handle CASE", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .type("case([Discount] > 0, [Created At], [Product → Created At])")
+          .blur();
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "MiscDate",
+        );
+        cy.button("Done").click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("MiscDate")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Previous");
+      cy.findByText("Days");
+    });
+
+    it("should handle COALESCE", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .type("COALESCE([Product → Created At], [Created At])")
+          .blur();
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "MiscDate",
+        );
+        cy.button("Done").click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("MiscDate")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Previous");
+      cy.findByText("Days");
+    });
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {

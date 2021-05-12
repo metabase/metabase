@@ -560,7 +560,7 @@ describe("scenarios > question > native", () => {
     popover()
       .findByText("Doohickey")
       .click();
-    cy.findByRole("button", { name: "Add filter" }).click();
+    cy.button("Add filter").click();
     // Rerun the query
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.wait("@dataset").wait("@dataset");
@@ -597,7 +597,7 @@ describe("scenarios > question > native", () => {
     popover()
       .findByText("Doohickey")
       .click();
-    cy.findByRole("button", { name: "Add filter" }).click();
+    cy.button("Add filter").click();
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).not.to.exist;

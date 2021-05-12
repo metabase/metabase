@@ -127,6 +127,14 @@ export default class Help extends Component {
           <AdminHeader title={t`Diagnostic Info`} className="mb2" />
           <p>{t`Please include these details in support requests. Thank you!`}</p>
           <InfoBlock>{detailString}</InfoBlock>
+          <div className="text-medium text-bold text-uppercase py2">{t`Advanced Details (click to download)`}</div>
+          <ol>
+            <HelpLink
+              title={t`Connection Pool Details`}
+              description={t`Information about active and idle connections for all pools`}
+              link={UtilApi.connection_pool_details_url}
+            />
+          </ol>
         </Box>
       </Box>
     );

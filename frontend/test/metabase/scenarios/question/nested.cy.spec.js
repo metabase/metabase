@@ -559,7 +559,7 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Pick a column to group by").click();
       cy.findByText("CAT").click();
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.get("@consoleWarn").should(
         "not.be.calledWith",
         "Removing invalid MBQL clause",
@@ -571,7 +571,7 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Pick a column to group by").click();
       cy.findByText("CAT").click();
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.wait("@dataset");
       cy.findAllByRole("button")
         .contains("Summarize")

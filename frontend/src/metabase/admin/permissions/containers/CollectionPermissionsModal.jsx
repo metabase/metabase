@@ -87,12 +87,17 @@ export default class CollectionPermissionsModal extends Component {
           ...(namespace === "snippets"
             ? []
             : [
-                <Link className="link" to="/admin/permissions/collections">
+                <Link
+                  key="all-permissions"
+                  className="link"
+                  to="/admin/permissions/collections"
+                >
                   {t`See all collection permissions`}
                 </Link>,
               ]),
-          <Button onClick={onClose}>{t`Cancel`}</Button>,
+          <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
           <Button
+            key="save"
             primary
             disabled={!isDirty}
             onClick={async () => {

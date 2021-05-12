@@ -240,7 +240,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("Add filter").click();
 
     // Visualize: line
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.findByText("Visualization").click();
     cy.icon("line").click();
     cy.findByText("Done").click();

@@ -140,6 +140,7 @@ export default class MetadataTableList extends Component {
           {queryableTablesHeader}
           {queryableTables.map(table => (
             <TableRow
+              key={table.id}
               table={table}
               selected={tableId === table.id}
               selectTable={selectTable}
@@ -149,6 +150,7 @@ export default class MetadataTableList extends Component {
           {hiddenTablesHeader}
           {hiddenTables.map(table => (
             <TableRow
+              key={table.id}
               table={table}
               selected={tableId === table.id}
               selectTable={selectTable}

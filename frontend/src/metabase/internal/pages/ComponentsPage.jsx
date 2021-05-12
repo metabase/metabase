@@ -61,23 +61,21 @@ export default class ComponentsPage extends Component {
                         ([name, element]) =>
                           !exampleName || exampleName === slugify(name),
                       )
-                      .map(([name, element]) => {
-                        return (
-                          <div className="my2">
-                            <Subhead my={1}>
-                              <Link
-                                to={`_internal/components/${getComponentSlug(
-                                  component,
-                                )}/${slugify(name)}`}
-                                className="no-decoration"
-                              >
-                                {name}:
-                              </Link>
-                            </Subhead>
-                            <Example>{element}</Example>
-                          </div>
-                        );
-                      })}
+                      .map(([name, element]) => (
+                        <div key={name} className="my2">
+                          <Subhead my={1}>
+                            <Link
+                              to={`_internal/components/${getComponentSlug(
+                                component,
+                              )}/${slugify(name)}`}
+                              className="no-decoration"
+                            >
+                              {name}:
+                            </Link>
+                          </Subhead>
+                          <Example>{element}</Example>
+                        </div>
+                      ))}
                   </Section>
                 )}
               </div>

@@ -271,6 +271,7 @@ export default class FieldRemapping extends React.Component {
           {mappingType === MAP_OPTIONS.foreign && [
             <SelectSeparator classname="flex" key="foreignKeySeparator" />,
             <PopoverWithTrigger
+              key="foreignKeyName"
               ref={this.fkPopover}
               triggerElement={
                 <SelectButton
@@ -411,7 +412,7 @@ export class ValueRemappings extends React.Component {
         </div>
         <ol>
           {[...editingRemappings].map(([original, mapped]) => (
-            <li className="mb1">
+            <li key={original} className="mb1">
               <FieldValueMapping
                 original={original}
                 mapped={mapped}

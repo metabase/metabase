@@ -22,7 +22,7 @@
 
 (def ^:const max-filtered-results
   "Number of results to return in an API response"
-  50)
+  1000)
 
 (def ^:const stale-time-in-days
   "Results older than this number of days are all considered to be equally old. In other words, there is a ranking
@@ -46,6 +46,11 @@
   "Given a model name as a string, return its Class."
   [model-name]
   (Class/forName (format "metabase.models.%s.%sInstance" model-name (str/capitalize model-name))))
+
+(defn model-name->instance
+  "Given a model name as a string, return the specific instance"
+  [model-name]
+  (first (filter (fn [x] (= (str/capitalize model-name) (:name x))) searchable-models)))
 
 (defn- ->class
   [class-or-instance]

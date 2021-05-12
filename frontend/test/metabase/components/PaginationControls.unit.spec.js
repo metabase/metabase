@@ -28,11 +28,37 @@ const setup = props => {
 };
 
 describe("PaginationControls", () => {
-  it("should disable pagination buttons when no callbacks provided", () => {
+  it("should disable pagination buttons when no callbacks provided and no total provided", () => {
     const { nextPageButton, previousPageButton } = setup();
 
     expect(nextPageButton).toBeDisabled();
     expect(previousPageButton).toBeDisabled();
+  });
+
+  it("should disable pagination button on the first page", () => {
+    const { nextPageButton, previousPageButton } = setup({
+      total: 150,
+      page: 0,
+      pageSize: 50,
+      onNextPage: () => {},
+      onPreviousPage: () => {},
+    });
+
+    expect(previousPageButton).toBeDisabled();
+    expect(nextPageButton).not.toBeDisabled();
+  });
+
+  it("should disable pagination button on the last page when total is provided", () => {
+    const { nextPageButton, previousPageButton } = setup({
+      total: 150,
+      page: 2,
+      pageSize: 50,
+      onNextPage: () => {},
+      onPreviousPage: () => {},
+    });
+
+    expect(previousPageButton).not.toBeDisabled();
+    expect(nextPageButton).toBeDisabled();
   });
 
   it("should call pagination callbacks when buttons clicked", () => {
@@ -40,6 +66,7 @@ describe("PaginationControls", () => {
     const onPreviousPageSpy = jest.fn();
 
     const { nextPageButton, previousPageButton } = setup({
+      page: 1,
       onNextPage: onNextPageSpy,
       onPreviousPage: onPreviousPageSpy,
     });

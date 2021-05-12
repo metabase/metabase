@@ -94,7 +94,7 @@ export default class PublicLinksListing extends Component {
             <tbody>
               {list &&
                 list.map(link => (
-                  <tr>
+                  <tr key={link.id}>
                     <td>
                       <Link
                         to={getUrl(link)}

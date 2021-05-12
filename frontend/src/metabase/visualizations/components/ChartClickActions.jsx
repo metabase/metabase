@@ -207,6 +207,7 @@ export default class ChartClickActions extends Component {
           <div className="text-bold px2 pt2 pb1">
             {sections.map(([key, actions]) => (
               <div
+                key={key}
                 className={cx(
                   "pb1",
                   { pb2: SECTIONS[key].icon === "bolt" },
@@ -236,7 +237,6 @@ export default class ChartClickActions extends Component {
                 )}
 
                 <div
-                  key={key}
                   className={cx(
                     "flex",
                     {
@@ -251,7 +251,7 @@ export default class ChartClickActions extends Component {
                 >
                   {actions.map((action, index) => (
                     <ChartClickAction
-                      index={index}
+                      key={index}
                       action={action}
                       isLastItem={index === actions.length - 1}
                       handleClickAction={this.handleClickAction}

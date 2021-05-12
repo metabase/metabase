@@ -71,7 +71,7 @@ describe("scenarios > question > new", () => {
         .click();
       cy.findByText("Rating").click();
     });
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.get(".Visualization .bar").should("have.length", 6);
   });
 
@@ -82,6 +82,59 @@ describe("scenarios > question > new", () => {
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
+    });
+  });
+
+  describe("data picker search", () => {
+    beforeEach(() => {
+      cy.visit("/");
+      cy.findByText("Ask a question").click();
+    });
+
+    describe("on a (simple) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Simple question").click();
+        cy.findByPlaceholderText("Search for a table...").type("Ord");
+      });
+
+      it("should allow to search saved questions", () => {
+        cy.findByText("Orders, Count").click();
+        cy.findByText("18,760");
+      });
+
+      it("should allow to search and select tables", () => {
+        cy.findAllByText("Orders")
+          .closest("li")
+          .findByText("Table in")
+          .click();
+        cy.url().should("include", "question#");
+        cy.findByText("Sample Dataset");
+        cy.findByText("Orders");
+      });
+    });
+
+    describe("on a (custom) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Custom question").click();
+        cy.findByPlaceholderText("Search for a table...").type("Ord");
+      });
+
+      it("should allow to search saved questions", () => {
+        cy.findByText("Orders, Count").click();
+        cy.findByText("Visualize").click();
+        cy.findByText("18,760");
+      });
+
+      it("should allow to search and select tables", () => {
+        cy.findAllByText("Orders")
+          .closest("li")
+          .findByText("Table in")
+          .click();
+        cy.findByText("Visualize").click();
+        cy.url().should("include", "question#");
+        cy.findByText("Sample Dataset");
+        cy.findByText("Orders");
+      });
     });
   });
 
@@ -269,7 +322,7 @@ describe("scenarios > question > new", () => {
         cy.findByPlaceholderText("Name (required)").type("twice max total");
         cy.findByText("Done").click();
       });
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.findByText("318.7");
     });
 

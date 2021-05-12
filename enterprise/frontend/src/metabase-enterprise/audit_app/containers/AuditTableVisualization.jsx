@@ -57,6 +57,7 @@ export default class AuditTableVisualization extends React.Component {
           <tr>
             {columnIndexes.map(colIndex => (
               <th
+                key={colIndex}
                 className={cx({
                   "text-right": isColumnRightAligned(cols[colIndex]),
                 })}
@@ -68,7 +69,7 @@ export default class AuditTableVisualization extends React.Component {
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr>
+            <tr key={rowIndex}>
               {columnIndexes.map(colIndex => {
                 const value = row[colIndex];
                 const column = cols[colIndex];
@@ -77,6 +78,7 @@ export default class AuditTableVisualization extends React.Component {
                 const columnSettings = settings.column(column);
                 return (
                   <td
+                    key={colIndex}
                     className={cx({
                       "text-brand cursor-pointer": clickable,
                       "text-right": isColumnRightAligned(column),

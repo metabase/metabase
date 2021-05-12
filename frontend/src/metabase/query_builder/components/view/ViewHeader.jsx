@@ -10,6 +10,7 @@ import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
+import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
@@ -260,6 +261,19 @@ export class ViewTitleHeader extends React.Component {
                 data-metabase-event={`Notebook Mode; Convert to SQL Click`}
               />
             </Box>
+          )}
+          {question.query().database() && isNative && isSaved && (
+            <Link
+              to={question
+                .composeThisQuery()
+                .setDisplay("table")
+                .setSettings({})
+                .getUrl()}
+            >
+              <ViewButton medium p={[2, 1]} icon="insight" labelBreakpoint="sm">
+                {t`Explore results`}
+              </ViewButton>
+            </Link>
           )}
           {isRunnable && !isNativeEditorOpen && (
             <RunButtonWithTooltip

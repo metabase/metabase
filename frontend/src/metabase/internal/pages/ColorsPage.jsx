@@ -58,8 +58,8 @@ const ColorsPage = () => (
     <Box my={2}>
       <Subhead className="mb2">App colors</Subhead>
       <Flex wrap>
-        {Object.entries(colors).map(([name, color], index) => (
-          <ColorSwatch color={color} name={name} />
+        {Object.entries(colors).map(([name, color]) => (
+          <ColorSwatch key={name} color={color} name={name} />
         ))}
       </Flex>
     </Box>
@@ -67,7 +67,7 @@ const ColorsPage = () => (
       <Subhead className="mb2">Chart colors</Subhead>
       <Flex wrap>
         {harmony.map((color, index) => (
-          <ColorSwatch color={color} name={`Series ${index + 1}`} />
+          <ColorSwatch key={index} color={color} name={`Series ${index + 1}`} />
         ))}
       </Flex>
     </Box>
@@ -75,6 +75,7 @@ const ColorsPage = () => (
       <Subhead className="mb2">CSS Colors</Subhead>
       {Object.entries(colorStyles).map(([name, className]) => (
         <div
+          key={name}
           className={cx(className, "rounded px1")}
           style={{
             paddingTop: "0.25em",

@@ -78,7 +78,9 @@ export default class InputWithSelectPrefix extends Component {
           buttonProps={{ className: "borderless" }}
         >
           {prefixes.map(p => (
-            <Option value={p}>{p}</Option>
+            <Option key={p} value={p}>
+              {p}
+            </Option>
           ))}
         </Select>
         <InputBlurChange

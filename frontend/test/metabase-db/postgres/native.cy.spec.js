@@ -16,7 +16,7 @@ describe("postgres > question > native", () => {
     cy.get(".ace_content").type("select pg_sleep(60)");
     cy.findByText("Save").click();
     cy.findByLabelText("Name").type("14957");
-    cy.findByRole("button", { name: "Save" }).click();
+    cy.button("Save").click();
     modal().should("not.exist");
   });
 });

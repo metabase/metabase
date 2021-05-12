@@ -45,7 +45,7 @@ const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
       {items
         .filter(f => f)
         .map((item, index, array) => (
-          <span>
+          <span key={index}>
             {item}
             {index < array.length - 1 ? " " : null}
           </span>

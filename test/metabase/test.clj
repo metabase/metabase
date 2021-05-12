@@ -187,6 +187,8 @@
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
   with-scheduler
+  with-temp-env-var-value
+  with-temp-file
   with-temp-scheduler
   with-temp-vals-in-db
   with-temporary-setting-values]

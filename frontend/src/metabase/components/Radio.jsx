@@ -134,8 +134,7 @@ BaseItem.defaultProps = {
 
 // NORMAL
 const NormalList = styled(BaseList).attrs({
-  className: props =>
-    cx(props.className, { "h3 text-bold": !props.showButtons }), // TODO: better way to merge classname?
+  className: props => cx(props.className, { "text-bold": !props.showButtons }), // TODO: better way to merge classname?
 })``;
 const NormalItem = styled(BaseItem)`
   color: ${props => (props.selected ? color("brand") : null)};
