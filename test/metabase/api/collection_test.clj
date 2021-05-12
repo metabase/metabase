@@ -340,7 +340,12 @@
           (with-some-children-of-collection collection
             (is (= [(default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})]
                    (mt/boolean-ids-and-timestamps
-                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))))))
+                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
+            (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+                    (default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})]
+                   (mt/boolean-ids-and-timestamps
+                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))
+            ))))
 
     (testing "Let's make sure the `archived` option works."
       (mt/with-temp Collection [collection {:name "Art Collection"}]
