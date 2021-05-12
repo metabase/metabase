@@ -366,7 +366,7 @@ describe("scenarios > dashboard", () => {
     }
   });
 
-  it.skip("should cache filter results after the first DB call (metabase#13832)", () => {
+  it("should cache filter results after the first DB call (metabase#13832)", () => {
     // In this test we're using already present dashboard ("Orders in a dashboard")
     const FILTER_ID = "d7988e02";
 
