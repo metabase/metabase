@@ -164,6 +164,14 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
+  it("should display a setup help card", () => {
+    cy.visit("/admin/databases/create");
+    cy.findByTestId("database-setup-help-card").within(() => {
+      cy.findByText(/Need help setting up (.*)\?/i);
+      cy.findByRole("link", { name: /Our docs can help/i });
+    });
+  });
+
   describe("BigQuery", () => {
     it("should let you upload the service account json from a file", () => {
       cy.visit("/admin/databases/create");
