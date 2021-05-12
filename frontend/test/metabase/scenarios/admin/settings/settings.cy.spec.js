@@ -406,7 +406,7 @@ describe("scenarios > admin > settings", () => {
       cy.visit("/admin/settings/email");
       cy.findByText("Send test email").scrollIntoView();
       // Needed to scroll the page down first to be able to use findByRole() - it fails otherwise
-      cy.findByRole("button", { name: "Save changes" }).should("be.disabled");
+      cy.button("Save changes").should("be.disabled");
     });
   });
 

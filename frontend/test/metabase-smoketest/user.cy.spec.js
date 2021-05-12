@@ -24,7 +24,7 @@ describe("smoketest > user", () => {
 
     cy.findByText("Average of Rating");
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.icon("bar");
     cy.findAllByText("Vendor is not empty");
@@ -67,7 +67,7 @@ describe("smoketest > user", () => {
     popover().within(() => {
       cy.findAllByText("Title").click();
     });
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.get("@firstTableCell").contains("Aerodynamic Bronze Hat");
 
@@ -106,9 +106,9 @@ describe("smoketest > user", () => {
     cy.findByText("Greater than or equal to").click();
     cy.get("input[placeholder='Enter a number']").type("5");
     cy.findByText("Add filter").click();
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
-    cy.findByText("Visualize").should("not.exist");
+    cy.button("Visualize").should("not.exist");
     cy.get("svg");
     cy.findByText("Average of Rating is greater than or equal to 5");
 
@@ -180,7 +180,7 @@ describe("smoketest > user", () => {
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.icon("calendar").click();
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.get("svg");
     cy.findAllByText("Created At");
@@ -223,7 +223,7 @@ describe("smoketest > user", () => {
       "Demo Column",
     );
     cy.findByText("Done").click();
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.findByText("ID");
     cy.icon("table2");
@@ -238,7 +238,7 @@ describe("smoketest > user", () => {
 
     cy.icon("join_left_outer").click();
     cy.findByText("People").click(); // column selection happens automatcially
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.findByText("User → ID");
     cy.findByText("Created At");
@@ -250,7 +250,7 @@ describe("smoketest > user", () => {
 
     cy.findByText("Row limit").click();
     cy.get("input[type='number']").type("10");
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.get(".TableInteractive-cellWrapper--firstColumn").should(
       "have.length",
@@ -281,7 +281,7 @@ describe("smoketest > user", () => {
     // Distinctions
     // *** This test needs to be improved with variables that will change if the Sample data changes
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.findByText("Category").click();
     cy.findByText("Distincts").click();
@@ -375,7 +375,7 @@ describe("smoketest > user", () => {
       .last()
       .click();
     cy.findByText("People").click();
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.findByText("Longitude").click();
 

@@ -67,7 +67,7 @@ describe("mongodb > user > query", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.wait("@dataset");
 
       cy.log("Reported failing on stats ~v0.36.3");
