@@ -162,12 +162,12 @@
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection}                :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [model collections-only? favorite-state], :as options}    :- CollectionChildrenOptions]
+   {:keys [models collections-only? favorite-state], :as options}    :- CollectionChildrenOptions]
   (let [favorite-pred (favorite-state->pred favorite-state)
         item-groups   (into {}
                             (for [model-kw [:collection :card :dashboard :pulse :snippet]
                                   ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-                                  :when    (or (not model) (= model model-kw))
+                                  :when    (or (empty? models) (contains? models model-kw))
                                   :let     [toucan-model       (model-name->toucan-model model-kw)
                                             allowed-namespaces (collection/allowed-namespaces toucan-model)]
                                   :when    (or (= model-kw :collection)
@@ -214,15 +214,15 @@
                    when `all`, return everything.
   *  `limit` - limit for pagination.
   *  `offset` - offset for pagination."
-  [id model archived favorite_state limit offset]
-  {model          (s/maybe (apply s/enum valid-model-param-values))
+  [id models archived favorite_state limit offset]
+  {models         (s/maybe [(apply s/enum valid-model-param-values)])
    archived       (s/maybe su/BooleanString)
    favorite_state (s/maybe (apply s/enum valid-favorite-state-values))
    limit          (s/maybe su/IntStringGreaterThanZero)
    offset         (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (api/check-valid-page-params limit offset)
   (let [children-res  (collection-children (api/read-check Collection id)
-                                           {:model          (keyword model)
+                                           {:models         (apply hash-set (map keyword models))
                                             :archived?      (Boolean/parseBoolean archived)
                                             :favorite-state (keyword favorite_state)})
         limit-int     (some-> limit Integer/parseInt)
@@ -233,7 +233,7 @@
      :total  (count children-res)
      :limit  limit-int
      :offset offset-int
-     :model  model }))
+     :models models }))
 
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -261,8 +261,8 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [model archived namespace favorite_state limit offset]
-  {model          (s/maybe (apply s/enum valid-model-param-values))
+  [models archived namespace favorite_state limit offset]
+  {models         (s/maybe [(apply s/enum valid-model-param-values)])
    archived       (s/maybe su/BooleanString)
    namespace      (s/maybe su/NonBlankString)
    favorite_state (s/maybe (apply s/enum valid-favorite-state-values))
@@ -276,9 +276,9 @@
         offset-int      (some-> offset Integer/parseInt)
         col-children    (collection-children
                           root-collection
-                          {:model     (if (mi/can-read? root-collection)
-                                        (keyword model)
-                                        :collection)
+                          {:models     (if (mi/can-read? root-collection)
+                                         (apply hash-set (map keyword models))
+                                         #{:collection})
                            :archived? (Boolean/parseBoolean archived)
                            :favorite-state (keyword favorite_state)})]
     {:data  (cond->> (vec col-children)
@@ -287,7 +287,7 @@
      :total  (count col-children)
      :limit  limit-int
      :offset offset-int
-     :model  model }))
+     :models models }))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
