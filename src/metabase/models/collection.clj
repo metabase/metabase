@@ -827,7 +827,8 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:collection])
-          :types          (constantly {:namespace :keyword})
+          :types          (constantly {:namespace :keyword
+                                       :type      :keyword})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update

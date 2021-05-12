@@ -74,6 +74,7 @@
    ;; returned for Card, Dashboard, Pulse, and Collection
    :collection_id       :integer
    :collection_name     :text
+   :collection_type     :text
    ;; returned for Card and Dashboard
    :collection_position :integer
    :favorite            :boolean

@@ -180,6 +180,13 @@
       1
       0)))
 
+(defn- official-collection-score
+  "A scorer for items in official collections"
+  [{:keys [collection_type]}]
+  (if (contains? #{"official"} collection_type)
+    1
+    0))
+
 (defn- dashboard-count-score
   [{:keys [model dashboardcard_count]}]
   (when (= model "card")
@@ -235,6 +242,9 @@
    {:weight 2
     :score  (pinned-score result)
     :name   "pinned"}
+   {:weight 2
+    :score  (official-collection-score result)
+    :name   "official collection"}
    {:weight 3/2
     :score  (recency-score result)
     :name   "recency"}
