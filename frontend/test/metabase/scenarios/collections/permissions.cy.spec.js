@@ -116,7 +116,7 @@ describe("collection permissions", () => {
               });
 
               describe("duplicate", () => {
-                it.skip("should be able to duplicate the dashboard without obstructions from the modal (metabase#15256)", () => {
+                it("should be able to duplicate the dashboard without obstructions from the modal (metabase#15256)", () => {
                   duplicate("Orders in a dashboard");
                 });
 
