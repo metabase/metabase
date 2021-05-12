@@ -6,6 +6,7 @@
             [metabase.models :refer [Database Setting]]
             [metabase.models.setting.cache :as cache]
             [metabase.util.encryption :as encrypt]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
 (defn rotate-encryption-key!
@@ -17,19 +18,17 @@
                               (encrypt/validate-and-hash-secret-key to-key))
                      identity)]
     (jdbc/with-db-transaction [t-conn (mdb.conn/jdbc-spec)]
+      (doseq [[id details] (db/select-id->field :details Database)]
+        (when (encrypt/possibly-encrypted-string? details)
+          (throw (ex-info (trs "Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
+        (jdbc/update! t-conn
+                      :metabase_database
+                      {:details (encrypt-fn (json/encode details))}
+                      ["metabase_database.id = ?" id]))
       (doseq [[key value] (db/select-field->field :key :value Setting)]
-        (when (encrypt/possibly-encrypted-string? value)
-          (throw (Exception. "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt files")))
         (if (= key "settings-last-updated")
           (cache/update-settings-last-updated!)
           (jdbc/update! t-conn
                         :setting
                         {:value (encrypt-fn value)}
-                        ["setting.key = ?" key])))
-      (doseq [[id details] (db/select-id->field :details Database)]
-        (jdbc/update! t-conn
-                      :metabase_database
-                      {:details (encrypt-fn (json/encode details))}
-                      ["metabase_database.id = ?" id])
-        (when (encrypt/possibly-encrypted-string? details)
-          (throw (Exception. "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt files")))))))
+                        ["setting.key = ?" key]))))))

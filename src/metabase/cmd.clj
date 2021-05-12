@@ -57,7 +57,7 @@
       (println "Dump complete")
       (system-exit! 0))
     (catch Throwable e
-      (log/error e "MB_ENCRYPTION_SECRET_KEY does not correcty decrypt the existing data")
+      (log/error e "Failed to dump application database to H2 file")
       (system-exit! 1))))
 
 (defn ^:command profile
