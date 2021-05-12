@@ -9,6 +9,7 @@
             [metabase.models.database :as database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.metric :refer [Metric]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
@@ -18,6 +19,8 @@
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db]))
+
+(def ^:private root-collection-path "/collections/root")
 
 (defn safe-name
   "Return entity name URL encoded except that spaces are retained."
@@ -68,30 +71,32 @@
   [segment]
   (str (->> segment :table_id (fully-qualified-name Table)) "/segments/" (safe-name segment)))
 
+(defn- local-collection-name [collection]
+  (let [ns-part (if-let [coll-ns (:namespace collection)]
+                  (str ":" (if (keyword? coll-ns) (name coll-ns) coll-ns) "/"))]
+    (str "/collections/" ns-part (safe-name collection))))
+
 (defmethod fully-qualified-name* (type Collection)
   [collection]
   (let [parents (some->> (str/split (:location collection) #"/")
                          rest
                          not-empty
-                         (map #(-> % Integer/parseInt Collection safe-name (str "/collections")))
-                         (str/join "/")
-                         (format "%s/"))
-        ns-part (if-let [coll-ns (:namespace collection)]
-                  (str "/:" (if (keyword? coll-ns) (name coll-ns) coll-ns) "/"))]
-    (str "/collections/root/collections/" ns-part parents (safe-name collection))))
+                         (map #(-> % Integer/parseInt Collection local-collection-name))
+                         (apply str))]
+    (str root-collection-path parents (local-collection-name collection))))
 
 (defmethod fully-qualified-name* (type Dashboard)
   [dashboard]
   (format "%s/dashboards/%s"
           (or (some->> dashboard :collection_id (fully-qualified-name Collection))
-              "/collections/root")
+              root-collection-path)
           (safe-name dashboard)))
 
 (defmethod fully-qualified-name* (type Pulse)
   [pulse]
   (format "%s/pulses/%s"
           (or (some->> pulse :collection_id (fully-qualified-name Collection))
-              "/collections/root")
+              root-collection-path)
           (safe-name pulse)))
 
 (defmethod fully-qualified-name* (type Card)
@@ -100,12 +105,19 @@
           (or (some->> card
                        :collection_id
                        (fully-qualified-name Collection))
-              "/collections/root")
+              root-collection-path)
           (safe-name card)))
 
 (defmethod fully-qualified-name* (type User)
   [user]
   (str "/users/" (:email user)))
+
+(defmethod fully-qualified-name* (type NativeQuerySnippet)
+  [snippet]
+  (format "%s/snippets/%s"
+          (or (some->> snippet :collection_id (fully-qualified-name Collection))
+              root-collection-path)
+          (safe-name snippet)))
 
 (defmethod fully-qualified-name* nil
   [_]
@@ -123,91 +135,99 @@
    (s/optional-key :dashboard)  su/IntGreaterThanZero
    (s/optional-key :collection) (s/maybe su/IntGreaterThanZero) ; root collection
    (s/optional-key :pulse)      su/IntGreaterThanZero
-   (s/optional-key :user)       su/IntGreaterThanZero})
+   (s/optional-key :user)       su/IntGreaterThanZero
+   (s/optional-key :snippet)    (s/maybe su/IntGreaterThanZero)})
 
-(defmulti ^:private path->context* (fn [_ model _]
+(defmulti ^:private path->context* (fn [_ model _ _]
                                      model))
 
-(def ^:private ^{:arglists '([context model entity-name])} path->context
+(def ^:private ^{:arglists '([context model model-attrs entity-name])} path->context
   "Extract entities from a logical path."
   ;(memoize path->context*)
    path->context*)
 
 
 (defmethod path->context* "databases"
-  [context _ db-name]
+  [context _ _ db-name]
   (assoc context :database (if (= db-name "__virtual")
                              mbql.s/saved-questions-virtual-database-id
                              (db/select-one-id Database :name db-name))))
 
 (defmethod path->context* "schemas"
-  [context _ schema]
+  [context _ _ schema]
   (assoc context :schema schema))
 
 (defmethod path->context* "tables"
-  [context _ table-name]
+  [context _ _ table-name]
   (assoc context :table (db/select-one-id Table
                           :db_id  (:database context)
                           :schema (:schema context)
                           :name   table-name)))
 
 (defmethod path->context* "fields"
-  [context _ field-name]
+  [context _ _ field-name]
   (assoc context :field (db/select-one-id Field
                           :table_id (:table context)
                           :name     field-name)))
 
 (defmethod path->context* "fks"
-  [context _ field-name]
-  (path->context* context "fields" field-name))
+  [context _ _ field-name]
+  (path->context* context "fields" nil field-name))
 
 (defmethod path->context* "metrics"
-  [context _ metric-name]
+  [context _ _ metric-name]
   (assoc context :metric (db/select-one-id Metric
                            :table_id (:table context)
                            :name     metric-name)))
 
 (defmethod path->context* "segments"
-  [context _ segment-name]
+  [context _ _ segment-name]
   (assoc context :segment (db/select-one-id Segment
                             :table_id (:table context)
                             :name     segment-name)))
 
 (defmethod path->context* "collections"
-  [context _ collection-name]
+  [context _ model-attrs collection-name]
   (if (= collection-name "root")
     (assoc context :collection nil)
     (assoc context :collection (db/select-one-id Collection
-                                 :name     collection-name
-                                 :location (or (some-> context
-                                                       :collection
-                                                       Collection
-                                                       :location
-                                                       (str (:collection context) "/"))
-                                               "/")))))
+                                 :name      collection-name
+                                 :namespace (:namespace model-attrs)
+                                 :location  (or (some-> context
+                                                        :collection
+                                                        Collection
+                                                        :location
+                                                        (str (:collection context) "/"))
+                                                "/")))))
 
 (defmethod path->context* "dashboards"
-  [context _ dashboard-name]
+  [context _ _ dashboard-name]
   (assoc context :dashboard (db/select-one-id Dashboard
                               :collection_id (:collection context)
                               :name          dashboard-name)))
 
 (defmethod path->context* "pulses"
-  [context _ pulse-name]
+  [context _ _ pulse-name]
   (assoc context :dashboard (db/select-one-id Pulse
                               :collection_id (:collection context)
                               :name          pulse-name)))
 
 (defmethod path->context* "cards"
-  [context _ dashboard-name]
+  [context _ _ dashboard-name]
   (assoc context :card (db/select-one-id Card
                          :collection_id (:collection context)
                          :name          dashboard-name)))
 
 (defmethod path->context* "users"
-  [context _ email]
+  [context _ _ email]
   (assoc context :user (db/select-one-id User
                          :email email)))
+
+(defmethod path->context* "snippets"
+  [context _ _ snippet-name]
+  (assoc context :snippet (db/select-one-id NativeQuerySnippet
+                                            :collection_id (:collection context)
+                                            :name          snippet-name)))
 
 (def ^:private separator-pattern #"\/")
 
@@ -226,16 +246,36 @@
        (str/starts-with? field-name "/databases/")
        (or (str/includes? field-name "/fks/") (str/includes? field-name "/fields/"))))
 
+;; WARNING: THIS MUST APPEAR AFTER ALL path->context* IMPLEMENTATIONS
+(def ^:private all-entities (-> path->context*
+                                methods
+                                keys
+                                set))
+
 (defn fully-qualified-name->context
   "Parse a logical path into a context map."
   [fully-qualified-name]
   (when fully-qualified-name
-    (let [context (->> (str/split fully-qualified-name separator-pattern)
-                       rest ; we start with a /
-                       (partition 2)
-                       (reduce (fn [context [model entity-name]]
-                                 (path->context context model (unescape-name entity-name)))
-                               {}))]
+    (let [components (->> (str/split fully-qualified-name separator-pattern)
+                          rest ; we start with a /
+                          (partition-by (fn [part]
+                                          ;; keep the entities and any of their attributes together
+                                          (or (contains? all-entities part)
+                                              (= \: (first part)))))
+                          (map (fn [[part-name & part-rest]]
+                                 (cond-> {:name part-name}
+                                   (and (= "collections" part-name) (not-empty part-rest))
+                                   (assoc :namespace (->> part-rest
+                                                          first ; the ns is first/only item following "collections"
+                                                          rest  ; strip the starting :
+                                                          (apply str)))))))
+          context (loop [acc-context                   {}
+                         [{model :name :as model-map} {entity-name :name} & more] components]
+                    (let [model-attrs (dissoc model-map :name)
+                          new-context (path->context acc-context model model-attrs (unescape-name entity-name))]
+                      (if (empty? more)
+                        new-context
+                        (recur new-context more))))]
       (try
         (s/validate (s/maybe Context) context)
         (catch Exception e

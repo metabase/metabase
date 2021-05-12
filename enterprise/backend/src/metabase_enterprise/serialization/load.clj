@@ -21,6 +21,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.metric :refer [Metric]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :refer [PulseChannel]]
@@ -118,7 +119,7 @@
   them from `v`."
   [m ks v]
   (if-let [unresolved-names (::unresolved-names v)]
-    (-> (assoc m ::unresolved-names (m/map-vals #(vec (concat ks %)) unresolved-names))
+    (-> (update m ::unresolved-names (fn [nms] (merge nms (m/map-vals #(vec (concat ks %)) unresolved-names))))
         (assoc-in ks (dissoc v ::unresolved-names)))
     (assoc-in m ks v)))
 
@@ -127,13 +128,14 @@
    (unresolved-names->string entity nil))
   ([entity insert-id]
    (str
-    (if-let [nm (:name entity)] (str "\"" nm "\", missing:\n") "")
-    (if insert-id (format " (inserted as ID %d)" insert-id))
+    (if-let [nm (:name entity)] (str "\"" nm "\""))
+    (if insert-id (format " (inserted as ID %d) " insert-id))
+    "missing:\n  "
     (str/join
      "\n  "
      (map
       (fn [[k v]]
-        (format "  at %s -> %s" (str/join "/" v) k))
+        (format "at %s -> %s" (str/join "/" v) k))
       (::unresolved-names entity))))))
 
 (defmulti load
@@ -477,13 +479,21 @@
     (catch Throwable e
       (log/warn e (trs "Could not find context for fully qualified card name {0}" fully-qualified-name)))))
 
+(defn- resolve-snippet
+  [fully-qualified-name]
+  (try
+    (-> (fully-qualified-name->context fully-qualified-name) :snippet)
+    (catch Throwable e
+      (log/debug e (trs "Could not find context for fully qualified snippet name {0}" fully-qualified-name)))))
+
 (defn- resolve-native
   [card]
   (let [ks                [:dataset_query :native :template-tags]
         template-tags     (get-in card ks)
         new-template-tags (reduce-kv
                            (fn [m k v]
-                             (let [new-v (update-existing-capture-missing v :card-id source-card)]
+                             (let [new-v (-> (update-existing-capture-missing v :card-id source-card)
+                                             (update-existing-capture-missing :snippet-id resolve-snippet))]
                                (pull-unresolved-names-up m [k] new-v)))
                            {}
                            template-tags)]
@@ -519,7 +529,9 @@
   "Make a dummy card for first pass insertion"
   [card]
   (-> card
-      (assoc :dataset_query {:type :native :native {:query "-- DUMMY QUERY FOR SERIALIZATION FIRST PASS INSERT"}})
+      (assoc :dataset_query {:type     :native
+                             :native   {:query "-- DUMMY QUERY FOR SERIALIZATION FIRST PASS INSERT"}
+                             :database (:database_id card)})
       (dissoc ::unresolved-names)))
 
 (defn load-cards
@@ -586,6 +598,14 @@
     (str (-> parent-id Collection :location) parent-id "/")
     "/"))
 
+(defn- make-reload-fn [all-results]
+  (let [all-fns (filter fn? all-results)]
+    (if-not (empty? all-fns)
+      (let [new-fns (doall all-fns)]
+        (fn []
+          (make-reload-fn (for [reload-fn new-fns]
+                            (reload-fn))))))))
+
 (defn- load-collections
   [path context]
   (let [subdirs      (list-dirs path)
@@ -609,19 +629,27 @@
                          [(load (str path "/collections") context)
                           (load (str path "/cards") context)
                           (load (str path "/pulses") context)
-                          (load (str path "/dashboards") context)]))
+                          (load (str path "/dashboards") context)
+                          (load (str path "/snippets") context)]))
         load-ns-fns  (for [[coll-ns [coll-ns-path]] ns-paths]
                        (do (log/infof "Loading %s namespace for collection at path %s" coll-ns coll-ns-path)
-                           (load-collections coll-ns-path (assoc context :collection-namespace coll-ns))))
-        all-fns      (filter fn? (concat (apply concat results) load-ns-fns))]
-    (if-not (empty? all-fns)
-      (fn []
-        (doseq [reload-fn all-fns]
-          (reload-fn))))))
+                           (load-collections coll-ns-path (assoc context :collection-namespace coll-ns))))]
+    (make-reload-fn (concat (apply concat results) ; these are each sequences, so need to flatten those first
+                            load-ns-fns))))
 
 (defmethod load "collections"
   [path context]
   (load-collections path context))
+
+(defn- prepare-snippet [context snippet]
+  (assoc snippet :creator_id    @default-user
+                 :collection_id (:collection context)))
+
+(defmethod load "snippets"
+  [path context]
+  (let [paths       (list-dirs path)
+        snippets    (map (partial prepare-snippet context) (slurp-many paths))]
+    (maybe-upsert-many! context NativeQuerySnippet snippets)))
 
 (defn load-settings
   "Load a dump of settings."

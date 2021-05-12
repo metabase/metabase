@@ -16,6 +16,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.metric :refer [Metric]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :refer [PulseChannel]]
@@ -46,7 +47,8 @@
    PulseCard           [:pulse_id :card_id]
    PulseChannel        [:pulse_id :channel_type :details]
    Card                [:name :collection_id]
-   User                [:email]})
+   User                [:email]
+   NativeQuerySnippet  [:name :collection_id]})
 
 ;; This could potentially be unrolled into one giant select
 (defn- select-identical

@@ -10,6 +10,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.metric :refer [Metric]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
@@ -148,6 +149,7 @@
                 metrics
                 (select-segments-in-tables tables state)
                 collections
+                (select-entities-in-collections NativeQuerySnippet collections state)
                 (select-entities-in-collections Card collections state)
                 (select-entities-in-collections Dashboard collections state)
                 (select-entities-in-collections Pulse collections state)

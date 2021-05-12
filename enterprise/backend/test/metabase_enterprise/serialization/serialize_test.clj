@@ -3,7 +3,8 @@
             [clojure.test :refer :all]
             [metabase-enterprise.serialization.serialize :as serialize]
             [metabase-enterprise.serialization.test-util :as ts]
-            [metabase.models :refer [Card Collection Dashboard Database Field Metric Segment Table]]))
+            [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet Segment
+                                     Table]]))
 
 (defn- all-ids-are-fully-qualified-names?
   [m]
@@ -29,7 +30,8 @@
                         [Dashboard dashboard-id]
                         [Table table-id]
                         [Field numeric-field-id]
-                        [Database db-id]]]
+                        [Database db-id]
+                        [NativeQuerySnippet snippet-id]]]
       (testing (name model)
         (let [serialization (serialize/serialize (model id))]
           (testing (format "\nserialization = %s" (pr-str serialization))

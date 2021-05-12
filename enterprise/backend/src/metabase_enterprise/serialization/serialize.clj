@@ -15,6 +15,7 @@
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.metric :refer [Metric]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :refer [PulseChannel]]
@@ -90,6 +91,7 @@
       (m/update-existing entity :filter (fn [filter]
                                           (m/map-vals mbql-id->fully-qualified-name filter)))
       (m/update-existing entity ::mb.viz/param-mapping-source (partial fully-qualified-name Field))
+      (m/update-existing entity :snippet-id (partial fully-qualified-name NativeQuerySnippet))
       (m/map-vals ids->fully-qualified-names entity))))
 
 (defn- strip-crud
@@ -234,3 +236,7 @@
       (select-keys [:dependent_on_id :model_id])
       (update :dependent_on_id (partial fully-qualified-name (-> dependency :dependent_on_model symbol)))
       (update :model_id (partial fully-qualified-name (-> dependency :model symbol)))))
+
+(defmethod serialize-one (type NativeQuerySnippet)
+  [snippet]
+  (select-keys snippet [:name :description :content]))

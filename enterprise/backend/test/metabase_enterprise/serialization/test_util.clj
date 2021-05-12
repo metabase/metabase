@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.test-util
   (:require [metabase-enterprise.serialization.names :as names]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Field Metric
-                                     Pulse PulseCard Segment Table User]]
+                                     NativeQuerySnippet Pulse PulseCard Segment Table User]]
             [metabase.models.collection :as collection]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
@@ -250,7 +250,46 @@
                                                                           [[:field-id ~'category-field-id]]}
                                                            :filter [:>
                                                                     [:field-literal "num_per_type" :type/Integer]
-                                                                    4]}}}]]
+                                                                    4]}}}]
+                   NativeQuerySnippet [{~'snippet-id :id}
+                                       {:content     "price > 2"
+                                        :description "Predicate on venues table for price > 2"
+                                        :name        "Pricey Venues"}]
+                   Collection         [{~'snippet-collection-id :id}
+                                       {:name "Snippet Collection"
+                                        :namespace "snippets"}]
+                   Collection         [{~'snippet-nested-collection-id :id}
+                                       {:name "Nested Snippet Collection"
+                                        :location (format "/%d/" ~'snippet-collection-id)
+                                        :namespace "snippets"}]
+                   NativeQuerySnippet [{~'nested-snippet-id :id}
+                                       {:content       "name LIKE 'A%'"
+                                        :description   "Predicate on venues table for name starting with A"
+                                        :name          "A Venues"
+                                        :collection_id ~'snippet-nested-collection-id}]
+                   Card               [{~'card-id-with-native-snippet :id}
+                                       {:query_type    :native
+                                        :name          "Card with Native Query Snippet"
+                                        :collection_id ~'collection-id
+                                        :dataset_query
+                                        {:type     :native
+                                         :database ~'db-id
+                                         :native {:query (str "SELECT * FROM venues WHERE {{snippet: Pricey Venues}}"
+                                                              " AND {{snippet: A Venues}}")
+                                                  :template-tags {"snippet: Pricey Venues"
+                                                                  {:id           "d34baf40-b35a-11eb-8529-0242ac130003"
+                                                                   :name         "Snippet: Pricey Venues"
+                                                                   :display-name "Snippet: Pricey Venues"
+                                                                   :type         "snippet"
+                                                                   :snippet-name "Pricey Venues"
+                                                                   :snippet-id   ~'snippet-id}
+                                                                  "snippet: A Venues"
+                                                                  {:id           "c0775274-b45a-11eb-8529-0242ac130003"
+                                                                   :name         "Snippet: A Venues"
+                                                                   :display-name "Snippet: A Venues"
+                                                                   :type         "snippet"
+                                                                   :snippet-name "A Venues"
+                                                                   :snippet-id   ~'nested-snippet-id}}}}}]]
      ~@body))
 
 ;; Don't memoize as IDs change in each `with-world` context
