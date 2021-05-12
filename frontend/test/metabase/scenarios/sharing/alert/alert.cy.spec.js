@@ -175,7 +175,7 @@ describe("scenarios > alert", () => {
         cy.findByPlaceholderText("Find...").type("Cr");
         cy.findByText("Created At").click();
       });
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
 
       // Set a goal
       setGoal("35");

@@ -42,7 +42,7 @@ describe("scenarios > question > custom columns", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.wait("@dataset");
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.get(".Visualization").contains(columnName);
@@ -63,7 +63,7 @@ describe("scenarios > question > custom columns", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.wait("@dataset");
       cy.get(".Visualization").contains(columnName);
     });
@@ -109,7 +109,7 @@ describe("scenarios > question > custom columns", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.wait("@dataset");
     cy.findByText("There was a problem with your question").should("not.exist");
     // This is a pre-save state of the question but the column name should appear
@@ -151,7 +151,7 @@ describe("scenarios > question > custom columns", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.wait("@dataset");
 
     cy.get(".Visualization").within(() => {
@@ -189,11 +189,11 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText("Done").click();
     });
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     // wait for results to load
     cy.get(".LoadingSpinner").should("not.exist");
-    cy.findByText("Visualize").should("not.exist");
+    cy.button("Visualize").should("not.exist");
 
     cy.log(
       "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
@@ -408,7 +408,7 @@ describe("scenarios > question > custom columns", () => {
     cy.get("[class*=NotebookCellItem]")
       .contains(CE_NAME)
       .should("not.exist");
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
