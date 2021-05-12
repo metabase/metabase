@@ -159,7 +159,8 @@
                     :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
                     :location          "/"
                     :namespace         nil
-                    :children          []}
+                    :children          []
+                    :type nil}
                    (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
                             %)
                          response)))))))))

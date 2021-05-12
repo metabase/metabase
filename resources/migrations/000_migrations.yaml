@@ -8340,6 +8340,20 @@ databaseChangeLog:
                                   'DateTimeField', 'DecimalField', 'DictionaryField', 'FloatField', 'IntegerField',
                                   'TextField', 'TimeField', 'UUIDField', 'UnknownField');
 
+  - changeSet:
+      id: 307
+      author: dpsutton
+      comment: 'Added 0.40.0 - Add type to collections'
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+                  type: varchar(255)
+                  remarks: 'Nullable column to incidate collection type'
+                  constraints:
+                    nullable: true
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
