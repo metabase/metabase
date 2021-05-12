@@ -9,10 +9,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 
-const propTypes = {
-  engine: PropTypes.string,
-};
-
 export const ENGINE_DOCS = {
   bigquery: MetabaseSettings.docsUrl("administration-guide/databases/bigquery"),
   mongo: MetabaseSettings.docsUrl("administration-guide/databases/mongodb"),
@@ -30,7 +26,18 @@ export const GENERAL_DB_DOC = MetabaseSettings.docsUrl(
 
 export const CLOUD_HELP_URL = "https://www.metabase.com/help/cloud";
 
-function AddDatabaseHelpCard({ engine, ...props }) {
+const propTypes = {
+  engine: PropTypes.string.isRequired,
+  hasCircle: PropTypes.bool,
+  style: PropTypes.object,
+};
+
+const defaultProps = {
+  hasCircle: true,
+  style: {},
+};
+
+function AddDatabaseHelpCard({ engine, hasCircle, style, ...props }) {
   const displayName = useMemo(() => {
     const hasEngineDoc = !!ENGINE_DOCS[engine];
     if (!hasEngineDoc) {
@@ -46,7 +53,12 @@ function AddDatabaseHelpCard({ engine, ...props }) {
   return (
     <Flex
       p={2}
-      style={{ backgroundColor: "#F9FBFB", borderRadius: 10, minWidth: 300 }}
+      style={{
+        backgroundColor: "#F9FBFB",
+        borderRadius: 10,
+        minWidth: 300,
+        ...style,
+      }}
       {...props}
     >
       <Flex
@@ -54,9 +66,9 @@ function AddDatabaseHelpCard({ engine, ...props }) {
         justify="center"
         className="flex-no-shrink circular"
         style={{
-          width: 52,
-          height: 52,
-          backgroundColor: "#EEF2F5",
+          width: hasCircle ? "52px" : "32px",
+          height: hasCircle ? "52px" : "32px",
+          backgroundColor: hasCircle ? "#EEF2F5" : "transparent",
         }}
       >
         <Icon size={20} name="database" className="text-brand" />
@@ -92,5 +104,6 @@ function AddDatabaseHelpCard({ engine, ...props }) {
 }
 
 AddDatabaseHelpCard.propTypes = propTypes;
+AddDatabaseHelpCard.defaultProps = defaultProps;
 
 export default AddDatabaseHelpCard;

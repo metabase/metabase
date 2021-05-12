@@ -94,11 +94,33 @@ describe("scenarios > setup", () => {
       cy.findByText("Hi, Testy. Nice to meet you!").click();
       cy.findByLabelText("Email").should("have.value", "testy@metabase.com");
 
+      // test database setup help card is NOT displayed
+      cy.findByTestId("database-setup-help-card").should("not.exist");
+
       // now back to database setting
       cy.findByText("Next").click();
 
-      // add h2 database
+      // test database setup help card is displayed
+      cy.findByTestId("database-setup-help-card").within(() => {
+        cy.findByText(/Need help setting up (.*)\?/i);
+        cy.findByRole("link", { name: /Our docs can help/i });
+      });
+
+      // check database setup card changes copy
       cy.findByText("Select a database").click();
+      cy.findByText("MySQL").click();
+      cy.findByTestId("database-setup-help-card").findByText(
+        "Need help setting up MySQL?",
+      );
+
+      cy.get("#formField-engine").click();
+      cy.findByText("SQLite").click();
+      cy.findByTestId("database-setup-help-card").findByText(
+        "Need help setting up your database?",
+      );
+
+      // add h2 database
+      cy.get("#formField-engine").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Name").type("Metabase H2");
       cy.findByText("Next")
