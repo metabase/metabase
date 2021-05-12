@@ -35,8 +35,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByText("Link").click();
     });
 
-    cy.findByTestId("link_text").should("have.value", "{{CITY}}");
-    cy.findByTestId("link_text").type(" {{ID}} fixed text", {
+    cy.findByTestId("link_text").type("{{CITY}} {{ID}} fixed text", {
       parseSpecialCharSequences: false,
     });
     cy.findByTestId("link_url").type("http://metabase.com/people/{{ID}}", {
