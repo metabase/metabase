@@ -1,14 +1,11 @@
-import _slugify from "slugify";
+import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
 
-function slugify(str) {
-  return _slugify(str, {
-    lower: true,
-    strict: true,
-  });
+function appendSlug(path, slug) {
+  return slug ? `${path}-${slug}` : path;
 }
 
 // provides functions for building urls to things we care about
@@ -45,9 +42,11 @@ export function question(card, hash = "", query = "") {
   if (!card || !card.id) {
     return `/question${query}${hash}`;
   }
-  return card.name
-    ? `/question/${card.id}-${slugify(card.name)}${query}${hash}`
-    : `/question/${card.id}${query}${hash}`;
+  if (!card.name) {
+    return `/question/${card.id}${query}${hash}`;
+  }
+  const path = appendSlug(`/question/${card.id}`, slugg(card.name));
+  return `${path}${query}${hash}`;
 }
 
 export const extractQueryParams = (query: Object): Array => {
@@ -72,12 +71,12 @@ export function newQuestion({ mode, ...options } = {}) {
 }
 
 export function dashboard(dashboard, { addCardWithId } = {}) {
-  const slug = `${dashboard.id}-${slugify(dashboard.name)}`;
+  const path = appendSlug(dashboard.id, slugg(dashboard.name));
   return addCardWithId != null
     ? // NOTE: no-color-literals rule thinks #add is a color, oops
       // eslint-disable-next-line no-color-literals
-      `/dashboard/${slug}#add=${addCardWithId}`
-    : `/dashboard/${slug}`;
+      `/dashboard/${path}#add=${addCardWithId}`
+    : `/dashboard/${path}`;
 }
 
 function prepareModel(item) {
@@ -136,8 +135,8 @@ export function collection(collection) {
   }
   const slug = collection.slug
     ? collection.slug.split("_").join("-")
-    : slugify(collection.name);
-  return `/collection/${collection.id}-${slug}`;
+    : slugg(collection.name);
+  return appendSlug(`/collection/${collection.id}`, slug);
 }
 
 export function label(label) {
@@ -198,7 +197,7 @@ export function browseDatabase(database) {
       ? "Saved Questions"
       : database.name;
 
-  return `/browse/${database.id}-${slugify(name)}`;
+  return appendSlug(`/browse/${database.id}`, slugg(name));
 }
 
 export function browseSchema(table) {

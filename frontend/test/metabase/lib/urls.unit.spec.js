@@ -1,5 +1,7 @@
 import {
+  browseDatabase,
   collection,
+  dashboard,
   question,
   extractQueryParams,
   extractEntityId,
@@ -96,6 +98,8 @@ describe("urls", () => {
 
   describe("extractEntityId", () => {
     const testCases = [
+      { slug: "33", id: 33 },
+      { slug: "33-", id: 33 },
       { slug: "33-metabase-ga", id: 33 },
       { slug: "330-pricing-v2-traction", id: 330 },
       { slug: "274-queries-run-in-the-last-24-weeks", id: 274 },
@@ -112,6 +116,8 @@ describe("urls", () => {
 
   describe("extractCollectionId", () => {
     const testCases = [
+      { slug: "23", id: 23 },
+      { slug: "23-", id: 23 },
       { slug: "23-customer-success", id: 23 },
       { slug: "root", id: "root" },
       { slug: "users", id: "users" },
@@ -122,6 +128,103 @@ describe("urls", () => {
     testCases.forEach(({ slug, id }) => {
       it(`should return "${id}" id if slug is "${slug}"`, () => {
         expect(extractCollectionId(slug)).toBe(id);
+      });
+    });
+  });
+
+  describe("slug edge-cases", () => {
+    const testCases = [
+      {
+        caseName: "numbers",
+        input: "123 Orders 321",
+        expectedString: "123-orders-321",
+      },
+      {
+        caseName: "characters",
+        input: "Also, lots | of 15% & $100 orders!",
+        expectedString: "also-lots-of-15-100-orders",
+      },
+      {
+        caseName: "quotes",
+        input: `'Our' "Orders"`,
+        expectedString: "our-orders",
+      },
+      {
+        caseName: "brackets",
+        input: `[Our] important (Orders)`,
+        expectedString: "our-important-orders",
+      },
+      {
+        caseName: "emoji",
+        input: `Our Orders 🚚`,
+        expectedString: "our-orders",
+      },
+      {
+        caseName: "emoji only",
+        input: `🚚 📦 🍰`,
+        expectedString: "",
+      },
+      {
+        caseName: "umlauts",
+        input: `Über Aufträge`,
+        expectedString: "uber-auftrage",
+      },
+      {
+        caseName: "Danish",
+        input: `æbleflæsk`,
+        expectedString: "aebleflaesk",
+      },
+      {
+        caseName: "French",
+        input: `Déjà Vu`,
+        expectedString: "deja-vu",
+      },
+      {
+        caseName: "cyrillic",
+        input: `Заказы`,
+        expectedString: "zakazy",
+      },
+      // we don't transliterate languages below,
+      // as their transliteration is usually too inaccurate
+      {
+        caseName: "Chinese",
+        input: `命令`,
+        expectedString: "",
+      },
+      {
+        caseName: "Japanese",
+        input: `注文`,
+        expectedString: "",
+      },
+      {
+        caseName: "Thai",
+        input: `เชียงใหม่`,
+        expectedString: "",
+      },
+    ];
+
+    testCases.forEach(testCase => {
+      const { caseName, input, expectedString } = testCase;
+      const entity = { id: 1, name: input };
+
+      function expectedUrl(path, slug) {
+        // If slug is an empty string, we test we don't append `-` char
+        return slug ? `${path}-${slug}` : path;
+      }
+
+      it(`should handle ${caseName} correctly`, () => {
+        expect(browseDatabase(entity)).toBe(
+          expectedUrl("/browse/1", expectedString),
+        );
+        expect(collection(entity)).toBe(
+          expectedUrl("/collection/1", expectedString),
+        );
+        expect(dashboard(entity)).toBe(
+          expectedUrl("/dashboard/1", expectedString),
+        );
+        expect(question(entity)).toBe(
+          expectedUrl("/question/1", expectedString),
+        );
       });
     });
   });
