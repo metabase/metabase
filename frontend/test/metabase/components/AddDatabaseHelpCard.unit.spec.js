@@ -50,16 +50,34 @@ const ENGINES = {
 
 jest.mock("metabase/lib/settings");
 
+function setup({ engine = "mongo", isHosted = false } = {}) {
+  jest
+    .spyOn(MetabaseSettings, "get")
+    .mockImplementation(setting => (setting === "engines" ? ENGINES : {}));
+  jest.spyOn(MetabaseSettings, "isHosted").mockReturnValue(isHosted);
+  return render(<AddDatabaseHelpCard engine={engine} />);
+}
+
 describe("AddDatabaseHelpCard", () => {
   Object.entries(ENGINES).forEach(([engine, info]) => {
-    jest
-      .spyOn(MetabaseSettings, "get")
-      .mockImplementation(setting => (setting === "engines" ? ENGINES : {}));
-
     it(`correctly displays hints for ${engine} setup`, () => {
-      const driverName = info["driver-name"];
-      const { getByText } = render(<AddDatabaseHelpCard engine={engine} />);
-      expect(getByText(`Need help setting up ${driverName}?`)).toBeVisible();
+      const { queryByText } = setup({ engine });
+      expect(queryByText(info["driver-name"])).toBeInTheDocument();
     });
+  });
+
+  it("should display a help link if it's a cloud instance", () => {
+    const { queryByText } = setup({ isHosted: true });
+    const helpLink = queryByText(/write us/i);
+    expect(helpLink).toBeInTheDocument();
+    expect(helpLink.getAttribute("href")).toBe(
+      "https://www.metabase.com/help/cloud",
+    );
+  });
+
+  it("should not display a help link if it's a self-hosted instance", () => {
+    const { queryByText } = setup({ isHosted: false });
+    const helpLink = queryByText(/write us/i);
+    expect(helpLink).not.toBeInTheDocument();
   });
 });
