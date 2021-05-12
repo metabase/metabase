@@ -277,9 +277,10 @@ export default class Table extends Component {
       title: t`Link text`,
       widget: "input",
       hint: linkFieldsHint,
-      default: `{{${column.name}}}`,
+      default: null,
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
+      readDependencies: ["view_as"],
     };
 
     settings["link_url"] = {
@@ -288,6 +289,7 @@ export default class Table extends Component {
       hint: linkFieldsHint,
       default: null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
+      readDependencies: ["view_as"],
     };
 
     return settings;

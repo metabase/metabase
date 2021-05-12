@@ -61,10 +61,12 @@ const ColumnSettings = ({
       onChange({ ...storedSettings, ...changedSettings });
     },
     { series },
-  ).filter(
-    widget =>
-      (!allowlist || allowlist.has(widget.id)) &&
-      (!denylist || !denylist.has(widget.id)),
+  ).filter(widget =>
+    (!allowlist || allowlist.has(widget.id)) &&
+    (!denylist || !denylist.has(widget.id)) &&
+    widget.getHidden
+      ? !widget.getHidden(widget, computedSettings)
+      : true,
   );
 
   return (

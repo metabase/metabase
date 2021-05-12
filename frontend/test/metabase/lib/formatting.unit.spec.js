@@ -393,6 +393,28 @@ describe("formatting", () => {
         expect(formatted.props.children).toEqual("metabase link");
         expect(formatted.props.href).toEqual("http://metabase.com");
       });
+
+      it("should not return an ExternalLink in jsx + rich mode if there's click behavior", () => {
+        const formatted = formatValue("http://metabase.com/", {
+          jsx: true,
+          rich: true,
+          click_behavior: {
+            linkTemplate: "foo",
+            linkTextTemplate: "bar",
+            linkType: "url",
+            type: "link",
+          },
+          link_text: "metabase link",
+          link_url: "http://metabase.com",
+          view_as: "link",
+          clicked: {},
+        });
+
+        // it is not a link set on the question level
+        expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
+        // it is formatted as a link cell for the dashboard level click behavior
+        expect(formatted.props.className).toEqual("link link--wrappable");
+      });
     });
 
     it("should not crash if column is null", () => {
