@@ -71,7 +71,7 @@ describe("scenarios > question > new", () => {
         .click();
       cy.findByText("Rating").click();
     });
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.get(".Visualization .bar").should("have.length", 6);
   });
 
@@ -269,7 +269,7 @@ describe("scenarios > question > new", () => {
         cy.findByPlaceholderText("Name (required)").type("twice max total");
         cy.findByText("Done").click();
       });
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.findByText("318.7");
     });
 

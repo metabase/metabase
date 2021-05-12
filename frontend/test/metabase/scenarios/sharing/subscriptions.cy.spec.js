@@ -35,7 +35,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.findByPlaceholderText("Write here, and use Markdown if you'd like")
       .click()
       .type("Foo");
-    cy.findByRole("button", { name: "Save" }).click();
+    cy.button("Save").click();
     cy.findByText("You're editing this dashboard.").should("not.exist");
     cy.icon("share")
       .closest("a")
@@ -206,7 +206,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByPlaceholderText(
         "Write here, and use Markdown if you'd like",
       ).type(TEXT_CARD);
-      cy.findByRole("button", { name: "Save" }).click();
+      cy.button("Save").click();
       cy.findByText("You're editing this dashboard.").should("not.exist");
       assignRecipient();
       // Click outside popover to close it and at the same time check that the text card content is shown as expected

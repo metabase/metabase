@@ -37,7 +37,7 @@ describe("user > settings", () => {
     cy.findByDisplayValue(first_name);
     cy.findByDisplayValue(last_name);
     cy.findByDisplayValue(email);
-    cy.findByRole("button", { name: "Update" }).should("be.disabled");
+    cy.button("Update").should("be.disabled");
   });
 
   it("should update the user without fetching memberships", () => {
