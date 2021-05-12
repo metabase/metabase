@@ -453,6 +453,48 @@ describe("scenarios > question > custom columns", () => {
       cy.findByText("Previous");
       cy.findByText("Days");
     });
+
+    it("should handle CASE", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .type("case([Discount] > 0, [Created At], [Product → Created At])")
+          .blur();
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "MiscDate",
+        );
+        cy.findByRole("button", { name: "Done" }).click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("MiscDate")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Previous");
+      cy.findByText("Days");
+    });
+
+    it("should handle COALESCE", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .type("COALESCE([Product → Created At], [Created At])")
+          .blur();
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "MiscDate",
+        );
+        cy.findByRole("button", { name: "Done" }).click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("MiscDate")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Previous");
+      cy.findByText("Days");
+    });
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {

@@ -32,9 +32,16 @@ export function infer(mbql, env) {
       return MONOTYPE.Boolean;
   }
 
-  if (op === "case" || op === "coalesce") {
-    // TODO
-    return MONOTYPE.Undefined;
+  if (op === "case") {
+    const clauses = mbql[1];
+    const first = clauses[0];
+    // TODO: type-checker must ensure the consistent types of all clauses.
+    return infer(first[1], env);
+  }
+
+  if (op === "coalesce") {
+    // TODO: type-checker must ensure the consistent types of all arguments
+    return infer(mbql[1], env);
   }
 
   const func = MBQL_CLAUSES[op];
