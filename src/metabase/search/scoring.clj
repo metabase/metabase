@@ -263,24 +263,28 @@
        (map (fn [{:keys [weight score] :as composite-score}]
               (assoc composite-score :weighted-score (* weight score))))))
 
-(defn- accumulate-top-results
-  "Accumulator that saves the top n (defined by `search-config/max-filtered-results`) items sent to it"
-  ([] (PriorityQueue. search-config/max-filtered-results compare-score-and-result))
-  ([^PriorityQueue q]
-   (loop [acc []]
-     (if-let [x (.poll q)]
-       (recur (conj acc x))
-       acc)))
-  ([^PriorityQueue q item]
-   (if (>= (.size q) search-config/max-filtered-results)
-     (let [smallest (.peek q)]
-       (if (pos? (compare-score-and-result item smallest))
-         (doto q
-           (.poll)
-           (.offer item))
-         q))
-     (doto q
-       (.offer item)))))
+(defn- bounded-heap-accumulator
+  "A reducing function that maintains a queue of the largest items as determined by `comparator`. The queue is bounded
+  in size by `size`. Useful if you are interested in the largest `size` number of items without keeping the entire
+  collection in memory."
+  [size comparator]
+  (fn bounded-heap-acc
+    ([] (PriorityQueue. size comparator))
+    ([^PriorityQueue q]
+     (loop [acc []]
+       (if-let [x (.poll q)]
+         (recur (conj acc x))
+         acc)))
+    ([^PriorityQueue q item]
+     (if (>= (.size q) size)
+       (let [smallest (.peek q)]
+         (if (pos? (comparator item smallest))
+           (doto q
+             (.poll)
+             (.offer item))
+           q))
+       (doto q
+         (.offer item))))))
 
 (defn score-and-result
   "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."
@@ -297,7 +301,7 @@
   maps with `:score` and `:result` keys."
   [reducible-results xf]
   (->> reducible-results
-       (transduce xf accumulate-top-results)
+       (transduce xf (bounded-heap-accumulator search-config/max-filtered-results compare-score-and-result))
        ;; Make it descending: high scores first
-       reverse
+       rseq
        (map :result)))
