@@ -6,6 +6,7 @@
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.params.field-values :as params.field-values]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -41,13 +42,26 @@
     (throw (ex-info (trs "Don''t know how to wrap Field ID.")
                     {:form field-id-or-form}))))
 
-(s/defn field-ids->param-field-values
+(def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
+  "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by
+  Cards and Dashboards. This determines how `:param_values` gets hydrated for Card and Dashboard. Normally, this is
+  `false`, but the public and embed versions of the API endpoints can bind this to `true` to bypass normal perms
+  checks (since there is no current User) and get *all* values."
+  false)
+
+(defn- field-ids->param-field-values-ignoring-current-user
+  [param-field-ids]
+  (u/key-by :field_id (db/select ['FieldValues :values :human_readable_values :field_id]
+                        :field_id [:in param-field-ids])))
+
+(defn- field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
   returned by various endpoints as `:param_values`."
-  [param-field-ids :- (s/maybe #{su/IntGreaterThanZero})]
+  [param-field-ids]
   (when (seq param-field-ids)
-    (u/key-by :field_id (db/select ['FieldValues :values :human_readable_values :field_id]
-                          :field_id [:in param-field-ids]))))
+    ((if *ignore-current-user-perms-and-return-all-field-values*
+       field-ids->param-field-values-ignoring-current-user
+       params.field-values/field-id->field-values-for-current-user) param-field-ids)))
 
 (defn- template-tag->field-form
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.

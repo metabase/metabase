@@ -106,7 +106,7 @@
                   :attributes {:cat 50}}
     (let [field (Field (mt/id :venues :name))]
       ;; Make sure FieldValues are populated
-      (field-values/create-field-values-if-needed! field)
+      (field-values/get-or-create-field-values! field)
       ;; Warm up the cache
       (mt/user-http-request :rasta :get 200 (str "field/" (mt/id :venues :name) "/values"))
       (testing "Do we use cached values when available?"
@@ -130,4 +130,4 @@
                      (:values (mt/user-http-request :rasta :get 200 (str "field/" (mt/id :venues :name) "/values")))))))
           (finally
             ;; Put everything back as it was
-            (field-values/create-field-values-if-needed! field)))))))
+            (field-values/get-or-create-field-values! field)))))))

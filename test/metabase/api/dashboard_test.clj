@@ -7,19 +7,14 @@
             [metabase.api.card-test :as card-api-test]
             [metabase.api.dashboard :as dashboard-api]
             [metabase.http-client :as http]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+            [metabase.models
+             :refer
+             [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues Pulse Revision Table]]
+            [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-test :as dashboard-test]
-            [metabase.models.field :refer [Field]]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
-            [metabase.models.pulse :refer [Pulse]]
-            [metabase.models.revision :refer [Revision]]
-            [metabase.models.table :refer [Table]]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -279,6 +274,35 @@
                                                                  :position         0}]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
+
+(deftest param-values-test
+  (testing "Don't return `param_values` for Fields for which the current User has no data perms."
+    (mt/with-temp-copy-of-db
+      (perms/revoke-permissions! (group/all-users) (mt/id))
+      (perms/grant-permissions! (group/all-users) (perms/table-read-path (Table (mt/id :venues))))
+      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
+                      DashboardCard [{_ :id}            {:dashboard_id       dashboard-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:card_id      card-id
+                                                                               :parameter_id "foo"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :venues :name) nil]]}
+                                                                              {:card_id      card-id
+                                                                               :parameter_id "bar"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :categories :name) nil]]}]}]]
+
+        (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
+                                                               "25°"
+                                                               "33 Taps"]
+                                       :field_id              (mt/id :venues :name)
+                                       :human_readable_values []}}
+               (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
+                 (into {} (for [[^String field-id-keyword m] response]
+                            [(Long/parseUnsignedLong (name field-id-keyword))
+                             (update m :values (partial take 3))])))))))))
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -758,7 +782,7 @@
                 :visualization_settings {}
                 :created_at             true
                 :updated_at             true}
-               (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-1))))
+               (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
         (is (= {:sizeX                  2
                 :sizeY                  2
                 :col                    0
@@ -768,7 +792,7 @@
                 :series                 []
                 :created_at             true
                 :updated_at             true}
-               (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-2))))
+               (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))
         (is (= {:status "ok"}
                (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                      {:cards [{:id     dashcard-id-1
@@ -795,7 +819,7 @@
                                           :visualization_settings {}}]
                 :created_at             true
                 :updated_at             true}
-               (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-1))))
+               (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
         (is (= {:sizeX                  1
                 :sizeY                  1
                 :col                    1
@@ -805,7 +829,7 @@
                 :series                 []
                 :created_at             true
                 :updated_at             true}
-               (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-2))))))))
+               (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1185,17 +1209,20 @@
     (cond-> url
       (seq query-params-str) (str "?" query-params-str))))
 
-(defn- chain-filter-values-url [dashboard-or-id param-key & query-params]
+(defn chain-filter-values-url [dashboard-or-id param-key & query-params]
   (add-query-params (format "dashboard/%d/params/%s/values" (u/the-id dashboard-or-id) (name param-key))
                     query-params))
 
-(defmacro ^:private let-url [[url-binding url] & body]
+(defmacro let-url
+  "Like normal `let`, but adds `testing` context with the `url` you've bound."
+  {:style/indent 1}
+  [[url-binding url] & body]
   `(let [url# ~url
          ~url-binding url#]
      (testing (str "\nGET /api/" url# "\n")
        ~@body)))
 
-(defn- chain-filter-search-url [dashboard-or-id param-key query & query-params]
+(defn chain-filter-search-url [dashboard-or-id param-key query & query-params]
   {:pre [(some? param-key)]}
   (add-query-params (str (format "dashboard/%d/params/%s/search/" (u/the-id dashboard-or-id) (name param-key))
                          query)
@@ -1347,6 +1374,23 @@
         (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
           (let-url [url (chain-filter-search-url dashboard "_CATEGORY_ID_" "house" "_PRICE_" 4)]
             (is (= [[67 "Steakhouse"]]
+                   (mt/user-http-request :rasta :get 200 url)))))))))
+
+(deftest chain-filter-should-use-cached-field-values-test
+  (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
+    (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id (mt/id :categories :name)) {:values ["Good" "Bad"]}
+      (with-chain-filter-fixtures [{:keys [dashboard]}]
+        (testing "GET /api/dashboard/:id/params/:param-key/values"
+          (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]
+            (is (= ["Bad" "Good"]
+                   (mt/user-http-request :rasta :get 200 url))))
+          (testing "Shouldn't use cached FieldValues if the request has any additional constraints"
+            (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
+              (is (= ["Japanese" "Steakhouse"]
+                     (mt/user-http-request :rasta :get 200 url))))))
+        (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
+          (let-url [url (chain-filter-search-url dashboard "_CATEGORY_NAME_" "ood")]
+            (is (= ["Good"]
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
 (deftest valid-filter-fields-test

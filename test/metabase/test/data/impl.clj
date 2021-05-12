@@ -5,9 +5,8 @@
             [clojure.tools.reader.edn :as edn]
             [metabase.config :as config]
             [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :as field :refer [Field]]
-            [metabase.models.table :refer [Table]]
+            [metabase.models :refer [Database Field FieldValues Table]]
+            [metabase.models.field :as field]
             [metabase.plugins.classloader :as classloader]
             [metabase.sync :as sync]
             [metabase.test.data.dataset-definitions :as defs]
@@ -229,7 +228,17 @@
 (defn- copy-table-fields! [old-table-id new-table-id]
   (db/insert-many! Field
     (for [field (db/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
-      (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id)))))
+      (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
+  ;; now copy the FieldValues as well.
+  (let [old-field-id->name (db/select-id->field :name Field :table_id old-table-id)
+        new-field-name->id (db/select-field->id :name Field :table_id new-table-id)
+        old-field-values   (db/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
+    (db/insert-many! FieldValues
+      (for [{old-field-id :field_id, :as field-values} old-field-values
+            :let                                       [field-name (get old-field-id->name old-field-id)]]
+        (-> field-values
+            (dissoc :id)
+            (assoc :field_id (get new-field-name->id field-name)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (db/select Table :db_id old-db-id {:order-by [[:id :asc]]})

@@ -7,6 +7,7 @@
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
+            [metabase.models.params.field-values :as params.field-values]
             [metabase.models.permissions :as perms]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
@@ -194,19 +195,15 @@
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
   [field]
-  (api/check-404 field)
-  (if-let [field-values (and (field-values/field-should-have-field-values? field)
-                             (field-values/create-field-values-if-needed! field))]
-    (-> field-values
-        (assoc :values (field-values/field-values->pairs field-values))
-        (dissoc :human_readable_values :created_at :updated_at :id))
-    {:values [], :field_id (:id field)}))
+  (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field)))
 
-(defn check-perms-and-return-field-values
+(defn- check-perms-and-return-field-values
   "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
   so, return its values."
-  [id]
-  (field->values (api/read-check (Field id))))
+  [field-id]
+  (let [field (api/check-404 (Field field-id))]
+    (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
+    (field->values field)))
 
 (api/defendpoint GET "/:id/values"
   "If a Field's value of `has_field_values` is `list`, return a list of all the distinct values of the Field, and (if

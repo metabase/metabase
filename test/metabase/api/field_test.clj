@@ -163,7 +163,7 @@
       (is (= {:values [], :field_id (mt/id :venues :id)}
              (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :id))))))
 
-    (testing "Sensisitive fields do not have field values and should return empty"
+    (testing "Sensitive fields do not have field values and should return empty"
       (is (= {:values [], :field_id (mt/id :users :password)}
              (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))))
 
