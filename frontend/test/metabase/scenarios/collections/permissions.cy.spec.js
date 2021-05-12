@@ -654,6 +654,17 @@ describe("collection permissions", () => {
       });
     });
   });
+
+  it("should offer to save items to 'Our analytics' if user has a 'curate' access to it", () => {
+    cy.signIn("normal");
+
+    cy.visit("/question/new");
+    cy.findByText("Native query").click();
+    cy.get(".ace_content").type("select * from people");
+    cy.findByText("Save").click();
+
+    cy.get(".AdminSelect").findByText("Our analytics");
+  });
 });
 
 function clickRevert(event_name, index = 0) {
