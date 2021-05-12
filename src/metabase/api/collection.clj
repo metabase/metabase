@@ -160,7 +160,7 @@
   (case pinned-state
     :all (constantly true)
     :is_pinned #(some? (% :collection_position))
-    :is_not_pinned #(some? (% :collection_position))
+    :is_not_pinned #(nil? (% :collection_position))
     (constantly true)))
 
 (s/defn ^:private collection-children
