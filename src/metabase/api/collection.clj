@@ -82,14 +82,14 @@
 ; This is basically a union type. defendpoint splits the string if it only gets one
 (def ^:private models-schema (s/conditional #(vector? %) [su/NonBlankString] :else su/NonBlankString))
 
-(def ^:private valid-favorite-state-values
-  "Valid values for the `?favorite_state=` param accepted by endpoints in this namespace."
-  #{"all" "is_favorite" "is_not_favorite"})
+(def ^:private valid-pinned-state-values
+  "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
+  #{"all" "is_pinned" "is_not_pinned"})
 
 
 (def ^:private CollectionChildrenOptions
   {:archived?      s/Bool
-   :favorite-state (s/maybe (apply s/enum (map keyword valid-favorite-state-values)))
+   :pinned-state   (s/maybe (apply s/enum (map keyword valid-pinned-state-values)))
    ;; when specified, only return results of this type.
    :models         (s/maybe #{(apply s/enum (map keyword valid-model-param-values))})})
 
@@ -156,18 +156,18 @@
     :pulse      Pulse
     :snippet    NativeQuerySnippet))
 
-(defn- favorite-state->pred [favorite-state]
-  (case favorite-state
+(defn- pinned-state->pred [pinned-state]
+  (case pinned-state
     :all (constantly true)
-    :is_favorite #(= (% :favorite) true)
-    :is_not_favorite #(= (% :favorite) false)
+    :is_pinned #(some? (% :collection_position))
+    :is_not_pinned #(some? (% :collection_position))
     (constantly true)))
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection}                :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models collections-only? favorite-state], :as options}    :- CollectionChildrenOptions]
-  (let [favorite-pred (favorite-state->pred favorite-state)
+   {:keys [models collections-only? pinned-state], :as options}    :- CollectionChildrenOptions]
+  (let [pinned-pred (pinned-state->pred pinned-state)
         item-groups   (into {}
                             (for [model-kw [:collection :card :dashboard :pulse :snippet]
                                   ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
@@ -177,7 +177,7 @@
                                   :when    (or (= model-kw :collection)
                                                (contains? allowed-namespaces (keyword collection-namespace)))]
                               [model-kw
-                               (filter favorite-pred (fetch-collection-children model-kw collection
+                               (filter pinned-pred (fetch-collection-children model-kw collection
                                                           (assoc options :collection-namespace collection-namespace)))]))
         last-edited   (last-edit/fetch-last-edited-info
                         {:card-ids (->> item-groups :card (map :id))
@@ -216,23 +216,23 @@
 
   *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
-  *  `favorite_state` - when `is_favorite`, return favorited objects only.
-                   when `is_not_favorite`, return non favorited objects only.
+  *  `pinned_state` - when `is_pinned`, return pinned objects only.
+                   when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything.
   *  `limit` - limit for pagination.
   *  `offset` - offset for pagination."
-  [id models archived favorite_state limit offset]
-  {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
-   favorite_state (s/maybe (apply s/enum valid-favorite-state-values))
-   limit          (s/maybe su/IntStringGreaterThanZero)
-   offset         (s/maybe su/IntStringGreaterThanOrEqualToZero)}
+  [id models archived pinned_state limit offset]
+  {models       (s/maybe models-schema)
+   archived     (s/maybe su/BooleanString)
+   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))
+   limit        (s/maybe su/IntStringGreaterThanZero)
+   offset       (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (api/check-valid-page-params limit offset)
   (let [model-kwds    (apply hash-set (map keyword (coerce-vec models)))
         children-res  (collection-children (api/read-check Collection id)
-                                           {:models         model-kwds
-                                            :archived?      (Boolean/parseBoolean archived)
-                                            :favorite-state (keyword favorite_state)})
+                                           {:models       model-kwds
+                                            :archived?    (Boolean/parseBoolean archived)
+                                            :pinned-state (keyword pinned_state)})
         limit-int     (some-> limit Integer/parseInt)
         offset-int    (some-> offset Integer/parseInt) ]
     {:data   (cond->> (vec children-res)
@@ -269,13 +269,13 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models archived namespace favorite_state limit offset]
-  {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
-   namespace      (s/maybe su/NonBlankString)
-   favorite_state (s/maybe (apply s/enum valid-favorite-state-values))
-   limit          (s/maybe su/IntStringGreaterThanZero)
-   offset         (s/maybe su/IntStringGreaterThanOrEqualToZero)}
+  [models archived namespace pinned_state limit offset]
+  {models       (s/maybe models-schema)
+   archived     (s/maybe su/BooleanString)
+   namespace    (s/maybe su/NonBlankString)
+   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))
+   limit        (s/maybe su/IntStringGreaterThanZero)
+   offset       (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (api/check-valid-page-params limit offset)
@@ -289,7 +289,7 @@
                           root-collection
                           {:models         model-kwds
                            :archived?      (Boolean/parseBoolean archived)
-                           :favorite-state (keyword favorite_state)})]
+                           :pinned-state   (keyword pinned_state)})]
     {:data  (cond->> (vec col-children)
               (some? offset-int) (drop offset-int)
               (some? limit-int)  (take limit-int))
