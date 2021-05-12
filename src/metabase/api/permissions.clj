@@ -28,8 +28,8 @@
   (api/check-valid-page-params group-start group-end)
   (api/check-superuser)
   (if (some? group-start)
-      (dbs/graph group-start group-end)
-      (dbs/graph))
+      (perms/graph group-start group-end)
+      (perms/graph)))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
