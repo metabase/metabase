@@ -5,6 +5,7 @@ import {
   _typeUsingPlaceholder,
   openOrdersTable,
   openProductsTable,
+  openPeopleTable,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
 
@@ -434,6 +435,23 @@ describe("scenarios > question > custom columns", () => {
         .click();
       cy.findByPlaceholderText("Enter a number").should("not.exist");
       cy.findByPlaceholderText("Enter some text");
+    });
+
+    it("should relay the type of a date field", () => {
+      openPeopleTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        _typeUsingGet("[contenteditable='true']", "[Birth Date]", 400);
+        _typeUsingPlaceholder("Something nice and descriptive", "DoB");
+        cy.findByText("Done").click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("DoB")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Previous");
+      cy.findByText("Days");
     });
   });
 
