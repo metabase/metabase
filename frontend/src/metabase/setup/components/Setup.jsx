@@ -196,25 +196,26 @@ export default class Setup extends Component {
             </div>
           </div>
 
-          {activeStep === DATABASE_CONNECTION_STEP_NUMBER && (
-            <div
-              style={{
-                position: "fixed",
-                left: "1em",
-                bottom: "1em",
-              }}
-            >
-              <AddDatabaseHelpCard
-                engine={selectedDatabaseEngine}
-                hasCircle={false}
-                data-testid="database-setup-help-card"
+          {selectedDatabaseEngine &&
+            activeStep === DATABASE_CONNECTION_STEP_NUMBER && (
+              <div
                 style={{
-                  border: "1px solid #F0F0F0",
-                  backgroundColor: "#FFF",
+                  position: "fixed",
+                  left: "1em",
+                  bottom: "1em",
                 }}
-              />
-            </div>
-          )}
+              >
+                <AddDatabaseHelpCard
+                  engine={selectedDatabaseEngine}
+                  hasCircle={false}
+                  data-testid="database-setup-help-card"
+                  style={{
+                    border: "1px solid #F0F0F0",
+                    backgroundColor: "#FFF",
+                  }}
+                />
+              </div>
+            )}
         </div>
       );
     }
