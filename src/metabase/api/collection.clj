@@ -91,7 +91,7 @@
   {:archived?      s/Bool
    :favorite-state (s/maybe (apply s/enum (map keyword valid-favorite-state-values)))
    ;; when specified, only return results of this type.
-   :models         (s/maybe [(apply s/enum (map keyword valid-model-param-values))])})
+   :models         (s/maybe #{(apply s/enum (map keyword valid-model-param-values))})})
 
 (defmulti ^:private fetch-collection-children
   "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -287,7 +287,7 @@
         offset-int      (some-> offset Integer/parseInt)
         col-children    (collection-children
                           root-collection
-                          {:models         model-kwds)
+                          {:models         model-kwds
                            :archived?      (Boolean/parseBoolean archived)
                            :favorite-state (keyword favorite_state)})]
     {:data  (cond->> (vec col-children)
