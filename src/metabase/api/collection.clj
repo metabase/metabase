@@ -80,7 +80,7 @@
   #{"card" "collection" "dashboard" "pulse" "snippet"})
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional #(vector? %) [(s/enum valid-model-param-values)] :else (s/enum valid-model-param-values)))
+(def ^:private models-schema (s/conditional #(vector? %) [su/NonBlankString] :else su/NonBlankString))
 
 (def ^:private valid-favorite-state-values
   "Valid values for the `?favorite_state=` param accepted by endpoints in this namespace."
@@ -209,7 +209,7 @@
   (collection-detail (api/read-check Collection id)))
 
 (defn- coerce-vec [to-coerce]
-  (if (vector? to-coerce) to-coerce [to-coerce]))
+  (if (and (some? to-coerce) (not (vector? to-coerce))) [to-coerce] to-coerce))
 
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
