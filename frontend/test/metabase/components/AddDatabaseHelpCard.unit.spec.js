@@ -4,7 +4,11 @@ import { render } from "@testing-library/react";
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
+import AddDatabaseHelpCard, {
+  CLOUD_HELP_URL,
+  ENGINE_DOCS,
+  GENERAL_DB_DOC,
+} from "metabase/components/AddDatabaseHelpCard";
 
 const ENGINES = {
   redshift: {
@@ -48,8 +52,6 @@ const ENGINES = {
   },
 };
 
-jest.mock("metabase/lib/settings");
-
 function setup({ engine = "mongo", isHosted = false } = {}) {
   jest
     .spyOn(MetabaseSettings, "get")
@@ -60,9 +62,19 @@ function setup({ engine = "mongo", isHosted = false } = {}) {
 
 describe("AddDatabaseHelpCard", () => {
   Object.entries(ENGINES).forEach(([engine, info]) => {
+    const expectedDisplayName = ENGINE_DOCS[engine]
+      ? info["driver-name"]
+      : "your database";
+    const expectedDocsLink = ENGINE_DOCS[engine] || GENERAL_DB_DOC;
+
     it(`correctly displays hints for ${engine} setup`, () => {
       const { queryByText } = setup({ engine });
-      expect(queryByText(info["driver-name"])).toBeInTheDocument();
+      const docsLink = queryByText("Our docs can help.");
+      expect(
+        queryByText(`Need help setting up ${expectedDisplayName}?`),
+      ).toBeInTheDocument();
+      expect(docsLink).toBeInTheDocument();
+      expect(docsLink.getAttribute("href")).toBe(expectedDocsLink);
     });
   });
 
@@ -70,9 +82,7 @@ describe("AddDatabaseHelpCard", () => {
     const { queryByText } = setup({ isHosted: true });
     const helpLink = queryByText(/write us/i);
     expect(helpLink).toBeInTheDocument();
-    expect(helpLink.getAttribute("href")).toBe(
-      "https://www.metabase.com/help/cloud",
-    );
+    expect(helpLink.getAttribute("href")).toBe(CLOUD_HELP_URL);
   });
 
   it("should not display a help link if it's a self-hosted instance", () => {

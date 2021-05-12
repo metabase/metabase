@@ -13,14 +13,34 @@ const propTypes = {
   engine: PropTypes.string,
 };
 
-const CLOUD_HELP_URL = "https://www.metabase.com/help/cloud";
+export const ENGINE_DOCS = {
+  bigquery: MetabaseSettings.docsUrl("administration-guide/databases/bigquery"),
+  mongo: MetabaseSettings.docsUrl("administration-guide/databases/mongodb"),
+  mysql: MetabaseSettings.docsUrl("administration-guide/databases/mysql"),
+  oracle: MetabaseSettings.docsUrl("administration-guide/databases/oracle"),
+  snowflake: MetabaseSettings.docsUrl(
+    "administration-guide/databases/snowflake",
+  ),
+  vertica: MetabaseSettings.docsUrl("administration-guide/databases/vertica"),
+};
+
+export const GENERAL_DB_DOC = MetabaseSettings.docsUrl(
+  "administration-guide/01-managing-databases",
+);
+
+export const CLOUD_HELP_URL = "https://www.metabase.com/help/cloud";
 
 function AddDatabaseHelpCard({ engine, ...props }) {
   const displayName = useMemo(() => {
+    const hasEngineDoc = !!ENGINE_DOCS[engine];
+    if (!hasEngineDoc) {
+      return "your database";
+    }
     const engines = MetabaseSettings.get("engines");
     return (engines[engine] || {})["driver-name"];
   }, [engine]);
 
+  const docsLink = ENGINE_DOCS[engine] || GENERAL_DB_DOC;
   const shouldDisplayHelpLink = MetabaseSettings.isHosted();
 
   return (
@@ -49,9 +69,9 @@ function AddDatabaseHelpCard({ engine, ...props }) {
       >
         <div>
           <p className="text-medium m0">
-            {t`Need help setting up`} <span>{displayName}</span>?
+            {t`Need help setting up`} {displayName}?
           </p>
-          <ExternalLink className="text-brand text-bold">
+          <ExternalLink href={docsLink} className="text-brand text-bold">
             {t`Our docs can help.`}
           </ExternalLink>
         </div>
