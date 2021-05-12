@@ -279,10 +279,10 @@
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (api/check-valid-page-params limit offset)
-  (let [model-kwds      (if (mi/can-read? root-collection)
+  (let [root-collection (assoc collection/root-collection :namespace namespace)
+        model-kwds      (if (mi/can-read? root-collection)
                           (apply hash-set (map keyword (coerce-vec models)))
                           #{:collection})
-        root-collection (assoc collection/root-collection :namespace namespace)
         limit-int       (some-> limit Integer/parseInt)
         offset-int      (some-> offset Integer/parseInt)
         col-children    (collection-children
