@@ -437,16 +437,19 @@
 
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
-  []
-  (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
-        db-ids      (db/select-ids 'Database)]
-    {:revision (perms-revision/latest-id)
-     :groups   (permissions->groups permissions db-ids)})
-  [group-limit group-offset db-limit db-offset]
-  (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
-        db-ids      (db/select-ids 'Database)]
-    {:revision (perms-revision/latest-id)
-     :groups   (permissions->groups permissions db-ids)}))
+  ([]
+   (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
+         db-ids      (db/select-ids 'Database)]
+     {:revision (perms-revision/latest-id)
+      :groups   (permissions->groups permissions db-ids)}))
+  ([group-start group-end]
+   (let [permissions (db/select [Permissions :group_id :object],
+                                :group_id [:>= group-start]
+                                :group_id [:< group-end]
+                                :group_id [:not= (:id (group/metabot))])
+         db-ids      (db/select-ids 'Database)]
+     {:revision (perms-revision/latest-id)
+      :groups   (permissions->groups permissions db-ids)})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH UPDATE                                                  |
