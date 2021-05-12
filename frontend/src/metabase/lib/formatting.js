@@ -553,9 +553,10 @@ export function formatEmail(
   { jsx, rich, view_as = "auto", link_text, clicked }: FormattingOptions = {},
 ) {
   const email = String(value);
-  const label = clicked
-    ? renderLinkTextForClick(link_text, getDataFromClicked(clicked))
-    : null;
+  const label =
+    clicked && link_text
+      ? renderLinkTextForClick(link_text, getDataFromClicked(clicked))
+      : null;
 
   if (
     jsx &&
