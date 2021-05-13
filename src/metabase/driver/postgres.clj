@@ -122,11 +122,11 @@
   (hsql/call :to_timestamp expr))
 
 (defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
-  [_driver _coercion_strategy expr]
+  [_driver _coercion-strategy expr]
   (hsql/call :to_timestamp expr (hx/literal "YYYYMMDDHH24MISS")))
 
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver _coercion_strategy expr]
+  [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                (hsql/call :convert_from expr "UTF8")))
 

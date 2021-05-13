@@ -268,11 +268,11 @@
   :monday)
 
 (defmethod sql.qp/cast-temporal-string [:presto :Coercion/YYYYMMDDHHMMSSString->Temporal]
-  [driver _coercion_strategy expr]
+  [driver _coercion-strategy expr]
   (hsql/call :date_parse expr (hx/literal "%Y%m%d%H%i%s")))
 
 (defmethod sql.qp/cast-temporal-byte [:presto :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver _coercion_strategy expr]
+  [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                (hsql/call :from_utf8 expr)))
 

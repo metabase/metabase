@@ -147,11 +147,11 @@
   (add-to-1970 expr "microsecond"))
 
 (defmethod sql.qp/cast-temporal-string [:h2 :Coercion/YYYYMMDDHHMMSSString->Temporal]
-  [_driver _coercion_strategy expr]
+  [_driver _coercion-strategy expr]
   (hsql/call :parsedatetime expr (hx/literal "yyyyMMddHHmmss")))
 
 (defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver _coercion_strategy expr]
+  [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                (hsql/call :utf8tostring expr)))
 
