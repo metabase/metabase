@@ -10,6 +10,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.session :refer [Session]]
             [metabase.models.user :as user :refer [User]]
+            [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
@@ -54,7 +55,7 @@
 (defn- use-permanent-cookies?
   "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
   [request]
-  (if (config/config-bool :mb-session-cookies)
+  (if (public-settings/session-cookies)
     ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
     false
     ;; Otherwise check whether the user selected "remember me" during login
