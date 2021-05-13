@@ -135,10 +135,10 @@
      query)))
 
 (defn auto-bucket-datetimes
-  "Middleware that automatically adds `:temporal-unit` to breakout and filter `:field` clauses if the Field they refer
-  to has a type that derives from `:type/Temporal` (but not `:type/Time`). (This is done for historic reasons, before
-  datetime bucketing was added to MBQL; datetime Fields defaulted to breaking out by day. We might want to revisit
-  this behavior in the future.)
+  "Middleware that automatically adds `:temporal-unit` `:day` to breakout and filter `:field` clauses if the Field they
+  refer to has a type that derives from `:type/Temporal` (but not `:type/Time`). (This is done for historic reasons,
+  before datetime bucketing was added to MBQL; datetime Fields defaulted to breaking out by day. We might want to
+  revisit this behavior in the future.)
 
   Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against `yyyy-MM-dd`
   format datetime strings."
