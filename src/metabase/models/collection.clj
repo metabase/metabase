@@ -31,6 +31,10 @@
 
 (models/defmodel Collection :collection)
 
+(def Type
+  "Schema for valid collection types"
+  (s/maybe (s/enum "official")))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Slug & Hex Color & Validation                                          |

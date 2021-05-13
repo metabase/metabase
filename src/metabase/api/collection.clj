@@ -253,15 +253,18 @@
 
 (api/defendpoint POST "/"
   "Create a new Collection."
-  [:as {{:keys [name color description parent_id namespace]} :body}]
+  [:as {{:keys [name color description parent_id namespace type]} :body}]
   {name        su/NonBlankString
    color       collection/hex-color-regex
    description (s/maybe su/NonBlankString)
    parent_id   (s/maybe su/IntGreaterThanZero)
-   namespace   (s/maybe su/NonBlankString)}
+   namespace   (s/maybe su/NonBlankString)
+   type        collection/Type}
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id)
   ;; Now create the new Collection :)
+  (api/check-403 (or (nil? type)
+                     (and api/*is-superuser?* type)))
   (db/insert! Collection
     (merge
      {:name        name
@@ -320,16 +323,20 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id], :as collection-updates} :body}]
+  [id, :as {{:keys [name color description archived parent_id type], :as collection-updates} :body}]
   {name        (s/maybe su/NonBlankString)
    color       (s/maybe collection/hex-color-regex)
    description (s/maybe su/NonBlankString)
    archived    (s/maybe s/Bool)
-   parent_id   (s/maybe su/IntGreaterThanZero)}
+   parent_id   (s/maybe su/IntGreaterThanZero)
+   type        collection/Type}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
+    (api/check-403 (or (not (contains? collection-updates :type)) ;; update doesn't include it
+                       (= (:type collection-before-update) type)  ;; update doesn't change it
+                       api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :type])]

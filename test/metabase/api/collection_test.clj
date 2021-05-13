@@ -812,7 +812,17 @@
                                               :descrption "My SQL Snippets"
                                               :namespace  "snippets"})))
           (finally
-            (db/delete! Collection :name collection-name)))))))
+            (db/delete! Collection :name collection-name)))))
+    (testing "collection types"
+      (testing "Admins should be able to create with a type"
+        (mt/user-http-request :crowberto :post 200 "collection"
+                              {:name "foo", :color "#f38630", :type "official"})
+        (testing "But they have to be valid types"
+          (mt/user-http-request :crowberto :post 400 "collection"
+                                {:name "foo", :color "#f38630", :type "no-way-this-is-valid-type"})))
+      (testing "Non-admins cannot create a collection with a type"
+        (mt/user-http-request :rasta :post 403 "collection"
+                              {:name "foo", :color "#f38630", :type "official"})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUT /api/collection/:id                                             |
@@ -833,6 +843,22 @@
                  :parent_id nil})
                (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
                                      {:name "My Beautiful Collection", :color "#ABCDEF", :type "official"})))))
+    (testing "Admins can edit the type"
+      (mt/with-temp Collection [collection]
+        (is (= "official"
+               (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
+                                         {:name "foo" :type "official"})
+                   :type)))))
+    (testing "Non-admins get a 403 when editing the type"
+      (mt/with-temp Collection [collection]
+        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
+                              {:name "foo" :type "official"})))
+    (testing "Non-admins patching without type is fine"
+      (mt/with-temp Collection [collection {:name "whatever" :type "official"}]
+        (is (= "official"
+               (-> (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id collection))
+                                         {:name "foo"})
+                   :type)))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
