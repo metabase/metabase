@@ -285,17 +285,17 @@
 
 (defmethod parse-filter* :and
   [[_ & args]]
-  (when-let [fields (seq (keep identity (map parse-filter args)))]
+  (when-let [fields (seq (keep identity (map parse-filter* args)))]
     {:type :and, :fields (vec fields)}))
 
 (defmethod parse-filter* :or
   [[_ & args]]
-  (when-let [fields (seq (keep identity (map parse-filter args)))]
+  (when-let [fields (seq (keep identity (map parse-filter* args)))]
     {:type :or, :fields (vec fields)}))
 
 (defmethod parse-filter* :not
   [[_ subclause]]
-  (when-let [subclause (parse-filter subclause)]
+  (when-let [subclause (parse-filter* subclause)]
     (filter:not subclause)))
 
 (defn- parse-filter [filter-clause]
