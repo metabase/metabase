@@ -14,7 +14,7 @@ const StyledButton = styled(Button)`
   padding: 0.5rem 0.25rem;
 
   .Icon-chevrondown {
-    height: 20px;
+    height: 24px;
   }
 `;
 
@@ -30,7 +30,7 @@ function SavedQuestionHeaderButton({ className, question, onClick, active }) {
       iconRight="chevrondown"
       icon={icon}
       active={active}
-      iconSize={24}
+      iconSize={12}
       data-testid="saved-question-header-button"
     >
       {question.displayName()}
