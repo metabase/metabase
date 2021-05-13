@@ -269,7 +269,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:presto :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [driver _coercion_strategy expr]
-  (hsql/call :date_parse expr (hsql/raw "'%Y%m%d%H%i%s'")))
+  (hsql/call :date_parse expr (hx/literal "%Y%m%d%H%i%s")))
 
 (defmethod sql.qp/cast-temporal-byte [:presto :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion_strategy expr]

@@ -148,7 +148,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:h2 :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion_strategy expr]
-  (hsql/call :parsedatetime expr (hsql/raw "'yyyyMMddHHmmss'")))
+  (hsql/call :parsedatetime expr (hx/literal "yyyyMMddHHmmss")))
 
 (defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion_strategy expr]
