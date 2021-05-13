@@ -829,9 +829,10 @@
                  :slug     "my_beautiful_collection"
                  :color    "#ABCDEF"
                  :location "/"
+                 :type     "official"
                  :parent_id nil})
                (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                     {:name "My Beautiful Collection", :color "#ABCDEF"})))))
+                                     {:name "My Beautiful Collection", :color "#ABCDEF", :type "official"})))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]

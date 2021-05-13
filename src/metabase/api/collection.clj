@@ -332,7 +332,7 @@
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :type])]
       (when (seq updates)
         (db/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that

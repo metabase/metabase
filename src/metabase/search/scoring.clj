@@ -2,6 +2,7 @@
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [java-time :as t]
+            [metabase.public-settings.metastore :as settings.metastore]
             [metabase.search.config :as search-config]
             [schema.core :as s])
   (:import java.util.PriorityQueue))
@@ -243,7 +244,9 @@
     :score  (pinned-score result)
     :name   "pinned"}
    {:weight 2
-    :score  (official-collection-score result)
+    :score  (if (settings.metastore/enable-enhancements?)
+              (official-collection-score result)
+              0)
     :name   "official collection"}
    {:weight 3/2
     :score  (recency-score result)
