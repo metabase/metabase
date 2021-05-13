@@ -36,12 +36,12 @@ const BulkActionControls = ({ onArchive, onMove }) => (
 
 const SelectionControls = ({
   selected,
-  deselected,
+  hasUnselected,
   onSelectAll,
   onSelectNone,
   size = 18,
 }) =>
-  deselected.length === 0 ? (
+  !hasUnselected ? (
     <StackedCheckBox checked onChange={onSelectNone} size={size} />
   ) : selected.length === 0 ? (
     <StackedCheckBox onChange={onSelectAll} size={size} />
@@ -49,7 +49,7 @@ const SelectionControls = ({
     <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
   );
 
-export default function BulkActions(props) {
+function BulkActions(props) {
   const {
     selected,
     selectedItems,
@@ -120,3 +120,5 @@ export default function BulkActions(props) {
     </BulkActionBar>
   );
 }
+
+export default React.memo(BulkActions);

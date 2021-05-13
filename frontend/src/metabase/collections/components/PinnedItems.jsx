@@ -30,12 +30,19 @@ const PinnedItem = ({ item, index, collection, onCopy, onMove }) => (
       onPin={() => item.setPinned(false)}
       onMove={onMove}
       onCopy={onCopy}
+      selectable={false}
       pinned
     />
   </Link>
 );
 
-export default function PinnedItems({ items, collection, onMove, onCopy }) {
+export default function PinnedItems({
+  items,
+  collection,
+  selected,
+  onMove,
+  onCopy,
+}) {
   if (items.length === 0) {
     return (
       <PinDropTarget pinIndex={1} hideUntilDrag>
@@ -64,7 +71,11 @@ export default function PinnedItems({ items, collection, onMove, onCopy }) {
       >
         {items.map((item, index) => (
           <Box w={[1]} className="relative" key={index}>
-            <ItemDragSource item={item} collection={collection}>
+            <ItemDragSource
+              item={item}
+              collection={collection}
+              selected={selected}
+            >
               <PinnedItem
                 key={`${item.model}:${item.id}`}
                 index={index}
