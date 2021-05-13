@@ -94,9 +94,9 @@
    #'add-implicit-joins/add-implicit-joins
    #'large-int-id/convert-id-to-string
    #'format-rows/format-rows
+   #'add-default-temporal-unit/add-default-temporal-unit
    #'desugar/desugar
    #'binning/update-binning-strategy
-   #'add-default-temporal-unit/add-default-temporal-unit
    #'resolve-fields/resolve-fields
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
