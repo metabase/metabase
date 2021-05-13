@@ -290,7 +290,7 @@
     (testing "Test that token and password are required"
       (is (= {:errors {:token "value must be a non-blank string."}}
              (mt/client :post 400 "session/reset_password" {})))
-      (is (= {:errors {:password "Password is insufficiently complex, or is too common"}}
+      (is (= {:errors {:password "password is too common"}}
              (mt/client :post 400 "session/reset_password" {:token "anything"}))))
 
     (testing "Test that malformed token returns 400"
