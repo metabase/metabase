@@ -74,11 +74,12 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingQuestionDetailsSidebar: false,
 };
 
-// this is used to close toher sidebar when one is updated
+// this is used to close other sidebar when one is updated
 const CLOSED_NATIVE_EDITOR_SIDEBARS = {
   isShowingTemplateTagsEditor: false,
   isShowingSnippetSidebar: false,
   isShowingDataReference: false,
+  isShowingQuestionDetailsSidebar: false,
 };
 
 // various ui state options
