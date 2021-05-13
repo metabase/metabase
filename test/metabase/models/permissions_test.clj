@@ -551,6 +551,13 @@
         (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
                (test-data-graph group)))))))
 
+;;(deftest pagination-test
+;;  (testing "start-end pagination works for groups"
+;;    (mt/with-temp* [PermissionsGroup [group1]
+;;                    PermissionsGroup [group2]]
+;;      (is (= 1 (count (keys perms/graph [(group1 :id) (group2 :id)]))))
+;;      (is (= 2 (count (keys perms/graph [(group1 :id) (+ 1 (group2 :id))])))))))
+
 (deftest graph-for-tables-without-schemas-test
   (testing "Make sure that the graph functions work correctly for DBs with no schemas (#4000)"
     (mt/with-temp* [PermissionsGroup [group]
