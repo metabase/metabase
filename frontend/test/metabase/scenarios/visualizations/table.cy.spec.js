@@ -35,9 +35,13 @@ describe("scenarios > visualizations > table", () => {
       cy.findByText("Link").click();
     });
 
+    // There is a lag caused by update of the table visualization which breaks cypress typing
+    cy.wait(1000);
     cy.findByTestId("link_text").type("{{CITY}} {{ID}} fixed text", {
       parseSpecialCharSequences: false,
     });
+
+    cy.wait(1000);
     cy.findByTestId("link_url").type("http://metabase.com/people/{{ID}}", {
       parseSpecialCharSequences: false,
     });
