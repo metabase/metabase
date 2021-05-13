@@ -10,7 +10,7 @@ function HistoryButton({ onClick, revisions }) {
   const mostRecentRevision = _.first(revisions);
   return mostRecentRevision ? (
     <Link
-      className="pl1 text-underline text-bold text-light text-small text-brand-hover"
+      className="pl1 text-bold text-light text-small text-brand-hover"
       onClick={onClick}
     >
       {t`Edited ${moment(mostRecentRevision.timestamp).fromNow()}`}
