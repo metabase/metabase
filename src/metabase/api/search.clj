@@ -362,19 +362,22 @@
                        query-with-limit (h/limit search-query 1)]
                    (db/query query-with-limit))))))
 
-(defn- search-union
+(defn- full-search-query
   "Postgres 9 is not happy with the type munging it needs to do
   to make the union-all degenerate down to trivial case of one model without errors.
   Therefore, we degenerate it down for it"
   [search-ctx]
-  (let [models    (models-to-search search-ctx search-config/searchable-models)
-        sql-alias :alias_is_required_by_sql_but_not_needed_here]
+  (let [models       (models-to-search search-ctx search-config/searchable-models)
+        sql-alias    :alias_is_required_by_sql_but_not_needed_here
+        order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (if (= (count models) 1)
-      [[(search-query-for-model (first models) search-ctx) sql-alias]]
-      [[{:union-all (for [model models
-                          :let  [query (search-query-for-model model search-ctx)]
-                          :when (seq query)]
-                      query)} sql-alias]])))
+      (search-query-for-model (first models) search-ctx)
+      {:select [:*]
+       :from [[{:union-all (for [model models
+                                 :let  [query (search-query-for-model model search-ctx)]
+                                 :when (seq query)]
+                             query)} sql-alias]]
+       :order-by order-clause})))
 
 
 (s/defn ^:private search
@@ -384,9 +387,7 @@
             (if (number? v)
               (not (zero? v))
               v))]
-    (let [search-query      {:select [:*]
-                             :from (search-union search-ctx)
-                             :order-by [((fnil order-clause "") (:search-string search-ctx))]}
+    (let [search-query      (full-search-query search-ctx)
           _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
           reducible-results (db/reducible-query search-query :max-rows search-config/db-max-results)
           xf                (comp
