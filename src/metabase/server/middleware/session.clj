@@ -58,7 +58,7 @@
     ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
     false
     ;; Otherwise check whether the user selected "remember me" during login
-    (:remember (:body request))))
+    (get-in request [:body :remember])))
 
 (defmulti set-session-cookie
   "Add an appropriate cookie to persist a newly created Session to `response`."
