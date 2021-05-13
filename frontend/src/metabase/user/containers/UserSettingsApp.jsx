@@ -5,7 +5,12 @@ import { connect } from "react-redux";
 import UserSettings from "../components/UserSettings";
 import { selectors } from "../selectors";
 
-import { setTab, updatePassword, updateUser, validatePassword } from "../actions";
+import {
+  setTab,
+  updatePassword,
+  updateUser,
+  validatePassword,
+} from "../actions";
 
 const mapStateToProps = (state, props) => {
   return {
