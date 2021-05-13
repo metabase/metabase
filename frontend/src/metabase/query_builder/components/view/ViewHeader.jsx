@@ -112,7 +112,7 @@ export class ViewTitleHeader extends React.Component {
       >
         {isSaved ? (
           <div>
-            <div className="flex mb1">
+            <div className="flex align-center mb1">
               <SavedQuestionHeaderButtonContainer>
                 <SavedQuestionHeaderButton
                   question={question}

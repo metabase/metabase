@@ -4,19 +4,17 @@ import _ from "underscore";
 import moment from "moment";
 import { t } from "ttag";
 import Revision from "metabase/entities/revisions";
-import Button from "metabase/components/Button";
+import Link from "metabase/components/Link";
 
 function HistoryButton({ onClick, revisions }) {
   const mostRecentRevision = _.first(revisions);
   return mostRecentRevision ? (
-    <Button
-      className="text-underline text-light"
-      borderless
-      small
+    <Link
+      className="pl1 text-underline text-bold text-light text-small text-brand-hover"
       onClick={onClick}
     >
       {t`Edited ${moment(mostRecentRevision.timestamp).fromNow()}`}
-    </Button>
+    </Link>
   ) : null;
 }
 

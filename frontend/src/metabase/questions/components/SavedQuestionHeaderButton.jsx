@@ -11,7 +11,7 @@ const { getStatusIconForReview, getColorForReview } = PLUGIN_MODERATION_SERVICE;
 const StyledButton = styled(Button)`
   font-size: 1.25rem;
   border: none;
-  padding: 0.5rem 0.25rem;
+  padding: 0.25rem 0.25rem;
 
   .Icon-chevrondown {
     height: 24px;
@@ -30,7 +30,7 @@ function SavedQuestionHeaderButton({ className, question, onClick, active }) {
       iconRight="chevrondown"
       icon={icon}
       active={active}
-      iconSize={12}
+      iconSize={13}
       data-testid="saved-question-header-button"
     >
       {question.displayName()}
