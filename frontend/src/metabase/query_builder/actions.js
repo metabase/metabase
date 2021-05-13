@@ -1355,3 +1355,8 @@ export async function createModerationReview(reviewParams) {
   await ModerationReviewApi.create(reviewParams);
   return softReloadCard();
 }
+
+export async function revertToRevision(revision) {
+  await revision.revert();
+  return reloadCard();
+}

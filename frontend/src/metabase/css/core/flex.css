@@ -30,6 +30,10 @@
   flex: 0.5;
 }
 
+.flex-1 {
+  flex: 1;
+}
+
 .flex-3-quarters,
 :local(.flex-3-quarters) {
   flex: 0.75;
