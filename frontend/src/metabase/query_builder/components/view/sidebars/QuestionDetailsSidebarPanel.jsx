@@ -19,11 +19,16 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
   return (
     <SidebarContent className="full-height px1">
       <div>
-        <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
-        <ClampedText className="px2 pb2" text={description} visibleLines={8} />
+        <div className="px2 py1">
+          <QuestionActionButtons
+            canWrite={canWrite}
+            onOpenModal={onOpenModal}
+          />
+        </div>
+        <ClampedText className="px3 pb2" text={description} visibleLines={8} />
         <div className="mx1 pb2 flex justify-between border-row-divider">
           <ModerationIssueActionMenu
-            triggerClassName="Button--round text-brand border-brand"
+            triggerClassName="Button--round text-brand border-brand py1"
             onAction={issueType => {
               setView({
                 name: SIDEBAR_VIEWS.CREATE_ISSUE_PANEL,

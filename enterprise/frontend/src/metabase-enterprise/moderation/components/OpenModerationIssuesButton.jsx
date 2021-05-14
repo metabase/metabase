@@ -17,7 +17,7 @@ export function OpenModerationIssuesButton({ className, onClick }) {
   return numOpenIssues > 0 ? (
     <Button
       borderless
-      className={cx(className, "text-brand text-brand-hover align-center")}
+      className={cx(className, "py1 text-brand text-brand-hover align-center")}
       onClick={onClick}
     >
       {ngettext(
