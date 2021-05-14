@@ -9,9 +9,13 @@ import cx from "classnames";
 export default function Badge({ icon, name, className, children, ...props }) {
   return (
     <MaybeLink
-      className={cx(className, "flex align-center text-bold text-medium", {
-        "cursor-pointer text-brand-hover": props.to || props.onClick,
-      })}
+      className={cx(
+        className,
+        "flex align-center text-small text-bold text-medium",
+        {
+          "cursor-pointer text-brand-hover": props.to || props.onClick,
+        },
+      )}
       {...props}
     >
       {icon && <Icon name={icon} mr={children ? "5px" : null} size={11} />}
