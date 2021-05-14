@@ -20,7 +20,7 @@ export const examples = {
     <Comment
       title="Bobby Tables"
       text={TEXT}
-      timestamp={Date.now()}
+      timestamp={123}
       actions={ACTIONS}
     />
   ),
@@ -28,7 +28,7 @@ export const examples = {
     <Comment
       title="Bobby Tables"
       text={TEXT}
-      timestamp={new Date("1995-12-17T03:24:00")}
+      timestamp={100000000}
       visibleLines={3}
     />
   ),
