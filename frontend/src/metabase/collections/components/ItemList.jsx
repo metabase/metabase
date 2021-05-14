@@ -64,7 +64,11 @@ export default function ItemList({
         <PinDropTarget pinIndex={null} margin={8}>
           <Box>
             {items.map(item => (
-              <Box key={`${item.id}_${item.model}`} className="relative">
+              <Box
+                key={`${item.id}_${item.model}`}
+                className="relative"
+                data-testid="collection-entry"
+              >
                 <ItemDragSource
                   item={item}
                   isSelected={getIsSelected(item)}

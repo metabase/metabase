@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   restore,
   setupLocalHostEmail,
@@ -5,8 +6,10 @@ import {
   popover,
   openOrdersTable,
 } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
@@ -241,6 +244,80 @@ describe("scenarios > collection_defaults", () => {
         cy.visit("/collection/root");
         cy.findByText(dashboard_name);
       });
+    });
+  });
+
+  describe("pagination and filtering", () => {
+    const PAGE_SIZE = 25;
+    const ADDED_QUESTIONS = 13;
+    const ADDED_DASHBOARDS = 12;
+    const PRE_EXISTED_ITEMS = 4;
+
+    const TOTAL_ITEMS = ADDED_DASHBOARDS + ADDED_QUESTIONS + PRE_EXISTED_ITEMS;
+
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      _.times(12, i => cy.createDashboard(`dashboard ${i}`));
+      _.times(13, i =>
+        cy.createQuestion({
+          name: `generated question ${i}`,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+            ],
+          },
+        }),
+      );
+    });
+
+    it("should allow to navigate back and forth", () => {
+      cy.visit("/collection/root");
+
+      // First page
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+
+      cy.findByTestId("next-page-btn").click();
+
+      // Second page
+      cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should(
+        "have.length",
+        TOTAL_ITEMS - PAGE_SIZE,
+      );
+      cy.findByTestId("next-page-btn").should("be.disabled");
+
+      cy.findByTestId("previous-page-btn").click();
+
+      // First page
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+    });
+
+    it("should allow to filter by item type", () => {
+      cy.visit("/collection/root");
+
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+
+      cy.findByText("Dashboards").click();
+      cy.findAllByTestId("collection-entry").should("have.length", 13);
+
+      cy.findByText("Questions").click();
+      cy.findAllByTestId("collection-entry").should("have.length", 16);
+
+      cy.findByText("Pulses").click();
+      cy.findAllByTestId("collection-entry").should("have.length", 0);
+
+      cy.findByText("Everything").click();
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
     });
   });
 
