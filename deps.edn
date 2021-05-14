@@ -82,7 +82,7 @@
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.14.1"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.14.1"}             ; apache logging framework
   org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.14.1"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-liquibase  {:mvn/version "2.14.1"}             ; liquibase logging via log4j 2
+  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.14.1"}             ; java.util.logging via log4j 2
   org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.14.1"}             ; allows the slf4j API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.0.0"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.0.0"
@@ -112,8 +112,7 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "9.4.43.v20210629"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.5.9"}              ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "21.2.0"}           ; JavaScript engine
-  org.liquibase/liquibase-core              {:mvn/version "3.6.3"               ; migration management (Java lib)
-                                             :exclusions  [ch.qos.logback/logback-classic]}
+  org.liquibase/liquibase-core              {:mvn/version "4.5.0"}              ; migration management (Java lib)
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.6.2"}              ; MySQL/MariaDB driver
   org.postgresql/postgresql                 {:mvn/version "42.2.23"}            ; Postgres driver
   org.slf4j/slf4j-api                       {:mvn/version "1.7.32"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
@@ -190,7 +189,9 @@
                  ;; locally -- prefer debuggability over performance for local dev work.
                  "-XX:-OmitStackTraceInFastThrow"
                  ;; prevent Java icon from randomly popping up in macOS dock
-                 "-Djava.awt.headless=true"]}
+                 "-Djava.awt.headless=true"
+                 ;; java.util.logging via log4j: https://logging.apache.org/log4j/2.x/log4j-jul/
+                 "-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
@@ -213,6 +214,8 @@
   {:main-opts ["-m" "metabase.core"]
    :jvm-opts  ["-Dmb.run.mode=dev"
                "-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
+               ;; java.util.logging via log4j: https://logging.apache.org/log4j/2.x/log4j-jul/
+               "-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager"]}
                "-Dmb.jetty.port=3000"]}
 
   ;; alias for CI-specific options.
