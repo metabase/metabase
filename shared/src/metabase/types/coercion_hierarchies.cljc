@@ -1,6 +1,5 @@
 (ns metabase.types.coercion-hierarchies
-  (:require [metabase.shared.util.log :as log]
-            [clojure.data :as data]))
+  (:require [metabase.shared.util.log :as log]))
 
 (def ^:private strategy->allowed-base-types
   "Map of `coercion-strategy -> #{allowed-base-type}`."

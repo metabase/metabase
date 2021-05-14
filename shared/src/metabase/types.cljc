@@ -4,10 +4,15 @@
    corresponding mappings in the frontend or other places. For example, a Database may want a type called something
    like `:type/CaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
    continue to treat it as such until further notice."
-  (:require [metabase.shared.util :as shared.u]
-            [clojure.set :as set]
-            [metabase.types.coercion-hierarchies :as coercion-hierarchies]
-            [metabase.shared.util.log :as log]))
+  #?@(:clj
+      [(:require
+        [clojure.set :as set]
+        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]
+      :cljs
+      [(:require
+        [clojure.set :as set]
+        [metabase.shared.util :as shared.u]
+        [metabase.types.coercion-hierarchies :as coercion-hierarchies])]))
 
 ;; NOTE: be sure to update frontend/test/metabase-bootstrap.js when updating this
 
@@ -316,7 +321,7 @@
 (defn coercion-possibilities
   "Possible coercions for a base type, returned as a map of `effective-type -> #{coercion-strategy}`"
   [base-type]
-  (let [base-type-hierarchy     (coercion-hierarchies/base-type-hierarchy)
+  (let [base-type-hierarchy      (coercion-hierarchies/base-type-hierarchy)
         effective-type-hierarchy (coercion-hierarchies/effective-type-hierarchy)]
     (->> (for [strategy       (ancestors base-type-hierarchy base-type)
                :when          (isa? strategy :Coercion/*)
