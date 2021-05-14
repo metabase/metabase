@@ -300,12 +300,12 @@
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."
   [coercion-strategy base-type]
-  (isa? @coercion-hierarchies/base-type-hierarchy base-type coercion-strategy))
+  (isa? (coercion-hierarchies/base-type-hierarchy) base-type coercion-strategy))
 
 (defn is-coercible-to?
   "Whether `coercion-strategy` coerces to `effective-type` or some subtype thereof."
   [coercion-strategy effective-type]
-  (isa? @coercion-hierarchies/effective-type-hierarchy coercion-strategy effective-type))
+  (isa? (coercion-hierarchies/effective-type-hierarchy) coercion-strategy effective-type))
 
 (defn is-coercible?
   "Whether `coercion-strategy` is allowed for `base-type` and coerces to `effective-type` or some subtype thereof."
@@ -316,8 +316,8 @@
 (defn coercion-possibilities
   "Possible coercions for a base type, returned as a map of `effective-type -> #{coercion-strategy}`"
   [base-type]
-  (let [base-type-hierarchy     @coercion-hierarchies/base-type-hierarchy
-        effective-type-hierarchy @coercion-hierarchies/effective-type-hierarchy]
+  (let [base-type-hierarchy     (coercion-hierarchies/base-type-hierarchy)
+        effective-type-hierarchy (coercion-hierarchies/effective-type-hierarchy)]
     (->> (for [strategy       (ancestors base-type-hierarchy base-type)
                :when          (isa? strategy :Coercion/*)
                :let           [effective-types (parents effective-type-hierarchy strategy)]
