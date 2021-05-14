@@ -1,5 +1,4 @@
-(ns metabase.types.coercion-hierarchies
-  (:require [metabase.shared.util.log :as log]))
+(ns metabase.types.coercion-hierarchies)
 
 (def ^:private strategy->allowed-base-types
   "Map of `coercion-strategy -> #{allowed-base-type}`."
@@ -35,7 +34,6 @@
   (when-not @base-type-hierarchy*
     (locking base-type-hierarchy*
       (when-not @base-type-hierarchy*
-        (log/trace "Building coercion strategy base type hierarchy")
         (reset! base-type-hierarchy* (build-hierarchy (for [[strategy base-types] @strategy->allowed-base-types
                                                             base-type             base-types]
                                                         [base-type strategy]))))))
@@ -50,7 +48,6 @@
   (when-not @effective-type-hierarchy*
     (locking effective-type-hierarchy*
       (when-not @effective-type-hierarchy*
-        (log/trace "Building coercion strategy effective type hierarchy")
         (reset! effective-type-hierarchy* (build-hierarchy (seq @strategy->effective-type))))))
   @effective-type-hierarchy*)
 
@@ -61,7 +58,6 @@
  ::rebuild-hierarchies
  (fn [_ _ old new]
    (when-not (= old new)
-     (log/trace "Global hierarchy changed, coercion hierarchies need to be rebuilt")
      (reset! base-type-hierarchy* nil)
      (reset! effective-type-hierarchy* nil))))
 
@@ -72,7 +68,6 @@
  ::rebuild-hierarchies
  (fn [_ _ old new]
    (when-not (= old new)
-     (log/trace "strategy->allowed-base-types changed, base-type hierarchy needs to be rebuilt")
      (reset! base-type-hierarchy* nil))))
 
 (add-watch
@@ -80,5 +75,4 @@
  ::rebuild-hierarchies
  (fn [_ _ old new]
    (when-not (= old new)
-     (log/trace "strategy->allowed-base-types changed, effective-type hierarchy needs to be rebuilt")
      (reset! effective-type-hierarchy* nil))))
