@@ -2,6 +2,10 @@ import renderer from "react-test-renderer";
 
 import components from "metabase/internal/lib/components-node";
 
+jest.mock("metabase/lib/time", () => ({
+  getRelativeTime: () => "mocked relative timestamp",
+}));
+
 // generates a snapshot test for every example in every component's `.info.js`
 components.map(
   ({ component, examples, noSnapshotTest, description, filename }) =>
