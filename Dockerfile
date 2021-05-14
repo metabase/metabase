@@ -60,13 +60,13 @@ COPY --from=drivers /root/.m2/repository/. /root/.m2/repository/.
 COPY --from=drivers /app/source/. .
 
 # build the app
-RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build uberjar
+RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build version uberjar
 
 # ###################
 # # STAGE 2: runner
 # ###################
 
-## Remember that this runner image needs to be the same as bin/docker/Dockerfile with the exception that this one grabs the 
+## Remember that this runner image needs to be the same as bin/docker/Dockerfile with the exception that this one grabs the
 ## jar from the previous stage rather than the local build
 
 FROM adoptopenjdk/openjdk11:alpine-jre as runner
