@@ -54,6 +54,7 @@
     "react-dom": "~16.14.0",
     "react-draggable": "^3.3.2",
     "react-element-to-jsx-string": "^13.1.0",
+    "react-grid-layout": "^1.2.5",
     "react-hot-loader": "^4.13.0",
     "react-markdown": "^3.6.0",
     "react-motion": "^0.4.5",
