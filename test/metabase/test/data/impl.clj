@@ -62,7 +62,7 @@
   {:pre [(seq table-definitions)]}
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
-                           (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
+                           (throw (Exception. (format "Table '%s' not loaded from definition\n%s\nFound:\n%s"
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
                                                       (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]

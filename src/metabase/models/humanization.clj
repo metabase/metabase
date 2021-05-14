@@ -13,7 +13,6 @@
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.infer-spaces :refer [infer-spaces]]
             [toucan.db :as db]))
 
 (declare humanization-strategy)
