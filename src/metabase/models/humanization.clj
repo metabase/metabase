@@ -2,7 +2,7 @@
   "Logic related to humanization of table names and other identifiers, e.g. taking an identifier like `my_table` and
   returning a human-friendly one like `My Table`.
 
-  There are currently three implementations of humanization logic.
+  There are currently two implementations of humanization logic, previously three.
   Which implementation is used is determined by the Setting `humanization-strategy`.
   `:simple`, which merely replaces underscores and dashes with spaces, and `:none`,
   which predictibly is merely an identity function that does nothing to the results.
@@ -32,6 +32,15 @@
   (fn
     ([_] (keyword (humanization-strategy)))
     ([strategy _] (keyword strategy))))
+
+(defmethod name->human-readable-name :advanced
+  ([s] (name->human-readable-name :advanced s))
+  ([_, ^String s]
+   ;; explode on hypens, underscores, and spaces
+   (when (seq s)
+     (str/join " " (for [part  (str/split s #"[-_\s]+")
+                         :when (not (str/blank? part))]
+                     (str/capitalize part))))))
 
 ;; simple replaces hyphens and underscores with spaces and capitalizes
 (defmethod name->human-readable-name :simple
