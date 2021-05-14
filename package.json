@@ -57,7 +57,7 @@
     "react-hot-loader": "^4.13.0",
     "react-markdown": "^3.6.0",
     "react-motion": "^0.4.5",
-    "react-redux": "^5.0.4",
+    "react-redux": "^7.2.4",
     "react-resizable": "^1.9.0",
     "react-router": "3",
     "react-router-redux": "^4.0.8",
