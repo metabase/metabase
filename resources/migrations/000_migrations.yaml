@@ -8315,8 +8315,15 @@ databaseChangeLog:
               - column:
                   name: status
                   type: varchar(255)
-                  remarks: "archived, resolved, or open"
+                  remarks: "See enum in model file"
                   defaultValue: "open"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(255)
+                  remarks: "See enum in model file"
+                  defaultValue: "verification_request"
                   constraints:
                     nullable: false
               - column:
@@ -8342,6 +8349,11 @@ databaseChangeLog:
                   remarks: "ID of the user who submitted the moderation request"
                   constraints:
                     nullable: false
+              - column:
+                  name: closed_by_id
+                  type: int
+                  remarks: "ModerationReview that led to this request being closed or dismissed"
+                  # specifically allowed to be null for open requests
   - changeSet:
       id: 303
       author: tsmacdonald
