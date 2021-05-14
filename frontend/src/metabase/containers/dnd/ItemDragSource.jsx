@@ -20,7 +20,7 @@ import { dragTypeForItem } from ".";
     beginDrag(props, monitor, component) {
       return { item: props.item };
     },
-    async endDrag({ selected, onClearSelected }, monitor, component) {
+    async endDrag({ selected, onDrop }, monitor, component) {
       if (!monitor.didDrop()) {
         return;
       }
@@ -38,7 +38,8 @@ import { dragTypeForItem } from ".";
               items.map(i => i.setPinned && i.setPinned(pinIndex)),
             );
           }
-          onClearSelected && onClearSelected();
+
+          onDrop && onDrop();
         } catch (e) {
           alert("There was a problem moving these items: " + e);
         }

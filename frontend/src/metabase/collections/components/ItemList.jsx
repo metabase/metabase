@@ -27,7 +27,7 @@ export default function ItemList({
   selected,
   getIsSelected,
   onToggleSelected,
-  onClearSelected,
+  onDrop,
   collectionHasPins,
   showFilters,
   onMove,
@@ -73,7 +73,7 @@ export default function ItemList({
                   item={item}
                   isSelected={getIsSelected(item)}
                   selected={selected}
-                  onClearSelected={onClearSelected}
+                  onDrop={onDrop}
                   collection={collection}
                 >
                   <NormalItem

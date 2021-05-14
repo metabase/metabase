@@ -16,7 +16,15 @@ import NormalItem from "metabase/collections/components/NormalItem";
 import CollectionSectionHeading from "metabase/collections/components/CollectionSectionHeading";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
-const PinnedItem = ({ item, index, collection, onCopy, onMove }) => (
+const PinnedItem = ({
+  item,
+  index,
+  collection,
+  onCopy,
+  onMove,
+  onToggleSelected,
+  getIsSelected,
+}) => (
   <Link
     key={index}
     to={item.getUrl()}
@@ -30,7 +38,8 @@ const PinnedItem = ({ item, index, collection, onCopy, onMove }) => (
       onPin={() => item.setPinned(false)}
       onMove={onMove}
       onCopy={onCopy}
-      selectable={false}
+      onToggleSelected={onToggleSelected}
+      isSelected={getIsSelected(item)}
       pinned
     />
   </Link>
@@ -42,6 +51,9 @@ export default function PinnedItems({
   selected,
   onMove,
   onCopy,
+  onDrop,
+  onToggleSelected,
+  getIsSelected,
 }) {
   if (items.length === 0) {
     return (
@@ -73,8 +85,10 @@ export default function PinnedItems({
           <Box w={[1]} className="relative" key={index}>
             <ItemDragSource
               item={item}
+              isSelected={getIsSelected(item)}
               collection={collection}
               selected={selected}
+              onDrop={onDrop}
             >
               <PinnedItem
                 key={`${item.model}:${item.id}`}
@@ -83,6 +97,8 @@ export default function PinnedItems({
                 collection={collection}
                 onMove={onMove}
                 onCopy={onCopy}
+                onToggleSelected={onToggleSelected}
+                getIsSelected={getIsSelected}
               />
               <PinPositionDropTarget pinIndex={item.collection_position} left />
               <PinPositionDropTarget

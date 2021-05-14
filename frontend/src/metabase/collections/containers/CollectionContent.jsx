@@ -60,9 +60,9 @@ function CollectionContent({
     try {
       await Promise.all(selected.map(item => item.setArchived(true)));
     } finally {
-      handleBulkActionSuccess();
+      clear();
     }
-  }, [selected, handleBulkActionSuccess]);
+  }, [selected, clear]);
 
   const handleBulkMoveStart = () => {
     setSelectedItems(selected);
@@ -72,27 +72,28 @@ function CollectionContent({
   const handleBulkMove = useCallback(
     async collection => {
       try {
-        await Promise.all(
-          selectedItems.map(item => item.setCollection(collection)),
-        );
+        await Promise.all(selected.map(item => item.setCollection(collection)));
         handleCloseModal();
       } finally {
-        handleBulkActionSuccess();
+        clear();
       }
     },
-    [handleBulkActionSuccess, selectedItems],
+    [selected, clear],
   );
-
-  const handleBulkActionSuccess = useCallback(() => {
-    // Clear the selection
-    // Fixes an issue where things were staying selected when moving between
-    // different collection pages
-    clear();
-  }, [clear]);
 
   const handleCloseModal = () => {
     setSelectedItems(null);
     setSelectedAction(null);
+  };
+
+  const handleMove = selectedItems => {
+    setSelectedItems(selectedItems);
+    setSelectedAction("move");
+  };
+
+  const handleCopy = selectedItems => {
+    setSelectedItems(selectedItems);
+    setSelectedAction("copy");
   };
 
   const handleFilterChange = useCallback(
@@ -142,14 +143,11 @@ function CollectionContent({
                 items={sortedPinnedItems}
                 collection={collection}
                 selected={selected}
-                onMove={selectedItems => {
-                  setSelectedItems(selectedItems);
-                  setSelectedAction("move");
-                }}
-                onCopy={selectedItems => {
-                  setSelectedItems(selectedItems);
-                  setSelectedAction("copy");
-                }}
+                getIsSelected={getIsSelected}
+                onDrop={clear}
+                onToggleSelected={toggleItem}
+                onMove={handleMove}
+                onCopy={handleCopy}
               />
 
               <Search.ListLoader query={unpinnedQuery} wrapped>
@@ -164,7 +162,10 @@ function CollectionContent({
                   const hasUnselected = unselected.length > 0;
 
                   const handleSelectAll = () => {
-                    toggleAll(unselected);
+                    const pinnedUnseelcted = pinnedItems.filter(
+                      item => !getIsSelected(item),
+                    );
+                    toggleAll([...unselected, ...pinnedUnseelcted]);
                   };
 
                   return (
@@ -179,17 +180,11 @@ function CollectionContent({
                         getIsSelected={getIsSelected}
                         collection={collection}
                         onToggleSelected={toggleItem}
-                        onClearSelected={clear}
+                        onDrop={clear}
                         collectionHasPins={pinnedItems.length > 0}
                         onFilterChange={handleFilterChange}
-                        onMove={selectedItems => {
-                          setSelectedItems(selectedItems);
-                          setSelectedAction("move");
-                        }}
-                        onCopy={selectedItems => {
-                          setSelectedItems(selectedItems);
-                          setSelectedAction("copy");
-                        }}
+                        onMove={handleMove}
+                        onCopy={handleCopy}
                       />
                       <div className="flex justify-end my3">
                         {hasPagination && (
@@ -208,10 +203,11 @@ function CollectionContent({
                         selected={selected}
                         onSelectAll={handleSelectAll}
                         onSelectNone={clear}
-                        handleBulkArchive={handleBulkArchive}
-                        handleBulkMoveStart={handleBulkMoveStart}
-                        handleBulkMove={handleBulkMove}
-                        handleCloseModal={handleCloseModal}
+                        onArchive={handleBulkArchive}
+                        onMoveStart={handleBulkMoveStart}
+                        onMove={handleBulkMove}
+                        onCloseModal={handleCloseModal}
+                        onCopy={clear}
                         hasUnselected={hasUnselected}
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}

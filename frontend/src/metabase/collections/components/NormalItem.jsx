@@ -17,7 +17,6 @@ export default function NormalItem({
   onCopy,
   onPin,
   pinned,
-  selectable,
 }) {
   return (
     <Link
@@ -25,9 +24,9 @@ export default function NormalItem({
       data-metabase-event={`${ANALYTICS_CONTEXT};Item Click;${item.model}`}
     >
       <EntityItem
+        selectable
         analyticsContext={ANALYTICS_CONTEXT}
         variant="list"
-        selectable={selectable}
         item={item}
         type={entityTypeForObject(item)}
         name={item.getName()}
@@ -58,7 +57,3 @@ export default function NormalItem({
     </Link>
   );
 }
-
-NormalItem.defaultProps = {
-  selectable: true,
-};
