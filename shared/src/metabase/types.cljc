@@ -4,7 +4,10 @@
    corresponding mappings in the frontend or other places. For example, a Database may want a type called something
    like `:type/CaseInsensitiveText`; we can add this type as a derivative of `:type/Text` and everywhere else can
    continue to treat it as such until further notice."
-  (:require [metabase.shared.util :as shared.u]))
+  (:require [metabase.shared.util :as shared.u]
+            [clojure.set :as set]
+            [metabase.types.coercion-hierarchies :as coercion-hierarchies]
+            [metabase.shared.util.log :as log]))
 
 ;; NOTE: be sure to update frontend/test/metabase-bootstrap.js when updating this
 
@@ -289,3 +292,37 @@
          {\"Temporal\" \"type/Temporal\", ...}"
      (clj->js (into {} (for [tyype (descendants :type/*)]
                          [(name tyype) (shared.u/qualified-name tyype)])))))
+
+(coercion-hierarchies/define-types! :Coercion/UNIXMicroSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
+(coercion-hierarchies/define-types! :Coercion/UNIXMilliSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
+(coercion-hierarchies/define-types! :Coercion/UNIXSeconds->DateTime      #{:type/Integer :type/Decimal} :type/Instant)
+
+(defn is-coercible-from?
+  "Whether `coercion-strategy` is allowed for `base-type`."
+  [coercion-strategy base-type]
+  (isa? @coercion-hierarchies/base-type-hierarchy base-type coercion-strategy))
+
+(defn is-coercible-to?
+  "Whether `coercion-strategy` coerces to `effective-type` or some subtype thereof."
+  [coercion-strategy effective-type]
+  (isa? @coercion-hierarchies/effective-type-hierarchy coercion-strategy effective-type))
+
+(defn is-coercible?
+  "Whether `coercion-strategy` is allowed for `base-type` and coerces to `effective-type` or some subtype thereof."
+  [coercion-strategy base-type effective-type]
+  (and (is-coercible-from? coercion-strategy base-type)
+       (is-coercible-to? coercion-strategy effective-type)))
+
+(defn coercion-possibilities
+  "Possible coercions for a base type, returned as a map of `effective-type -> #{coercion-strategy}`"
+  [base-type]
+  (let [base-type-hierarchy     @coercion-hierarchies/base-type-hierarchy
+        effective-type-hierarchy @coercion-hierarchies/effective-type-hierarchy]
+    (->> (for [strategy       (ancestors base-type-hierarchy base-type)
+               :when          (isa? strategy :Coercion/*)
+               :let           [effective-types (parents effective-type-hierarchy strategy)]
+               effective-type effective-types
+               :when          (not (isa? effective-type :Coercion/*))]
+           {effective-type #{strategy}})
+         (reduce (partial merge-with set/union))
+         not-empty)))
