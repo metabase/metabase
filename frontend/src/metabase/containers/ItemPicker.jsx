@@ -228,9 +228,7 @@ export default class ItemPicker extends React.Component {
                   ...(searchString
                     ? { q: searchString }
                     : { collection: parentId }),
-                  ...(models.size === 1
-                    ? { model: Array.from(models)[0] }
-                    : {}),
+                  ...(models.size === 1 ? { models: Array.from(models) } : {}),
                 }}
                 wrapped
               >
