@@ -41,7 +41,6 @@ function CollectionContent({
   isAdmin,
   isRoot,
   location,
-  scrollElement,
   router,
 }) {
   const [selectedItems, setSelectedItems] = useState(null);
@@ -172,7 +171,6 @@ function CollectionContent({
                     <React.Fragment>
                       <ItemList
                         filter={filter}
-                        scrollElement={scrollElement}
                         items={unpinnedItems}
                         empty={unpinnedItems.length === 0}
                         showFilters={showFilters}
