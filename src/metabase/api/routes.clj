@@ -17,6 +17,7 @@
             [metabase.api.login-history :as login-history]
             [metabase.api.metastore :as metastore]
             [metabase.api.metric :as metric]
+            [metabase.api.moderation-request :as moderation-request]
             [metabase.api.moderation-review :as moderation-review]
             [metabase.api.native-query-snippet :as native-query-snippet]
             [metabase.api.notify :as notify]
@@ -85,6 +86,7 @@
   (context "/login-history"        [] (+auth login-history/routes))
   (context "/metastore"            [] (+auth metastore/routes))
   (context "/metric"               [] (+auth metric/routes))
+  (context "/moderation-request"   [] (+auth moderation-request/routes))
   (context "/moderation-review"    [] (+auth moderation-review/routes))
   (context "/native-query-snippet" [] (+auth native-query-snippet/routes))
   (context "/notify"               [] (+apikey notify/routes))
