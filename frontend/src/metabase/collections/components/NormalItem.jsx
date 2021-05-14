@@ -11,7 +11,7 @@ import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 export default function NormalItem({
   item,
   collection = {},
-  selection = new Set(),
+  isSelected,
   onToggleSelected,
   onMove,
   onCopy,
@@ -24,10 +24,9 @@ export default function NormalItem({
       data-metabase-event={`${ANALYTICS_CONTEXT};Item Click;${item.model}`}
     >
       <EntityItem
+        selectable
         analyticsContext={ANALYTICS_CONTEXT}
         variant="list"
-        showSelect={selection.size > 0}
-        selectable
         item={item}
         type={entityTypeForObject(item)}
         name={item.getName()}
@@ -49,7 +48,7 @@ export default function NormalItem({
             ? () => item.setArchived(true)
             : null
         }
-        selected={selection.has(item)}
+        selected={isSelected}
         onToggleSelected={() => {
           onToggleSelected(item);
         }}
