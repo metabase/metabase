@@ -1,18 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import styled from "styled-components";
-
-import { color } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button";
 import Tooltip from "metabase/components/Tooltip";
-
-const BlueHoverTextButton = styled(Button)`
-  :hover {
-    color: ${color("brand")};
-  }
-`;
 
 function QuestionActionButtons({ canWrite, onOpenModal }) {
   return (
