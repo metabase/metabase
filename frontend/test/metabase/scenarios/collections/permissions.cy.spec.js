@@ -116,7 +116,7 @@ describe("collection permissions", () => {
               });
 
               describe("duplicate", () => {
-                it.skip("should be able to duplicate the dashboard without obstructions from the modal (metabase#15255)", () => {
+                it("should be able to duplicate the dashboard without obstructions from the modal (metabase#15256)", () => {
                   duplicate("Orders in a dashboard");
                 });
 
@@ -360,7 +360,10 @@ describe("collection permissions", () => {
                     cy.findByText("Failed").should("not.exist");
                   });
                   assertOnRequest("copyDashboard");
-                  cy.location("pathname").should("eq", "/dashboard/2");
+                  cy.location("pathname").should(
+                    "eq",
+                    "/dashboard/2-orders-in-a-dashboard-duplicate",
+                  );
                   cy.findByText(`Orders in a dashboard - Duplicate`);
                 });
 
@@ -477,7 +480,7 @@ describe("collection permissions", () => {
                   cy.findByLabelText("Name").type("Foo");
                   cy.button("Create").click();
                 });
-                cy.url().should("match", /\/dashboard\/\d+$/);
+                cy.url().should("match", /\/dashboard\/\d+-foo$/);
                 saveDashboard();
                 cy.get(".DashboardHeader").findByText(personalCollection);
               });
