@@ -2,8 +2,7 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import styled from "styled-components";
-import moment from "moment";
-
+import { getRelativeTime } from "metabase/lib/time";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
@@ -44,7 +43,7 @@ const Timeline = ({ className, items = [], renderFooter }) => {
       .map(item => {
         return {
           ...item,
-          formattedTimestamp: moment(item.timestamp).fromNow(),
+          formattedTimestamp: getRelativeTime(item.timestamp),
         };
       });
   }, [items]);

@@ -1,8 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
-import moment from "moment";
 import cx from "classnames";
 import styled from "styled-components";
+
+import { getRelativeTime } from "metabase/lib/time";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
@@ -33,7 +34,7 @@ CommentHeader.propTypes = {
 };
 
 function CommentHeader({ className, icon, title, timestamp, actions = [] }) {
-  const relativeTimestamp = timestamp ? moment(timestamp).fromNow() : "";
+  const relativeTimestamp = timestamp ? getRelativeTime(timestamp) : "";
   return (
     <div className={cx("flex justify-between align-center", className)}>
       <div className="flex align-center">
