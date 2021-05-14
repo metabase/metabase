@@ -57,11 +57,11 @@ function CollectionContent({
 
   const handleBulkArchive = useCallback(async () => {
     try {
-      await Promise.all(selected.map(item => item.setArchived(true)));
+      await Promise.all(selectedItems.map(item => item.setArchived(true)));
     } finally {
       clear();
     }
-  }, [selected, clear]);
+  }, [selectedItems, clear]);
 
   const handleBulkMoveStart = () => {
     setSelectedItems(selected);
@@ -71,13 +71,15 @@ function CollectionContent({
   const handleBulkMove = useCallback(
     async collection => {
       try {
-        await Promise.all(selected.map(item => item.setCollection(collection)));
+        await Promise.all(
+          selectedItems.map(item => item.setCollection(collection)),
+        );
         handleCloseModal();
       } finally {
         clear();
       }
     },
-    [selected, clear],
+    [selectedItems, clear],
   );
 
   const handleCloseModal = () => {
@@ -161,10 +163,10 @@ function CollectionContent({
                   const hasUnselected = unselected.length > 0;
 
                   const handleSelectAll = () => {
-                    const pinnedUnseelcted = pinnedItems.filter(
+                    const pinnedUnselcted = pinnedItems.filter(
                       item => !getIsSelected(item),
                     );
-                    toggleAll([...unselected, ...pinnedUnseelcted]);
+                    toggleAll([...unselected, ...pinnedUnselcted]);
                   };
 
                   return (
