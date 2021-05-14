@@ -786,9 +786,9 @@ exports[`Comment should render "Default" correctly 1`] = `
       </span>
       <time
         className="pl1 text-light"
-        dateTime={1621008394893}
+        dateTime={123}
       >
-        a few seconds ago
+        mocked relative timestamp
       </time>
     </div>
     <div
@@ -858,9 +858,9 @@ exports[`Comment should render "Restrict lines shown by adding a \`visibleLines\
       </span>
       <time
         className="pl1 text-light"
-        dateTime={1995-12-17T11:24:00.000Z}
+        dateTime={100000000}
       >
-        25 years ago
+        mocked relative timestamp
       </time>
     </div>
   </div>
@@ -911,7 +911,7 @@ exports[`Comment should render "Width restricted" correctly 1`] = `
           className="pl1 text-light"
           dateTime="2010-10-10"
         >
-          11 years ago
+          mocked relative timestamp
         </time>
       </div>
       <div
@@ -1954,7 +1954,7 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
         <div
           className="text-medium text-small"
         >
-          a day ago
+          mocked relative timestamp
         </div>
         <div>
           idk lol
@@ -1991,7 +1991,7 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
         <div
           className="text-medium text-small"
         >
-          7 days ago
+          mocked relative timestamp
         </div>
         <div>
           Did a thing.
@@ -2029,7 +2029,7 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
         <div
           className="text-medium text-small"
         >
-          2 months ago
+          mocked relative timestamp
         </div>
         <div>
           Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. 
@@ -2073,7 +2073,7 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
         <div
           className="text-medium text-small"
         >
-          a year ago
+          mocked relative timestamp
         </div>
         <div>
           Something something something something something something something something something something something something?
@@ -2119,7 +2119,7 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
       <div
         className="text-medium text-small"
       >
-        a day ago
+        mocked relative timestamp
       </div>
       <div>
         idk lol
@@ -2164,7 +2164,7 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
       <div
         className="text-medium text-small"
       >
-        7 days ago
+        mocked relative timestamp
       </div>
       <div>
         Did a thing.
@@ -2205,7 +2205,7 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
       <div
         className="text-medium text-small"
       >
-        2 months ago
+        mocked relative timestamp
       </div>
       <div>
         Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. 
@@ -2252,7 +2252,7 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
       <div
         className="text-medium text-small"
       >
-        a year ago
+        mocked relative timestamp
       </div>
       <div>
         Something something something something something something something something something something something something?
