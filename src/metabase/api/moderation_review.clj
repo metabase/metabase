@@ -22,4 +22,15 @@
     (api/check-500
      (moderation-review/create-review! review-data))))
 
+(api/defendpoint PUT "/:id"
+  [id :as {{:keys [text moderated_item_id moderated_item_type status] :as review-updates} :body}]
+  {(s/optional-key text)                (s/maybe s/Str)
+   (s/optional-key moderated_item_id)   su/IntGreaterThanZero
+   (s/optional-key moderated_item_type) moderation/moderated-item-types
+   (s/optional-key status)              moderation-review/statuses}
+  ;; TODO permissions
+  (moderation-review/update-review!
+   (assoc (select-keys review-updates [:text :moderated_item_id :moderated_item_type :status])
+          :id id)))
+
 (api/define-routes)
