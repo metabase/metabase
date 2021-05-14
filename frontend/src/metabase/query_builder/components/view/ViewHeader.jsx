@@ -64,7 +64,7 @@ const viewTitleHeaderPropTypes = {
 
 const SavedQuestionHeaderButtonContainer = styled.div`
   position: relative;
-  right: 0.5rem;
+  right: 0.38rem;
 `;
 
 export class ViewTitleHeader extends React.Component {
@@ -149,7 +149,7 @@ export class ViewTitleHeader extends React.Component {
       >
         {isSaved ? (
           <div>
-            <div className="flex mb1">
+            <div className="flex align-center">
               <SavedQuestionHeaderButtonContainer>
                 <SavedQuestionHeaderButton
                   question={question}
@@ -182,12 +182,8 @@ export class ViewTitleHeader extends React.Component {
               />
 
               {QuestionDataSource.shouldRender({ question }) && (
-                <span className="mb1 mx2 text-light text-smaller">•</span>
-              )}
-
-              {QuestionDataSource.shouldRender({ question }) && (
                 <QuestionDataSource
-                  className="mb1"
+                  className="ml3 mb1"
                   question={question}
                   subHead
                 />
