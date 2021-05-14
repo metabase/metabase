@@ -9,7 +9,7 @@ import {
   UlStyled,
   LiStyled,
   LiStyledHighlighted,
-  LiTitle,
+  SectionTitle,
 } from "./ExpressionEditorSuggestions.styled";
 
 import { isObscured } from "metabase/lib/dom";
@@ -78,7 +78,10 @@ export default class ExpressionEditorSuggestions extends React.Component {
 
             return (
               <React.Fragment key={`suggestion-${i}`}>
-                {shouldRenderSectionTitle && <LiTitle>{sectionTitle}</LiTitle>}
+                {shouldRenderSectionTitle && (
+                  <SectionTitle>{sectionTitle}</SectionTitle>
+                )}
+
                 <LiComponent
                   ref={r => {
                     if (isHighlighted) {
