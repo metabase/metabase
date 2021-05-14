@@ -31,6 +31,7 @@ function CollectionCopyEntityModal({
 }) {
   return (
     <EntityCopyModal
+      overwriteOnInitialValuesChange
       entityType={entityTypeForObject(entityObject)}
       entityObject={{
         ...entityObject,
