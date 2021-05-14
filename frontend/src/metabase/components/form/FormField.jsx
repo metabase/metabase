@@ -72,7 +72,8 @@ export default class FormField extends Component {
                 htmlFor={name}
                 id={`${name}-label`}
               >
-                {title} {error && <span className="text-error">: {error}</span>}
+                {title}
+                {error && <span className="text-error">: {error}</span>}
               </label>
             )}
             {description && <div className="mb1">{description}</div>}
