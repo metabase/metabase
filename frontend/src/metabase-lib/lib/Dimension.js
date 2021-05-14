@@ -25,6 +25,8 @@ import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import type Aggregation from "./queries/structured/Aggregation";
 import StructuredQuery from "./queries/StructuredQuery";
 
+import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
+
 /**
  * A dimension option returned by the query_metadata API
  */
@@ -1001,20 +1003,61 @@ export class ExpressionDimension extends Dimension {
   }
 
   field() {
+    const query = this._query;
+    const table = query ? query.table() : null;
+
+    let type = MONOTYPE.Number; // fallback
+    if (query) {
+      const datasetQuery = query.query();
+      const expressions = datasetQuery ? datasetQuery.expressions : {};
+      const env = mbql => {
+        const dimension = Dimension.parseMBQL(
+          mbql,
+          this._metadata,
+          this._query,
+        );
+        return dimension.field().base_type;
+      };
+      type = infer(expressions[this.name()], env);
+    } else {
+      type = infer(this._args[0]);
+    }
+
+    let base_type = type;
+    if (!type.startsWith("type/")) {
+      base_type = "type/Float"; // fallback
+      switch (type) {
+        case MONOTYPE.String:
+          base_type = "type/Text";
+          break;
+        case MONOTYPE.Boolean:
+          base_type = "type/Boolean";
+          break;
+        default:
+          break;
+      }
+    }
+
     return new Field({
       id: this.mbql(),
       name: this.name(),
       display_name: this.displayName(),
       semantic_type: null,
-      base_type: "type/Float",
-      // HACK: need to thread the query through to this fake Field
-      query: this._query,
-      table: this._query ? this._query.table() : null,
+      base_type,
+      query,
+      table,
     });
   }
 
   icon(): IconName {
-    // TODO: eventually will need to get the type from the return type of the expression
+    const { base_type } = this.field();
+    switch (base_type) {
+      case "type/Text":
+        return "string";
+      default:
+        break;
+    }
+
     return "int";
   }
 }

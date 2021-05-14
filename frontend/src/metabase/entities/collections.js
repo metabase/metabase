@@ -8,16 +8,36 @@ import { createSelector } from "reselect";
 
 import { GET } from "metabase/lib/api";
 
-import {
-  getUser,
-  getUserDefaultCollectionId,
-  getUserPersonalCollectionId,
-} from "metabase/selectors/user";
+import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import { t } from "ttag";
 
 const listCollectionsTree = GET("/api/collection/tree");
 const listCollections = GET("/api/collection");
+
+export const ROOT_COLLECTION = {
+  id: "root",
+  name: t`Our analytics`,
+  location: "",
+  path: [],
+};
+
+export const PERSONAL_COLLECTION = {
+  id: undefined, // to be filled in by getExpandedCollectionsById
+  name: t`My personal collection`,
+  location: "/",
+  path: [ROOT_COLLECTION.id],
+  can_write: true,
+};
+
+// fake collection for admins that contains all other user's collections
+export const PERSONAL_COLLECTIONS = {
+  id: "personal", // placeholder id
+  name: t`All personal collections`,
+  location: "/",
+  path: [ROOT_COLLECTION.id],
+  can_write: false,
+};
 
 const Collections = createEntity({
   name: "collections",
@@ -58,7 +78,7 @@ const Collections = createEntity({
 
   objectSelectors: {
     getName: collection => collection && collection.name,
-    getUrl: collection => Urls.collection(collection.id),
+    getUrl: collection => Urls.collection(collection),
     getIcon: collection => "folder",
   },
 
@@ -84,9 +104,12 @@ const Collections = createEntity({
         // these are listed in order of priority
         (state, { collectionId }) => collectionId,
         (state, { params }) => (params ? params.collectionId : undefined),
+        (state, { params }) =>
+          params ? Urls.extractCollectionId(params.slug) : undefined,
         (state, { location }) =>
           location && location.query ? location.query.collectionId : undefined,
-        getUserDefaultCollectionId,
+        () => ROOT_COLLECTION.id,
+        getUserPersonalCollectionId,
       ],
       (collections, ...collectionIds) => {
         for (const collectionId of collectionIds) {
@@ -168,31 +191,6 @@ export const getCollectionType = (collectionId: string, state: {}) =>
     : collectionId !== undefined
     ? "other"
     : null;
-
-export const ROOT_COLLECTION = {
-  id: "root",
-  name: t`Our analytics`,
-  location: "",
-  path: [],
-};
-
-// the user's personal collection
-export const PERSONAL_COLLECTION = {
-  id: undefined, // to be filled in by getExpandedCollectionsById
-  name: t`My personal collection`,
-  location: "/",
-  path: ["root"],
-  can_write: true,
-};
-
-// fake collection for admins that contains all other user's collections
-export const PERSONAL_COLLECTIONS = {
-  id: "personal", // placeholder id
-  name: t`All personal collections`,
-  location: "/",
-  path: ["root"],
-  can_write: false,
-};
 
 type UserId = number;
 

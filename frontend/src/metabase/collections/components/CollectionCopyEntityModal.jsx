@@ -41,13 +41,14 @@ function CollectionCopyEntityModal({
       }}
       onClose={onClose}
       onSaved={newEntityObject => {
+        const newEntityUrl = Urls.modelToUrl({
+          model: entityObject.model,
+          model_object: newEntityObject,
+        });
         triggerToast(
           <div className="flex align-center">
             {t`Duplicated ${entityObject.model}`}
-            <Link
-              className="link text-bold ml1"
-              to={Urls.modelToUrl(entityObject.model, newEntityObject.id)}
-            >
+            <Link className="link text-bold ml1" to={newEntityUrl}>
               {t`See it`}
             </Link>
           </div>,

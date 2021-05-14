@@ -48,7 +48,7 @@ export default function Header({
       <Flex ml="auto">
         {isAdmin && !collection.personal_owner_id && (
           <Tooltip tooltip={t`Edit the permissions for this collection`}>
-            <Link to={Urls.collectionPermissions(collectionId)}>
+            <Link to={`${Urls.collection(collection)}/permissions`}>
               <IconWrapper>
                 <Icon name="lock" />
               </IconWrapper>
@@ -60,7 +60,7 @@ export default function Header({
           !collection.personal_owner_id && (
             <CollectionEditMenu
               tooltip={t`Edit collection`}
-              collectionId={collectionId}
+              collection={collection}
               isAdmin={isAdmin}
               isRoot={isRoot}
             />

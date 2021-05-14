@@ -8,7 +8,7 @@ export const MONOTYPE = {
   Boolean: "boolean",
 };
 
-export function infer(mbql) {
+export function infer(mbql, env) {
   if (!Array.isArray(mbql)) {
     return typeof mbql;
   }
@@ -32,9 +32,16 @@ export function infer(mbql) {
       return MONOTYPE.Boolean;
   }
 
-  if (op === "case" || op === "coalesce") {
-    // TODO
-    return MONOTYPE.Undefined;
+  if (op === "case") {
+    const clauses = mbql[1];
+    const first = clauses[0];
+    // TODO: type-checker must ensure the consistent types of all clauses.
+    return infer(first[1], env);
+  }
+
+  if (op === "coalesce") {
+    // TODO: type-checker must ensure the consistent types of all arguments
+    return infer(mbql[1], env);
   }
 
   const func = MBQL_CLAUSES[op];
@@ -48,6 +55,10 @@ export function infer(mbql) {
       default:
         return returnType;
     }
+  }
+
+  if (op === "field" && env) {
+    return env(mbql);
   }
 
   return MONOTYPE.Undefined;

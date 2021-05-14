@@ -169,7 +169,7 @@ export default class QueryModals extends React.Component {
       </Modal>
     ) : modal === "archive" ? (
       <Modal onClose={onCloseModal}>
-        <ArchiveQuestionModal onClose={onCloseModal} />
+        <ArchiveQuestionModal question={question} onClose={onCloseModal} />
       </Modal>
     ) : modal === "edit" ? (
       <Modal onClose={onCloseModal}>
