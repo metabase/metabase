@@ -1605,8 +1605,17 @@ databaseChangeLog:
       id: 11
       author: agilliland
       changes:
-        - sql:
-            sql: update report_dashboard set public_perms = 2 where public_perms = 1
+        - update:
+            columns:
+              - column:
+                  name: public_perms
+                  valueNumeric: 2
+            tableName: report_dashboard
+            where: :name=:value
+            whereParams:
+              - param:
+                  name: public_perms
+                  valueNumeric: 1
   - changeSet:
       id: 12
       author: agilliland
@@ -2343,8 +2352,12 @@ databaseChangeLog:
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
-        - sql:
-            sql: update metabase_database set is_full_sync = true
+        - update:
+            columns:
+              - column:
+                  name: is_full_sync
+                  valueBoolean: true
+            tableName: metabase_database
   - changeSet:
       id: 27
       author: agilliland
@@ -4565,12 +4578,10 @@ databaseChangeLog:
             newColumnName: slug
             columnDataType: varchar(254)
         # Let's try to make sure the comments on the name column of Collection actually reflect reality
-        - sql:
-            dbms: postgresql,h2
-            sql: "COMMENT ON COLUMN collection.name IS 'The user-facing name of this Collection.'"
-        - sql:
-            dbms: mysql,mariadb
-            sql: "ALTER TABLE `collection` CHANGE `name` `name` TEXT NOT NULL COMMENT 'The user-facing name of this Collection.'"
+        - setColumnRemarks:
+            columnName: name
+            remarks: The user-facing name of this Collection.
+            tableName: collection
 
 # In 0.30.0 we finally removed the long-deprecated native read permissions. Since they're no longer considered valid by
 # our permissions code, remove any entries for them so they don't cause problems.
@@ -8048,44 +8059,38 @@ databaseChangeLog:
       author: camsaul
       comment: Added 0.39.0
       changes:
-        - sql:
-            dbms: h2
-            sql: |
-              ALTER TABLE task_history
-              ALTER COLUMN started_at timestamp with time zone DEFAULT current_timestamp NOT NULL;
-        - sql:
-            dbms: postgresql
-            sql: |
-              ALTER TABLE task_history
-              ALTER COLUMN started_at TYPE timestamp with time zone,
-              ALTER COLUMN started_at SET DEFAULT current_timestamp;
-        - sql:
-            dbms: mysql,mariadb
-            sql: |
-              ALTER TABLE task_history
-              MODIFY started_at timestamp(6) DEFAULT current_timestamp(6) NOT NULL;
+        - modifyDataType:
+            columnName: started_at
+            newDataType: ${timestamp_type}
+            tableName: task_history
+        - addDefaultValue:
+            columnDataType: ${timestamp_type}
+            columnName: started_at
+            defaultValueComputed: current_timestamp
+            tableName: task_history
+        - addNotNullConstraint:
+            columnDataType: ${timestamp_type}
+            columnName: started_at
+            tableName: task_history
 
   - changeSet:
       id: 283
       author: camsaul
       comment: Added 0.39.0
       changes:
-        - sql:
-            dbms: h2
-            sql: |
-              ALTER TABLE task_history
-              ALTER COLUMN ended_at timestamp with time zone DEFAULT current_timestamp NOT NULL;
-        - sql:
-            dbms: postgresql
-            sql: |
-              ALTER TABLE task_history
-              ALTER COLUMN ended_at TYPE timestamp with time zone,
-              ALTER COLUMN ended_at SET DEFAULT current_timestamp;
-        - sql:
-            dbms: mysql,mariadb
-            sql: |
-              ALTER TABLE task_history
-              MODIFY ended_at timestamp(6) DEFAULT current_timestamp(6) NOT NULL;
+        - modifyDataType:
+            columnName: ended_at
+            newDataType: ${timestamp_type}
+            tableName: task_history
+        - addDefaultValue:
+            columnDataType: ${timestamp_type}
+            columnName: ended_at
+            defaultValueComputed: current_timestamp
+            tableName: task_history
+        - addNotNullConstraint:
+            columnDataType: ${timestamp_type}
+            columnName: ended_at
+            tableName: task_history
   - changeSet:
       id: 284
       author: dpsutton
