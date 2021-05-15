@@ -20,11 +20,11 @@ databaseChangeLog:
       name: timestamp_type
       value: timestamp(6)
       dbms: mysql,mariadb
+  - objectQuotingStrategy: ${quote_strategy}
 
   - changeSet:
       id: '1'
       author: agilliland
-      objectQuotingStrategy: ${quote_strategy}
       changes:
       - createTable:
           columns:
@@ -1811,7 +1811,6 @@ databaseChangeLog:
   - changeSet:
       id: 15
       author: agilliland
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addColumn:
             tableName: revision
@@ -2183,7 +2182,6 @@ databaseChangeLog:
   - changeSet:
       id: 23
       author: agilliland
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - modifyDataType:
             tableName: metabase_table
@@ -3333,7 +3331,6 @@ databaseChangeLog:
   - changeSet:
       id: 46
       author: camsaul
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - addNotNullConstraint:
             tableName: report_dashboardcard
@@ -6701,7 +6698,6 @@ databaseChangeLog:
       id: 169
       author: camsaul
       comment: Added 0.36.0
-      objectQuotingStrategy: ${quote_strategy}
       changes:
         - dropColumn:
             tableName: metabase_table
