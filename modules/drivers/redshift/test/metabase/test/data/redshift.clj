@@ -47,19 +47,6 @@
 (defonce session-schema-name
   (str "schema_" session-schema-number))
 
-;; When we test against Redshift we use a session-unique schema so we can run simultaneous tests
-;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
-(def ^:private excluded-schemas
-  (memoize
-   (fn []
-     (set (conj (for [i     (range 240)
-                      :when (not= i session-schema-number)]
-                  (str "schema_" i))
-                "public")))))
-
-(defmethod sql-jdbc.sync/excluded-schemas :redshift [_]
-  (excluded-schemas))
-
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
 
@@ -90,3 +77,8 @@
 (defmethod tx/before-run :redshift
   [_]
   (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
+
+;; replace the impl the `metabase.driver.redshift`. Only sync the current test schema.
+(defmethod sql-jdbc.sync/syncable-schemas :redshift
+  [driver conn metadata]
+  #{session-schema-name})
