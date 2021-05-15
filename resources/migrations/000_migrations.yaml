@@ -288,7 +288,14 @@ databaseChangeLog:
               name: name
               type: varchar(254)
           - column:
-              name: rows
+              # liquibase.database.core.H2Database will quote this, because
+              # it is a H2 keyword, which prevents automatic uppercasing by
+              # H2.  So make it uppercase from the start.
+              # An alternative would be to globally set `objectQuotingStrategy`
+              # to `QUOTE_ALL_OBJECTS`, but that will trip the rest of the
+              # Metabase code, because table and column names will then
+              # all be lowercase.
+              name: ROWS
               type: int
           - column:
               name: description
@@ -466,7 +473,14 @@ databaseChangeLog:
               name: updated_at
               type: DATETIME
           - column:
-              name: values
+              # liquibase.database.core.H2Database will quote this, because
+              # it is a H2 keyword, which prevents automatic uppercasing by
+              # H2.  So make it uppercase from the start.
+              # An alternative would be to globally set `objectQuotingStrategy`
+              # to `QUOTE_ALL_OBJECTS`, but that will trip the rest of the
+              # Metabase code, because table and column names will then
+              # all be lowercase.
+              name: VALUES
               type: text
           - column:
               name: human_readable_values
@@ -936,7 +950,14 @@ databaseChangeLog:
               name: sizeY
               type: int
           - column:
-              name: row
+              # liquibase.database.core.H2Database will quote this, because
+              # it is a H2 keyword, which prevents automatic uppercasing by
+              # H2.  So make it uppercase from the start.
+              # An alternative would be to globally set `objectQuotingStrategy`
+              # to `QUOTE_ALL_OBJECTS`, but that will trip the rest of the
+              # Metabase code, because table and column names will then
+              # all be lowercase.
+              name: ROW
               type: int
           - column:
               name: col
@@ -2109,7 +2130,7 @@ databaseChangeLog:
       changes:
         - modifyDataType:
             tableName: metabase_table
-            columnName: rows
+            columnName: ROWS
             newDataType: BIGINT
   - changeSet:
       id: 24
@@ -3240,7 +3261,7 @@ databaseChangeLog:
       changes:
         - addNotNullConstraint:
             tableName: report_dashboardcard
-            columnName: row
+            columnName: ROW
             columnDataType: integer
             defaultNullValue: 0
         - addNotNullConstraint:
@@ -3250,7 +3271,7 @@ databaseChangeLog:
             defaultNullValue: 0
         - addDefaultValue:
             tableName: report_dashboardcard
-            columnName: row
+            columnName: ROW
             defaultValueNumeric: 0
         - addDefaultValue:
             tableName: report_dashboardcard
@@ -6593,7 +6614,7 @@ databaseChangeLog:
       changes:
         - dropColumn:
             tableName: metabase_table
-            columnName: rows
+            columnName: ROWS
 
 # Remove fields_hash from Table model, as we no longer skip sync steps if metadata
 # hash hasn't changed.
