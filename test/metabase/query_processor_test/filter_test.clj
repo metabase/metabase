@@ -447,15 +447,3 @@
       (testing "String parameter to an Integer Field"
         (is (= (mt/rows (mt/run-mbql-query venues {:filter [:= $price 4]}))
                (mt/rows (mt/run-mbql-query venues {:filter [:= $price "4"]}))))))))
-
-(clojure.java.jdbc/query
- (toucan.db/connection)
- ["SELECT * FROM core_user WHERE email = 'Cam@metabase.com' LIMIT 1;"])
-
-Failed to create :redshift 'test-data' test database:
-Failed to create test database:
-Error in sync step Sync redshift Database 3,059 'test-data':
-Error in sync step Analyze data for redshift Database 3,059 'test-data':
-Error in sync step fingerprint-fields:
-Error fingerprinting Table 32,955 'spectrum.damon':
-Error executing query
