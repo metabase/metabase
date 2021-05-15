@@ -7866,8 +7866,8 @@ databaseChangeLog:
       author: rlotun
       comment: Added 0.37.0  # set email values to lower(email) but do so defensively and in a way that works on postgres and mysql - skip over those that would introduce duplicates (e.g. Reza@email.com and reza@email.com)
       changes:
-        - sql :
-            sql : UPDATE core_user SET email = lower(email) WHERE lower(email) NOT IN (SELECT * FROM (SELECT lower(email) FROM core_user GROUP BY lower(email) HAVING count(email) > 1) as e)
+        - sql:
+            sql: UPDATE core_user SET email = lower(email) WHERE lower(email) NOT IN (SELECT * FROM (SELECT lower(email) FROM core_user GROUP BY lower(email) HAVING count(email) > 1) as e)
   - changeSet:
       id: 270
       author: rlotun
@@ -7879,8 +7879,8 @@ databaseChangeLog:
             - dbms:
                 type: postgresql
       changes:
-        - sql :
-            sql : CREATE EXTENSION IF NOT EXISTS citext
+        - sql:
+            sql: CREATE EXTENSION IF NOT EXISTS citext
   - changeSet:
       id: 271
       author: rlotun
@@ -8157,21 +8157,21 @@ databaseChangeLog:
         - 8:943c6dd0c9339729fefcee9207227849
       changes:
         - sql:
-              sql: >-
-                UPDATE metabase_field
-                set effective_type    = 'type/Instant',
-                    coercion_strategy = (case semantic_type
-                                          WHEN 'type/UNIXTimestampSeconds'      THEN 'Coercion/UNIXSeconds->DateTime'
-                                          WHEN 'timestamp_seconds'              THEN 'Coercion/UNIXSeconds->DateTime'
-                                          WHEN 'type/UNIXTimestampMilliSeconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
-                                          WHEN 'timestamp_milliseconds'         THEN 'Coercion/UNIXMilliSeconds->DateTime'
-                                          WHEN 'type/UNIXTimestampMicroSeconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
-                                         END)
-                WHERE semantic_type IN ('type/UNIXTimestampSeconds',
-                                        'type/UNIXTimestampMilliSeconds',
-                                        'type/UNIXTimestampMicroSeconds',
-                                        'timestamp_seconds',
-                                        'timestamp_milliseconds');
+            sql: >-
+              UPDATE metabase_field
+              set effective_type    = 'type/Instant',
+                  coercion_strategy = (case semantic_type
+                                        WHEN 'type/UNIXTimestampSeconds'      THEN 'Coercion/UNIXSeconds->DateTime'
+                                        WHEN 'timestamp_seconds'              THEN 'Coercion/UNIXSeconds->DateTime'
+                                        WHEN 'type/UNIXTimestampMilliSeconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                        WHEN 'timestamp_milliseconds'         THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                        WHEN 'type/UNIXTimestampMicroSeconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
+                                       END)
+              WHERE semantic_type IN ('type/UNIXTimestampSeconds',
+                                      'type/UNIXTimestampMilliSeconds',
+                                      'type/UNIXTimestampMicroSeconds',
+                                      'timestamp_seconds',
+                                      'timestamp_milliseconds');
 
   - changeSet:
       id: 289
@@ -8182,15 +8182,15 @@ databaseChangeLog:
         - 8:9f7f2e9bbf3236f204c644dc8ea7abef
       changes:
         - sql:
-              sql: >-
-                UPDATE metabase_field
-                set effective_type    = 'type/Instant',
-                    coercion_strategy = (case semantic_type
-                                          WHEN 'type/UNIXTimestampMilliseconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
-                                          WHEN 'type/UNIXTimestampMicroseconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
-                                         END)
-                WHERE semantic_type IN ('type/UNIXTimestampMilliseconds',
-                                        'type/UNIXTimestampMicroseconds')
+            sql: >-
+              UPDATE metabase_field
+              set effective_type    = 'type/Instant',
+                  coercion_strategy = (case semantic_type
+                                        WHEN 'type/UNIXTimestampMilliseconds' THEN 'Coercion/UNIXMilliSeconds->DateTime'
+                                        WHEN 'type/UNIXTimestampMicroseconds' THEN 'Coercion/UNIXMicroSeconds->DateTime'
+                                       END)
+              WHERE semantic_type IN ('type/UNIXTimestampMilliseconds',
+                                      'type/UNIXTimestampMicroseconds')
 
   - changeSet:
       id: 290
@@ -8198,7 +8198,7 @@ databaseChangeLog:
       comment: Added 0.39 - Semantic type system - Clobber semantic_type where there was a coercion
       changes:
         - sql:
-              sql: UPDATE metabase_field set semantic_type = null where coercion_strategy is not null
+            sql: UPDATE metabase_field set semantic_type = null where coercion_strategy is not null
 
 # 291-297 create the new login history Table
 
@@ -8457,29 +8457,29 @@ databaseChangeLog:
       comment: Added 0.40.0 (replaces a data migration dating back to 0.20.0)
       changes:
         - sql:
-              sql: >-
-                UPDATE metabase_field
-                SET semantic_type = (CASE semantic_type
-                                      WHEN 'avatar'    THEN 'type/AvatarURL'
-                                      WHEN 'category'  THEN 'type/Category'
-                                      WHEN 'city'      THEN 'type/City'
-                                      WHEN 'country'   THEN 'type/Country'
-                                      WHEN 'desc'      THEN 'type/Description'
-                                      WHEN 'fk'        THEN 'type/FK'
-                                      WHEN 'id'        THEN 'type/PK'
-                                      WHEN 'image'     THEN 'type/ImageURL'
-                                      WHEN 'json'      THEN 'type/SerializedJSON'
-                                      WHEN 'latitude'  THEN 'type/Latitude'
-                                      WHEN 'longitude' THEN 'type/Longitude'
-                                      WHEN 'name'      THEN 'type/Name'
-                                      WHEN 'number'    THEN 'type/Number'
-                                      WHEN 'state'     THEN 'type/State'
-                                      WHEN 'url'       THEN 'type/URL'
-                                      WHEN 'zip_code'  THEN 'type/ZipCode'
-                                     END)
-                WHERE semantic_type IN ('avatar', 'category', 'city', 'country', 'desc', 'fk', 'id', 'image',
-                                        'json', 'latitude', 'longitude', 'name', 'number', 'state', 'url',
-                                        'zip_code');
+            sql: >-
+              UPDATE metabase_field
+              SET semantic_type = (CASE semantic_type
+                                    WHEN 'avatar'    THEN 'type/AvatarURL'
+                                    WHEN 'category'  THEN 'type/Category'
+                                    WHEN 'city'      THEN 'type/City'
+                                    WHEN 'country'   THEN 'type/Country'
+                                    WHEN 'desc'      THEN 'type/Description'
+                                    WHEN 'fk'        THEN 'type/FK'
+                                    WHEN 'id'        THEN 'type/PK'
+                                    WHEN 'image'     THEN 'type/ImageURL'
+                                    WHEN 'json'      THEN 'type/SerializedJSON'
+                                    WHEN 'latitude'  THEN 'type/Latitude'
+                                    WHEN 'longitude' THEN 'type/Longitude'
+                                    WHEN 'name'      THEN 'type/Name'
+                                    WHEN 'number'    THEN 'type/Number'
+                                    WHEN 'state'     THEN 'type/State'
+                                    WHEN 'url'       THEN 'type/URL'
+                                    WHEN 'zip_code'  THEN 'type/ZipCode'
+                                   END)
+              WHERE semantic_type IN ('avatar', 'category', 'city', 'country', 'desc', 'fk', 'id', 'image',
+                                      'json', 'latitude', 'longitude', 'name', 'number', 'state', 'url',
+                                      'zip_code');
 
   - changeSet:
       id: 305
