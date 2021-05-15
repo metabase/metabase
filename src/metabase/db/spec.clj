@@ -28,7 +28,9 @@
     :subname                       (make-subname host (or port 5432) db)
     ;; I think this is done to prevent conflicts with redshift driver registering itself to handle postgres://
     :OpenSourceSubProtocolOverride true
-    :ApplicationName               config/mb-version-and-process-identifier}
+    :ApplicationName               config/mb-version-and-process-identifier
+    ;; Ensures that citext columns work properly
+    :stringtype                    :unspecified}
    (dissoc opts :host :port :db)))
 
 (defn mysql
