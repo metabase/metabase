@@ -5425,7 +5425,7 @@ databaseChangeLog:
             sql: SELECT count(*) FROM (SELECT count(*) FROM DATABASECHANGELOG GROUP BY ID, AUTHOR, FILENAME HAVING count(*) > 1) t1
       changes:
         - addUniqueConstraint:
-            columnNames: id, author, filename
+            columnNames: ID, AUTHOR, FILENAME
             constraintName: idx_databasechangelog_id_author_filename
             tableName: DATABASECHANGELOG
 #
