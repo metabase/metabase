@@ -564,4 +564,16 @@
         (is (schema= SessionResponse
                      (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
         (finally
-          (db/delete! User :email "sally.brown@metabase.com"))))))
+          (db/delete! User :email "sally.brown@metabase.com"))))
+
+    (testing "Test that we can login with LDAP multiple times if the email stored in LDAP contains upper-case
+             characters (#13739)"
+      (try
+        (is (schema=
+             SessionResponse
+             (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
+        (is (schema=
+             SessionResponse
+             (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
+        (finally
+          (db/delete! User :email "John.Smith@metabase.com"))))))
