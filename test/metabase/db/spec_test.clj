@@ -8,7 +8,8 @@
    :subprotocol                   "postgresql"
    :subname                       (format "//localhost:5432/%s" db)
    :OpenSourceSubProtocolOverride true
-   :ApplicationName               config/mb-version-and-process-identifier})
+   :ApplicationName               config/mb-version-and-process-identifier
+   :stringtype                    :unspecified})
 
 (deftest basic-test
   (testing "Basic minimal config"

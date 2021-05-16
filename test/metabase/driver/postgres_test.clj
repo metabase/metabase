@@ -54,7 +54,8 @@
             :OpenSourceSubProtocolOverride true
             :user                          "camsaul"
             :sslmode                       "disable"
-            :ApplicationName               config/mb-version-and-process-identifier}
+            :ApplicationName               config/mb-version-and-process-identifier
+            :stringtype                    :unspecified}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    false
               :host   "localhost"
@@ -69,7 +70,8 @@
             :user                          "camsaul"
             :ssl                           true
             :sslmode                       "require"
-            :ApplicationName               config/mb-version-and-process-identifier}
+            :ApplicationName               config/mb-version-and-process-identifier
+            :stringtype                    :unspecified}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    true
               :host   "localhost"
@@ -82,7 +84,8 @@
             :subname                       "//localhost:5432/cool?prepareThreshold=0"
             :OpenSourceSubProtocolOverride true
             :sslmode                       "disable"
-            :ApplicationName               config/mb-version-and-process-identifier}
+            :ApplicationName               config/mb-version-and-process-identifier
+            :stringtype                    :unspecified}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:host               "localhost"
               :port               "5432"
@@ -100,7 +103,8 @@
             :sslkey                        "my-key"
             :sslfactory                    "myfactoryoverride"
             :sslrootcert                   "myrootcert"
-            :ApplicationName               config/mb-version-and-process-identifier}
+            :ApplicationName               config/mb-version-and-process-identifier
+            :stringtype                    :unspecified}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl         true
               :host        "localhost"
