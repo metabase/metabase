@@ -262,7 +262,6 @@ if (NODE_ENV === "hot") {
 
   config.plugins.unshift(
     new webpack.NoEmitOnErrorsPlugin(),
-    new webpack.NamedModulesPlugin(),
     new webpack.HotModuleReplacementPlugin(),
   );
 }
