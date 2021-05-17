@@ -92,7 +92,7 @@ const SECTIONS = updateSectionsWithPlugins({
         options: [
           {
             value: "simple",
-            name: t`Only replace underscores and dashes with spaces`,
+            name: t`Replace underscores and dashes with spaces`,
           },
           { value: "none", name: t`Disabled` },
         ],

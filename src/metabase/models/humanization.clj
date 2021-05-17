@@ -96,10 +96,6 @@
       (re-humanize-table-and-field-names! old-strategy))))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
-  (str (deferred-tru "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".")
-       " "
-       (deferred-tru "This doesn’t work all that well if the names are in a language other than English, however.")
-       " "
-       (deferred-tru "Do you want us to take a guess?"))
+  (deferred-tru "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.")
   :default "simple"
   :setter  set-humanization-strategy!)
