@@ -127,6 +127,10 @@ const config = (module.exports = {
           ? ENTERPRISE_SRC_PATH + "/plugins"
           : SRC_PATH + "/lib/noop",
     },
+    fallback: {
+      path: false,
+      crypto: false,
+    },
   },
 
   optimization: {
