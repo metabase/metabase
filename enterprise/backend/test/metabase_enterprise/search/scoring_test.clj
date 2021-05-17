@@ -15,4 +15,8 @@
                   :model "pulse"}]]
       (doseq [item items]
         (is (>= (score (assoc item :collection_type "official")) (score item))
-            (str "Item not greater for model: " (:model item)))))))
+            (str "Item not greater for model: " (:model item))))
+      (doseq [item items]
+        (is (= (score item)
+               ((comp :score (partial scoring/score-and-result scoring/oss-score-impl ""))
+                item)))))))
