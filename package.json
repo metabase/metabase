@@ -129,7 +129,7 @@
     "file-loader": "^0.11.1",
     "fs-promise": "^2.0.2",
     "glob": "^7.1.1",
-    "html-webpack-harddisk-plugin": "^0.1.0",
+    "html-webpack-harddisk-plugin": "^2.0.0",
     "html-webpack-plugin": "^5.3.1",
     "husky": "^6.0.0",
     "image-diff": "^1.6.3",

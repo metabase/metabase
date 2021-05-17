@@ -6798,12 +6798,10 @@ html-void-elements@^1.0.0:
   resolved "https://registry.yarnpkg.com/html-void-elements/-/html-void-elements-1.0.5.tgz#ce9159494e86d95e45795b166c2021c2cfca4483"
   integrity sha512-uE/TxKuyNIcx44cIWnjr/rfIATDH7ZaOMmstu0CwhFG1Dunhlp4OC6/NMbhiwoq5BpW0ubi303qnEk/PZj614w==
 
-html-webpack-harddisk-plugin@^0.1.0:
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/html-webpack-harddisk-plugin/-/html-webpack-harddisk-plugin-0.1.0.tgz#432024961a21ac668fa2b5dfe24629c60b9c58d7"
-  integrity sha1-QyAklhohrGaPorXf4kYpxgucWNc=
-  dependencies:
-    mkdirp "^0.5.1"
+html-webpack-harddisk-plugin@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/html-webpack-harddisk-plugin/-/html-webpack-harddisk-plugin-2.0.0.tgz#2de78316554e7aa37d07066d3687901beca4d5ce"
+  integrity sha512-fWKH72FyaQ5K/j+kYy6LnQsQucSDnsEkghmB6g29TtpJ4sxHYFduEeUV1hfDqyDpCRW+bP7yacjQ+1ikeIDqeg==
 
 html-webpack-plugin@^5.3.1:
   version "5.3.1"
