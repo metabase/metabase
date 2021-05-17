@@ -44,6 +44,7 @@ const CSS_CONFIG = {
 };
 
 const config = (module.exports = {
+  mode: devMode ? "development" : "production",
   context: SRC_PATH,
 
   // output a bundle for the app JS and a bundle for styles
