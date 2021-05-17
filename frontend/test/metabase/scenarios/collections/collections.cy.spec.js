@@ -370,6 +370,7 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Parent").should("not.exist");
         cy.findByText("Browse all items").click();
         cy.findByText("Child");
+        cy.findByText("No Collection Tableton").should("not.exist");
         cy.findByText("Parent").should("not.exist");
       });
 

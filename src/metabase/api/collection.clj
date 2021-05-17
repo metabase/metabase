@@ -167,7 +167,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection}                :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models collections-only? pinned-state], :as options}    :- CollectionChildrenOptions]
-  (let [pinned-pred (pinned-state->pred pinned-state)
+  (let [pinned-pred   (pinned-state->pred pinned-state)
         item-groups   (into {}
                             (for [model-kw [:collection :card :dashboard :pulse :snippet]
                                   ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
@@ -177,12 +177,11 @@
                                   :when    (or (= model-kw :collection)
                                                (contains? allowed-namespaces (keyword collection-namespace)))]
                               [model-kw
-                               (filter pinned-pred (fetch-collection-children model-kw collection
-                                                          (assoc options :collection-namespace collection-namespace)))]))
+                               (vec (filter pinned-pred (fetch-collection-children model-kw collection
+                                                          (assoc options :collection-namespace collection-namespace))))]))
         last-edited   (last-edit/fetch-last-edited-info
                         {:card-ids (->> item-groups :card (map :id))
-                         :dashboard-ids (->> item-groups :dashboard (map :id))})
-        ]
+                         :dashboard-ids (->> item-groups :dashboard (map :id))})]
     (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
              (into []
                    ;; items are grouped by model, needed for last-edit lookup. put model on each one, cat them, then
