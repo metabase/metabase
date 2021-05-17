@@ -44,7 +44,7 @@ sN: Taylor
 givenname: Fred
 uid: ftaylor300
 mAiL: fred.taylor@metabase.com
-userpassword: unh4ck4bl3
+userpassword: pa$$word
 
 dn: ou=Birds,dc=metabase,dc=com
 objectClass: top
