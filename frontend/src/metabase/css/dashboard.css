@@ -217,8 +217,9 @@
   height: 40px;
   bottom: 0;
   right: 0;
-  cursor: nwse-resize;
+  cursor: nwse-resize !important;
   z-index: 1; /* ensure the handle is above the card contents */
+  background: none; /* hide default RGL's resize handle */
 }
 
 .Dash--editing .DashCard .react-resizable-handle:after {
