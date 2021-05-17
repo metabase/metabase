@@ -10,7 +10,7 @@ const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
-const UglifyJSPlugin = require("uglifyjs-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
 const fs = require("fs");
@@ -269,7 +269,9 @@ if (NODE_ENV !== "production") {
     }),
   );
 } else {
-  config.plugins.push(new UglifyJSPlugin({ parallel: true, test: /\.jsx?($|\?)/i }));
+  config.plugins.push(
+    new TerserPlugin({ parallel: true, test: /\.jsx?($|\?)/i }),
+  );
 
   config.devtool = "source-map";
 }
