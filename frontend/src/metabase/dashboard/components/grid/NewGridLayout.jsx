@@ -5,6 +5,9 @@ import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+
 function NewGridLayout({
   items,
   itemRenderer,
