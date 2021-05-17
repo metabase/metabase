@@ -208,15 +208,6 @@
 }
 
 .Dash--editing .DashCard {
-  transition: transform 0.3s;
-}
-
-.Dash--editing .DashCard.dragging,
-.Dash--editing .DashCard.resizing {
-  transition: transform 0s;
-}
-
-.Dash--editing .DashCard {
   cursor: move;
 }
 
