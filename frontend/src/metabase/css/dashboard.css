@@ -252,7 +252,7 @@
 
 .Dash--editing .react-grid-placeholder {
   z-index: 0;
-  background-color: var(--color-bg-light);
+  background-color: var(--color-bg-light) !important;
   transition: all 0.15s linear;
 }
 
