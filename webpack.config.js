@@ -125,13 +125,13 @@ const config = (module.exports = {
     },
   },
 
+  optimization: {
+    splitChunks: {
+      chunks: "all",
+    },
+  },
+
   plugins: [
-    new webpack.optimize.CommonsChunkPlugin({
-      name: "vendor",
-      minChunks(module) {
-        return module.context && module.context.indexOf("node_modules") >= 0;
-      },
-    }),
     new UnusedFilesWebpackPlugin({
       globOptions: {
         ignore: [
