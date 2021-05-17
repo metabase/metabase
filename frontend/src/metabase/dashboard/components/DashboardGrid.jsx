@@ -321,6 +321,44 @@ class DashboardGrid extends Component {
     );
   }
 
+  renderNewGrid() {
+    const { dashboard, width } = this.props;
+    const { layout } = this.state;
+    const rowHeight = Math.max(
+      Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO),
+      MIN_ROW_HEIGHT,
+    );
+    return (
+      <NewGridLayout
+        className={cx("DashboardGrid", {
+          "Dash--editing": this.isEditingLayout,
+          "Dash--dragging": this.state.isDragging,
+        })}
+        layout={layout}
+        cols={GRID_WIDTH}
+        width={width}
+        margin={GRID_MARGIN}
+        rowHeight={rowHeight}
+        onLayoutChange={this.onLayoutChange}
+        onDrag={this.onDrag}
+        onDragStop={this.onDragStop}
+        isEditing={this.isEditingLayout}
+        compactType="vertical"
+        items={dashboard.ordered_cards}
+        itemRenderer={({ item: dc, gridItemWidth }) => (
+          <div
+            key={String(dc.id)}
+            className="DashCard"
+            onMouseDownCapture={this.onDashCardMouseDown}
+            onTouchStartCapture={this.onDashCardMouseDown}
+          >
+            {this.renderDashCard(dc, { isMobile: false, gridItemWidth })}
+          </div>
+        )}
+      />
+    );
+  }
+
   render() {
     const { width } = this.props;
     return (
@@ -330,7 +368,7 @@ class DashboardGrid extends Component {
         ) : width <= 752 ? (
           this.renderMobile()
         ) : (
-          this.renderGrid()
+          this.renderNewGrid()
         )}
         {this.renderRemoveModal()}
         {this.renderAddSeriesModal()}
