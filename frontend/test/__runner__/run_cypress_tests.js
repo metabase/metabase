@@ -17,7 +17,7 @@ const isFolderFlag = userArgs.includes("--folder");
 const isSpecFlag = userArgs.includes("--spec");
 const sourceFolderLocation = userArgs[userArgs.indexOf("--folder") + 1];
 const specs = userArgs[userArgs.indexOf("--spec") + 1];
-const isSingleSpec = !specs.match(/,/);
+const isSingleSpec = !specs || !specs.match(/,/);
 const testFiles = isSingleSpec ? specs : specs.split(",");
 
 function readFile(fileName) {

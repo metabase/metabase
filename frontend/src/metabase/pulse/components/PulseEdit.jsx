@@ -26,8 +26,15 @@ import MetabaseSettings from "metabase/lib/settings";
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
 
+import Collections from "metabase/entities/collections";
+
 import cx from "classnames";
 
+@Collections.load({
+  id: (state, { pulse, initialCollectionId }) =>
+    pulse.collection_id || initialCollectionId,
+  loadingAndErrorWrapper: false,
+})
 export default class PulseEdit extends Component {
   static propTypes = {
     pulse: PropTypes.object.isRequired,
@@ -72,7 +79,10 @@ export default class PulseEdit extends Component {
       this.props.pulse.cards.length,
     );
 
-    this.props.onChangeLocation(Urls.collection(pulse.collection_id));
+    const collection = this.props.collection
+      ? this.props.collection
+      : { id: pulse.collection_id };
+    this.props.onChangeLocation(Urls.collection(collection));
   };
 
   handleArchive = async () => {
@@ -80,9 +90,7 @@ export default class PulseEdit extends Component {
 
     MetabaseAnalytics.trackEvent("PulseArchive", "Complete");
 
-    this.props.onChangeLocation(
-      Urls.collection(this.props.pulse.collection_id),
-    );
+    this.props.onChangeLocation(Urls.collection(this.props.collection));
   };
 
   handleUnarchive = async () => {

@@ -1,4 +1,6 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import { Flex } from "grid-styled";
 
@@ -10,12 +12,16 @@ import DashboardPicker from "metabase/containers/DashboardPicker";
 
 import * as Urls from "metabase/lib/urls";
 
-import type {
-  Dashboard as DashboardType,
-  DashboardId,
-} from "metabase-types/types/Dashboard";
+import type { Dashboard as DashboardType } from "metabase-types/types/Dashboard";
 import type { Card } from "metabase-types/types/Card";
 
+function mapStateToProps(state) {
+  return {
+    dashboards: state.entities.dashboards,
+  };
+}
+
+@connect(mapStateToProps)
 export default class AddToDashSelectDashModal extends Component {
   state = {
     shouldCreateDashboard: false,
@@ -25,15 +31,18 @@ export default class AddToDashSelectDashModal extends Component {
     card: Card,
     onClose: () => void,
     onChangeLocation: string => void,
-    // via connect:
     createDashboard: DashboardType => any,
   };
 
-  addToDashboard = (dashboardId: DashboardId) => {
-    // we send the user over to the chosen dashboard in edit mode with the current card added
+  navigateToDashboard = dashboard => {
     this.props.onChangeLocation(
-      Urls.dashboard(dashboardId, { addCardWithId: this.props.card.id }),
+      Urls.dashboard(dashboard, { addCardWithId: this.props.card.id }),
     );
+  };
+
+  onDashboardSelected = dashboardId => {
+    const dashboard = this.props.dashboards[dashboardId];
+    this.navigateToDashboard(dashboard);
   };
 
   render() {
@@ -41,7 +50,7 @@ export default class AddToDashSelectDashModal extends Component {
       return (
         <CreateDashboardModal
           collectionId={this.props.card.collection_id}
-          onSaved={dashboard => this.addToDashboard(dashboard.id)}
+          onSaved={this.navigateToDashboard}
           onClose={() => this.setState({ shouldCreateDashboard: false })}
         />
       );
@@ -52,7 +61,7 @@ export default class AddToDashSelectDashModal extends Component {
           title={t`Add this question to a dashboard`}
           onClose={this.props.onClose}
         >
-          <DashboardPicker onChange={this.addToDashboard} />
+          <DashboardPicker onChange={this.onDashboardSelected} />
           <Link
             mt={1}
             onClick={() => this.setState({ shouldCreateDashboard: true })}

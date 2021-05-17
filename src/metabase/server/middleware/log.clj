@@ -67,10 +67,10 @@
    " "
    (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count))
    (when diag-info-fn
-     (if-let [diag-info (diag-info-fn)]
+     (if-let [diag-info (not-empty (diag-info-fn))]
        (format
         "; %s DB %s connections: %d/%d (%d threads blocked)"
-        (-> diag-info ::sql-jdbc.execute.diagnostic/driver name)
+        (some-> diag-info ::sql-jdbc.execute.diagnostic/driver name)
         (::sql-jdbc.execute.diagnostic/database-id diag-info)
         (::sql-jdbc.execute.diagnostic/active-connections diag-info)
         (::sql-jdbc.execute.diagnostic/total-connections diag-info)
