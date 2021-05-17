@@ -1,11 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { useCallback, useMemo } from "react";
-import ReactGridLayout, { WidthProvider } from "react-grid-layout";
+import ReactGridLayout from "react-grid-layout";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-
-export { WidthProvider };
 
 function NewGridLayout({
   items,

@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import ExplicitSize from "metabase/components/ExplicitSize";
 import GridLayout from "./grid/GridLayout";
 import DashCard from "./DashCard";
 
@@ -23,12 +24,13 @@ import {
 import _ from "underscore";
 import cx from "classnames";
 
-import NewGridLayout, { WidthProvider } from "./grid/NewGridLayout";
+import NewGridLayout from "./grid/NewGridLayout";
 
 const MOBILE_ASPECT_RATIO = 3 / 2;
 const MOBILE_TEXT_CARD_ROW_HEIGHT = 60;
 
-class DashboardGrid extends Component {
+@ExplicitSize()
+export default class DashboardGrid extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -386,5 +388,3 @@ class DashboardGrid extends Component {
     );
   }
 }
-
-export default WidthProvider(DashboardGrid);
