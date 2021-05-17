@@ -8472,6 +8472,62 @@ databaseChangeLog:
                                   'DateTimeField', 'DecimalField', 'DictionaryField', 'FloatField', 'IntegerField',
                                   'TextField', 'TimeField', 'UUIDField', 'UnknownField');
 
+  - changeSet:
+      id: 307
+      author: tsmacdonald
+      comment: Added 0.40.0
+      changes:
+        - createTable:
+            tableName: comment
+            remarks: "Comments (used for moderation requests and reviews in BUCM)"
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: "most recent modification time"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: "creation time"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: text
+                  type: text
+                  remarks: "Contents of the comment"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: commented_item_id
+                  type: int
+                  remarks: "The item being commented on"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: commented_item_type
+                  type: varchar(255)
+                  remarks: "See enum in model file"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: author_id
+                  type: int
+                  remarks: "ID of the user who made the comment"
+                  constraints:
+                    nullable: false
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
