@@ -74,27 +74,37 @@ class DashboardGrid extends Component {
     });
   }
 
-  onLayoutChange(layout) {
-    const changes = layout.filter(
-      newLayout =>
-        !_.isEqual(newLayout, this.getLayoutForDashCard(newLayout.dashcard)),
-    );
-    for (const change of changes) {
-      this.props.setDashCardAttributes({
-        id: change.dashcard.id,
-        attributes: {
-          col: change.x,
-          row: change.y,
-          sizeX: change.w,
-          sizeY: change.h,
-        },
-      });
-    }
+  onLayoutChange = layout => {
+    const { dashboard } = this.props;
 
-    if (changes && changes.length > 0) {
+    let isChanged = false;
+
+    layout.forEach(layoutItem => {
+      const dashboardCard = dashboard.ordered_cards.find(
+        card => String(card.id) === layoutItem.i,
+      );
+      const changed = !_.isEqual(
+        layoutItem,
+        this.getLayoutForDashCard(dashboardCard),
+      );
+      if (changed) {
+        this.props.setDashCardAttributes({
+          id: dashboardCard.id,
+          attributes: {
+            col: layoutItem.x,
+            row: layoutItem.y,
+            sizeX: layoutItem.w,
+            sizeY: layoutItem.h,
+          },
+        });
+        isChanged = true;
+      }
+    });
+
+    if (isChanged) {
       MetabaseAnalytics.trackEvent("Dashboard", "Layout Changed");
     }
-  }
+  };
 
   getSortedDashcards(props) {
     return (
