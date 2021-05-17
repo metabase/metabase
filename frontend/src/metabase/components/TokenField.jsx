@@ -172,7 +172,7 @@ export default class TokenField extends Component {
   }
 
   _updateFilteredValues = (props: Props) => {
-    let { options, value, removeSelected, filterOption } = props;
+    let { options = [], value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
     const selectedValues = new Set(value.map(v => JSON.stringify(v)));
 
