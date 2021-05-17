@@ -7,7 +7,7 @@
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.events :as events]
             [metabase.models.card :as card :refer [Card]]
-            [metabase.models.collection :as collection]
+            [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as i]
@@ -34,9 +34,10 @@
   {:hydrate :ordered_cards}
   [dashboard-or-id]
   (db/do-post-select DashboardCard
-    (db/query {:select    [:dashcard.*]
+    (db/query {:select    [:dashcard.* [:collection.type :collection_type]]
                :from      [[DashboardCard :dashcard]]
-               :left-join [[Card :card] [:= :dashcard.card_id :card.id]]
+               :left-join [[Card :card] [:= :dashcard.card_id :card.id]
+                           [Collection :collection] [:= :collection.id :card.collection_id]]
                :where     [:and
                            [:= :dashcard.dashboard_id (u/the-id dashboard-or-id)]
                            [:or
