@@ -99,7 +99,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     super();
     // memoize processSource for performance when editing previously seen source/targetOffset
     this._processSource = memoize(processSource, ({ source, targetOffset }) =>
-      // resovle should include anything that affect the results of processSource
+      // resolve should include anything that affects the results of processSource
       // except currently we exclude `startRule` and `query` since they shouldn't change
       [source, targetOffset].join(","),
     );
