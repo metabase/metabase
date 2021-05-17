@@ -176,14 +176,15 @@ class DashboardGrid extends Component {
   }
 
   // we need to track whether or not we're dragging so we can disable pointer events on action buttons :-/
-  onDrag() {
+  onDrag = () => {
     if (!this.state.isDragging) {
       this.setState({ isDragging: true });
     }
-  }
-  onDragStop() {
+  };
+
+  onDragStop = () => {
     this.setState({ isDragging: false });
-  }
+  };
 
   // we use onMouseDownCapture to prevent dragging due to react-grid-layout bug referenced below
   onDashCardMouseDown(e) {
