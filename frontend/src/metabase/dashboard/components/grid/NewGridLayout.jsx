@@ -59,12 +59,22 @@ function NewGridLayout({
     [layout, cellSize, margin, itemRenderer],
   );
 
+  const minEditingHeight = useMemo(() => {
+    const lowestLayoutCellPoint = Math.max(...layout.map(l => l.y + l.h));
+    // one vertical screen worth of rows ensuring the grid fills the screen
+    const lowestWindowCellPoint = Math.ceil(
+      window.innerHeight / cellSize.height,
+    );
+    return cellSize.height * (lowestLayoutCellPoint + lowestWindowCellPoint);
+  }, [cellSize.height, layout]);
+
   return (
     <div
       className={className}
       style={{
         position: "relative",
         width: gridWidth,
+        minHeight: isEditing ? minEditingHeight : "auto",
         background: isEditing ? background : "",
 
         // subtract half of a margin to ensure it lines up with the edges
