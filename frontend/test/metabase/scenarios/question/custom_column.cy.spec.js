@@ -511,7 +511,7 @@ describe("scenarios > question > custom columns", () => {
       cy.button("Done").should("not.be.disabled");
     });
 
-    it("should not accidentally delete CC formula value and/or CC name (metabase#15734-1)", () => {
+    it("should not accidentally delete Custom Column formula value and/or Custom Column name (metabase#15734-1)", () => {
       cy.get("@formula")
         .click()
         .type("{movetoend}{leftarrow}{movetostart}{rightarrow}{rightarrow}")
@@ -522,23 +522,23 @@ describe("scenarios > question > custom columns", () => {
 
     /**
      * 1. Explanation for `cy.get("@formula").click();`
-     *  - Without it, test runner is too fast and the test resutls in false positive.
+     *  - Without it, test runner is too fast and the test results in false positive.
      *  - This gives it enough time to update the DOM. The same result can be achieved with `cy.wait(1)`
      */
-    it.only("should not erase CC formula and CC name when expression is incomplete (metabase#15734-2)", () => {
+    it.skip("should not erase Custom column formula and Custom column name when expression is incomplete (metabase#15734-2)", () => {
       cy.get("@formula")
         .click()
         .type("{movetoend}{backspace}")
         .blur();
       cy.findByText("Expected expression");
       cy.button("Done").should("be.disabled");
-      cy.get("@formula").click(); /* [1] */
+      cy.get("@formula").click(); /* See comment (1) above */
       cy.findByDisplayValue("Math");
     });
 
-    it("should not erase CC formula and CC name on window resize (metabase#15734-3)", () => {
+    it.only("should not erase Custom Column formula and Custom Column name on window resize (metabase#15734-3)", () => {
       cy.viewport(1260, 800);
-      cy.get("@formula").click(); /* [1] */
+      cy.get("@formula").click(); /* See comment (1) above */
       cy.findByDisplayValue("Math");
       cy.button("Done").should("not.be.disabled");
     });
