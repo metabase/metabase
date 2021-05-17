@@ -6,7 +6,6 @@ import GridLayout from "./grid/GridLayout";
 import DashCard from "./DashCard";
 
 import Modal from "metabase/components/Modal";
-import ExplicitSize from "metabase/components/ExplicitSize";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import AddSeriesModal from "./AddSeriesModal";
 
@@ -24,11 +23,12 @@ import {
 import _ from "underscore";
 import cx from "classnames";
 
+import NewGridLayout, { WidthProvider } from "./grid/NewGridLayout";
+
 const MOBILE_ASPECT_RATIO = 3 / 2;
 const MOBILE_TEXT_CARD_ROW_HEIGHT = 60;
 
-@ExplicitSize()
-export default class DashboardGrid extends Component {
+class DashboardGrid extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -337,3 +337,5 @@ export default class DashboardGrid extends Component {
     );
   }
 }
+
+export default WidthProvider(DashboardGrid);
