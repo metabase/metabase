@@ -53,6 +53,7 @@ export default class DashboardGrid extends Component {
     parameterValues: PropTypes.object.isRequired,
 
     setDashCardAttributes: PropTypes.func.isRequired,
+    setMultipleDashCardAttributes: PropTypes.func.isRequired,
     removeCardFromDashboard: PropTypes.func.isRequired,
     markNewCardSeen: PropTypes.func.isRequired,
     fetchCardData: PropTypes.func.isRequired,
@@ -77,9 +78,9 @@ export default class DashboardGrid extends Component {
   }
 
   onLayoutChange = layout => {
-    const { dashboard } = this.props;
+    const { dashboard, setMultipleDashCardAttributes } = this.props;
 
-    let isChanged = false;
+    const changes = [];
 
     layout.forEach(layoutItem => {
       const dashboardCard = dashboard.ordered_cards.find(
@@ -90,7 +91,7 @@ export default class DashboardGrid extends Component {
         this.getLayoutForDashCard(dashboardCard),
       );
       if (changed) {
-        this.props.setDashCardAttributes({
+        changes.push({
           id: dashboardCard.id,
           attributes: {
             col: layoutItem.x,
@@ -99,11 +100,11 @@ export default class DashboardGrid extends Component {
             sizeY: layoutItem.h,
           },
         });
-        isChanged = true;
       }
     });
 
-    if (isChanged) {
+    if (changes.length > 0) {
+      setMultipleDashCardAttributes(changes);
       MetabaseAnalytics.trackEvent("Dashboard", "Layout Changed");
     }
   };
