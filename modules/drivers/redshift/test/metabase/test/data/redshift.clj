@@ -67,7 +67,7 @@
 
 ;;; Create + destroy the schema used for this test session
 
-(defn- execute! [format-string & args]
+(defn execute! [format-string & args]
   (let [sql  (apply format format-string args)
         spec (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
     (println (u/format-color 'blue "[redshift] %s" sql))
@@ -78,7 +78,18 @@
   [_]
   (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
 
-;; replace the impl the `metabase.driver.redshift`. Only sync the current test schema.
+(defonce ^:private ^{:arglists '([driver connection metadata])} original-syncable-schemas
+  (get-method sql-jdbc.sync/syncable-schemas :redshift))
+
+(def ^:dynamic *use-original-syncable-schemas-impl?*
+  "Whether to use the actual prod impl for `syncable-schemas` rather than the special test one that only syncs the test
+  schema."
+  false)
+
+;; replace the impl the `metabase.driver.redshift`. Only sync the current test schema and the external "spectrum"
+;; schema used for a specific test.
 (defmethod sql-jdbc.sync/syncable-schemas :redshift
   [driver conn metadata]
-  #{session-schema-name})
+  (if *use-original-syncable-schemas-impl?*
+    (original-syncable-schemas driver conn metadata)
+    #{session-schema-name "spectrum"}))
