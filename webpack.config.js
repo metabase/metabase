@@ -10,7 +10,6 @@ const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
-const BannerWebpackPlugin = require("banner-webpack-plugin");
 const UglifyJSPlugin = require("uglifyjs-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
@@ -173,21 +172,9 @@ const config = (module.exports = {
       "process.env": { NODE_ENV: JSON.stringify(NODE_ENV) },
       INCLUDE_EE_PLUGINS: JSON.stringify(process.env.MB_EDITION === "ee"),
     }),
-    new BannerWebpackPlugin({
-      chunks: {
-        "app-main": {
-          beforeContent:
-            "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
-        },
-        "app-public": {
-          beforeContent:
-            "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
-        },
-        "app-embed": {
-          beforeContent:
-            "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE-EMBEDDING.txt', which is part of this source code package.\n */\n",
-        },
-      },
+    new webpack.BannerPlugin({
+      banner:
+        "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
     }),
   ],
 });
