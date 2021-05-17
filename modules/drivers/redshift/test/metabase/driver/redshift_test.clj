@@ -127,7 +127,7 @@
               :parent_id       nil
               :id              (mt/id :extsales :buyerid)
               :visibility_type :normal
-              :display_name    "Buyer ID"
+              :display_name    "Buyerid"
               :base_type       :type/Integer
               :effective_type  :type/Integer
               :coercion_strategy nil}
@@ -141,7 +141,7 @@
               :parent_id       nil
               :id              (mt/id :extsales :salesid)
               :visibility_type :normal
-              :display_name    "Sale Sid"
+              :display_name    "Salesid"
               :base_type       :type/Integer
               :effective_type  :type/Integer
               :coercion_strategy nil}]
