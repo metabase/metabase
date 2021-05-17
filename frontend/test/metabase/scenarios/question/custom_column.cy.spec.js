@@ -492,20 +492,22 @@ describe("scenarios > question > custom columns", () => {
     cy.button("Done").should("not.be.disabled");
   });
 
-  describe.skip("contentedtable field (metabase#15734)", () => {
+  describe("contentedtable field (metabase#15734)", () => {
     beforeEach(() => {
       // This is the default screen size but we need it explicitly set for this test because of the resize later on
       cy.viewport(1280, 800);
 
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Custom column").click();
-      popover().within(() => {
-        cy.get("[contenteditable='true']")
+
+      cy.get("[contenteditable='true']")
           .as("formula")
-          .type("1+1")
-          .blur();
+
+      popover().within(() => {
+        _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
+        _typeUsingPlaceholder("Something nice and descriptive", "Math");
       });
-      cy.findByPlaceholderText("Something nice and descriptive").type("Math");
+
       cy.button("Done").should("not.be.disabled");
     });
 
@@ -523,7 +525,7 @@ describe("scenarios > question > custom columns", () => {
      *  - Without it, test runner is too fast and the test resutls in false positive.
      *  - This gives it enough time to update the DOM. The same result can be achieved with `cy.wait(1)`
      */
-    it("should not erase CC formula and CC name when expression is incomplete (metabase#15734-2)", () => {
+    it.only("should not erase CC formula and CC name when expression is incomplete (metabase#15734-2)", () => {
       cy.get("@formula")
         .click()
         .type("{movetoend}{backspace}")
