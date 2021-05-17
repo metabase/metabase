@@ -22,35 +22,34 @@
   strategy defined by the Setting `humanization-strategy`. With two args, you may specify a custom strategy (intended
   mainly for the internal implementation):
 
-     (humanization-strategy :advanced)
-     (name->human-readable-name \"cooltoucans\")                         ;-> \"Cool Toucans\"
+     (humanization-strategy :simple)
+     (name->human-readable-name \"cool_toucans\")                         ;-> \"Cool Toucans\"
      ;; this is the same as:
-     (name->human-readable-name (humanization-strategy) \"cooltoucans\") ;-> \"Cool Toucans\"
+     (name->human-readable-name (humanization-strategy) \"cool_toucans\") ;-> \"Cool Toucans\"
      ;; specifiy a different strategy:
-     (name->human-readable-name :none \"cooltoucans\")                   ;-> \"cooltoucans\""
+     (name->human-readable-name :none \"cool_toucans\")                   ;-> \"cool_toucans\""
   {:arglists '([s] [strategy s])}
   (fn
     ([_] (keyword (humanization-strategy)))
     ([strategy _] (keyword strategy))))
 
-(defmethod name->human-readable-name :advanced
-  ([s] (name->human-readable-name :advanced s))
-  ([_, ^String s]
-   ;; explode on hypens, underscores, and spaces
-   (when (seq s)
-     (str/join " " (for [part  (str/split s #"[-_\s]+")
-                         :when (not (str/blank? part))]
-                     (str/capitalize part))))))
+(def ^:private ^:const acronyms
+  #{"id" "url" "ip" "uid" "uuid" "guid"})
+
+(defn- capitalize-word [word]
+  (if (contains? acronyms (str/lower-case word))
+    (str/upper-case word)
+    (str/capitalize word)))
 
 ;; simple replaces hyphens and underscores with spaces and capitalizes
 (defmethod name->human-readable-name :simple
   ([s] (name->human-readable-name :simple s))
   ([_, ^String s]
-   ;; explode on hypens, underscores, and spaces
+   ;; explode on hyphens, underscores, and spaces
    (when (seq s)
      (str/join " " (for [part  (str/split s #"[-_\s]+")
                          :when (not (str/blank? part))]
-                     (str/capitalize part))))))
+                     (capitalize-word part))))))
 
 ;; :none is just an identity implementation
 (defmethod name->human-readable-name :none
@@ -82,7 +81,7 @@
 
 
 (defn- set-humanization-strategy! [new-value]
-  (let [new-strategy (or new-value "advanced")]
+  (let [new-strategy (or new-value "simple")]
     ;; check to make sure `new-strategy` is a valid strategy, or throw an Exception it is it not.
     (when-not (get-method name->human-readable-name (keyword new-strategy))
       (throw (IllegalArgumentException.
@@ -102,5 +101,5 @@
        (deferred-tru "This doesn’t work all that well if the names are in a language other than English, however.")
        " "
        (deferred-tru "Do you want us to take a guess?"))
-  :default "advanced"
+  :default "simple"
   :setter  set-humanization-strategy!)
