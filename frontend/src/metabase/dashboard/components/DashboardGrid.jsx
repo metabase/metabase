@@ -122,7 +122,7 @@ class DashboardGrid extends Component {
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
     return {
-      i: dashcard.id,
+      i: String(dashcard.id),
       x: dashcard.col || 0,
       y: dashcard.row || 0,
       w: dashcard.sizeX || initialSize.width,
