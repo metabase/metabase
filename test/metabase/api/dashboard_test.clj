@@ -209,31 +209,32 @@
           (card-api-test/with-cards-in-readable-collection [card-id]
             (is (= (merge
                     dashboard-defaults
-                    {:name          "Test Dashboard"
-                     :creator_id    (mt/user->id :rasta)
-                     :collection_id true
-                     :can_write     false
-                     :param_values  nil
-                     :param_fields  nil
-                     :last-edit-info {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
-                     :ordered_cards [{:sizeX                  2
-                                      :sizeY                  2
-                                      :col                    0
-                                      :row                    0
-                                      :updated_at             true
-                                      :created_at             true
-                                      :parameter_mappings     []
-                                      :visualization_settings {}
-                                      :card                   (merge card-api-test/card-defaults
-                                                                     {:name                   "Dashboard Test Card"
-                                                                      :creator_id             (mt/user->id :rasta)
-                                                                      :collection_id          true
-                                                                      :display                "table"
-                                                                      :visualization_settings {}
-                                                                      :result_metadata        nil})
-                                      :series                 []}]
+                    {:name                "Test Dashboard"
+                     :creator_id          (mt/user->id :rasta)
+                     :collection_id       true
+                     :can_write           false
+                     :param_values        nil
+                     :param_fields        nil
+                     :last-edit-info      {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
+                     :ordered_cards       [{:sizeX                  2
+                                            :sizeY                  2
+                                            :col                    0
+                                            :row                    0
+                                            :updated_at             true
+                                            :created_at             true
+                                            :parameter_mappings     []
+                                            :visualization_settings {}
+                                            :card                   (merge card-api-test/card-defaults
+                                                                           {:name                   "Dashboard Test Card"
+                                                                            :creator_id             (mt/user->id :rasta)
+                                                                            :collection_id          true
+                                                                            :display                "table"
+                                                                            :visualization_settings {}
+                                                                            :result_metadata        nil})
+                                            :series                 []}]
                      :moderation_requests []
-                     :moderation_reviews  []})
+                     :moderation_reviews  []
+                     :comments            []})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
     (testing "fetch a dashboard with a param in it"
@@ -283,7 +284,8 @@
                                                                                   :result_metadata        nil})
                                                   :series                 []}]
                            :moderation_requests []
-                           :moderation_reviews  []})
+                           :moderation_reviews  []
+                           :comments            []})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
 
 (deftest fetch-dashboard-permissions-test

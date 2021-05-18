@@ -17,10 +17,23 @@
   "ModerationRequests for the `moderated-item` (either a Card or a Dashboard)."
   {:hydrate :moderation_requests}
   [moderated-item]
-  (db/select 'ModerationRequest :moderated_item_type (object->type moderated-item) :moderated_item_id (u/the-id moderated-item)))
+  (db/select 'ModerationRequest
+    :moderated_item_type (object->type moderated-item)
+    :moderated_item_id (u/the-id moderated-item)))
 
 (defn moderation-reviews-for-item
   "ModerationReviews for the `moderated-item` (either a Card or a Dashboard)."
   {:hydrate :moderation_reviews}
   [moderated-item]
-  (db/select 'ModerationReview  :moderated_item_type (object->type moderated-item) :moderated_item_id (u/the-id moderated-item)))
+  (db/select 'ModerationReview
+    :moderated_item_type (object->type moderated-item)
+    :moderated_item_id (u/the-id moderated-item)))
+
+(defn comments-for-item
+  "Comments for the `moderated-item` (either a Card or a Dashboard)."
+  {:hydrate :comments}
+  [moderated-item]
+  (db/select 'Comment
+    :commented_item_type (object->type moderated-item)
+    :commented_item_id (u/the-id moderated-item)
+    {:order-by [:created_at]}))

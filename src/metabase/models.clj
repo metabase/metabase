@@ -4,6 +4,7 @@
             [metabase.models.card-favorite :as card-favorite]
             [metabase.models.collection :as collection]
             [metabase.models.collection-permission-graph-revision :as c-perm-revision]
+            [metabase.models.comment :as comment]
             [metabase.models.dashboard :as dashboard]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-card-series :as dashboard-card-series]
@@ -44,6 +45,7 @@
          card/keep-me
          card-favorite/keep-me
          collection/keep-me
+         comment/keep-me
          c-perm-revision/keep-me
          dashboard/keep-me
          dashboard-card/keep-me
@@ -84,6 +86,7 @@
  [card Card]
  [card-favorite CardFavorite]
  [collection Collection]
+ [comment Comment]
  [c-perm-revision CollectionPermissionGraphRevision]
  [dashboard Dashboard]
  [dashboard-card DashboardCard]
