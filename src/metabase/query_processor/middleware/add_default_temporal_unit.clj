@@ -3,7 +3,7 @@
             [metabase.query-processor.store :as qp.store]))
 
 (defn- add-default-temporal-unit* [query]
-  (mbql.u/replace query
+  (mbql.u/replace-in query [:query]
     [:field (_ :guard string?) (_ :guard (every-pred
                                           :base-type
                                           #(isa? (:base-type %) :type/Temporal)

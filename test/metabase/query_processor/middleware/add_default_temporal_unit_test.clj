@@ -53,3 +53,17 @@
                               3]})]
         (is (= query
                (add-default-temporal-unit query)))))))
+
+(deftest ignore-parameters-test
+  (testing "Don't try to update query `:parameters`"
+    (let [query {:database   (mt/id)
+                 :type       :native
+                 :native     {:query "select 111 as my_number, 'foo' as my_string"}
+                 :parameters [{:type   "category"
+                               :value  [:param-value]
+                               :target [:dimension
+                                        [:field
+                                         (mt/id :categories :id)
+                                         {:source-field (mt/id :venues :category_id)}]]}]}]
+      (is (= query
+             (add-default-temporal-unit query))))))
