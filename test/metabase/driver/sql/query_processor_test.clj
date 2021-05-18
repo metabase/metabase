@@ -489,5 +489,7 @@
                                    s/Str
                                    (s/pred #(instance? java.time.temporal.Temporal %)))
                                  "date")
-                          (s/one s/Int "expression")]
+                          (s/one (if (#{:oracle} driver/*driver*)
+                                   (s/pred decimal? 'decimal) ;; oracle returns 1M annoyingly
+                                   s/Int) "expression")]
                          (-> results :data :rows first)))))))))
