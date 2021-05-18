@@ -187,7 +187,8 @@
 
 (defn- recursive-collection-children
   "Collections inside collections are special because
-  we need to actually execute whole DB query to get at them at all"
+  we need to actually execute whole DB query to get any of them at all
+  But in turn, the assumption is that the cardinality is pretty low"
   [_ collection {:keys [archived? collection-namespace]}]
   (-> (for [child-collection (collection/effective-children collection
                                                             [:= :archived archived?]
@@ -203,17 +204,21 @@
     :pulse      Pulse
     :snippet    NativeQuerySnippet))
 
-(defn- collection-children* [collection models pinned-pred options]
-  (let [models      (sort (map keyword models))
-        queries     (for [model models]
-                      (collection-children-query model collection options))
-        total-query {:select [[:%count.* :count]]
-                     :from [[{:union-all queries} :source]]}
-        rows-query  {:select   [:*]
-                     :from     [[{:union-all queries} :source]]
-                     :order-by [[:%lower.name :asc]]
-                     :limit    offset-paging/*limit*
-                     :offset   offset-paging/*offset*}]
+(defn- collection-children*
+  [collection models pinned-pred options]
+  (let [models            (sort (map keyword models))
+        queries           (for [model models]
+                            (collection-children-query model collection options))
+        total-query       {:select [[:%count.* :count]]
+                           :from [[{:union-all queries} :source]]}
+        rows-query        {:select   [:*]
+                           :from     [[{:union-all queries} :source]]
+                           :order-by [[:%lower.name :asc]]
+                           :limit    offset-paging/*limit*
+                           :offset   offset-paging/*offset*}
+        collections-res   (some shit)
+        collections-total (some shit)
+        ]
     {:total  (-> (db/query total-query) first :count)
      :rows   (-> (db/query rows-query) post-process-rows)
      :limit  offset-paging/*limit*
