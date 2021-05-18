@@ -96,14 +96,14 @@
    ;; when specified, only return results of this type.
    :models         (s/maybe #{(apply s/enum (map keyword valid-model-param-values))})})
 
-(defmulti ^:private fetch-collection-children
-  "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
+(defmulti ^:private collection-children-query
+  "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
   in the `CollectionChildrenOptions` schema above.
 
   NOTES:
 
   *  `collection` will be either a CollectionInstance, or the Root Collection special placeholder object, so do not use
-     `u/get-id` on it! Use `:id`, which will return `nil` for the Root Collection, which is exactly what we want."
+     `u/the-id` on it! Use `:id`, which will return `nil` for the Root Collection, which is exactly what we want."
   {:arglists '([model collection options])}
   (fn [model _ _] (keyword model)))
 
