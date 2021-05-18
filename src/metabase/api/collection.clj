@@ -122,59 +122,38 @@
   [_ rows]
   rows)
 
-(defmethod fetch-collection-children :pulse
-  [_ collection {:keys [archived?]}]
-  (db/query
-   {:select    [:p.id :p.name :p.collection_position]
-    :modifiers [:distinct]
-    :from      [[Pulse :p]]
-    :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
-    :where     [:and
-                [:= :p.collection_id      (:id collection)]
-                [:= :p.archived           (boolean archived?)]
-                 ;; exclude alerts
-                [:= :p.alert_condition    nil]
-                 ;; exclude dashboard subscriptions
-                [:= :pc.dashboard_card_id nil]]}))
-
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {some shit here
-   }
-      (merge-where (pinned-state->clause pinned-state))))
-
-(defmethod fetch-collection-children :snippet
-  [_ collection {:keys [archived?]}]
-  (db/select [NativeQuerySnippet :id :name]
-    :collection_id (:id collection)
-    :archived      (boolean archived?)))
+  (->
+    {:select    [:id :name :collection_position]
+     :modifiers [:distinct]
+     :from      [[Pulse :p]]
+     :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
+     :where     [:and
+                 [:= :collection_id      (:id collection)]
+                 [:= :archived           (boolean archived?)]
+                 ;; exclude alerts
+                 [:= :alert_condition    nil]
+                 ;; exclude dashboard subscriptions
+                 [:= :dashboard_card_id nil]]}
+    (merge-where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {some shit here
-   }
+  (-> {:select [:id :name :collection_position ["snippet" :model]]
+       :from   [[NativeQuerySnippet :nqs]]
+       :where  [:and
+                [:= :collection_id (:id collection)]
+                [:= :archived (boolean archived?)]]}
       (merge-where (pinned-state->clause pinned-state))))
-
-(defmethod fetch-collection-children :collection
-  [_ collection {:keys [archived? collection-namespace]}]
-  (-> (for [child-collection (collection/effective-children collection
-                                                            [:= :archived archived?]
-                                                            [:= :namespace (u/qualified-name collection-namespace)])]
-        (assoc child-collection :model "collection"))
-      (hydrate :can_write)))
-
-(defmethod collection-children-query :collection
-  [_ collection {:keys [archived? pinned-state collection-namespace]}]
-  ;;;;;;;;;;;;;;; some shit here
-  )
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
   (-> {:select [:id :name :description :collection_position :display ["card" :model]]
-   :from   [[Card :c]]
-   :where  [:and
-            [:= :collection_id (:id collection)]
-            [:= :archived (boolean archived?)]]}
+       :from   [[Card :c]]
+       :where  [:and
+                [:= :collection_id (:id collection)]
+                [:= :archived (boolean archived?)]]}
       (merge-where (pinned-state->clause pinned-state))))
 
 (defmethod post-process-collection-children :card
@@ -201,6 +180,16 @@
    (fn [[model rows]]
      (post-process-collection-children (keyword model) rows))
    (group-by :model rows)))
+
+(defn- recursive-collection-children
+  "Collections inside collections are special because
+  we need to actually execute whole DB query to get at them at all"
+  [_ collection {:keys [archived? collection-namespace]}]
+  (-> (for [child-collection (collection/effective-children collection
+                                                            [:= :archived archived?]
+                                                            [:= :namespace (u/qualified-name collection-namespace)])]
+        (assoc child-collection :model "collection"))
+      (hydrate :can_write)))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
