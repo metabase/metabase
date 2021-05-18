@@ -192,11 +192,13 @@
     (let [query {:database (mt/id)
                  :type     :native
                  :native   {:query "select 111 as my_number, 'foo' as my_string"}}]
-      (is (= (qp/process-query query)
+      (is (= (-> (qp/process-query query)
+                 (m/dissoc-in [:data :results_metadata :checksum]))
              (-> (qp/process-query (assoc query :parameters [{:type   "category"
                                                               :value  [:param-value]
                                                               :target [:dimension
                                                                        [:field
                                                                         (mt/id :categories :id)
                                                                         {:source-field (mt/id :venues :category_id)}]]}]))
-                 (m/dissoc-in [:data :native_form :params])))))))
+                 (m/dissoc-in [:data :native_form :params])
+                 (m/dissoc-in [:data :results_metadata :checksum])))))))
