@@ -256,34 +256,6 @@
                            :Coercion/ISO8601->Time     :type/Time}}
             numeric-types)))
 
-(defn ^:export is_coerceable
-  "Returns a boolean of whether a field base-type has any coercion strategies available."
-  [base-type]
-  (boolean (contains? coercions (keyword base-type))))
-
-(defn ^:export effective_type_for_coercion
-  "The effective type resulting from a coercion."
-  [coercion]
-  ;;todo: unify this with the coercions map above
-  (get {:Coercion/ISO8601->Date              :type/Date
-        :Coercion/ISO8601->DateTime          :type/DateTime
-        :Coercion/ISO8601->Time              :type/Time
-        :Coercion/UNIXMicroSeconds->DateTime :type/Instant
-        :Coercion/UNIXMilliSeconds->DateTime :type/Instant
-        :Coercion/UNIXSeconds->DateTime      :type/Instant}
-       (keyword coercion)))
-
-(defn ^:export coercions-for-type
-  "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
-  clojure will return a sequence of keywords."
-   [base-type]
-   (let [applicable (keys (get coercions (keyword base-type)))]
-     #?(:cljs
-        (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
-                      applicable))
-        :clj
-        applicable)))
-
 #?(:cljs
    (defn ^:export isa
      "Is `x` the same as, or a descendant type of, `y`?"
@@ -301,6 +273,9 @@
 (coercion-hierarchies/define-types! :Coercion/UNIXMicroSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXMilliSeconds->DateTime #{:type/Integer :type/Decimal} :type/Instant)
 (coercion-hierarchies/define-types! :Coercion/UNIXSeconds->DateTime      #{:type/Integer :type/Decimal} :type/Instant)
+(coercion-hierarchies/define-types! :Coercion/ISO8601->Date              :type/Text                     :type/Date)
+(coercion-hierarchies/define-types! :Coercion/ISO8601->DateTime          :type/Text                     :type/DateTime)
+(coercion-hierarchies/define-types! :Coercion/ISO8601->Time              :type/Text                     :type/Time)
 
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."
@@ -331,3 +306,25 @@
            {effective-type #{strategy}})
          (reduce (partial merge-with set/union))
          not-empty)))
+
+(defn ^:export is_coerceable
+  "Returns a boolean of whether a field base-type has any coercion strategies available."
+  [base-type]
+  (boolean (not-empty (coercion-possibilities (keyword base-type)))))
+
+(defn effective-type-for-coercion
+  "The effective type resulting from a coercion."
+  [coercion]
+  (coercion-hierarchies/effective-type-for-strategy coercion))
+
+(defn ^:export coercions_for_type
+  "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
+  clojure will return a sequence of keywords."
+   [base-type]
+  (let [applicable (into () (comp (distinct) cat)
+                         (vals (coercion-possibilities (keyword base-type))))]
+     #?(:cljs
+        (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
+                      applicable))
+        :clj
+        applicable)))

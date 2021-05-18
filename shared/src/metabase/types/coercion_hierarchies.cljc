@@ -8,6 +8,12 @@
   "Map of coercion strategy -> resulting effective-type"
   (atom {}))
 
+(defn effective-type-for-strategy
+  "Gets the effective type for strategy. Essentially a getter over the
+  private strategy->effective-type."
+  [strategy]
+  (get @strategy->effective-type strategy))
+
 (defn define-types!
   "Define the `base-type-or-types` allowed and the resulting `effective-type` of a `coercion-strategy`."
   [coercion-strategy base-type-or-types effective-type]
