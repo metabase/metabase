@@ -219,7 +219,7 @@ export default class PeopleList extends Component {
 
         {hasUsers && (
           <div className="flex align-center justify-between p2">
-            <div className="text-medium text-underline text-bold">{t`${total} people found`}</div>
+            <div className="text-medium text-bold">{t`${total} people found`}</div>
             <PaginationControls
               page={page}
               pageSize={pageSize}

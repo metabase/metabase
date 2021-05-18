@@ -20,7 +20,7 @@ const mapStateToProps = (state, props) => {
     dashboard,
     initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
       ...props,
-      collectionId: dashboard.collection_id,
+      collectionId: dashboard && dashboard.collection_id,
     }),
   };
 };
@@ -43,8 +43,10 @@ class DashboardCopyModal extends React.Component {
       copyDashboard,
       dashboard,
       initialCollectionId,
+      params,
       ...props
     } = this.props;
+    const initialDashboardId = Urls.extractEntityId(params.slug);
     return (
       <EntityCopyModal
         entityType="dashboards"
@@ -54,13 +56,10 @@ class DashboardCopyModal extends React.Component {
         }}
         overwriteOnInitialValuesChange
         copy={object =>
-          copyDashboard(
-            { id: this.props.params.dashboardId },
-            dissoc(object, "id"),
-          )
+          copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
         }
         onClose={onClose}
-        onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard.id))}
+        onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard))}
         {...props}
       />
     );

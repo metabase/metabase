@@ -35,7 +35,7 @@ export default function GroupMembersTable({
   const entityQuery = { group_id: group.id };
 
   return (
-    <User.ListLoader pageSize={15} entityQuery={entityQuery}>
+    <User.ListLoader pageSize={25} entityQuery={entityQuery}>
       {({ list, page, pageSize, onNextPage, onPreviousPage, reload }) => {
         const hasMembers = members.length !== 0;
 

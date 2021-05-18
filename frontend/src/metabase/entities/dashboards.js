@@ -130,7 +130,7 @@ const Dashboards = createEntity({
   objectSelectors: {
     getFavorited: dashboard => dashboard && dashboard.favorite,
     getName: dashboard => dashboard && dashboard.name,
-    getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
+    getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>
       dashboard && normalizedCollection(dashboard.collection),
     getIcon: dashboard => "dashboard",

@@ -106,7 +106,7 @@ const CollectionLink = styled(Link)`
 
 function CollectionBadge({ collection }) {
   return (
-    <CollectionLink to={Urls.collection(collection.id)}>
+    <CollectionLink to={Urls.collection(collection)}>
       {collection.name}
     </CollectionLink>
   );
@@ -177,9 +177,7 @@ function InfoText({ result }) {
         <span>
           {jt`Table in ${(
             <span>
-              <Link to={Urls.browseDatabase({ id: result.database_id })}>
-                <Database.Name id={result.database_id} />{" "}
-              </Link>
+              <Database.Link id={result.database_id} />{" "}
               {result.table_schema && (
                 <Schema.ListLoader
                   query={{ dbId: result.database_id }}

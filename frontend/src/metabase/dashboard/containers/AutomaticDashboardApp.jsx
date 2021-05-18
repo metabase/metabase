@@ -71,10 +71,7 @@ class AutomaticDashboardApp extends React.Component {
     triggerToast(
       <div className="flex align-center">
         {t`Your dashboard was saved`}
-        <Link
-          className="link text-bold ml1"
-          to={Urls.dashboard(newDashboard.id)}
-        >
+        <Link className="link text-bold ml1" to={Urls.dashboard(newDashboard)}>
           {t`See it`}
         </Link>
       </div>,

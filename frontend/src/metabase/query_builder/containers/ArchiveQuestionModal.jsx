@@ -1,29 +1,39 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
 
 import { t } from "ttag";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
 
-import { archiveQuestion } from "metabase/query_builder/actions";
+import * as Urls from "metabase/lib/urls";
+import Questions from "metabase/entities/questions";
 
-@connect(
-  null,
-  { onArchive: archiveQuestion },
-)
+const mapDispatchToProps = { archive: Questions.actions.setArchived };
+
 class ArchiveQuestionModal extends Component {
+  onArchive = () => {
+    const { question, archive, router } = this.props;
+    const card = question.card();
+    archive({ id: card.id });
+    router.push(Urls.collection(card.collection));
+  };
+
   render() {
-    const { onArchive, onClose } = this.props;
+    const { onClose } = this.props;
     return (
       <ArchiveModal
         title={t`Archive this question?`}
         message={t`This question will be removed from any dashboards or pulses using it.`}
-        onArchive={onArchive}
+        onArchive={this.onArchive}
         onClose={onClose}
       />
     );
   }
 }
 
-export default ArchiveQuestionModal;
+export default connect(
+  null,
+  mapDispatchToProps,
+)(withRouter(ArchiveQuestionModal));

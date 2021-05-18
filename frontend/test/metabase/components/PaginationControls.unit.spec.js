@@ -13,12 +13,12 @@ const DEFAULT_PROPS = {
 };
 
 const setup = props => {
-  const { container, getByTestId } = render(
+  const { container, queryByTestId } = render(
     <PaginationControls {...DEFAULT_PROPS} {...props} />,
   );
 
-  const previousPageButton = getByTestId("previous-page-btn");
-  const nextPageButton = getByTestId("next-page-btn");
+  const previousPageButton = queryByTestId("previous-page-btn");
+  const nextPageButton = queryByTestId("next-page-btn");
 
   return {
     container,
@@ -59,6 +59,17 @@ describe("PaginationControls", () => {
 
     expect(previousPageButton).not.toBeDisabled();
     expect(nextPageButton).toBeDisabled();
+  });
+
+  it("should return null when total is provided and it is less than page size", () => {
+    const { container } = setup({
+      total: 25,
+      pageSize: 50,
+      onNextPage: () => {},
+      onPreviousPage: () => {},
+    });
+
+    expect(container).toBeEmpty();
   });
 
   it("should call pagination callbacks when buttons clicked", () => {

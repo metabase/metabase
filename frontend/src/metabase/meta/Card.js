@@ -227,7 +227,7 @@ export function questionUrlWithParameters(
   cardIsDirty: boolean = true,
 ): DatasetQuery {
   if (!card.dataset_query) {
-    return Urls.question(card.id);
+    return Urls.question(card);
   }
 
   card = Utils.copy(card);
@@ -247,7 +247,7 @@ export function questionUrlWithParameters(
     datasetQuery.parameters &&
     datasetQuery.parameters.length === 0
   ) {
-    return Urls.question(card.id);
+    return Urls.question(card);
   }
 
   const query = {};
