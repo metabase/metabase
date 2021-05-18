@@ -472,7 +472,7 @@
                :limit       3}))))))
 
 (deftest expressions-and-coercions-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (conj (sql-jdbc.tu/sql-jdbc-drivers) :bigquery)
     (testing "Don't cast in both inner select and outer select when expression (#12430)"
       (mt/with-temp-copy-of-db
         (let [price-field-id (data/id :venues :price)]
