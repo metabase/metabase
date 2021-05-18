@@ -430,7 +430,7 @@
           ;; return temporal unit `:default` rather than the upstream bucketing unit. You can't change the `:year`
           ;; bucketing in the source query unless you change the source query, so it seems misleading to suggest that
           ;; `:year` bucketing is happening in the top-level query itself
-          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :default)
+          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
                   (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
                  (mt/cols
                   (qp/process-query (query-with-source-card card))))))))))
