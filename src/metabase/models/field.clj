@@ -94,8 +94,8 @@
   :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*))
 
 (models/add-type! ::semantic-type
-  :in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:type/*])
-  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:type/*], :fallback-type nil))
+  :in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
+  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil))
 
 (models/add-type! ::coercion-strategy
   :in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
@@ -327,9 +327,3 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
-
-(defn unix-timestamp?
-  "Is field a UNIX timestamp?"
-  [{:keys [base_type semantic_type]}]
-  (and (isa? base_type :type/Integer)
-       (isa? semantic_type :type/Temporal)))

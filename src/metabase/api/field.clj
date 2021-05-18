@@ -22,16 +22,6 @@
 
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
 
-(def ^:private FieldType
-  "Schema for a valid `Field` type."
-  (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :type/*))
-    "value must be a valid field type."))
-
-(def ^:private CoercionType
-  "Schema for a valid `Coercion` type."
-  (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :Coercion/*))
-    "value must be a valid coercion type."))
-
 (def ^:private FieldVisibilityType
   "Schema for a valid `Field` visibility type."
   (apply s/enum (map name field/visibility-types)))
@@ -105,8 +95,8 @@
    display_name       (s/maybe su/NonBlankString)
    fk_target_field_id (s/maybe su/IntGreaterThanZero)
    points_of_interest (s/maybe su/NonBlankString)
-   semantic_type      (s/maybe FieldType)
-   coercion_strategy  (s/maybe CoercionType)
+   semantic_type      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
+   coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrString)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)}

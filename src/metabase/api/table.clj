@@ -213,7 +213,6 @@
 
                                        (and min_value max_value
                                             (isa? base_type :type/Number)
-                                            (or (nil? semantic_type) (isa? semantic_type :type/Number))
                                             (supports-numeric-binning? driver))
                                        [numeric-default-index numeric-dimension-indexes]
 
