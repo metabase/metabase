@@ -56,6 +56,11 @@
   ([]
    (table nil))
   ([query-string :- (s/maybe s/Str)]
+   (table query-string nil nil nil))
+  ([query-string     :- (s/maybe s/Str)
+    collectionFilter :- (s/maybe s/Str)
+    sortColumn       :- (s/maybe s/Str)
+    sortOrder        :- (s/maybe s/Str)]
    {:metadata [[:card_id         {:display_name "Card ID",       :base_type :type/Integer, :remapped_to   :card_name}]
                [:card_name       {:display_name "Name",          :base_type :type/Name,    :remapped_from :card_id}]
                [:collection_id   {:display_name "Collection ID", :base_type :type/Integer, :remapped_to   :collection_name}]
