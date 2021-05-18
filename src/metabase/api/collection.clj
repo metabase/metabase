@@ -79,8 +79,11 @@
   "Valid values for the `?model=` param accepted by endpoints in this namespace."
   #{"card" "collection" "dashboard" "pulse" "snippet"})
 
+(def ^:private ModelString
+  (apply s/enum valid-model-param-values))
+
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional #(vector? %) [su/NonBlankString] :else su/NonBlankString))
+(def ^:private models-schema (s/conditional #(vector? %) [ModelString] :else ModelString))
 
 (def ^:private valid-pinned-state-values
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
@@ -115,8 +118,8 @@
 (defmethod fetch-collection-children :dashboard
   [_ collection {:keys [archived?]}]
   (-> (db/select [Dashboard :id :name :description :collection_position]
-    :collection_id (:id collection)
-    :archived      (boolean archived?))
+                 :collection_id (:id collection)
+                 :archived      (boolean archived?))
       (hydrate :favorite)))
 
 (defmethod fetch-collection-children :pulse
@@ -159,29 +162,30 @@
 (defn- pinned-state->pred [pinned-state]
   (case pinned-state
     :all (constantly true)
-    :is_pinned #(some? (% :collection_position))
-    :is_not_pinned #(nil? (% :collection_position))
+    :is_pinned #(some? (:collection_position %))
+    :is_not_pinned #(nil? (:collection_position %))
     (constantly true)))
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [{collection-namespace :namespace, :as collection}                :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models collections-only? pinned-state], :as options}    :- CollectionChildrenOptions]
-  (let [pinned-pred   (pinned-state->pred pinned-state)
-        item-groups   (into {}
-                            (for [model-kw [:collection :card :dashboard :pulse :snippet]
-                                  ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-                                  :when    (or (empty? models) (contains? models model-kw))
-                                  :let     [toucan-model       (model-name->toucan-model model-kw)
-                                            allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                                  :when    (or (= model-kw :collection)
-                                               (contains? allowed-namespaces (keyword collection-namespace)))]
-                              [model-kw
-                               (vec (filter pinned-pred (fetch-collection-children model-kw collection
-                                                          (assoc options :collection-namespace collection-namespace))))]))
-        last-edited   (last-edit/fetch-last-edited-info
-                        {:card-ids (->> item-groups :card (map :id))
-                         :dashboard-ids (->> item-groups :dashboard (map :id))})]
+  [{collection-namespace :namespace, :as collection}            :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [models collections-only? pinned-state], :as options} :- CollectionChildrenOptions]
+  (let [pinned-pred (pinned-state->pred pinned-state)
+        item-groups (into {}
+                          (for [model-kw [:collection :card :dashboard :pulse :snippet]
+                                ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+                                :when    (or (empty? models) (contains? models model-kw))
+                                :let     [toucan-model       (model-name->toucan-model model-kw)
+                                          allowed-namespaces (collection/allowed-namespaces toucan-model)]
+                                :when    (or (= model-kw :collection)
+                                             (contains? allowed-namespaces (keyword collection-namespace)))]
+                            [model-kw
+                             (filterv pinned-pred
+                                      (fetch-collection-children model-kw collection
+                                                                 (assoc options :collection-namespace collection-namespace)))]))
+        last-edited (last-edit/fetch-last-edited-info
+                      {:card-ids (->> item-groups :card (map :id))
+                       :dashboard-ids (->> item-groups :dashboard (map :id))})]
     (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
              (into []
                    ;; items are grouped by model, needed for last-edit lookup. put model on each one, cat them, then
@@ -207,9 +211,6 @@
   [id]
   (collection-detail (api/read-check Collection id)))
 
-(defn- coerce-vec [to-coerce]
-  (if (and (some? to-coerce) (not (vector? to-coerce))) [to-coerce] to-coerce))
-
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
@@ -227,7 +228,7 @@
    limit        (s/maybe su/IntStringGreaterThanZero)
    offset       (s/maybe su/IntStringGreaterThanOrEqualToZero)}
   (api/check-valid-page-params limit offset)
-  (let [model-kwds    (apply hash-set (map keyword (coerce-vec models)))
+  (let [model-kwds    (set (map keyword (u/one-or-many models)))
         children-res  (collection-children (api/read-check Collection id)
                                            {:models       model-kwds
                                             :archived?    (Boolean/parseBoolean archived)
@@ -280,7 +281,7 @@
   (api/check-valid-page-params limit offset)
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-kwds      (if (mi/can-read? root-collection)
-                          (apply hash-set (map keyword (coerce-vec models)))
+                          (set (map keyword (u/one-or-many models)))
                           #{:collection})
         limit-int       (some-> limit Integer/parseInt)
         offset-int      (some-> offset Integer/parseInt)
