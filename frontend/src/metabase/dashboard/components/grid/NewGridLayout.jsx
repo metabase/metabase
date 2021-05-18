@@ -22,27 +22,39 @@ function NewGridLayout({
 }) {
   const cellSize = useMemo(
     () => ({
-      width: (gridWidth + margin) / cols,
+      width: gridWidth / cols,
       height: rowHeight,
     }),
-    [cols, gridWidth, margin, rowHeight],
+    [cols, gridWidth, rowHeight],
   );
 
   const background = useMemo(() => {
     const XMLNS = "http://www.w3.org/2000/svg";
-    const fullWidth = cellSize.width * cols;
+    const rowWidth = cellSize.width * cols;
+    const rowHeight = cellSize.height + margin;
     const cellStrokeColor = color("border");
 
+    // Aligns rectangles so their borders get hidden
+    // when dashboard cards overlap them
+    // As we are offsetting the layout,
+    // we must subtract the offset value evenly from the size of each element
+    // to fit within the dimensions of the grid
+    const offset = margin;
+    const offsetFraction = offset / cols;
+
+    const actualCellWidth = Math.round(cellSize.width - margin);
+
+    const y = offset;
+    const w = actualCellWidth - offsetFraction;
+    const h = cellSize.height - offsetFraction;
+
     const rectangles = _(cols).times(i => {
-      const x = Math.round(margin / 2 + i * cellSize.width);
-      const y = margin / 2;
-      const w = Math.round(cellSize.width - margin);
-      const h = cellSize.height - margin;
+      const x = Math.round(i * (cellSize.width - offsetFraction)) + offset;
       return `<rect stroke='${cellStrokeColor}' stroke-width='1' fill='none' x='${x}' y='${y}' width='${w}' height='${h}'/>`;
     });
 
     const svg = [
-      `<svg xmlns='${XMLNS}' width='${fullWidth}' height='${cellSize.height}'>`,
+      `<svg xmlns='${XMLNS}' width='${rowWidth}' height='${rowHeight}'>`,
       ...rectangles,
       `</svg>`,
     ].join("");
@@ -76,7 +88,7 @@ function NewGridLayout({
       className={className}
       style={{
         position: "relative",
-        width: gridWidth,
+        width: cellSize.width * cols,
         minHeight: isEditing ? minEditingHeight : "auto",
         background: isEditing ? background : "",
 
@@ -88,7 +100,7 @@ function NewGridLayout({
       <ReactGridLayout
         cols={cols}
         layout={layout}
-        width={gridWidth}
+        width={cellSize.width * cols}
         margin={[margin, margin]}
         rowHeight={rowHeight}
         isDraggable={isEditing}
