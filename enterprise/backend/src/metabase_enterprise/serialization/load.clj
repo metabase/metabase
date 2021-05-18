@@ -261,7 +261,7 @@
 
 (defn- resolve-column-settings-key
   [col-key]
-  (if-let [field-name (::mb.viz/field-qualified-name col-key)]
+  (if-let [field-name (::mb.viz/field-str col-key)]
     (let [field-id ((comp :field fully-qualified-name->context) field-name)]
       (if (nil? field-id)
         {::unresolved-names {field-name [::column-settings-key]}}
@@ -347,10 +347,10 @@
 (defn- resolve-visualization-settings
   [entity]
   (if-let [viz-settings (:visualization_settings entity)]
-    (let [resolved-vs (-> (mb.viz/from-db-form viz-settings)
+    (let [resolved-vs (-> (mb.viz/db->norm viz-settings)
                           resolve-top-level-click-behavior
                           resolve-column-settings
-                          mb.viz/db-form)]
+                          mb.viz/norm->db)]
       (pull-unresolved-names-up entity [:visualization_settings] resolved-vs))
     entity))
 

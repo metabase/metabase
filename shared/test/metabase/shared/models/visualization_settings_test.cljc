@@ -2,16 +2,42 @@
   "Tests for the shared visualization-settings namespace functions"
   #?@
       (:clj
-       [(:require [clojure.test :as t]
+       [(:require [clojure.spec.test.alpha :as stest]
+                  [clojure.test :as t]
                   [clojure.walk :as walk]
                   [metabase.shared.models.visualization-settings :as mb.viz])]
        :cljs
-       [(:require [clojure.test :as t]
+       [(:require [clojure.spec.test.alpha :as stest]
+                  [clojure.test :as t]
                   [clojure.walk :as walk]
                   [goog.string :as gstring]
                   [metabase.shared.models.visualization-settings :as mb.viz])]))
 
+(def ^:private all-instrument-fns [`mb.viz/field-id->column-ref
+                                   `mb.viz/column-name->column-ref
+                                   `mb.viz/field-str->column-ref
+                                   `mb.viz/keyname
+                                   `mb.viz/parse-json-string
+                                   `mb.viz/encode-json-string
+                                   `mb.viz/parse-db-column-ref
+                                   `mb.viz/with-col-settings
+                                   `mb.viz/crossfilter-click-action
+                                   `mb.viz/url-click-action
+                                   `mb.viz/entity-click-action
+                                   `mb.viz/with-click-action
+                                   `mb.viz/with-entity-click-action
+                                   `mb.viz/fk-parameter-mapping])
+
+(defn with-spec-instrumentation-fixture
+  "`clojure.test` fixture that turns on instrumentation of all specs in the viz settings namespace, then turns it off."
+  [f]
+  (stest/instrument `all-instrument-fns)
+  (f)
+  (stest/unstrument `all-instrument-fns))
+
 (def fmt #?(:clj format :cljs gstring/format))
+
+(t/use-fixtures :once with-spec-instrumentation-fixture)
 
 (t/deftest parse-column-ref-strings-test
   (t/testing "Column ref strings are parsed correctly"
@@ -20,10 +46,10 @@
           col-nm    "Year"]
       (doseq [[input-str expected] [[(fmt "[\"ref\",[\"field\",%d,null]]" f-id) {::mb.viz/field-id f-id}]
                                     [(fmt "[\"ref\",[\"field\",\"%s\",null]]" f-qual-nm)
-                                     {::mb.viz/field-qualified-name f-qual-nm}]
+                                     {::mb.viz/field-str f-qual-nm}]
                                     [(fmt "[\"name\",\"Year\"]" col-nm)
                                      {::mb.viz/column-name col-nm}]]]
-        (t/is (= expected (mb.viz/parse-column-ref input-str)))))))
+        (t/is (= expected (mb.viz/parse-db-column-ref input-str)))))))
 
 (t/deftest form-conversion-test
   (t/testing ":visualization_settings are correctly converted from DB to qualified form and back"
@@ -35,24 +61,24 @@
                                :parameterMapping {}
                                :targetId         target-id}
           db-click-bhv-map    {:click_behavior db-click-behavior}
-          db-col-settings     {(fmt "[\"ref\",[\"field\",%d,null]]" f-id) db-click-bhv-map
-                               (fmt "[\"name\",\"%s\"]" col-name)         db-click-bhv-map}
+          db-col-settings     {(fmt "[\"ref\",[\"field\",%d,{\"base-type\":\"type/Integer\"}]]" f-id) db-click-bhv-map
+                               (fmt "[\"name\",\"%s\"]" col-name)                                     db-click-bhv-map}
           db-viz-settings     {:column_settings db-col-settings}
           norm-click-behavior {::mb.viz/click-behavior-type ::mb.viz/link
                                ::mb.viz/link-type           ::mb.viz/card
                                ::mb.viz/parameter-mapping   {}
                                ::mb.viz/link-target-id      target-id}
           norm-click-bhvr-map {::mb.viz/click-behavior norm-click-behavior}
-          norm-col-settings   {(mb.viz/column-ref-for-id f-id) norm-click-bhvr-map
-                               (mb.viz/column-ref-for-column-name col-name) norm-click-bhvr-map}
+          norm-col-settings {(mb.viz/field-id->column-ref f-id {"base-type" "type/Integer"}) norm-click-bhvr-map
+                             (mb.viz/column-name->column-ref col-name)                       norm-click-bhvr-map}
           norm-viz-settings   {::mb.viz/column-settings norm-col-settings}]
       (doseq [[db-form norm-form] [[db-viz-settings norm-viz-settings]]]
-        (let [to-norm (mb.viz/from-db-form db-form)]
+        (let [to-norm (mb.viz/db->norm db-form)]
           (t/is (= norm-form to-norm))
-          (let [to-db (mb.viz/db-form to-norm)]
+          (let [to-db (mb.viz/norm->db to-norm)]
             (t/is (= db-form to-db)))))
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
-      (t/is (= norm-click-bhvr-map (mb.viz/from-db-form db-click-bhv-map))))))
+      (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map))))))
 
 (t/deftest virtual-card-test
   (t/testing "Virtual card in visualization settings is preserved through normalization roundtrip"
@@ -70,16 +96,16 @@
                    :text        "Stuff in Textbox"}]
       ;; the current viz setting code does not interpret textbox type cards, hence this should be a passthrough
       (t/is (= db-form (-> db-form
-                           mb.viz/from-db-form
-                           mb.viz/db-form))))))
+                           mb.viz/db->norm
+                           mb.viz/norm->db))))))
 
 (t/deftest parameter-mapping-test
   (t/testing "parameterMappings are handled correctly"
     (let [from-id    101
           to-id      294
           card-id    19852
-          mapping-id (fmt "[\"dimension\",[\"fk->\",[\"field-id\",%d],[\"field-id\",%d]]]" from-id to-id)
-          norm-id    [:dimension [:fk-> [:field-id from-id] [:field-id to-id]]]
+          mapping-id (fmt "[\"dimension\",[\"fk->\",[\"field\",%d,null],[\"field\",%d,null]]]" from-id to-id)
+          norm-id    [:dimension [:fk-> [:field from-id nil] [:field to-id nil]]]
           col-key    "[\"name\",\"Some Column\"]"
           norm-key   {::mb.viz/column-name "Some Column"}
           dimension  [:dimension [:field to-id {:source-field from-id}]]
@@ -108,9 +134,9 @@
                                                                     :link-text-template  "Link Text Template"
                                                                     :link-target-id      card-id
                                                                     :parameter-mapping   norm-pm}}}}
-          vs-norm     (mb.viz/from-db-form vs-db)]
+          vs-norm     (mb.viz/db->norm vs-db)]
       (t/is (= exp-norm vs-norm))
-      (t/is (= vs-db (mb.viz/db-form vs-norm))))))
+      (t/is (= vs-db (mb.viz/norm->db vs-norm))))))
 
 (defn- all-keywords [m]
   (let [all-kws (atom #{})]
@@ -145,8 +171,8 @@
                       {:click_behavior {:type         "link",
                                         :linkType     "url",
                                         :linkTemplate "/dashboard/1?year={{column:Year}}"}}}}
-          norm-form (mb.viz/from-db-form db-form)
-          to-db     (mb.viz/db-form norm-form)]
+          norm-form (mb.viz/db->norm db-form)
+          to-db     (mb.viz/norm->db norm-form)]
       ;; make sure all keywords have the right namespace in normalized form (except the one param mapping key)
       (t/is (= [:447496ef]
                (filter #(not= (namespace %) (namespace ::mb.viz/column-settings)) (all-keywords norm-form))))

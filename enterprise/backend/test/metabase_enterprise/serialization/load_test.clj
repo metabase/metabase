@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [load])
   (:require [clojure.data :as diff]
             [clojure.java.io :as io]
-            [clojure.test :refer [deftest is testing]]
+            [clojure.test :refer [deftest is testing use-fixtures]]
             [metabase-enterprise.serialization.cmd :refer [dump load]]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
@@ -14,13 +14,16 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.shared.models.visualization-settings :as mb.viz]
+            [metabase.shared.models.visualization-settings-test :as mb.viz-test]
             [metabase.shared.util.log :as log]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util.i18n :refer [deferred-trs trs]])
   (:import org.apache.commons.io.FileUtils))
 
-(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
+(use-fixtures :once
+              mb.viz-test/with-spec-instrumentation-fixture
+              (fixtures/initialize :test-users-personal-collections))
 
 (defn- delete-directory!
   [file-or-filename]
@@ -151,7 +154,7 @@
     (let [mapping-key     (-> param-mapping
                               keys
                               first)
-          mapping-keyname (mb.viz/keyname mapping-key)
+          mapping-keyname (#'mb.viz/keyname mapping-key)
           [_ f1-id f2-id] (re-matches #".*\[\"field(?:-id)?\",(\d+),.*\[\"field(?:-id)?\",(\d+),.*" mapping-keyname)
           f1              (db/select-one Field :id (Integer/parseInt f1-id))
           f2              (db/select-one Field :id (Integer/parseInt f2-id))
@@ -188,7 +191,7 @@
               (testing "Column level click actions were preserved for dashboard card"
                 (let [viz-settings   (:visualization_settings dashcard)
                       check-click-fn (fn [[col-key col-value]]
-                                       (let [col-ref   (mb.viz/parse-column-ref col-key)
+                                       (let [col-ref   (mb.viz/parse-db-column-ref col-key)
                                              {:keys [::mb.viz/field-id ::mb.viz/column-name]} col-ref
                                              click-bhv (get col-value :click_behavior)
                                              target-id (get click-bhv :targetId)]

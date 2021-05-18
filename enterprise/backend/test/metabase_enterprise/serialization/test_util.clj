@@ -191,12 +191,12 @@
                                                                       ::mb.viz/dashboard
                                                                       ~'root-dashboard-id)
                                                                      (mb.viz/with-click-action
-                                                                      (mb.viz/column-ref-for-column-name "Price Known")
+                                                                      (mb.viz/column-name->column-ref "Price Known")
                                                                       (mb.viz/url-click-action "/price-info"))
                                                                      (mb.viz/with-click-action
-                                                                      (mb.viz/column-ref-for-id ~'latitude-field-id)
+                                                                      (mb.viz/field-id->column-ref ~'latitude-field-id)
                                                                       (mb.viz/crossfilter-click-action {}))
-                                                                     mb.viz/db-form)}]
+                                                                     mb.viz/norm->db)}]
                    DashboardCardSeries [~'_ {:dashboardcard_id   ~'dashcard-with-click-actions
                                              :card_id            ~'card-id-root
                                              :position           2}]

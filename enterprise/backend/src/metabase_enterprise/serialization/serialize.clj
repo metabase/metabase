@@ -133,7 +133,7 @@
   (if-let [field-id (::mb.viz/field-id k)]
     (-> (db/select-one Field :id field-id)
         fully-qualified-name
-        mb.viz/column-ref-for-qualified-name)
+        mb.viz/field-str->column-ref)
     k))
 
 (defn- convert-param-mapping-key
@@ -178,11 +178,11 @@
   (assoc acc (convert-column-settings-key k) (convert-column-settings-value v)))
 
 (defn- convert-viz-settings [viz-settings]
-  (-> (mb.viz/from-db-form viz-settings)
+  (-> (mb.viz/db->norm viz-settings)
       (m/update-existing ::mb.viz/column-settings (fn [col-settings]
                                                     (reduce-kv convert-column-settings {} col-settings)))
       (m/update-existing ::mb.viz/click-behavior convert-click-behavior)
-      mb.viz/db-form))
+      mb.viz/norm->db))
 
 (defn- dashboard-cards-for-dashboard
   [dashboard]
