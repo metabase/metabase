@@ -199,7 +199,7 @@ describe("scenarios > admin > people", () => {
     });
 
     describe("pagination", () => {
-      const NEW_USERS = 8;
+      const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
 
       beforeEach(() => {
@@ -207,7 +207,7 @@ describe("scenarios > admin > people", () => {
       });
 
       it("should allow paginating people forward and backward", () => {
-        const PAGE_SIZE = 10;
+        const PAGE_SIZE = 25;
 
         cy.visit("/admin/people");
 
@@ -234,7 +234,7 @@ describe("scenarios > admin > people", () => {
       });
 
       it("should allow paginating group members forward and backward", () => {
-        const PAGE_SIZE = 15;
+        const PAGE_SIZE = 25;
         cy.visit("admin/people/groups/1");
 
         // Total
