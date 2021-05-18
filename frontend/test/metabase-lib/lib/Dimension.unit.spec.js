@@ -266,7 +266,7 @@ describe("Dimension", () => {
 
   // TODO -- there are some tests against fields that can be binned above -- we should merge them in with these ones
   describe("Numeric Field that can be binned", () => {
-    const mbql = ["field", ORDERS.TOTAL.id, null];
+    const mbql = ["field", ORDERS.TOTAL.id, { "base-type": "type/Float" }];
     const dimension = Dimension.parseMBQL(mbql, metadata);
 
     describe("INSTANCE METHODS", () => {
@@ -284,6 +284,7 @@ describe("Dimension", () => {
             "field",
             ORDERS.TOTAL.id,
             {
+              "base-type": "type/Float",
               binning: {
                 strategy: "default",
               },
