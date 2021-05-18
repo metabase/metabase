@@ -142,7 +142,6 @@
 (derive :Semantic/Country :type/Text)
 
 (derive :Semantic/ZipCode :Semantic/Address)
-;;  ZIP code might be stored as text, or maybe as an integer.
 (derive :Semantic/ZipCode :type/Text)
 (derive :Semantic/ZipCode :type/Integer)
 
@@ -239,11 +238,11 @@
 ;;; filter options like starts with / contains
 
 (derive :type/TextLike :type/*)
-(derive :type/IPAddress :type/TextLike)
 (derive :type/MongoBSONID :type/TextLike)
 
 ;; data type `:type/IPAddress` = something like a Postgres `inet` column.
 ;; semantic type `:Semantic/IPAddress` = a text or `inet` column that should be displayed as an IP address
+(derive :type/IPAddress :type/TextLike)
 (derive :Semantic/IPAddress :Semantic/*)
 (derive :Semantic/IPAddress :type/Text)
 (derive :Semantic/IPAddress :type/IPAddress)
@@ -386,5 +385,5 @@
      "A map of Type name (as string, without `:type/` namespace) -> qualified type name as string
 
          {\"Temporal\" \"type/Temporal\", ...}"
-     (clj->js (into {} (for [tyype (descendants :type/*)]
+     (clj->js (into {} (for [tyype (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*]))]
                          [(name tyype) (shared.u/qualified-name tyype)])))))

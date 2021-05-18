@@ -241,7 +241,7 @@
               :field_ref       [:expression "double-price"]}
              (mt/$ids venues
                (#'annotate/col-info-for-field-clause
-                   {:expressions {"double-price" [:* $price 2]}}
+                {:expressions {"double-price" [:* $price 2]}}
                 [:expression "double-price"])))))
 
     (testing "if there is no matching expression it should give a meaningful error message"

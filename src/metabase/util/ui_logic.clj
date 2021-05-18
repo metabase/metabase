@@ -8,10 +8,11 @@
   (not= :aggregation (:source col)))
 
 (defn- summable-column?
-  "A summable column is any numeric column that isn't a semantic type like an FK or PK. It also excludes unix
-  timestamps that are numbers, but with a semantic type of DateTime"
-  [{base-type :base_type, semantic-type :semantic_type}]
+  "A summable column is any numeric column that isn't a relation type like an FK or PK. It also excludes unix
+  timestamps that are numbers, but with an effective type of `Temporal`."
+  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type}]
   (and (isa? base-type :type/Number)
+       (not (isa? effective-type :type/Temporal))
        (not (isa? semantic-type :Relation/*))))
 
 (defn- metric-column?

@@ -110,7 +110,7 @@
             (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
                                (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
               ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-              (binding [metabase.sync.util/*log-execptions-and-continue?* false]
+              (binding [metabase.sync.util/*log-exceptions-and-continue?* false]
                 (sync/sync-database! db (when quick-sync? {:scan :schema})))
               ;; add extra metadata for fields
               (try
@@ -120,7 +120,7 @@
         ;; make sure we're returing an up-to-date copy of the DB
         (Database (u/the-id db))
         (catch Throwable e
-          (let [e (ex-info "Failed to create test database"
+          (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
                            {:driver             driver
                             :database-name      database-name
                             :connection-details connection-details}
@@ -129,7 +129,7 @@
             (db/delete! Database :id (u/the-id db))
             (throw e)))))
     (catch Throwable e
-      (let [message (format "Failed to create %s '%s' test database" driver database-name)]
+      (let [message (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))]
         (println message "\n" e)
         (if config/is-test?
           (System/exit -1)

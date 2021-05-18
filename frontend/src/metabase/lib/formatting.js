@@ -38,7 +38,10 @@ import {
   getTimeFormatFromStyle,
   hasHour,
 } from "metabase/lib/formatting/date";
-import { renderLinkTextForClick } from "metabase/lib/formatting/link";
+import {
+  renderLinkTextForClick,
+  renderLinkURLForClick,
+} from "metabase/lib/formatting/link";
 import { NULL_NUMERIC_VALUE, NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 
 import type Field from "metabase-lib/lib/metadata/Field";
@@ -547,9 +550,14 @@ const EMAIL_ALLOW_LIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`
 
 export function formatEmail(
   value: Value,
-  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text, clicked }: FormattingOptions = {},
 ) {
   const email = String(value);
+  const label =
+    clicked && link_text
+      ? renderLinkTextForClick(link_text, getDataFromClicked(clicked))
+      : null;
+
   if (
     jsx &&
     rich &&
@@ -557,7 +565,7 @@ export function formatEmail(
     EMAIL_ALLOW_LIST_REGEX.test(email)
   ) {
     return (
-      <ExternalLink href={"mailto:" + email}>{link_text || email}</ExternalLink>
+      <ExternalLink href={"mailto:" + email}>{label || email}</ExternalLink>
     );
   } else {
     return email;
@@ -585,35 +593,69 @@ function isDefaultLinkProtocol(protocol) {
   );
 }
 
-export function formatUrl(value: Value, options: FormattingOptions = {}) {
-  const { jsx, rich, view_as, column, link_text } = options;
-  const url = value;
+function getLinkUrl(value, { view_as, link_url, clicked, column }) {
+  const isExplicitLink = view_as === "link";
+  const hasCustomizedUrl = link_url && clicked;
 
-  const protocol = getUrlProtocol(url);
-  if (
-    jsx &&
-    rich &&
-    protocol &&
-    isSafeProtocol(protocol) &&
-    (view_as === undefined
-      ? isURL(column) || isDefaultLinkProtocol(protocol)
-      : view_as === "link"
-      ? true
-      : view_as === "auto"
-      ? isDefaultLinkProtocol(protocol)
-      : false)
-  ) {
-    const urlText =
-      link_text ||
-      getRemappedValue(value, options) ||
-      formatValue(value, { ...options, view_as: null });
+  if (isExplicitLink && hasCustomizedUrl) {
+    return renderLinkURLForClick(link_url, getDataFromClicked(clicked));
+  }
+
+  const protocol = getUrlProtocol(value);
+  const isValueSafeLink = protocol && isSafeProtocol(protocol);
+
+  if (!isValueSafeLink) {
+    return null;
+  }
+
+  if (isExplicitLink) {
+    return value;
+  }
+
+  const isDefaultProtocol = protocol && isDefaultLinkProtocol(protocol);
+  const isMaybeLink = view_as === "auto";
+
+  if (isMaybeLink && isDefaultProtocol) {
+    return value;
+  }
+
+  if (view_as === undefined && (isURL(column) || isDefaultProtocol)) {
+    return value;
+  }
+
+  return null;
+}
+
+function getLinkText(value, options) {
+  const { view_as, link_text, clicked } = options;
+
+  const isExplicitLink = view_as === "link";
+  const hasCustomizedText = link_text && clicked;
+
+  if (isExplicitLink && hasCustomizedText) {
+    return renderLinkTextForClick(link_text, getDataFromClicked(clicked));
+  }
+
+  return (
+    getRemappedValue(value, options) ||
+    formatValue(value, { ...options, view_as: null })
+  );
+}
+
+export function formatUrl(value, options = {}) {
+  const { jsx, rich } = options;
+
+  const url = getLinkUrl(value, options);
+
+  if (jsx && rich && url) {
+    const text = getLinkText(value, options);
     return (
       <ExternalLink className="link link--wrappable" href={url}>
-        {urlText}
+        {text}
       </ExternalLink>
     );
   } else {
-    return url;
+    return value;
   }
 }
 

@@ -194,7 +194,7 @@ class Overworld extends React.Component {
                       >
                         <Link
                           data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${pin.model}`}
-                          to={Urls.dashboard(pin.id)}
+                          to={Urls.dashboard(pin)}
                           hover={{ color: color("brand") }}
                         >
                           <Card hoverable p={3}>
@@ -317,7 +317,7 @@ class Overworld extends React.Component {
                       {databases.map(database => (
                         <GridItem w={[1, 1 / 3]} key={database.id}>
                           <Link
-                            to={`browse/${database.id}`}
+                            to={Urls.browseDatabase(database)}
                             hover={{ color: color("brand") }}
                             data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${database.engine}`}
                           >
@@ -387,7 +387,10 @@ export class AdminPinMessage extends React.Component {
     }
 
     const link = (
-      <Link className="link" to={Urls.collection()}>{t`Our analytics`}</Link>
+      <Link
+        className="link"
+        to={Urls.collection({ id: "root" })}
+      >{t`Our analytics`}</Link>
     );
 
     return (

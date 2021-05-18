@@ -26,10 +26,10 @@ describe("scenarios > question > trendline", () => {
     cy.findByText("by month").click();
     cy.findByText("Year").click();
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
 
     // Check graph is there
-    cy.findByText("Visualize").should("not.exist");
+    cy.button("Visualize").should("not.exist");
     cy.findByText("Visualization");
     cy.get("rect");
 

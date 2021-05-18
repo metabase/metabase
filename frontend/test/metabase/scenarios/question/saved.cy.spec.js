@@ -38,7 +38,7 @@ describe("scenarios > question > saved", () => {
 
     modal().within(() => {
       cy.findByText("Save question");
-      cy.findByRole("button", { name: /save/i }).as("saveButton");
+      cy.button("Save").as("saveButton");
       cy.get("@saveButton").should("not.be.disabled");
 
       cy.log(
