@@ -22,7 +22,7 @@ There are some kinds of saved questions that can't be used as source data:
 - Google Analytics questions
 - Mongo questions
 - questions that use `Cumulative Sum` or `Cumulative Count` aggregations
-- questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
+- questions that have columns which names end with `_2` (etc.)
 
 #### Filtering
 
