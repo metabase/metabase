@@ -218,23 +218,16 @@
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
-                   when `all`, return everything.
-  *  `limit` - limit for pagination.
-  *  `offset` - offset for pagination."
-  [id models archived pinned_state limit offset]
+                   when `all`, return everything."
+  [id models archived pinned_state]
   {models       (s/maybe models-schema)
    archived     (s/maybe su/BooleanString)
-   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))
-   limit        (s/maybe su/IntStringGreaterThanZero)
-   offset       (s/maybe su/IntStringGreaterThanOrEqualToZero)}
-  (api/check-valid-page-params limit offset)
+   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))}
   (let [model-kwds    (set (map keyword (u/one-or-many models)))
         children-res  (collection-children (api/read-check Collection id)
                                            {:models       model-kwds
                                             :archived?    (Boolean/parseBoolean archived)
-                                            :pinned-state (keyword pinned_state)})
-        limit-int     (some-> limit Integer/parseInt)
-        offset-int    (some-> offset Integer/parseInt) ]
+                                            :pinned-state (keyword pinned_state)})]
     {:data   (cond->> (vec children-res)
                (some? offset-int) (drop offset-int)
                (some? limit-int)  (take limit-int))
@@ -269,22 +262,17 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models archived namespace pinned_state limit offset]
+  [models archived namespace pinned_state]
   {models       (s/maybe models-schema)
    archived     (s/maybe su/BooleanString)
    namespace    (s/maybe su/NonBlankString)
-   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))
-   limit        (s/maybe su/IntStringGreaterThanZero)
-   offset       (s/maybe su/IntStringGreaterThanOrEqualToZero)}
+   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (api/check-valid-page-params limit offset)
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-kwds      (if (mi/can-read? root-collection)
                           (set (map keyword (u/one-or-many models)))
                           #{:collection})
-        limit-int       (some-> limit Integer/parseInt)
-        offset-int      (some-> offset Integer/parseInt)
         col-children    (collection-children
                           root-collection
                           {:models         model-kwds
