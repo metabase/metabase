@@ -54,13 +54,13 @@
 (s/defn ^:internal-query-fn table
   "A list of all questions."
   ([]
-   (table nil))
+   (table nil nil nil nil))
   ([query-string :- (s/maybe s/Str)]
    (table query-string nil nil nil))
   ([query-string     :- (s/maybe s/Str)
     collectionFilter :- (s/maybe s/Str)
     sortColumn       :- (s/maybe s/Str)
-    sortOrder        :- (s/maybe s/Str)]
+    sortOrder        :- (s/maybe (s/enum ["asc" "desc"]))]
    {:metadata [[:card_id         {:display_name "Card ID",       :base_type :type/Integer, :remapped_to   :card_name}]
                [:card_name       {:display_name "Name",          :base_type :type/Name,    :remapped_from :card_id}]
                [:collection_id   {:display_name "Collection ID", :base_type :type/Integer, :remapped_to   :collection_name}]
@@ -73,7 +73,12 @@
                [:user_name       {:display_name "Created By",    :base_type :type/Text,    :remapped_from :user_id}]
                [:public_link     {:display_name "Public Link",   :base_type :type/URL}]
                [:cache_ttl       {:display_name "Cache TTL",     :base_type :type/Number}]
-               [:total_views     {:display_name "Views",         :base_type :type/Integer}]]
+               [:total_views     {:display_name "Views",         :base_type :type/Integer}]
+               ;;;;;;;;;;;;;; gotta be adding some shit here
+               ;;;;;;;;;;;;;; gotta be adding some shit here
+               ;;;;;;;;;;;;;; gotta be adding some shit here
+               ;;;;;;;;;;;;;; gotta be adding some shit here
+               ]
     :results  (common/reducible-query
                 (->
                  {:with      [cards/avg-exec-time
