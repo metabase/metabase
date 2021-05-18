@@ -144,12 +144,11 @@
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:id :name :collection_position ["snippet" :model]]
+  {:select [:id :name ["snippet" :model]]
        :from   [[NativeQuerySnippet :nqs]]
        :where  [:and
                 [:= :collection_id (:id collection)]
-                [:= :archived (boolean archived?)]]}
-      (h/merge-where (pinned-state->clause pinned-state))))
+                [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
