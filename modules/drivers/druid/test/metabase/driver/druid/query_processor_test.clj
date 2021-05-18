@@ -671,3 +671,13 @@
                    :filter      [:and
                                  [:= $venue_category_name "Mexican"]
                                  [:= !month.timestamp "2015-09"]]}))))))))
+
+(deftest open-ended-temporal-filter-test
+  (mt/test-driver :druid
+    (testing "Should be able to filter by an open-ended absolute temporal moment (#15902)"
+      (tqpt/with-flattened-dbdef
+        (is (= [58]
+               (mt/first-row
+                (mt/run-mbql-query checkins
+                  {:aggregation [[:count]]
+                   :filter      [:> $timestamp "2015-10-01T00:00:00Z"]}))))))))

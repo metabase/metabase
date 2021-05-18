@@ -224,7 +224,7 @@
 
 (def Map
   "Schema for a valid map."
-  (with-api-error-message (s/pred map? (deferred-tru "Valid map"))
+  (with-api-error-message (s/named clojure.lang.IPersistentMap (deferred-tru "Valid map"))
     (deferred-tru "value must be a map.")))
 
 (def Email
