@@ -5,6 +5,7 @@
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`)."
   (:require [compojure.core :refer [GET POST PUT]]
+            [honeysql.helpers :as h]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
             [metabase.models.card :refer [Card]]
@@ -18,6 +19,7 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.revision.last-edit :as last-edit]
+            [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -106,12 +108,15 @@
   {:arglists '([model collection options])}
   (fn [model _ _] (keyword model)))
 
-(defn- pinned-state->clause [pinned-state]
-  (case pinned-state
-    :all [:= 1 1]
-    :is_pinned [:<> :collection_position nil]
-    :is_not_pinned [:= :collection_position nil]
-    [:= 1 1]))
+(defn- pinned-state->clause
+  ([pinned-state]
+   (pinned-state->clause pinned-state :collection_position))
+  ([pinned-state colkey]
+   (case pinned-state
+     :all [:= 1 1]
+     :is_pinned [:<> colkey nil]
+     :is_not_pinned [:= colkey nil]
+     [:= 1 1])))
 
 (defmulti ^:private post-process-collection-children
   {:arglists '([model rows])}
@@ -124,19 +129,18 @@
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]
-  (->
-    {:select    [:id :name :collection_position]
-     :modifiers [:distinct]
-     :from      [[Pulse :p]]
-     :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
-     :where     [:and
-                 [:= :collection_id      (:id collection)]
-                 [:= :archived           (boolean archived?)]
-                 ;; exclude alerts
-                 [:= :alert_condition    nil]
-                 ;; exclude dashboard subscriptions
-                 [:= :dashboard_card_id nil]]}
-    (merge-where (pinned-state->clause pinned-state))))
+  (-> {:select    [:p.id :p.name :p.collection_position]
+       :modifiers [:distinct]
+       :from      [[Pulse :p]]
+       :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
+       :where     [:and
+                   [:= :p.collection_id      (:id collection)]
+                   [:= :p.archived           (boolean archived?)]
+                   ;; exclude alerts
+                   [:= :p.alert_condition    nil]
+                   ;; exclude dashboard subscriptions
+                   [:= :p.dashboard_card_id nil]]}
+      (h/merge-where (pinned-state->clause pinned-state :p.collection_position))))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived? pinned-state]}]
@@ -145,7 +149,7 @@
        :where  [:and
                 [:= :collection_id (:id collection)]
                 [:= :archived (boolean archived?)]]}
-      (merge-where (pinned-state->clause pinned-state))))
+      (h/merge-where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
@@ -154,7 +158,7 @@
        :where  [:and
                 [:= :collection_id (:id collection)]
                 [:= :archived (boolean archived?)]]}
-      (merge-where (pinned-state->clause pinned-state))))
+      (h/merge-where (pinned-state->clause pinned-state))))
 
 (defmethod post-process-collection-children :card
   [_ rows]
@@ -168,7 +172,7 @@
        :where  [:and
                 [:= :collection_id (:id collection)]
                 [:= :archived (boolean archived?)]]}
-      (merge-where (pinned-state->clause pinned-state))))
+      (h/merge-where (pinned-state->clause pinned-state))))
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
@@ -208,8 +212,8 @@
         rows-query  {:select   [:*]
                      :from     [[{:union-all queries} :source]]
                      :order-by [[:%lower.name :asc]]
-                     :limit    paging/*limit*
-                     :offset   paging/*offset*}]
+                     :limit    offset-paging/*limit*
+                     :offset   offset-paging/*offset*}]
     {:total  (-> (db/query total-query) first :count)
      :rows   (-> (db/query rows-query) post-process-rows)
      :limit  offset-paging/*limit*
@@ -220,14 +224,14 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection}            :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models collections-only? pinned-state], :as options} :- CollectionChildrenOptions]
-  (let [ valid-models (for [model-kw [:collection :card :dashboard :pulse :snippet]
-                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
-                            :when    (or (empty? models) (contains? models model-kw))
-                            :let     [toucan-model       (model-name->toucan-model model-kw)
-                                      allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                            :when    (or (= model-kw :collection)
-                                         (contains? allowed-namespaces (keyword collection-namespace)))]
-                        model-kw)]
+  (let [valid-models (for [model-kw [:collection :card :dashboard :pulse :snippet]
+                           ;; only fetch models that are specified by the `model` param; or everything if it's empty
+                           :when    (or (empty? models) (contains? models model-kw))
+                           :let     [toucan-model       (model-name->toucan-model model-kw)
+                                     allowed-namespaces (collection/allowed-namespaces toucan-model)]
+                           :when    (or (= model-kw :collection)
+                                        (contains? allowed-namespaces (keyword collection-namespace)))]
+                       model-kw)]
     (collection-children* collection valid-models options)))
 
 (s/defn ^:private collection-detail
