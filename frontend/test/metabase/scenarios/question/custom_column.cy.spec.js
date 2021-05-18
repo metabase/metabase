@@ -500,8 +500,7 @@ describe("scenarios > question > custom columns", () => {
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Custom column").click();
 
-      cy.get("[contenteditable='true']")
-          .as("formula")
+      cy.get("[contenteditable='true']").as("formula");
 
       popover().within(() => {
         _typeUsingGet("[contenteditable='true']", "1 + 1", 400);

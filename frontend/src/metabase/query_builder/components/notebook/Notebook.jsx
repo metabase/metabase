@@ -9,7 +9,7 @@ import Button from "metabase/components/Button";
 
 import NotebookSteps from "./NotebookSteps";
 
-const getCleanQuestion = (question) => {
+const getCleanQuestion = question => {
   const cleanQuery = question.query().clean();
 
   let cleanQuestion = question.setQuery(cleanQuery);
@@ -18,7 +18,7 @@ const getCleanQuestion = (question) => {
   }
 
   return cleanQuestion;
-}
+};
 
 export default function Notebook({ className, ...props }) {
   const {
@@ -40,18 +40,13 @@ export default function Notebook({ className, ...props }) {
     if (isResultDirty) {
       await runQuestionQuery();
     }
-  }
+  };
 
   return (
     <Box className={cx(className, "relative mb4")} px={[2, 3]}>
       <NotebookSteps {...props} />
       {isRunnable && (
-        <Button
-          medium
-          primary
-          style={{ minWidth: 220 }}
-          onClick={handleClick}
-        >
+        <Button medium primary style={{ minWidth: 220 }} onClick={handleClick}>
           {t`Visualize`}
         </Button>
       )}
@@ -66,4 +61,4 @@ Notebook.propTypes = {
   isResultDirty: PropTypes.bool.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
-}
+};
