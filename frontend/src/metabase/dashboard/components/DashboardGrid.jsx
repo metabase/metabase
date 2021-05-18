@@ -351,7 +351,7 @@ export default class DashboardGrid extends Component {
         cols={GRID_WIDTH}
         width={width}
         margin={GRID_MARGIN}
-        containerPadding={[0, GRID_MARGIN]}
+        containerPadding={[0, 0]}
         rowHeight={rowHeight}
         onLayoutChange={this.onLayoutChange}
         onDrag={this.onDrag}
