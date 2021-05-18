@@ -426,10 +426,11 @@
                                                  :data :cols)]
                                      (-> (into {} col)
                                          (assoc :source :fields)))]
-          ;; since the bucketing is happening in the source query rather than at this level, the field ref/unit should
-          ;; return temporal unit `:default` rather than the upstream bucketing unit. You can't change the `:year`
-          ;; bucketing in the source query unless you change the source query, so it seems misleading to suggest that
-          ;; `:year` bucketing is happening in the top-level query itself
+          ;; since the bucketing is happening in the source query rather than at this level, the field ref should
+          ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
+          ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
+          ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
+          ;; display values of the column.
           (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
                   (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
                  (mt/cols
