@@ -255,7 +255,10 @@
                                :redshift  ; bare table name doesn't work; it's test_data_venues instead of venues
                                :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
-                               :vertica)) ; bare table name doesn't work; it's test_data_venues instead of venues
+                               :vertica   ; bare table name doesn't work; it's test_data_venues instead of venues
+                               :sqlite    ; foreign-keys is not supported by this driver
+                               :sparksql))  ; foreign-keys is not supported by this driver
+
       (let [fingerprint (ts/with-world
                           (dump dump-dir (:email (test-users/fetch-user :crowberto)) {:only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id

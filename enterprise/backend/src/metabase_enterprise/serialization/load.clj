@@ -59,17 +59,24 @@
         :when (.isDirectory file)]
     (.getPath file)))
 
-(defn- mbql-fully-qualified-names->ids
+(defn- source-table
+  [source-table]
+  (let [{:keys [card table]} (fully-qualified-name->context source-table)]
+    (if card
+      (str "card__" card)
+      table)))
+
+(defn- mbql-fully-qualified-names->ids*
   [entity]
-  (mbql.util/replace (mbql.normalize/normalize-tokens entity)
+  (mbql.util/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
     [:field-id (fully-qualified-name :guard string?)]
-    (mbql-fully-qualified-names->ids [:field fully-qualified-name nil])
+    (mbql-fully-qualified-names->ids* [:field fully-qualified-name nil])
 
     [:field (fully-qualified-name :guard names/fully-qualified-field-name?) opts]
-    [:field (:field (fully-qualified-name->context fully-qualified-name)) (mbql-fully-qualified-names->ids opts)]
+    [:field (:field (fully-qualified-name->context fully-qualified-name)) (mbql-fully-qualified-names->ids* opts)]
 
     ;; source-field is also used within parameter mapping dimensions
     ;; example relevant clause - [:field 2 {:source-field 1}]
@@ -80,7 +87,19 @@
     [:metric (:metric (fully-qualified-name->context fully-qualified-name))]
 
     [:segment (fully-qualified-name :guard string?)]
-    [:segment (:segment (fully-qualified-name->context fully-qualified-name))]))
+    [:segment (:segment (fully-qualified-name->context fully-qualified-name))]
+
+    (_ :guard (every-pred map? #(names/fully-qualified-table-name? (:source-table %))))
+    (assoc
+     ;; process other keys
+     (mbql-fully-qualified-names->ids* (dissoc &match :source-table))
+      ;; but associate :source-table to the resolved ID
+     :source-table
+     (source-table (:source-table &match)))))
+
+(defn- mbql-fully-qualified-names->ids
+  [entity]
+  (mbql-fully-qualified-names->ids* (mbql.normalize/normalize-tokens entity)))
 
 (def ^:private default-user (delay
                              (let [user (db/select-one-id User :is_superuser true)]
@@ -459,17 +478,10 @@
   (binding [names/*suppress-log-name-lookup-exception* true]
     (load-pulses (slurp-dir path) context)))
 
-(defn- source-table
-  [source-table]
-  (let [{:keys [card table]} (fully-qualified-name->context source-table)]
-    (if card
-      (str "card__" card)
-      table)))
-
 (defn- fully-qualified-name->id-rec [query]
   (cond
-    (:source-table query) (update-in-capture-missing query [:source-table] source-table)
-    (:source-query query) (update-in query [:source-query] fully-qualified-name->id-rec)
+    (string? (:source-table query)) (update-in-capture-missing query [:source-table] source-table)
+    (:source-query query) (update-in-capture-missing query [:source-query] fully-qualified-name->id-rec)
     :default query))
 
 (defn- source-card

@@ -246,6 +246,15 @@
        (str/starts-with? field-name "/databases/")
        (or (str/includes? field-name "/fks/") (str/includes? field-name "/fields/"))))
 
+(defn fully-qualified-table-name?
+  "Returns true if the given `table-name` is a fully-qualified table name for serialization purposes (as opposed to a
+  reference to a card)."
+  [table-name]
+  (and (some? table-name)
+       (string? table-name)
+       (str/starts-with? table-name "/databases/")
+       (not (str/starts-with? table-name "card__"))))
+
 ;; WARNING: THIS MUST APPEAR AFTER ALL path->context* IMPLEMENTATIONS
 (def ^:private all-entities (-> path->context*
                                 methods

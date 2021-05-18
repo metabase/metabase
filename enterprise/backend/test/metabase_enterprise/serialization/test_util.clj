@@ -98,7 +98,15 @@
                                                 :query {:source-table ~'table-id
                                                         :filter [:= [:field ~'category-field-id nil] 2]
                                                         :aggregation [:sum [:field-id ~'numeric-field-id]]
-                                                        :breakout [[:field-id ~'category-field-id]]}}}]
+                                                        :breakout [[:field-id ~'category-field-id]]
+                                                        :joins [{:source-table ~'table-id-categories
+                                                                 :alias "cat"
+                                                                 :fields    "all"
+                                                                 :condition [:=
+                                                                             [:field ~'category-field-id nil]
+                                                                             [:field
+                                                                              ~'category-pk-field-id
+                                                                              {:join-alias "cat"}]]}]}}}]
                    Card       [{~'card-arch-id :id}
                                {;:archived true
                                 :table_id ~'table-id
