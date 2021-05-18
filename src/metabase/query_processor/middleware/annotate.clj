@@ -177,10 +177,6 @@
                (join-with-alias inner-query (:join-alias opts)))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
-    ;;
-    ;; If temporal bucketing is applied to a Field in a source query, you should not re-bucket it when you refer to it
-    ;; outside that source query; hence we remove the `temporal-unit` below. However you should keep the bucketing
-    ;; unit to refer to the Field *WITHIN* the source query, e.g. to add a sort on that column.
     (cond-> {:field_ref clause}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
@@ -461,13 +457,24 @@
 
 (declare mbql-cols)
 
+(s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
+  [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
+  (merge
+   source-metadata-col
+   col
+   ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
+   ;; frontend will display the results correctly if bucketing was applied in the nested query, e.g. it will format
+   ;; temporal values in results using that unit
+   (when (= (:unit col) :default)
+     (select-keys source-metadata-col [:unit]))))
+
 (defn- maybe-merge-source-metadata
   "Merge information from `source-metadata` into the returned `cols` for queries that return the columns of a source
   query as-is (i.e., the parent query does not have breakouts, aggregations, or an explicit`:fields` clause --
   excluding the one added automatically by `add-source-metadata`)."
   [source-metadata cols]
   (if (= (count cols) (count source-metadata))
-    (map merge source-metadata cols)
+    (map merge-source-metadata-col source-metadata cols)
     cols))
 
 (defn- flow-field-metadata
@@ -476,7 +483,7 @@
   (let [field-id->metadata (u/key-by :id source-metadata)]
     (for [col cols]
       (if-let [source-metadata-for-field (-> col :id field-id->metadata)]
-        (merge source-metadata-for-field col)
+        (merge-source-metadata-col source-metadata-for-field col)
         col))))
 
 (defn- cols-for-source-query
