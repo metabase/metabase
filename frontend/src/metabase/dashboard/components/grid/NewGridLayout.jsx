@@ -91,10 +91,6 @@ function NewGridLayout({
         width: cellSize.width * cols,
         minHeight: isEditing ? minEditingHeight : "auto",
         background: isEditing ? background : "",
-
-        // subtract half of a margin to ensure it lines up with the edges
-        marginLeft: -margin / 2,
-        marginRight: -margin / 2,
       }}
     >
       <ReactGridLayout
