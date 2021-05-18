@@ -1466,9 +1466,9 @@
             "e" 2
             "f" 3}
            (merge (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
-                                                        :model "card" :archived "false")))
+                                                               :model "card" :archived "false")))
                   (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
-                                                        :model "card" :archived "false"))))))))
+                                                               :model "card" :archived "false"))))))))
 
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
   (mt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
@@ -1484,9 +1484,9 @@
             "b" 1
             "c" 2}
            (merge (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
-                                                        :model "card" :archived "false")))
+                                                               :model "card" :archived "false")))
                   (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
-                                                        :model "card" :archived "false"))))))))
+                                                               :model "card" :archived "false"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
