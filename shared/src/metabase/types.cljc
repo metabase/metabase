@@ -237,25 +237,6 @@
   [{base-type :base_type, effective-type :effective_type}]
   (some #(isa? % :type/Temporal) [base-type effective-type]))
 
-(def ^:private coercions
-  "A map from types to maps of conversions to resulting effective types:
-
-  eg:
-  {:type/Text   {:Coercion/ISO8601->Date     :type/Date
-                 :Coercion/ISO8601->DateTime :type/DateTime
-                 :Coercion/ISO8601->Time     :type/Time}}"
-  ;; Decimal seems out of place but that's the type that oracle uses Number which we map to Decimal. Not sure if
-  ;; that's an intentional mapping or not. But it does mean that lots of extra columns will be offered a conversion
-  ;; (think Price being offerred to be interpreted as a date)
-  (let [numeric-types [:type/BigInteger :type/Integer :type/Decimal]]
-    (reduce #(assoc %1 %2 {:Coercion/UNIXMicroSeconds->DateTime :type/Instant
-                           :Coercion/UNIXMilliSeconds->DateTime :type/Instant
-                           :Coercion/UNIXSeconds->DateTime      :type/Instant})
-            {:type/Text   {:Coercion/ISO8601->Date     :type/Date
-                           :Coercion/ISO8601->DateTime :type/DateTime
-                           :Coercion/ISO8601->Time     :type/Time}}
-            numeric-types)))
-
 #?(:cljs
    (defn ^:export isa
      "Is `x` the same as, or a descendant type of, `y`?"
