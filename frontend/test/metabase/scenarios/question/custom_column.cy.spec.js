@@ -536,7 +536,7 @@ describe("scenarios > question > custom columns", () => {
       cy.findByDisplayValue("Math");
     });
 
-    it.only("should not erase Custom Column formula and Custom Column name on window resize (metabase#16127)", () => {
+    it.skip("should not erase Custom Column formula and Custom Column name on window resize (metabase#16127)", () => {
       cy.viewport(1260, 800);
       cy.get("@formula").click(); /* See comment (1) above */
       cy.findByDisplayValue("Math");
