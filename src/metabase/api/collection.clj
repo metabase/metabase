@@ -4,8 +4,7 @@
   `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`)."
-  (:require [clojure.string :as str]
-            [compojure.core :refer [GET POST PUT]]
+  (:require [compojure.core :refer [GET POST PUT]]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
             [metabase.models.card :refer [Card]]
@@ -14,12 +13,11 @@
             [metabase.models.collection.root :as collection.root]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.models.permissions :as perms]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.revision.last-edit :as last-edit]
+            [metabase.models.pulse :as pulse]
+            [metabase.server.middleware.paging :as paging]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -84,59 +82,84 @@
    ;; when specified, only return results of this type.
    :model     (s/maybe (apply s/enum (map keyword valid-model-param-values)))})
 
-(defmulti ^:private fetch-collection-children
-  "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
+(defmulti ^:private collection-children-query
+  "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
   in the `CollectionChildrenOptions` schema above.
 
   NOTES:
 
   *  `collection` will be either a CollectionInstance, or the Root Collection special placeholder object, so do not use
-     `u/get-id` on it! Use `:id`, which will return `nil` for the Root Collection, which is exactly what we want."
+     `u/the-id` on it! Use `:id`, which will return `nil` for the Root Collection, which is exactly what we want."
   {:arglists '([model collection options])}
   (fn [model _ _] (keyword model)))
 
-(defmethod fetch-collection-children :card
-  [_ collection {:keys [archived?]}]
-  (-> (db/select [Card :id :name :description :collection_position :display]
-        ;; use `:id` here so if it's the root collection we get `id = nil` (no ID)
-        :collection_id (:id collection)
-        :archived      (boolean archived?))
-      (hydrate :favorite)))
+(defmulti ^:private post-process-collection-children
+  {:arglists '([model rows])}
+  (fn [model _]
+    (keyword model)))
 
-(defmethod fetch-collection-children :dashboard
-  [_ collection {:keys [archived?]}]
-  (db/select [Dashboard :id :name :description :collection_position]
-    :collection_id (:id collection)
-    :archived      (boolean archived?)))
+(defmethod ^:private post-process-collection-children :default
+  [_ rows]
+  rows)
 
-(defmethod fetch-collection-children :pulse
+(defmethod collection-children-query :card
   [_ collection {:keys [archived?]}]
-  (db/query
-   {:select    [:p.id :p.name :p.collection_position]
-    :modifiers [:distinct]
-    :from      [[Pulse :p]]
-    :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
-    :where     [:and
-                [:= :p.collection_id      (:id collection)]
-                [:= :p.archived           (boolean archived?)]
-                 ;; exclude alerts
-                [:= :p.alert_condition    nil]
-                 ;; exclude dashboard subscriptions
-                [:= :pc.dashboard_card_id nil]]}))
+  {:select [:id :name :description :collection_position :display ["card" :model]]
+   :from   [[Card :c]]
+   :where  [:and
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
 
-(defmethod fetch-collection-children :snippet
+(defmethod post-process-collection-children :card
+  [_ rows]
+  (hydrate rows :favorite))
+
+(defmethod collection-children-query :dashboard
   [_ collection {:keys [archived?]}]
-  (db/select [NativeQuerySnippet :id :name]
-    :collection_id (:id collection)
-    :archived      (boolean archived?)))
+  {:select [:id :name :description :collection_position [nil :display] ["dashboard" :model]]
+   :from   [[Dashboard :d]]
+   :where  [:and
+            [:= :collection_id (:id collection)]
+            [:= :archived (boolean archived?)]]})
 
-(defmethod fetch-collection-children :collection
-  [_ collection {:keys [archived? collection-namespace]}]
-  (-> (for [child-collection (collection/effective-children collection
-                                                            [:= :archived archived?]
-                                                            [:= :namespace (u/qualified-name collection-namespace)])]
-        (assoc child-collection :model "collection"))
-      (hydrate :can_write)))
+(defmethod post-process-collection-children :dashboard
+  [_ rows]
+  (for [row rows]
+    (dissoc row :display)))
+
+(defn- post-process-rows [rows]
+  (mapcat
+   (fn [[model rows]]
+     (post-process-collection-children (keyword model) rows))
+   (group-by :model rows)))
+
+(defn collection-children* [collection models options]
+  (let [models      (sort (map keyword models))
+        queries     (for [model models]
+                      (collection-children-query model collection options))
+        total-query {:select [[:%count.* :count]]
+                     :from   [[{:union-all queries} :source]]}
+        rows-query  {:select   [:*]
+                     :from     [[{:union-all queries} :source]]
+                     :order-by [[:%lower.name :asc]]
+                     :limit    paging/*limit*
+                     :offset   paging/*offset*}]
+    (println "rows-query:\n" (u/pprint-to-str rows-query)) ; NOCOMMIT
+    {:total  (try
+               (-> (db/query total-query) first :count)
+               (catch Throwable e
+                 (throw (ex-info (tru "Error fetching total Collection children count: {0}" (ex-message e))
+                                 {:models models, :query total-query}
+                                 e))))
+     :rows   (try
+               (-> (db/query rows-query) post-process-rows)
+               (catch Throwable e
+                 (throw (ex-info (tru "Error fetching Collection children: {0}" (ex-message e))
+                                 {:models models, :query rows-query}
+                                 e))))
+     :limit  paging/*limit*
+     :offset paging/*offset*
+     :models models}))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -149,31 +172,23 @@
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [model collections-only?], :as options}    :- CollectionChildrenOptions]
-  (let [item-groups (into {}
-                          (for [model-kw [:collection :card :dashboard :pulse :snippet]
-                                ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-                                :when    (or (not model) (= model model-kw))
-                                :let     [toucan-model       (model-name->toucan-model model-kw)
-                                          allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                                :when    (or (= model-kw :collection)
-                                             (contains? allowed-namespaces (keyword collection-namespace)))]
-                            [model-kw (fetch-collection-children model-kw collection (assoc options :collection-namespace collection-namespace))]))
-        last-edited (last-edit/fetch-last-edited-info
-                     {:card-ids (->> item-groups :card (map :id))
-                      :dashboard-ids (->> item-groups :dashboard (map :id))})]
-    (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
-             (into []
-                   ;; items are grouped by model, needed for last-edit lookup. put model on each one, cat them, then
-                   ;; plop edit information on them if present
-                   (comp (map (fn [[model items]]
-                                (map #(assoc % :model model) items)))
-                         cat
-                         (map (fn [{:keys [model id] :as item}]
-                                (if-let [edit-info (get-in last-edited [model id])]
-                                  (assoc item :last-edit-info edit-info)
-                                  item))))
-                   item-groups))))
+   {:keys [models collections-only?], :as options}]
+  (let [models       (not-empty (set (map keyword models)))
+        valid-models (for [model-kw [:collection :card :dashboard :pulse :snippet]
+                           :when    (or (not models)
+                                        (contains? models model-kw))
+                           :let     [toucan-model       (model-name->toucan-model model-kw)
+                                     allowed-namespaces (collection/allowed-namespaces toucan-model)]
+                           :when    (or (= model-kw :collection)
+                                        (contains? allowed-namespaces (keyword collection-namespace)))]
+                       model-kw)]
+    (collection-children* collection valid-models options)))
+
+;; NOCOMMIT
+(defn x []
+  (binding [paging/*limit* 5
+            paging/*offset* 5]
+    (collection-children collection/root-collection {:models [:card :dashboard]})))
 
 (s/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -315,7 +330,7 @@
   [collection-before-update collection-updates]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card
-                                                                    :collection_id (u/get-id collection-before-update))))]
+                                                                    :collection_id (u/the-id collection-before-update))))]
         (card-api/delete-alert-and-notify-archived! alerts))))
 
 (api/defendpoint PUT "/:id"
