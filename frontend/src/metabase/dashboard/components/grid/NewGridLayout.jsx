@@ -39,17 +39,19 @@ function NewGridLayout({
     // As we are offsetting the layout,
     // we must subtract the offset value evenly from the size of each element
     // to fit within the dimensions of the grid
-    const offset = margin;
-    const offsetFraction = offset / cols;
+    const offsetX = margin / 2;
+    const offsetY = margin;
+    const fractionX = offsetX / cols;
+    const fractionY = offsetY / cols;
 
     const actualCellWidth = Math.round(cellSize.width - margin);
 
-    const y = offset;
-    const w = actualCellWidth - offsetFraction;
-    const h = cellSize.height - offsetFraction;
+    const y = offsetY;
+    const w = actualCellWidth - fractionX;
+    const h = cellSize.height - fractionY;
 
     const rectangles = _(cols).times(i => {
-      const x = Math.round(i * (cellSize.width - offsetFraction)) + offset;
+      const x = i * cellSize.width + offsetX;
       return `<rect stroke='${cellStrokeColor}' stroke-width='1' fill='none' x='${x}' y='${y}' width='${w}' height='${h}'/>`;
     });
 
