@@ -62,7 +62,7 @@
   {:pre [(seq table-definitions)]}
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
-                           (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
+                           (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
                                                       (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
@@ -110,7 +110,8 @@
             (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
                                (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
               ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-              (sync/sync-database! db (when quick-sync? {:scan :schema}))
+              (binding [metabase.sync.util/*log-exceptions-and-continue?* false]
+                (sync/sync-database! db (when quick-sync? {:scan :schema})))
               ;; add extra metadata for fields
               (try
                 (add-extra-metadata! database-definition db)
@@ -119,7 +120,7 @@
         ;; make sure we're returing an up-to-date copy of the DB
         (Database (u/the-id db))
         (catch Throwable e
-          (let [e (ex-info "Failed to create test database"
+          (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
                            {:driver             driver
                             :database-name      database-name
                             :connection-details connection-details}
@@ -128,7 +129,7 @@
             (db/delete! Database :id (u/the-id db))
             (throw e)))))
     (catch Throwable e
-      (let [message (format "Failed to create %s '%s' test database" driver database-name)]
+      (let [message (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))]
         (println message "\n" e)
         (if config/is-test?
           (System/exit -1)
