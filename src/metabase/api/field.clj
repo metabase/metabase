@@ -102,8 +102,12 @@
    settings           (s/maybe su/Map)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
-        effective-type     (or (types/effective_type_for_coercion coercion_strategy)
-                               (:base_type field))
+        [effective-type coercion-strategy]
+        (or (when coercion_strategy
+              (let [effective (types/effective-type-for-coercion coercion_strategy)]
+                (when (types/is-coercible? coercion_strategy (:base_type field) effective)
+                  [effective coercion_strategy])))
+            [(:base_type field) nil])
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
@@ -124,7 +128,7 @@
           (u/select-keys-when (assoc body
                                      :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                      :effective_type effective-type
-                                     :coercion_strategy coercion_strategy)
+                                     :coercion_strategy coercion-strategy)
             :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type :coercion_strategy :effective_type
                        :has_field_values}
             :non-nil #{:display_name :settings})))))
