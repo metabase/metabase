@@ -53,7 +53,13 @@
 
   (t/testing "Should *not* work for ancestor types of the coercion base type(s)"
     (t/is (= nil
-             (types/coercion-possibilities :type/Number)))))
+             (types/coercion-possibilities :type/Number))))
+  (t/testing "Non-inheritable coercions"
+    ;; type/* has a coercion :Coercion/YYYYMMDDHHMMSSBytes->Temporal
+    (t/is (= {:type/* #{:Coercion/YYYYMMDDHHMMSSBytes->Temporal}}
+             (types/coercion-possibilities :type/*)))
+    ;; a random type descendant of type/* should not have this coercion
+    (t/is (= nil (types/coercion-possibilities :type/DruidHyperUnique)))))
 
 (defn- keywords-in-namespace [keyword-namespace]
   (->> #?(:clj (var-get #'clojure.core/global-hierarchy)

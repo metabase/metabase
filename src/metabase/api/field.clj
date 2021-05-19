@@ -103,8 +103,9 @@
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
-        (or (when coercion_strategy
+        (or (when-let [coercion_strategy (keyword coercion_strategy)]
               (let [effective (types/effective-type-for-coercion coercion_strategy)]
+                ;; throw an error in an else branch?
                 (when (types/is-coercible? coercion_strategy (:base_type field) effective)
                   [effective coercion_strategy])))
             [(:base_type field) nil])
