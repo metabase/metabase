@@ -10,8 +10,6 @@
   "An in-memory LDAP testing server."
   nil)
 
-(get-server-config)
-
 (defn- get-server-config []
   (doto (InMemoryDirectoryServerConfig. (into-array String ["dc=metabase,dc=com"]))
     (.addAdditionalBindCredentials "cn=Directory Manager" "password")

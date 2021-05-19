@@ -106,9 +106,7 @@
                 :last-name  "Miller"
                 :email      "jane.miller@metabase.com"
                 :groups     []}
-               (ldap/find-user "jane.miller@metabase.com")
-             ))
-        ))))
+               (ldap/find-user "jane.miller@metabase.com")))))))
 
 (deftest fetch-or-create-user-test
   (ldap.test/with-ldap-server
@@ -130,21 +128,19 @@
                :common_name      "Unknown Miller"}
               (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
-     (testing "when givenName or sn attributes change in LDAP, they are updated in Metabase on login"
+     (testing "when givenName or sn attributes change in LDAP, they are updated in Metabase on next login"
        (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name "Jane" :last-name "Doe"))
        (is (= {:first_name       "Jane"
                :last_name        "Doe"
                :common_name      "Jane Doe"}
               (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
-     (testing "if givenName or sn attributes are removed, values stored in Metabase are not overwritten on login"
+     (testing "if givenName or sn attributes are removed, values stored in Metabase are not overwritten on next login"
        (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name nil :last-name nil))
        (is (= {:first_name       "Jane"
                :last_name        "Doe"
                :common_name      "Jane Doe"}
               (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
-
-
      (finally (db/delete! User :email "jane.miller@metabase.com")))))
 
 (deftest group-matching-test
