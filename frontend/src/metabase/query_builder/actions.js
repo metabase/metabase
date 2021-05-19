@@ -1416,8 +1416,13 @@ export const createModerationReview = createThunkAction(
   },
 );
 
-export async function createModerationRequest(requestParams) {
-  await ModerationRequestApi.create({ requestParams });
+export async function createModerationRequest({ type, cardId, description }) {
+  await ModerationRequestApi.create({
+    type,
+    moderated_item_id: cardId,
+    moderated_item_type: "card",
+    text: description,
+  });
   return softReloadCard();
 }
 
