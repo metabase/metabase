@@ -4,18 +4,13 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/questions/components/QuestionActionButtons";
 import ClampedText from "metabase/components/ClampedText";
 import QuestionActivityTimeline from "metabase/questions/components/QuestionActivityTimeline";
-import {
-  PLUGIN_MODERATION_COMPONENTS,
-  PLUGIN_MODERATION_SERVICE,
-} from "metabase/plugins";
+import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
 import { SIDEBAR_VIEWS } from "./constants";
 
 const {
   ModerationIssueActionMenu,
   OpenModerationIssuesButton,
 } = PLUGIN_MODERATION_COMPONENTS;
-
-const { getOpenRequests } = PLUGIN_MODERATION_SERVICE;
 
 QuestionDetailsSidebarPanel.propTypes = {
   setView: PropTypes.func.isRequired,
@@ -26,7 +21,6 @@ QuestionDetailsSidebarPanel.propTypes = {
 function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
   const canWrite = question.canWrite();
   const description = question.description();
-  const numOpenIssues = getOpenRequests(question).length;
 
   return (
     <SidebarContent className="full-height px1">
@@ -49,7 +43,7 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
             }}
           />
           <OpenModerationIssuesButton
-            numOpenIssues={numOpenIssues}
+            question={question}
             onClick={() => {
               setView({
                 name: SIDEBAR_VIEWS.OPEN_ISSUES_PANEL,

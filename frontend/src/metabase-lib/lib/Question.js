@@ -982,7 +982,7 @@ export default class Question {
   }
 
   getModerationReviews() {
-    return getIn(this, ["_card", "moderation_reviews"]);
+    return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 
   getLatestModerationReview() {
@@ -990,7 +990,7 @@ export default class Question {
   }
 
   getModerationRequests() {
-    return getIn(this, ["_card", "moderation_requests"], []);
+    return getIn(this, ["_card", "moderation_requests"]) || [];
   }
 }
 

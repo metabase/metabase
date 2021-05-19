@@ -76,6 +76,10 @@ function isRequestOpen(request) {
   return request.status === REQUEST_STATUSES.open;
 }
 
+export function getNumberOfOpenRequests(question) {
+  return getOpenRequests(question).length;
+}
+
 export function isRequestDismissal(type) {
   return type === "dismiss";
 }
