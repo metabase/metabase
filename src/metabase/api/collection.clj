@@ -149,6 +149,11 @@
                    [:= :p.dashboard_id nil]]}
       (h/merge-where (pinned-state->clause pinned-state :p.collection_position))))
 
+(defmethod post-process-collection-children :pulse
+  [_ rows]
+  (for [row rows]
+    (dissoc row :description :display)))
+
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived? pinned-state]}]
   {:select [:id :name [nil :description] [nil :collection_position] [nil :display] [(hx/literal "snippet") :model]]
@@ -156,6 +161,11 @@
        :where  [:and
                 [:= :collection_id (:id collection)]
                 [:= :archived (boolean archived?)]]})
+
+(defmethod post-process-collection-children :snippet
+  [_ rows]
+  (for [row rows]
+    (dissoc row :description :collection_position :display)))
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
@@ -179,6 +189,11 @@
                 [:= :archived (boolean archived?)]]}
       (h/merge-where (pinned-state->clause pinned-state))))
 
+(defmethod post-process-collection-children :dashboard
+  [_ rows]
+  (for [row (hydrate rows :favorite)]
+    (dissoc row :display)))
+
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace]}]
   (assoc (collection/effective-children-query
@@ -193,6 +208,11 @@
                   [nil :collection_position]
                   [nil :display]
                   [(hx/literal "collection") :model]]))
+
+(defmethod post-process-collection-children :collection
+  [_ rows]
+  (for [row (hydrate rows :can_write)]
+    (dissoc row :collection_position :display)))
 
 (defn- post-process-rows [rows]
   (mapcat
