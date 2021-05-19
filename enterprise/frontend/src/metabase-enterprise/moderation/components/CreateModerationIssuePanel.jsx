@@ -63,7 +63,11 @@ function CreateModerationIssuePanel({
         moderationRequest,
       });
     } else {
-      await createModerationRequest({});
+      await createModerationRequest({
+        type: issueType,
+        cardId: itemId,
+        description,
+      });
     }
 
     onReturn();
