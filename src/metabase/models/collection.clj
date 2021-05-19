@@ -292,7 +292,7 @@
       (if (= collection-ids :all)
         ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
         ; meaning, the effective children are always the direct children. So check for being a direct child.
-        [[:= 1 1]]
+        [[:not-like :location (hx/literal (format "%%/%d/%%/%%" parent-id))]]
         ; Here, we must do some filtering.
         (for [visibile-collection-id (disj collection-ids parent-id)]
           [:not-like :location (hx/literal (format "%%/%d/%%" visibile-collection-id))])))))
