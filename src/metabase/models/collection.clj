@@ -286,16 +286,16 @@
   This property is being a descendant of a visible collection other than A. Used for effective children calculations"
   [maybe-parent-id :- (s/maybe su/IntGreaterThanZero), collection-ids :- VisibleCollections]
   ; parent-id being nil corresponds to parent being root
-  (let [parent-id (str (or maybe-parent-id "root"))]
+  (let [parent-id (str (or maybe-parent-id ""))]
     (into
       [:and]
       (if (= collection-ids :all)
         ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
         ; meaning, the effective children are always the direct children. So check for being a direct child.
-        [[:not-like :location (hx/literal (format "%%/%s/%%/%%/" parent-id))]]
+        [[:= 1 1]]
         ; Here, we must do some filtering.
         (for [visibile-collection-id (disj collection-ids parent-id)]
-          [:not-like :location (hx/literal (format "%%/%s/%%" (str visibile-collection-id)))])))))
+          [:not-like :location (hx/literal (format "%%/%d/%%" visibile-collection-id))])))))
 
 
 (s/defn effective-location-path :- (s/maybe LocationPath)
@@ -437,7 +437,7 @@
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
-       (visible-collection-ids->direct-visible-descendant-clause (:id collection) visible-collection-ids)
+       ; (visible-collection-ids->direct-visible-descendant-clause (:id collection) visible-collection-ids)
        ;; if it is a personal Collection, it belongs to the current User.
        [:or
         [:= :personal_owner_id nil]
