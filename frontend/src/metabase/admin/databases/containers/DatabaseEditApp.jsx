@@ -12,6 +12,7 @@ import title from "metabase/hoc/Title";
 
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 import ActionButton from "metabase/components/ActionButton";
+import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Radio from "metabase/components/Radio";
@@ -41,16 +42,17 @@ const DATABASE_FORM_NAME = "database";
 const getLetUserControlScheduling = database =>
   getIn(database, ["details", "let-user-control-scheduling"]);
 
-const mapStateToProps = (state, props) => ({
-  database: getEditingDatabase(state),
-  databaseCreationStep: getDatabaseCreationStep(state),
-  letUserControlSchedulingSaved: getLetUserControlScheduling(
-    getEditingDatabase(state),
-  ),
-  letUserControlSchedulingForm: getLetUserControlScheduling(
-    getValues(state.form[DATABASE_FORM_NAME]),
-  ),
-});
+const mapStateToProps = (state, props) => {
+  const database = getEditingDatabase(state);
+  const formValues = getValues(state.form[DATABASE_FORM_NAME]);
+  return {
+    database,
+    databaseCreationStep: getDatabaseCreationStep(state),
+    selectedEngine: formValues ? formValues.engine : undefined,
+    letUserControlSchedulingSaved: getLetUserControlScheduling(database),
+    letUserControlSchedulingForm: getLetUserControlScheduling(formValues),
+  };
+};
 
 const mapDispatchToProps = {
   reset,
@@ -131,11 +133,11 @@ export default class DatabaseEditApp extends Component {
   render() {
     const {
       database,
+      selectedEngine,
       letUserControlSchedulingSaved,
       letUserControlSchedulingForm,
     } = this.props;
     const { currentTab } = this.state;
-
     const editingExistingDatabase = database && database.id != null;
     const addingNewDatabase = !editingExistingDatabase;
 
@@ -151,7 +153,7 @@ export default class DatabaseEditApp extends Component {
           ]}
         />
         <Flex pb={2}>
-          <Box w={620}>
+          <Box>
             <div className="pt0">
               {showTabs && (
                 <div className="border-bottom mb2">
@@ -163,37 +165,52 @@ export default class DatabaseEditApp extends Component {
                   />
                 </div>
               )}
-              <LoadingAndErrorWrapper loading={!database} error={null}>
-                {() => (
-                  <Databases.Form
-                    database={database}
-                    form={Databases.forms[currentTab]}
-                    formName={DATABASE_FORM_NAME}
-                    onSubmit={
-                      addingNewDatabase && currentTab === "connection"
-                        ? this.props.proceedWithDbCreation
-                        : this.props.saveDatabase
-                    }
-                    submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
-                    renderSubmit={
-                      // override use of ActionButton for the `Next` button
-                      addingNewDatabase &&
-                      currentTab === "connection" &&
-                      letUserControlSchedulingForm &&
-                      (({ handleSubmit, canSubmit }) => (
-                        <Button
-                          primary={canSubmit}
-                          disabled={!canSubmit}
-                          onClick={handleSubmit}
-                        >
-                          {t`Next`}
-                        </Button>
-                      ))
-                    }
-                    submitButtonComponent={Button}
-                  />
+              <Flex>
+                <Box w={620}>
+                  <LoadingAndErrorWrapper loading={!database} error={null}>
+                    {() => (
+                      <Databases.Form
+                        database={database}
+                        form={Databases.forms[currentTab]}
+                        formName={DATABASE_FORM_NAME}
+                        onSubmit={
+                          addingNewDatabase && currentTab === "connection"
+                            ? this.props.proceedWithDbCreation
+                            : this.props.saveDatabase
+                        }
+                        submitTitle={
+                          addingNewDatabase ? t`Save` : t`Save changes`
+                        }
+                        renderSubmit={
+                          // override use of ActionButton for the `Next` button
+                          addingNewDatabase &&
+                          currentTab === "connection" &&
+                          letUserControlSchedulingForm &&
+                          (({ handleSubmit, canSubmit }) => (
+                            <Button
+                              primary={canSubmit}
+                              disabled={!canSubmit}
+                              onClick={handleSubmit}
+                            >
+                              {t`Next`}
+                            </Button>
+                          ))
+                        }
+                        submitButtonComponent={Button}
+                      />
+                    )}
+                  </LoadingAndErrorWrapper>
+                </Box>
+                {addingNewDatabase && (
+                  <Box>
+                    <AddDatabaseHelpCard
+                      engine={selectedEngine}
+                      ml={26}
+                      data-testid="database-setup-help-card"
+                    />
+                  </Box>
                 )}
-              </LoadingAndErrorWrapper>
+              </Flex>
             </div>
           </Box>
 
