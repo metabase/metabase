@@ -1,4 +1,8 @@
-import { describeWithToken, restore } from "__support__/e2e/cypress";
+import {
+  describeWithToken,
+  restore,
+  mockCurrentUserProperty,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > auth > signin > SSO", () => {
   beforeEach(() => {
@@ -7,6 +11,14 @@ describe("scenarios > auth > signin > SSO", () => {
     // Set fake Google client ID
     cy.request("PUT", "/api/setting/google-auth-client-id", {
       value: "123",
+    });
+  });
+
+  ["ldap_auth", "google_auth"].forEach(auth => {
+    it.skip(`login history tab should be available with ${auth} enabled (metabase#15558)`, () => {
+      mockCurrentUserProperty(auth, true);
+      cy.visit("/user/edit_current");
+      cy.findByText("Login History");
     });
   });
 
