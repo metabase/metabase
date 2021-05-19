@@ -11,11 +11,6 @@ import {
   getSelectionPosition,
 } from "metabase/lib/dom";
 
-const KEYCODE_BACKSPACE = 8;
-const KEYCODE_LEFT = 37;
-const KEYCODE_RIGHT = 39;
-const KEYCODE_FORWARD_DELETE = 46;
-
 export default class TokenizedInput extends Component {
   constructor(props) {
     super(props);
@@ -36,6 +31,7 @@ export default class TokenizedInput extends Component {
       return this.state.value;
     }
   }
+
   _setValue(value) {
     ReactDOM.findDOMNode(this).value = value;
     if (typeof this.props.onChange === "function") {
@@ -78,8 +74,7 @@ export default class TokenizedInput extends Component {
     // isTyping signals whether the user is typing characters (keyCode >= 65) vs. deleting / navigating with arrows / clicking to select
     const isTyping = this._isTyping;
     // also keep isTyping same when deleting
-    this._isTyping =
-      e.keyCode >= 65 || (e.keyCode === KEYCODE_BACKSPACE && isTyping);
+    this._isTyping = e.keyCode >= 65 || (e.key === "Backspace" && isTyping);
 
     const input = ReactDOM.findDOMNode(this);
 
@@ -103,8 +98,7 @@ export default class TokenizedInput extends Component {
         if (
           !isSelected &&
           !isTyping &&
-          ((atEnd && e.keyCode === KEYCODE_BACKSPACE) ||
-            (atStart && e.keyCode === KEYCODE_FORWARD_DELETE))
+          ((atEnd && e.key === "Backspace") || (atStart && e.key === "Delete"))
         ) {
           // not selected, not "typging", and hit backspace, so mark as "selected"
           element.classList.add("Expression-selected");
@@ -113,8 +107,7 @@ export default class TokenizedInput extends Component {
           return;
         } else if (
           isSelected &&
-          ((atEnd && e.keyCode === KEYCODE_BACKSPACE) ||
-            (atStart && e.keyCode === KEYCODE_FORWARD_DELETE))
+          ((atEnd && e.key === "Backspace") || (atStart && e.key === "Delete"))
         ) {
           // selected and hit backspace, so delete it
           element.parentNode.removeChild(element);
@@ -124,8 +117,8 @@ export default class TokenizedInput extends Component {
           return;
         } else if (
           isSelected &&
-          ((atEnd && e.keyCode === KEYCODE_LEFT) ||
-            (atStart && e.keyCode === KEYCODE_RIGHT))
+          ((atEnd && e.key === "ArrowLeft") ||
+            (atStart && e.key === "ArrowRight"))
         ) {
           // selected and hit left arrow, so enter "typing" mode and unselect it
           element.classList.remove("Expression-selected");
