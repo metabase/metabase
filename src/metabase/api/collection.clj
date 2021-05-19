@@ -6,6 +6,7 @@
   `?namespace=snippet`)."
   (:require [compojure.core :refer [GET POST PUT]]
             [honeysql.helpers :as h]
+            [honeysql.core :as hsql]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
             [metabase.models.card :refer [Card]]
@@ -129,7 +130,11 @@
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:p.id :p.name :p.collection_position]
+  (-> {:select    [:p.id
+                   :p.name
+                   [nil :p.description]
+                   :p.collection_position
+                   [nil :p.display]]
        :modifiers [:distinct]
        :from      [[Pulse :p]]
        :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
@@ -139,12 +144,12 @@
                    ;; exclude alerts
                    [:= :p.alert_condition    nil]
                    ;; exclude dashboard subscriptions
-                   [:= :p.dashboard_card_id nil]]}
+                   [:= :p.dashboard_id nil]]}
       (h/merge-where (pinned-state->clause pinned-state :p.collection_position))))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name ["snippet" :model]]
+  {:select [:id :name [nil :description] [nil :collection_position] [nil :display]]
        :from   [[NativeQuerySnippet :nqs]]
        :where  [:and
                 [:= :collection_id (:id collection)]
@@ -152,7 +157,7 @@
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:id :name :description :collection_position :display ["card" :model]]
+  (-> {:select [:id :name :description :collection_position :display]
        :from   [[Card :c]]
        :where  [:and
                 [:= :collection_id (:id collection)]
@@ -164,14 +169,18 @@
   (hydrate rows :favorite))
 
 (defmethod collection-children-query :dashboard
-  ;;; pinned state here
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:id :name :description :collection_position [nil :display] ["dashboard" :model]]
+  (-> {:select [:id :name :description :collection_position [nil :display]]
        :from   [[Dashboard :d]]
        :where  [:and
                 [:= :collection_id (:id collection)]
                 [:= :archived (boolean archived?)]]}
       (h/merge-where (pinned-state->clause pinned-state))))
+
+(defmethod collection-children-query :collection
+  [_ collection {:keys [archived? pinned-state]}]
+  {:select [:id :name [nil :description] [nil :collection_position] [nil :display]]
+   :from [[Collection :col]]})
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
@@ -205,14 +214,14 @@
     :snippet    NativeQuerySnippet))
 
 (defn- collection-children*
-  [collection models pinned-pred options]
+  [collection models options]
   (let [models            (sort (map keyword models))
         queries           (for [model models]
                             (collection-children-query model collection options))
         total-query       {:select [[:%count.* :count]]
-                           :from   [[{:union-all queries} :source]]}
+                           :from   [[{:union-all queries} :dummy_alias]]}
         rows-query        {:select   [:*]
-                           :from     [[{:union-all queries} :source]]
+                           :from     [[{:union-all queries} :dummy_alias]]
                            :order-by [[:%lower.name :asc]]
                            :limit    offset-paging/*limit*
                            :offset   offset-paging/*offset*}]
