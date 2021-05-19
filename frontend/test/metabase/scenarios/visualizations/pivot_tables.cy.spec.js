@@ -750,6 +750,66 @@ describe("scenarios > visualizations > pivot tables", () => {
       cy.findByText("Grand totals");
     });
   });
+
+  it.skip("should show stand-alone row values in grouping when rows are collapsed (metabase#15211)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.DISCOUNT, null]], ["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+            ["field", ORDERS.PRODUCT_ID, null],
+          ],
+          filter: [
+            "and",
+            [
+              "between",
+              ["field", ORDERS.CREATED_AT, null],
+              "2016-11-09",
+              "2016-11-11",
+            ],
+            ["!=", ["field", ORDERS.PRODUCT_ID, null], 146],
+          ],
+        },
+        database: 1,
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+            ["field", ORDERS.PRODUCT_ID, null],
+          ],
+          columns: [],
+          values: [["aggregation", 0], ["aggregation", 1]],
+        },
+        "pivot_table.collapsed_rows": {
+          value: [],
+          rows: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+            ["field", ORDERS.PRODUCT_ID, null],
+          ],
+        },
+      },
+    });
+
+    cy.findByText("November 9, 2016");
+    cy.findByText("November 10, 2016");
+    cy.findByText("November 11, 2016");
+    collapseRowsFor("Created At: Day");
+    cy.findByText("Totals for November 9, 2016");
+    cy.findByText("Totals for November 10, 2016");
+    cy.findByText("Totals for November 11, 2016");
+
+    function collapseRowsFor(column_name) {
+      cy.findByText(column_name)
+        .parent()
+        .find(".Icon-dash")
+        .click();
+    }
+  });
 });
 
 const testQuery = {
