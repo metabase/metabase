@@ -309,8 +309,8 @@ export function getIframeBody(selector = "iframe") {
     .then(cy.wrap);
 }
 
-export function mockSessionProperty(propertyOrObject, value) {
-  cy.intercept("GET", "/api/session/properties", req => {
+function mockProperty(propertyOrObject, value, url) {
+  cy.intercept("GET", url, req => {
     req.reply(res => {
       if (typeof propertyOrObject === "object") {
         Object.assign(res.body, propertyOrObject);
@@ -320,4 +320,12 @@ export function mockSessionProperty(propertyOrObject, value) {
       }
     });
   });
+}
+
+export function mockSessionProperty(propertyOrObject, value) {
+  mockProperty(propertyOrObject, value, "/api/session/properties");
+}
+
+export function mockCurrentUserProperty(propertyOrObject, value) {
+  mockProperty(propertyOrObject, value, "/api/user/current");
 }
