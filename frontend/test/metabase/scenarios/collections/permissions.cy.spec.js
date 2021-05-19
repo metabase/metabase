@@ -611,7 +611,7 @@ describe("collection permissions", () => {
                 // For now that's not possible for user without data access (likely it will be again when #11719 is fixed)
                 cy.skipOn(user === "nodata");
                 cy.visit("/question/1");
-                cy.findByRole("button", { name: /Edited .*/ }).click();
+                cy.findByTestId("history-button").click();
                 clickRevert("First revision.");
                 cy.wait("@revert").then(xhr => {
                   expect(xhr.status).to.eq(200);
