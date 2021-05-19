@@ -211,8 +211,14 @@
 
 (defmethod post-process-collection-children :collection
   [_ rows]
-  (for [row (hydrate rows :can_write)]
-    (dissoc row :collection_position :display)))
+  (for [row rows]
+    ; Go through this rigamarole instead of hydration because we
+    ; don't get models back from ulterior over-query
+    ; Previous examination with logging to DB says that there's no N+1 query for this.
+    ; However, this was only tested on H2 and Postgres
+    (assoc (dissoc row :collection_position :display)
+           :can_write
+           (mi/can-write? Collection (:id row)))))
 
 (defn- post-process-rows [rows]
   (mapcat
