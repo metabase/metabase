@@ -1,21 +1,23 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { connect } from "react-redux";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
-  getModerationReviewActionTypes,
-  getModerationRequestActionTypes,
+  getModerationIssueActionTypes,
   getColor,
   getModerationStatusIcon,
+  getUserTypeTextKey,
 } from "metabase-enterprise/moderation";
+import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 
 ModerationIssueActionMenu.propTypes = {
   className: PropTypes.string,
   triggerClassName: PropTypes.string,
-  onAction: PropTypes.func,
+  isModerator: PropTypes.bool.isRequired,
+  onAction: PropTypes.func.isRequired,
   request: PropTypes.object,
-  isAdmin: PropTypes.bool.isRequired,
 };
 
 function ModerationIssueActionMenu({
@@ -23,12 +25,10 @@ function ModerationIssueActionMenu({
   triggerClassName,
   onAction,
   request,
-  isAdmin,
+  isModerator,
 }) {
-  const types = isAdmin
-    ? getModerationReviewActionTypes(request)
-    : getModerationRequestActionTypes();
-  const userType = isAdmin ? "moderator" : "user";
+  const userType = getUserTypeTextKey(isModerator);
+  const types = getModerationIssueActionTypes(userType, request);
   return (
     <EntityMenu
       triggerChildren={MODERATION_TEXT[userType].action}
@@ -52,4 +52,8 @@ function ModerationIssueActionMenu({
   );
 }
 
-export default ModerationIssueActionMenu;
+const mapStateToProps = (state, props) => ({
+  isModerator: getIsModerator(state, props),
+});
+
+export default connect(mapStateToProps)(ModerationIssueActionMenu);

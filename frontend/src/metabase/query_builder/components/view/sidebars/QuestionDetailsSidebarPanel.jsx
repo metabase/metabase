@@ -21,15 +21,9 @@ QuestionDetailsSidebarPanel.propTypes = {
   setView: PropTypes.func.isRequired,
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
-  isAdmin: PropTypes.bool.isRequired,
 };
 
-function QuestionDetailsSidebarPanel({
-  setView,
-  question,
-  onOpenModal,
-  isAdmin,
-}) {
+function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
   const canWrite = question.canWrite();
   const description = question.description();
   const numOpenIssues = getOpenRequests(question).length;
@@ -46,7 +40,6 @@ function QuestionDetailsSidebarPanel({
         <ClampedText className="px3 pb2" text={description} visibleLines={8} />
         <div className="mx1 pb2 flex justify-between border-row-divider">
           <ModerationIssueActionMenu
-            isAdmin={isAdmin}
             triggerClassName="Button--round text-brand border-brand py1"
             onAction={issueType => {
               setView({
@@ -56,7 +49,6 @@ function QuestionDetailsSidebarPanel({
             }}
           />
           <OpenModerationIssuesButton
-            isAdmin={isAdmin}
             numOpenIssues={numOpenIssues}
             onClick={() => {
               setView({

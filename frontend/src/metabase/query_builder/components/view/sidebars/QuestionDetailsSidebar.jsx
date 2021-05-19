@@ -18,7 +18,6 @@ QuestionDetailsSidebar.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   createModerationReview: PropTypes.func.isRequired,
   createModerationRequest: PropTypes.func.isRequired,
-  isAdmin: PropTypes.bool.isRequired,
 };
 
 function QuestionDetailsSidebar({
@@ -26,7 +25,6 @@ function QuestionDetailsSidebar({
   onOpenModal,
   createModerationReview,
   createModerationRequest,
-  isAdmin,
 }) {
   const [view, setView] = useState({
     name: undefined,
@@ -49,8 +47,6 @@ function QuestionDetailsSidebar({
           createModerationReview={createModerationReview}
           createModerationRequest={createModerationRequest}
           itemId={id}
-          itemType="card"
-          isAdmin={isAdmin}
         />
       );
     case SIDEBAR_VIEWS.OPEN_ISSUES_PANEL:
@@ -59,7 +55,6 @@ function QuestionDetailsSidebar({
           setView={setView}
           requests={getOpenRequests(question)}
           onReturn={setBaseView}
-          isAdmin={isAdmin}
         />
       );
     case SIDEBAR_VIEWS.DETAILS:
@@ -69,7 +64,6 @@ function QuestionDetailsSidebar({
           setView={setView}
           question={question}
           onOpenModal={onOpenModal}
-          isAdmin={isAdmin}
         />
       );
   }

@@ -10,6 +10,7 @@ import { getUser } from "metabase/selectors/user";
 import Button from "metabase/components/Button";
 import { ModerationIssueThread } from "metabase-enterprise/moderation/components/ModerationIssueThread";
 
+import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import { SIDEBAR_VIEWS } from "metabase/query_builder/components/view/sidebars/constants";
 
 OpenModerationIssuesPanel.propTypes = {
@@ -17,7 +18,7 @@ OpenModerationIssuesPanel.propTypes = {
   requests: PropTypes.array.isRequired,
   onReturn: PropTypes.func.isRequired,
   users: PropTypes.array,
-  isAdmin: PropTypes.bool.isRequired,
+  isModerator: PropTypes.bool.isRequired,
   currentUser: PropTypes.object,
 };
 
@@ -26,7 +27,7 @@ function OpenModerationIssuesPanel({
   requests,
   onReturn,
   users,
-  isAdmin,
+  isModerator,
   currentUser,
 }) {
   const usersById = users.reduce((map, user) => {
@@ -68,8 +69,7 @@ function OpenModerationIssuesPanel({
               key={request.id}
               className="py2 border-row-divider"
               request={request}
-              onModerate={isAdmin && onModerate}
-              isAdmin={isAdmin}
+              onModerate={isModerator && onModerate}
             />
           );
         })}
@@ -78,12 +78,12 @@ function OpenModerationIssuesPanel({
   );
 }
 
+const mapStateToProps = (state, props) => ({
+  currentUser: getUser(state),
+  isModerator: getIsModerator(state, props),
+});
+
 export default _.compose(
   User.loadList(),
-  connect(
-    state => ({
-      currentUser: getUser(state),
-    }),
-    null, //
-  ),
+  connect(mapStateToProps),
 )(OpenModerationIssuesPanel);

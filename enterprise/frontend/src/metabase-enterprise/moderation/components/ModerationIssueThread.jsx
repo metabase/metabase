@@ -19,7 +19,6 @@ ModerationIssueThread.propTypes = {
   comments: PropTypes.array,
   onComment: PropTypes.func,
   onModerate: PropTypes.func,
-  isAdmin: PropTypes.bool.isRequired,
 };
 
 const COMMMENT_VISIBLE_LINES = 3;
@@ -30,7 +29,6 @@ export function ModerationIssueThread({
   comments = [],
   onComment,
   onModerate,
-  isAdmin,
 }) {
   const color = getColor(request.type);
   const icon = getModerationStatusIcon(request.type);
@@ -72,7 +70,6 @@ export function ModerationIssueThread({
               triggerClassName="text-white text-white-hover bg-brand bg-brand-hover py1"
               onAction={actionType => onModerate(actionType, request)}
               request={request}
-              isAdmin={isAdmin}
             />
           )}
         </div>

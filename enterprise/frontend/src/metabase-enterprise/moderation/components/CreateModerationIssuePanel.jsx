@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
@@ -7,7 +8,10 @@ import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
   getModerationStatusIcon,
   getColor,
+  getUserTypeTextKey,
 } from "metabase-enterprise/moderation";
+import { getIsModerator } from "metabase-enterprise/moderation/selectors";
+
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 
@@ -17,7 +21,7 @@ CreateModerationIssuePanel.propTypes = {
   createModerationReview: PropTypes.func.isRequired,
   createModerationRequest: PropTypes.func.isRequired,
   itemId: PropTypes.number.isRequired,
-  isAdmin: PropTypes.bool.isRequired,
+  isModerator: PropTypes.bool.isRequired,
   moderationRequest: PropTypes.object,
 };
 
@@ -27,14 +31,14 @@ function CreateModerationIssuePanel({
   createModerationReview: _createModerationReview,
   createModerationRequest: _createModerationRequest,
   itemId,
-  isAdmin,
+  isModerator,
   moderationRequest,
 }) {
   const [description, setDescription] = useState("");
   const icon = getModerationStatusIcon(issueType);
   const color = getColor(issueType);
   const textColorClass = `text-${color}`;
-  const userType = isAdmin ? "moderator" : "user";
+  const userType = getUserTypeTextKey(isModerator);
 
   const [createModerationReview, isModerationReviewPending] = useAsyncFunction(
     _createModerationReview,
@@ -49,7 +53,7 @@ function CreateModerationIssuePanel({
   const onCreateModerationReview = async e => {
     e.preventDefault();
 
-    if (isAdmin) {
+    if (isModerator) {
       await createModerationReview({
         moderationReview: {
           type: issueType,
@@ -61,12 +65,6 @@ function CreateModerationIssuePanel({
     } else {
       await createModerationRequest({});
     }
-
-    // this fn gets much more complex
-    // if no moderationRequest, create moderation review
-    // if moderationRequest, create moderation review and resolve request
-    // if type is dismiss, create comment and close it
-    // should not encounter a type of dismiss without a moderationRequest
 
     onReturn();
   };
@@ -108,4 +106,10 @@ function CreateModerationIssuePanel({
   );
 }
 
-export default CreateModerationIssuePanel;
+const mapStateToProps = (state, props) => {
+  return {
+    isModerator: getIsModerator(state, props),
+  };
+};
+
+export default connect(mapStateToProps)(CreateModerationIssuePanel);

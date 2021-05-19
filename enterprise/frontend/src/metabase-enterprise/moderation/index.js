@@ -28,11 +28,17 @@ Object.assign(PLUGIN_MODERATION_SERVICE, {
   isRequestDismissal,
 });
 
+export function getModerationIssueActionTypes(isModerator, moderationRequest) {
+  return isModerator
+    ? getModerationReviewActionTypes(moderationRequest)
+    : getModerationRequestActionTypes();
+}
+
 // todo -- update this to pass in the `issue` and filter out the action with the same "type"
 // ("type" may now mean "status"...)
 // because the primary action of the button will be the given issue type (see updated mocks).
 // second TODO -- I'm not sure how to reconcile the fact that "dismissed" is not really a review TYPE
-export function getModerationReviewActionTypes(moderationRequest) {
+function getModerationReviewActionTypes(moderationRequest) {
   return [
     REVIEW_STATUSES.verified,
     REVIEW_STATUSES.misleading,
@@ -41,7 +47,7 @@ export function getModerationReviewActionTypes(moderationRequest) {
   ];
 }
 
-export function getModerationRequestActionTypes() {
+function getModerationRequestActionTypes() {
   return [
     REQUEST_TYPES.verification_request,
     REQUEST_TYPES.something_wrong,
@@ -76,4 +82,8 @@ function isRequestOpen(request) {
 
 export function isRequestDismissal(type) {
   return type === "dismiss";
+}
+
+export function getUserTypeTextKey(isModerator) {
+  return isModerator ? "moderator" : "user";
 }
