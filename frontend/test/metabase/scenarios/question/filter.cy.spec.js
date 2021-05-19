@@ -1016,10 +1016,12 @@ describe("scenarios > question > filter", () => {
       display: "line",
     });
     assertOnLegendLabels();
+    cy.get(".line").should("have.length", 3);
     cy.findByText("Save").click();
     cy.button("Save").click();
     cy.button("Not now").click();
     assertOnLegendLabels();
+    cy.get(".line").should("have.length", 3);
 
     function assertOnLegendLabels() {
       cy.get(".Card-title")
