@@ -181,6 +181,10 @@ export default forwardRef(function TokenizedInputWithForwardedRef(props, ref) {
 
 TokenizedInput.propTypes = {
   className: PropTypes.string,
+  forwardedRef: PropTypes.oneOfType([
+    PropTypes.func,
+    PropTypes.shape({ current: PropTypes.any }),
+  ]),
   onBlur: PropTypes.func,
   onChange: PropTypes.func,
   onClick: PropTypes.func,
