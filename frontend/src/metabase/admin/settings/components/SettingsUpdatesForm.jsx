@@ -52,7 +52,6 @@ export default class SettingsUpdatesForm extends Component {
                 latestVersion +
                 "/operations-guide/upgrading-metabase.html"
               }
-              target="_blank"
             >
               {t`Update`}
             </ExternalLink>

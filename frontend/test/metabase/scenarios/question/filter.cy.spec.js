@@ -913,7 +913,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable=true]").type("[Total] < [Subtotal]");
-    cy.findByRole("button", { name: "Done" }).click();
+    cy.button("Done").click();
     cy.findByText("Total is less than Subtotal");
   });
 
@@ -927,7 +927,23 @@ describe("scenarios > question > filter", () => {
     cy.findByText(/^Expected closing parenthesis but found/).should(
       "not.exist",
     );
-    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+    cy.button("Done").should("not.be.disabled");
+  });
+
+  it.skip("custom expression filter should work with numeric value before an operator (metabase#15893)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]")
+      .type("0 < [ID]")
+      .blur();
+    cy.button("Done").click();
+    cy.button("Visualize").click();
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).to.not.exist;
+    });
   });
 
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
@@ -955,7 +971,7 @@ describe("scenarios > question > filter", () => {
       cy.findByText("Category").click();
       cy.findByText("Gizmo").click();
     });
-    cy.findByRole("button", { name: "Add filter" })
+    cy.button("Add filter")
       .should("not.be.disabled")
       .click();
     cy.get(".dot");
@@ -969,6 +985,6 @@ describe("scenarios > question > filter", () => {
       .findByText("State")
       .click();
     cy.findByText("AL").click();
-    cy.findByRole("button", { name: "Add filter" }).isVisibleInPopover();
+    cy.button("Add filter").isVisibleInPopover();
   });
 });
