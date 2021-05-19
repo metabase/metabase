@@ -987,4 +987,45 @@ describe("scenarios > question > filter", () => {
     cy.findByText("AL").click();
     cy.button("Add filter").isVisibleInPopover();
   });
+
+  it.skip("shoud retain all data series after saving a question where custom expression formula is the first metric (metabase#15882)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              [
+                "/",
+                ["sum", ["field", ORDERS.DISCOUNT, null]],
+                ["sum", ["field", ORDERS.SUBTOTAL, null]],
+              ],
+              { "display-name": "Discount %" },
+            ],
+            ["count"],
+            ["avg", ["field", ORDERS.TOTAL, null]],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+    });
+    assertOnLegendLabels();
+    cy.findByText("Save").click();
+    cy.button("Save").click();
+    cy.button("Not now").click();
+    assertOnLegendLabels();
+
+    function assertOnLegendLabels() {
+      cy.get(".Card-title")
+        .should("contain", "Discount %")
+        .and("contain", "Count")
+        .and("contain", "Average of Total");
+    }
+  });
 });
