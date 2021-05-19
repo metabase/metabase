@@ -40,14 +40,17 @@
     (apply dissoc m :objectclass (map (comp keyword u/lower-case-en) (ldap-sync-user-attributes-blacklist)))))
 
 (defn- attribute-synced-user
-  [{:keys [attributes email]}]
-  (when-let [user (db/select-one [User :id :last_login :login_attributes] :%lower.email (u/lower-case-en email))]
-    (let [syncable-attributes (syncable-user-attributes attributes)]
-      ;; Update User's `login_attributes` if needed
-      (if (and (not= (:login_attributes user) syncable-attributes)
-               (db/update! User (:id user) :login_attributes syncable-attributes))
-        (db/select-one [User :id :last_login] :id (:id user)) ; Reload updated user
-        user))))
+  [{:keys [attributes first-name last-name email]}]
+  (when-let [user (db/select-one [User :id :last_login :first_name :last_name :login_attributes]
+                                 :%lower.email (u/lower-case-en email))]
+            (let [syncable-attributes (syncable-user-attributes attributes)]
+              (do
+                (and (not= (:login_attributes user) syncable-attributes)
+                     (db/update! User (:id user) :login_attributes syncable-attributes))
+                (user/update-user! (:id user)
+                                   (default-impl/updated-name-part first-name (:first_name user))
+                                   (default-impl/updated-name-part last-name (:last_name user)))
+              (db/select-one [User :id :last_login] :id (:id user)))))) ; Reload updated user
 
 (s/defn ^:private find-user* :- (s/maybe EEUserInfo)
   [ldap-connection :- LDAPConnectionPool
@@ -62,8 +65,8 @@
    {:keys [sync-groups?], :as settings}                                  :- i/LDAPSettings]
   (let [user (or (attribute-synced-user user-info)
                  (user/create-new-ldap-auth-user!
-                  {:first_name       first-name
-                   :last_name        last-name
+                  {:first_name       (or first-name "Unknown")
+                   :last_name        (or last-name "Unknown")
                    :email            email
                    :login_attributes attributes}))]
     (u/prog1 user

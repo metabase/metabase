@@ -89,7 +89,7 @@
       flatten
       set))
 
-(defn- updated-name-part
+(defn updated-name-part
   "Given a first or last name returned by LDAP, and the equivalent name currently stored by Metabase, return the new
   name that should be stored by Metabase."
   [ldap-name mb-name]
@@ -101,12 +101,12 @@
 (s/defn ^:private fetch-or-create-user!* :- (class User)
   [{:keys [first-name last-name email groups]} :- i/UserInfo
    {:keys [sync-groups?], :as settings}        :- i/LDAPSettings]
-  (let [existing-user (db/select-one [User :id :last_login :first_name :last_name] :email (u/lower-case-en email))
+  (let [existing-user (db/select-one [User :id :last_login :first_name :last_name] :%lower.email (u/lower-case-en email))
         new-user (if existing-user
                    (let [new-first-name (updated-name-part first-name (:first_name existing-user))
                          new-last-name (updated-name-part last-name (:last_name existing-user))]
                      (do
-                       (user/update-ldap-user! (:id existing-user) new-first-name new-last-name)
+                       (user/update-user! (:id existing-user) new-first-name new-last-name)
                        (db/select-one [User :id :last_login] :id (:id existing-user))))
                    (user/create-new-ldap-auth-user!
                     {:first_name (or first-name "Unknown")

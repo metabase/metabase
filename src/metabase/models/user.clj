@@ -213,8 +213,8 @@
        (dissoc :password)
        (assoc :ldap_auth true))))
 
-(s/defn update-ldap-user!
-  "Update the name of a user created with LDAP, in case the name returned by the LDAP server has changed"
+(s/defn update-user!
+  "Update the first and last name of a user created with SSO, in case the name returned by the SSO provider has changed"
   [user-id first-name last-name]
   (db/update! User user-id
               :first_name first-name

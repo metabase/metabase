@@ -50,7 +50,19 @@
                              :givenname "Fred"
                              :sn        "Taylor"}
                 :groups     []}
-               (ldap/find-user "fred.taylor@metabase.com")))))))
+               (ldap/find-user "fred.taylor@metabase.com"))))
+
+      (testing "find by email, no givenName"
+        (is (= {:dn         "cn=Jane Miller,ou=People,dc=metabase,dc=com"
+                :first-name nil
+                :last-name  "Miller"
+                :email      "jane.miller@metabase.com"
+                :attributes {:uid       "jmiller"
+                             :mail      "jane.miller@metabase.com"
+                             :cn        "Jane Miller"
+                             :sn        "Miller"}
+                :groups     []}
+               (ldap/find-user "jane.miller@metabase.com")))))))
 
 (deftest attribute-sync-test
   (with-redefs [metastore/enable-enhancements? (constantly true)]
@@ -173,3 +185,39 @@
                                 :email "john.smith@metabase.com"))))))
           (finally
             (db/delete! User :%lower.email "john.smith@metabase.com")))))))
+
+(deftest fetch-or-create-user-test
+  (with-redefs [metastore/enable-enhancements? (constantly true)]
+    (ldap.test/with-ldap-server
+      (testing "a new user is created when they don't already exist"
+        (try
+         (ldap/fetch-or-create-user! (ldap/find-user "jsmith1"))
+         (is (= {:first_name       "John"
+                 :last_name        "Smith"
+                 :common_name      "John Smith"
+                 :email            "john.smith@metabase.com"}
+                (into {} (db/select-one [User :first_name :last_name :email] :email "john.smith@metabase.com"))))
+         (finally (db/delete! User :email "john.smith@metabase.com"))))
+
+      (try
+       (testing "a user without a givenName attribute defaults to Unknown"
+         (ldap/fetch-or-create-user! (ldap/find-user "jmiller"))
+         (is (= {:first_name       "Unknown"
+                 :last_name        "Miller"
+                 :common_name      "Unknown Miller"}
+                (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
+
+       (testing "when givenName or sn attributes change in LDAP, they are updated in Metabase on next login"
+         (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name "Jane" :last-name "Doe"))
+         (is (= {:first_name       "Jane"
+                 :last_name        "Doe"
+                 :common_name      "Jane Doe"}
+                (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
+
+       (testing "if givenName or sn attributes are removed, values stored in Metabase are not overwritten on next login"
+         (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name nil :last-name nil))
+         (is (= {:first_name       "Jane"
+                 :last_name        "Doe"
+                 :common_name      "Jane Doe"}
+                (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
+       (finally (db/delete! User :email "jane.miller@metabase.com"))))))
