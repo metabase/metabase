@@ -186,8 +186,9 @@
 
 (defn- recursive-collection-children
   "Collections inside collections are special because
-  we need to actually execute whole DB query to get any of them at all
-  But in turn, the assumption is that the cardinality is pretty low"
+  we need to actually execute the whole DB query to get them, because of the 'effective' semantics
+  (what seems like a child visible to some permission set despite being a grandchild or something in reality)
+  But in turn, the assumption is that the cardinality is pretty low."
   [_ collection {:keys [archived? collection-namespace]}]
   (-> (for [child-collection (collection/effective-children collection
                                                             [:= :archived archived?]
@@ -209,15 +210,12 @@
         queries           (for [model models]
                             (collection-children-query model collection options))
         total-query       {:select [[:%count.* :count]]
-                           :from [[{:union-all queries} :source]]}
+                           :from   [[{:union-all queries} :source]]}
         rows-query        {:select   [:*]
                            :from     [[{:union-all queries} :source]]
                            :order-by [[:%lower.name :asc]]
                            :limit    offset-paging/*limit*
-                           :offset   offset-paging/*offset*}
-        collections-res   (some shit)
-        collections-total (some shit)
-        ]
+                           :offset   offset-paging/*offset*}]
     {:total  (-> (db/query total-query) first :count)
      :rows   (-> (db/query rows-query) post-process-rows)
      :limit  offset-paging/*limit*
