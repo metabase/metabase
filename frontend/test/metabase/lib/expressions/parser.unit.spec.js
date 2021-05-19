@@ -145,6 +145,10 @@ describe("metabase/lib/expressions/parser", () => {
     it("should accept a relational between a segment and a dimension", () => {
       expect(() => parseFilter("([Shipping] < 2) AND [Sale]")).not.toThrow();
     });
+    it("should accept parenthesized logical operations", () => {
+      expect(() => parseFilter("([Deal] AND [HighRating])")).not.toThrow();
+      expect(() => parseFilter("([Price] < 100 OR [Refurb])")).not.toThrow();
+    });
     it("should accept a function", () => {
       expect(() => parseFilter("between([Subtotal], 1, 2)")).not.toThrow();
     });

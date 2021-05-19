@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   openProductsTable,
   openReviewsTable,
+  openPeopleTable,
   popover,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
@@ -905,5 +906,69 @@ describe("scenarios > question > filter", () => {
       .click();
     cy.findByText("Doohickey");
     cy.findByText("Gizmo").should("not.exist");
+  });
+
+  it.skip("custom expression filter should reference fields by their name, not by their id (metabase#15748)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]").type("[Total] < [Subtotal]");
+    cy.findByRole("button", { name: "Done" }).click();
+    cy.findByText("Total is less than Subtotal");
+  });
+
+  it("custom expression filter should allow the use of parentheses in combination with logical operators (metabase#15754)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]")
+      .type("([ID] > 2 OR [Subtotal] = 100) and [Tax] < 4")
+      .blur();
+    cy.findByText(/^Expected closing parenthesis but found/).should(
+      "not.exist",
+    );
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+  });
+
+  it.skip("should work on twice summarized questions (metabase#15620)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-query": {
+            "source-table": 1,
+            aggregation: [["count"]],
+            breakout: [["field", 7, { "temporal-unit": "month" }]],
+          },
+          aggregation: [
+            ["avg", ["field", "count", { "base-type": "type/Integer" }]],
+          ],
+        },
+        type: "query",
+      },
+    });
+    cy.get(".ScalarValue").contains("5");
+    cy.findAllByRole("button")
+      .contains("Filter")
+      .click();
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("Category").click();
+      cy.findByText("Gizmo").click();
+    });
+    cy.findByRole("button", { name: "Add filter" })
+      .should("not.be.disabled")
+      .click();
+    cy.get(".dot");
+  });
+
+  it.skip("user shouldn't need to scroll to add filter (metabase#14307)", () => {
+    cy.viewport(1280, 720);
+    openPeopleTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    popover()
+      .findByText("State")
+      .click();
+    cy.findByText("AL").click();
+    cy.findByRole("button", { name: "Add filter" }).isVisibleInPopover();
   });
 });
