@@ -22,6 +22,7 @@
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -134,7 +135,8 @@
                    :p.name
                    [nil :p.description]
                    :p.collection_position
-                   [nil :p.display]]
+                   [nil :p.display]
+                   [(hx/literal "pulse") :model]]
        :modifiers [:distinct]
        :from      [[Pulse :p]]
        :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
@@ -149,7 +151,7 @@
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [nil :description] [nil :collection_position] [nil :display]]
+  {:select [:id :name [nil :description] [nil :collection_position] [nil :display] [(hx/literal "snippet") :model]]
        :from   [[NativeQuerySnippet :nqs]]
        :where  [:and
                 [:= :collection_id (:id collection)]
@@ -157,7 +159,7 @@
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:id :name :description :collection_position :display]
+  (-> {:select [:id :name :description :collection_position :display [(hx/literal "card") :model]]
        :from   [[Card :c]]
        :where  [:and
                 [:= :collection_id (:id collection)]
@@ -170,7 +172,7 @@
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:id :name :description :collection_position [nil :display]]
+  (-> {:select [:id :name :description :collection_position [nil :display] [(hx/literal "dashboard") :model]]
        :from   [[Dashboard :d]]
        :where  [:and
                 [:= :collection_id (:id collection)]
@@ -179,19 +181,14 @@
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [nil :description] [nil :collection_position] [nil :display]]
+  {:select [:id :name [nil :description] [nil :collection_position] [nil :display] [(hx/literal "collection") :model]]
    :from [[Collection :col]]})
-
-(defmethod post-process-collection-children :dashboard
-  [_ rows]
-  (for [row rows]
-    (dissoc row :display)))
 
 (defn- post-process-rows [rows]
   (mapcat
-   (fn [[model rows]]
-     (post-process-collection-children (keyword model) rows))
-   (group-by :model rows)))
+    (fn [[model rows]]
+      (post-process-collection-children (keyword model) rows))
+    (group-by :model rows)))
 
 (defn- recursive-collection-children
   "Collections inside collections are special because
