@@ -34,10 +34,6 @@ export function getModerationIssueActionTypes(isModerator, moderationRequest) {
     : getModerationRequestActionTypes();
 }
 
-// todo -- update this to pass in the `issue` and filter out the action with the same "type"
-// ("type" may now mean "status"...)
-// because the primary action of the button will be the given issue type (see updated mocks).
-// second TODO -- I'm not sure how to reconcile the fact that "dismissed" is not really a review TYPE
 function getModerationReviewActionTypes(moderationRequest) {
   return [
     REVIEW_STATUSES.verified,
