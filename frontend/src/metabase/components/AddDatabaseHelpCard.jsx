@@ -94,7 +94,7 @@ function AddDatabaseHelpCard({ engine, hasCircle, style, ...props }) {
               href={CLOUD_HELP_URL}
               className="text-brand text-bold"
             >
-              Write us.
+              {t`Write us.`}
             </ExternalLink>
           </p>
         )}
