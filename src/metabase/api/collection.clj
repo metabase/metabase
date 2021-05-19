@@ -223,7 +223,7 @@
                            :limit    offset-paging/*limit*
                            :offset   offset-paging/*offset*}]
     {:total  (-> (db/query total-query) first :count)
-     :rows   (-> (db/query rows-query) post-process-rows)
+     :data   (-> (db/query rows-query) post-process-rows)
      :limit  offset-paging/*limit*
      :offset offset-paging/*limit*
      :models models}))
