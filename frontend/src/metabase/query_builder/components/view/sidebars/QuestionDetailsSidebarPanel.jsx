@@ -4,7 +4,10 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/questions/components/QuestionActionButtons";
 import ClampedText from "metabase/components/ClampedText";
 import QuestionActivityTimeline from "metabase/questions/components/QuestionActivityTimeline";
-import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
+import {
+  PLUGIN_MODERATION_COMPONENTS,
+  PLUGIN_MODERATION_SERVICE,
+} from "metabase/plugins";
 import { SIDEBAR_VIEWS } from "./constants";
 
 const {
@@ -12,9 +15,24 @@ const {
   OpenModerationIssuesButton,
 } = PLUGIN_MODERATION_COMPONENTS;
 
-function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
+const { getOpenRequests } = PLUGIN_MODERATION_SERVICE;
+
+QuestionDetailsSidebarPanel.propTypes = {
+  setView: PropTypes.func.isRequired,
+  question: PropTypes.object.isRequired,
+  onOpenModal: PropTypes.func.isRequired,
+  isAdmin: PropTypes.bool.isRequired,
+};
+
+function QuestionDetailsSidebarPanel({
+  setView,
+  question,
+  onOpenModal,
+  isAdmin,
+}) {
   const canWrite = question.canWrite();
   const description = question.description();
+  const numOpenIssues = getOpenRequests(question).length;
 
   return (
     <SidebarContent className="full-height px1">
@@ -28,6 +46,7 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
         <ClampedText className="px3 pb2" text={description} visibleLines={8} />
         <div className="mx1 pb2 flex justify-between border-row-divider">
           <ModerationIssueActionMenu
+            isAdmin={isAdmin}
             triggerClassName="Button--round text-brand border-brand py1"
             onAction={issueType => {
               setView({
@@ -37,6 +56,8 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
             }}
           />
           <OpenModerationIssuesButton
+            isAdmin={isAdmin}
+            numOpenIssues={numOpenIssues}
             onClick={() => {
               setView({
                 name: SIDEBAR_VIEWS.OPEN_ISSUES_PANEL,
@@ -49,11 +70,5 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
     </SidebarContent>
   );
 }
-
-QuestionDetailsSidebarPanel.propTypes = {
-  setView: PropTypes.func.isRequired,
-  question: PropTypes.object.isRequired,
-  onOpenModal: PropTypes.func.isRequired,
-};
 
 export default QuestionDetailsSidebarPanel;

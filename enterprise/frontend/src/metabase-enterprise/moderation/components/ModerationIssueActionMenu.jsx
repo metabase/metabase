@@ -4,25 +4,34 @@ import PropTypes from "prop-types";
 import EntityMenu from "metabase/components/EntityMenu";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
-  getModerationIssueTypes,
+  getModerationReviewActionTypes,
   getModerationRequestActionTypes,
   getColor,
   getModerationStatusIcon,
 } from "metabase-enterprise/moderation";
 
+ModerationIssueActionMenu.propTypes = {
+  className: PropTypes.string,
+  triggerClassName: PropTypes.string,
+  onAction: PropTypes.func,
+  request: PropTypes.object,
+  isAdmin: PropTypes.bool.isRequired,
+};
+
 function ModerationIssueActionMenu({
   className,
   triggerClassName,
   onAction,
-  issue,
+  request,
+  isAdmin,
 }) {
-  const types = issue
-    ? getModerationRequestActionTypes()
-    : getModerationIssueTypes();
-
+  const types = isAdmin
+    ? getModerationReviewActionTypes(request)
+    : getModerationRequestActionTypes();
+  const userType = isAdmin ? "moderator" : "user";
   return (
     <EntityMenu
-      triggerChildren={MODERATION_TEXT.moderator.action}
+      triggerChildren={MODERATION_TEXT[userType].action}
       triggerProps={{
         iconRight: "chevrondown",
         className: triggerClassName,
@@ -36,18 +45,11 @@ function ModerationIssueActionMenu({
           iconSize: 18,
           className: `text-${color}`,
           action: () => onAction(type),
-          title: MODERATION_TEXT.moderator[type].action,
+          title: MODERATION_TEXT[userType][type].action,
         };
       })}
     />
   );
 }
-
-ModerationIssueActionMenu.propTypes = {
-  className: PropTypes.string,
-  triggerClassName: PropTypes.string,
-  onAction: PropTypes.func,
-  issue: PropTypes.object,
-};
 
 export default ModerationIssueActionMenu;

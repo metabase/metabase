@@ -15,37 +15,41 @@ import ModerationIssueActionMenu from "metabase-enterprise/moderation/components
 
 ModerationIssueThread.propTypes = {
   className: PropTypes.string,
-  issue: PropTypes.object.isRequired,
+  request: PropTypes.object.isRequired,
+  comments: PropTypes.array,
   onComment: PropTypes.func,
-  onResolve: PropTypes.func,
+  onModerate: PropTypes.func,
+  isAdmin: PropTypes.bool.isRequired,
 };
 
 const COMMMENT_VISIBLE_LINES = 3;
 
 export function ModerationIssueThread({
   className,
-  issue,
+  request,
+  comments = [],
   onComment,
-  onResolve,
+  onModerate,
+  isAdmin,
 }) {
-  const color = getColor(issue.type);
-  const icon = getModerationStatusIcon(issue.type);
-  const hasButtonBar = !!(onComment || onResolve);
+  const color = getColor(request.type);
+  const icon = getModerationStatusIcon(request.type);
+  const hasButtonBar = !!(onComment || onModerate);
 
   return (
     <div className={cx(className, "")}>
       <div className={`flex align-center text-${color} text-bold`}>
         <Icon name={icon} className="mr1" />
-        {MODERATION_TEXT.user[issue.type].action}
+        {MODERATION_TEXT.user[request.type].action}
       </div>
       <Comment
         className="pt1"
-        title={issue.title}
-        text={issue.text}
-        timestamp={issue.timestamp}
+        title={request.requesterDisplayName}
+        text={request.text}
+        timestamp={request.created_at}
         visibleLines={COMMMENT_VISIBLE_LINES}
       />
-      {issue.comments.map(comment => {
+      {comments.map(comment => {
         return (
           <Comment
             className="pt2"
@@ -63,11 +67,12 @@ export function ModerationIssueThread({
           {onComment && (
             <Button className="py1" onClick={onComment}>{t`Comment`}</Button>
           )}
-          {onResolve && (
+          {onModerate && (
             <ModerationIssueActionMenu
               triggerClassName="text-white text-white-hover bg-brand bg-brand-hover py1"
-              onAction={onResolve}
-              issue={issue}
+              onAction={actionType => onModerate(actionType, request)}
+              request={request}
+              isAdmin={isAdmin}
             />
           )}
         </div>

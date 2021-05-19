@@ -162,6 +162,7 @@ export default class EntityListLoader extends React.Component {
   renderChildren = () => {
     let { children, entityDef, wrapped, list, reload, ...props } = this.props; // eslint-disable-line no-unused-vars
 
+    // "wrapped" means the list of entities are instantiated into instances of `EntityWrapper`
     if (wrapped) {
       list = this._getWrappedList(this.props);
     }

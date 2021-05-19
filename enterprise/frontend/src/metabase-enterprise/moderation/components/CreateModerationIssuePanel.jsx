@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
 
 import { useAsyncFunction } from "metabase/lib/hooks";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
@@ -14,33 +15,58 @@ CreateModerationIssuePanel.propTypes = {
   issueType: PropTypes.string.isRequired,
   onReturn: PropTypes.func.isRequired,
   createModerationReview: PropTypes.func.isRequired,
+  createModerationRequest: PropTypes.func.isRequired,
   itemId: PropTypes.number.isRequired,
-  itemType: PropTypes.string.isRequired,
+  isAdmin: PropTypes.bool.isRequired,
+  moderationRequest: PropTypes.object,
 };
 
 function CreateModerationIssuePanel({
   issueType,
   onReturn,
   createModerationReview: _createModerationReview,
+  createModerationRequest: _createModerationRequest,
   itemId,
-  itemType,
+  isAdmin,
+  moderationRequest,
 }) {
   const [description, setDescription] = useState("");
   const icon = getModerationStatusIcon(issueType);
   const color = getColor(issueType);
+  const textColorClass = `text-${color}`;
+  const userType = isAdmin ? "moderator" : "user";
 
-  const [createModerationReview, isPending] = useAsyncFunction(
+  const [createModerationReview, isModerationReviewPending] = useAsyncFunction(
     _createModerationReview,
   );
+  const [
+    createModerationRequest,
+    isModerationRequestPending,
+  ] = useAsyncFunction(_createModerationRequest);
+
+  const isPending = isModerationRequestPending || isModerationReviewPending;
 
   const onCreateModerationReview = async e => {
     e.preventDefault();
 
-    await createModerationReview({
-      status: issueType,
-      moderated_item_id: itemId,
-      moderated_item_type: itemType,
-    });
+    if (isAdmin) {
+      await createModerationReview({
+        moderationReview: {
+          type: issueType,
+          cardId: itemId,
+          description,
+        },
+        moderationRequest,
+      });
+    } else {
+      await createModerationRequest({});
+    }
+
+    // this fn gets much more complex
+    // if no moderationRequest, create moderation review
+    // if moderationRequest, create moderation review and resolve request
+    // if type is dismiss, create comment and close it
+    // should not encounter a type of dismiss without a moderationRequest
 
     onReturn();
   };
@@ -50,17 +76,17 @@ function CreateModerationIssuePanel({
       onSubmit={onCreateModerationReview}
       className="p2 flex flex-column row-gap-2"
     >
-      <div className="flex align-center">
+      <div className={cx(textColorClass, "flex align-center")}>
         <Icon className="mr1" name={icon} size={18} />
-        <span className={`text-${color} text-bold`}>
-          {MODERATION_TEXT.moderator[issueType].action}
+        <span className="text-bold">
+          {MODERATION_TEXT[userType][issueType].action}
         </span>
       </div>
       <div>
-        {MODERATION_TEXT.moderator[issueType].actionCreationDescription}
+        {MODERATION_TEXT[userType][issueType].actionCreationDescription}
       </div>
       <label className="text-bold">
-        {MODERATION_TEXT.moderator[issueType].actionCreationLabel}
+        {MODERATION_TEXT[userType][issueType].actionCreationLabel}
       </label>
       <textarea
         className="input full max-w-full min-w-full"
@@ -75,7 +101,7 @@ function CreateModerationIssuePanel({
           {MODERATION_TEXT.cancel}
         </Button>
         <Button disabled={isPending} type="submit" primary>
-          {MODERATION_TEXT.moderator[issueType].actionCreationButton}
+          {MODERATION_TEXT[userType][issueType].actionCreationButton}
         </Button>
       </div>
     </form>

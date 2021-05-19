@@ -1,17 +1,56 @@
 import React from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { getOpenIssues } from "metabase-enterprise/moderation";
+import User from "metabase/entities/users";
+import { getUser } from "metabase/selectors/user";
+
 import Button from "metabase/components/Button";
 import { ModerationIssueThread } from "metabase-enterprise/moderation/components/ModerationIssueThread";
 
+import { SIDEBAR_VIEWS } from "metabase/query_builder/components/view/sidebars/constants";
+
 OpenModerationIssuesPanel.propTypes = {
+  setView: PropTypes.func.isRequired,
+  requests: PropTypes.array.isRequired,
   onReturn: PropTypes.func.isRequired,
+  users: PropTypes.array,
+  isAdmin: PropTypes.bool.isRequired,
+  currentUser: PropTypes.object,
 };
 
-export function OpenModerationIssuesPanel({ onReturn }) {
-  const issues = getOpenIssues();
+function OpenModerationIssuesPanel({
+  setView,
+  requests,
+  onReturn,
+  users,
+  isAdmin,
+  currentUser,
+}) {
+  const usersById = users.reduce((map, user) => {
+    map[user.id] = user;
+    return map;
+  }, {});
+
+  const requestsWithMetadata = requests.map(request => {
+    const user = usersById[request.requester_id];
+    const requesterDisplayName = user && user.common_name;
+    return {
+      ...request,
+      requesterDisplayName,
+    };
+  });
+
+  const onModerate = async (moderationReviewType, moderationRequest) => {
+    setView({
+      name: SIDEBAR_VIEWS.CREATE_ISSUE_PANEL,
+      props: { issueType: moderationReviewType, moderationRequest },
+      previousView: SIDEBAR_VIEWS.OPEN_ISSUES_PANEL,
+    });
+  };
+
   return (
     <div className="px1">
       <div className="pt1">
@@ -23,14 +62,14 @@ export function OpenModerationIssuesPanel({ onReturn }) {
         >{t`Open issues`}</Button>
       </div>
       <div className="px2">
-        {issues.map(issue => {
+        {requestsWithMetadata.map(request => {
           return (
             <ModerationIssueThread
-              key={issue.id}
+              key={request.id}
               className="py2 border-row-divider"
-              issue={issue}
-              onComment={() => {}}
-              onResolve={() => {}}
+              request={request}
+              onModerate={isAdmin && onModerate}
+              isAdmin={isAdmin}
             />
           );
         })}
@@ -38,3 +77,13 @@ export function OpenModerationIssuesPanel({ onReturn }) {
     </div>
   );
 }
+
+export default _.compose(
+  User.loadList(),
+  connect(
+    state => ({
+      currentUser: getUser(state),
+    }),
+    null, //
+  ),
+)(OpenModerationIssuesPanel);

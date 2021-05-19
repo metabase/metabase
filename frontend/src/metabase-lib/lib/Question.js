@@ -988,6 +988,10 @@ export default class Question {
   getLatestModerationReview() {
     return _.last(this.getModerationReviews());
   }
+
+  getModerationRequests() {
+    return getIn(this, ["_card", "moderation_requests"], []);
+  }
 }
 
 window.Question = Question;
