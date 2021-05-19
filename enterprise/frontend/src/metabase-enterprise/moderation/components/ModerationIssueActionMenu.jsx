@@ -28,7 +28,8 @@ function ModerationIssueActionMenu({
   isModerator,
 }) {
   const userType = getUserTypeTextKey(isModerator);
-  const issueTypes = getModerationIssueActionTypes(userType, request);
+  const issueTypes = getModerationIssueActionTypes(isModerator, request);
+
   return (
     <EntityMenu
       triggerChildren={MODERATION_TEXT[userType].action}
