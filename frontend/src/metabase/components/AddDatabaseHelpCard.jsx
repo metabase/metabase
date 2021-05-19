@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
+import styled from "styled-components";
 import { Flex } from "grid-styled";
 
 import { t, jt } from "ttag";
@@ -51,33 +52,20 @@ function AddDatabaseHelpCard({ engine, hasCircle, style, ...props }) {
   const shouldDisplayHelpLink = MetabaseSettings.isHosted();
 
   return (
-    <Flex
-      p={2}
-      style={{
-        backgroundColor: "#F9FBFB",
-        borderRadius: 10,
-        minWidth: 300,
-        ...style,
-      }}
-      {...props}
-    >
-      <Flex
+    <HelpCardContainer p={2} {...props}>
+      <IconContainer
         align="center"
         justify="center"
         className="flex-no-shrink circular"
-        style={{
-          width: hasCircle ? "52px" : "32px",
-          height: hasCircle ? "52px" : "32px",
-          backgroundColor: hasCircle ? "#EEF2F5" : "transparent",
-        }}
+        hasCircle={hasCircle}
       >
         <Icon size={20} name="database" className="text-brand" />
-      </Flex>
-      <Flex
+      </IconContainer>
+      <CardContent
         flexDirection="column"
         justify="center"
         className="ml2"
-        style={{ marginTop: shouldDisplayHelpLink ? "8px" : 0 }}
+        shouldDisplayHelpLink={shouldDisplayHelpLink}
       >
         <div>
           <p className="text-medium m0">
@@ -98,12 +86,28 @@ function AddDatabaseHelpCard({ engine, hasCircle, style, ...props }) {
             </ExternalLink>
           </p>
         )}
-      </Flex>
-    </Flex>
+      </CardContent>
+    </HelpCardContainer>
   );
 }
 
 AddDatabaseHelpCard.propTypes = propTypes;
 AddDatabaseHelpCard.defaultProps = defaultProps;
+
+const HelpCardContainer = styled(Flex)`
+  background-color: #f9fbfb;
+  border-radius: 10px;
+  min-width: 300px;
+`;
+
+const IconContainer = styled(Flex)`
+  width: ${props => (props.hasCircle ? "52px" : "32px")};
+  height: ${props => (props.hasCircle ? "52px" : "32px")};
+  background-color: ${props => (props.hasCircle ? "#EEF2F5" : "transparent")};
+`;
+
+const CardContent = styled(Flex)`
+  margin-top: ${props => (props.shouldDisplayHelpLink ? "8px" : 0)};
+`;
 
 export default AddDatabaseHelpCard;
