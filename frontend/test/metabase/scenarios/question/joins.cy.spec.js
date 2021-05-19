@@ -35,7 +35,7 @@ describe("scenarios > question > joined questions", () => {
     popover()
       .findByText("Product ID") // Implicit assertion - test will fail for multiple strings
       .click();
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).not.to.exist;
     });

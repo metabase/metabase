@@ -114,10 +114,10 @@
   (doseq [[name-pattern base-types semantic-type] pattern+base-types+semantic-type]
     (assert (instance? java.util.regex.Pattern name-pattern))
     (assert (every? #(isa? % :type/*) base-types))
-    (assert (isa? semantic-type :type/*))))
+    (assert (or (isa? semantic-type :Semantic/*)
+                (isa? semantic-type :Relation/*)))))
 
-
-(s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldType)
+(s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationType)
   "If `name` and `base-type` matches a known pattern, return the `semantic_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldType]
   (let [field-name (str/lower-case field-name)]

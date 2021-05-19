@@ -207,10 +207,23 @@
   (testing "It offsets matches properly"
     (with-search-items-in-root-collection "test"
       (is (= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
+  (testing "It subsets matches for model"
+    (with-search-items-in-root-collection "test"
+      (is (= 0 (count (search-request-data :crowberto :q "test" :models "database"))))
+      (is (= 1 (count (search-request-data :crowberto :q "test" :models "database" :models "card"))))))
   (testing "It returns limit and offset params in return result"
     (with-search-items-in-root-collection "test"
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
       (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3")))))))
+
+(deftest query-model-set
+  (testing "It returns some stuff when you get results"
+    (with-search-items-in-root-collection "test"
+      (is (contains? (apply hash-set (:available_models
+                       (mt/user-http-request :crowberto :get 200 "search?q=test"))) "dashboard"))))
+  (testing "It returns nothing if there are no results"
+    (with-search-items-in-root-collection "test"
+      (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]

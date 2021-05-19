@@ -44,7 +44,7 @@
                                         {:native su/NonBlankString}
                                         :else
                                         su/FieldType)
-   (s/optional-key :semantic-type)     (s/maybe su/FieldType)
+   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
    (s/optional-key :effective-type)    (s/maybe su/FieldType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
    (s/optional-key :visibility-type)   (s/maybe (apply s/enum field/visibility-types))
@@ -341,7 +341,7 @@
    ;; TODO - Can `:cum-count` be used without args as well ??
    (assert (= aggregation-type :count))
    {:base_type     :type/BigInteger
-    :semantic_type :type/Number
+    :semantic_type :type/Quantity
     :name          "count"
     :display_name  "Count"
     :source        :aggregation

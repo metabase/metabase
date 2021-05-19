@@ -124,12 +124,10 @@
   [expression]
   (cond
     (string? expression)
-    {:base_type     :type/Text
-     :semantic_type nil}
+    {:base_type :type/Text}
 
     (number? expression)
-    {:base_type     :type/Number
-     :semantic_type nil}
+    {:base_type :type/Number}
 
     (mbql.u/is-clause? :field expression)
     (col-info-for-field-clause {} expression)
@@ -138,28 +136,31 @@
     (infer-expression-type (second expression))
 
     (mbql.u/is-clause? :length expression)
-    {:base_type     :type/BigInteger
-     :semantic_type :type/Number}
+    {:base_type :type/BigInteger}
 
     (mbql.u/is-clause? :case expression)
-    (->> expression
-         second
+    (let [[_ clauses] expression]
+      (some
+       (fn [[_ expression]]
          ;; get the first non-nil val
-         (keep second)
-         first
-         infer-expression-type)
+         (when (and (not= expression nil)
+                    (or (not (mbql.u/is-clause? :value expression))
+                        (let [[_ value] expression]
+                          (not= value nil))))
+           (infer-expression-type expression)))
+       clauses))
 
     (mbql.u/datetime-arithmetics? expression)
-    {:base_type     :type/DateTime
-     :semantic_type nil}
+    {:base_type :type/DateTime}
 
     (mbql.u/is-clause? mbql.s/string-expressions expression)
-    {:base_type     :type/Text
-     :semantic_type nil}
+    {:base_type :type/Text}
+
+    (mbql.u/is-clause? mbql.s/arithmetic-expressions expression)
+    {:base_type :type/Float}
 
     :else
-    {:base_type     :type/Float
-     :semantic_type :type/Number}))
+    {:base_type :type/*}))
 
 (defn- col-info-for-expression
   [inner-query [_ expression-name :as clause]]
@@ -363,8 +364,8 @@
 
 (s/defn col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
-  ; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
-  ; `match` pattern for field clauses below
+  ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
+  ;; `match` pattern for field clauses below
   [inner-query :- su/Map, clause]
   (mbql.u/match-one clause
     ;; ok, if this is a aggregation w/ options recurse so we can get information about the ag it wraps
@@ -379,19 +380,19 @@
     (merge
      (col-info-for-aggregation-clause inner-query args)
      {:base_type     :type/BigInteger
-      :semantic_type :type/Number}
+      :semantic_type :type/Quantity}
      (ag->name-info inner-query &match))
 
     [:count-where _]
     (merge
      {:base_type     :type/Integer
-      :semantic_type :type/Number}
+      :semantic_type :type/Quantity}
      (ag->name-info inner-query &match))
 
     [:share _]
     (merge
      {:base_type     :type/Float
-      :semantic_type :type/Number}
+      :semantic_type :type/Share}
      (ag->name-info inner-query &match))
 
     ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
@@ -404,10 +405,12 @@
      (when (mbql.preds/Aggregation? &match)
        (ag->name-info inner-query &match)))
 
-    [:case _ & _]
+    ;; the type returned by a case statement depends on what its expressions are; we'll just return the type info for
+    ;; the first expression for the time being. I guess it's possible the expression might return a string for one
+    ;; case and a number for another, but I think in post cases it should be the same type for every clause.
+    [:case & _]
     (merge
-     {:base_type     :type/Float
-      :semantic_type :type/Number}
+     (infer-expression-type &match)
      (ag->name-info inner-query &match))
 
     ;; get name/display-name of this ag

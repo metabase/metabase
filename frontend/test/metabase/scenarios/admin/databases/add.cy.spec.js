@@ -44,7 +44,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.findByRole("button", { name: "Save" })
+    cy.button("Save")
       .should("not.be.disabled")
       .click();
 
@@ -80,7 +80,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.findByRole("button", { name: "Save" })
+    cy.button("Save")
       .should("not.be.disabled")
       .click();
 
@@ -88,7 +88,7 @@ describe("scenarios > admin > databases > add", () => {
 
     toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
 
-    cy.findByRole("button", { name: "Next" })
+    cy.button("Next")
       .should("not.be.disabled")
       .click();
 
@@ -107,17 +107,17 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.findByRole("button", { name: "Save" }).should("not.be.disabled");
+    cy.button("Save").should("not.be.disabled");
 
     toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
 
-    cy.findByRole("button", { name: "Next" })
+    cy.button("Next")
       .should("not.be.disabled")
       .click();
 
     cy.findByText("Never, I'll do this manually if I need to").click();
 
-    cy.findByRole("button", { name: "Save" }).click();
+    cy.button("Save").click();
 
     cy.wait("@createDatabase").then(({ request }) => {
       expect(request.body.engine).to.equal("postgres");
@@ -144,7 +144,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.findByRole("button", { name: "Save" }).click();
+    cy.button("Save").click();
 
     cy.wait("@createDatabase");
     cy.findByText("DATABASE CONNECTION ERROR").should("exist");
@@ -204,7 +204,7 @@ describe("scenarios > admin > databases > add", () => {
       }).as("createDatabase");
 
       // submit form and check that the file's body is included
-      cy.findByRole("button", { name: "Save" }).click();
+      cy.button("Save").click();
       cy.wait("@createDatabase").should(xhr => {
         expect(xhr.request.body.details["service-account-json"]).to.equal(
           '{"foo": 123}',

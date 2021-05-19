@@ -1,26 +1,10 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { usePagination } from "metabase/hooks/use-pagination";
+
 import { USER_STATUS } from "../constants";
 
 const MIN_SEARCH_LENGTH = 2;
-
-export const usePagination = (initialPage = 0) => {
-  const [page, setPage] = useState(initialPage);
-
-  const handleNextPage = useCallback(() => setPage(prev => prev + 1), [
-    setPage,
-  ]);
-  const handlePreviousPage = useCallback(() => setPage(prev => prev - 1), [
-    setPage,
-  ]);
-
-  return {
-    handleNextPage,
-    handlePreviousPage,
-    setPage,
-    page,
-  };
-};
 
 // NOTE: EntityLoader is wrapped with PaginationState hoc, however,
 // it is not the best place to store pagination state since we might want to

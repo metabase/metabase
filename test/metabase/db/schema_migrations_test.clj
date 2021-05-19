@@ -61,99 +61,99 @@
                  (db/exists? User :email (u/lower-case-en e1)))))))))
 
 (deftest semantic-type-migration-tests
-  ;; have to turn off field validation since the semantic types below are no longer valid but were up to 38
-  (with-redefs [metabase.models.field/check-valid-types (constantly nil)]
-    (testing "updates each of the coercion types"
+  (testing "updates each of the coercion types"
+    (impl/test-migrations [283 296] [migrate!]
       ;; by name hoists results into a map by name so diffs are easier to read than sets.
-      (let [by-name #(into {} (map (juxt :name identity)) %)]
-        (impl/test-migrations [283 296] [migrate!]
-          (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
-          (db/simple-insert! Table {:name "Table", :db_id 1, :created_at :%now, :updated_at :%now, :active true})
+      (let [by-name  #(into {} (map (juxt :name identity)) %)
+            db-id    (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
+            table-id (db/simple-insert! Table {:name "Table", :db_id db-id, :created_at :%now, :updated_at :%now, :active true})]
+        ;; have to turn off field validation since the semantic types below are no longer valid but were up to 38
+        (with-redefs [isa? (constantly true)]
           (db/insert-many! Field
             [{:base_type     :type/Text
               :semantic_type :type/Address
               :name          "address"
-              :table_id      1
+              :table_id      table-id
               :database_type "VARCHAR"}
              {:base_type     :type/Text
               :semantic_type :type/ISO8601DateTimeString
               :name          "iso-datetime"
-              :table_id      1
+              :table_id      table-id
               :database_type "VARCHAR"}
              {:base_type     :type/Text
               :semantic_type "timestamp_milliseconds"
               :name          "iso-datetime-v0.20"
-              :table_id      1
+              :table_id      table-id
               :database_type "VARCHAR"}
              {:base_type     :type/Text
               :semantic_type :type/ISO8601DateString
               :name          "iso-date"
-              :table_id      1
+              :table_id      table-id
               :database_type "VARCHAR"}
              {:base_type     :type/Text
               :semantic_type :type/ISO8601TimeString
               :name          "iso-time"
-              :table_id      1
+              :table_id      table-id
               :database_type "VARCHAR"}
              {:base_type     :type/Integer
               :semantic_type :type/UNIXTimestampSeconds
               :name          "unix-seconds"
-              :table_id      1
+              :table_id      table-id
               :database_type "INT"}
              {:base_type     :type/Integer
               :semantic_type :type/UNIXTimestampMilliseconds
               :name          "unix-millis"
-              :table_id      1
+              :table_id      table-id
               :database_type "INT"}
              {:base_type     :type/Integer
               :semantic_type :type/UNIXTimestampMicroseconds
               :name          "unix-micros"
-              :table_id      1
-              :database_type "INT"}])
-          (migrate!)
-          (is (= (by-name
-                  [{:base_type         :type/Text
-                    :effective_type    :type/Text
-                    :coercion_strategy nil
-                    :semantic_type     :type/Address
-                    :name              "address"}
-                   {:base_type         :type/Text
-                    :effective_type    :type/DateTime
-                    :coercion_strategy :Coercion/ISO8601->DateTime
-                    :semantic_type     nil
-                    :name              "iso-datetime"}
-                   {:base_type         :type/Text
-                    :effective_type    :type/Instant
-                    :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
-                    :semantic_type     nil
-                    :name              "iso-datetime-v0.20"}
-                   {:base_type         :type/Text
-                    :effective_type    :type/Date
-                    :coercion_strategy :Coercion/ISO8601->Date
-                    :semantic_type     nil
-                    :name              "iso-date"}
-                   {:base_type         :type/Text
-                    :effective_type    :type/Time
-                    :coercion_strategy :Coercion/ISO8601->Time
-                    :semantic_type     nil
-                    :name              "iso-time"}
-                   {:base_type         :type/Integer
-                    :effective_type    :type/Instant
-                    :coercion_strategy :Coercion/UNIXSeconds->DateTime
-                    :semantic_type     nil
-                    :name              "unix-seconds"}
-                   {:base_type         :type/Integer
-                    :effective_type    :type/Instant
-                    :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
-                    :semantic_type     nil
-                    :name              "unix-millis"}
-                   {:base_type         :type/Integer
-                    :effective_type    :type/Instant
-                    :coercion_strategy :Coercion/UNIXMicroSeconds->DateTime
-                    :semantic_type     nil
-                    :name              "unix-micros"}])
-                 (by-name
-                  (into #{}
-                        (map #(select-keys % [:base_type :effective_type :coercion_strategy
-                                              :semantic_type :name]))
-                        (db/select Field))))))))))
+              :table_id      table-id
+              :database_type "INT"}]))
+        (migrate!)
+        (is (= (by-name
+                [{:base_type         :type/Text
+                  :effective_type    :type/Text
+                  :coercion_strategy nil
+                  :semantic_type     :type/Address
+                  :name              "address"}
+                 {:base_type         :type/Text
+                  :effective_type    :type/DateTime
+                  :coercion_strategy :Coercion/ISO8601->DateTime
+                  :semantic_type     nil
+                  :name              "iso-datetime"}
+                 {:base_type         :type/Text
+                  :effective_type    :type/Instant
+                  :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                  :semantic_type     nil
+                  :name              "iso-datetime-v0.20"}
+                 {:base_type         :type/Text
+                  :effective_type    :type/Date
+                  :coercion_strategy :Coercion/ISO8601->Date
+                  :semantic_type     nil
+                  :name              "iso-date"}
+                 {:base_type         :type/Text
+                  :effective_type    :type/Time
+                  :coercion_strategy :Coercion/ISO8601->Time
+                  :semantic_type     nil
+                  :name              "iso-time"}
+                 {:base_type         :type/Integer
+                  :effective_type    :type/Instant
+                  :coercion_strategy :Coercion/UNIXSeconds->DateTime
+                  :semantic_type     nil
+                  :name              "unix-seconds"}
+                 {:base_type         :type/Integer
+                  :effective_type    :type/Instant
+                  :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                  :semantic_type     nil
+                  :name              "unix-millis"}
+                 {:base_type         :type/Integer
+                  :effective_type    :type/Instant
+                  :coercion_strategy :Coercion/UNIXMicroSeconds->DateTime
+                  :semantic_type     nil
+                  :name              "unix-micros"}])
+               (by-name
+                (into #{}
+                      (map #(select-keys % [:base_type :effective_type :coercion_strategy
+                                            :semantic_type :name]))
+                      (db/select Field :table_id table-id)))))))))

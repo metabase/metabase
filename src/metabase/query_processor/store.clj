@@ -112,7 +112,7 @@
     ;; would make everything just use base_type.
     (s/optional-key :effective_type)    (s/maybe su/FieldType)
     (s/optional-key :coercion_strategy) (s/maybe su/CoercionStrategy)
-    :semantic_type                      (s/maybe su/FieldType)
+    :semantic_type                      (s/maybe su/FieldSemanticOrRelationType)
     :fingerprint                        (s/maybe su/Map)
     :parent_id                          (s/maybe su/IntGreaterThanZero)
     s/Any                               s/Any}))
@@ -132,13 +132,13 @@
   "Store a `table` in the QP Store for the duration of the current query execution. Throws an Exception if table is
   invalid or doesn't have all required keys."
   [table :- TableInstanceWithRequiredStoreKeys]
-  (swap! *store* assoc-in [:tables (u/get-id table)] table))
+  (swap! *store* assoc-in [:tables (u/the-id table)] table))
 
 (s/defn store-field!
   "Store a `field` in the QP Store for the duration of the current query execution. Throws an Exception if field is
   invalid or doesn't have all required keys."
   [field :- FieldInstanceWithRequiredStorekeys]
-  (swap! *store* assoc-in [:fields (u/get-id field)] field))
+  (swap! *store* assoc-in [:fields (u/the-id field)] field))
 
 
 ;;; ----------------------- Fetching objects from application DB, and saving them in the store -----------------------
