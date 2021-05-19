@@ -285,7 +285,7 @@ export default class Dashboard extends Component {
         className={cx("Dashboard flex-full", {
           "Dashboard--fullscreen": isFullscreen,
           "Dashboard--night": isNightMode,
-          "full-height": isEditing || isSharing, // prevents header from scrolling so we can have a fixed sidebar
+          "full-height": isSharing, // prevents header from scrolling so we can have a fixed sidebar
         })}
         loading={!dashboard}
         error={error}
@@ -308,7 +308,7 @@ export default class Dashboard extends Component {
             </header>
             <div
               className={cx("flex shrink-below-content-size flex-full", {
-                "flex-basis-none": isEditing || isSharing,
+                "flex-basis-none": isSharing,
               })}
             >
               <div className="flex-auto overflow-x-hidden">

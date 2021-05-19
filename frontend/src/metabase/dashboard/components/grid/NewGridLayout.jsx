@@ -17,7 +17,6 @@ function NewGridLayout({
   margin,
   rowHeight,
   isEditing,
-  className,
   ...props
 }) {
   const cellSize = useMemo(() => {
@@ -66,49 +65,37 @@ function NewGridLayout({
   );
 
   const height = useMemo(() => {
-    const cardVerticalMargin = margin * 2;
-    const lowestLayoutCellPoint = Math.max(...layout.map(l => l.y + l.h));
-    if (!isEditing) {
-      const extraVerticalPadding = margin * 2;
-      return (
-        cellSize.height * lowestLayoutCellPoint +
-        cardVerticalMargin +
-        extraVerticalPadding
-      );
+    let lowestLayoutCellPoint = Math.max(...layout.map(l => l.y + l.h));
+    if (isEditing) {
+      lowestLayoutCellPoint += Math.ceil(window.innerHeight / cellSize.height);
     }
-    // one vertical screen worth of rows ensuring the grid fills the screen
-    const lowestWindowCellPoint = Math.ceil(
-      window.innerHeight / cellSize.height,
-    );
-    return (
-      cellSize.height * (lowestLayoutCellPoint + lowestWindowCellPoint) +
-      cardVerticalMargin
-    );
+    return (cellSize.height + margin) * lowestLayoutCellPoint;
   }, [cellSize.height, layout, margin, isEditing]);
 
+  const style = useMemo(
+    () => ({
+      width: gridWidth,
+      height,
+      background: isEditing ? background : "",
+    }),
+    [gridWidth, height, background, isEditing],
+  );
+
   return (
-    <div
-      className={className}
-      style={{
-        position: "relative",
-        width: gridWidth,
-        height,
-        background: isEditing ? background : "",
-      }}
+    <ReactGridLayout
+      cols={cols}
+      layout={layout}
+      width={gridWidth}
+      margin={[margin, margin]}
+      rowHeight={rowHeight}
+      isDraggable={isEditing}
+      isResizable={isEditing}
+      {...props}
+      autoSize={false}
+      style={style}
     >
-      <ReactGridLayout
-        cols={cols}
-        layout={layout}
-        width={gridWidth}
-        margin={[margin, margin]}
-        rowHeight={rowHeight}
-        isDraggable={isEditing}
-        isResizable={isEditing}
-        {...props}
-      >
-        {items.map(renderItem)}
-      </ReactGridLayout>
-    </div>
+      {items.map(renderItem)}
+    </ReactGridLayout>
   );
 }
 
