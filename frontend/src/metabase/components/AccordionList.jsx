@@ -51,7 +51,9 @@ export default class AccordionList extends Component {
     className: PropTypes.string,
     id: PropTypes.string,
 
-    width: PropTypes.number,
+    // TODO: pass width to this component as solely number or string if possible
+    // currently prop is number on initialization, then string afterwards
+    width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     maxHeight: PropTypes.number,
 
     sections: PropTypes.array.isRequired,
@@ -348,9 +350,10 @@ export default class AccordionList extends Component {
             ...style,
           }}
         >
-          {rows.map(row => (
+          {rows.map((row, index) => (
             <AccordionListCell
               {...this.props}
+              key={`accordion-list-cell-${index}`}
               row={row}
               sections={sections}
               onChange={this.handleChange}
@@ -486,8 +489,9 @@ const AccordionListCell = ({
             },
           )}
           onClick={
-            sectionIsTogglable(sectionIndex) &&
-            (() => toggleSection(sectionIndex))
+            sectionIsTogglable(sectionIndex)
+              ? () => toggleSection(sectionIndex)
+              : undefined
           }
         >
           {icon && (

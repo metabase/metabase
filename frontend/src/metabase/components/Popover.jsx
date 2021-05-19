@@ -128,7 +128,7 @@ export default class Popover extends Component {
 
   _popoverComponent() {
     const childProps = {
-      maxHeight: this._getMaxHeight(),
+      "max-height": this._getMaxHeight(),
     };
     const content = (
       <div

@@ -16,7 +16,7 @@ export default class ExpressionWidget extends Component {
     query: PropTypes.object.isRequired,
     onChangeExpression: PropTypes.func.isRequired,
     onRemoveExpression: PropTypes.func,
-    onClose: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
   };
 
   static defaultProps = {

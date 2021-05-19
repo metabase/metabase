@@ -22,8 +22,8 @@ const TooltipPopover = ({ children, constrainedWidth, ...props }) => {
       targetOffsetY={10}
       hasArrow
       horizontalAttachments={["center", "left", "right"]}
-      // OnClickOutsideWrapper is unecessary and causes existing popovers not to
-      // be dismissed if a tooltip is visisble, so pass noOnClickOutsideWrapper
+      // OnClickOutsideWrapper is unnecessary and causes existing popovers to
+      // not be dismissed if a tooltip is visible, so pass noOnClickOutsideWrapper
       noOnClickOutsideWrapper
       {...props}
     >
@@ -33,7 +33,7 @@ const TooltipPopover = ({ children, constrainedWidth, ...props }) => {
 };
 
 TooltipPopover.defaultProps = {
-  // default to having a constrained toolip, which limits the width so longer strings wrap.
+  // default to having a constrained tooltip, which limits the width so longer strings wrap
   constrainedWidth: true,
 };
 
