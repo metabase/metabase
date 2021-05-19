@@ -682,7 +682,7 @@ describe("scenarios > question > native", () => {
         cy.intercept("POST", "/api/dataset").as("dataset");
       });
 
-      it.skip(`text filter should work with the feature flag turned ${testCase}`, () => {
+      it(`text filter should work with the feature flag turned ${testCase}`, () => {
         cy.get("@editor").type(
           "select * from PRODUCTS where CATEGORY = {{text_filter}}",
           {
@@ -695,7 +695,7 @@ describe("scenarios > question > native", () => {
         cy.findByText("Rustic Paper Wallet");
         cy.icon("contract").click();
         cy.findByText("Showing 51 rows");
-        cy.get(".RunButton").should("not.exist");
+        cy.icon("play").should("not.exist");
       });
 
       it(`number filter should work with the feature flag turned ${testCase}`, () => {
