@@ -28,7 +28,7 @@ function ModerationIssueActionMenu({
   isModerator,
 }) {
   const userType = getUserTypeTextKey(isModerator);
-  const types = getModerationIssueActionTypes(userType, request);
+  const issueTypes = getModerationIssueActionTypes(userType, request);
   return (
     <EntityMenu
       triggerChildren={MODERATION_TEXT[userType].action}
@@ -37,15 +37,15 @@ function ModerationIssueActionMenu({
         className: triggerClassName,
       }}
       className={className}
-      items={types.map(type => {
-        const color = getColor(type);
-        const icon = getModerationStatusIcon(type);
+      items={issueTypes.map(issueType => {
+        const color = getColor(issueType);
+        const icon = getModerationStatusIcon(issueType);
         return {
           icon,
           iconSize: 18,
           className: `text-${color}`,
-          action: () => onAction(type),
-          title: MODERATION_TEXT[userType][type].action,
+          action: () => onAction(issueType),
+          title: MODERATION_TEXT[userType][issueType].action,
         };
       })}
     />
