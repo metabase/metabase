@@ -524,7 +524,7 @@ describe("scenarios > question > custom columns", () => {
      *  - Without it, test runner is too fast and the test results in false positive.
      *  - This gives it enough time to update the DOM. The same result can be achieved with `cy.wait(1)`
      */
-    it.skip("should not erase Custom column formula and Custom column name when expression is incomplete (metabase#16126)", () => {
+    it("should not erase Custom column formula and Custom column name when expression is incomplete (metabase#16126)", () => {
       cy.get("@formula")
         .click()
         .type("{movetoend}{backspace}")
@@ -535,7 +535,7 @@ describe("scenarios > question > custom columns", () => {
       cy.findByDisplayValue("Math");
     });
 
-    it.skip("should not erase Custom Column formula and Custom Column name on window resize (metabase#16127)", () => {
+    it("should not erase Custom Column formula and Custom Column name on window resize (metabase#16127)", () => {
       cy.viewport(1260, 800);
       cy.get("@formula").click(); /* See comment (1) above */
       cy.findByDisplayValue("Math");
