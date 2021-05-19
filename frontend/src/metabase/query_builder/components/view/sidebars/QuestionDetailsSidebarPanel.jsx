@@ -31,8 +31,8 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
           />
         </div>
         <ClampedDescription
-          className="px3 pb2"
-          text={description}
+          className="px3 pb1"
+          description={description}
           visibleLines={8}
           onEdit={() => onOpenModal("edit")}
         />
