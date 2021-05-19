@@ -1,7 +1,7 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import ReactDOMServer from "react-dom/server";
+import PropTypes from "prop-types";
 
 import TokenizedExpression from "./TokenizedExpression";
 
@@ -181,3 +181,17 @@ export default class TokenizedInput extends Component {
     );
   }
 }
+
+TokenizedInput.propTypes = {
+  className: PropTypes.string,
+  onBlur: PropTypes.func,
+  onChange: PropTypes.func,
+  onClick: PropTypes.func,
+  onFocus: PropTypes.func,
+  onKeyDown: PropTypes.func,
+  parserOptions: PropTypes.object,
+  style: PropTypes.object,
+  syntaxTree: PropTypes.object,
+  tokenizedEditing: PropTypes.bool,
+  value: PropTypes.string,
+};
