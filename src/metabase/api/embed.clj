@@ -135,10 +135,10 @@
         :when                         (and tag-type
                                            (or widget-type (not= tag-type :dimension)))]
     {:id      (:id tag)
-     :type    (or widget-type (cond (= tag-type :date)                                                :date/single
-                                    (and params/field-filter-operators-enabled? (= tag-type :string)) :string/=
-                                    (and params/field-filter-operators-enabled? (= tag-type :number)) :number/=
-                                    :else                                                             :category))
+     :type    (or widget-type (cond (= tag-type :date)                                                  :date/single
+                                    (and (params/field-filter-operators-enabled?) (= tag-type :string)) :string/=
+                                    (and (params/field-filter-operators-enabled?) (= tag-type :number)) :number/=
+                                    :else                                                               :category))
      :target  (if (= tag-type :dimension)
                 [:dimension [:template-tag (:name tag)]]
                 [:variable  [:template-tag (:name tag)]])
