@@ -180,27 +180,25 @@
       (h/merge-where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :collection
-  [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [nil :description] [nil :collection_position] [nil :display] [(hx/literal "collection") :model]]
-   :from [[Collection :col]]})
+  [_ collection {:keys [archived? collection-namespace]}]
+  (assoc (collection/effective-children-query
+           collection
+           [:= :archived archived?]
+           [:= :namespace (u/qualified-name collection-namespace)])
+         ; We get from the effective-children-query a normal set of columns selected:
+         ; want to make it fit the others to make UNION ALL work
+         :select [:id
+                  :name
+                  :description
+                  [nil :collection_position]
+                  [nil :display]
+                  [(hx/literal "collection") :model]]))
 
 (defn- post-process-rows [rows]
   (mapcat
     (fn [[model rows]]
       (post-process-collection-children (keyword model) rows))
     (group-by :model rows)))
-
-(defn- recursive-collection-children
-  "Collections inside collections are special because
-  we need to actually execute the whole DB query to get them, because of the 'effective' semantics
-  (what seems like a child visible to some permission set despite being a grandchild or something in reality)
-  But in turn, the assumption is that the cardinality is pretty low."
-  [_ collection {:keys [archived? collection-namespace]}]
-  (-> (for [child-collection (collection/effective-children collection
-                                                            [:= :archived archived?]
-                                                            [:= :namespace (u/qualified-name collection-namespace)])]
-        (assoc child-collection :model "collection"))
-      (hydrate :can_write)))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)

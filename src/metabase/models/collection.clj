@@ -13,6 +13,7 @@
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [potemkin :as p]
@@ -248,7 +249,6 @@
        (cond-> id-str
          (not= id-str "root") Integer/parseInt)))))
 
-
 (s/defn visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
   returned by `permissions-set->visible-collection-ids`. Correctly handles all possible values returned by that
@@ -280,6 +280,22 @@
 
          :else
          false)))))
+
+(s/defn visible-collection-ids->direct-visible-descendant-clause
+  "Generates an appropriate HoneySQL `:where` clause to filter out descendants of a collection A with a specific property.
+  This property is being a descendant of a visible collection other than A. Used for effective children calculations"
+  [maybe-parent-id :- (s/maybe su/IntGreaterThanZero), collection-ids :- VisibleCollections]
+  ; parent-id being nil corresponds to parent being root
+  (let [parent-id (str (or maybe-parent-id "root"))]
+    (into
+      [:and]
+      (if (= collection-ids :all)
+        ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
+        ; meaning, the effective children are always the direct children. So check for being a direct child.
+        [[:not-like :location (hx/literal (format "%%/%s/%%/%%" parent-id))]]
+        ; Here, we must do some filtering.
+        (for [visibile-collection-id (disj collection-ids parent-id)]
+          [:not-like :location (hx/literal (format "%%/%s/%%" (str visibile-collection-id)))])))))
 
 
 (s/defn effective-location-path :- (s/maybe LocationPath)
@@ -410,9 +426,29 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
 
-(s/defn effective-children :- #{CollectionInstance}
-  "Return the descendant Collections of a `collection` that should be presented to the current user as the children of
-  this Collection. This takes into account descendants that get filtered out when the current user can't see them. For
+(s/defn ^:private effective-children-where-clause
+  [collection & additional-honeysql-where-clauses]
+  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*)]
+    ;; Collection B is an effective child of Collection A if...
+    (into
+      [:and
+       ;; it is a descendant of Collection A
+       [:like :location (hx/literal (str (children-location collection) "%"))]
+       ;; it is visible.
+       (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
+       ;; it is NOT a descendant of a visible Collection other than A
+       (visible-collection-ids->direct-visible-descendant-clause (:id collection) visible-collection-ids)
+       ;; if it is a personal Collection, it belongs to the current User.
+       [:or
+        [:= :personal_owner_id nil]
+        [:= :personal_owner_id *current-user-id*]]]
+      ;; (any additional conditions)
+      additional-honeysql-where-clauses)))
+
+(s/defn effective-children-query :- {:select s/Any :from s/Any :where s/Any}
+  "Return a query for the descendant Collections of a `collection`
+  that should be presented to the current user as the children of this Collection.
+  This takes into account descendants that get filtered out when the current user can't see them. For
   example, suppose we have some Collections with a hierarchy like this:
 
        +-> B
@@ -433,20 +469,15 @@
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
-   {:hydrate :effective_children}
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
-  ;; Hydrate `:children` if it's not already done
-  (-> (for [child (if (contains? collection :children)
-                    (:children collection)
-                    (apply descendants collection additional-honeysql-where-clauses))]
-        ;; if we can read this `child` then we can go ahead and keep it as is. Discard its `children` and `location`
-        (if (i/can-read? child)
-          (dissoc child :children :location)
-          ;; otherwise recursively call on each of the grandchildren. Make it a `vec` so flatten works on it
-          (vec (effective-children child))))
-      ;; since the results will be nested once for each recursive call, un-nest the results and convert back to a set
-      flatten
-      set))
+  {:select [:id :name :description]
+   :from  [[Collection :col]]
+   :where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
+
+(s/defn effective-children :- #{CollectionInstance}
+  {:hydrate :effective_children}
+  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
+  (set (db/query (apply effective-children-query collection additional-honeysql-where-clauses))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
