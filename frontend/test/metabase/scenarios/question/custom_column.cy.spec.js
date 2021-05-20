@@ -579,26 +579,6 @@ describe("scenarios > question > custom columns", () => {
   });
 });
 
-// `_typeUsingGet()` and `_typeUsingPlacehodler()` are temporary solution
-// please refrain from using them, unless absolutely neccessary!
-function _typeUsingGet(selector, value, delay = 100) {
-  cy.get(selector)
-    .click()
-    .type(value, { delay })
-    .clear()
-    .click()
-    .type(value, { delay });
-}
-
-function _typeUsingPlaceholder(selector, value, delay = 100) {
-  cy.findByPlaceholderText(selector)
-    .click()
-    .type(value, { delay })
-    .clear()
-    .click()
-    .type(value, { delay });
-}
-
 function enterCustomColumnDetails({ formula, name } = {}) {
   cy.get("[contenteditable='true']")
     .as("formula")
