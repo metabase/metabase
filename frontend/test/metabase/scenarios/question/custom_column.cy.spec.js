@@ -557,15 +557,11 @@ describe("scenarios > question > custom columns", () => {
 
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']").type(`isnull([Discount])`, {
-        delay: 100,
-      });
-      cy.findByPlaceholderText("Something nice and descriptive").type(
-        "No discount",
-      );
-      cy.button("Done").click();
+    enterCustomColumnDetails({
+      formula: `isnull([Discount])`,
+      name: "No discount",
     });
+    cy.button("Done").click();
     cy.button("Visualize").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
