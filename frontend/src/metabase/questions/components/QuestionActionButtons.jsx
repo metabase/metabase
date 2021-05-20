@@ -17,6 +17,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
               icon="pencil"
               iconSize={18}
               onClick={() => onOpenModal("edit")}
+              data-testid="edit-details-button"
             />
           </Tooltip>
         )}
@@ -26,6 +27,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
             icon="add_to_dash"
             iconSize={18}
             onClick={() => onOpenModal("add-to-dashboard")}
+            data-testid="add-to-dashboard-button"
           />
         </Tooltip>
       </div>
@@ -38,6 +40,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
               icon="move"
               iconSize={18}
               onClick={() => onOpenModal("move")}
+              data-testid="move-button"
             />
           </Tooltip>
         )}
@@ -49,6 +52,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
               icon="segment"
               iconSize={18}
               onClick={() => onOpenModal("clone")}
+              data-testid="clone-button"
             />
           </Tooltip>
         )}
@@ -60,6 +64,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
               icon="archive"
               iconSize={18}
               onClick={() => onOpenModal("archive")}
+              data-testid="archive-button"
             />
           </Tooltip>
         )}
