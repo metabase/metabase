@@ -330,9 +330,10 @@
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (with-some-children-of-collection collection
-          (is (= (map default-item [{:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"}
-                                    {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"}
-                                    {:name "Electro-Magnetic Pulse", :model "pulse"}])
+          (is (= (map default-item [{:name "Acme Products", :model "pulse"}
+                                    {:name "Electro-Magnetic Pulse", :model "pulse"}
+                                    {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"}
+                                    {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"}])
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
@@ -485,6 +486,21 @@
                                         additional-get-params))))
 
 (deftest effective-ancestors-and-children-test
+  ;; Create hierarchy like
+  ;;
+  ;;     +-> B*
+  ;;     |
+  ;; A* -+-> C* +-> D* -> E
+  ;;            |
+  ;;            +-> F --> G*
+  ;;
+  ;; Grant perms for collections with a `*`. Should see
+  ;;
+  ;;     +-> B*
+  ;;     |
+  ;; A* -+-> C* +-> D*
+  ;;            |
+  ;;            +-> G*
   (testing "does a top-level Collection like A have the correct Children?"
     (with-collection-hierarchy [a b c d g]
       (testing "ancestors"
@@ -596,16 +612,16 @@
                    mt/boolean-ids-and-timestamps))))
 
       (testing "... with limits and offsets"
-        (is (= [(collection-item "Crowberto Corv's Personal Collection")
-                (default-item {:name "Dine & Dashboard",
-                               :favorite false, :description nil, :model "dashboard"})]
+        (is (= [(default-item {:name "Birthday Card",
+                               :favorite false, :display "table" :description nil, :model "card"})
+                (collection-item "Crowberto Corv's Personal Collection")]
                (with-some-children-of-collection nil
                  (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))
                      (remove-non-test-items &ids)
                      mt/boolean-ids-and-timestamps)))))
 
       (testing "... with a total back, too, even with limit and offset"
-        (is (= 4 (with-some-children-of-collection nil
+        (is (= 5 (with-some-children-of-collection nil
                    (:total (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))))))
 
       (testing "...but we don't let you see stuff you wouldn't otherwise be allowed to see"
@@ -619,9 +635,9 @@
             (mt/with-temp* [PermissionsGroup           [group]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-              (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+              (is (= [(default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
+                      (default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
                       (default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})
-                      (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
                      (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                          (remove-non-test-items &ids)
