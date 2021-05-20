@@ -72,7 +72,7 @@
       (doseq [[k expected] {:running_on        :unknown
                             :check_for_updates true
                             :site_name         true
-                            :friendly_names    true
+                            :friendly_names    false
                             :email_configured  false
                             :slack_configured  false
                             :sso_configured    false
