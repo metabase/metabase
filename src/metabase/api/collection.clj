@@ -272,7 +272,7 @@
                            :when    (or (= model-kw :collection)
                                         (contains? allowed-namespaces (keyword collection-namespace)))]
                        model-kw)]
-    (collection-children* collection valid-models options)))
+    (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))))
 
 (s/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
