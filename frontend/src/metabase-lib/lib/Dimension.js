@@ -784,6 +784,11 @@ export class FieldDimension extends Dimension {
       dimension = dimension.withJoinAlias(joinAlias);
     }
 
+    const baseType = this.getOption("base-type");
+    if (baseType) {
+      dimension = dimension.withOption("base-type", baseType);
+    }
+
     return dimension;
   }
 

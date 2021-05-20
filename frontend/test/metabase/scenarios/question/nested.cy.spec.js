@@ -528,7 +528,7 @@ describe("scenarios > question > nested", () => {
     }
   });
 
-  describe.skip("should not remove user defined metric when summarizing based on saved question (metabase#15725)", () => {
+  describe("should not remove user defined metric when summarizing based on saved question (metabase#15725)", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.createNativeQuestion({
