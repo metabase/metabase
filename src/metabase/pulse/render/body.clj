@@ -77,19 +77,18 @@
 (defn- query-results->header-row
   "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
   [remapping-lookup card cols include-bar?]
-  {:row (for [maybe-remapped-col cols
-              :when (show-in-table? maybe-remapped-col)
-              :let [{:keys [base_type semantic_type] :as col} (if (:remapped_to maybe-remapped-col)
-                                                                (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                                                maybe-remapped-col)
-                    col-name (column-name card col)]
-              ;; If this column is remapped from another, it's already
-              ;; in the output and should be skipped
-              :when (not (:remapped_from maybe-remapped-col))]
-          (if (or (isa? base_type :type/Number)
-                  (isa? semantic_type :type/Number))
-            (common/->NumericWrapper col-name)
-            col-name))
+  {:row       (for [maybe-remapped-col cols
+                    :when              (show-in-table? maybe-remapped-col)
+                    :let               [col (if (:remapped_to maybe-remapped-col)
+                                              (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                              maybe-remapped-col)
+                                        col-name (column-name card col)]
+                    ;; If this column is remapped from another, it's already
+                    ;; in the output and should be skipped
+                    :when              (not (:remapped_from maybe-remapped-col))]
+                (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
+                  (common/->NumericWrapper col-name)
+                  col-name))
    :bar-width (when include-bar? 99)})
 
 (defn- normalize-bar-value

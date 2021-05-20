@@ -14,6 +14,12 @@ export default function PaginationControls({
   onNextPage,
   onPreviousPage,
 }) {
+  const isSinglePage = total !== undefined && total <= pageSize;
+
+  if (isSinglePage) {
+    return null;
+  }
+
   const isPreviousDisabled = page === 0;
   const isNextDisabled =
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
