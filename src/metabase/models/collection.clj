@@ -476,16 +476,15 @@
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
-  (let [res
   {:select [:id :name :description]
-   :from  [[Collection :col]]
-   :where (apply effective-children-where-clause collection additional-honeysql-where-clauses)}]
-    res))
+   :from   [[Collection :col]]
+   :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
 (s/defn effective-children :- #{CollectionInstance}
   {:hydrate :effective_children}
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (db/select [Collection :id :name :description] {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
+  (set (db/select [Collection :id :name :description]
+                  {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

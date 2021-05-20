@@ -22,9 +22,9 @@
 
 (defn- parse-paging-params [{{:strs [limit offset]} :query-params}]
   (let [limit  (or (some-> limit Integer/parseUnsignedInt)
-		   default-limit)
-	offset (or (some-> offset Integer/parseUnsignedInt)
-		   0)]
+                   default-limit)
+        offset (or (some-> offset Integer/parseUnsignedInt)
+                   0)]
     {:limit limit, :offset offset}))
 
 (defn- with-paging-params [request {:keys [limit offset]}]
@@ -52,8 +52,8 @@
             (respond {:status  400
                       :headers (mw.security/security-headers)
                       :body    (merge
-                                (Throwable->map e)
-                                {:message (tru "Error parsing paging parameters: {0}" (ex-message e))})}))
+                                 (Throwable->map e)
+                                 {:message (tru "Error parsing paging parameters: {0}" (ex-message e))})}))
           (let [{:keys [limit offset]} paging-params
                 request                (with-paging-params request paging-params)]
             (binding [*limit*         limit
