@@ -133,7 +133,7 @@ An important distinction to make is that you can use a saved SQL query in the _c
 
 #### Data sandboxes and public sharing don't play well together
 
-As sandboxing works by adding filters at query run time based on user parameters, enabling public sharing should be avoided. A public question or dashboard will show the anonymous viewers all the contents of these as Metabase does not have any parameter to filter with.
+Public questions and dashboards can't be sandboxed. Sandboxing works by filtering data based on the group membership and user attributes of an authenticated user — so since a user doesn't have to log in to see a public question or dashboard, Metabase has no knowledge of who that user is.
 
 ---
 
