@@ -178,7 +178,11 @@
 
 (defmethod post-process-collection-children :card
   [_ rows]
-  (hydrate rows :favorite))
+  (let [last-edits (last-edit/fetch-last-edited-info {:card-ids (->> rows (map :id))})]
+    (for [row (hydrate rows :favorite)]
+        (if-let [edit-info (get-in last-edits [:card (:id row)])]
+          (assoc row :last-edit-info edit-info)
+          row))))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
@@ -191,8 +195,12 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (for [row (hydrate rows :favorite)]
-    (dissoc row :display)))
+  (let [last-edits (last-edit/fetch-last-edited-info {:dashboard-ids (->> rows (map :id))})]
+    (for [row (hydrate rows :favorite)]
+      (let [res (dissoc row :display)]
+        (if-let [edit-info (get-in last-edits [:dashboard (:id res)])]
+          (assoc res :last-edit-info edit-info)
+          res)))))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace]}]
