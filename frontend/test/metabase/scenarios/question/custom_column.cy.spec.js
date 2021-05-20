@@ -10,14 +10,6 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
-const customFormulas = [
-  {
-    customFormula: "[Quantity] * 2",
-    columnName: "Double Qt",
-  },
-  { customFormula: "[Quantity] * [Product.Price]", columnName: "Sum Total" },
-];
-
 describe("scenarios > question > custom columns", () => {
   beforeEach(() => {
     restore();
@@ -41,23 +33,30 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it("can create a custom column with an existing column name", () => {
-    customFormulas.forEach(({ customFormula, columnName }) => {
+    const customFormulas = [
+      {
+        formula: "[Quantity] * 2",
+        name: "Double Qt",
+      },
+      {
+        formula: "[Quantity] * [Product.Price]",
+        name: "Sum Total",
+      },
+    ];
+
+    customFormulas.forEach(({ formula, name }) => {
       openOrdersTable({ mode: "notebook" });
       cy.icon("add_data").click();
 
-      popover().within(() => {
-        _typeUsingGet("[contenteditable='true']", customFormula, 400);
-        _typeUsingPlaceholder("Something nice and descriptive", columnName);
-
-        cy.findByText("Done").click();
-      });
+      enterCustomColumnDetails({ formula, name });
+      cy.button("Done").click();
 
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
       cy.button("Visualize").click();
       cy.wait("@dataset");
-      cy.get(".Visualization").contains(columnName);
+      cy.get(".Visualization").contains(name);
     });
   });
 
