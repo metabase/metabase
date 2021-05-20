@@ -601,11 +601,11 @@
              (with-some-children-of-collection nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))
     (testing "Make sure you can see everything for Users that can see everything"
-      (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+      (is (= [(default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
+              (default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
               (collection-item "Crowberto Corv's Personal Collection")
               (default-item {:name "Dine & Dashboard",
-                             :favorite false, :description nil, :model "dashboard"})
-              (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
+                             :favorite false, :description nil, :model "dashboard"}) ]
              (with-some-children-of-collection nil
                (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                    (remove-non-test-items &ids)
