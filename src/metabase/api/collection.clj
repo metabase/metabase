@@ -6,7 +6,6 @@
   `?namespace=snippet`)."
   (:require [compojure.core :refer [GET POST PUT]]
             [honeysql.helpers :as h]
-            [honeysql.core :as hsql]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
             [metabase.models.card :refer [Card]]
