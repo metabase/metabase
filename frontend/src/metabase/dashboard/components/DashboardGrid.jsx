@@ -140,7 +140,8 @@ export default class DashboardGrid extends Component {
       w: dashcard.sizeX || initialSize.width,
       h: dashcard.sizeY || initialSize.height,
       dashcard: dashcard,
-      minSize: minSize,
+      minW: minSize.width,
+      minH: minSize.height,
     };
   }
 
