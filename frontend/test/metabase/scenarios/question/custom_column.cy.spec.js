@@ -1,8 +1,6 @@
 import {
   restore,
   popover,
-  _typeUsingGet,
-  _typeUsingPlaceholder,
   openOrdersTable,
   openPeopleTable,
   visitQuestionAdhoc,
@@ -612,3 +610,23 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("No discount");
   });
 });
+
+// `_typeUsingGet()` and `_typeUsingPlacehodler()` are temporary solution
+// please refrain from using them, unless absolutely neccessary!
+function _typeUsingGet(selector, value, delay = 100) {
+  cy.get(selector)
+    .click()
+    .type(value, { delay })
+    .clear()
+    .click()
+    .type(value, { delay });
+}
+
+function _typeUsingPlaceholder(selector, value, delay = 100) {
+  cy.findByPlaceholderText(selector)
+    .click()
+    .type(value, { delay })
+    .clear()
+    .click()
+    .type(value, { delay });
+}
