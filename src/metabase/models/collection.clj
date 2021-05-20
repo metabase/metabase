@@ -19,6 +19,7 @@
             [potemkin :as p]
             [schema.core :as s]
             [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models])
   (:import metabase.models.collection.root.RootCollection))
 
@@ -284,20 +285,21 @@
 (s/defn visible-collection-ids->direct-visible-descendant-clause
   "Generates an appropriate HoneySQL `:where` clause to filter out descendants of a collection A with a specific property.
   This property is being a descendant of a visible collection other than A. Used for effective children calculations"
-  [maybe-parent-id :- (s/maybe su/IntGreaterThanZero), collection-ids :- VisibleCollections]
-  ; parent-id being nil corresponds to parent being root
-  (let [parent-id     (or maybe-parent-id "")
-        child-literal (if (str/blank? (str parent-id))
-                        "/"
-                        (format "%%/%s/" (str parent-id)))]
+  [parent-collection :- CollectionWithLocationAndIDOrRoot, collection-ids :- VisibleCollections]
+  (let [parent-id           (or (:id parent-collection) "")
+        child-literal       (if (collection.root/is-root-collection? parent-collection)
+                              "/"
+                              (format "%%/%s/" (str parent-id))) ]
     (into
       [:and]
       (if (= collection-ids :all)
         ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
         ; meaning, the effective children are always the direct children. So check for being a direct child.
         [[:like :location (hx/literal child-literal)]]
-        (for [visible-collection-id (disj collection-ids parent-id)]
-          [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))])))))
+        (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
+              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id)) ]
+          (for [visible-collection-id disj-collection-ids]
+            [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 
 (s/defn effective-location-path :- (s/maybe LocationPath)
@@ -439,7 +441,7 @@
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
-       (visible-collection-ids->direct-visible-descendant-clause (:id collection) visible-collection-ids)
+       (visible-collection-ids->direct-visible-descendant-clause (hydrate collection :effective_location) visible-collection-ids)
        ;; if it is a personal Collection, it belongs to the current User.
        [:or
         [:= :personal_owner_id nil]
@@ -472,9 +474,11 @@
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
+  (let [res
   {:select [:id :name :description]
    :from  [[Collection :col]]
-   :where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
+   :where (apply effective-children-where-clause collection additional-honeysql-where-clauses)}]
+    res))
 
 (s/defn effective-children :- #{CollectionInstance}
   {:hydrate :effective_children}
