@@ -512,13 +512,11 @@ describe("scenarios > question > custom columns", () => {
   it.skip("should maintain data type (metabase#13122)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']")
-        .type("case([Discount] > 0, [Created At], [Product → Created At])")
-        .blur();
-      cy.findByPlaceholderText("Something nice and descriptive").type("13112");
-      cy.button("Done").click();
+    enterCustomColumnDetails({
+      formula: "case([Discount] > 0, [Created At], [Product → Created At])",
+      name: "13112",
     });
+    cy.button("Done").click();
     cy.findByText("Filter").click();
     popover()
       .findByText("13112")
