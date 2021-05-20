@@ -469,13 +469,10 @@ describe("scenarios > question > custom columns", () => {
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Custom column").click();
 
-      cy.get("[contenteditable='true']").as("formula");
-
-      popover().within(() => {
-        _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
-        _typeUsingPlaceholder("Something nice and descriptive", "Math");
+      enterCustomColumnDetails({
+        formula: "1+1", // Formula was intentionally written without spaces (important for this repro)!
+        name: "Math",
       });
-
       cy.button("Done").should("not.be.disabled");
     });
 
