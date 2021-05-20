@@ -24,8 +24,8 @@
 (s/defn create-comment!
   "Create a new Comment"
   [params :-
-   {:moderated_item_id   su/IntGreaterThanZero
-    :moderated_item_type moderation/moderated-item-types
+   {:commented_item_id   su/IntGreaterThanZero
+    :commented_item_type moderation/moderated-item-types
     :author_id           su/IntGreaterThanZero
     :text                s/Str}]
   (db/insert! Comment params))
