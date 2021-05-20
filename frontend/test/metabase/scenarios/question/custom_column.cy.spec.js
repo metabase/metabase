@@ -1,8 +1,6 @@
 import {
   restore,
   popover,
-  _typeUsingGet,
-  _typeUsingPlaceholder,
   openOrdersTable,
   openPeopleTable,
   visitQuestionAdhoc,
@@ -12,14 +10,6 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
-const customFormulas = [
-  {
-    customFormula: "[Quantity] * 2",
-    columnName: "Double Qt",
-  },
-  { customFormula: "[Quantity] * [Product.Price]", columnName: "Sum Total" },
-];
-
 describe("scenarios > question > custom columns", () => {
   beforeEach(() => {
     restore();
@@ -27,16 +17,11 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it("can create a custom column (metabase#13241)", () => {
-    const columnName = "Simple Math";
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
-    popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
-      _typeUsingPlaceholder("Something nice and descriptive", columnName);
-
-      cy.findByText("Done").click();
-    });
+    enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    cy.button("Done").click();
 
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
@@ -44,27 +29,34 @@ describe("scenarios > question > custom columns", () => {
     cy.button("Visualize").click();
     cy.wait("@dataset");
     cy.findByText("There was a problem with your question").should("not.exist");
-    cy.get(".Visualization").contains(columnName);
+    cy.get(".Visualization").contains("Math");
   });
 
   it("can create a custom column with an existing column name", () => {
-    customFormulas.forEach(({ customFormula, columnName }) => {
+    const customFormulas = [
+      {
+        formula: "[Quantity] * 2",
+        name: "Double Qt",
+      },
+      {
+        formula: "[Quantity] * [Product.Price]",
+        name: "Sum Total",
+      },
+    ];
+
+    customFormulas.forEach(({ formula, name }) => {
       openOrdersTable({ mode: "notebook" });
       cy.icon("add_data").click();
 
-      popover().within(() => {
-        _typeUsingGet("[contenteditable='true']", customFormula, 400);
-        _typeUsingPlaceholder("Something nice and descriptive", columnName);
-
-        cy.findByText("Done").click();
-      });
+      enterCustomColumnDetails({ formula, name });
+      cy.button("Done").click();
 
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
       cy.button("Visualize").click();
       cy.wait("@dataset");
-      cy.get(".Visualization").contains(columnName);
+      cy.get(".Visualization").contains(name);
     });
   });
 
@@ -95,15 +87,12 @@ describe("scenarios > question > custom columns", () => {
     // Add custom column based on previous aggregates
     const columnName = "MegaTotal";
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']")
-        .click()
-        .type("[Sum of Subtotal] + [Sum of Total]");
-      cy.findByPlaceholderText("Something nice and descriptive")
-        .click()
-        .type(columnName);
-      cy.findByText("Done").click();
+
+    enterCustomColumnDetails({
+      formula: "[Sum of Subtotal] + [Sum of Total]",
+      name: columnName,
     });
+    cy.button("Done").click();
 
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
@@ -117,27 +106,19 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
-    const columnName = "TestColumn";
     openOrdersTable({ mode: "notebook" });
 
     // Add custom column that will be used later in summarize (group by)
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
-      _typeUsingPlaceholder("Something nice and descriptive", columnName);
-
-      cy.findByText("Done").click();
-    });
+    enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    cy.button("Done").click();
 
     cy.findByText("Summarize").click();
-    popover().within(() => {
-      cy.findByText("Count of rows").click();
-    });
-
+    cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
-      cy.findByText(columnName).click();
-    });
+    popover()
+      .findByText("Math")
+      .click();
 
     cy.icon("add")
       .last()
@@ -176,17 +157,8 @@ describe("scenarios > question > custom columns", () => {
 
     // add custom column
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      // Double click at the end of this command is just an ugly hack that seems to reduce the flakiness of this test a lot!
-      // TODO: investigate contenteditable element - it is losing input value and I could reproduce it even locally (outside of Cypress)
-      cy.get("[contenteditable='true']")
-        .type("1+1")
-        .click()
-        .click();
-      cy.findByPlaceholderText("Something nice and descriptive").type("X");
-
-      cy.findByText("Done").click();
-    });
+    enterCustomColumnDetails({ formula: "1 + 1", name: "x" });
+    cy.button("Done").click();
 
     cy.button("Visualize").click();
 
@@ -201,9 +173,7 @@ describe("scenarios > question > custom columns", () => {
     // ID should be "1" but it is picking the product ID and is showing "14"
     cy.get(".TableInteractive-cellWrapper--firstColumn")
       .eq(1) // the second cell from the top in the first column (the first one is a header cell)
-      .within(() => {
-        cy.findByText("1");
-      });
+      .findByText("1");
   });
 
   it.skip("should be able to use custom expression after aggregation (metabase#13857)", () => {
@@ -486,8 +456,7 @@ describe("scenarios > question > custom columns", () => {
   it.skip("should handle floating point numbers with '0' omitted (metabase#15741)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    cy.get("[contenteditable='true']").type(".5 * [Discount]");
-    cy.findByPlaceholderText("Something nice and descriptive").type("Foo");
+    enterCustomColumnDetails({ formula: ".5 * [Discount]", name: "Foo" });
     cy.findByText("Unknown Field: .5").should("not.exist");
     cy.button("Done").should("not.be.disabled");
   });
@@ -500,13 +469,10 @@ describe("scenarios > question > custom columns", () => {
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Custom column").click();
 
-      cy.get("[contenteditable='true']").as("formula");
-
-      popover().within(() => {
-        _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
-        _typeUsingPlaceholder("Something nice and descriptive", "Math");
+      enterCustomColumnDetails({
+        formula: "1+1", // Formula was intentionally written without spaces (important for this repro)!
+        name: "Math",
       });
-
       cy.button("Done").should("not.be.disabled");
     });
 
@@ -546,13 +512,11 @@ describe("scenarios > question > custom columns", () => {
   it.skip("should maintain data type (metabase#13122)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']")
-        .type("case([Discount] > 0, [Created At], [Product → Created At])")
-        .blur();
-      cy.findByPlaceholderText("Something nice and descriptive").type("13112");
-      cy.button("Done").click();
+    enterCustomColumnDetails({
+      formula: "case([Discount] > 0, [Created At], [Product → Created At])",
+      name: "13112",
     });
+    cy.button("Done").click();
     cy.findByText("Filter").click();
     popover()
       .findByText("13112")
@@ -563,13 +527,11 @@ describe("scenarios > question > custom columns", () => {
   it.skip("filter based on `concat` function should not offer numeric options (metabase#13217)", () => {
     openPeopleTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']")
-        .type(`concat("State: ", [State])`)
-        .blur();
-      cy.findByPlaceholderText("Something nice and descriptive").type("13217");
-      cy.button("Done").click();
+    enterCustomColumnDetails({
+      formula: `concat("State: ", [State])`,
+      name: "13217",
     });
+    cy.button("Done").click();
     cy.findByText("Filter").click();
     popover()
       .findByText("13217")
@@ -595,15 +557,11 @@ describe("scenarios > question > custom columns", () => {
 
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']").type(`isnull([Discount])`, {
-        delay: 100,
-      });
-      cy.findByPlaceholderText("Something nice and descriptive").type(
-        "No discount",
-      );
-      cy.button("Done").click();
+    enterCustomColumnDetails({
+      formula: `isnull([Discount])`,
+      name: "No discount",
     });
+    cy.button("Done").click();
     cy.button("Visualize").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
@@ -612,3 +570,10 @@ describe("scenarios > question > custom columns", () => {
     cy.findByText("No discount");
   });
 });
+
+function enterCustomColumnDetails({ formula, name } = {}) {
+  cy.get("[contenteditable='true']")
+    .as("formula")
+    .type(formula);
+  cy.findByPlaceholderText("Something nice and descriptive").type(name);
+}
