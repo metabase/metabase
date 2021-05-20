@@ -157,17 +157,8 @@ describe("scenarios > question > custom columns", () => {
 
     // add custom column
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      // Double click at the end of this command is just an ugly hack that seems to reduce the flakiness of this test a lot!
-      // TODO: investigate contenteditable element - it is losing input value and I could reproduce it even locally (outside of Cypress)
-      cy.get("[contenteditable='true']")
-        .type("1+1")
-        .click()
-        .click();
-      cy.findByPlaceholderText("Something nice and descriptive").type("X");
-
-      cy.findByText("Done").click();
-    });
+    enterCustomColumnDetails({ formula: "1 + 1", name: "x" });
+    cy.button("Done").click();
 
     cy.button("Visualize").click();
 
@@ -182,9 +173,7 @@ describe("scenarios > question > custom columns", () => {
     // ID should be "1" but it is picking the product ID and is showing "14"
     cy.get(".TableInteractive-cellWrapper--firstColumn")
       .eq(1) // the second cell from the top in the first column (the first one is a header cell)
-      .within(() => {
-        cy.findByText("1");
-      });
+      .findByText("1");
   });
 
   it.skip("should be able to use custom expression after aggregation (metabase#13857)", () => {
