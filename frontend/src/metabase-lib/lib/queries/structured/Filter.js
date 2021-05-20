@@ -1,5 +1,7 @@
 import MBQLClause from "./MBQLClause";
 
+import { FieldDimension } from "metabase-lib/lib/Dimension";
+
 import type {
   Filter as FilterObject,
   FieldFilter,
@@ -288,16 +290,15 @@ export default class Filter extends MBQLClause {
     ) {
       return generateTimeFilterValuesDescriptions(this);
     } else {
+      const metadata = this.metadata();
       return args
         .map((value, index) => [
           value,
           getFilterArgumentFormatOptions(operator, index),
         ])
         .filter(([value, options]) => value !== undefined && !options.hide)
-        .map(
-          ([value, options], index) =>
-            // FIXME: remapping
-            value,
+        .map(([value, options], index) => {
+          // FIXME: remapping
           // <Value
           //   key={index}
           //   value={value}
@@ -305,7 +306,14 @@ export default class Filter extends MBQLClause {
           //   remap
           //   {...options}
           // />
-        );
+          if (FieldDimension.isFieldClause(value)) {
+            const fieldDimension = FieldDimension.parseMBQL(value, metadata);
+            if (fieldDimension) {
+              return fieldDimension.displayName();
+            }
+          }
+          return value;
+        });
     }
   }
 
