@@ -3,18 +3,24 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import moment from "moment";
 import { t } from "ttag";
-import Revision from "metabase/entities/revisions";
-import Link from "metabase/components/Link";
+import cx from "classnames";
 
-function HistoryButton({ onClick, revisions }) {
+import Revision from "metabase/entities/revisions";
+import Button from "metabase/components/Button";
+
+function HistoryButton({ className, onClick, revisions }) {
   const mostRecentRevision = _.first(revisions);
   return mostRecentRevision ? (
-    <Link
-      className="pl1 text-bold text-light text-small text-brand-hover"
+    <Button
+      className={cx(
+        className,
+        "p0 borderless text-bold text-light text-small text-brand-hover bg-transparent-hover",
+      )}
       onClick={onClick}
+      data-testid="history-button"
     >
       {t`Edited ${moment(mostRecentRevision.timestamp).fromNow()}`}
-    </Link>
+    </Button>
   ) : null;
 }
 
@@ -28,6 +34,7 @@ export default Revision.loadList({
 })(HistoryButton);
 
 HistoryButton.propTypes = {
+  className: PropTypes.string,
   onClick: PropTypes.func.isRequired,
   revisions: PropTypes.array,
 };

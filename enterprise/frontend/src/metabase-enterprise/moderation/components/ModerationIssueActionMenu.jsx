@@ -1,53 +1,60 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { connect } from "react-redux";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
-  getModerationIssueTypes,
-  getModerationRequestActionTypes,
+  getModerationIssueActionTypes,
   getColor,
   getModerationStatusIcon,
+  getUserTypeTextKey,
 } from "metabase-enterprise/moderation";
+import { getIsModerator } from "metabase-enterprise/moderation/selectors";
+
+ModerationIssueActionMenu.propTypes = {
+  className: PropTypes.string,
+  triggerClassName: PropTypes.string,
+  isModerator: PropTypes.bool.isRequired,
+  onAction: PropTypes.func.isRequired,
+  request: PropTypes.object,
+};
 
 function ModerationIssueActionMenu({
   className,
   triggerClassName,
   onAction,
-  issue,
+  request,
+  isModerator,
 }) {
-  const types = issue
-    ? getModerationRequestActionTypes()
-    : getModerationIssueTypes();
+  const userType = getUserTypeTextKey(isModerator);
+  const issueTypes = getModerationIssueActionTypes(isModerator, request);
 
   return (
     <EntityMenu
-      triggerChildren={MODERATION_TEXT.moderator.action}
+      triggerChildren={MODERATION_TEXT[userType].action}
       triggerProps={{
         iconRight: "chevrondown",
         className: triggerClassName,
       }}
       className={className}
-      items={types.map(type => {
-        const color = getColor(type);
-        const icon = getModerationStatusIcon(type);
+      items={issueTypes.map(issueType => {
+        const color = getColor(issueType);
+        const icon = getModerationStatusIcon(issueType);
         return {
           icon,
           iconSize: 18,
           className: `text-${color}`,
-          action: () => onAction(type),
-          title: MODERATION_TEXT.moderator[type].action,
+          action: () => onAction(issueType),
+          title: MODERATION_TEXT[userType][issueType].action,
         };
       })}
     />
   );
 }
 
-ModerationIssueActionMenu.propTypes = {
-  className: PropTypes.string,
-  triggerClassName: PropTypes.string,
-  onAction: PropTypes.func,
-  issue: PropTypes.object,
-};
+const mapStateToProps = (state, props) => ({
+  isModerator: getIsModerator(state, props),
+});
 
-export default ModerationIssueActionMenu;
+export default connect(mapStateToProps)(ModerationIssueActionMenu);
