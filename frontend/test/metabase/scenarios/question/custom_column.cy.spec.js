@@ -25,16 +25,11 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it("can create a custom column (metabase#13241)", () => {
-    const columnName = "Simple Math";
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
-    popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
-      _typeUsingPlaceholder("Something nice and descriptive", columnName);
-
-      cy.findByText("Done").click();
-    });
+    enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    cy.button("Done").click();
 
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
@@ -42,7 +37,7 @@ describe("scenarios > question > custom columns", () => {
     cy.button("Visualize").click();
     cy.wait("@dataset");
     cy.findByText("There was a problem with your question").should("not.exist");
-    cy.get(".Visualization").contains(columnName);
+    cy.get(".Visualization").contains("Math");
   });
 
   it("can create a custom column with an existing column name", () => {
