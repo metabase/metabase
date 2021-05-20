@@ -527,13 +527,11 @@ describe("scenarios > question > custom columns", () => {
   it.skip("filter based on `concat` function should not offer numeric options (metabase#13217)", () => {
     openPeopleTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']")
-        .type(`concat("State: ", [State])`)
-        .blur();
-      cy.findByPlaceholderText("Something nice and descriptive").type("13217");
-      cy.button("Done").click();
+    enterCustomColumnDetails({
+      formula: `concat("State: ", [State])`,
+      name: "13217",
     });
+    cy.button("Done").click();
     cy.findByText("Filter").click();
     popover()
       .findByText("13217")
