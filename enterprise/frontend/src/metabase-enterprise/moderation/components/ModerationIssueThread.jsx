@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
@@ -30,9 +30,14 @@ export function ModerationIssueThread({
   onComment,
   onModerate,
 }) {
+  const [showCommentForm, setShowCommentForm] = useState(false);
   const color = getColor(request.type);
   const icon = getModerationStatusIcon(request.type);
-  const hasButtonBar = !!(onComment || onModerate);
+  const showButtonBar = !showCommentForm && !!(onComment || onModerate);
+
+  const onSubmit = e => {
+    e.preventDefault();
+  };
 
   return (
     <div className={cx(className, "")}>
@@ -62,10 +67,20 @@ export function ModerationIssueThread({
           />
         );
       })}
-      {hasButtonBar && (
+      {showCommentForm && (
+        <CommentForm
+          className="pt1"
+          onSubmit={onSubmit}
+          onCancel={() => setShowCommentForm(false)}
+        />
+      )}
+      {showButtonBar && (
         <div className="flex justify-end column-gap-1 pt1">
           {onComment && (
-            <Button className="py1" onClick={onComment}>{t`Comment`}</Button>
+            <Button
+              className="py1"
+              onClick={() => setShowCommentForm(true)}
+            >{t`Comment`}</Button>
           )}
           {onModerate && (
             <ModerationIssueActionMenu
@@ -77,5 +92,39 @@ export function ModerationIssueThread({
         </div>
       )}
     </div>
+  );
+}
+
+CommentForm.propTypes = {
+  className: PropTypes.string,
+  onSubmit: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  isPending: PropTypes.bool,
+};
+
+function CommentForm({ className, onSubmit, onCancel, isPending }) {
+  const [value, setValue] = useState("");
+  return (
+    <form className={className} onSubmit={onSubmit}>
+      <textarea
+        className="input full max-w-full min-w-full"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        name="comment"
+      />
+      <div className="pt1 flex column-gap-1 justify-end">
+        <Button
+          className="py1"
+          disabled={isPending}
+          type="button"
+          onClick={onCancel}
+        >
+          {t`Cancel`}
+        </Button>
+        <Button className="py1" disabled={isPending} type="submit" primary>
+          {t`Done`}
+        </Button>
+      </div>
+    </form>
   );
 }
