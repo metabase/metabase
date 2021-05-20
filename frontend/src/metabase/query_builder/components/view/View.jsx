@@ -107,6 +107,7 @@ export default class View extends React.Component {
       height,
       onOpenModal,
       createModerationReview,
+      createModerationRequest,
     } = this.props;
     const {
       aggregationIndex,
@@ -165,6 +166,7 @@ export default class View extends React.Component {
         question={question}
         onOpenModal={onOpenModal}
         createModerationReview={createModerationReview}
+        createModerationRequest={createModerationRequest}
       />
     ) : null;
 

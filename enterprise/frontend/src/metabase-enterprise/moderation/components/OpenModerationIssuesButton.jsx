@@ -2,18 +2,19 @@ import React from "react";
 import PropTypes from "prop-types";
 import { ngettext, msgid } from "ttag";
 import cx from "classnames";
-
-import { getOpenIssues } from "metabase-enterprise/moderation";
+import { getNumberOfOpenRequests } from "metabase-enterprise/moderation";
 
 import Button from "metabase/components/Button";
 
 OpenModerationIssuesButton.propTypes = {
+  question: PropTypes.object.isRequired,
   className: PropTypes.string,
   onClick: PropTypes.func.isRequired,
 };
 
-export function OpenModerationIssuesButton({ className, onClick }) {
-  const numOpenIssues = getOpenIssues().length;
+export function OpenModerationIssuesButton({ question, className, onClick }) {
+  const numOpenIssues = getNumberOfOpenRequests(question);
+
   return numOpenIssues > 0 ? (
     <Button
       borderless
