@@ -7,7 +7,7 @@ import cx from "classnames";
 import Button from "metabase/components/Button";
 
 import FilterOptions from "./FilterOptions";
-import { getOperator } from "../filters/pickers/DatePicker";
+import { getOperator as datePickerOperator } from "../filters/pickers/DatePicker";
 
 export default function FilterPopoverFooter({
   filter,
@@ -18,18 +18,21 @@ export default function FilterPopoverFooter({
 }) {
   const dimension = filter.dimension();
   const field = dimension.field();
+
+  // DatePicker uses a different set of operator objects
+  // Normal operators defined in schema_metadata
+  const operator = field.isDate()
+    ? datePickerOperator(filter)
+    : filter.operator();
+
+  const buttonText = isNew ? t`Add filter` : t`Update filter`;
+
   return (
     <div className={cx(className, "flex align-center")}>
       <FilterOptions
         filter={filter}
         onFilterChange={onFilterChange}
-        operator={
-          field.isDate()
-            ? // DatePicker uses a different set of operator objects
-              getOperator(filter)
-            : // Normal operators defined in schema_metadata
-              filter.operator()
-        }
+        operator={operator}
       />
       {onCommit && (
         <Button
@@ -39,7 +42,7 @@ export default function FilterPopoverFooter({
           ml="auto"
           onClick={onCommit}
         >
-          {isNew ? t`Add filter` : t`Update filter`}
+          {buttonText}
         </Button>
       )}
     </div>
