@@ -286,13 +286,16 @@
   This property is being a descendant of a visible collection other than A. Used for effective children calculations"
   [maybe-parent-id :- (s/maybe su/IntGreaterThanZero), collection-ids :- VisibleCollections]
   ; parent-id being nil corresponds to parent being root
-  (let [parent-id (or maybe-parent-id "")]
+  (let [parent-id     (or maybe-parent-id "")
+        child-literal (if (str/blank? (str parent-id))
+                        "/"
+                        (format "%%/%s/" (str parent-id)))]
     (into
       [:and]
       (if (= collection-ids :all)
         ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
         ; meaning, the effective children are always the direct children. So check for being a direct child.
-        [[:not-like :location (hx/literal (format "%%/%s/%%/%%/" (str parent-id)))]]
+        [[:like :location (hx/literal child-literal)]]
         (for [visible-collection-id (disj collection-ids parent-id)]
           [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))])))))
 
