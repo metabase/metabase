@@ -106,27 +106,19 @@ describe("scenarios > question > custom columns", () => {
   });
 
   it.skip("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
-    const columnName = "TestColumn";
     openOrdersTable({ mode: "notebook" });
 
     // Add custom column that will be used later in summarize (group by)
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      _typeUsingGet("[contenteditable='true']", "1 + 1", 400);
-      _typeUsingPlaceholder("Something nice and descriptive", columnName);
-
-      cy.findByText("Done").click();
-    });
+    enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    cy.button("Done").click();
 
     cy.findByText("Summarize").click();
-    popover().within(() => {
-      cy.findByText("Count of rows").click();
-    });
-
+    cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
-      cy.findByText(columnName).click();
-    });
+    popover()
+      .findByText("Math")
+      .click();
 
     cy.icon("add")
       .last()
