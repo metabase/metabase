@@ -98,8 +98,7 @@ export default function BulkActions(props) {
             entityObject={selectedItems[0]}
             onClose={handleCloseModal}
             onSaved={newEntityObject => {
-              this.handleCloseModal();
-              this.handleBulkActionSuccess();
+              handleCloseModal();
             }}
           />
         </Modal>

@@ -198,7 +198,7 @@ export const getRoutes = store => (
           <IndexRoute component={UserCollectionList} />
         </Route>
 
-        <Route path="collection/:collectionId" component={CollectionLanding}>
+        <Route path="collection/:slug" component={CollectionLanding}>
           <ModalRoute path="edit" modal={CollectionEdit} />
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
           <ModalRoute path="new_collection" modal={CollectionCreate} />
@@ -209,7 +209,7 @@ export const getRoutes = store => (
         <Route path="activity" component={HomepageApp} />
 
         <Route
-          path="dashboard/:dashboardId"
+          path="dashboard/:slug"
           title={t`Dashboard`}
           component={DashboardApp}
         >
@@ -229,15 +229,15 @@ export const getRoutes = store => (
             component={NewQueryOptions}
           />
           <Route path="notebook" component={QueryBuilder} />
-          <Route path=":cardId" component={QueryBuilder} />
-          <Route path=":cardId/notebook" component={QueryBuilder} />
+          <Route path=":slug" component={QueryBuilder} />
+          <Route path=":slug/notebook" component={QueryBuilder} />
         </Route>
 
         <Route path="/ready" component={PostSetupApp} />
 
         <Route path="browse" component={BrowseApp}>
           <IndexRoute component={DatabaseBrowser} />
-          <Route path=":dbId" component={SchemaBrowser} />
+          <Route path=":slug" component={SchemaBrowser} />
           <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
         </Route>
 
@@ -348,15 +348,15 @@ export const getRoutes = store => (
       }
     />
     <Route
-      path="/card/:cardId"
+      path="/card/:slug"
       onEnter={({ location, params }, replace) =>
         replace({
-          pathname: `/question/${params.cardId}`,
+          pathname: `/question/${params.slug}`,
           hash: location.hash,
         })
       }
     />
-    <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+    <Redirect from="/dash/:dashboardId" to="/dashboard/:slug" />
     <Redirect
       from="/collections/permissions"
       to="/admin/permissions/collections"

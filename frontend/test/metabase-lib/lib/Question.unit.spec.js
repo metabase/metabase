@@ -635,7 +635,7 @@ describe("Question", () => {
           assoc(orders_raw_card, "id", 1),
           metadata,
         );
-        expect(question.getUrl()).toBe("/question/1");
+        expect(question.getUrl()).toBe("/question/1-raw-orders-data");
       });
       it("returns a URL with hash for an unsaved question", () => {
         const question = new Question(dissoc(orders_raw_card, "id"), metadata);

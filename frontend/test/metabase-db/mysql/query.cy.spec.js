@@ -85,6 +85,6 @@ describe("mysql > user > query", () => {
     cy.findByText("Not now").click();
 
     cy.contains("Save").should("not.exist");
-    cy.url().should("match", /\/question\/\d+$/);
+    cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
   });
 });
