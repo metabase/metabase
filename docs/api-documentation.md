@@ -2663,7 +2663,7 @@ Reset password with a reset token.
 
 *  **`token`** value must be a non-blank string.
 
-*  **`password`** password is too common.
+*  **`password`** Password is insufficiently complex, or is too common
 
 *  **`request`** 
 
