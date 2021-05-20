@@ -8,7 +8,7 @@ import { color } from "metabase/lib/colors";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-function NewGridLayout({
+function GridLayout({
   items,
   itemRenderer,
   layout,
@@ -99,4 +99,4 @@ function NewGridLayout({
   );
 }
 
-export default NewGridLayout;
+export default GridLayout;

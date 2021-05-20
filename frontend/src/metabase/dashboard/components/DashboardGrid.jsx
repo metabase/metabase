@@ -3,8 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import GridLayout from "./grid/GridLayout";
-import DashCard from "./DashCard";
 
 import Modal from "metabase/components/Modal";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
@@ -24,7 +22,8 @@ import {
 import _ from "underscore";
 import cx from "classnames";
 
-import NewGridLayout from "./grid/NewGridLayout";
+import GridLayout from "./GridLayout";
+import DashCard from "./DashCard";
 
 const MOBILE_ASPECT_RATIO = 3 / 2;
 const MOBILE_TEXT_CARD_ROW_HEIGHT = 60;
@@ -300,49 +299,13 @@ export default class DashboardGrid extends Component {
 
   renderGrid() {
     const { dashboard, width } = this.props;
-    const rowHeight = Math.max(
-      Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO),
-      MIN_ROW_HEIGHT,
-    );
-    return (
-      <GridLayout
-        className={cx("DashboardGrid", {
-          "Dash--editing": this.isEditingLayout,
-          "Dash--dragging": this.state.isDragging,
-        })}
-        layout={this.state.layout}
-        cols={GRID_WIDTH}
-        margin={GRID_MARGIN}
-        rowHeight={rowHeight}
-        onLayoutChange={(...args) => this.onLayoutChange(...args)}
-        onDrag={(...args) => this.onDrag(...args)}
-        onDragStop={(...args) => this.onDragStop(...args)}
-        isEditing={this.isEditingLayout}
-        items={dashboard.ordered_cards}
-        itemRenderer={({ item: dc, style, className, gridItemWidth }) => (
-          <div
-            className={cx("DashCard", className)}
-            style={style}
-            onMouseDownCapture={this.onDashCardMouseDown}
-            onTouchStartCapture={this.onDashCardMouseDown}
-          >
-            {this.renderDashCard(dc, { isMobile: false, gridItemWidth })}
-          </div>
-        )}
-        itemKey={dc => dc.id}
-      />
-    );
-  }
-
-  renderNewGrid() {
-    const { dashboard, width } = this.props;
     const { layout } = this.state;
     const rowHeight = Math.max(
       Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO),
       MIN_ROW_HEIGHT,
     );
     return (
-      <NewGridLayout
+      <GridLayout
         className={cx("DashboardGrid", {
           "Dash--editing": this.isEditingLayout,
           "Dash--dragging": this.state.isDragging,
@@ -382,7 +345,7 @@ export default class DashboardGrid extends Component {
         ) : width <= 752 ? (
           this.renderMobile()
         ) : (
-          this.renderNewGrid()
+          this.renderGrid()
         )}
         {this.renderRemoveModal()}
         {this.renderAddSeriesModal()}
