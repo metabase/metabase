@@ -181,6 +181,11 @@ class EntityListLoader extends React.Component {
     if (shouldUpdatePrevList) {
       this.setState({ previousList: prevProps.list });
     }
+
+    // "wrapped" means the list of entities are instantiated into instances of `EntityWrapper`
+    if (wrapped) {
+      list = this._getWrappedList(this.props);
+    }
   }
 
   renderChildren = () => {

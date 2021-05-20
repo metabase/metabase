@@ -1043,11 +1043,15 @@ export default class Question {
   }
 
   getModerationReviews() {
-    return getIn(this, ["_card", "moderation_reviews"]);
+    return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 
   getLatestModerationReview() {
     return _.last(this.getModerationReviews());
+  }
+
+  getModerationRequests() {
+    return getIn(this, ["_card", "moderation_requests"]) || [];
   }
 }
 

@@ -309,6 +309,12 @@ export const MetabaseApi = {
 
 export const ModerationReviewApi = {
   create: POST("/api/moderation-review"),
+  update: PUT("/api/moderation-review/:id"),
+};
+
+export const ModerationRequestApi = {
+  create: POST("/api/moderation-request"),
+  update: PUT("/api/moderation-request/:id"),
 };
 
 export const PulseApi = {

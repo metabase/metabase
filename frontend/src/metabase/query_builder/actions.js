@@ -56,6 +56,7 @@ import {
   CardApi,
   UserApi,
   ModerationReviewApi,
+  ModerationRequestApi,
 } from "metabase/services";
 
 import { parse as urlParse } from "url";
@@ -72,9 +73,13 @@ import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getUser } from "metabase/selectors/user";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";
+import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
+
+const { isRequestDismissal } = PLUGIN_MODERATION_SERVICE;
 
 type UiControls = {
   isEditing?: boolean,
@@ -1359,8 +1364,54 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
 
-export async function createModerationReview(reviewParams) {
-  await ModerationReviewApi.create(reviewParams);
+export const CREATE_MODERATION_REVIEW = "metabase/qb/CREATE_MODERATION_REVIEW";
+export const createModerationReview = createThunkAction(
+  CREATE_MODERATION_REVIEW,
+  ({ moderationReview, moderationRequest }) => async (dispatch, getState) => {
+    const currentUser = getUser(getState());
+    const moderatorId = currentUser.id;
+    const { type, cardId, description } = moderationReview;
+    if (isRequestDismissal(type)) {
+      if (!moderationRequest) {
+        throw new Error("Missing moderation request -- unable to dismiss.");
+      }
+
+      await ModerationRequestApi.update({
+        id: moderationRequest.id,
+        status: "dismissed", // todo
+        closed_by_id: moderatorId,
+      });
+    } else {
+      const reviewPromise = ModerationReviewApi.create({
+        status: type,
+        moderated_item_id: cardId,
+        moderated_item_type: "card",
+        text: description,
+      });
+
+      let requestPromise;
+      if (moderationRequest) {
+        requestPromise = ModerationRequestApi.update({
+          id: moderationRequest.id,
+          status: "resolved", // todo
+          closed_by_id: moderatorId,
+        });
+      }
+
+      await Promise.all([reviewPromise, requestPromise]);
+    }
+
+    return dispatch(softReloadCard());
+  },
+);
+
+export async function createModerationRequest({ type, cardId, description }) {
+  await ModerationRequestApi.create({
+    type,
+    moderated_item_id: cardId,
+    moderated_item_type: "card",
+    text: description,
+  });
   return softReloadCard();
 }
 
