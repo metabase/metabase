@@ -15,6 +15,7 @@
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
+            [metabase.models.revision :as revision]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.util :as u]
