@@ -112,11 +112,11 @@
 (defn- pinned-state->clause
   ([pinned-state]
    (pinned-state->clause pinned-state :collection_position))
-  ([pinned-state colkey]
+  ([pinned-state col]
    (case pinned-state
      :all [:= 1 1]
-     :is_pinned [:<> colkey nil]
-     :is_not_pinned [:= colkey nil]
+     :is_pinned [:<> col nil]
+     :is_not_pinned [:= col nil]
      [:= 1 1])))
 
 (defmulti ^:private post-process-collection-children
@@ -202,8 +202,8 @@
           res)))))
 
 (defmethod collection-children-query :collection
-  [_ collection {:keys [archived? collection-namespace]}]
-  (assoc (collection/effective-children-query
+  [_ collection {:keys [archived? collection-namespace pinned-state]}]
+  (-> (assoc (collection/effective-children-query
            collection
            [:= :archived archived?]
            [:= :namespace (u/qualified-name collection-namespace)])
@@ -214,7 +214,9 @@
                   :description
                   [nil :collection_position]
                   [nil :display]
-                  [(hx/literal "collection") :model]]))
+                  [(hx/literal "collection") :model]])
+      ; the nil indicates that collections are never pinned.
+      (h/merge-where (pinned-state->clause pinned-state nil))))
 
 (defmethod post-process-collection-children :collection
   [_ rows]
