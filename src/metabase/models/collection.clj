@@ -483,7 +483,7 @@
 (s/defn effective-children :- #{CollectionInstance}
   {:hydrate :effective_children}
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (db/query (apply effective-children-query collection additional-honeysql-where-clauses))))
+  (set (db/select [Collection :id :name :description] {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
