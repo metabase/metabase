@@ -50,7 +50,7 @@ function CreateModerationIssuePanel({
 
   const isPending = isModerationRequestPending || isModerationReviewPending;
 
-  const onCreateModerationReview = async e => {
+  const onCreateModerationIssue = async e => {
     e.preventDefault();
 
     if (isModerator) {
@@ -75,7 +75,7 @@ function CreateModerationIssuePanel({
 
   return (
     <form
-      onSubmit={onCreateModerationReview}
+      onSubmit={onCreateModerationIssue}
       className="p2 flex flex-column row-gap-2"
     >
       <div className={cx(textColorClass, "flex align-center")}>
