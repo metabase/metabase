@@ -92,10 +92,13 @@ describe("Filter", () => {
   });
 
   const CASES = [
-    ["isStandard", ["=", ["field", 1, null]]],
+    ["isStandard", ["=", ["field", 1, null], 42]],
     ["isStandard", [null, ["field", 1, null]]], // assume null operator is standard
+    ["isStandard", ["between", ["field", 1, null], 1, 4]],
     ["isSegment", ["segment", 1]],
     ["isCustom", ["or", ["=", ["field", 1, null], 42]]],
+    ["isCustom", ["=", ["field", 1, null], ["field", 2, null]]],
+    ["isCustom", ["between", ["field", 1, null], 1, ["field", 2, null]]],
   ];
   for (const method of ["isStandard", "isSegment", "isCustom"]) {
     describe(method, () => {

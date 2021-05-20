@@ -908,13 +908,13 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Gizmo").should("not.exist");
   });
 
-  it.skip("custom expression filter should reference fields by their name, not by their id (metabase#15748)", () => {
+  it("custom expression filter should reference fields by their name, not by their id (metabase#15748)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
     cy.get("[contenteditable=true]").type("[Total] < [Subtotal]");
     cy.button("Done").click();
-    cy.findByText("Total is less than Subtotal");
+    cy.findByText("Total < Subtotal");
   });
 
   it("custom expression filter should allow the use of parentheses in combination with logical operators (metabase#15754)", () => {

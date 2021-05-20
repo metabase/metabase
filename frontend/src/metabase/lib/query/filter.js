@@ -1,6 +1,10 @@
 import { op, args, noNullValues, add, update, remove, clear } from "./util";
 import { isValidField } from "./field_ref";
-import { STANDARD_FILTERS } from "metabase/lib/expressions";
+import {
+  STANDARD_FILTERS,
+  FILTER_OPERATORS,
+  isLiteral,
+} from "metabase/lib/expressions";
 
 import type {
   FilterClause,
@@ -66,10 +70,24 @@ export function canAddFilter(filter: ?FilterClause): boolean {
 // FILTER TYPES
 
 export function isStandard(filter: FilterClause): boolean {
+  if (!Array.isArray(filter)) {
+    return false;
+  }
+
+  const op = filter[0];
+  const field = filter[1];
+  if (FILTER_OPERATORS.has(op)) {
+    // only allows constant right-hand side, e.g. ["<", field, 42]
+    return isValidField(field) && isLiteral(filter[2]);
+  }
+  if (op === "between") {
+    // only allows constant ranges, e.g. ["between", field, 0, 4]
+    return isValidField(field) && isLiteral(filter[2]) && isLiteral(filter[3]);
+  }
+
   return (
-    Array.isArray(filter) &&
-    (STANDARD_FILTERS.has(filter[0]) || filter[0] === null) &&
-    (filter[1] === undefined || isValidField(filter[1]))
+    (STANDARD_FILTERS.has(op) || op === null) &&
+    (field === undefined || isValidField(field))
   );
 }
 
