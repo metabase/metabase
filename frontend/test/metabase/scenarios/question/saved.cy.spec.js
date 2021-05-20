@@ -95,7 +95,7 @@ describe("scenarios > question > saved", () => {
     cy.wait("@query");
 
     cy.findByTestId("saved-question-header-button").click();
-    cy.icon("clone").click();
+    cy.icon("segment").click();
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");

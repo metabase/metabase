@@ -12,6 +12,12 @@ const {
   OpenModerationIssuesButton,
 } = PLUGIN_MODERATION_COMPONENTS;
 
+QuestionDetailsSidebarPanel.propTypes = {
+  setView: PropTypes.func.isRequired,
+  question: PropTypes.object.isRequired,
+  onOpenModal: PropTypes.func.isRequired,
+};
+
 function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
   const canWrite = question.canWrite();
   const description = question.description();
@@ -37,6 +43,7 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
             }}
           />
           <OpenModerationIssuesButton
+            question={question}
             onClick={() => {
               setView({
                 name: SIDEBAR_VIEWS.OPEN_ISSUES_PANEL,
@@ -49,11 +56,5 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
     </SidebarContent>
   );
 }
-
-QuestionDetailsSidebarPanel.propTypes = {
-  setView: PropTypes.func.isRequired,
-  question: PropTypes.object.isRequired,
-  onOpenModal: PropTypes.func.isRequired,
-};
 
 export default QuestionDetailsSidebarPanel;
