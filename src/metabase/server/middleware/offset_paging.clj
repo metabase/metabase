@@ -11,8 +11,8 @@
 
 (def ^:dynamic *paged?* false)
 
-(defn- offset-paged? [{{:strs [page limit]} :query-params}]
-  (or page limit))
+(defn- offset-paged? [{{:strs [page limit offset]} :query-params}]
+  (or page limit offset))
 
 (defn- parse-paging-params [{{:strs [limit offset]} :query-params}]
   (let [limit  (or (some-> limit Integer/parseUnsignedInt)

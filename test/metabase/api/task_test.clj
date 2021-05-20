@@ -56,16 +56,17 @@
                  (mt/boolean-ids-and-timestamps result))))))))
 
 (deftest limit-param-test
-  (testing "Should fail when only including a limit"
-    (is (= "When including a limit, an offset must also be included."
-           (mt/user-http-request :crowberto :get 400 "task/" :limit 100))))
+  (testing "Should default when only including a limit"
+    (is (= (mt/user-http-request :crowberto :get 200 "task/" :limit 100 :offset 0)
+           (mt/user-http-request :crowberto :get 200 "task/" :limit 100))))
 
-  (testing "Should fail when only including an offset"
-    (is (= "When including an offset, a limit must also be included."
-           (mt/user-http-request :crowberto :get 400 "task/" :offset 100))))
+  (testing "Should default when only including an offset"
+    (is (= (mt/user-http-request :crowberto :get 200 "task/" :limit 50 :offset 100)
+           (mt/user-http-request :crowberto :get 200 "task/" :offset 100))))
 
   (testing "Check that we don't support a 0 limit, which wouldn't make sense"
-    (is (= {:errors {:limit "value may be nil, or if non-nil, value must be a valid integer greater than zero."}}
+    (is (= {:errors
+           #:offset-paging{:*limit* "value may be nil, or if non-nil, value must be an integer greater than zero."}}
            (mt/user-http-request :crowberto :get 400 "task/" :limit 0 :offset 100)))))
 
 (deftest paging-test
