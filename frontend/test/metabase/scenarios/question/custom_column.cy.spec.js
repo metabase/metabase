@@ -87,15 +87,12 @@ describe("scenarios > question > custom columns", () => {
     // Add custom column based on previous aggregates
     const columnName = "MegaTotal";
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']")
-        .click()
-        .type("[Sum of Subtotal] + [Sum of Total]");
-      cy.findByPlaceholderText("Something nice and descriptive")
-        .click()
-        .type(columnName);
-      cy.findByText("Done").click();
+
+    enterCustomColumnDetails({
+      formula: "[Sum of Subtotal] + [Sum of Total]",
+      name: columnName,
     });
+    cy.button("Done").click();
 
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
