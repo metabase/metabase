@@ -125,6 +125,7 @@ export class ViewTitleHeader extends React.Component {
                 />
               </SavedQuestionHeaderButtonContainer>
               <HistoryButton
+                className="pl1"
                 onClick={() => onOpenModal("history")}
                 modelType="card"
                 modelId={question.id()}
