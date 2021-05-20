@@ -291,7 +291,9 @@
                               "/"
                               (format "%%/%s/" (str parent-id))) ]
     (into
-      [:and]
+      ; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
+      ; the [:= 1 1] is to prevent this
+      [:and [:= 1 1]]
       (if (= collection-ids :all)
         ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
         ; meaning, the effective children are always the direct children. So check for being a direct child.
