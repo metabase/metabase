@@ -630,3 +630,10 @@ function _typeUsingPlaceholder(selector, value, delay = 100) {
     .click()
     .type(value, { delay });
 }
+
+function enterCustomColumnDetails({ formula, name } = {}) {
+  cy.get("[contenteditable='true']")
+    .as("formula")
+    .type(formula);
+  cy.findByPlaceholderText("Something nice and descriptive").type(name);
+}
