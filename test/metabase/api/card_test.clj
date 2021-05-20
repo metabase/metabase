@@ -279,12 +279,16 @@
                       Comment           [comment-1              {:commented_item_id card-id :commented_item_type :card}]
                       Comment           [comment-2              {:commented_item_id card-id :commented_item_type :card}]
                       Comment           [comment-3              {:commented_item_id card-id :commented_item_type :card}]]
-        (with-cards-in-readable-collection [card]
-          (is (= {:comments            (map normalize [comment-1 comment-2 comment-3])
-                  :moderation_requests [(normalize request)]
-                  :moderation_reviews  [(normalize review)]}
-                 (-> (mt/user-http-request :rasta :get 200 (format "card/%d" card-id))
-                     (select-keys [:comments :moderation_requests :moderation_reviews])))))))))
+        (with-cards-in-writeable-collection card
+          (let [expected {:comments            (map normalize [comment-1 comment-2 comment-3])
+                          :moderation_requests [(normalize request)]
+                          :moderation_reviews  [(normalize review)]} ]
+            (is (= expected
+                   (-> (mt/user-http-request :rasta :get 200 (format "card/%d" card-id))
+                       (select-keys [:comments :moderation_requests :moderation_reviews]))))
+            (is (= (merge expected {:name "Edited card"})
+                   (-> (mt/user-http-request :rasta :put 202 (format "card/%d" card-id) {:name "Edited card"})
+                       (select-keys [:comments :moderation_requests :moderation_reviews :name]))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
