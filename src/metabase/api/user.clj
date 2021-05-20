@@ -11,6 +11,7 @@
             [metabase.models.permissions-group :as group]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -126,31 +127,26 @@
   Takes `limit`, `offset` for pagination.
   Takes `query` for filtering on first name, last name, email.
   Also takes `group_id`, which filters on group id."
-  [limit offset status query group_id include_deactivated]
-  {
-   limit               (s/maybe su/IntStringGreaterThanZero)
-   offset              (s/maybe su/IntStringGreaterThanOrEqualToZero)
-   status              (s/maybe s/Str)
-   query               (s/maybe s/Str)
-   group_id            (s/maybe su/IntGreaterThanZero)
-   include_deactivated (s/maybe su/BooleanString)
-   }
+  [status query group_id include_deactivated]
+  {status                 (s/maybe s/Str)
+   query                  (s/maybe s/Str)
+   group_id               (s/maybe su/IntGreaterThanZero)
+   include_deactivated    (s/maybe su/BooleanString)
+   offset-paging/*limit*  (s/maybe su/IntGreaterThanZero)
+   offset-paging/*offset* (s/maybe su/IntGreaterThanOrEqualToZero)}
   (when (or status include_deactivated)
     (api/check-superuser))
-  (api/check-valid-page-params limit offset)
-  (let [limit-int  (some-> limit Integer/parseInt)
-        offset-int (some-> offset Integer/parseInt)]
-    {:data   (cond-> (db/select
-                       (vec (cons User (user-visible-columns)))
-                       (cond-> (user-clauses status query group_id include_deactivated)
-                         true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                         (some? limit) (hh/limit limit-int)
-                         (some? offset) (hh/offset offset-int)))
-               ;; For admins, also include the IDs of the  Users' Personal Collections
-               api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
-     :total  (db/count User (user-clauses status query group_id include_deactivated))
-     :limit  limit-int
-     :offset offset-int}))
+  {:data   (cond-> (db/select
+                     (vec (cons User (user-visible-columns)))
+                     (cond-> (user-clauses status query group_id include_deactivated)
+                       true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                       (some? offset-paging/*limit*)  (hh/limit offset-paging/*limit*)
+                       (some? offset-paging/*offset*) (hh/offset offset-paging/*offset*)))
+             ;; For admins, also include the IDs of the  Users' Personal Collections
+             api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
+   :total  (db/count User (user-clauses status query group_id include_deactivated))
+   :limit  offset-paging/*limit*
+   :offset offset-paging/*offset*})
 
 
 (api/defendpoint GET "/current"
