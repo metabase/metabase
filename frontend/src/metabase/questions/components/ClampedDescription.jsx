@@ -20,7 +20,7 @@ export function ClampedDescription({ className, description, onEdit }) {
         <Button
           onClick={onEdit}
           link
-          className="text-medium p0 py1 bg-transparent bg-transparent-hover borderless text-underline-hover"
+          className="text-light p0 bg-transparent bg-transparent-hover borderless text-underline-hover"
         >{t`Add a description`}</Button>
       )}
     </div>
