@@ -854,7 +854,10 @@
     (mt/dataset-definition (str "checkins_interval_" interval-seconds)
       ["checkins"
        [{:field-name "timestamp"
-         :base-type  :type/DateTime}]
+         :base-type  (if-let [d driver/*driver*]
+                       ;; unsure why this hack is needed; sometimes driver/*driver* is nil
+                       (sql.qp/current-datetime-base-type d)
+                       :type/DateTime)}]
        (vec (for [i (range -15 15)]
               ;; TIMESTAMP FIXME — not sure if still needed
               ;;

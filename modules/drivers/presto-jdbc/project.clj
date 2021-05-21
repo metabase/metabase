@@ -1,5 +1,8 @@
-(defproject metabase/presto-driver "1.0.0-SNAPSHOT"
+(defproject metabase/presto-jdbc-driver "1.0.0-0.254-SNAPSHOT"
   :min-lein-version "2.5.0"
+
+  :dependencies
+  [[com.facebook.presto/presto-jdbc "0.254"]]
 
   :profiles
   {:provided
@@ -13,4 +16,4 @@
     :aot           :all
     :javac-options ["-target" "1.8", "-source" "1.8"]
     :target-path   "target/%s"
-    :uberjar-name  "presto.metabase-driver.jar"}})
+    :uberjar-name  "presto-jdbc.metabase-driver.jar"}})

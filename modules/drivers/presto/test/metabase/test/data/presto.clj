@@ -7,6 +7,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.presto :as presto]
+            [metabase.driver.presto-common :as presto-common]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.test.data.interface :as tx]
@@ -40,6 +41,7 @@
 
 (defn- field-base-type->dummy-value [field-type]
   ;; we need a dummy value for every base-type to make a properly typed SELECT statement
+  (println "field-type: " field-type)
   (if (keyword? field-type)
     (case field-type
       :type/Boolean        "TRUE"
@@ -54,7 +56,7 @@
       :type/Time           "cast(current_time as TIME)"
       "from_hex('00')") ; this might not be the best default ever
     ;; we were given a native type, map it back to a base-type and try again
-    (field-base-type->dummy-value (#'presto/presto-type->base-type field-type))))
+    (field-base-type->dummy-value (presto-common/presto-type->base-type field-type))))
 
 (defmethod sql.tx/create-table-sql :presto
   [driver {:keys [database-name]} {:keys [table-name], :as tabledef}]

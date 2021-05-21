@@ -109,6 +109,17 @@
   [driver]
   :%now)
 
+(defmulti current-datetime-base-type
+  "Field :base-type that is returned by the DB specific \"current datetime\" HSQL form
+  (i.e. `current-datetime-honeysql-form`).  Defaults to `:type/DateTime`."
+  {:arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod current-datetime-base-type :default
+  [_]
+  :type/DateTime)
+
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
