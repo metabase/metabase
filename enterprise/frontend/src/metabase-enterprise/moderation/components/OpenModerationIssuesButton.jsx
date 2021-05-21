@@ -19,8 +19,10 @@ export function OpenModerationIssuesButton({ question, className, onClick }) {
       borderless
       className={cx(
         className,
-        "py1 text-brand text-brand-hover align-center",
-        numOpenIssues === 0 && "text-light text-light-hover",
+        "py1 align-center",
+        numOpenIssues === 0 &&
+          "text-light text-light-hover bg-transparent-hover",
+        numOpenIssues > 0 && "text-brand text-brand-hover",
       )}
       onClick={onClick}
       disabled={numOpenIssues === 0}
