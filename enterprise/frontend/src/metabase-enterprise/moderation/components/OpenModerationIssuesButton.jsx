@@ -14,12 +14,18 @@ OpenModerationIssuesButton.propTypes = {
 
 export function OpenModerationIssuesButton({ question, className, onClick }) {
   const numOpenIssues = getNumberOfOpenRequests(question);
-
-  return numOpenIssues > 0 ? (
+  return (
     <Button
       borderless
-      className={cx(className, "py1 text-brand text-brand-hover align-center")}
+      className={cx(
+        className,
+        "py1 align-center",
+        numOpenIssues === 0 &&
+          "text-light text-light-hover bg-transparent-hover",
+        numOpenIssues > 0 && "text-brand text-brand-hover",
+      )}
       onClick={onClick}
+      disabled={numOpenIssues === 0}
     >
       {ngettext(
         msgid`${numOpenIssues} open issue`,
@@ -27,5 +33,5 @@ export function OpenModerationIssuesButton({ question, className, onClick }) {
         numOpenIssues,
       )}
     </Button>
-  ) : null;
+  );
 }

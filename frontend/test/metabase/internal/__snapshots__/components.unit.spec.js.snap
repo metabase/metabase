@@ -1921,13 +1921,13 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
   className="Timelineinfo__Container-g32h45-0 hGzZmq"
 >
   <div
-    className="Timeline__TimelineContainer-sc-1c86koa-0 cNPqnV"
+    className="Timeline__TimelineContainer-sc-1c86koa-0 eoIDuV"
   >
     <div
-      className="Timeline__TimelineItem-sc-1c86koa-1 cQntrv"
+      className="Timeline__TimelineItem-sc-1c86koa-1 iXVYJI"
     >
       <div
-        className="Timeline__Border-sc-1c86koa-2 leQHpA"
+        className="Timeline__Border-sc-1c86koa-2 fcrCJp"
       />
       <svg
         aria-label="verified icon"
@@ -1938,10 +1938,10 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
           }
         }
         fill="currentcolor"
-        height={20}
+        height={16}
         role="img"
         viewBox="0 0 32 32"
-        width={20}
+        width={16}
       />
       <div
         className="ml1 flex-1"
@@ -1952,7 +1952,7 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
           John Someone verified this
         </div>
         <div
-          className="text-medium text-small"
+          className="text-medium text-small pb1"
         >
           mocked relative timestamp
         </div>
@@ -1962,19 +1962,19 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
       </div>
     </div>
     <div
-      className="Timeline__TimelineItem-sc-1c86koa-1 cQntrv"
+      className="Timeline__TimelineItem-sc-1c86koa-1 iXVYJI"
     >
       <div
-        className="Timeline__Border-sc-1c86koa-2 leQHpA"
+        className="Timeline__Border-sc-1c86koa-2 fcrCJp"
       />
       <svg
         aria-label="pencil icon"
         className="Icon Icon-pencil relative text-light Icon-sc-1x67v3y-1 hFNRPZ"
         fill="currentcolor"
-        height={20}
+        height={16}
         role="img"
         viewBox="0 0 32 32"
-        width={20}
+        width={16}
       >
         <path
           d="M21.187 4.359L24.71.835c1.363-1.362 3.912-1.022 5.694.76 1.783 1.783 2.123 4.332.761 5.695l-3.523 3.523-6.455-6.454zM19.425 6.12L1.455 24.091C.091 25.453-.47 30.625.452 31.547c.922.922 6.094.361 7.456-1.001l17.97-17.971-6.454-6.455z"
@@ -1989,7 +1989,7 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
           Foo edited this
         </div>
         <div
-          className="text-medium text-small"
+          className="text-medium text-small pb1"
         >
           mocked relative timestamp
         </div>
@@ -1999,10 +1999,10 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
       </div>
     </div>
     <div
-      className="Timeline__TimelineItem-sc-1c86koa-1 cQntrv"
+      className="Timeline__TimelineItem-sc-1c86koa-1 iXVYJI"
     >
       <div
-        className="Timeline__Border-sc-1c86koa-2 leQHpA"
+        className="Timeline__Border-sc-1c86koa-2 fcrCJp"
       />
       <svg
         aria-label="warning_colorized icon"
@@ -2013,10 +2013,10 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
           }
         }
         fill="currentcolor"
-        height={20}
+        height={16}
         role="img"
         viewBox="0 0 32 32"
-        width={20}
+        width={16}
       />
       <div
         className="ml1 flex-1"
@@ -2027,7 +2027,7 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
           Someone McSomeone thinks something looks wrong
         </div>
         <div
-          className="text-medium text-small"
+          className="text-medium text-small pb1"
         >
           mocked relative timestamp
         </div>
@@ -2046,7 +2046,7 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
       </div>
     </div>
     <div
-      className="Timeline__TimelineItem-sc-1c86koa-1 cQntrv"
+      className="Timeline__TimelineItem-sc-1c86koa-1 iXVYJI"
     >
       <svg
         aria-label="clarification icon"
@@ -2057,10 +2057,10 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
           }
         }
         fill="currentcolor"
-        height={20}
+        height={16}
         role="img"
         viewBox="0 0 32 32"
-        width={20}
+        width={16}
       />
       <div
         className="ml1 flex-1"
@@ -2071,7 +2071,7 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
           Someone is confused
         </div>
         <div
-          className="text-medium text-small"
+          className="text-medium text-small pb1"
         >
           mocked relative timestamp
         </div>
@@ -2086,13 +2086,13 @@ exports[`Timeline should render "Constrained width" correctly 1`] = `
 
 exports[`Timeline should render "Optional footer" correctly 1`] = `
 <div
-  className="Timeline__TimelineContainer-sc-1c86koa-0 cNPqnV"
+  className="Timeline__TimelineContainer-sc-1c86koa-0 eoIDuV"
 >
   <div
-    className="Timeline__TimelineItem-sc-1c86koa-1 cQntrv"
+    className="Timeline__TimelineItem-sc-1c86koa-1 iXVYJI"
   >
     <div
-      className="Timeline__Border-sc-1c86koa-2 leQHpA"
+      className="Timeline__Border-sc-1c86koa-2 fcrCJp"
     />
     <svg
       aria-label="verified icon"
@@ -2103,10 +2103,10 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
         }
       }
       fill="currentcolor"
-      height={20}
+      height={16}
       role="img"
       viewBox="0 0 32 32"
-      width={20}
+      width={16}
     />
     <div
       className="ml1 flex-1"
@@ -2117,7 +2117,7 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
         John Someone verified this
       </div>
       <div
-        className="text-medium text-small"
+        className="text-medium text-small pb1"
       >
         mocked relative timestamp
       </div>
@@ -2135,19 +2135,19 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
     </div>
   </div>
   <div
-    className="Timeline__TimelineItem-sc-1c86koa-1 cQntrv"
+    className="Timeline__TimelineItem-sc-1c86koa-1 iXVYJI"
   >
     <div
-      className="Timeline__Border-sc-1c86koa-2 leQHpA"
+      className="Timeline__Border-sc-1c86koa-2 fcrCJp"
     />
     <svg
       aria-label="pencil icon"
       className="Icon Icon-pencil relative text-light Icon-sc-1x67v3y-1 hFNRPZ"
       fill="currentcolor"
-      height={20}
+      height={16}
       role="img"
       viewBox="0 0 32 32"
-      width={20}
+      width={16}
     >
       <path
         d="M21.187 4.359L24.71.835c1.363-1.362 3.912-1.022 5.694.76 1.783 1.783 2.123 4.332.761 5.695l-3.523 3.523-6.455-6.454zM19.425 6.12L1.455 24.091C.091 25.453-.47 30.625.452 31.547c.922.922 6.094.361 7.456-1.001l17.97-17.971-6.454-6.455z"
@@ -2162,7 +2162,7 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
         Foo edited this
       </div>
       <div
-        className="text-medium text-small"
+        className="text-medium text-small pb1"
       >
         mocked relative timestamp
       </div>
@@ -2175,10 +2175,10 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
     </div>
   </div>
   <div
-    className="Timeline__TimelineItem-sc-1c86koa-1 cQntrv"
+    className="Timeline__TimelineItem-sc-1c86koa-1 iXVYJI"
   >
     <div
-      className="Timeline__Border-sc-1c86koa-2 leQHpA"
+      className="Timeline__Border-sc-1c86koa-2 fcrCJp"
     />
     <svg
       aria-label="warning_colorized icon"
@@ -2189,10 +2189,10 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
         }
       }
       fill="currentcolor"
-      height={20}
+      height={16}
       role="img"
       viewBox="0 0 32 32"
-      width={20}
+      width={16}
     />
     <div
       className="ml1 flex-1"
@@ -2203,7 +2203,7 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
         Someone McSomeone thinks something looks wrong
       </div>
       <div
-        className="text-medium text-small"
+        className="text-medium text-small pb1"
       >
         mocked relative timestamp
       </div>
@@ -2225,7 +2225,7 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
     </div>
   </div>
   <div
-    className="Timeline__TimelineItem-sc-1c86koa-1 cQntrv"
+    className="Timeline__TimelineItem-sc-1c86koa-1 iXVYJI"
   >
     <svg
       aria-label="clarification icon"
@@ -2236,10 +2236,10 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
         }
       }
       fill="currentcolor"
-      height={20}
+      height={16}
       role="img"
       viewBox="0 0 32 32"
-      width={20}
+      width={16}
     />
     <div
       className="ml1 flex-1"
@@ -2250,7 +2250,7 @@ exports[`Timeline should render "Optional footer" correctly 1`] = `
         Someone is confused
       </div>
       <div
-        className="text-medium text-small"
+        className="text-medium text-small pb1"
       >
         mocked relative timestamp
       </div>
