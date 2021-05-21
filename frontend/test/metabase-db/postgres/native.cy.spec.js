@@ -2,7 +2,10 @@ import { restore, addPostgresDatabase, modal } from "__support__/e2e/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 
-describe("postgres > question > native", () => {
+// Skipping the whole describe block because it contains only one skipped test so far!
+// We don't want to run the whole beforeEeach block in CI only to skip the test afterwards.
+// IMPORTANT: when #14957 gets fixed, unskip both describe block and the test itself!
+describe.skip("postgres > question > native", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
