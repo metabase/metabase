@@ -230,7 +230,8 @@
                                                                       :result_metadata        nil})
                                       :series                 []}]
                      :moderation_requests []
-                     :moderation_reviews  []})
+                     :moderation_reviews  []
+                     :comments            []})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
     (testing "fetch a dashboard with a param in it"
@@ -282,7 +283,8 @@
                                                                             :result_metadata        nil})
                                             :series                 []}]
                            :moderation_requests []
-                           :moderation_reviews  []})
+                           :moderation_reviews  []
+                           :comments  [] })
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
     (testing "fetch a dashboard from an official collection includes the collection type"
       (mt/with-temp* [Dashboard     [{dashboard-id :id

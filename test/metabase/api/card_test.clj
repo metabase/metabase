@@ -10,8 +10,9 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel
-                                     PulseChannelRecipient Table ViewLog]]
+            [metabase.models :refer [Card CardFavorite Collection Comment Dashboard Database ModerationRequest
+                                     ModerationReview Pulse PulseCard PulseChannel PulseChannelRecipient Table
+                                     ViewLog]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
@@ -265,6 +266,29 @@
         (is (= [{:name "Card 1", :favorite true}]
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :fav)]
                  (select-keys card [:name :favorite]))))))))
+
+(deftest moderation-test
+  (letfn [(normalize [item] (into {}
+                                  (cond-> item
+                                    (:moderated_item_type item) (update :moderated_item_type name)
+                                    (:commented_item_type item) (update :commented_item_type name))))]
+    (testing "Associated moderation objects are hydrated appropriately"
+      (mt/with-temp* [Card              [{card-id :id :as card}       {:name "Moderated card"}]
+                      ModerationRequest [{request-id :id :as request} {:moderated_item_id card-id :moderated_item_type :card}]
+                      ModerationReview  [{review-id :id :as review}   {:moderated_item_id card-id :moderated_item_type :card}]
+                      Comment           [comment-1                    {:commented_item_id request-id :commented_item_type :moderation_request}]
+                      Comment           [comment-2                    {:commented_item_id request-id :commented_item_type :moderation_request}]
+                      Comment           [comment-3                    {:commented_item_id review-id :commented_item_type :moderation_review}]]
+        (with-cards-in-writeable-collection card
+          (let [expected {:comments            (map normalize [comment-1 comment-2 comment-3])
+                          :moderation_requests [(normalize request)]
+                          :moderation_reviews  [(normalize review)]} ]
+            (is (= expected
+                   (-> (mt/user-http-request :rasta :get 200 (format "card/%d" card-id))
+                       (select-keys [:comments :moderation_requests :moderation_reviews]))))
+            (is (= (merge expected {:name "Edited card"})
+                   (-> (mt/user-http-request :rasta :put 202 (format "card/%d" card-id) {:name "Edited card"})
+                       (select-keys [:comments :moderation_requests :moderation_reviews :name]))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -589,7 +613,8 @@
                    :collection             (into {} collection)
                    :result_metadata        (mt/obj->json->obj (:result_metadata card))
                    :moderation_requests    []
-                   :moderation_reviews     []})
+                   :moderation_reviews     []
+                   :comments               []})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp* [User     [{user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}]
