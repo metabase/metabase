@@ -34,7 +34,7 @@ const Border = styled.div`
 `;
 
 const Timeline = ({ className, items = [], renderFooter }) => {
-  const iconSize = 20;
+  const iconSize = 16;
   const halfIconSize = iconSize / 2;
 
   const sortedFormattedItems = useMemo(() => {
@@ -65,7 +65,9 @@ const Timeline = ({ className, items = [], renderFooter }) => {
             <Icon className="relative text-light" name={icon} size={iconSize} />
             <div className="ml1 flex-1">
               <div className="text-bold">{title}</div>
-              <div className="text-medium text-small">{formattedTimestamp}</div>
+              <div className="text-medium text-small pb1">
+                {formattedTimestamp}
+              </div>
               <div>{description}</div>
               {_.isFunction(renderFooter) && <div>{renderFooter(item)}</div>}
             </div>

@@ -63,16 +63,20 @@ function OpenModerationIssuesPanel({
         >{t`Open issues`}</Button>
       </div>
       <div className="px2">
-        {requestsWithMetadata.map(request => {
-          return (
-            <ModerationIssueThread
-              key={request.id}
-              className="py2 border-row-divider"
-              request={request}
-              onModerate={isModerator && onModerate}
-            />
-          );
-        })}
+        {requestsWithMetadata.length > 0 ? (
+          requestsWithMetadata.map(request => {
+            return (
+              <ModerationIssueThread
+                key={request.id}
+                className="py2 border-row-divider"
+                request={request}
+                onModerate={isModerator && onModerate}
+              />
+            );
+          })
+        ) : (
+          <div className="text-body text-medium p1">{t`No open issues`}</div>
+        )}
       </div>
     </div>
   );
