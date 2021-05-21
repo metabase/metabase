@@ -324,14 +324,14 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id type type_tree], :as collection-updates} :body}]
-  {name        (s/maybe su/NonBlankString)
-   color       (s/maybe collection/hex-color-regex)
-   description (s/maybe su/NonBlankString)
-   archived    (s/maybe s/Bool)
-   parent_id   (s/maybe su/IntGreaterThanZero)
-   type        collection/Type
-   type_tree   (s/maybe s/Bool)}
+  [id, :as {{:keys [name color description archived parent_id type type_sub_tree], :as collection-updates} :body}]
+  {name          (s/maybe su/NonBlankString)
+   color         (s/maybe collection/hex-color-regex)
+   description   (s/maybe su/NonBlankString)
+   archived      (s/maybe s/Bool)
+   parent_id     (s/maybe su/IntGreaterThanZero)
+   type          collection/Type
+   type_sub_tree (s/maybe s/Bool)}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
@@ -340,7 +340,7 @@
                        (= (:type collection-before-update) type)  ;; update doesn't change it
                        api/*is-superuser?*))
     ;; should there be an enhancements check here?
-    (api/check-403 (or (nil? type_tree)
+    (api/check-403 (or (nil? type_sub_tree)
                        api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
@@ -350,10 +350,10 @@
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; mark the tree after moving so the new tree is what is marked as official
-    (when type_tree
+    (when type_sub_tree
       (db/execute! {:update Collection
-                    :set {:type type}
-                    :where [:or
+                    :set    {:type type}
+                    :where  [:or
                             [:= :id id]
                             [:like :location (hx/literal (format "%%/%d/%%" id))]]}))
     ;; if we *did* end up archiving this Collection, we most post a few notifications
