@@ -6,7 +6,7 @@ import cx from "classnames";
 import Button from "metabase/components/Button";
 
 import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
-const { getStatusIconForReview, getColorForReview } = PLUGIN_MODERATION_SERVICE;
+const { getStatusIconForReview } = PLUGIN_MODERATION_SERVICE;
 
 const StyledButton = styled(Button)`
   font-size: 1.25rem;
@@ -14,23 +14,22 @@ const StyledButton = styled(Button)`
   padding: 0.25rem 0.25rem;
 
   .Icon-chevrondown {
-    height: 24px;
+    height: 13px;
   }
 `;
 
 function SavedQuestionHeaderButton({ className, question, onClick, active }) {
   const latestModerationReview = question.getLatestModerationReview();
-  const color = getColorForReview(latestModerationReview);
   const icon = getStatusIconForReview(latestModerationReview);
 
   return (
     <StyledButton
-      className={cx(className, color && `text-${color}`)}
+      className={cx(className)}
       onClick={onClick}
       iconRight="chevrondown"
       icon={icon}
       active={active}
-      iconSize={13}
+      iconSize={20}
       data-testid="saved-question-header-button"
     >
       {question.displayName()}

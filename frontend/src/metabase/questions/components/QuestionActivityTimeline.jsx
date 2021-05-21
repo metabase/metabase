@@ -26,10 +26,13 @@ function QuestionActivityTimeline({
 }) {
   const events = revisions.map((revision, index) => {
     // const canRevert = question.canWrite();
+    const username = revision.user.common_name;
     return {
       timestamp: revision.timestamp,
       icon: "pencil",
-      title: t`${revision.user.common_name} edited this`,
+      title: revision.is_creation
+        ? t`${username} created this`
+        : t`${username} edited this`,
       description: getRevisionDescription(revision),
       // showFooter: index !== 0 && canRevert,
       showFooter: false,

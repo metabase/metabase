@@ -2,11 +2,10 @@ import React from "react";
 import PropTypes from "prop-types";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/questions/components/QuestionActionButtons";
-import ClampedText from "metabase/components/ClampedText";
 import QuestionActivityTimeline from "metabase/questions/components/QuestionActivityTimeline";
 import { PLUGIN_MODERATION_COMPONENTS } from "metabase/plugins";
 import { SIDEBAR_VIEWS } from "./constants";
-
+import { ClampedDescription } from "metabase/questions/components/ClampedDescription";
 const {
   ModerationIssueActionMenu,
   OpenModerationIssuesButton,
@@ -31,8 +30,13 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
             onOpenModal={onOpenModal}
           />
         </div>
-        <ClampedText className="px3 pb2" text={description} visibleLines={8} />
-        <div className="mx1 pb2 flex justify-between border-row-divider">
+        <ClampedDescription
+          className="px3 pb3"
+          description={description}
+          visibleLines={8}
+          onEdit={() => onOpenModal("edit")}
+        />
+        <div className="ml3 mr2 py3 flex justify-between border-row-divider">
           <ModerationIssueActionMenu
             triggerClassName="Button--round text-brand border-brand py1"
             onAction={issueType => {
@@ -51,7 +55,7 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
             }}
           />
         </div>
-        <QuestionActivityTimeline className="px2 pt2" question={question} />
+        <QuestionActivityTimeline className="pl3 pr2 pt3" question={question} />
       </div>
     </SidebarContent>
   );
