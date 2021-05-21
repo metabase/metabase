@@ -814,15 +814,16 @@
           (finally
             (db/delete! Collection :name collection-name)))))
     (testing "collection types"
-      (testing "Admins should be able to create with a type"
-        (mt/user-http-request :crowberto :post 200 "collection"
-                              {:name "foo", :color "#f38630", :type "official"})
-        (testing "But they have to be valid types"
-          (mt/user-http-request :crowberto :post 400 "collection"
-                                {:name "foo", :color "#f38630", :type "no-way-this-is-valid-type"})))
-      (testing "Non-admins cannot create a collection with a type"
-        (mt/user-http-request :rasta :post 403 "collection"
-                              {:name "foo", :color "#f38630", :type "official"})))))
+      (mt/with-model-cleanup [Collection]
+        (testing "Admins should be able to create with a type"
+          (mt/user-http-request :crowberto :post 200 "collection"
+                                {:name "foo", :color "#f38630", :type "official"})
+          (testing "But they have to be valid types"
+            (mt/user-http-request :crowberto :post 400 "collection"
+                                  {:name "foo", :color "#f38630", :type "no-way-this-is-valid-type"})))
+        (testing "Non-admins cannot create a collection with a type"
+          (mt/user-http-request :rasta :post 403 "collection"
+                                {:name "foo", :color "#f38630", :type "official"}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUT /api/collection/:id                                             |
