@@ -20,6 +20,7 @@
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -323,20 +324,24 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id type], :as collection-updates} :body}]
+  [id, :as {{:keys [name color description archived parent_id type type_tree], :as collection-updates} :body}]
   {name        (s/maybe su/NonBlankString)
    color       (s/maybe collection/hex-color-regex)
    description (s/maybe su/NonBlankString)
    archived    (s/maybe s/Bool)
    parent_id   (s/maybe su/IntGreaterThanZero)
-   type        collection/Type}
+   type        collection/Type
+   type_tree   (s/maybe s/Bool)}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
     (api/check-403 (or (not (contains? collection-updates :type)) ;; update doesn't include it
                        (= (:type collection-before-update) type)  ;; update doesn't change it
-                       api/*is-superuser?*))
+                       (and api/*is-superuser?*)))
+    ;; should there be an enhancements check here?
+    (api/check-403 (or (nil? type_tree)
+                       (and api/*is-superuser?*)))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :type])]
@@ -344,6 +349,13 @@
         (db/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
+    ;; mark the tree after moving so the new tree is what is marked as official
+    (when type_tree
+      (db/execute! {:update Collection
+                    :set {:type type}
+                    :where [:or
+                            [:= :id id]
+                            [:like :location (hx/literal (format "%%/%d/%%" id))]]}))
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notificaitons! collection-before-update collection-updates))
   ;; finally, return the updated object
