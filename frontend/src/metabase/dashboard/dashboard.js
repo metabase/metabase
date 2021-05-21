@@ -97,6 +97,8 @@ export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
 export const REMOVE_CARD_FROM_DASH = "metabase/dashboard/REMOVE_CARD_FROM_DASH";
 export const SET_DASHCARD_ATTRIBUTES =
   "metabase/dashboard/SET_DASHCARD_ATTRIBUTES";
+export const SET_MULTIPLE_DASHCARD_ATTRIBUTES =
+  "metabase/dashboard/SET_MULTIPLE_DASHCARD_ATTRIBUTES";
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS =
   "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN =
@@ -174,6 +176,9 @@ export const hideClickBehaviorSidebar = createAction(
 // these operations don't get saved to server immediately
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
 export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
+export const setMultipleDashCardAttributes = createAction(
+  SET_MULTIPLE_DASHCARD_ATTRIBUTES,
+);
 
 export const addCardToDashboard = ({
   dashId,
@@ -1125,6 +1130,19 @@ const dashcards = handleActions(
         ...state,
         [id]: { ...state[id], ...attributes, isDirty: true },
       }),
+    },
+    [SET_MULTIPLE_DASHCARD_ATTRIBUTES]: {
+      next: (state, { payload: dashcards }) => {
+        const nextState = { ...state };
+        dashcards.forEach(({ id, attributes }) => {
+          nextState[id] = {
+            ...state[id],
+            ...attributes,
+            isDirty: true,
+          };
+        });
+        return nextState;
+      },
     },
     [UPDATE_DASHCARD_VISUALIZATION_SETTINGS]: {
       next: (state, { payload: { id, settings } }) =>
