@@ -80,7 +80,7 @@ export const MODERATION_TEXT = {
       actionCreationDescription: t` misleading actionCreationDescription`,
       actionCreationLabel: t`misleading actionCreationLabel`,
       actionCreationButton: t`misleading actionCreationButton`,
-      creationEvent: t`things something looks wrong`,
+      creationEvent: t`thinks something looks wrong`,
     },
     confused: {
       action: t`I'm confused`,
