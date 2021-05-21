@@ -11,8 +11,6 @@ import "./Popover.css";
 
 // space we should leave berween page edge and popover edge
 const PAGE_PADDING = 10;
-// Popover padding and border
-const POPOVER_BODY_PADDING = 2;
 
 export default class Popover extends Component {
   constructor(props, context) {
@@ -185,30 +183,6 @@ export default class Popover extends Component {
     } else {
       this._tether = new Tether(tetherOptions);
     }
-  }
-
-  _getMaxHeight() {
-    const { top, bottom } = this._getTargetElement().getBoundingClientRect();
-
-    let attachments;
-    if (this.props.pinInitialAttachment && this._best) {
-      // if we have a pinned attachment only use that
-      attachments = [this._best.attachmentY];
-    } else {
-      // otherwise use the verticalAttachments prop
-      attachments = this.props.verticalAttachments;
-    }
-
-    const availableHeights = attachments.map(attachmentY =>
-      attachmentY === "top"
-        ? window.innerHeight - bottom - this.props.targetOffsetY - PAGE_PADDING
-        : attachmentY === "bottom"
-        ? top - this.props.targetOffsetY - PAGE_PADDING
-        : 0,
-    );
-
-    // get the largest available height, then subtract .PopoverBody's border and padding
-    return Math.max(...availableHeights) - POPOVER_BODY_PADDING;
   }
 
   _getBestAttachmentOptions(
