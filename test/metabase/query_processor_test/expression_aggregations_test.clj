@@ -315,7 +315,9 @@
                  "Swaniawski, Casper and Hilll"
                  29.46
                  4.6
-                 "2017-07-19T19:44:56.582Z"
+                 (if (= driver/*driver* :sqlite)
+                   "2017-07-19T19:44:56Z"
+                   "2017-07-19T19:44:56.582Z")
                  1]
                 [2
                  "7663515285824"
@@ -324,7 +326,9 @@
                  "Balistreri-Ankunding"
                  70.08
                  0.0
-                 "2019-04-11T08:49:35.932Z"
+                 (if (= driver/*driver* :sqlite)
+                   "2019-04-11T08:49:35Z"
+                   "2019-04-11T08:49:35.932Z")
                  0]]
                (mt/formatted-rows [int str str str str 2.0 2.0 str int]
                  (mt/run-mbql-query products
