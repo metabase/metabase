@@ -17,8 +17,13 @@ export function OpenModerationIssuesButton({ question, className, onClick }) {
   return (
     <Button
       borderless
-      className={cx(className, "py1 text-brand text-brand-hover align-center")}
+      className={cx(
+        className,
+        "py1 text-brand text-brand-hover align-center",
+        numOpenIssues === 0 && "text-light text-light-hover",
+      )}
       onClick={onClick}
+      disabled={numOpenIssues === 0}
     >
       {ngettext(
         msgid`${numOpenIssues} open issue`,
