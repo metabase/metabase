@@ -95,6 +95,8 @@ describe("Filter", () => {
     ["isStandard", ["=", ["field", 1, null], 42]],
     ["isStandard", [null, ["field", 1, null]]], // assume null operator is standard
     ["isStandard", ["between", ["field", 1, null], 1, 4]],
+    ["isStandard", ["=", ["field", 1, null], undefined]], // standard but invalid
+    ["isStandard", ["between", ["field", 1, null], undefined, 4]], // standard but invalid
     ["isSegment", ["segment", 1]],
     ["isCustom", ["or", ["=", ["field", 1, null], 42]]],
     ["isCustom", ["=", ["field", 1, null], ["field", 2, null]]],

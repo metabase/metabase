@@ -78,11 +78,20 @@ export function isStandard(filter: FilterClause): boolean {
   const field = filter[1];
   if (FILTER_OPERATORS.has(op)) {
     // only allows constant right-hand side, e.g. ["<", field, 42]
-    return isValidField(field) && isLiteral(filter[2]);
+    // undefined rhs represents incomplete filter (still standard, but not valid)
+    const rhs = filter[2];
+    return isValidField(field) && (rhs ? isLiteral(rhs) : true);
   }
   if (op === "between") {
     // only allows constant ranges, e.g. ["between", field, 0, 4]
-    return isValidField(field) && isLiteral(filter[2]) && isLiteral(filter[3]);
+    // undefined range represents incomplete filter (still standard, but not valid)
+    const start = filter[2];
+    const end = filter[3];
+    return (
+      isValidField(field) &&
+      (start ? isLiteral(start) : true) &&
+      (end ? isLiteral(end) : true)
+    );
   }
 
   return (
