@@ -168,7 +168,7 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Join data").click();
       cy.findByText("People").click();
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
 
       // Summarize by State
       cy.findAllByText("Summarize")

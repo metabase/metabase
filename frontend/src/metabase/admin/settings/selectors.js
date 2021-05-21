@@ -90,14 +90,13 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Friendly Table and Field Names`,
         type: "select",
         options: [
-          { value: "advanced", name: t`Enabled` },
           {
             value: "simple",
-            name: t`Only replace underscores and dashes with spaces`,
+            name: t`Replace underscores and dashes with spaces`,
           },
           { value: "none", name: t`Disabled` },
         ],
-        defaultValue: "advanced",
+        defaultValue: "simple",
       },
       {
         key: "enable-nested-queries",

@@ -1,8 +1,6 @@
 (ns metabase.api.notify-test
-  (:require [cheshire.core :as json]
-            [clj-http.client :as client]
+  (:require [clj-http.client :as client]
             [clojure.test :refer :all]
-            [environ.core :as env]
             [metabase.api.notify :as notify]
             [metabase.http-client :as http]
             [metabase.models.database :as database]
@@ -31,7 +29,7 @@
                                   :headers {"X-METABASE-APIKEY" "testing-api-key"
                                             "Content-Type"      "application/json"}})
                     (catch clojure.lang.ExceptionInfo e
-                      (select-keys (:object (ex-data e)) [:status :body])))))))))
+                      (select-keys (ex-data e) [:status :body])))))))))
 
 (deftest post-db-id-test
   (binding [notify/*execute-asynchronously* false]

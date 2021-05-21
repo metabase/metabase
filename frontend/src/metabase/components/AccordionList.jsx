@@ -1,5 +1,3 @@
-/* eslint "react/prop-types": "warn" */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -51,7 +49,9 @@ export default class AccordionList extends Component {
     className: PropTypes.string,
     id: PropTypes.string,
 
-    width: PropTypes.number,
+    // TODO: pass width to this component as solely number or string if possible
+    // currently prop is number on initialization, then string afterwards
+    width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     maxHeight: PropTypes.number,
 
     sections: PropTypes.array.isRequired,

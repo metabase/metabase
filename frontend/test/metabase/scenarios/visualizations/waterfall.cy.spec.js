@@ -84,9 +84,9 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.get("[contenteditable=true]")
       .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
-    cy.findByRole("button", { name: "Done" }).click();
+    cy.button("Done").click();
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -100,7 +100,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -134,6 +134,22 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Waterfall")
       .parent()
       .should("not.have.css", "opacity", "1");
+  });
+
+  it.skip("should work for unaggregated data (metabase#15465)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\"",
+        },
+        database: 1,
+      },
+    });
+    cy.findByText("Visualization").click();
+    cy.icon("waterfall").click({ force: true });
+    cy.get(".Visualization .bar");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {

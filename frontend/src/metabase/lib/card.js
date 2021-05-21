@@ -115,7 +115,7 @@ export function b64url_to_utf8(b64url) {
 
 export function urlForCardState(state, dirty) {
   return Urls.question(
-    state.cardId,
+    state.card,
     state.serializedCard && dirty ? state.serializedCard : "",
   );
 }

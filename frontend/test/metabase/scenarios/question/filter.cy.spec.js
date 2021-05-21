@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   openProductsTable,
   openReviewsTable,
+  openPeopleTable,
   popover,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
@@ -218,7 +219,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Add filter").click();
     cy.contains("Category is not Gizmo");
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     // wait for results to load
     cy.get(".LoadingSpinner").should("not.exist");
     cy.log("The point of failure in 0.37.0-rc3");
@@ -543,7 +544,7 @@ describe("scenarios > question > filter", () => {
       .click()
       .type("contains(");
     cy.findByText(/Checks to see if string1 contains string2 within it./i);
-    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+    cy.button("Done").should("not.be.disabled");
     cy.get(".text-error").should("not.exist");
     cy.findAllByText(/Expected one of these possible Token sequences:/i).should(
       "not.exist",
@@ -701,8 +702,7 @@ describe("scenarios > question > filter", () => {
       .click()
       .clear()
       .type("NOT IsNull([Rating])", { delay: 50 });
-    cy.findAllByRole("button")
-      .contains("Done")
+    cy.button("Done")
       .should("not.be.disabled")
       .click();
 
@@ -713,13 +713,12 @@ describe("scenarios > question > filter", () => {
       .click()
       .clear()
       .type("NOT IsEmpty([Reviewer])", { delay: 50 });
-    cy.findAllByRole("button")
-      .contains("Done")
+    cy.button("Done")
       .should("not.be.disabled")
       .click();
 
     // check that filter is applied and rows displayed
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.contains("Showing 1,112 rows");
   });
 
@@ -848,7 +847,7 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable='true']").contains(
       'contains([Reviewer], "MULLER")',
     );
-    cy.findByRole("button", { name: "Done" }).click();
+    cy.button("Done").click();
     cy.wait("@dataset.2").then(xhr => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
     });
@@ -863,7 +862,7 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable='true']")
       .click()
       .type("3.14159");
-    cy.findAllByRole("button", { name: "Done" })
+    cy.button("Done")
       .should("not.be.disabled")
       .click();
     cy.findByText("Expecting boolean but found 3.14159");
@@ -877,7 +876,7 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable='true']")
       .click()
       .type('"TheAnswer"');
-    cy.findAllByRole("button", { name: "Done" })
+    cy.button("Done")
       .should("not.be.disabled")
       .click();
     cy.findByText('Expecting boolean but found "TheAnswer"');
@@ -902,10 +901,74 @@ describe("scenarios > question > filter", () => {
       .click();
     cy.findByText("Filter by this column").click();
     cy.findByPlaceholderText("Enter a number").type("42");
-    cy.findByRole("button", { name: "Update filter" })
+    cy.button("Update filter")
       .should("not.be.disabled")
       .click();
     cy.findByText("Doohickey");
     cy.findByText("Gizmo").should("not.exist");
+  });
+
+  it.skip("custom expression filter should reference fields by their name, not by their id (metabase#15748)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]").type("[Total] < [Subtotal]");
+    cy.findByRole("button", { name: "Done" }).click();
+    cy.findByText("Total is less than Subtotal");
+  });
+
+  it("custom expression filter should allow the use of parentheses in combination with logical operators (metabase#15754)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]")
+      .type("([ID] > 2 OR [Subtotal] = 100) and [Tax] < 4")
+      .blur();
+    cy.findByText(/^Expected closing parenthesis but found/).should(
+      "not.exist",
+    );
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+  });
+
+  it.skip("should work on twice summarized questions (metabase#15620)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-query": {
+            "source-table": 1,
+            aggregation: [["count"]],
+            breakout: [["field", 7, { "temporal-unit": "month" }]],
+          },
+          aggregation: [
+            ["avg", ["field", "count", { "base-type": "type/Integer" }]],
+          ],
+        },
+        type: "query",
+      },
+    });
+    cy.get(".ScalarValue").contains("5");
+    cy.findAllByRole("button")
+      .contains("Filter")
+      .click();
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("Category").click();
+      cy.findByText("Gizmo").click();
+    });
+    cy.findByRole("button", { name: "Add filter" })
+      .should("not.be.disabled")
+      .click();
+    cy.get(".dot");
+  });
+
+  it.skip("user shouldn't need to scroll to add filter (metabase#14307)", () => {
+    cy.viewport(1280, 720);
+    openPeopleTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    popover()
+      .findByText("State")
+      .click();
+    cy.findByText("AL").click();
+    cy.findByRole("button", { name: "Add filter" }).isVisibleInPopover();
   });
 });

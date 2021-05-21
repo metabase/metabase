@@ -14,7 +14,6 @@ import {
   isMetric,
   isDimension,
   isNumber,
-  isString,
   isURL,
   isEmail,
   isImageURL,
@@ -240,48 +239,58 @@ export default class Table extends Component {
         widget: "toggle",
       };
     }
-    if (isString(column)) {
-      let defaultValue = null;
-      const options: { name: string, value: null | string }[] = [
-        { name: t`Off`, value: null },
-      ];
-      if (!column.semantic_type || isURL(column)) {
-        defaultValue = "link";
-        options.push({ name: t`Link`, value: "link" });
-      }
-      if (!column.semantic_type || isEmail(column)) {
-        defaultValue = "email_link";
-        options.push({ name: t`Email link`, value: "email_link" });
-      }
-      if (!column.semantic_type || isImageURL(column) || isAvatarURL(column)) {
-        defaultValue = isAvatarURL(column) ? "image" : "link";
-        options.push({ name: t`Image`, value: "image" });
-      }
-      if (!column.semantic_type) {
-        defaultValue = "auto";
-        options.push({ name: t`Automatic`, value: "auto" });
-      }
 
-      if (options.length > 1) {
-        settings["view_as"] = {
-          title: t`View as link or image`,
-          widget: "select",
-          default: defaultValue,
-          props: {
-            options,
-          },
-        };
-      }
+    let defaultValue = !column.semantic_type || isURL(column) ? "link" : null;
 
-      settings["link_text"] = {
-        title: t`Link text`,
-        widget: "input",
-        default: null,
-        getHidden: (column, settings) =>
-          settings["view_as"] !== "link" &&
-          settings["view_as"] !== "email_link",
+    const options = [
+      { name: t`Off`, value: null },
+      { name: t`Link`, value: "link" },
+    ];
+
+    if (!column.semantic_type || isEmail(column)) {
+      defaultValue = "email_link";
+      options.push({ name: t`Email link`, value: "email_link" });
+    }
+    if (!column.semantic_type || isImageURL(column) || isAvatarURL(column)) {
+      defaultValue = isAvatarURL(column) ? "image" : "link";
+      options.push({ name: t`Image`, value: "image" });
+    }
+    if (!column.semantic_type) {
+      defaultValue = "auto";
+      options.push({ name: t`Automatic`, value: "auto" });
+    }
+
+    if (options.length > 1) {
+      settings["view_as"] = {
+        title: t`View as link or image`,
+        widget: "select",
+        default: defaultValue,
+        props: {
+          options,
+        },
       };
     }
+
+    const linkFieldsHint = t`You can use the value of any column here like this: {{COLUMN}}`;
+
+    settings["link_text"] = {
+      title: t`Link text`,
+      widget: "input",
+      hint: linkFieldsHint,
+      default: null,
+      getHidden: (_, settings) =>
+        settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
+      readDependencies: ["view_as"],
+    };
+
+    settings["link_url"] = {
+      title: t`Link URL`,
+      widget: "input",
+      hint: linkFieldsHint,
+      default: null,
+      getHidden: (_, settings) => settings["view_as"] !== "link",
+      readDependencies: ["view_as"],
+    };
 
     return settings;
   };

@@ -229,7 +229,6 @@ describe("scenarios > question > native", () => {
     cy.findByText("Simple question").click();
     popover().within(() => {
       cy.findByText("Saved Questions").click();
-      cy.findByText("Robert Tableton's Personal Collection").click();
       cy.findByText(QUESTION).click();
     });
 
@@ -560,7 +559,7 @@ describe("scenarios > question > native", () => {
     popover()
       .findByText("Doohickey")
       .click();
-    cy.findByRole("button", { name: "Add filter" }).click();
+    cy.button("Add filter").click();
     // Rerun the query
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.wait("@dataset").wait("@dataset");
@@ -597,7 +596,7 @@ describe("scenarios > question > native", () => {
     popover()
       .findByText("Doohickey")
       .click();
-    cy.findByRole("button", { name: "Add filter" }).click();
+    cy.button("Add filter").click();
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).not.to.exist;
@@ -643,5 +642,25 @@ describe("scenarios > question > native", () => {
         .find(".List-section")
         .should("have.length.gt", 1);
     });
+  });
+
+  it.skip("should be able to add new columns after hiding some (metabase#15393)", () => {
+    cy.visit("/");
+    cy.icon("sql").click();
+    cy.get(".ace_content").type("select 1 as visible, 2 as hidden");
+    cy.get(".NativeQueryEditor .Icon-play")
+      .as("editor")
+      .click();
+    cy.findByText("Settings").click();
+    cy.findByTestId("sidebar-left")
+      .as("sidebar")
+      .contains(/hidden/i)
+      .siblings(".Icon-close")
+      .click();
+    cy.get("@editor").type("{movetoend}, 3 as added");
+    cy.get(".NativeQueryEditor .Icon-play")
+      .as("editor")
+      .click();
+    cy.get("@sidebar").contains(/added/i);
   });
 });

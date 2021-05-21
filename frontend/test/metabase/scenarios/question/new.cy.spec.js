@@ -71,7 +71,7 @@ describe("scenarios > question > new", () => {
         .click();
       cy.findByText("Rating").click();
     });
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.get(".Visualization .bar").should("have.length", 6);
   });
 
@@ -322,7 +322,7 @@ describe("scenarios > question > new", () => {
         cy.findByPlaceholderText("Name (required)").type("twice max total");
         cy.findByText("Done").click();
       });
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.findByText("318.7");
     });
 
@@ -410,6 +410,31 @@ describe("scenarios > question > new", () => {
         cy.log("Bug: showing blank visualization");
         cy.get(".ScalarValue").contains("33");
       });
+    });
+
+    it("'read-only' user should be able to resize column width (metabase#9772)", () => {
+      cy.signIn("readonly");
+      cy.visit("/question/1");
+      cy.findByText("Tax")
+        .closest(".TableInteractive-headerCellData")
+        .as("headerCell")
+        .then($cell => {
+          const originalWidth = $cell[0].getBoundingClientRect().width;
+
+          cy.wrap($cell)
+            .find(".react-draggable")
+            .trigger("mousedown", 0, 0, { force: true })
+            .trigger("mousemove", 100, 0, { force: true })
+            .trigger("mouseup", 100, 0, { force: true });
+
+          cy.findByText("Started from").click(); // Give DOM some time to update
+
+          cy.get("@headerCell").then($newCell => {
+            const newWidth = $newCell[0].getBoundingClientRect().width;
+
+            expect(newWidth).to.be.gt(originalWidth);
+          });
+        });
     });
   });
 });

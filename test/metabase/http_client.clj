@@ -194,8 +194,8 @@
                       (try
                         (request-fn url request-map)
                         (catch clojure.lang.ExceptionInfo e
-                          (log/debug method-name url)
-                          (:object (ex-data e)))
+                          (log/debug e method-name url)
+                          (ex-data e))
                         (catch Exception e
                           (throw (ex-info (.getMessage e)
                                           {:method  method-name

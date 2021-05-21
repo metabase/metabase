@@ -28,7 +28,7 @@
                     [(->ttag-reference (:id message))
                      (if (:plural? message)
                        {:msgid_plural (:id-plural message)
-                        :msgstr       (:str-plural message)}
+                        :msgstr       (map ->ttag-reference (:str-plural message))}
                        {:msgstr [(->ttag-reference (:str message))]})])))
             messages)})
 

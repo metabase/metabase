@@ -39,6 +39,10 @@ Cypress.Commands.add("icon", icon_name => {
   cy.get(`.Icon-${icon_name}`);
 });
 
+Cypress.Commands.add("button", button_name => {
+  cy.findByRole("button", { name: button_name });
+});
+
 Cypress.Commands.add("createDashboard", name => {
   cy.log(`Create a dashboard: ${name}`);
   cy.request("POST", "/api/dashboard", { name });

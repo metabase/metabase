@@ -9,6 +9,7 @@ import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import PermissionsGrid from "../components/PermissionsGrid";
 
+import * as Urls from "metabase/lib/urls";
 import { CollectionsApi } from "metabase/services";
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -24,7 +25,7 @@ const getCollectionEntity = props =>
   props.namespace === "snippets" ? SnippetCollections : Collections;
 
 const mapStateToProps = (state, props) => {
-  const { collectionId } = props.params;
+  const collectionId = Urls.extractCollectionId(props.params.slug);
   return {
     grid: getCollectionsPermissionsGrid(state, {
       collectionId,

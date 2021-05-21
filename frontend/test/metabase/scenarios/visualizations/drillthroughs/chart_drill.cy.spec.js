@@ -240,7 +240,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("Add filter").click();
 
     // Visualize: line
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.findByText("Visualization").click();
     cy.icon("line").click();
     cy.findByText("Done").click();
@@ -285,6 +285,29 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByText("5");
       });
     });
+  });
+
+  it("should display correct value in a tooltip for unaggregated data with breakouts (metabase#15785)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "select 1 as axis, 5 as value, 9 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout",
+        },
+        database: 1,
+      },
+      display: "bar",
+      visualization_settings: {
+        "graph.dimensions": ["AXIS", "BREAKOUT"],
+        "graph.metrics": ["VALUE"],
+      },
+    });
+
+    cy.get(".bar")
+      .last()
+      .trigger("mousemove");
+    popover().findByText("12");
   });
 
   it.skip("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
