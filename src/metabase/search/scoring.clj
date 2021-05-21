@@ -247,12 +247,12 @@
     :name   "model"}])
 
 (defn- bounded-heap-accumulator
-  "A reducing function that maintains a queue of the largest items as determined by `comparator`. The queue is bounded
+  "A reducing function that maintains a queue of the largest items as determined by `kompare`. The queue is bounded
   in size by `size`. Useful if you are interested in the largest `size` number of items without keeping the entire
   collection in memory."
-  [size comparator]
+  [size kompare]
   (fn bounded-heap-acc
-    ([] (PriorityQueue. size comparator))
+    ([] (PriorityQueue. size kompare))
     ([^PriorityQueue q]
      (loop [acc []]
        (if-let [x (.poll q)]
@@ -261,7 +261,7 @@
     ([^PriorityQueue q item]
      (if (>= (.size q) size)
        (let [smallest (.peek q)]
-         (if (pos? (comparator item smallest))
+         (if (pos? (kompare item smallest))
            (doto q
              (.poll)
              (.offer item))
@@ -270,6 +270,7 @@
          (.offer item))))))
 
 (p.types/defprotocol+ ResultScore
+  "Protocol to score a result in search beyond the text scoring."
   (score-result [_ result]
     "Score a result, returning a collection of maps with score and weight. Should not include the text scoring, done
     separately. Should return a sequence of maps with
