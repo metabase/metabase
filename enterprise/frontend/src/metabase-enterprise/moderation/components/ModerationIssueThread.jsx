@@ -104,6 +104,7 @@ CommentForm.propTypes = {
 
 function CommentForm({ className, onSubmit, onCancel, isPending }) {
   const [value, setValue] = useState("");
+  const isEmpty = value.trim().length === 0;
   return (
     <form className={className} onSubmit={onSubmit}>
       <textarea
@@ -121,7 +122,12 @@ function CommentForm({ className, onSubmit, onCancel, isPending }) {
         >
           {t`Cancel`}
         </Button>
-        <Button className="py1" disabled={isPending} type="submit" primary>
+        <Button
+          className="py1"
+          disabled={isPending || isEmpty}
+          type="submit"
+          primary
+        >
           {t`Done`}
         </Button>
       </div>
