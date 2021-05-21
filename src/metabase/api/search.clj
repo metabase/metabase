@@ -323,7 +323,8 @@
   (let [match             (wildcard-match (scoring/normalize query))
         columns-to-search (->> all-search-columns
                                (filter (fn [[k v]] (= v :text)))
-                               (map first))
+                               (map first)
+                               (remove #{:collection_type}))
         case-clauses      (as-> columns-to-search <>
                                 (map (fn [col] [:like (hsql/call :lower col) match]) <>)
                                 (interleave <> (repeat 0))

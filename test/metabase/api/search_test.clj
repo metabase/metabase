@@ -18,7 +18,8 @@
   {:id                  true
    :description         nil
    :archived            false
-   :collection          {:id false :name nil}
+   :collection          {:id false :name nil :type nil}
+   :collection_type     nil
    :collection_position nil
    :context             nil
    :dashboardcard_count nil
@@ -52,7 +53,9 @@
    {:name name}
    (apply array-map kvs)))
 
-(def ^:private test-collection (make-result "collection test collection", :model "collection", :collection {:id true, :name true}, :updated_at false))
+(def ^:private test-collection (make-result "collection test collection", :model "collection",
+                                            :collection {:id true, :name true :type nil},
+                                            :updated_at false))
 
 (defn- default-search-results []
   (sorted-results
@@ -85,7 +88,7 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card"}
-                   #(assoc % :collection {:id true, :name true})
+                   #(assoc % :collection {:id true, :name true :type nil})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -229,9 +232,9 @@
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
                          :model "card", :favorite false, :dataset_query "{}"))]
-    [(make-card 5)
-     (make-card 3)
-     (make-card 0)]))
+    (set [(make-card 5)
+          (make-card 3)
+          (make-card 0)])))
 
 (deftest dashboard-count-test
   (testing "It sorts by dashboard count"
@@ -248,7 +251,7 @@
                     DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]
                     DashboardCard [_               {:card_id card-id-5, :dashboard_id dashboard-id}]]
       (is (= dashboard-count-results
-             (unsorted-search-request-data :rasta :q "dashboard-count"))))))
+             (set (unsorted-search-request-data :rasta :q "dashboard-count")))))))
 
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
