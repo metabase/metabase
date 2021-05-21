@@ -166,7 +166,7 @@
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
-               (hydrate :creator :dashboard_count :can_write :collection :moderation_requests :moderation_reviews)
+               (hydrate :creator :dashboard_count :can_write :collection :moderation_requests :moderation_reviews :comments)
                api/read-check
                (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
@@ -434,7 +434,7 @@
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
       ;; has with returned one -- See #4142
       (-> card
-          (hydrate :creator :dashboard_count :can_write :collection)
+          (hydrate :creator :dashboard_count :can_write :collection :moderation_requests :moderation_reviews :comments)
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
