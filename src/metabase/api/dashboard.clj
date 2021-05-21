@@ -217,7 +217,7 @@
   [id]
   (-> (Dashboard id)
       api/check-404
-      (hydrate [:ordered_cards :card :series] :can_write :param_fields)
+      (hydrate [:ordered_cards :card :series] :collection_type :can_write :param_fields)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards

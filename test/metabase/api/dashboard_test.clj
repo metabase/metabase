@@ -212,6 +212,7 @@
                     {:name          "Test Dashboard"
                      :creator_id    (mt/user->id :rasta)
                      :collection_id true
+                     :collection_type nil
                      :can_write     false
                      :param_values  nil
                      :param_fields  nil
@@ -220,6 +221,7 @@
                                       :sizeY                  2
                                       :col                    0
                                       :row                    0
+                                      :collection_type        nil
                                       :updated_at             true
                                       :created_at             true
                                       :parameter_mappings     []
@@ -251,6 +253,7 @@
                           {:name          "Test Dashboard"
                            :creator_id    (mt/user->id :rasta)
                            :collection_id true
+                           :collection_type nil
                            :can_write     false
                            :param_values  nil
                            :param_fields  {(keyword (str field-id)) {:id               field-id
@@ -267,6 +270,7 @@
                                             :row                    0
                                             :updated_at             true
                                             :created_at             true
+                                            :collection_type        nil
                                             :parameter_mappings     [{:card_id      1
                                                                       :parameter_id "foo"
                                                                       :target       ["dimension" ["field" field-id nil]]}]
@@ -280,7 +284,22 @@
                                                                             :visualization_settings {}
                                                                             :result_metadata        nil})
                                             :series                 []}]})
-                   (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
+                   (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
+    (testing "fetch a dashboard from an official collection includes the collection type"
+      (mt/with-temp* [Dashboard     [{dashboard-id :id
+                                      :as dashboard}    {:name "Test Dashboard"}]
+                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
+                      DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
+        (with-dashboards-in-readable-collection [dashboard-id]
+          (card-api-test/with-cards-in-readable-collection [card-id]
+            (is (nil?
+                 (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
+                     :collection_type)))
+            (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
+              (db/update! Collection collection-id :type "official"))
+            (is (= "official"
+                   (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
+                       :collection_type)))))))))
 
 (deftest fetch-dashboard-permissions-test
   (testing "GET /api/dashboard/:id"

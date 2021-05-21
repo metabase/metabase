@@ -45,10 +45,20 @@
                             [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                :order-by  [[:dashcard.created_at :asc]]})))
 
+(defn collection-type
+  "Returns the collection type associated with the dashboard"
+  {:hydrate :collection_type}
+  [dashboard-or-id]
+  (-> (db/query {:select    [[:collection.type :collection_type]]
+                 :from      [[:report_dashboard :dashboard]]
+                 :left-join [[Collection :collection] [:= :collection.id :dashboard.collection_id]]
+                 :where     [:= :dashboard.id (u/the-id dashboard-or-id)]})
+      first
+      :collection_type))
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Dashboard :report_dashboard)
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (defn- assert-valid-parameters [{:keys [parameters]}]
   (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
