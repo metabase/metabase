@@ -28,7 +28,19 @@ export default function FilterPopoverFooter({
   const buttonText = isNew ? t`Add filter` : t`Update filter`;
 
   return (
-    <div className={cx(className, "flex align-center")}>
+    <div
+      className={cx(className, "flex align-center")}
+      style={{
+        background: "white",
+        position: "absolute",
+        bottom: 0,
+        boxSizing: "border-box",
+        borderBottomRightRadius: "6px",
+        borderBottomLeftRadius: "6px",
+        paddingTop: 8,
+        width: "calc(100% - 2px)",
+      }}
+    >
       <FilterOptions
         filter={filter}
         onFilterChange={onFilterChange}
