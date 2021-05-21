@@ -6,6 +6,7 @@
             [metabase.api.automagic-dashboards :as magic]
             [metabase.api.card :as card]
             [metabase.api.collection :as collection]
+            [metabase.api.comment :as comment]
             [metabase.api.dashboard :as dashboard]
             [metabase.api.database :as database]
             [metabase.api.dataset :as dataset]
@@ -75,6 +76,7 @@
   (context "/automagic-dashboards" [] (+auth magic/routes))
   (context "/card"                 [] (+auth card/routes))
   (context "/collection"           [] (+auth collection/routes))
+  (context "/comment"              [] (+auth comment/routes))
   (context "/dashboard"            [] (+auth dashboard/routes))
   (context "/database"             [] (+auth database/routes))
   (context "/dataset"              [] (+auth dataset/routes))

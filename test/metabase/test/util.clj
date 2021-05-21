@@ -11,10 +11,10 @@
             [environ.core :as env]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     LoginHistory Metric ModerationRequest ModerationReview NativeQuerySnippet
-                                     Permissions PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table
-                                     TaskHistory User]]
+            [metabase.models :refer [Card Collection Comment Dashboard DashboardCardSeries Database Dimension Field
+                                     FieldValues LoginHistory Metric ModerationRequest ModerationReview
+                                     NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
+                                     Revision Segment Table TaskHistory User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -77,6 +77,9 @@
        :diffs    (when-not pass?#
                    [[actual# [(s/check schema# actual#) nil]]])})))
 
+(defn- random-lowercase-letter []
+  (char (+ (int \a) (rand-int 26))))
+
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
 
@@ -84,6 +87,12 @@
   "Generate a random string of 20 uppercase letters."
   []
   (str/join (repeatedly 20 random-uppercase-letter)))
+
+(defn random-sentence
+  "Generate a random (deeply nonsensical) sentence of `n` words"
+  [n]
+  (str/join " "
+            (repeatedly n #(str/join (repeatedly (+ 2 (rand-int 6)) random-lowercase-letter)))))
 
 (defn random-email
   "Generate a random email address."
@@ -130,6 +139,10 @@
    Collection
    (fn [_] {:name  (random-name)
             :color "#ABCDEF"})
+
+   Comment
+   (fn [_] {:author_id (rasta-id)
+            :text      (random-sentence 10)})
 
    Dashboard
    (fn [_] {:creator_id   (rasta-id)
