@@ -5,8 +5,6 @@ import PropTypes from "prop-types";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Modal from "metabase/components/Modal";
-import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
-import AddSeriesModal from "./AddSeriesModal";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -22,7 +20,9 @@ import {
 import _ from "underscore";
 import cx from "classnames";
 
-import GridLayout from "./GridLayout";
+import GridLayout from "./grid/GridLayout";
+import AddSeriesModal from "./AddSeriesModal";
+import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
 
 const MOBILE_ASPECT_RATIO = 3 / 2;
