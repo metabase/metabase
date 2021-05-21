@@ -69,4 +69,5 @@ export const PLUGIN_MODERATION_SERVICE = {
   getColorForReview: _.noop,
   getOpenRequests: _.noop,
   isRequestDismissal: _.noop,
+  getModerationRequestActionTypes: _.noop,
 };

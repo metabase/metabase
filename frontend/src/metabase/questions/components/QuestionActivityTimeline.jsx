@@ -5,17 +5,22 @@ import { connect } from "react-redux";
 import _ from "underscore";
 
 import { revertToRevision } from "metabase/query_builder/actions";
-import { getRevisionDescription } from "metabase/lib/revisions";
-
+import { getRevisionEvents } from "metabase/lib/revisions";
+import User from "metabase/entities/users";
 import Revision from "metabase/entities/revisions";
+import { getUser } from "metabase/selectors/user";
+import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
 import Timeline from "metabase/components/Timeline";
 import ActionButton from "metabase/components/ActionButton";
+
+const { getModerationEvents } = PLUGIN_MODERATION_SERVICE;
 
 QuestionActivityTimeline.propTypes = {
   question: PropTypes.object,
   className: PropTypes.string,
   revisions: PropTypes.array,
   revertToRevision: PropTypes.func.isRequired,
+  users: PropTypes.array,
 };
 
 function QuestionActivityTimeline({
@@ -23,22 +28,14 @@ function QuestionActivityTimeline({
   className,
   revisions,
   revertToRevision,
+  users,
 }) {
-  const events = revisions.map((revision, index) => {
-    // const canRevert = question.canWrite();
-    const username = revision.user.common_name;
-    return {
-      timestamp: revision.timestamp,
-      icon: "pencil",
-      title: revision.is_creation
-        ? t`${username} created this`
-        : t`${username} edited this`,
-      description: getRevisionDescription(revision),
-      // showFooter: index !== 0 && canRevert,
-      showFooter: false,
-      revision,
-    };
-  });
+  const usersById = _.indexBy(users, "id");
+
+  const events = [
+    ...getModerationEvents(question, usersById),
+    ...getRevisionEvents(revisions),
+  ];
 
   return (
     <div className={className}>
@@ -54,6 +51,7 @@ function QuestionActivityTimeline({
 }
 
 export default _.compose(
+  User.loadList(),
   Revision.loadList({
     query: (state, props) => ({
       model_type: "card",
@@ -62,7 +60,9 @@ export default _.compose(
     wrapped: true,
   }),
   connect(
-    null,
+    state => ({
+      currentUser: getUser(state),
+    }),
     () => {
       return {
         revertToRevision,

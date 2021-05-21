@@ -56,6 +56,11 @@ export const ACTIONS = {
     icon: "close",
     color: "medium",
   },
+  pending: {
+    type: "pending",
+    icon: "arrow_left",
+    color: "medium",
+  },
 };
 
 export const MODERATION_TEXT = {
@@ -68,46 +73,60 @@ export const MODERATION_TEXT = {
       actionCreationDescription: t`verified actionCreationDescription`,
       actionCreationLabel: t`verified actionCreationLabel`,
       actionCreationButton: t`verified actionCreationButton`,
+      creationEvent: t`requested verification`,
     },
     something_wrong: {
       action: t`Something's wrong`,
       actionCreationDescription: t` misleading actionCreationDescription`,
       actionCreationLabel: t`misleading actionCreationLabel`,
       actionCreationButton: t`misleading actionCreationButton`,
+      creationEvent: t`things something looks wrong`,
     },
     confused: {
       action: t`I'm confused`,
       actionCreationDescription: t`confusing actionCreationDescription`,
       actionCreationLabel: t`confusing actionCreationLabel`,
       actionCreationButton: t`confusing actionCreationButton`,
+      creationEvent: t`is confused about something`,
     },
   },
   moderator: {
     action: t`Moderate`,
+    dismissAction: t`dismissed`,
+    requestActions: {
+      resolved: t`resolved`,
+      dismissed: t`dismissed`,
+    },
     verified: {
       action: t`Verify this`,
       actionCreationDescription: t`Everything look correct here? Verify this question to let others know.`,
       actionCreationLabel: t`Add a note if you’d like`,
       actionCreationButton: t`Verify`,
+      creationEvent: t`verified this`,
     },
     misleading: {
       action: t`This is misleading`,
       actionCreationDescription: t`Add a warning badge to this question and notify its editors that something’s off here.`,
       actionCreationLabel: t`Explain what’s wrong or misleading`,
       actionCreationButton: t`Flag as misleading`,
+      creationEvent: t`flagged this`,
     },
     confusing: {
       action: t`This is confusing`,
-      actionCreationDescription: "need text 1",
-      actionCreationLabel: "need text 2",
-      actionCreationButton: "need text 3",
+      actionCreationDescription: t`need text 1`,
+      actionCreationLabel: t`need text 2`,
+      actionCreationButton: t`need text 3`,
+      creationEvent: t`marked this as confusing`,
+    },
+    not_misleading: {},
+    pending: {
+      creationEvent: t`removed the previous review`,
     },
     dismiss: {
       action: t`Dismiss`,
-      actionCreationDescription:
-        "You can let the requester know why you're dismissing their request.",
-      actionCreationLabel: "Add a note if you'd like",
-      actionCreationButton: "Dismiss request",
+      actionCreationDescription: t`You can let the requester know why you're dismissing their request.`,
+      actionCreationLabel: t`Add a note if you'd like`,
+      actionCreationButton: t`Dismiss request`,
     },
   },
 };
