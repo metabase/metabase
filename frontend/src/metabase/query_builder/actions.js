@@ -57,6 +57,7 @@ import {
   UserApi,
   ModerationReviewApi,
   ModerationRequestApi,
+  ModerationCommentApi,
 } from "metabase/services";
 
 import { parse as urlParse } from "url";
@@ -1416,3 +1417,18 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+export async function createModerationRequestComment({
+  text,
+  cardId,
+  moderationRequestId,
+}) {
+  // something like this
+  // await ModerationCommentApi.create({
+  //   text,
+  //   commented_item_id: cardId,
+  //   commented_item_type: "card",
+  //   moderationRequestId // this prop doesn't exist yet and obv won't be named this exactly
+  // })
+  return reloadCard();
+}

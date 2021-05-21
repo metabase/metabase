@@ -317,6 +317,10 @@ export const ModerationRequestApi = {
   update: PUT("/api/moderation-request/:id"),
 };
 
+export const ModerationCommentApi = {
+  create: POST("/api/comment"),
+};
+
 export const PulseApi = {
   list: GET("/api/pulse"),
   create: POST("/api/pulse"),
