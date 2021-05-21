@@ -1,12 +1,15 @@
 (ns metabase.models.comment
   (:require [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
-            [metabase.moderation :as moderation]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models]))
+
+(def commented-item-types
+  "Schema enum of the acceptable values for the `commented_item_type` column"
+  (s/enum "moderation_request" "moderation_review"))
 
 (models/defmodel Comment :comment)
 
@@ -25,7 +28,7 @@
   "Create a new Comment"
   [params :-
    {:commented_item_id   su/IntGreaterThanZero
-    :commented_item_type moderation/moderated-item-types
+    :commented_item_type commented-item-types
     :author_id           su/IntGreaterThanZero
     :text                s/Str}]
   (db/insert! Comment params))

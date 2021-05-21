@@ -273,12 +273,12 @@
                                     (:moderated_item_type item) (update :moderated_item_type name)
                                     (:commented_item_type item) (update :commented_item_type name))))]
     (testing "Associated moderation objects are hydrated appropriately"
-      (mt/with-temp* [Card              [{card-id :id :as card} {:name "Moderated card"}]
-                      ModerationRequest [request                {:moderated_item_id card-id :moderated_item_type :card}]
-                      ModerationReview  [review                 {:moderated_item_id card-id :moderated_item_type :card}]
-                      Comment           [comment-1              {:commented_item_id card-id :commented_item_type :card}]
-                      Comment           [comment-2              {:commented_item_id card-id :commented_item_type :card}]
-                      Comment           [comment-3              {:commented_item_id card-id :commented_item_type :card}]]
+      (mt/with-temp* [Card              [{card-id :id :as card}       {:name "Moderated card"}]
+                      ModerationRequest [{request-id :id :as request} {:moderated_item_id card-id :moderated_item_type :card}]
+                      ModerationReview  [{review-id :id :as review}   {:moderated_item_id card-id :moderated_item_type :card}]
+                      Comment           [comment-1                    {:commented_item_id request-id :commented_item_type :moderation_request}]
+                      Comment           [comment-2                    {:commented_item_id request-id :commented_item_type :moderation_request}]
+                      Comment           [comment-3                    {:commented_item_id review-id :commented_item_type :moderation_review}]]
         (with-cards-in-writeable-collection card
           (let [expected {:comments            (map normalize [comment-1 comment-2 comment-3])
                           :moderation_requests [(normalize request)]

@@ -2,7 +2,6 @@
   (:require [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.models.comment :as comment]
-            [metabase.moderation :as moderation]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -11,7 +10,7 @@
   [:as {{:keys [text commented_item_id commented_item_type]} :body}]
   {text                s/Str
    commented_item_id   su/IntGreaterThanZero
-   commented_item_type moderation/moderated-item-types}
+   commented_item_type comment/commented-item-types}
   (let [comment-data {:text                text
                       :commented_item_id   commented_item_id
                       :commented_item_type commented_item_type
