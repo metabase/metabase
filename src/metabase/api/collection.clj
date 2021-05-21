@@ -338,10 +338,10 @@
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
     (api/check-403 (or (not (contains? collection-updates :type)) ;; update doesn't include it
                        (= (:type collection-before-update) type)  ;; update doesn't change it
-                       (and api/*is-superuser?*)))
+                       api/*is-superuser?*))
     ;; should there be an enhancements check here?
     (api/check-403 (or (nil? type_tree)
-                       (and api/*is-superuser?*)))
+                       api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :type])]
