@@ -564,4 +564,97 @@ describe("scenarios > question > custom columns", () => {
     });
     cy.get("[contenteditable='true']").contains("Sum([MyCC [2021]])");
   });
+
+  it.skip("should handle floating point numbers with '0' omitted (metabase#15741)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    cy.get("[contenteditable='true']").type(".5 * [Discount]");
+    cy.findByPlaceholderText("Something nice and descriptive").type("Foo");
+    cy.findByText("Unknown Field: .5").should("not.exist");
+    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+  });
+
+  describe.skip("contentedtable field (metabase#15734)", () => {
+    beforeEach(() => {
+      // This is the default screen size but we need it explicitly set for this test because of the resize later on
+      cy.viewport(1280, 800);
+
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .as("formula")
+          .type("1+1")
+          .blur();
+      });
+      cy.findByPlaceholderText("Something nice and descriptive").type("Math");
+      cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+    });
+
+    it("should not accidentally delete CC formula value and/or CC name (metabase#15734-1)", () => {
+      cy.get("@formula")
+        .click()
+        .type("{movetoend}{leftarrow}{movetostart}{rightarrow}{rightarrow}")
+        .blur();
+      cy.findByDisplayValue("Math");
+      cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+    });
+
+    /**
+     * 1. Explanation for `cy.get("@formula").click();`
+     *  - Without it, test runner is too fast and the test resutls in false positive.
+     *  - This gives it enough time to update the DOM. The same result can be achieved with `cy.wait(1)`
+     */
+    it("should not erase CC formula and CC name when expression is incomplete (metabase#15734-2)", () => {
+      cy.get("@formula")
+        .click()
+        .type("{movetoend}{backspace}")
+        .blur();
+      cy.findByText("Expected expression");
+      cy.findByRole("button", { name: "Done" }).should("be.disabled");
+      cy.get("@formula").click(); /* [1] */
+      cy.findByDisplayValue("Math");
+    });
+
+    it("should not erase CC formula and CC name on window resize (metabase#15734-3)", () => {
+      cy.viewport(1260, 800);
+      cy.get("@formula").click(); /* [1] */
+      cy.findByDisplayValue("Math");
+      cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+    });
+  });
+
+  it.skip("should maintain data type (metabase#13122)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']")
+        .type("case([Discount] > 0, [Created At], [Product → Created At])")
+        .blur();
+      cy.findByPlaceholderText("Something nice and descriptive").type("13112");
+      cy.findByRole("button", { name: "Done" }).click();
+    });
+    cy.findByText("Filter").click();
+    popover()
+      .findByText("13112")
+      .click();
+    cy.findByPlaceholderText("Enter a number").should("not.exist");
+  });
+
+  it.skip("filter based on `concat` function should not offer numeric options (metabase#13217)", () => {
+    openPeopleTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']")
+        .type(`concat("State: ", [State])`)
+        .blur();
+      cy.findByPlaceholderText("Something nice and descriptive").type("13217");
+      cy.findByRole("button", { name: "Done" }).click();
+    });
+    cy.findByText("Filter").click();
+    popover()
+      .findByText("13217")
+      .click();
+    cy.findByPlaceholderText("Enter a number").should("not.exist");
+  });
 });

@@ -114,6 +114,7 @@
    :check_for_updates    (public-settings/check-for-updates)
    :site_name            (not= (public-settings/site-name) "Metabase")
    :report_timezone      (driver/report-timezone)
+   ; We deprecated advanced humanization but have this here anyways
    :friendly_names       (= (humanization/humanization-strategy) "advanced")
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
