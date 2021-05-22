@@ -5,14 +5,13 @@
   In OO pattern terminology, this is an implementation of the strategy pattern -- the implementation of the interface
   is determined at runtime."
   (:require [clojure.string :as str]
-            [metabase.public-settings.metastore :as settings.metastore]
             [pretty.core :refer [PrettyPrintable]]))
 
 (defn invoke-ee-when-enabled
-  "Impo for `reify-ee-strategy-impl`. Invoke `method` using `ee-impl` if EE features are enabled, otherwise invoke with
+  "Impl for `reify-ee-strategy-impl`. Invoke `method` using `ee-impl` if EE features are enabled, otherwise invoke with
   `oss-impl`."
-  [method ee-impl oss-impl & args]
-  (let [impl (if (settings.metastore/enable-enhancements?)
+  [enable-pred-var method ee-impl oss-impl & args]
+  (let [impl (if (enable-pred-var)
                ee-impl
                oss-impl)]
     (apply method impl args)))
@@ -36,7 +35,8 @@
       (throw (ex-info (format "Could not resolve protocol %s." protocol-symbol)
                       {:protocol protocol-symbol}))))
 
-(defn- generate-method-impl [ee-impl-symbol oss-impl-symbol protocol-map {method-name :name, arglists :arglists}]
+(defn- generate-method-impl
+  [enable-pred-symbol ee-impl-symbol oss-impl-symbol protocol-map {method-name :name, arglists :arglists}]
   (let [arg-counts            (map count arglists)
         protocol-namespace    (:ns (meta (:var protocol-map)))
         qualified-method-name (symbol (name (ns-name protocol-namespace))
@@ -49,13 +49,13 @@
           :let      [args (for [n (range (dec arg-count))]
                             (symbol (str (char (+ (int \a) n)))))]]
       `(~method-name [~'_ ~@args]
-        (invoke-ee-when-enabled ~qualified-method-name ~ee-impl-symbol ~oss-impl-symbol ~@args)))))
+        (invoke-ee-when-enabled ~enable-pred-symbol ~qualified-method-name ~ee-impl-symbol ~oss-impl-symbol ~@args)))))
 
-(defn- generate-protocol-impl [ee-impl-symbol oss-impl-symbol protocol-symbol]
+(defn- generate-protocol-impl [enable-pred-symbol ee-impl-symbol oss-impl-symbol protocol-symbol]
   (let [protocol-map (resolve-protocol protocol-symbol)]
     (cons
      (symbol (.getCanonicalName ^Class (:on-interface protocol-map)))
-     (mapcat (partial generate-method-impl ee-impl-symbol oss-impl-symbol protocol-map)
+     (mapcat (partial generate-method-impl enable-pred-symbol ee-impl-symbol oss-impl-symbol protocol-map)
              (vals (:sigs protocol-map))))))
 
 (defmacro reify-ee-strategy-impl
@@ -63,22 +63,26 @@
   `ee-impl` if Enterprise Edition features are enabled (i.e., if we have a valid EE token), otherwise they will be
   forwarded to `oss-impl`.
 
-    ;; For `MyProtocol` methods: invoke `ee-impl` if EE features are enabled, otherwise invoke `oss-impl`
-    (def my-proxy-impl ee-impl oss-impl
-      MyProtocol)
+    ;; For `MyProtocol` methods: invoke `ee-impl` if EE enhancements are enabled, otherwise invoke `oss-impl`
+    (def impl
+      (reify-ee-strategy-impl #'settings.metastore/enable-enhancements? ee-impl oss-impl
+        MyProtocol))
 
   At the time of this writing, this only works with first-class Clojure Protocols (as opposed to plain Java
   interfaces), but should the need arise we can change this."
   {:style/indent [:defn 2]}
-  [ee-impl oss-impl & protocols]
+  [enable-pred-var ee-impl oss-impl & protocols]
+  {:pre [(pos? (count protocols))]}
+  (assert (and (sequential? enable-pred-var) (= (first enable-pred-var) 'var))
+          "Predicate for enabling the EE impl should be a #'var")
   (let [ee-impl-symbol  (gensym "ee-impl-")
         oss-impl-symbol (gensym "oss-impl-")]
-    `(let [~ee-impl-symbol ~ee-impl
+    `(let [~ee-impl-symbol  ~ee-impl
            ~oss-impl-symbol ~oss-impl]
        (reify
          PrettyPrintable
          (~'pretty [~'_]
-          (list `reify-ee-strategy-impl ~ee-impl-symbol ~oss-impl-symbol))
+          (list `reify-ee-strategy-impl ~enable-pred-var ~ee-impl-symbol ~oss-impl-symbol))
 
-         ~@(mapcat (partial generate-protocol-impl ee-impl-symbol oss-impl-symbol)
+         ~@(mapcat (partial generate-protocol-impl enable-pred-var ee-impl-symbol oss-impl-symbol)
              protocols)))))

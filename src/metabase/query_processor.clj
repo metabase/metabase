@@ -13,6 +13,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.middleware.add-default-temporal-unit :as add-default-temporal-unit]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim]
             [metabase.query-processor.middleware.add-implicit-clauses :as implicit-clauses]
             [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
@@ -93,6 +94,7 @@
    #'add-implicit-joins/add-implicit-joins
    #'large-int-id/convert-id-to-string
    #'format-rows/format-rows
+   #'add-default-temporal-unit/add-default-temporal-unit
    #'desugar/desugar
    #'binning/update-binning-strategy
    #'resolve-fields/resolve-fields

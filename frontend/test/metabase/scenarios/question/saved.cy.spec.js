@@ -119,7 +119,7 @@ describe("scenarios > question > saved", () => {
       .click();
     cy.get(".AdminSelect").findByText("Equal to");
     cy.findByPlaceholderText("Enter a number").type("4");
-    cy.findByRole("button", { name: "Add filter" })
+    cy.button("Add filter")
       .should("not.be.disabled")
       .click();
     cy.findByText("Synergistic Granite Chair");

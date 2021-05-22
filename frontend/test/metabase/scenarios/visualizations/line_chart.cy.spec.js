@@ -1,7 +1,7 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
 
 const Y_AXIS_RIGHT_SELECTOR = ".axis.yr";
 
@@ -67,4 +67,48 @@ describe("scenarios > visualizations > line chart", () => {
 
     cy.get(".value-labels").contains("30%");
   });
+
+  it.skip("should correctly display tooltip values when X-axis is numeric and style is 'Ordinal' (metabase#15998)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["count"],
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            ["avg", ["field", ORDERS.QUANTITY, null]],
+          ],
+          breakout: [
+            ["field", PRODUCTS.RATING, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": ["RATING"],
+        "graph.metrics": ["count", "sum", "avg"],
+      },
+    });
+    cy.get(".Visualization .enable-dots")
+      .last()
+      .find(".dot")
+      .eq(3)
+      .trigger("mousemove", { force: true });
+    popover().within(() => {
+      testPairedTooltipValues("Product → Rating", "2.7");
+      testPairedTooltipValues("Count", "191");
+      testPairedTooltipValues("Sum of Total", "14,747.05");
+      testPairedTooltipValues("Average of Quantity", "4");
+    });
+  });
 });
+
+function testPairedTooltipValues(val1, val2) {
+  cy.contains(val1)
+    .closest("td")
+    .siblings("td")
+    .findByText(val2);
+}

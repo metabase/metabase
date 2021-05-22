@@ -86,11 +86,11 @@
     (testing "Test for inactive user (user shouldn't be able to login if :is_active = false)"
       ;; Return same error as incorrect password to avoid leaking existence of user
       (is (= {:errors {:password "did not match stored password"}}
-             (mt/client :post 400 "session" (mt/user->credentials :trashbird)))))
+             (mt/client :post 401 "session" (mt/user->credentials :trashbird)))))
 
     (testing "Test for password checking"
       (is (= {:errors {:password "did not match stored password"}}
-             (mt/client :post 400 "session" (-> (mt/user->credentials :rasta)
+             (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
                                              (assoc :password "something else"))))))))
 
 (deftest login-throttling-test
@@ -98,7 +98,7 @@
                 " throttling works at the API level -- more tests in the throttle library itself:"
                 " https://github.com/metabase/throttle)")
     (let [login (fn []
-                  (-> (mt/client :post 400 "session" {:username "fakeaccount3000@metabase.com", :password "toucans"})
+                  (-> (mt/client :post 401 "session" {:username "fakeaccount3000@metabase.com", :password "toucans"})
                       :errors
                       :username))]
       ;; attempt to log in 10 times
@@ -143,7 +143,7 @@
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
-          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
       (let [error (fn []
                     (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
                         :body
@@ -163,11 +163,11 @@
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
-          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
       (dotimes [n 50]
         (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
               status-code (:status response)]
-          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
       (let [error (fn []
                     (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
                         :body
@@ -276,7 +276,7 @@
                                                                          :password (:new password)}))))
               (testing "Old creds should no longer work"
                 (is (= {:errors {:password "did not match stored password"}}
-                       (mt/client :post 400 "session" (:old creds)))))
+                       (mt/client :post 401 "session" (:old creds)))))
               (testing "New creds *should* work"
                 (is (schema= SessionResponse
                              (mt/client :post 200 "session" (:new creds)))))
@@ -541,12 +541,12 @@
       (testing "...but not if password login is disabled"
         (mt/with-temporary-setting-values [enable-password-login false]
           (is (= "Password login is disabled for this instance."
-                 (mt/client :post 400 "session" (mt/user->credentials :crowberto)))))))
+                 (mt/client :post 401 "session" (mt/user->credentials :crowberto)))))))
 
     (testing "Test that login will NOT fallback for users in LDAP but with an invalid password"
       ;; NOTE: there's a different password in LDAP for Lucky
       (is (= {:errors {:password "did not match stored password"}}
-             (mt/client :post 400 "session" (mt/user->credentials :lucky)))))
+             (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
@@ -564,4 +564,16 @@
         (is (schema= SessionResponse
                      (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
         (finally
-          (db/delete! User :email "sally.brown@metabase.com"))))))
+          (db/delete! User :email "sally.brown@metabase.com"))))
+
+    (testing "Test that we can login with LDAP multiple times if the email stored in LDAP contains upper-case
+             characters (#13739)"
+      (try
+        (is (schema=
+             SessionResponse
+             (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
+        (is (schema=
+             SessionResponse
+             (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
+        (finally
+          (db/delete! User :email "John.Smith@metabase.com"))))))
