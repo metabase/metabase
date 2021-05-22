@@ -8,7 +8,6 @@ import { revertToRevision } from "metabase/query_builder/actions";
 import { getRevisionEvents } from "metabase/lib/revisions";
 import User from "metabase/entities/users";
 import Revision from "metabase/entities/revisions";
-import { getUser } from "metabase/selectors/user";
 import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
 import Timeline from "metabase/components/Timeline";
 import ActionButton from "metabase/components/ActionButton";
@@ -31,7 +30,6 @@ function QuestionActivityTimeline({
   users,
 }) {
   const usersById = _.indexBy(users, "id");
-
   const events = [
     ...getModerationEvents(question, usersById),
     ...getRevisionEvents(revisions),
@@ -60,9 +58,7 @@ export default _.compose(
     wrapped: true,
   }),
   connect(
-    state => ({
-      currentUser: getUser(state),
-    }),
+    null,
     () => {
       return {
         revertToRevision,
