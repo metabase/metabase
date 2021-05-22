@@ -13,7 +13,9 @@
 (defn- get-server-config []
   (doto (InMemoryDirectoryServerConfig. (into-array String ["dc=metabase,dc=com"]))
     (.addAdditionalBindCredentials "cn=Directory Manager" "password")
-    (.setSchema (Schema/getDefaultStandardSchema))
+     (.setSchema (Schema/mergeSchemas
+                  (into-array Schema [(Schema/getDefaultStandardSchema)
+                                      (Schema/getSchema [(io/file "test_resources/posixGroup.schema.ldif")])])))
     (.setListenerConfigs (into-array InMemoryListenerConfig [(InMemoryListenerConfig/createLDAPConfig "LDAP" 0)]))))
 
 (defn- start-ldap-server! []

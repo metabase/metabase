@@ -44,7 +44,7 @@
   (deferred-tru "Search base for users. (Will be searched recursively)"))
 
 (defsetting ldap-user-filter
-  (deferred-tru "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login.")
+  (deferred-tru "User lookup filter. The placeholder '{login}' will be replaced by the user supplied login.")
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
@@ -68,7 +68,7 @@
   :default false)
 
 (defsetting ldap-group-base
-  (deferred-tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
+  (deferred-tru "Search base for groups. Not required for LDAP directories that provide a ''memberOf'' overlay, such as Active Directory. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
@@ -83,6 +83,10 @@
                (when-not (DN/isValidDN (name k))
                  (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
              (setting/set-json! :ldap-group-mappings new-value)))
+
+(defsetting ldap-group-membership-filter
+  (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
+  :default "(member={dn})")
 
 (defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
@@ -189,14 +193,15 @@
 
 (s/defn ^:private ldap-settings :- i/LDAPSettings
   []
-  {:first-name-attribute (ldap-attribute-firstname)
-   :last-name-attribute  (ldap-attribute-lastname)
-   :email-attribute      (ldap-attribute-email)
-   :sync-groups?         (ldap-group-sync)
-   :group-base           (ldap-group-base)
-   :group-mappings       (ldap-group-mappings)
-   :user-base            (ldap-user-base)
-   :user-filter          (ldap-user-filter)})
+  {:first-name-attribute    (ldap-attribute-firstname)
+   :last-name-attribute     (ldap-attribute-lastname)
+   :email-attribute         (ldap-attribute-email)
+   :sync-groups?            (ldap-group-sync)
+   :user-base               (ldap-user-base)
+   :user-filter             (ldap-user-filter)
+   :group-base              (ldap-group-base)
+   :group-mappings          (ldap-group-mappings)
+   :group-membership-filter (ldap-group-membership-filter)})
 
 (s/defn find-user :- (s/maybe i/UserInfo)
   "Get user information for the supplied username."

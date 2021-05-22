@@ -9,19 +9,20 @@
             [metabase.util.schema :as su]))
 
 (def ^:private mb-settings->ldap-details
-  {:ldap-enabled             :enabled
-   :ldap-host                :host
-   :ldap-port                :port
-   :ldap-bind-dn             :bind-dn
-   :ldap-password            :password
-   :ldap-security            :security
-   :ldap-user-base           :user-base
-   :ldap-user-filter         :user-filter
-   :ldap-attribute-email     :attribute-email
-   :ldap-attribute-firstname :attribute-firstname
-   :ldap-attribute-lastname  :attribute-lastname
-   :ldap-group-sync          :group-sync
-   :ldap-group-base          :group-base})
+  {:ldap-enabled                    :enabled
+   :ldap-host                       :host
+   :ldap-port                       :port
+   :ldap-bind-dn                    :bind-dn
+   :ldap-password                   :password
+   :ldap-security                   :security
+   :ldap-user-base                  :user-base
+   :ldap-user-filter                :user-filter
+   :ldap-attribute-email            :attribute-email
+   :ldap-attribute-firstname        :attribute-firstname
+   :ldap-attribute-lastname         :attribute-lastname
+   :ldap-group-sync                 :group-sync
+   :ldap-group-base                 :group-base
+   :ldap-attribute-group-membership :attribute-group-membership})
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."

@@ -117,6 +117,18 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
           type: "string",
         },
         {
+          key: "ldap-group-membership-filter",
+          display_name: t`Group membership filter`,
+          type: "string",
+          validations: [
+            value =>
+              (value.match(/\(/g) || []).length !==
+              (value.match(/\)/g) || []).length
+                ? t`Check your parentheses`
+                : null,
+          ],
+        },
+        {
           key: "ldap-group-mappings",
         },
       ],
