@@ -963,7 +963,7 @@ describe("smoketest > admin_setup", () => {
       cy.contains(normal.first_name).should("not.exist");
       cy.findByText("Our Analytics").should("not.exist");
       cy.findByText("Failed");
-      cy.contains("Password : did not match stored password");
+      cy.contains("Password: did not match stored password");
     });
   });
 });
