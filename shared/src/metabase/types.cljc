@@ -151,7 +151,6 @@
 
 (derive :Semantic/ZipCode :Semantic/Address)
 (derive :Semantic/ZipCode :type/Text)
-(derive :Semantic/ZipCode :type/Integer)
 
 (derive :Semantic/Name :Semantic/Category)
 (derive :Semantic/Name :type/Text)
