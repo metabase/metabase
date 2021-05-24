@@ -154,11 +154,13 @@ export function getDatas({ settings, series }, warn) {
       rows = data.rows.filter(([x]) => x !== null);
     } else if (parseOptions.isNumeric) {
       rows = data.rows.map((row) => {
-        if(row.length > 0) {
-          row[0] = replaceNullValuesForOrdinal(row[0]);
-        }
-        
-        return row;
+        const [x, ...rest] = row;
+        const newRow = [
+          replaceNullValuesForOrdinal(x),
+          ...rest,
+        ]
+        newRow._origin = row._origin;
+        return newRow;
       });
     }
 
