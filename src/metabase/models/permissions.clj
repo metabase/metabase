@@ -9,6 +9,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions-group :as group]
             [metabase.models.permissions-revision :as perms-revision :refer [PermissionsRevision]]
+            [metabase.models.permissions.delete-sandboxes :as delete-sandboxes]
             [metabase.models.permissions.parse :as perms-parse]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -477,7 +478,8 @@
                              other-conditions)}]
     (when-let [revoked (db/select-field :object Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/get-id group-or-id) revoked))
-      (db/delete! Permissions where))))
+      (db/delete! Permissions where))
+    (delete-sandboxes/revoke-perms-delete-sandboxes-if-needed! group-or-id path)))
 
 (defn revoke-permissions!
   "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
@@ -500,6 +502,7 @@
      (db/insert! Permissions
        :group_id (u/get-id group-or-id)
        :object   path)
+     (delete-sandboxes/grant-perms-delete-sandboxes-if-needed! group-or-id path)
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red (tru "Failed to grant permissions")))
