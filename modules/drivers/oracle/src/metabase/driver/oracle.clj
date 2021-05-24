@@ -197,6 +197,19 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
+(defmethod sql.qp/->honeysql [:oracle :!=]
+  [driver [_ field value]]
+    ;; "NOT EMPTY" generates colmplex condition: 
+    ;; field is NULL and filed <> ''
+    ;;  It is not suitable for Oracle:
+    ;;   field <> '' is always false becouse any zero length string is NULL 
+    ;;  I have not found the code which generates this condition 
+    ;;  and just corrected second part to field is NULL. 
+    ;;  
+  (if ( empty? (value-literal/unwrap-value-literal value) ) 
+      [:not= (sql.qp/->honeysql driver field) nil]
+      [:not= (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver value)]))
+
 (defmethod sql.qp/add-interval-honeysql-form :oracle
   [_ hsql-form amount unit]
   (hx/+
