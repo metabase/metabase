@@ -381,8 +381,8 @@
 }
 
 .ScalarValue {
-  font-weight: 900;
-  font-size: 1.8rem;
+  font-weight: 300;
+  font-size: 28px;
 }
 
 .SmartWrapper {
@@ -400,7 +400,7 @@
 
 @media screen and (min-width: 1280px) {
   .ScalarValue {
-    font-size: 2.2rem;
+    font-size: 34px;
   }
   .AutomaticDashboard.AutomaticDashboard--withSidebar
     #SmartScalar-PreviousValue {
@@ -410,7 +410,7 @@
 
 @media screen and (min-width: 1540px) {
   .ScalarValue {
-    font-size: 2.8rem;
+    font-size: 36px;
   }
   .AutomaticDashboard.AutomaticDashboard--withSidebar
     #SmartScalar-PreviousValue {
@@ -419,9 +419,18 @@
 }
 
 .DashCard span.text-brand-hover {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .CardVisualization table {
-  font-size: 16px;
+  font-size: 14px;
+}
+
+.Scalar-title.text-brand-hover {
+  font-size: 18px;
+  font-weight: 300;
+}
+
+div[data-testid="detail-value"] {
+  font-weight: normal;
 }

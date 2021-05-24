@@ -3,8 +3,7 @@ legend item needs to be in the scope in order to control the font size in
 fullscreen dashboard mode
 */
 .LegendItem {
-  font-size: 1.2em;
-  font-weight: bold;
+  font-size: 14px;
   transition: opacity 0.25s linear;
   opacity: 1;
 }

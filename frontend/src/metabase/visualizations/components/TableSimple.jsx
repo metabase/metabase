@@ -252,7 +252,7 @@ export default class TableSimple extends Component {
                               ),
                           }}
                           className={cx(
-                            "px1 border-bottom text-dark fullscreen-normal-text fullscreen-night-text text-bold",
+                            "px1 border-bottom text-dark fullscreen-normal-text fullscreen-night-text",
                             {
                               "text-right": isColumnRightAligned(column),
                               "Table-ID": value != null && isID(column),

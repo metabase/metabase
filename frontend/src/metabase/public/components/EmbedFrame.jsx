@@ -10,8 +10,8 @@ import { parseHashOptions } from "metabase/lib/browser";
 import { loadLocalization } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
 
-import TitleAndDescription from "metabase/components/TitleAndDescription";
-import Parameters from "metabase/parameters/components/Parameters";
+// import TitleAndDescription from "metabase/components/TitleAndDescription";
+// import Parameters from "metabase/parameters/components/Parameters";
 import LogoBadge from "./LogoBadge";
 
 import cx from "classnames";
@@ -58,19 +58,19 @@ export default class EmbedFrame extends Component {
     const {
       className,
       children,
-      description,
+      // description,
       actionButtons,
       location,
-      parameters,
-      parameterValues,
-      setParameterValue,
+      // parameters,
+      // parameterValues,
+      // setParameterValue,
     } = this.props;
     const { innerScroll } = this.state;
 
     // const showFooter = !MetabaseSettings.hideEmbedBranding() || actionButtons;
     const showFooter = false;
 
-    const { bordered, titled, theme, hide_parameters, locale } = {
+    const { bordered, theme, locale } = {
       ...DEFAULT_OPTIONS,
       ...parseHashOptions(location.hash),
     };
@@ -80,7 +80,7 @@ export default class EmbedFrame extends Component {
       loadLocalization(user_locale);
     }
 
-    const name = titled ? this.props.name : null;
+    // const name = titled ? this.props.name : null;
 
     return (
       <div
@@ -95,29 +95,6 @@ export default class EmbedFrame extends Component {
             "scroll-y": innerScroll,
           })}
         >
-          {name || (parameters && parameters.length > 0) ? (
-            <div className="EmbedFrame-header flex align-center p1 sm-p2 lg-p3">
-              {name && (
-                <TitleAndDescription title={name} description={description} />
-              )}
-              {parameters && parameters.length > 0 ? (
-                <div className="flex ml-auto">
-                  <Parameters
-                    dashboard={this.props.dashboard}
-                    parameters={parameters.map(p => ({
-                      ...p,
-                      value: parameterValues && parameterValues[p.id],
-                    }))}
-                    query={location.query}
-                    setParameterValue={setParameterValue}
-                    syncQueryString
-                    hideParameters={hide_parameters}
-                    isQB
-                  />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
           <div className="flex flex-column relative full flex-full">
             {children}
           </div>
