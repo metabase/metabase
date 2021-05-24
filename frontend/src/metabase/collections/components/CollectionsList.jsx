@@ -41,6 +41,8 @@ class CollectionsList extends React.Component {
                       onClick={() => c.children && action(c.id)}
                       hovered={hovered}
                       highlighted={highlighted}
+                      role="treeitem"
+                      aria-expanded={isOpen}
                     >
                       <Flex
                         className="relative"

@@ -80,18 +80,27 @@
 
 ;; ## FieldValues Helper Functions
 
-(s/defn field-should-have-field-values? :- s/Bool
-  "Should this `field` be backed by a corresponding FieldValues object?" {:arglists '([field])}
-  [{base-type :base_type, visibility-type :visibility_type, has-field-values :has_field_values, :as field}
-   :- {:visibility_type  su/KeywordOrString
-       :base_type        (s/maybe su/KeywordOrString)
-       :has_field_values (s/maybe su/KeywordOrString)
-       s/Keyword         s/Any}]
-  (boolean
-   (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
-        (not (isa? (keyword base-type) :type/Temporal))
-        (#{:list :auto-list} (keyword has-field-values)))))
-
+(defn field-should-have-field-values?
+  "Should this `field` be backed by a corresponding FieldValues object?"
+  [field-or-field-id]
+  (if-not (map? field-or-field-id)
+    (let [field-id (u/the-id field-or-field-id)]
+      (recur (or (db/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
+                 (throw (ex-info (tru "Field {0} does not exist." field-id)
+                                 {:field-id field-id, :status-code 404})))))
+    (let [{base-type        :base_type
+           visibility-type  :visibility_type
+           has-field-values :has_field_values
+           :as              field} field-or-field-id]
+      (s/check {:visibility_type  su/KeywordOrString
+                :base_type        (s/maybe su/KeywordOrString)
+                :has_field_values (s/maybe su/KeywordOrString)
+                s/Keyword         s/Any}
+               field)
+      (boolean
+       (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
+            (not (isa? (keyword base-type) :type/Temporal))
+            (#{:list :auto-list} (keyword has-field-values)))))))
 
 (defn- values-less-than-total-max-length?
   "`true` if the combined length of all the values in `distinct-values` is below the threshold for what we'll allow in a
@@ -199,9 +208,9 @@
     (map vector values human_readable_values)
     (map vector values)))
 
-(defn create-field-values-if-needed!
-  "Create FieldValues for a `Field` if they *should* exist but don't already exist.
-   Returns the existing or newly created FieldValues for `Field`."
+(defn get-or-create-field-values!
+  "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
+  created FieldValues for `Field`."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}

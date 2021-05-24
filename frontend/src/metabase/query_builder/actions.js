@@ -25,7 +25,6 @@ import {
 } from "metabase/lib/card";
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
-import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
@@ -1166,6 +1165,16 @@ export const cancelQuery = () => (dispatch, getState) => {
   }
 };
 
+// We use this for two things:
+// - counting the rows with this as an FK (loadObjectDetailFKReferences)
+// - following those links to a new card that's filtered (followForeignKey)
+function getFilterForFK({ cols, rows }, fk) {
+  const field = new FieldDimension(fk.origin.id);
+  const colIndex = cols.findIndex(c => c.id === fk.destination.id);
+  const objectValue = rows[0][colIndex];
+  return ["=", field.mbql(), objectValue];
+}
+
 export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
   return async (dispatch, getState) => {
@@ -1179,23 +1188,11 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
       return false;
     }
 
-    // extract the value we will use to filter our new query
-    let originValue;
-    for (let i = 0; i < queryResult.data.cols.length; i++) {
-      if (isPK(queryResult.data.cols[i].semantic_type)) {
-        originValue = queryResult.data.rows[0][i];
-      }
-    }
-
     // action is on an FK column
     const newCard = startNewCard("query", card.dataset_query.database);
 
     newCard.dataset_query.query["source-table"] = fk.origin.table.id;
-    const field = new FieldDimension(fk.origin.id);
-    newCard.dataset_query.query.filter = [
-      "and",
-      ["=", field.mbql(), originValue],
-    ];
+    newCard.dataset_query.query.filter = getFilterForFK(queryResult.data, fk);
 
     // run it
     dispatch(setCardAndRun(newCard));
@@ -1216,24 +1213,12 @@ export const loadObjectDetailFKReferences = createThunkAction(
       const queryResult = getFirstQueryResult(getState());
       const tableForeignKeys = getTableForeignKeys(getState());
 
-      function getObjectDetailIdValue(data) {
-        for (let i = 0; i < data.cols.length; i++) {
-          const coldef = data.cols[i];
-          if (isPK(coldef.semantic_type)) {
-            return data.rows[0][i];
-          }
-        }
-      }
-
       async function getFKCount(card, queryResult, fk) {
         const fkQuery = Q_DEPRECATED.createQuery("query");
         fkQuery.database = card.dataset_query.database;
         fkQuery.query["source-table"] = fk.origin.table_id;
         fkQuery.query.aggregation = ["count"];
-        fkQuery.query.filter = [
-          "and",
-          ["=", fk.origin.id, getObjectDetailIdValue(queryResult.data)],
-        ];
+        fkQuery.query.filter = getFilterForFK(queryResult.data, fk);
 
         const info = { status: 0, value: null };
 
@@ -1270,12 +1255,9 @@ export const loadObjectDetailFKReferences = createThunkAction(
 
       // It's possible that while we were running those queries, the object
       // detail id changed. If so, these fk reference are stale and we shouldn't
-      // put them in state.
+      // put them in state. The detail id is used in the query so we check that.
       const updatedQueryResult = getFirstQueryResult(getState());
-      if (
-        getObjectDetailIdValue(queryResult.data) !==
-        getObjectDetailIdValue(updatedQueryResult.data)
-      ) {
+      if (!_.isEqual(queryResult.json_query, updatedQueryResult.json_query)) {
         return null;
       }
       return fkReferences;

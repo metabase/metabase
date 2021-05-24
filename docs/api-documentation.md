@@ -1732,6 +1732,11 @@ You must be a superuser to do this.
 *  **`settings`** value must be a map.
 
 
+## `GET /api/login-history/current`
+
+Fetch recent logins for the current user.
+
+
 ## `GET /api/metastore/token/status`
 
 Fetch info about the current MetaStore premium features token including whether it is `valid`, a `trial` token, its
@@ -1908,9 +1913,9 @@ Update an existing `NativeQuerySnippet`.
 
 Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
-  `Table`. Optional Parameter `:scan` can be `"full" or "schema" for a full sync or a schema sync, available
+  `Table`. Optional Parameter `:scan` can be `"full"` or `"schema"` for a full sync or a schema sync, available
   regardless if a `:table_id` or `:table_name` is passed.
-  This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in 
+  This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in
   the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/operations-guide/environment-variables.html#mb_api_key)
 
 ##### PARAMS:
@@ -2421,6 +2426,8 @@ Create a new `Pulse`.
 
 *  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
+*  **`parameters`** value must be an array. Each value must be a map.
+
 
 ## `POST /api/pulse/test`
 
@@ -2449,19 +2456,21 @@ Update a Pulse with `id`.
 
 ##### PARAMS:
 
-*  **`id`** 
+*  **`skip_if_empty`** value may be nil, or if non-nil, value must be a boolean.
 
-*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`parameters`** value must be an array. Each value must be a map.
 
-*  **`cards`** value may be nil, or if non-nil, value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
+*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`channels`** value may be nil, or if non-nil, value must be an array. Each value must be a map. The array cannot be empty.
 
-*  **`skip_if_empty`** value may be nil, or if non-nil, value must be a boolean.
-
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`id`** 
+
+*  **`cards`** value may be nil, or if non-nil, value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
 
 *  **`pulse-updates`** 
 

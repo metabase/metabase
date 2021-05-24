@@ -225,11 +225,11 @@
 
       (testing "password"
         (testing "missing"
-          (is (= {:errors {:password "Password is insufficiently complex, or is too common"}}
+          (is (= {:errors {:password "password is too common."}}
                  (setup! m/dissoc-in [:user :password]))))
 
         (testing "invalid"
-          (is (= {:errors {:password "Password is insufficiently complex, or is too common"}}
+          (is (= {:errors {:password "password is too common."}}
                  (setup! assoc-in [:user :password] "anything"))))))))
 
 (deftest setup-with-empty-cache-test

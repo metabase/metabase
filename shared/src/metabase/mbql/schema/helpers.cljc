@@ -61,6 +61,14 @@
   "Schema for `:type/*` or one of its descendants in the Metabase type hierarchy."
   (s/pred #(isa? % :type/*) "Valid field type"))
 
+(def FieldSemanticOrRelationType
+  "Schema for a `:Semantic/*` (or `:Relation/*`, until we fix this) or one of their descendents in the Metabase
+  Hierarchical Type System (MHTS)."
+  (s/pred (fn [k]
+            (or (isa? k :Semantic/*)
+                (isa? k :Relation/*)))
+          "Valid semantic type"))
+
 (def IntGreaterThanZero
   "Schema for a positive integer."
   (s/constrained s/Int pos? "positive integer"))

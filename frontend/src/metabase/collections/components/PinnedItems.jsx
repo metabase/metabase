@@ -36,9 +36,9 @@ const PinnedItem = ({
       item={item}
       collection={collection}
       onPin={() => item.setPinned(false)}
+      onToggleSelected={onToggleSelected}
       onMove={onMove}
       onCopy={onCopy}
-      onToggleSelected={onToggleSelected}
       isSelected={getIsSelected(item)}
       pinned
     />

@@ -1,7 +1,9 @@
 (ns metabase.models.params.chain-filter-test
   (:require [clojure.test :refer :all]
+            [metabase.models :refer [FieldValues]]
             [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [toucan.db :as db]))
 
 (defmacro chain-filter [field field->value & options]
   `(chain-filter/chain-filter
@@ -295,6 +297,23 @@
     (testing "search for something crazy = should return empty results"
       (is (= []
              (mt/$ids (chain-filter/chain-filter-search %venues.category_id {%venues.price 4} "zzzzz")))))))
+
+(deftest use-cached-field-values-test
+  (testing "chain-filter should use cached FieldValues if applicable (#13832)"
+    (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id (mt/id :categories :name)) {:values ["Good" "Bad"]}
+      (testing "values"
+        (is (= ["Good" "Bad"]
+               (chain-filter categories.name nil)))
+        (testing "shouldn't use cached FieldValues for queries with constraints"
+          (is (= ["Japanese" "Steakhouse"]
+                 (chain-filter categories.name {venues.price 4})))))
+
+      (testing "search"
+        (is (= ["Good"]
+               (mt/$ids (chain-filter/chain-filter-search %categories.name nil "ood"))))
+        (testing "shouldn't use cached FieldValues for queries with constraints"
+          (is (= ["Steakhouse"]
+                 (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "o")))))))))
 
 (deftest time-interval-test
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"

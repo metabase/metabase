@@ -1,5 +1,5 @@
 import path from "path";
-import { restore } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
@@ -90,15 +90,39 @@ describe("scenarios > setup", () => {
         exact: false,
       });
 
+      // test database setup help card is NOT displayed before DB is selected
+      cy.findByTestId("database-setup-help-card").should("not.exist");
+
       // test that you can return to user settings if you want
       cy.findByText("Hi, Testy. Nice to meet you!").click();
       cy.findByLabelText("Email").should("have.value", "testy@metabase.com");
 
+      // test database setup help card is NOT displayed on other steps
+      cy.findByTestId("database-setup-help-card").should("not.exist");
+
       // now back to database setting
       cy.findByText("Next").click();
 
+      // check database setup card changes copy
+      cy.get("#formField-engine .AdminSelect").click();
+      popover()
+        .findByText("MySQL")
+        .click();
+      cy.findByTestId("database-setup-help-card").within(() => {
+        cy.findByText("Need help setting up MySQL?");
+        cy.findByRole("link", { name: /Our docs can help/i });
+      });
+
+      cy.get("#formField-engine .AdminSelect").click();
+      popover()
+        .findByText("SQLite")
+        .click();
+      cy.findByTestId("database-setup-help-card").findByText(
+        "Need help setting up your database?",
+      );
+
       // add h2 database
-      cy.findByText("Select a database").click();
+      cy.get("#formField-engine .AdminSelect").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Name").type("Metabase H2");
       cy.findByText("Next")

@@ -90,7 +90,7 @@
               (sync-util/name-for-logging (table/map->TableInstance table))))
   (doseq [{schema :schema, table-name :name, :as table} new-tables]
     (if-let [existing-id (db/select-one-id Table
-                           :db_id  (u/get-id database)
+                           :db_id  (u/the-id database)
                            :schema schema
                            :name   table-name
                            :active false)]
@@ -99,7 +99,7 @@
         :active true)
       ;; otherwise create a new Table
       (db/insert! Table
-        :db_id           (u/get-id database)
+        :db_id           (u/the-id database)
         :schema          schema
         :name            table-name
         :display_name    (humanization/name->human-readable-name table-name)
@@ -115,7 +115,7 @@
             (for [table old-tables]
               (sync-util/name-for-logging (table/map->TableInstance table))))
   (doseq [{schema :schema, table-name :name, :as table} old-tables]
-    (db/update-where! Table {:db_id  (u/get-id database)
+    (db/update-where! Table {:db_id  (u/the-id database)
                              :schema schema
                              :name   table-name
                              :active true}
@@ -130,7 +130,7 @@
               (sync-util/name-for-logging (table/map->TableInstance table))))
   (doseq [{schema :schema, table-name :name, description :description} changed-tables]
     (when-not (str/blank? description)
-      (db/update-where! Table {:db_id       (u/get-id database)
+      (db/update-where! Table {:db_id       (u/the-id database)
                                :schema      schema
                                :name        table-name
                                :description nil}
@@ -149,7 +149,7 @@
   [database :- i/DatabaseInstance]
   (set (map (partial into {})
             (db/select [Table :name :schema :description]
-              :db_id  (u/get-id database)
+              :db_id  (u/the-id database)
               :active true))))
 
 (s/defn sync-tables!

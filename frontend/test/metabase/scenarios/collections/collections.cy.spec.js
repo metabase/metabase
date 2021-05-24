@@ -466,18 +466,11 @@ describe("scenarios > collection_defaults", () => {
         "**New collection should immediately be open, showing nested children**",
       );
 
-      openDropdownFor(NEW_COLLECTION);
-      cy.findAllByText("First collection");
-      cy.findAllByText("Second collection");
-
-      // TODO: This was an original test that made sure the collection is indeed open immediately.
-      //       That part is going to be addressed in a separate issue.
-      // cy.findByText(NEW_COLLECTION)
-      //   .closest("a")
-      //   .within(() => {
-      //     cy.icon("chevrondown");
-      //     cy.findByText("First collection");
-      //   });
+      getSidebarCollectionChildrenFor(NEW_COLLECTION).within(() => {
+        cy.icon("chevrondown").should("have.length", 2); // both target collection and "First collection" are open
+        cy.findByText("First collection");
+        cy.findByText("Second collection");
+      });
     });
 
     it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
@@ -590,29 +583,37 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("First Collection");
     });
 
-    it("should be possible to apply bulk selection to items (metabase#14705)", () => {
-      cy.visit("/collection/root");
-      selectItemUsingCheckbox("Orders");
-      cy.findByText("1 item selected").should("be.visible");
-      // Select all
-      cy.icon("dash").click();
-      cy.icon("dash").should("not.exist");
-      cy.findByText("4 items selected");
-      // Deselect all
-      cy.findByTestId("bulk-action-bar").within(() => {
-        cy.icon("check").click();
+    describe("bulk actions", () => {
+      beforeEach(() => {
+        cy.visit("/collection/root");
+        openEllipsisMenuFor("Orders in a dashboard");
+        cy.findByText("Pin this item").click();
       });
-      cy.icon("check").should("not.exist");
-      cy.findByTestId("bulk-action-bar").should("not.be.visible");
-    });
 
-    it.skip("should be possible to select pinned item using checkbox (metabase#15338)", () => {
-      cy.visit("/collection/root");
-      openEllipsisMenuFor("Orders");
-      cy.findByText("Pin this item").click();
-      cy.findByText(/Pinned items/i);
-      selectItemUsingCheckbox("Orders");
-      cy.findByText("1 item selected");
+      it("should be possible to apply bulk selection to items (metabase#14705)", () => {
+        selectItemUsingCheckbox("Orders");
+        cy.findByText("1 item selected").should("be.visible");
+        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
+        cy.findByText("2 items selected").should("be.visible");
+
+        // Select all
+        cy.icon("dash").click();
+        cy.icon("dash").should("not.exist");
+        cy.findByText("4 items selected");
+
+        // Deselect all
+        cy.findByTestId("bulk-action-bar").within(() => {
+          cy.icon("check").click();
+        });
+        cy.icon("check").should("not.exist");
+        cy.findByTestId("bulk-action-bar").should("not.be.visible");
+      });
+
+      it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
+        cy.findByText(/Pinned items/i);
+        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
+        cy.findByText("1 item selected");
+      });
     });
   });
 });
@@ -659,4 +660,13 @@ function selectItemUsingCheckbox(item, icon = "table") {
         .should("be.visible")
         .click();
     });
+}
+
+function getSidebarCollectionChildrenFor(item) {
+  return cy
+    .findByTestId("sidebar")
+    .findByText(item)
+    .closest("a")
+    .parent()
+    .parent();
 }

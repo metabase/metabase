@@ -5,7 +5,7 @@ import fitViewport from "metabase/hoc/FitViewPort";
 
 import Setup from "../components/Setup";
 
-import { setupSelectors } from "../selectors";
+import { DATABASE_FORM_NAME, setupSelectors } from "../selectors";
 import {
   setUserDetails,
   validatePassword,
@@ -37,6 +37,6 @@ const mapDispatchToProps = {
 @fitViewport
 export default class SetupApp extends Component {
   render() {
-    return <Setup {...this.props} />;
+    return <Setup {...this.props} databaseFormName={DATABASE_FORM_NAME} />;
   }
 }
