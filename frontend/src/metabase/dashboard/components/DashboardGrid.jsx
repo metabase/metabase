@@ -40,8 +40,6 @@ export default class DashboardGrid extends Component {
       addSeriesModalDashCard: null,
       isDragging: false,
     };
-
-    _.bindAll(this, "onDashCardMouseDown");
   }
 
   static propTypes = {
@@ -226,13 +224,6 @@ export default class DashboardGrid extends Component {
     this.setState({ isDragging: false });
   };
 
-  // we use onMouseDownCapture to prevent dragging due to react-grid-layout bug referenced below
-  onDashCardMouseDown(e) {
-    if (!this.props.isEditing) {
-      e.stopPropagation();
-    }
-  }
-
   onDashCardRemove(dc) {
     this.setState({ removeModalDashCard: dc });
   }
@@ -290,12 +281,7 @@ export default class DashboardGrid extends Component {
   }
 
   renderGridItem = ({ item: dc, breakpoint, gridItemWidth }) => (
-    <div
-      key={String(dc.id)}
-      className="DashCard"
-      onMouseDownCapture={this.onDashCardMouseDown}
-      onTouchStartCapture={this.onDashCardMouseDown}
-    >
+    <div key={String(dc.id)} className="DashCard">
       {this.renderDashCard(dc, {
         isMobile: isMobileBreakpoint(breakpoint),
         gridItemWidth,
