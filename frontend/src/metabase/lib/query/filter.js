@@ -81,9 +81,7 @@ export function isStandard(filter: FilterClause): boolean {
   // undefined args represents an incomplete filter (still standard, but not valid)
   const isLiteralOrUndefined = arg => (arg ? isLiteral(arg) : true);
 
-  const op = filter[0];
-  const field = filter[1];
-  const args = filter.slice(2);
+  const [op, field, ...args] = filter;
 
   if (FILTER_OPERATORS.has(op) || op === "between") {
     // only allows constant argument(s), e.g. 42 in ["<", field, 42]
