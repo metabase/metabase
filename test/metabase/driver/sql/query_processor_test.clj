@@ -482,7 +482,6 @@
                                                         :fields       [[:field price-field-id nil]
                                                                        [:expression "test"]]}
                                            :type       "query"})]
-            ;; middleware turns date objects into strings, so just make sure they are "date" strings
-            (is (schema= [(s/one (s/pred #(re-matches #"1970-.*Z" %)) "date")
-                          (s/one s/Int "expression")]
+            (is (schema= [(s/one s/Str "date")
+                          (s/one s/Num "expression")]
                          (-> results mt/rows first)))))))))
