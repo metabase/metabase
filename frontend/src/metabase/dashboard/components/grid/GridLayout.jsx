@@ -71,9 +71,10 @@ function GridLayout({
       return itemRenderer({
         item,
         gridItemWidth,
+        breakpoint: currentBreakpoint,
       });
     },
-    [layout, cellSize, itemRenderer],
+    [layout, cellSize, itemRenderer, currentBreakpoint],
   );
 
   const height = useMemo(() => {

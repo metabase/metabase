@@ -354,14 +354,17 @@ export default class DashboardGrid extends Component {
         isEditing={this.isEditingLayout}
         compactType="vertical"
         items={dashboard.ordered_cards}
-        itemRenderer={({ item: dc, gridItemWidth }) => (
+        itemRenderer={({ item: dc, breakpoint, gridItemWidth }) => (
           <div
             key={String(dc.id)}
             className="DashCard"
             onMouseDownCapture={this.onDashCardMouseDown}
             onTouchStartCapture={this.onDashCardMouseDown}
           >
-            {this.renderDashCard(dc, { isMobile: false, gridItemWidth })}
+            {this.renderDashCard(dc, {
+              isMobile: breakpoint === "sm",
+              gridItemWidth,
+            })}
           </div>
         )}
       />
