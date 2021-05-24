@@ -214,6 +214,14 @@
                             (for [field fields-to-search]
                               [:like (keyword (str "%lower." (name field))) query-string]))))))
 
+(defn add-sort-clause
+  [query sort-column sort-direction]
+  (h/some shit))
+
+(defn add-filter-clause
+  [query filter-column filter-string]
+  (h/some shit))
+
 (defn card-public-url
   "Return HoneySQL for a `CASE` statement to return a Card's public URL if the `public_uuid` `field` is non-NULL."
   [field]

@@ -74,10 +74,6 @@
                [:public_link     {:display_name "Public Link",   :base_type :type/URL}]
                [:cache_ttl       {:display_name "Cache TTL",     :base_type :type/Number}]
                [:total_views     {:display_name "Views",         :base_type :type/Integer}]
-               ;;;;;;;;;;;;;; gotta be adding some shit here
-               ;;;;;;;;;;;;;; gotta be adding some shit here
-               ;;;;;;;;;;;;;; gotta be adding some shit here
-               ;;;;;;;;;;;;;; gotta be adding some shit here
                ]
     :results  (common/reducible-query
                 (->
@@ -105,4 +101,6 @@
                               :card_views              [:= :card.id :card_views.card_id]]
                   :where     [:= :card.archived false]
                   :order-by  [[:%lower.card.name :asc]]}
-                 (common/add-search-clause query-string :card.name)))}))
+                 (common/add-search-clause query-string :card.name)
+                 (common/add-sort-clause some shit here)
+                 ))}))
