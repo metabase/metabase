@@ -153,10 +153,13 @@ export function getDatas({ settings, series }, warn) {
     if (isNotOrdinal) {
       rows = data.rows.filter(([x]) => x !== null);
     } else if (parseOptions.isNumeric) {
-      rows = data.rows.map(([x, ...rest]) => [
-        replaceNullValuesForOrdinal(x),
-        ...rest,
-      ]);
+      rows = data.rows.map((row) => {
+        if(row.length > 0) {
+          row[0] = replaceNullValuesForOrdinal(row[0]);
+        }
+        
+        return row;
+      });
     }
 
     if (rows.length < data.rows.length) {
