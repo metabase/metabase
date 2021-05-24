@@ -3,8 +3,10 @@
             [metabase.api.moderation-review :as review-api]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.moderation-request :refer [ModerationRequest]]
             [metabase.models.moderation-review :refer [ModerationReview]]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [toucan.db :as db]))
 
 (defn- normalized-response
   [moderation-review]
@@ -33,22 +35,46 @@
                                                                             :moderated_item_id   card-id
                                                                             :moderated_item_type "card"
                                                                             :status              "verified"}))))))))
+
+(defn- update!
+  [id params]
+  (mt/user-http-request :rasta :put 200 (format "moderation-review/%d" id) params))
+
 (deftest update-test
   (testing "PUT /api/moderation-review/:id"
-    (mt/with-temp* [Card             [{card-id :id :as card}                 {:name "Test Card"}]
-                    Dashboard        [{dashboard-id :id :as dashboard}       {:name "Test Dashboard"}]
-                    ModerationReview [{request-id :id :as moderation-request} {:text                "Looks good to me"
-                                                                               :status              "pending"
-                                                                               :moderator_id        (mt/user->id :rasta)
-                                                                               :moderated_item_id   card-id
-                                                                               :moderated_item_type "card"}]]
-      (is (= {:text                "Hello world"
-              :moderated_item_id   dashboard-id
-              :moderated_item_type "dashboard"
-              :status              "verified"
-              :moderator_id        (mt/user->id :rasta)}
-             (normalized-response
-              (mt/user-http-request :rasta :put 200 (format "moderation-review/%d" request-id) {:text                "Hello world"
-                                                                                                :status              "verified"
-                                                                                                :moderated_item_id   dashboard-id
-                                                                                                :moderated_item_type "dashboard"})))))))
+    (testing "it updates correctly"
+      (mt/with-temp* [Card             [{card-id :id :as card}           {:name "Test Card"}]
+                      Dashboard        [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
+                      ModerationReview [{review-id :id}                  {:text                "Looks good to me"
+                                                                          :status              "pending"
+                                                                          :moderator_id        (mt/user->id :rasta)
+                                                                          :moderated_item_id   card-id
+                                                                          :moderated_item_type "card"}]]
+        (is (= {:text                "Hello world"
+                :moderated_item_id   dashboard-id
+                :moderated_item_type "dashboard"
+                :status              "verified"
+                :moderator_id        (mt/user->id :rasta)}
+               (normalized-response
+                (update! review-id {:text                "Hello world"
+                                    :status              "verified"
+                                    :moderated_item_id   dashboard-id
+                                    :moderated_item_type "dashboard"}))))))
+    (testing "it closes moderation requests"
+      (mt/with-temp* [Card             [{card-id :id :as card}                   {:name "Test Card"}]
+                      Dashboard        [{dashboard-id :id :as dashboard}         {:name "Test Dashboard"}]
+                      ModerationReview [{review-id :id}                          {:text                "Looks good to me"
+                                                                                  :status              "pending"
+                                                                                  :moderator_id        (mt/user->id :rasta)
+                                                                                  :moderated_item_id   card-id
+                                                                                  :moderated_item_type "card"}]
+                      ModerationRequest [{request-id :id :as moderation-request} {:moderated_item_id   card-id
+                                                                                  :moderated_item_type "card"
+                                                                                  :type                "verification_request"
+                                                                                  :status              "open"}]]
+        (is (not (nil? (update! review-id {:status "verified"})))
+            (= "resolved"
+               (do
+                 (update! review-id {:status "verified"})
+                 (first
+                  (db/select-field :status ModerationRequest :id request-id)))))))))

@@ -9,11 +9,11 @@
 (api/defendpoint POST "/"
   "Create a new `ModerationRequest`."
   [:as {{:keys [text type moderated_item_id moderated_item_type status]} :body}]
-  {text                    (s/maybe s/Str)
-   type                    moderation-request/types
-   moderated_item_id       su/IntGreaterThanZero
-   moderated_item_type     moderation/moderated-item-types
-   (s/optional-key status) moderation-request/statuses}
+  {:text                    (s/maybe s/Str)
+   :type                    moderation-request/types
+   :moderated_item_id       su/IntGreaterThanZero
+   :moderated_item_type     moderation/moderated-item-types
+   (s/optional-key :status) moderation-request/statuses}
   (let [request-data (merge {:text                text
                              :type                type
                              :moderated_item_id   moderated_item_id
@@ -26,12 +26,12 @@
 
 (api/defendpoint PUT "/:id"
   [id :as {{:keys [text type moderated_item_id moderated_item_type status closed_by_id] :as request-updates} :body}]
-  {(s/optional-key text)                (s/maybe s/Str)
-   (s/optional-key type)                moderation-request/types
-   (s/optional-key moderated_item_id)   su/IntGreaterThanZero
-   (s/optional-key moderated_item_type) moderation/moderated-item-types
-   (s/optional-key status)              moderation-request/statuses
-   (s/optional-key closed_by_id)        su/IntGreaterThanZero}
+  {(s/optional-key :text)                (s/maybe s/Str)
+   (s/optional-key :type)                moderation-request/types
+   (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
+   (s/optional-key :moderated_item_type) moderation/moderated-item-types
+   (s/optional-key :status)              moderation-request/statuses
+   (s/optional-key :closed_by_id)        su/IntGreaterThanZero}
   ;; TODO permissions
   (moderation-request/update-request!
    (assoc (select-keys request-updates [:text :type :moderated_item_id :moderated_item_type :status :closed_by_id])
