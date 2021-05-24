@@ -14,7 +14,7 @@ function GridLayout({
   layouts,
   cols: columnsMap,
   width: gridWidth,
-  margin,
+  margin: marginMap,
   rowHeight,
   isEditing,
   onLayoutChange,
@@ -44,7 +44,12 @@ function GridLayout({
     setCurrentBreakpoint(newBreakpoint);
   }, []);
 
-  const layout = useMemo(() => layouts[currentBreakpoint] || layouts["lg"], [
+  const margin = useMemo(() => marginMap[currentBreakpoint], [
+    marginMap,
+    currentBreakpoint,
+  ]);
+
+  const layout = useMemo(() => layouts[currentBreakpoint], [
     layouts,
     currentBreakpoint,
   ]);
@@ -56,7 +61,8 @@ function GridLayout({
 
   const cellSize = useMemo(() => {
     const marginSlotsCount = cols - 1;
-    const totalHorizontalMargin = marginSlotsCount * margin;
+    const [horizontalMargin] = margin;
+    const totalHorizontalMargin = marginSlotsCount * horizontalMargin;
     const freeSpace = gridWidth - totalHorizontalMargin;
     return {
       width: freeSpace / cols,
@@ -82,7 +88,9 @@ function GridLayout({
     if (isEditing) {
       lowestLayoutCellPoint += Math.ceil(window.innerHeight / cellSize.height);
     }
-    return (cellSize.height + margin) * lowestLayoutCellPoint;
+    // eslint-disable-next-line no-unused-vars
+    const [horizontalMargin, verticalMargin] = margin;
+    return (cellSize.height + verticalMargin) * lowestLayoutCellPoint;
   }, [cellSize.height, layout, margin, isEditing]);
 
   const background = useMemo(
@@ -108,7 +116,7 @@ function GridLayout({
       cols={columnsMap}
       layouts={layouts}
       width={gridWidth}
-      margin={[margin, margin]}
+      margin={margin}
       rowHeight={rowHeight}
       isDraggable={isEditing}
       isResizable={isEditing}
