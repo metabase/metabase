@@ -93,7 +93,7 @@
           ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly
           ;; outdated password
           (throw (ex-info (str password-fail-message)
-                   {:status-code 400
+                   {:status-code 401
                     :errors      {:password password-fail-snippet}})))
         ;; password is ok, return new session
         (create-session! :sso (ldap/fetch-or-create-user! user-info) device-info))
@@ -126,20 +126,20 @@
       ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw
        (ex-info (str password-fail-message)
-                {:status-code 400
+                {:status-code 401
                  :errors      {:password password-fail-snippet}}))))
 
-(defn- do-http-400-on-error [f]
+(defn- do-http-401-on-error [f]
   (try
     (f)
     (catch clojure.lang.ExceptionInfo e
       (throw (ex-info (ex-message e)
-                      (assoc (ex-data e) :status-code 400))))))
+                      (assoc (ex-data e) :status-code 401))))))
 
-(defmacro http-400-on-error
-  "Add `{:status-code 400}` to exception data thrown by `body`."
+(defmacro http-401-on-error
+  "Add `{:status-code 401}` to exception data thrown by `body`."
   [& body]
-  `(do-http-400-on-error (fn [] ~@body)))
+  `(do-http-401-on-error (fn [] ~@body)))
 
 (api/defendpoint POST "/"
   "Login."
@@ -153,7 +153,7 @@
                        (mw.session/set-session-cookie request response session)))]
     (if throttling-disabled?
       (do-login)
-      (http-400-on-error
+      (http-401-on-error
        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
                                   (login-throttlers :username)   username]
            (do-login))))))
@@ -345,7 +345,7 @@
   ;; Verify the token is valid with Google
   (if throttling-disabled?
     (do-google-auth token)
-    (http-400-on-error
+    (http-401-on-error
       (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
         (do-google-auth request)))))
 

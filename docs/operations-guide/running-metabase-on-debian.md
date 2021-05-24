@@ -21,7 +21,7 @@ For security reasons we want to have Metabase run as an unprivileged user. We wi
     $ sudo useradd -r -s /bin/false -g metabase metabase
     $ sudo chown -R metabase:metabase </your/path/to/metabase/directory>
     $ sudo touch /var/log/metabase.log
-    $ sudo chown metabase:metabase /var/log/metabase.log
+    $ sudo chown syslog:adm /var/log/metabase.log
     $ sudo touch /etc/default/metabase
     $ sudo chmod 640 /etc/default/metabase
 

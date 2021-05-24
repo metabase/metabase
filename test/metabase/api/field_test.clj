@@ -163,7 +163,7 @@
       (is (= {:values [], :field_id (mt/id :venues :id)}
              (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :id))))))
 
-    (testing "Sensisitive fields do not have field values and should return empty"
+    (testing "Sensitive fields do not have field values and should return empty"
       (is (= {:values [], :field_id (mt/id :users :password)}
              (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))))
 
@@ -571,15 +571,22 @@
 (deftest search-values-test
   (testing "make sure `search-values` works on with our various drivers"
     (mt/test-drivers (mt/normal-drivers)
-      (is (= [[1 "Red Medicine"]]
+      (is (= [[1 "Red Medicine"]
+              [10 "Fred 62"]]
              (mt/format-rows-by [int str]
                (field-api/search-values (Field (mt/id :venues :id))
                                         (Field (mt/id :venues :name))
                                         "Red")))))
     (tqp.test/test-timeseries-drivers
       (is (= [["139" "Red Medicine"]
+              ["148" "Fred 62"]
+              ["308" "Fred 62"]
               ["375" "Red Medicine"]
-              ["72"  "Red Medicine"]]
+              ["396" "Fred 62"]
+              ["589" "Fred 62"]
+              ["648" "Fred 62"]
+              ["72" "Red Medicine"]
+              ["977" "Fred 62"]]
              (field-api/search-values (Field (mt/id :checkins :id))
                                       (Field (mt/id :checkins :venue_name))
                                       "Red"))))))
@@ -587,12 +594,12 @@
 (deftest search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
-      (is (= [["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
              (field-api/search-values (Field (mt/id :venues :name))
                                       (Field (mt/id :venues :name))
                                       "Red"))))
     (tqp.test/test-timeseries-drivers
-      (is (= [["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
              (field-api/search-values (Field (mt/id :checkins :venue_name))
                                       (Field (mt/id :checkins :venue_name))
                                       "Red"))))))

@@ -13,7 +13,6 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.table :as table]
             [metabase.server.middleware.util :as middleware.u]
-            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.mock.util :as mutil]
             [metabase.test.util :as tu]
@@ -291,28 +290,54 @@
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
       (mt/with-temp Table [table]
-        (let [original-sync-table! sync/sync-table!
-              called               (atom 0)
-              test-fun             (fn [state]
-                                     (with-redefs [sync/sync-table! (fn [& args] (swap! called inc)
-                                                                      (apply original-sync-table! args))]
-                                       (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
-                                                             {:display_name    "Userz"
-                                                              :visibility_type state
-                                                              :description     "What a nice table!"})))]
-          (test-fun "hidden")
-          (test-fun nil)                ; <- should get synced
-          (is (= 1
-                 @called))
-          (test-fun "hidden")
-          (test-fun "cruft")
-          (test-fun "technical")
-          (test-fun nil)                ; <- should get synced again
-          (is (= 2
-                 @called))
-          (test-fun "technical")
-          (is (= 2
-                 @called)))))))
+        (let [called (atom 0)
+              ;; original is private so a var will pick up the redef'd. need contents of var before
+              original (var-get #'table-api/sync-unhidden-tables)]
+          (with-redefs [table-api/sync-unhidden-tables
+                        (fn [unhidden]
+                          (when (seq unhidden)
+                            (is (= (:id table)
+                                   (:id (first unhidden)))
+                                "Unhidden callback did not get correct tables.")
+                            (swap! called inc)
+                            (let [fut (original unhidden)]
+                              (when (future? fut)
+                                (deref fut)))))]
+            (let [set-visibility (fn [state]
+                                   (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                                         {:display_name    "Userz"
+                                                          :visibility_type state
+                                                          :description     "What a nice table!"}))]
+              (set-visibility "hidden")
+              (set-visibility nil)        ; <- should get synced
+              (is (= 1
+                     @called))
+              (set-visibility "hidden")
+              (set-visibility "cruft")
+              (set-visibility "technical")
+              (set-visibility nil)        ; <- should get synced again
+              (is (= 2
+                     @called))
+              (set-visibility "technical")
+              (is (= 2
+                     @called))))))))
+  (testing "Bulk updating visibility"
+    (let [unhidden-ids (atom #{})]
+      (mt/with-temp* [Table [{id-1 :id} {}]
+                      Table [{id-2 :id} {:visibility_type "hidden"}]]
+        (with-redefs [table-api/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
+          (let [set-many-vis (fn [ids state]
+                               (reset! unhidden-ids #{})
+                               (mt/user-http-request :crowberto :put 200 "table/"
+                                                     {:ids ids :visibility_type state}))]
+            (set-many-vis [id-1 id-2] nil) ;; unhides only 2
+            (is (= @unhidden-ids #{id-2}))
+
+            (set-many-vis [id-1 id-2] "hidden")
+            (is (= @unhidden-ids #{})) ;; no syncing when they are hidden
+
+            (set-many-vis [id-1 id-2] nil) ;; both are made unhidden so both synced
+            (is (= @unhidden-ids #{id-1 id-2}))))))))
 
 (deftest get-fks-test
   (testing "GET /api/table/:id/fks"

@@ -106,7 +106,13 @@
                                              :position 0}]
                    DashboardCardSeries [~'_ {:dashboardcard_id ~'dashcard-id
                                              :card_id ~'card-id-nested
-                                             :position 1}]]
+                                             :position 1}]
+                   DashboardCard       [{~'dashcard-with-click-actions :id}
+                                        {:dashboard_id ~'dashboard-id
+                                         :card_id      ~'card-id-root}]
+                   DashboardCardSeries [~'_ {:dashboardcard_id ~'dashcard-with-click-actions
+                                             :card_id          ~'card-id-root
+                                             :position         2}]]
      ~@body))
 
 ;; Don't memoize as IDs change in each `with-world` context

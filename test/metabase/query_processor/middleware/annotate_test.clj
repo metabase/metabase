@@ -120,10 +120,10 @@
                                       :strategy     :left-join}]}}
                    {:columns [:name]})))))))))
 
-(deftest col-info-for-datetime-field-test
+(deftest col-info-for-field-with-temporal-unit-test
   (mt/with-everything-store
     (mt/$ids venues
-      (testing "when a `:datetime-field` form is used, we should add in info about the `:unit`"
+      (testing "when a `:field` with `:temporal-unit` is used, we should add in info about the `:unit`"
         (is (= [(merge (info-for-field :venues :price)
                        {:unit      :month
                         :source    :fields
@@ -143,7 +143,38 @@
                (doall
                 (annotate/column-info
                  {:type :query, :query {:fields [[:field "price" {:base-type :type/Number, :temporal-unit :month}]]}}
-                 {:columns [:price]}))))))))
+                 {:columns [:price]}))))))
+
+    (testing "should add the correct info if the Field originally comes from a nested query"
+      (mt/$ids checkins
+        (is (= [{:name "DATE", :unit :month, :field_ref [:field %date {:temporal-unit :default}]}
+                {:name "LAST_LOGIN", :unit :month, :field_ref [:field
+                                                               %users.last_login
+                                                               {:temporal-unit :default
+                                                                :join-alias    "USERS__via__USER_ID"}]}]
+               (mapv
+                (fn [col]
+                  (select-keys col [:name :unit :field_ref]))
+                (annotate/column-info
+                 {:type  :query
+                  :query {:source-query    {:source-table $$checkins
+                                            :breakout     [[:field %date {:temporal-unit :month}]
+                                                           [:field
+                                                            %users.last_login
+                                                            {:temporal-unit :month, :source-field %user_id}]]}
+                          :source-metadata [{:name      "DATE"
+                                             :id        %date
+                                             :unit      :month
+                                             :field_ref [:field %date {:temporal-unit :month}]}
+                                            {:name      "LAST_LOGIN"
+                                             :id        %users.last_login
+                                             :unit      :month
+                                             :field_ref [:field %users.last_login {:temporal-unit :month
+                                                                                   :source-field  %user_id}]}]
+                          :fields          [[:field %date {:temporal-unit :default}]
+                                            [:field %users.last_login {:temporal-unit :default, :join-alias "USERS__via__USER_ID"}]]
+                          :limit           1}}
+                 nil))))))))
 
 (deftest col-info-for-binning-strategy-test
   (testing "when binning strategy is used, include `:binning_info`"

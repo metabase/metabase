@@ -272,6 +272,7 @@ export default class Gauge extends Component {
                   column={column}
                   settings={settings}
                   onHoverChange={!showLabels ? this.props.onHoverChange : null}
+                  testId={"gauge-arc-" + index}
                 />
               ))}
               {/* NEEDLE */}
@@ -341,6 +342,7 @@ const GaugeArc = ({
   onHoverChange,
   settings,
   column,
+  testId,
 }) => {
   const arc = d3.svg
     .arc()
@@ -353,6 +355,7 @@ const GaugeArc = ({
         endAngle: end,
       })}
       fill={fill}
+      data-testid={testId}
       onMouseMove={e => {
         if (onHoverChange) {
           const options =

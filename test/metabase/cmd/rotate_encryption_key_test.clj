@@ -54,14 +54,15 @@
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
 
 (deftest rotate-encryption-key!-test
-  (let [h2-fixture-db-file @cmd.test-util/fixture-db-file-path
-        db-name            (str "test_" (str/lower-case (mt/random-name)))
-        original-timestamp "2021-02-11 18:38:56.042236+00"
-        [k1 k2 k3]         ["89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
-                            "yHa/6VEQuIItMyd5CNcgV9nXvzZcX6bWmiY0oOh6pLU="
-                            "BCQbKNVu6N8TQ2BwyTC0U0oCBqsvFVr2uhEM/tRgJUM="]]
-    (mt/test-drivers #{:postgres :h2 :mysql}
-      (eu/with-secret-key nil
+  ;; (metabase.test/set-test-drivers! #{:mysql})
+  (eu/with-secret-key nil
+    (let [h2-fixture-db-file @cmd.test-util/fixture-db-file-path
+          db-name            (str "test_" (str/lower-case (mt/random-name)))
+          original-timestamp "2021-02-11 18:38:56.042236+00"
+          [k1 k2 k3]         ["89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+                              "yHa/6VEQuIItMyd5CNcgV9nXvzZcX6bWmiY0oOh6pLU="
+                              "BCQbKNVu6N8TQ2BwyTC0U0oCBqsvFVr2uhEM/tRgJUM="]]
+      (mt/test-drivers #{:postgres :h2 :mysql}
         (with-model-type :encrypted-json {:out #'interface/encrypted-json-out}
           (binding [mdb.connection/*db-type*   driver/*driver*
                     mdb.connection/*jdbc-spec* (persistent-jdbcspec driver/*driver* db-name)

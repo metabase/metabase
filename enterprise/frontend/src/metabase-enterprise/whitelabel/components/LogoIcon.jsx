@@ -122,7 +122,7 @@ export default class LogoIcon extends Component {
       <span
         ref={c => (this._container = c)}
         className={cx(
-          "Icon",
+          "Icon text-centered",
           { "text-brand": !dark },
           { "text-white": dark },
           className,

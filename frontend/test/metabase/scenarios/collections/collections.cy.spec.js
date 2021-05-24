@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   restore,
   setupLocalHostEmail,
@@ -5,8 +6,10 @@ import {
   popover,
   openOrdersTable,
 } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
@@ -244,6 +247,80 @@ describe("scenarios > collection_defaults", () => {
     });
   });
 
+  describe("pagination and filtering", () => {
+    const PAGE_SIZE = 25;
+    const ADDED_QUESTIONS = 13;
+    const ADDED_DASHBOARDS = 12;
+    const PRE_EXISTED_ITEMS = 4;
+
+    const TOTAL_ITEMS = ADDED_DASHBOARDS + ADDED_QUESTIONS + PRE_EXISTED_ITEMS;
+
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      _.times(12, i => cy.createDashboard(`dashboard ${i}`));
+      _.times(13, i =>
+        cy.createQuestion({
+          name: `generated question ${i}`,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+            ],
+          },
+        }),
+      );
+    });
+
+    it("should allow to navigate back and forth", () => {
+      cy.visit("/collection/root");
+
+      // First page
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+
+      cy.findByTestId("next-page-btn").click();
+
+      // Second page
+      cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should(
+        "have.length",
+        TOTAL_ITEMS - PAGE_SIZE,
+      );
+      cy.findByTestId("next-page-btn").should("be.disabled");
+
+      cy.findByTestId("previous-page-btn").click();
+
+      // First page
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+    });
+
+    it("should allow to filter by item type", () => {
+      cy.visit("/collection/root");
+
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+
+      cy.findByText("Dashboards").click();
+      cy.findAllByTestId("collection-entry").should("have.length", 13);
+
+      cy.findByText("Questions").click();
+      cy.findAllByTestId("collection-entry").should("have.length", 16);
+
+      cy.findByText("Pulses").click();
+      cy.findAllByTestId("collection-entry").should("have.length", 0);
+
+      cy.findByText("Everything").click();
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+    });
+  });
+
   describe("Collection related issues reproductions", () => {
     beforeEach(() => {
       restore();
@@ -293,6 +370,7 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Parent").should("not.exist");
         cy.findByText("Browse all items").click();
         cy.findByText("Child");
+        cy.findByText("No Collection Tableton").should("not.exist");
         cy.findByText("Parent").should("not.exist");
       });
 
@@ -388,18 +466,11 @@ describe("scenarios > collection_defaults", () => {
         "**New collection should immediately be open, showing nested children**",
       );
 
-      openDropdownFor(NEW_COLLECTION);
-      cy.findAllByText("First collection");
-      cy.findAllByText("Second collection");
-
-      // TODO: This was an original test that made sure the collection is indeed open immediately.
-      //       That part is going to be addressed in a separate issue.
-      // cy.findByText(NEW_COLLECTION)
-      //   .closest("a")
-      //   .within(() => {
-      //     cy.icon("chevrondown");
-      //     cy.findByText("First collection");
-      //   });
+      getSidebarCollectionChildrenFor(NEW_COLLECTION).within(() => {
+        cy.icon("chevrondown").should("have.length", 2); // both target collection and "First collection" are open
+        cy.findByText("First collection");
+        cy.findByText("Second collection");
+      });
     });
 
     it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
@@ -512,29 +583,37 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("First Collection");
     });
 
-    it("should be possible to apply bulk selection to items (metabase#14705)", () => {
-      cy.visit("/collection/root");
-      selectItemUsingCheckbox("Orders");
-      cy.findByText("1 item selected").should("be.visible");
-      // Select all
-      cy.icon("dash").click();
-      cy.icon("dash").should("not.exist");
-      cy.findByText("4 items selected");
-      // Deselect all
-      cy.findByTestId("bulk-action-bar").within(() => {
-        cy.icon("check").click();
+    describe("bulk actions", () => {
+      beforeEach(() => {
+        cy.visit("/collection/root");
+        openEllipsisMenuFor("Orders in a dashboard");
+        cy.findByText("Pin this item").click();
       });
-      cy.icon("check").should("not.exist");
-      cy.findByTestId("bulk-action-bar").should("not.be.visible");
-    });
 
-    it.skip("should be possible to select pinned item using checkbox (metabase#15338)", () => {
-      cy.visit("/collection/root");
-      openEllipsisMenuFor("Orders");
-      cy.findByText("Pin this item").click();
-      cy.findByText(/Pinned items/i);
-      selectItemUsingCheckbox("Orders");
-      cy.findByText("1 item selected");
+      it("should be possible to apply bulk selection to items (metabase#14705)", () => {
+        selectItemUsingCheckbox("Orders");
+        cy.findByText("1 item selected").should("be.visible");
+        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
+        cy.findByText("2 items selected").should("be.visible");
+
+        // Select all
+        cy.icon("dash").click();
+        cy.icon("dash").should("not.exist");
+        cy.findByText("4 items selected");
+
+        // Deselect all
+        cy.findByTestId("bulk-action-bar").within(() => {
+          cy.icon("check").click();
+        });
+        cy.icon("check").should("not.exist");
+        cy.findByTestId("bulk-action-bar").should("not.be.visible");
+      });
+
+      it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
+        cy.findByText(/Pinned items/i);
+        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
+        cy.findByText("1 item selected");
+      });
     });
   });
 });
@@ -581,4 +660,13 @@ function selectItemUsingCheckbox(item, icon = "table") {
         .should("be.visible")
         .click();
     });
+}
+
+function getSidebarCollectionChildrenFor(item) {
+  return cy
+    .findByTestId("sidebar")
+    .findByText(item)
+    .closest("a")
+    .parent()
+    .parent();
 }

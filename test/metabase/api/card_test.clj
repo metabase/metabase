@@ -765,8 +765,8 @@
   "Call the collection endpoint for `collection-id` as `user-kwd`. Will return a map with the names of the items as
   keys and their position as the value"
   [user-kwd collection-or-collection-id]
-  (name->position (mt/user-http-request user-kwd :get 200
-                                        (format "collection/%s/items" (u/the-id collection-or-collection-id)))))
+  (name->position (:data (mt/user-http-request user-kwd :get 200
+                                               (format "collection/%s/items" (u/the-id collection-or-collection-id))))))
 
 (defmacro with-ordered-items
   "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
@@ -1459,10 +1459,10 @@
             "d" 1                       ;-> Existing cards in new collection are untouched and position unchanged
             "e" 2
             "f" 3}
-           (merge (name->position (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
-                                                        :model "card" :archived "false"))
-                  (name->position (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
-                                                        :model "card" :archived "false")))))))
+           (merge (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
+                                                               :model "card" :archived "false")))
+                  (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
+                                                               :model "card" :archived "false"))))))))
 
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
   (mt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
@@ -1477,10 +1477,10 @@
     (is (= {"a" nil
             "b" 1
             "c" 2}
-           (merge (name->position (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
-                                                        :model "card" :archived "false"))
-                  (name->position (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
-                                                        :model "card" :archived "false")))))))
+           (merge (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
+                                                               :model "card" :archived "false")))
+                  (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
+                                                               :model "card" :archived "false"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |

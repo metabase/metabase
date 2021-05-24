@@ -83,7 +83,7 @@ export class ExpressionParser extends CstParser {
 
     // an expression without aggregations in it
     $.RULE("expression", () => {
-      $.SUBRULE($.relationalExpression, {
+      $.SUBRULE($.booleanExpression, {
         LABEL: "expression",
         ARGS: ["expression"],
       });
