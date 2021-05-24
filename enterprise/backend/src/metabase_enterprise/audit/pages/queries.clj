@@ -54,13 +54,13 @@
 (s/defn ^:internal-query-fn table
   "A list of all questions."
   ([]
-   (table nil nil nil nil))
-  ([query-string :- (s/maybe s/Str)]
-   (table query-string nil nil nil))
-  ([query-string     :- (s/maybe s/Str)
+   (table nil nil "card.name" "asc"))
+  ([questionFilter :- (s/maybe s/Str)]
+   (table query-string nil "card.name" "asc"))
+  ([questionFilter   :- (s/maybe s/Str)
     collectionFilter :- (s/maybe s/Str)
     sortColumn       :- (s/maybe s/Str)
-    sortOrder        :- (s/maybe (s/enum ["asc" "desc"]))]
+    sortDirection    :- (s/maybe (s/enum ["asc" "desc"]))]
    {:metadata [[:card_id         {:display_name "Card ID",       :base_type :type/Integer, :remapped_to   :card_name}]
                [:card_name       {:display_name "Name",          :base_type :type/Name,    :remapped_from :card_id}]
                [:collection_id   {:display_name "Collection ID", :base_type :type/Integer, :remapped_to   :collection_name}]
@@ -99,8 +99,8 @@
                               [:core_user :u]          [:= :card.creator_id :u.id]
                               :avg_exec_time           [:= :card.id :avg_exec_time.card_id]
                               :card_views              [:= :card.id :card_views.card_id]]
-                  :where     [:= :card.archived false]
-                  :order-by  [[:%lower.card.name :asc]]}
-                 (common/add-search-clause query-string :card.name)
-                 (common/add-sort-clause some shit here)
+                  :where     [:= :card.archived false]}
+                 (common/add-search-clause questionFilter :card.name)
+                 (common/add-search-clause collectionFilter :coll.name)
+                 (common/add-sort-clause sortColumn sortDirection)
                  ))}))

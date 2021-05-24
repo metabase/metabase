@@ -201,6 +201,10 @@
   [expr]
   (hsql/call :case [:not= expr nil] expr :else 0))
 
+(defn lowercase-field
+  "Lowercase a SQL field, to enter into honeysql query"
+  [field]
+  (keyword (str "%lower." (name field))))
 
 (defn add-search-clause
   "Add an appropriate `WHERE` clause to `query` to see if any of the `fields-to-search` match `query-string`.
@@ -212,15 +216,11 @@
                            (cons
                             :or
                             (for [field fields-to-search]
-                              [:like (keyword (str "%lower." (name field))) query-string]))))))
+                              [:like (lowercase-field field) query-string]))))))
 
 (defn add-sort-clause
   [query sort-column sort-direction]
-  (h/some shit))
-
-(defn add-filter-clause
-  [query filter-column filter-string]
-  (h/some shit))
+  (h/merge-order-by query (lowercase-field sort-column) (keyword sort-direction)))
 
 (defn card-public-url
   "Return HoneySQL for a `CASE` statement to return a Card's public URL if the `public_uuid` `field` is non-NULL."
