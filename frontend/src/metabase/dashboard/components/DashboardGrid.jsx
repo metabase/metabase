@@ -16,6 +16,7 @@ import {
   GRID_COLUMNS,
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
+  isMobileBreakpoint,
 } from "metabase/lib/dashboard_grid";
 
 import _ from "underscore";
@@ -296,7 +297,7 @@ export default class DashboardGrid extends Component {
       onTouchStartCapture={this.onDashCardMouseDown}
     >
       {this.renderDashCard(dc, {
-        isMobile: breakpoint === "sm",
+        isMobile: isMobileBreakpoint(breakpoint),
         gridItemWidth,
       })}
     </div>

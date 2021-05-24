@@ -3,11 +3,18 @@ import type { DashCard } from "metabase-types/types/Dashboard";
 export const GRID_WIDTH = 18;
 export const GRID_ASPECT_RATIO = 4 / 3;
 
+const MOBILE_BREAKPOINT = 752;
+
 export const GRID_BREAKPOINTS = {
   lg: 1200,
   md: 996,
-  sm: 752,
+  sm: MOBILE_BREAKPOINT,
 };
+
+export function isMobileBreakpoint(breakpoint) {
+  const width = GRID_BREAKPOINTS[breakpoint];
+  return width <= MOBILE_BREAKPOINT;
+}
 
 export const GRID_COLUMNS = {
   lg: 18,
