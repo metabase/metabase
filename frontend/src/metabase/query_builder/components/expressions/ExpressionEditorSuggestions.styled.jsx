@@ -16,9 +16,12 @@ const liStyledClassName =
 export const LiStyled = styled.li.attrs({ className: liStyledClassName })`
   padding-top: 5px;
   padding-bottom: 5px;
+  color: red;
 `;
 
-const liStyledHighlightedClassName = "text-white bg-brand";
-export const LiStyledHighlighted = styled(LiStyled).attrs({
+const liStyledHighlightedClassName = liStyledClassName + "text-white bg-brand";
+export const LiStyledHighlighted = styled.li.attrs({
   className: liStyledHighlightedClassName,
-});
+})`
+  color: green;
+`;
