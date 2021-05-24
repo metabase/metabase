@@ -45,6 +45,25 @@ describe("scenarios > admin > settings > SSO", () => {
         });
       });
     });
+
+    it("should use the correct endpoint (metabase#16173)", () => {
+      cy.intercept("PUT", "/api/ldap/settings").as("ldapUpdate");
+      cy.findByPlaceholderText("ldap.yourdomain.org").type("foobar");
+      cy.findByPlaceholderText("389").type("888");
+      cy.findByText(/Username or DN/i)
+        .closest("li")
+        .find("input")
+        .type("John");
+      cy.findByText("The password to bind with for the lookup user.")
+        .closest("li")
+        .find("input")
+        .type("Smith");
+      cy.button("Save changes").click();
+      cy.wait("@ldapUpdate").then(interception => {
+        expect(interception.response.statusCode).to.eq(200);
+      });
+      cy.button("Changes saved!");
+    });
   });
 });
 
