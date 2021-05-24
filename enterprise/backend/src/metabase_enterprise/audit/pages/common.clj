@@ -220,7 +220,7 @@
 
 (defn add-sort-clause
   [query sort-column sort-direction]
-  (h/merge-order-by query (lowercase-field sort-column) (keyword sort-direction)))
+  (h/merge-order-by query [(lowercase-field sort-column) (keyword sort-direction)]))
 
 (defn card-public-url
   "Return HoneySQL for a `CASE` statement to return a Card's public URL if the `public_uuid` `field` is non-NULL."
