@@ -79,9 +79,15 @@ export default class DashboardGrid extends Component {
     });
   }
 
-  onLayoutChange = layout => {
-    const { dashboard, setMultipleDashCardAttributes } = this.props;
+  onLayoutChange = ({ layout, breakpoint }) => {
+    // We allow moving and resizing cards only on the desktop
+    // Ensures onLayoutChange triggered by window resize,
+    // won't break the main layout
+    if (breakpoint !== "lg") {
+      return;
+    }
 
+    const { dashboard, setMultipleDashCardAttributes } = this.props;
     const changes = [];
 
     layout.forEach(layoutItem => {

@@ -17,10 +17,27 @@ function GridLayout({
   margin,
   rowHeight,
   isEditing,
+  onLayoutChange,
   ...props
 }) {
   const [currentBreakpoint, setCurrentBreakpoint] = useState(
     ReactGridLayout.utils.getBreakpointFromWidth(breakpoints, gridWidth),
+  );
+
+  const onLayoutChangeWrapped = useCallback(
+    nextLayout => {
+      onLayoutChange({
+        layout: nextLayout,
+        // Calculating the breakpoint right here,
+        // so we're definitely passing the most recent one
+        // Workaround for https://github.com/react-grid-layout/react-grid-layout/issues/889
+        breakpoint: ReactGridLayout.utils.getBreakpointFromWidth(
+          breakpoints,
+          gridWidth,
+        ),
+      });
+    },
+    [onLayoutChange, breakpoints, gridWidth],
   );
 
   const onBreakpointChange = useCallback(newBreakpoint => {
@@ -96,6 +113,7 @@ function GridLayout({
       isResizable={isEditing}
       {...props}
       autoSize={false}
+      onLayoutChange={onLayoutChangeWrapped}
       onBreakpointChange={onBreakpointChange}
       style={style}
     >
