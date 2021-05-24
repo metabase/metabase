@@ -131,9 +131,7 @@
   {status                 (s/maybe s/Str)
    query                  (s/maybe s/Str)
    group_id               (s/maybe su/IntGreaterThanZero)
-   include_deactivated    (s/maybe su/BooleanString)
-   offset-paging/*limit*  (s/maybe su/IntGreaterThanZero)
-   offset-paging/*offset* (s/maybe su/IntGreaterThanOrEqualToZero)}
+   include_deactivated    (s/maybe su/BooleanString)}
   (when (or status include_deactivated)
     (api/check-superuser))
   {:data   (cond-> (db/select

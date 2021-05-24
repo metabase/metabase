@@ -83,8 +83,6 @@
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
   []
-  {offset-paging/*limit*  (s/maybe su/IntGreaterThanZero)
-   offset-paging/*offset* (s/maybe su/IntGreaterThanOrEqualToZero)}
   (api/check-superuser)
   (-> (ordered-groups offset-paging/*limit* offset-paging/*offset*)
       (hydrate :member_count)))

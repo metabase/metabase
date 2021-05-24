@@ -13,8 +13,6 @@
 (api/defendpoint GET "/"
   "Fetch a list of recent tasks stored as Task History"
   []
-  {offset-paging/*limit*  (s/maybe su/IntGreaterThanZero)
-   offset-paging/*offset* (s/maybe su/IntGreaterThanOrEqualToZero)}
   (api/check-superuser)
   {:total  (db/count TaskHistory)
    :limit  offset-paging/*limit*

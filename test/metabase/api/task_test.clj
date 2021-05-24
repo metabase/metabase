@@ -62,12 +62,7 @@
 
   (testing "Should default when only including an offset"
     (is (= (mt/user-http-request :crowberto :get 200 "task/" :limit 50 :offset 100)
-           (mt/user-http-request :crowberto :get 200 "task/" :offset 100))))
-
-  (testing "Check that we don't support a 0 limit, which wouldn't make sense"
-    (is (= {:errors
-           #:offset-paging{:*limit* "value may be nil, or if non-nil, value must be an integer greater than zero."}}
-           (mt/user-http-request :crowberto :get 400 "task/" :limit 0 :offset 100)))))
+           (mt/user-http-request :crowberto :get 200 "task/" :offset 100)))))
 
 (deftest paging-test
   (testing "Check that paging information is applied when provided and included in the response"

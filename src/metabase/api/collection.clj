@@ -204,27 +204,27 @@
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
   (-> (assoc (collection/effective-children-query
-           collection
-           [:= :archived archived?]
-           [:= :namespace (u/qualified-name collection-namespace)])
-         ; We get from the effective-children-query a normal set of columns selected:
-         ; want to make it fit the others to make UNION ALL work
-         :select [:id
-                  :name
-                  :description
-                  [nil :collection_position]
-                  [nil :display]
-                  [(hx/literal "collection") :model]])
-      ; the nil indicates that collections are never pinned.
+               collection
+               [:= :archived archived?]
+               [:= :namespace (u/qualified-name collection-namespace)])
+             ;; We get from the effective-children-query a normal set of columns selected:
+             ;; want to make it fit the others to make UNION ALL work
+             :select [:id
+                      :name
+                      :description
+                      [nil :collection_position]
+                      [nil :display]
+                      [(hx/literal "collection") :model]])
+      ;; the nil indicates that collections are never pinned.
       (h/merge-where (pinned-state->clause pinned-state nil))))
 
 (defmethod post-process-collection-children :collection
   [_ rows]
   (for [row rows]
-    ; Go through this rigamarole instead of hydration because we
-    ; don't get models back from ulterior over-query
-    ; Previous examination with logging to DB says that there's no N+1 query for this.
-    ; However, this was only tested on H2 and Postgres
+    ;; Go through this rigamarole instead of hydration because we
+    ;; don't get models back from ulterior over-query
+    ;; Previous examination with logging to DB says that there's no N+1 query for this.
+    ;; However, this was only tested on H2 and Postgres
     (assoc (dissoc row :collection_position :display)
            :can_write
            (mi/can-write? Collection (:id row)))))
@@ -258,7 +258,7 @@
     {:total  (-> (db/query total-query) first :count)
      :data   (-> (db/query rows-query) post-process-rows)
      :limit  offset-paging/*limit*
-     :offset offset-paging/*limit*
+     :offset offset-paging/*offset*
      :models models}))
 
 (s/defn ^:private collection-children
@@ -294,7 +294,7 @@
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
-                   when `all`, return everything."
+                   when `all`, return everything. By default returns everything"
   [id models archived pinned_state]
   {models       (s/maybe models-schema)
    archived     (s/maybe su/BooleanString)
