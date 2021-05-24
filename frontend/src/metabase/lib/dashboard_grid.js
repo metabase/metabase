@@ -4,6 +4,18 @@ export const GRID_WIDTH = 18;
 export const GRID_ASPECT_RATIO = 4 / 3;
 export const GRID_MARGIN = 6;
 
+export const GRID_BREAKPOINTS = {
+  lg: 1200,
+  md: 996,
+  sm: 752,
+};
+
+export const GRID_COLUMNS = {
+  lg: 18,
+  md: 12,
+  sm: 1,
+};
+
 export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
 
 export const MIN_ROW_HEIGHT = 54;

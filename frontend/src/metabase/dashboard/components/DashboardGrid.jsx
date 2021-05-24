@@ -13,6 +13,8 @@ import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
   GRID_MARGIN,
+  GRID_BREAKPOINTS,
+  GRID_COLUMNS,
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
@@ -21,6 +23,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import GridLayout from "./grid/GridLayout";
+import { adaptLayoutForBreakpoint } from "./grid/utils";
 import AddSeriesModal from "./AddSeriesModal";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
@@ -34,7 +37,7 @@ export default class DashboardGrid extends Component {
     super(props, context);
 
     this.state = {
-      layout: this.getLayout(props),
+      layouts: this.getLayouts(props),
       dashcards: this.getSortedDashcards(props),
       removeModalDashCard: null,
       addSeriesModalDashCard: null,
@@ -72,7 +75,7 @@ export default class DashboardGrid extends Component {
   UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({
       dashcards: this.getSortedDashcards(nextProps),
-      layout: this.getLayout(nextProps),
+      layouts: this.getLayouts(nextProps),
     });
   }
 
@@ -145,8 +148,29 @@ export default class DashboardGrid extends Component {
     };
   }
 
-  getLayout(props) {
-    return props.dashboard.ordered_cards.map(this.getLayoutForDashCard);
+  getLayouts({ dashboard }) {
+    const lg = dashboard.ordered_cards.map(this.getLayoutForDashCard);
+    const layout = { lg };
+
+    layout.md = adaptLayoutForBreakpoint({
+      layout,
+      breakpoints: GRID_BREAKPOINTS,
+      targetBreakpoint: "md",
+      closestBreakpoint: "lg",
+      columns: GRID_COLUMNS.md,
+      compactType: "vertical",
+    });
+
+    layout.sm = adaptLayoutForBreakpoint({
+      layout,
+      breakpoints: GRID_BREAKPOINTS,
+      targetBreakpoint: "sm",
+      closestBreakpoint: "md",
+      columns: GRID_COLUMNS.sm,
+      compactType: "vertical",
+    });
+
+    return layout;
   }
 
   renderRemoveModal() {
@@ -300,7 +324,7 @@ export default class DashboardGrid extends Component {
 
   renderGrid() {
     const { dashboard, width } = this.props;
-    const { layout } = this.state;
+    const { layouts } = this.state;
     const rowHeight = Math.max(
       Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO),
       MIN_ROW_HEIGHT,
@@ -311,8 +335,9 @@ export default class DashboardGrid extends Component {
           "Dash--editing": this.isEditingLayout,
           "Dash--dragging": this.state.isDragging,
         })}
-        layout={layout}
-        cols={GRID_WIDTH}
+        layouts={layouts}
+        breakpoints={GRID_BREAKPOINTS}
+        cols={GRID_COLUMNS}
         width={width}
         margin={GRID_MARGIN}
         containerPadding={[0, 0]}
@@ -341,13 +366,7 @@ export default class DashboardGrid extends Component {
     const { width } = this.props;
     return (
       <div className="flex layout-centered">
-        {width === 0 ? (
-          <div />
-        ) : width <= 752 ? (
-          this.renderMobile()
-        ) : (
-          this.renderGrid()
-        )}
+        {width > 0 ? this.renderGrid() : <div />}
         {this.renderRemoveModal()}
         {this.renderAddSeriesModal()}
       </div>
