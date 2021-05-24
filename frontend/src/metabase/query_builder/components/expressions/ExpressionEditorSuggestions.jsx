@@ -64,18 +64,22 @@ export default class ExpressionEditorSuggestions extends React.Component {
             const shouldRenderSectionTitle =
               i === 0 || suggestion.type !== suggestions[i - 1].type;
 
+            const sectionTitle =
+              SUGGESTION_SECTION_NAMES[suggestion.type] || suggestion.type;
+
+            const isHighlighted = i === highlightedIndex;
+
             // insert section title. assumes they're sorted by type
             return (
               <React.Fragment key={i}>
                 {shouldRenderSectionTitle && (
                   <li className="mx2 h6 text-uppercase text-bold text-medium py1 pt2">
-                    {SUGGESTION_SECTION_NAMES[suggestion.type] ||
-                      suggestion.type}
+                    {sectionTitle}
                   </li>
                 )}
                 <li
                   ref={r => {
-                    if (i === highlightedIndex) {
+                    if (isHighlighted) {
                       this._selectedRow = r;
                     }
                   }}
@@ -83,7 +87,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                   className={cx(
                     "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit",
                     {
-                      "text-white bg-brand": i === highlightedIndex,
+                      "text-white bg-brand": isHighlighted,
                     },
                   )}
                   onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
@@ -93,7 +97,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                       {suggestion.name.slice(0, suggestion.range[0])}
                       <span
                         className={cx("text-brand text-bold hover-child", {
-                          "text-white bg-brand": i === highlightedIndex,
+                          "text-white bg-brand": isHighlighted,
                         })}
                       >
                         {suggestion.name.slice(
