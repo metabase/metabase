@@ -5,7 +5,6 @@
             [metabase.models.task-history :as task-history :refer [TaskHistory]]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.task :as task]
-            [metabase.util.schema :as su]
             [toucan.db :as db]))
 
 
