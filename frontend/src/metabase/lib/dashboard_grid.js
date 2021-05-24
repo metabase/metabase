@@ -2,7 +2,6 @@ import type { DashCard } from "metabase-types/types/Dashboard";
 
 export const GRID_WIDTH = 18;
 export const GRID_ASPECT_RATIO = 4 / 3;
-export const GRID_MARGIN = 6;
 
 export const GRID_BREAKPOINTS = {
   lg: 1200,

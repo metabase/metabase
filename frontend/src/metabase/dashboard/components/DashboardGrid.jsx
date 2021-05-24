@@ -12,7 +12,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
-  GRID_MARGIN,
   GRID_BREAKPOINTS,
   GRID_COLUMNS,
   DEFAULT_CARD_SIZE,
@@ -27,9 +26,6 @@ import { adaptLayoutForBreakpoint } from "./grid/utils";
 import AddSeriesModal from "./AddSeriesModal";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
-
-const MOBILE_ASPECT_RATIO = 3 / 2;
-const MOBILE_TEXT_CARD_ROW_HEIGHT = 60;
 
 @ExplicitSize()
 export default class DashboardGrid extends Component {
@@ -289,42 +285,6 @@ export default class DashboardGrid extends Component {
     } = this.props;
     return (
       isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null
-    );
-  }
-
-  renderMobile() {
-    const { width } = this.props;
-    const { dashcards } = this.state;
-    return (
-      <div
-        className={cx("DashboardGrid", {
-          "Dash--editing": this.isEditingLayout,
-          "Dash--dragging": this.state.isDragging,
-        })}
-      >
-        {dashcards &&
-          dashcards.map(dc => (
-            <div
-              key={dc.id}
-              className="DashCard"
-              style={{
-                width: width,
-                marginTop: 10,
-                marginBottom: 10,
-                height:
-                  // "text" cards should get a height based on their dc sizeY
-                  dc.card.display === "text"
-                    ? MOBILE_TEXT_CARD_ROW_HEIGHT * dc.sizeY
-                    : width / MOBILE_ASPECT_RATIO,
-              }}
-            >
-              {this.renderDashCard(dc, {
-                isMobile: true,
-                gridItemWidth: width,
-              })}
-            </div>
-          ))}
-      </div>
     );
   }
 
