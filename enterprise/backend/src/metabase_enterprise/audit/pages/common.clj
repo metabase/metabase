@@ -219,6 +219,9 @@
                               [:like (lowercase-field field) query-string]))))))
 
 (defn add-sort-clause
+  "Add an `ORDER BY` clause to `query` on `sort-column` and `sort-direction`.
+
+  Most queries will just have explicit default `ORDER BY` clauses"
   [query sort-column sort-direction]
   (h/merge-order-by query [(lowercase-field sort-column) (keyword sort-direction)]))
 

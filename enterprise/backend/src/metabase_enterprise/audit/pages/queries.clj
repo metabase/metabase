@@ -73,8 +73,7 @@
                [:user_name       {:display_name "Created By",    :base_type :type/Text,    :remapped_from :user_id}]
                [:public_link     {:display_name "Public Link",   :base_type :type/URL}]
                [:cache_ttl       {:display_name "Cache TTL",     :base_type :type/Number}]
-               [:total_views     {:display_name "Views",         :base_type :type/Integer}]
-               ]
+               [:total_views     {:display_name "Views",         :base_type :type/Integer}]]
     :results  (common/reducible-query
                 (->
                  {:with      [cards/avg-exec-time
@@ -102,5 +101,4 @@
                   :where     [:= :card.archived false]}
                  (common/add-search-clause questionFilter :card.name)
                  (common/add-search-clause collectionFilter :coll.name)
-                 (common/add-sort-clause sortColumn sortDirection)
-                 ))}))
+                 (common/add-sort-clause sortColumn sortDirection)))}))
