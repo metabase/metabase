@@ -13,6 +13,7 @@
             [toucan.db :as db]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.store :as qp.store]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.models.visualization-settings-test :as mb.viz-test]
             [metabase.shared.util.log :as log]
@@ -263,6 +264,15 @@
                                :sparksql))  ; foreign-keys is not supported by this driver
 
       (let [fingerprint (ts/with-world
+                          (qp.store/fetch-and-store-database! db-id)
+                          (qp.store/fetch-and-store-tables! [table-id
+                                                             table-id-categories
+                                                             table-id-users
+                                                             table-id-checkins])
+                          #_(qp.store/fetch-and-store-fields! [table-id
+                                                             table-id-categories
+                                                             table-id-users
+                                                             table-id-checkins])
                           (dump dump-dir (:email (test-users/fetch-user :crowberto)) {:only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
@@ -273,7 +283,10 @@
                                                                 card-id-root-to-collection
                                                                 card-id-collection-to-root
                                                                 card-id-template-tags
-                                                                card-id-with-native-snippet])
+                                                                card-id-filter-agg
+                                                                card-id-temporal-unit
+                                                                card-id-with-native-snippet
+                                                                card-id-temporal-unit])
                            :collections   (gather-collections [card-id
                                                                card-arch-id
                                                                card-id-root
@@ -283,15 +296,25 @@
                                                                card-id-root-to-collection
                                                                card-id-collection-to-root
                                                                card-id-template-tags
-                                                               card-id-with-native-snippet])
+                                                               card-id-filter-agg
+                                                               card-id-temporal-unit
+                                                               card-id-with-native-snippet
+                                                               card-id-temporal-unit])
                            :entities      [[Database           (Database db-id)]
                                            [Table              (Table table-id)]
+                                           [Table              (Table table-id-categories)]
+                                           [Table              (Table table-id-users)]
+                                           [Table              (Table table-id-checkins)]
                                            [Field              (Field numeric-field-id)]
                                            [Field              (Field name-field-id)]
                                            [Field              (Field category-field-id)]
                                            [Field              (Field latitude-field-id)]
                                            [Field              (Field longitude-field-id)]
                                            [Field              (Field category-pk-field-id)]
+                                           [Field              (Field date-field-id)]
+                                           [Field              (Field user-id-field-id)]
+                                           [Field              (Field users-pk-field-id)]
+                                           [Field              (Field last-login-field-id)]
                                            [Collection         (Collection collection-id)]
                                            [Collection         (Collection collection-id-nested)]
                                            [Collection         (Collection personal-collection-id)]
@@ -309,10 +332,12 @@
                                            [Card               (Card card-id-native-query)]
                                            [DashboardCard      (DashboardCard dashcard-id)]
                                            [DashboardCard      (DashboardCard dashcard-top-level-click-id)]
-                                           [DashboardCard (DashboardCard dashcard-with-click-actions)]
+                                           [DashboardCard      (DashboardCard dashcard-with-click-actions)]
                                            [Card               (Card card-id-root-to-collection)]
                                            [Card               (Card card-id-collection-to-root)]
                                            [Card               (Card card-id-template-tags)]
+                                           [Card               (Card card-id-filter-agg)]
+                                           [Card               (Card card-id-temporal-unit)]
                                            [Pulse              (Pulse pulse-id)]
                                            [DashboardCard      (DashboardCard dashcard-with-textbox-id)]
                                            [NativeQuerySnippet (NativeQuerySnippet snippet-id)]

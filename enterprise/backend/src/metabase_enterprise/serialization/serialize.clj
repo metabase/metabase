@@ -54,7 +54,7 @@
         ;; source-field is also used within parameter mapping dimensions
         ;; example relevant clause - [:field 2 {:source-field 1}]
         {:source-field (id :guard integer?)}
-        {:source-field (fully-qualified-name Field id)}
+        (assoc &match :source-field (fully-qualified-name Field id))
 
         [:metric (id :guard integer?)]
         [:metric (fully-qualified-name Metric id)]

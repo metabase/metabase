@@ -3,6 +3,7 @@
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Field Metric
                                      NativeQuerySnippet Pulse PulseCard Segment Table User]]
             [metabase.models.collection :as collection]
+            [metabase.query-processor.store :as qp.store]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
             [metabase.test.data :as data]
@@ -18,6 +19,13 @@
       Field
       (dissoc :id)
       (assoc :table_id table-id)))
+
+(defn temp-table [from-tbl-id db-id]
+  (-> from-tbl-id
+      Table
+      (dissoc :id)
+      (update :display_name #(str "Temp " %))
+      (assoc :db_id db-id)))
 
 (def virtual-card {:name                   nil
                    :display                "text"
@@ -44,14 +52,10 @@
   `(with-temp-dpc [Database   [{~'db-id :id} (into {:name temp-db-name} (-> (data/id)
                                                                             Database
                                                                             (dissoc :id :features :name)))]
-                   Table      [{~'table-id :id :as ~'table} (-> (data/id :venues)
-                                                              Table
-                                                              (dissoc :id)
-                                                              (assoc :db_id ~'db-id))]
-                   Table      [{~'table-id-categories :id :as ~'table} (-> (data/id :categories)
-                                                                           Table
-                                                                           (dissoc :id)
-                                                                           (assoc :db_id ~'db-id))]
+                   Table      [{~'table-id :id :as ~'table} (temp-table (data/id :venues) ~'db-id)]
+                   Table      [{~'table-id-categories :id}  (temp-table (data/id :categories) ~'db-id)]
+                   Table      [{~'table-id-users :id}       (temp-table (data/id :users) ~'db-id)]
+                   Table      [{~'table-id-checkins :id}    (temp-table (data/id :checkins) ~'db-id)]
                    Field      [{~'numeric-field-id :id}     (temp-field (data/id :venues :price) ~'table-id)]
                    Field      [{~'name-field-id :id}        (temp-field (data/id :venues :name) ~'table-id)]
                    Field      [{~'latitude-field-id :id}    (temp-field (data/id :venues :latitude) ~'table-id)]
@@ -60,6 +64,14 @@
                    Field      [{~'category-pk-field-id :id} (temp-field
                                                              (data/id :categories :id)
                                                              ~'table-id-categories)]
+                   Field      [{~'date-field-id :id}        (temp-field (data/id :checkins :date) ~'table-id-checkins)]
+                   Field      [{~'users-pk-field-id :id}    (temp-field (data/id :users :id)
+                                                                        ~'table-id-users)]
+                   Field      [{~'user-id-field-id :id}     (-> (temp-field (data/id :checkins :user_id)
+                                                                            ~'table-id-checkins)
+                                                                (assoc :fk_target_field_id ~'users-pk-field-id))]
+                   Field      [{~'last-login-field-id :id}  (temp-field (data/id :users :last_login)
+                                                                        ~'table-id-users)]
                    Collection [{~'collection-id :id} {:name "My Collection"}]
                    Collection [{~'collection-id-nested :id} {:name "My Nested Collection"
                                                              :location (format "/%s/" ~'collection-id)}]
@@ -81,7 +93,6 @@
                                                   :table_id ~'table-id
                                                   :definition {:source-table ~'table-id
                                                                :aggregation [:sum [:field ~'numeric-field-id nil]]}}]
-
                    Segment    [{~'segment-id :id} {:name "My Segment"
                                                    :table_id ~'table-id
                                                    :definition {:source-table ~'table-id
@@ -97,8 +108,8 @@
                                                 :database ~'db-id
                                                 :query {:source-table ~'table-id
                                                         :filter [:= [:field ~'category-field-id nil] 2]
-                                                        :aggregation [:sum [:field-id ~'numeric-field-id]]
-                                                        :breakout [[:field-id ~'category-field-id]]
+                                                        :aggregation [:sum [:field ~'numeric-field-id nil]]
+                                                        :breakout [[:field ~'category-field-id nil]]
                                                         :joins [{:source-table ~'table-id-categories
                                                                  :alias "cat"
                                                                  :fields    "all"
@@ -124,7 +135,7 @@
                                 :dataset_query {:type :query
                                                 :database ~'db-id
                                                 :query {:source-table ~'table-id}
-                                                :expressions {"Price Known" [:> [:field-id ~'numeric-field-id] 0]}}}]
+                                                :expressions {"Price Known" [:> [:field ~'numeric-field-id nil] 0]}}}]
                    Card       [{~'card-id-nested :id}
                                {:table_id ~'table-id
                                 :name "My Nested Card"
@@ -255,10 +266,25 @@
                                                                             [:count]
                                                                             {:name "num_per_type"}]]
                                                                           :breakout
-                                                                          [[:field-id ~'category-field-id]]}
+                                                                          [[:field ~'category-field-id nil]]}
                                                            :filter [:>
                                                                     [:field-literal "num_per_type" :type/Integer]
                                                                     4]}}}]
+                   Card       [{~'card-id-temporal-unit :id}
+                               {:table_id ~'table-id
+                                :name "Card With Temporal Unit in Field Clause"
+                                :collection_id ~'collection-id
+                                :dataset_query {:type     :query
+                                                :database ~'db-id
+                                                :query    {:source-query {:source-table
+                                                                          ~'table-id-checkins
+                                                                          :aggregation
+                                                                          [[:count]]
+                                                                          :breakout
+                                                                          [[:field ~'last-login-field-id {:source-field
+                                                                                                          ~'user-id-field-id
+                                                                                                          :temporal-unit
+                                                                                                          :month}]]}}}}]
                    NativeQuerySnippet [{~'snippet-id :id}
                                        {:content     "price > 2"
                                         :description "Predicate on venues table for price > 2"
@@ -298,7 +324,7 @@
                                                                    :type         "snippet"
                                                                    :snippet-name "A Venues"
                                                                    :snippet-id   ~'nested-snippet-id}}}}}]]
-     ~@body))
+     (qp.store/with-store ~@body)))
 
 ;; Don't memoize as IDs change in each `with-world` context
 (alter-var-root #'names/path->context (fn [_] #'names/path->context*))

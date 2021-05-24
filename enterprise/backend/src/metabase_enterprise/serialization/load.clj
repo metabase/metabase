@@ -81,7 +81,7 @@
     ;; source-field is also used within parameter mapping dimensions
     ;; example relevant clause - [:field 2 {:source-field 1}]
     {:source-field (fully-qualified-name :guard string?)}
-    {:source-field (:field (fully-qualified-name->context fully-qualified-name))}
+    (assoc &match :source-field (:field (fully-qualified-name->context fully-qualified-name)))
 
     [:metric (fully-qualified-name :guard string?)]
     [:metric (:metric (fully-qualified-name->context fully-qualified-name))]
