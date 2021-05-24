@@ -9,7 +9,6 @@
             [metabase.models.setting :as setting]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
             [metabase.util.honeysql-extensions :as hx]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
@@ -474,22 +473,16 @@
 (deftest expressions-and-coercions-test
   (mt/test-drivers (conj (sql-jdbc.tu/sql-jdbc-drivers) :bigquery)
     (testing "Don't cast in both inner select and outer select when expression (#12430)"
-      (mt/with-temp-copy-of-db
-        (let [price-field-id (data/id :venues :price)]
-          (db/update! Field price-field-id {:coercion_strategy :Coercion/UNIXSeconds->DateTime
-                                            :effective_type    :type/DateTime})
-          (let [results (qp/process-query {:database   (data/id)
-                                           :query      {:source-table (data/id :venues)
+      (let [price-field-id (mt/id :venues :price)]
+        (mt/with-temp-vals-in-db Field price-field-id {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                                       :effective_type    :type/DateTime}
+          (let [results (qp/process-query {:database   (mt/id)
+                                           :query      {:source-table (mt/id :venues)
                                                         :expressions  {:test ["*" 1 1]}
                                                         :fields       [[:field price-field-id nil]
                                                                        [:expression "test"]]}
-                                           :middleware {:format-rows? false}
                                            :type       "query"})]
-            (is (schema= [(s/one (if (#{:sqlite} driver/*driver*)
-                                   s/Str
-                                   (s/pred #(instance? java.time.temporal.Temporal %)))
-                                 "date")
-                          (s/one (if (#{:oracle} driver/*driver*)
-                                   (s/pred decimal? 'decimal) ;; oracle returns 1M annoyingly
-                                   s/Int) "expression")]
-                         (-> results :data :rows first)))))))))
+            ;; middleware turns date objects into strings, so just make sure they are "date" strings
+            (is (schema= [(s/one (s/pred #(re-matches #"1970-.*Z" %)) "date")
+                          (s/one s/Int "expression")]
+                         (-> results mt/rows first)))))))))
