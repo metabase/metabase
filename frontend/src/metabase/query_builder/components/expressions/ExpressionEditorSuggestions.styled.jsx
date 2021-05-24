@@ -19,10 +19,13 @@ const listItemStyledClassName =
 export const ListItemStyled = styled.li.attrs({
   className: listItemStyledClassName,
 })`
-  color: ${({ isHighlighted }) =>
-    isHighlighted ? color("white") : color("brand")};
-  background-color: ${({ isHighlighted }) =>
-    isHighlighted ? color("brand") : "inherit"};
   padding-top: 5px;
   padding-bottom: 5px;
+
+  ${({ isHighlighted }) =>
+    isHighlighted &&
+    `
+      color: ${color("white")};
+      background-color: ${color("brand")};
+  `})}
 `;
