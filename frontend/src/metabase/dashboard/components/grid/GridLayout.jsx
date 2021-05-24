@@ -31,13 +31,13 @@ function GridLayout({
   const renderItem = useCallback(
     item => {
       const itemLayout = layout.find(l => String(l.i) === String(item.id));
-      const gridItemWidth = cellSize.width * itemLayout.w - margin;
+      const gridItemWidth = cellSize.width * itemLayout.w;
       return itemRenderer({
         item,
         gridItemWidth,
       });
     },
-    [layout, cellSize, margin, itemRenderer],
+    [layout, cellSize, itemRenderer],
   );
 
   const height = useMemo(() => {
