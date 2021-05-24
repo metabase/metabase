@@ -213,13 +213,6 @@
        (dissoc :password)
        (assoc :ldap_auth true))))
 
-(s/defn update-user!
-  "Update the first and last name of a user created with SSO, in case the name returned by the SSO provider has changed"
-  [user-id first-name last-name]
-  (db/update! User user-id
-              :first_name first-name
-              :last_name last-name))
-
 (defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]

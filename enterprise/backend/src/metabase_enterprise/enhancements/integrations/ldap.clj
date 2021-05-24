@@ -8,7 +8,7 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru]]
+            [metabase.util.i18n :refer [deferred-tru trs]]
             [metabase.util.schema :as su]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
@@ -43,14 +43,23 @@
   [{:keys [attributes first-name last-name email]}]
   (when-let [user (db/select-one [User :id :last_login :first_name :last_name :login_attributes]
                                  :%lower.email (u/lower-case-en email))]
-            (let [syncable-attributes (syncable-user-attributes attributes)]
-              (do
-                (and (not= (:login_attributes user) syncable-attributes)
-                     (db/update! User (:id user) :login_attributes syncable-attributes))
-                (user/update-user! (:id user)
-                                   (default-impl/updated-name-part first-name (:first_name user))
-                                   (default-impl/updated-name-part last-name (:last_name user)))
-              (db/select-one [User :id :last_login] :id (:id user)))))) ; Reload updated user
+            (let [syncable-attributes (syncable-user-attributes attributes)
+                  old-first-name (:first_name user)
+                  old-last-name (:last_name user)
+                  new-first-name (default-impl/updated-name-part first-name old-first-name)
+                  new-last-name (default-impl/updated-name-part last-name old-last-name)
+                  user-changes (merge
+                                (when-not (= syncable-attributes (:login_attributes user))
+                                          {:login_attributes syncable-attributes})
+                                (when-not (= new-first-name old-first-name)
+                                          {:first_name new-first-name})
+                                (when-not (= new-last-name old-last-name)
+                                          {:last_name new-last-name}))]
+              (if (seq user-changes)
+                (do
+                  (db/update! User (:id user) user-changes)
+                  (db/select-one [User :id :last_login] :id (:id user))) ; Reload updated user
+                user))))
 
 (s/defn ^:private find-user* :- (s/maybe EEUserInfo)
   [ldap-connection :- LDAPConnectionPool
@@ -65,8 +74,8 @@
    {:keys [sync-groups?], :as settings}                                  :- i/LDAPSettings]
   (let [user (or (attribute-synced-user user-info)
                  (user/create-new-ldap-auth-user!
-                  {:first_name       (or first-name "Unknown")
-                   :last_name        (or last-name "Unknown")
+                  {:first_name       (or first-name (trs "Unknown"))
+                   :last_name        (or last-name (trs "Unknown"))
                    :email            email
                    :login_attributes attributes}))]
     (u/prog1 user
