@@ -30,9 +30,10 @@ function QuestionActivityTimeline({
   users,
 }) {
   const usersById = _.indexBy(users, "id");
+  const canWrite = question.canWrite();
   const events = [
     ...getModerationEvents(question, usersById),
-    ...getRevisionEvents(revisions),
+    ...getRevisionEvents(revisions, canWrite),
   ];
 
   return (
@@ -59,10 +60,8 @@ export default _.compose(
   }),
   connect(
     null,
-    () => {
-      return {
-        revertToRevision,
-      };
+    {
+      revertToRevision,
     },
   ),
 )(QuestionActivityTimeline);
@@ -71,11 +70,13 @@ export default _.compose(
 function renderQuestionActivityTimelineFooter(item, revertToRevision) {
   if (item.showFooter) {
     return (
-      <div className="py1 flex justify-end">
+      <div className="pt2 pb1">
         <ActionButton
           actionFn={() => revertToRevision(item.revision)}
-          className="Button-borderless text-error"
-          normalText={t`Revert`}
+          className="p0 borderless text-accent3 text-underline-hover bg-transparent-hover"
+          successClassName=""
+          failedClassName=""
+          normalText={t`Revert back`}
           activeText={t`Reverting…`}
           failedText={t`Revert failed`}
           successText={t`Reverted`}

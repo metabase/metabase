@@ -10,9 +10,9 @@ export function getRevisionDescription(revision) {
   }
 }
 
-export function getRevisionEvents(revisions) {
+export function getRevisionEvents(revisions, canWrite) {
   return revisions.map((revision, index) => {
-    // const canRevert = question.canWrite();
+    const canRevert = canWrite && index !== 0;
     const username = revision.user.common_name;
     return {
       timestamp: new Date(revision.timestamp).valueOf(),
@@ -21,8 +21,7 @@ export function getRevisionEvents(revisions) {
         ? t`${username} created this`
         : t`${username} edited this`,
       description: getRevisionDescription(revision),
-      // showFooter: index !== 0 && canRevert,
-      showFooter: false,
+      showFooter: canRevert,
       revision,
     };
   });

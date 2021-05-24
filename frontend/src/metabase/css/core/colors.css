@@ -380,6 +380,11 @@
   color: var(--color-accent2);
 }
 
+.text-accent3,
+.text-accent3:hover {
+  color: var(--color-accent3);
+}
+
 .text-accent5,
 .text-accent5:hover {
   color: var(--color-accent5);

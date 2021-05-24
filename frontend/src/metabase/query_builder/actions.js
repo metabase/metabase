@@ -751,12 +751,11 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   };
 });
 
-// reloadCard
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    // clone
-    const card = Utils.copy(getOriginalCard(getState()));
+    await dispatch(softReloadCard());
+    const card = getCard(getState());
 
     dispatch(loadMetadataForCard(card));
 
@@ -1408,7 +1407,13 @@ export async function createModerationRequest({ type, cardId, description }) {
   return softReloadCard();
 }
 
-export async function revertToRevision(revision) {
-  await revision.revert();
-  return reloadCard();
-}
+export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
+export const revertToRevision = createThunkAction(
+  REVERT_TO_REVISION,
+  revision => {
+    return async dispatch => {
+      await revision.revert();
+      await dispatch(reloadCard());
+    };
+  },
+);
