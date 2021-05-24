@@ -10,18 +10,3 @@ const sectionTitleClassName =
 export const SectionTitle = styled.li.attrs({
   className: sectionTitleClassName,
 })``;
-
-const liStyledClassName =
-  "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit";
-export const LiStyled = styled.li.attrs({ className: liStyledClassName })`
-  padding-top: 5px;
-  padding-bottom: 5px;
-  color: red;
-`;
-
-const liStyledHighlightedClassName = liStyledClassName + "text-white bg-brand";
-export const LiStyledHighlighted = styled.li.attrs({
-  className: liStyledHighlightedClassName,
-})`
-  color: green;
-`;
