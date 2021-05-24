@@ -1,12 +1,30 @@
-(ns metabase.types.coercion-hierarchies)
+(ns metabase.types.coercion-hierarchies
+  (:require [clojure.set :as set]))
 
-(def ^:private strategy->allowed-base-types
-  "Map of `coercion-strategy -> #{allowed-base-type}`."
+;; these need to be defonce so we don't drop our hierarchies, but defonce doesn't support docstrings:
+;; https://clojure.atlassian.net/browse/CLJ-1148
+
+(defonce ^:private
+  ^{:doc "Map of `coercion-strategy -> #{allowed-base-type}`."}
+  strategy->allowed-base-types
   (atom {}))
 
-(def ^:private strategy->effective-type
-  "Map of coercion strategy -> resulting effective-type"
+(defonce ^:private
+  ^{:doc "Map of coercion strategy -> resulting effective-type"}
+  strategy->effective-type
   (atom {}))
+
+(defonce ^:private
+  ^{:doc "Map of base-type -> #{strategy} which are not inheritable. Eg, binary fields are marked `type/*` and may be coerced
+  to timestamps with `:Coercion/YYYYMMDDHHMMSSBytes->Temporal` but we don't want all children of `type/*` to be
+  coerced as such."}
+  non-descending-base-type->strategy
+  (atom {}))
+
+(defn non-descending-strategies
+  "Get a map of strategies -> allowed-base-types. These must live outside of the hierarchy."
+  []
+  @non-descending-base-type->strategy)
 
 (defn effective-type-for-strategy
   "Gets the effective type for strategy. Essentially a getter over the
@@ -14,11 +32,24 @@
   [strategy]
   (get @strategy->effective-type strategy))
 
+(defn- one-or-many
+  "Ensure x is a sequential collection. Copied from metabase.util as that namespace is not amenable to cljc."
+  [x]
+  (if ((some-fn sequential? set? nil?) x) x [x]))
+
 (defn define-types!
   "Define the `base-type-or-types` allowed and the resulting `effective-type` of a `coercion-strategy`."
   [coercion-strategy base-type-or-types effective-type]
-  (let [base-types (set (if (coll? base-type-or-types) base-type-or-types [base-type-or-types]))]
+  (let [base-types (set (one-or-many base-type-or-types))]
     (swap! strategy->allowed-base-types assoc coercion-strategy base-types))
+  (swap! strategy->effective-type assoc coercion-strategy effective-type))
+
+(defn define-non-inheritable-type!
+  "Define coercion strategies that should not exist for all of the descendants of base-type-or-types."
+  [coercion-strategy base-type-or-types effective-type]
+  (swap! non-descending-base-type->strategy
+         (partial merge-with set/union)
+         (zipmap (one-or-many base-type-or-types) (repeat #{coercion-strategy})))
   (swap! strategy->effective-type assoc coercion-strategy effective-type))
 
 (defn- build-hierarchy [pairs]
