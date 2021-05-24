@@ -3,12 +3,16 @@
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.field :refer [Field]]
             [metabase.models.setting :as setting]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.util.honeysql-extensions :as hx]
-            [pretty.core :refer [PrettyPrintable]])
+            [pretty.core :refer [PrettyPrintable]]
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import metabase.util.honeysql_extensions.Identifier))
 
 (deftest process-mbql-query-keys-test
@@ -465,3 +469,19 @@
                               :alias        "CategoriesStats"
                               :fields       :all}]
                :limit       3}))))))
+
+(deftest expressions-and-coercions-test
+  (mt/test-drivers (conj (sql-jdbc.tu/sql-jdbc-drivers) :bigquery)
+    (testing "Don't cast in both inner select and outer select when expression (#12430)"
+      (let [price-field-id (mt/id :venues :price)]
+        (mt/with-temp-vals-in-db Field price-field-id {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                                       :effective_type    :type/DateTime}
+          (let [results (qp/process-query {:database   (mt/id)
+                                           :query      {:source-table (mt/id :venues)
+                                                        :expressions  {:test ["*" 1 1]}
+                                                        :fields       [[:field price-field-id nil]
+                                                                       [:expression "test"]]}
+                                           :type       "query"})]
+            (is (schema= [(s/one s/Str "date")
+                          (s/one s/Num "expression")]
+                         (-> results mt/rows first)))))))))

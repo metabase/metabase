@@ -14,6 +14,7 @@ import {
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getParametersWithExtras } from "metabase/meta/Card";
+import { normalizeParameterValue } from "metabase/meta/Parameter";
 
 import Utils from "metabase/lib/utils";
 
@@ -144,7 +145,14 @@ const getLastRunParameterValues = createSelector(
 const getNextRunParameterValues = createSelector(
   [getParameters],
   parameters =>
-    parameters.map(parameter => parameter.value).filter(p => p !== undefined),
+    parameters
+      .map(parameter =>
+        // parameters are "normalized" immediately before a query run, so in order
+        // to compare current parameters to previously-used parameters we need
+        // to run parameters through this normalization function
+        normalizeParameterValue(parameter.type, parameter.value),
+      )
+      .filter(p => p !== undefined),
 );
 
 // Certain differences in a query should be ignored. `normalizeQuery`
