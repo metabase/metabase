@@ -12,6 +12,7 @@
             [metabase.models.setting :as setting]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
@@ -43,6 +44,8 @@
 (def ^:private SessionResponse
   {:id (s/pred mt/is-uuid-string? "session")})
 
+(def ^:private session-cookie @#'mw.session/metabase-session-cookie)
+
 (deftest login-test
   (testing "POST /api/session"
     (testing "Test that we can login"
@@ -63,6 +66,14 @@
                         :active             (s/eq true)
                         s/Keyword s/Any}
                        (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+    (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
+      (let [body (assoc (mt/user->credentials :rasta) :remember true)
+            response (mt/client-full-response :post 200 "session" body)]
+        ;; clj-http sets :expires key in response when Max-Age attribute is set
+        (is (get-in response [:cookies session-cookie :expires])))
+      (let [body (assoc (mt/user->credentials :rasta) :remember false)
+            response (mt/client-full-response :post 200 "session" body)]
+        (is (nil? (get-in response [:cookies session-cookie :expires]))))))
     (testing "failure should log an error(#14317)"
       (mt/with-temp User [user]
         (is (schema= [(s/one (s/eq :error)
@@ -72,7 +83,7 @@
                       (s/one (s/eq "Authentication endpoint error")
                              "log message")]
                      (first (mt/with-log-messages-for-level :error
-                              (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))))))))
+                              (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))))))))
 
 (deftest login-validation-test
   (testing "POST /api/session"
