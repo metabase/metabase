@@ -68,7 +68,7 @@ describe("scenarios > visualizations > line chart", () => {
     cy.get(".value-labels").contains("30%");
   });
 
-  it.skip("should correctly display tooltip values when X-axis is numeric and style is 'Ordinal' (metabase#15998)", () => {
+  it("should correctly display tooltip values when X-axis is numeric and style is 'Ordinal' (metabase#15998)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,
