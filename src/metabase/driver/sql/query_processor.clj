@@ -185,13 +185,13 @@
 
 (defmulti cast-temporal-string
   "Cast a string representing "
-  {:arglists '([driver semantic_type expr]), :added "0.38.0"}
-  (fn [driver semantic_type _] [(driver/dispatch-on-initialized-driver driver) semantic_type])
+  {:arglists '([driver coercion-strategy expr]), :added "0.38.0"}
+  (fn [driver coercion-strategy _] [(driver/dispatch-on-initialized-driver driver) coercion-strategy])
   :hierarchy #'driver/hierarchy)
 
 (defmethod cast-temporal-string :default
-  [driver semantic_type _expr]
-  (throw (Exception. (tru "Driver {0} does not support {1}" driver semantic_type))))
+  [driver coercion-strategy _expr]
+  (throw (Exception. (tru "Driver {0} does not support {1}" driver coercion-strategy))))
 
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
@@ -200,6 +200,16 @@
 (defmethod unix-timestamp->honeysql [:sql :microseconds]
   [driver _ expr]
   (unix-timestamp->honeysql driver :seconds (hx// expr 1000000)))
+
+(defmulti cast-temporal-byte
+  "Cast a byte field"
+  {:arglists '([driver coercion-strategy expr]), :added "0.38.0"}
+  (fn [driver coercion-strategy _] [(driver/dispatch-on-initialized-driver driver) coercion-strategy])
+  :hierarchy #'driver/hierarchy)
+
+(defmethod cast-temporal-byte :default
+  [driver coercion-strategy _expr]
+  (throw (Exception. (tru "Driver {0} does not support {1}" driver coercion-strategy))))
 
 (defmulti apply-top-level-clause
   "Implementations of this methods define how the SQL Query Processor handles various top-level MBQL clauses. Each
@@ -258,6 +268,8 @@
 
     [:type/Text             (:isa? :Coercion/String->Temporal)  ]
     (cast-temporal-string driver (:coercion_strategy field) field-identifier)
+    [(:isa? :type/*)        (:isa? :Coercion/Bytes->Temporal)]
+    (cast-temporal-byte driver (:coercion_strategy field) field-identifier)
 
     :else field-identifier))
 

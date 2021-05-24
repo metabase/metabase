@@ -426,10 +426,15 @@
                                                  :data :cols)]
                                      (-> (into {} col)
                                          (assoc :source :fields)))]
-          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil])
+          ;; since the bucketing is happening in the source query rather than at this level, the field ref should
+          ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
+          ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
+          ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
+          ;; display values of the column.
+          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
                   (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
                  (mt/cols
-                   (qp/process-query (query-with-source-card card))))))))))
+                  (qp/process-query (query-with-source-card card))))))))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)

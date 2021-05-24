@@ -185,33 +185,69 @@
         (update :card_id fully-qualified-name->card-id)
         (update :target mbql-fully-qualified-names->ids))))
 
-(defmethod load "dashboards"
-  [path context]
-  (let [dashboards         (slurp-dir path)
-        dashboard-ids      (maybe-upsert-many! context Dashboard
-                             (for [dashboard dashboards]
-                               (-> dashboard
-                                   (dissoc :dashboard_cards)
-                                   (assoc :collection_id (:collection context)
-                                          :creator_id    @default-user))))
-        dashboard-cards    (map :dashboard_cards dashboards)
-        dashboard-card-ids (maybe-upsert-many! context DashboardCard
-                             (for [[dashboard-cards dashboard-id] (map vector dashboard-cards dashboard-ids)
-                                   dashboard-card dashboard-cards
-                                   :when dashboard-id]
-                               (-> dashboard-card
-                                   (dissoc :series)
-                                   (update :card_id fully-qualified-name->card-id)
-                                   (assoc :dashboard_id dashboard-id)
-                                   (update :parameter_mappings update-parameter-mappings))))]
+(defn load-dashboards
+  "Loads `dashboards` (which is a sequence of maps parsed from a YAML dump of dashboards) in a given `context`."
+  {:added "0.40.0"}
+  [context dashboards]
+  (let [dashboard-ids   (maybe-upsert-many! context Dashboard
+                          (for [dashboard dashboards]
+                            (-> dashboard
+                                (dissoc :dashboard_cards)
+                                (assoc :collection_id (:collection context)
+                                       :creator_id    @default-user))))
+        dashboard-cards (map :dashboard_cards dashboards)
+        ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
+        ;; card_id could be resolved from the fully qualified name
+        prepare-card-fn (fn [idx dashboard-id card]
+                          (let [final-c (-> (assoc card :fully-qualified-card-name (:card_id card))
+                                            (update :card_id fully-qualified-name->card-id)
+                                            (assoc :dashboard_id dashboard-id)
+                                            (update :parameter_mappings update-parameter-mappings))]
+                            (if (and (nil? (:card_id final-c))
+                                     (some? (:fully-qualified-card-name final-c)))
+                              ;; the lookup of some fully qualified card name failed
+                              ;; we will need to revisit this dashboard in the next pass
+                              {:revisit idx}
+                              ;; card was looked up OK, we can process it
+                              {:process final-c})))
+        filtered-cards  (reduce-kv
+                         (fn [acc idx [cards dash-id]]
+                           (if dash-id
+                             (let [{:keys [process revisit]} (apply
+                                                              merge-with
+                                                              conj
+                                                              {:process [] :revisit []}
+                                                              (map (partial prepare-card-fn idx dash-id) cards))]
+                               (-> acc
+                                   (update :process #(concat % process))
+                                   (update :revisit #(concat % revisit))))
+                             acc))
+                         {:process [] :revisit []}
+                         (mapv vector dashboard-cards dashboard-ids))
+        revisit-indexes (:revisit filtered-cards)
+        proceed-cards   (->> (:process filtered-cards)
+                             (map #(dissoc % :fully-qualified-card-name)))
+        dashcard-ids    (maybe-upsert-many! context DashboardCard (map #(dissoc % :series) proceed-cards))]
     (maybe-upsert-many! context DashboardCardSeries
-      (for [[series dashboard-card-id] (map vector (mapcat (partial map :series) dashboard-cards)
-                                                   dashboard-card-ids)
+      (for [[series dashboard-card-id] (map vector (mapcat (partial map :series) proceed-cards)
+                                            dashcard-ids)
             dashboard-card-series series
             :when (and dashboard-card-series dashboard-card-id)]
         (-> dashboard-card-series
             (assoc :dashboardcard_id dashboard-card-id)
-            (update :card_id fully-qualified-name->card-id))))))
+            (update :card_id fully-qualified-name->card-id))))
+    (let [revisit-dashboards (map (partial nth dashboards) revisit-indexes)]
+      (if-not (empty? revisit-dashboards)
+        (fn []
+          (log/infof
+           "Retrying dashboards for collection %s: %s"
+           (or (:collection context) "root")
+           (str/join ", " (map :name revisit-dashboards)))
+          (load-dashboards context revisit-dashboards))))))
+
+(defmethod load "dashboards"
+  [path context]
+  (load-dashboards context (slurp-dir path)))
 
 (defmethod load "pulses"
   [path context]
@@ -314,17 +350,22 @@
 
 (defmethod load "collections"
   [path context]
-  (doseq [path (list-dirs path)]
-    (let [context (assoc context
-                    :collection (->> (slurp-dir path)
-                                     (map (fn [collection]
-                                            (assoc collection :location (derive-location context))))
-                                     (maybe-upsert-many! context Collection)
-                                     first))]
-      (load (str path "/collections") context)
-      (load (str path "/cards") context)
-      (load (str path "/pulses") context)
-      (load (str path "/dashboards") context))))
+  (let [res-fns (for [path (list-dirs path)]
+                  (let [context (assoc context
+                                  :collection (->> (slurp-dir path)
+                                                   (map (fn [collection]
+                                                          (assoc collection :location (derive-location context))))
+                                                   (maybe-upsert-many! context Collection)
+                                                   first))]
+                    (filter fn? [(load (str path "/collections") context)
+                                 (load (str path "/cards") context)
+                                 (load (str path "/pulses") context)
+                                 (load (str path "/dashboards") context)])))
+        all-fns (apply concat res-fns)]
+    (if-not (empty? all-fns)
+      (fn []
+        (doseq [reload-fn all-fns]
+          (reload-fn))))))
 
 (defn load-settings
   "Load a dump of settings."

@@ -146,6 +146,14 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
   (add-to-1970 expr "microsecond"))
 
+(defmethod sql.qp/cast-temporal-string [:h2 :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (hsql/call :parsedatetime expr (hx/literal "yyyyMMddHHmmss")))
+
+(defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               (hsql/call :utf8tostring expr)))
 
 ;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
 ;; and then converting back to a date.

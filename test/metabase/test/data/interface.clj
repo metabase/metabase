@@ -37,7 +37,13 @@
 
 (def ^:private FieldDefinitionSchema
   {:field-name                         su/NonBlankString
-   :base-type                          (s/cond-pre {:native su/NonBlankString} su/FieldType)
+   :base-type                          (s/conditional
+                                        #(and (map? %) (contains? % :natives))
+                                        {:natives {s/Keyword su/NonBlankString}}
+                                        #(and (map? %) (contains? % :native))
+                                        {:native su/NonBlankString}
+                                        :else
+                                        su/FieldType)
    (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
    (s/optional-key :effective-type)    (s/maybe su/FieldType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)

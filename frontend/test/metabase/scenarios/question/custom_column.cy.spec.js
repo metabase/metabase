@@ -571,7 +571,7 @@ describe("scenarios > question > custom columns", () => {
     cy.get("[contenteditable='true']").type(".5 * [Discount]");
     cy.findByPlaceholderText("Something nice and descriptive").type("Foo");
     cy.findByText("Unknown Field: .5").should("not.exist");
-    cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+    cy.button("Done").should("not.be.disabled");
   });
 
   describe.skip("contentedtable field (metabase#15734)", () => {
@@ -588,7 +588,7 @@ describe("scenarios > question > custom columns", () => {
           .blur();
       });
       cy.findByPlaceholderText("Something nice and descriptive").type("Math");
-      cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+      cy.button("Done").should("not.be.disabled");
     });
 
     it("should not accidentally delete CC formula value and/or CC name (metabase#15734-1)", () => {
@@ -597,7 +597,7 @@ describe("scenarios > question > custom columns", () => {
         .type("{movetoend}{leftarrow}{movetostart}{rightarrow}{rightarrow}")
         .blur();
       cy.findByDisplayValue("Math");
-      cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+      cy.button("Done").should("not.be.disabled");
     });
 
     /**
@@ -611,7 +611,7 @@ describe("scenarios > question > custom columns", () => {
         .type("{movetoend}{backspace}")
         .blur();
       cy.findByText("Expected expression");
-      cy.findByRole("button", { name: "Done" }).should("be.disabled");
+      cy.button("Done").should("be.disabled");
       cy.get("@formula").click(); /* [1] */
       cy.findByDisplayValue("Math");
     });
@@ -620,7 +620,7 @@ describe("scenarios > question > custom columns", () => {
       cy.viewport(1260, 800);
       cy.get("@formula").click(); /* [1] */
       cy.findByDisplayValue("Math");
-      cy.findByRole("button", { name: "Done" }).should("not.be.disabled");
+      cy.button("Done").should("not.be.disabled");
     });
   });
 
@@ -632,7 +632,7 @@ describe("scenarios > question > custom columns", () => {
         .type("case([Discount] > 0, [Created At], [Product → Created At])")
         .blur();
       cy.findByPlaceholderText("Something nice and descriptive").type("13112");
-      cy.findByRole("button", { name: "Done" }).click();
+      cy.button("Done").click();
     });
     cy.findByText("Filter").click();
     popover()
@@ -649,12 +649,47 @@ describe("scenarios > question > custom columns", () => {
         .type(`concat("State: ", [State])`)
         .blur();
       cy.findByPlaceholderText("Something nice and descriptive").type("13217");
-      cy.findByRole("button", { name: "Done" }).click();
+      cy.button("Done").click();
     });
     cy.findByText("Filter").click();
     popover()
       .findByText("13217")
       .click();
     cy.findByPlaceholderText("Enter a number").should("not.exist");
+  });
+
+  it.skip("custom expression helper shouldn't be visible when formula field is not in focus (metabase#15891)", () => {
+    openPeopleTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']").type(`rou{enter}1.5`, {
+        delay: 100,
+      });
+    });
+    cy.findByText("round([Temperature])");
+    cy.findByText(/Field formula/i).click(); // Click outside of formula field instead of blur
+    cy.findByText("round([Temperature])").should("not.exist");
+  });
+
+  it.skip("should work with `isNull` function (metabase#15922)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']").type(`isnull([Discount])`, {
+        delay: 100,
+      });
+      cy.findByPlaceholderText("Something nice and descriptive").type(
+        "No discount",
+      );
+      cy.button("Done").click();
+    });
+    cy.button("Visualize").click();
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).to.not.exist;
+    });
+    cy.contains("37.65");
+    cy.findByText("No discount");
   });
 });

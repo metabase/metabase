@@ -145,7 +145,8 @@
              (mt/user-http-request :rasta :get 403 "user", :status "all"))))
 
     (testing "Pagination gets the total users _in query_"
-      (is (= 4 ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
+      (is (= (db/count User)
+             ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
     (testing "for admins, it should include those inactive users as we'd expect"
       (is (= (->> [{:email                  "trashbird@metabase.com"
                     :first_name             "Trash"
@@ -218,26 +219,20 @@
 
 (deftest user-list-limit-test
   (testing "GET /api/user?limit=1&offset=1"
-    (testing "Limit and offset pagination have to have both limit and offset"
-      (is (= "When including a limit, an offset must also be included."
-             (mt/user-http-request :crowberto :get 400 "user" :limit "1")))
-      (is (= "When including an offset, a limit must also be included."
-             (mt/user-http-request :crowberto :get 400 "user" :offset "1"))))
+    (testing "Limit and offset pagination have defaults"
+      (is (= (mt/user-http-request :crowberto :get 200 "user" :limit "1" :offset "0")
+             (mt/user-http-request :crowberto :get 200 "user" :limit "1")))
+      (is (= (mt/user-http-request :crowberto :get 200 "user" :limit "50" :offset "1")
+             (mt/user-http-request :crowberto :get 200 "user" :offset "1"))))
     (testing "Limit and offset pagination get the total"
-      (is (= 3 ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
+      (is (= (db/count User :is_active true)
+             ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
     (testing "Limit and offset pagination works for user list"
-      (is (= [{:id          (mt/user->id :lucky)
-               :email       "lucky@metabase.com"
-               :first_name  "Lucky"
-               :last_name   "Pigeon"
-               :common_name "Lucky Pigeon"}
-              {:id          (mt/user->id :rasta)
-               :email       "rasta@metabase.com"
-               :first_name  "Rasta"
-               :last_name   "Toucan"
-               :common_name "Rasta Toucan"}]
-             (->> ((mt/user-http-request :rasta :get 200 "user" :limit "2" :offset "1") :data)
-                  (filter mt/test-user?)))))))
+      (let [first-three-users (:data (mt/user-http-request :rasta :get 200 "user" :limit "3", :offset "0"))]
+        (is (= 3
+               (count first-three-users)))
+        (is (= (drop 1 first-three-users)
+               (:data (mt/user-http-request :rasta :get 200 "user" :limit "2", :offset "1") :data)))))))
 
 (deftest get-current-user-test
   (testing "GET /api/user/current"

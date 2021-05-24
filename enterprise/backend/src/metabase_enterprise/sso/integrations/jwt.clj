@@ -54,8 +54,13 @@
 
 (defn- login-jwt-user
   [jwt {{redirect :return_to} :params, :as request}]
-  (let [jwt-data     (jwt/unsign jwt (sso-settings/jwt-shared-secret)
-                                 {:max-age three-minutes-in-seconds})
+  (let [jwt-data     (try
+                       (jwt/unsign jwt (sso-settings/jwt-shared-secret)
+                                   {:max-age three-minutes-in-seconds})
+                       (catch Throwable e
+                         (throw (ex-info (ex-message e)
+                                         (assoc (ex-data e) :status-code 401)
+                                         e))))
         login-attrs  (jwt-data->login-attributes jwt-data)
         email        (get jwt-data (jwt-attribute-email))
         first-name   (get jwt-data (jwt-attribute-firstname) "Unknown")

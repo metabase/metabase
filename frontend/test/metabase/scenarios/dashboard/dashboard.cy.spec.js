@@ -4,6 +4,7 @@ import {
   selectDashboardFilter,
   expectedRouteCalls,
   showDashboardCardActions,
+  modal,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -364,6 +365,73 @@ describe("scenarios > dashboard", () => {
         .click();
       cy.findByText(/^January 17, 2020/);
     }
+  });
+
+  it("should not get the parameter values from the field API", () => {
+    // In this test we're using already present dashboard ("Orders in a dashboard")
+    const FILTER_ID = "d7988e02";
+
+    cy.log("Add filter to the dashboard");
+    cy.request("PUT", "/api/dashboard/1", {
+      parameters: [
+        {
+          id: FILTER_ID,
+          name: "Category",
+          slug: "category",
+          type: "category",
+        },
+      ],
+    });
+
+    cy.log("Connect filter to the existing card");
+    cy.request("PUT", "/api/dashboard/1/cards", {
+      cards: [
+        {
+          id: 1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          sizeX: 12,
+          sizeY: 8,
+          parameter_mappings: [
+            {
+              parameter_id: FILTER_ID,
+              card_id: 1,
+              target: [
+                "dimension",
+                [
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
+                ],
+              ],
+            },
+          ],
+          visualization_settings: {},
+        },
+      ],
+    });
+
+    cy.server();
+    cy.route(`/api/dashboard/1/params/${FILTER_ID}/values`).as(
+      "fetchDashboardParams",
+    );
+    cy.route(`/api/field/${PRODUCTS.CATEGORY}`).as("fetchField");
+    cy.route(`/api/field/${PRODUCTS.CATEGORY}/values`).as("fetchFieldValues");
+
+    cy.visit("/dashboard/1");
+
+    cy.get("fieldset")
+      .as("filterWidget")
+      .click();
+
+    ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(category => {
+      cy.findByText(category);
+    });
+
+    expectedRouteCalls({ route_alias: "fetchDashboardParams", calls: 1 });
+    expectedRouteCalls({ route_alias: "fetchField", calls: 0 });
+    expectedRouteCalls({ route_alias: "fetchFieldValues", calls: 0 });
   });
 
   it.skip("should cache filter results after the first DB call (metabase#13832)", () => {
@@ -892,6 +960,36 @@ describe("scenarios > dashboard", () => {
     cy.get("fieldset").click();
     cy.findByPlaceholderText("Search the list").type("Syner");
     cy.findByText("Synergistic Wool Coat");
+  });
+
+  it.skip("should show values of added dashboard card via search immediately (metabase#15959)", () => {
+    /**
+     * For the reason I don't udnerstand, I could reproduce this issue ONLY if I use these specific functions in this order:
+     *  1. realType()
+     *  2. type()
+     */
+    cy.visit("/dashboard/1");
+    cy.icon("pencil").click();
+    cy.icon("add")
+      .last()
+      .as("addQuestion")
+      .click();
+    cy.icon("search")
+      .last()
+      .as("searchModal")
+      .click();
+    cy.findByPlaceholderText("Search").realType("Orders{enter}"); /* [1] */
+    modal()
+      .findByText("Orders, Count")
+      .realClick();
+    cy.get("@addQuestion").click();
+    cy.get("@searchModal").click();
+    cy.findByPlaceholderText("Search").type("Orders{enter}"); /* [2] */
+    modal()
+      .findByText("Orders, Count")
+      .realClick();
+    cy.get(".LoadingSpinner").should("not.exist");
+    cy.findAllByText("18,760").should("have.length", 2);
   });
 });
 

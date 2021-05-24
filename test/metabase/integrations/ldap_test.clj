@@ -64,7 +64,11 @@
 
     (testing "fail regular user login with bad password"
       (is (= false
-             (ldap/verify-password "cn=Sally Brown,ou=People,dc=metabase,dc=com" "password"))))))
+             (ldap/verify-password "cn=Sally Brown,ou=People,dc=metabase,dc=com" "password"))))
+
+    (testing "password containing dollar signs succeeds (#15145)"
+      (is (= true
+             (ldap/verify-password "cn=Fred Taylor,ou=People,dc=metabase,dc=com", "pa$$word"))))))
 
 (deftest find-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`

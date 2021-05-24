@@ -309,6 +309,11 @@
 (derive :Coercion/ISO8601->Time :Coercion/ISO8601->Temporal)
 (derive :Coercion/ISO8601->Date :Coercion/ISO8601->Temporal)
 
+(derive :Coercion/YYYYMMDDHHMMSSString->Temporal :Coercion/String->Temporal)
+
+(derive :Coercion/Bytes->Temporal :Coercion/*)
+(derive :Coercion/YYYYMMDDHHMMSSBytes->Temporal :Coercion/Bytes->Temporal)
+
 (derive :Coercion/Number->Temporal :Coercion/*)
 (derive :Coercion/UNIXTime->Temporal :Coercion/Number->Temporal)
 (derive :Coercion/UNIXSeconds->DateTime :Coercion/UNIXTime->Temporal)
@@ -355,10 +360,17 @@
 (coercion-hierarchies/define-types! :Coercion/ISO8601->DateTime          :type/Text                     :type/DateTime)
 (coercion-hierarchies/define-types! :Coercion/ISO8601->Time              :type/Text                     :type/Time)
 
+(coercion-hierarchies/define-types! :Coercion/YYYYMMDDHHMMSSString->Temporal :type/Text                 :type/DateTime)
+
+(coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal :type/* :type/DateTime)
+
 (defn is-coercible-from?
   "Whether `coercion-strategy` is allowed for `base-type`."
   [coercion-strategy base-type]
-  (isa? (coercion-hierarchies/base-type-hierarchy) base-type coercion-strategy))
+  (or (isa? (coercion-hierarchies/base-type-hierarchy) base-type coercion-strategy)
+      (boolean (some-> (coercion-hierarchies/non-descending-strategies)
+                       (get base-type)
+                       (contains? coercion-strategy)))))
 
 (defn is-coercible-to?
   "Whether `coercion-strategy` coerces to `effective-type` or some subtype thereof."
@@ -382,7 +394,8 @@
                effective-type effective-types
                :when          (not (isa? effective-type :Coercion/*))]
            {effective-type #{strategy}})
-         (reduce (partial merge-with set/union))
+         (reduce (partial merge-with set/union)
+                 (select-keys (coercion-hierarchies/non-descending-strategies) [base-type]))
          not-empty)))
 
 (defn ^:export is_coerceable

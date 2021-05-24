@@ -122,6 +122,11 @@
       (isa? coercion :Coercion/UNIXSeconds->DateTime)
       {:$dateFromParts {:second field-name, :year 1970}}
 
+      (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
+      {"$dateFromString" {:dateString field-name
+                          :format "%Y%m%d%H%M%S"
+                          :onError field-name}}
+
       :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.

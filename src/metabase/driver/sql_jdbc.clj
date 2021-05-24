@@ -80,3 +80,7 @@
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
   (hx/->time expr))
+
+(defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _semantic_type expr]
+  (hx/->timestamp expr))
