@@ -100,7 +100,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
             );
 
             return (
-              <React.Fragment key={i}>
+              <React.Fragment key={`suggestion-${i}`}>
                 {shouldRenderSectionTitle && (
                   <SectionTitle>{sectionTitle}</SectionTitle>
                 )}
