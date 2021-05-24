@@ -1,5 +1,6 @@
 (ns metabase-enterprise.search.scoring
   (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
+            [metabase.public-settings.metastore :as settings.metastore]
             [metabase.search.scoring :as scoring]))
 
 (defn- official-collection-score
@@ -20,4 +21,6 @@
 
 (def ee-scoring
   "Enterprise scoring of results, falling back to the open source version if enterprise is not enabled."
-  (ee-strategy-impl/reify-ee-strategy-impl scoring-impl scoring/oss-score-impl scoring/ResultScore))
+  (ee-strategy-impl/reify-ee-strategy-impl #'settings.metastore/enable-enhancements?
+                                           scoring-impl scoring/oss-score-impl
+                                           scoring/ResultScore))
