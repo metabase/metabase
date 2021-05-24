@@ -1,11 +1,14 @@
 import React from "react";
 import PropTypes from "prop-types";
-
 import { t } from "ttag";
 import cx from "classnames";
 
 import Popover from "metabase/components/Popover";
-import { SectionTitle, UlStyled } from "./ExpressionEditorSuggestions.styled";
+import {
+  ListItemStyled,
+  SectionTitle,
+  UlStyled,
+} from "./ExpressionEditorSuggestions.styled";
 
 import { isObscured } from "metabase/lib/dom";
 
@@ -92,28 +95,27 @@ export default class ExpressionEditorSuggestions extends React.Component {
 
             const isHighlighted = i === highlightedIndex;
 
-            const listItemClassName = cx(
-              "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit",
-              {
-                "text-white bg-brand": isHighlighted,
-              },
-            );
+            // const listItemClassName = cx(
+            //   "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit",
+            //   {
+            //     "text-white bg-brand": isHighlighted,
+            //   },
+            // );
 
             return (
               <React.Fragment key={`suggestion-${i}`}>
                 {shouldRenderSectionTitle && (
                   <SectionTitle>{sectionTitle}</SectionTitle>
                 )}
-                <li
-                  style={{ paddingTop: 5, paddingBottom: 5 }}
-                  className={listItemClassName}
+                <ListItemStyled
                   onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
+                  isHighlighted={isHighlighted}
                 >
                   <SuggestionSpan
                     suggestion={suggestion}
                     isHighlighted={isHighlighted}
                   />
-                </li>
+                </ListItemStyled>
               </React.Fragment>
             );
           })}
