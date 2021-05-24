@@ -62,6 +62,9 @@ function GridLayout({
     [gridWidth, height, background, isEditing],
   );
 
+  // https://github.com/react-grid-layout/react-grid-layout#performance
+  const children = useMemo(() => items.map(renderItem), [items, renderItem]);
+
   return (
     <ReactGridLayout
       cols={cols}
@@ -75,7 +78,7 @@ function GridLayout({
       autoSize={false}
       style={style}
     >
-      {items.map(renderItem)}
+      {children}
     </ReactGridLayout>
   );
 }
