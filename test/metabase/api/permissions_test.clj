@@ -52,11 +52,11 @@
 
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
-    (testing "Limit and offset pagination have to have both limit and offset"
-      (is (= "When including a limit, an offset must also be included."
-             (mt/user-http-request :crowberto :get 400 "permissions/group" :limit "1")))
-      (is (= "When including an offset, a limit must also be included."
-             (mt/user-http-request :crowberto :get 400 "permissions/group" :offset "1"))))
+    (testing "Limit and offset pagination have defaults"
+      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "0")
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1")))
+      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1" :limit 50)
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
     (testing "Limit and offset pagination works for permissions list"
       (is (= [{:id 1, :name "All Users", :member_count 3}]
              (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))

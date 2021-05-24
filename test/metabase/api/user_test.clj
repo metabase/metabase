@@ -219,11 +219,11 @@
 
 (deftest user-list-limit-test
   (testing "GET /api/user?limit=1&offset=1"
-    (testing "Limit and offset pagination have to have both limit and offset"
-      (is (= "When including a limit, an offset must also be included."
-             (mt/user-http-request :crowberto :get 400 "user" :limit "1")))
-      (is (= "When including an offset, a limit must also be included."
-             (mt/user-http-request :crowberto :get 400 "user" :offset "1"))))
+    (testing "Limit and offset pagination have defaults"
+      (is (= (mt/user-http-request :crowberto :get 200 "user" :limit "1" :offset "0")
+             (mt/user-http-request :crowberto :get 200 "user" :limit "1")))
+      (is (= (mt/user-http-request :crowberto :get 200 "user" :limit "50" :offset "1")
+             (mt/user-http-request :crowberto :get 200 "user" :offset "1"))))
     (testing "Limit and offset pagination get the total"
       (is (= (db/count User :is_active true)
              ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
