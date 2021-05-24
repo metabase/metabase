@@ -1,5 +1,24 @@
 import _ from "underscore";
+import { Responsive as ResponsiveGrid } from "react-grid-layout";
 import { color } from "metabase/lib/colors";
+
+export function adaptLayoutForBreakpoint({
+  layout,
+  breakpoints,
+  targetBreakpoint,
+  closestBreakpoint,
+  columns,
+  compactType,
+}) {
+  return ResponsiveGrid.utils.findOrGenerateResponsiveLayout(
+    layout,
+    breakpoints,
+    targetBreakpoint,
+    closestBreakpoint,
+    columns,
+    compactType,
+  );
+}
 
 export function generateGridBackground({ cellSize, margin, cols, gridWidth }) {
   const XMLNS = "http://www.w3.org/2000/svg";
