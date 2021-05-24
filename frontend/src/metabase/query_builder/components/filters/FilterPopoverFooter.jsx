@@ -34,6 +34,7 @@ export default function FilterPopoverFooter({
         background: "white",
         position: "absolute",
         bottom: 0,
+        borderTop: "1px solid #f0f0f0",
         boxSizing: "border-box",
         borderBottomRightRadius: "6px",
         borderBottomLeftRadius: "6px",
