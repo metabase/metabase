@@ -1077,5 +1077,38 @@ describe("scenarios > question > filter", () => {
       cy.findByText(/^Total/);
       cy.findByText("Something went wrong").should("not.exist");
     });
+
+    it("removing first filter in a sequence shouldn't result in an empty page (metabase#16198-3)", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("Total")
+        .click();
+      cy.findByPlaceholderText("Enter a number").type("123");
+      cy.button("Add filter").click();
+      cy.icon("add")
+        .last()
+        .click();
+      cy.findByText("Custom Expression").click();
+      cy.get("[contenteditable=true]")
+        .type("[Total] < [Product → Price]")
+        .blur();
+      cy.button("Done").click();
+      // cy.findByText(/^Total/);
+      cy.icon("add")
+        .last()
+        .click();
+      popover()
+        .findByText(/^ID$/i)
+        .click();
+      cy.findByPlaceholderText("Enter an ID").type("1");
+      cy.button("Add filter").click();
+      // Filter currently says "Total is equal to 123" but it can change in https://github.com/metabase/metabase/pull/16174, thus we guard against that change
+      cy.findByText(/.* 123$/)
+        .parent()
+        .find(".Icon-close")
+        .click();
+      cy.button("Visualize");
+    });
   });
 });
