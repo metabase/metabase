@@ -22,7 +22,8 @@ export function adaptLayoutForBreakpoint({
 
 export function generateGridBackground({ cellSize, margin, cols, gridWidth }) {
   const XMLNS = "http://www.w3.org/2000/svg";
-  const rowHeight = cellSize.height + margin;
+  const [horizontalMargin, verticalMargin] = margin;
+  const rowHeight = cellSize.height + verticalMargin;
   const cellStrokeColor = color("border");
 
   const y = 0;
@@ -30,7 +31,7 @@ export function generateGridBackground({ cellSize, margin, cols, gridWidth }) {
   const h = cellSize.height;
 
   const rectangles = _(cols).times(i => {
-    const x = i * (cellSize.width + margin);
+    const x = i * (cellSize.width + horizontalMargin);
     return `<rect stroke='${cellStrokeColor}' stroke-width='1' fill='none' x='${x}' y='${y}' width='${w}' height='${h}'/>`;
   });
 
