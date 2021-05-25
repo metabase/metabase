@@ -40,6 +40,8 @@ export default function FilterPopoverFooter({
         borderBottomLeftRadius: 6,
         paddingTop: 8,
         width: "calc(100% - 2px)",
+        // Without zIndex, calendar day marks scroll above this component
+        zIndex: 1,
       }}
     >
       <FilterOptions
