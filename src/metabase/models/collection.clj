@@ -694,7 +694,10 @@
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [unchangeable {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")
                       :type              (tru "You're not allowed to change the type of a Personal Collection.")}]
-    (when-let [[k msg] (filter #(api/column-will-change? %1 collection-before-updates collection-updates) unchangeable)]
+    (when-let [[k msg] (->> unchangeable
+                            (filter (fn [[k _msg]]
+                                      (api/column-will-change? k collection-before-updates collection-updates)))
+                            first)]
       (throw
        (ex-info msg {:status-code 400 :errors {k msg}}))))
   ;;
@@ -706,14 +709,14 @@
   (when (api/column-will-change? :location collection-before-updates collection-updates)
     (throw
      (ex-info (tru "You're not allowed to move a Personal Collection.")
-       {:status-code 400
-        :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
+              {:status-code 400
+               :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
   ;; You also can't archive a Personal Collection
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     (throw
      (ex-info (tru "You cannot archive a Personal Collection.")
-       {:status-code 400
-        :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
+              {:status-code 400
+               :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
