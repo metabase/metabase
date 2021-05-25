@@ -154,12 +154,9 @@ export function getDatas({ settings, series }, warn) {
     if (isNotOrdinal) {
       rows = data.rows.filter(([x]) => x !== null);
     } else if (parseOptions.isNumeric) {
-      rows = data.rows.map((row) => {
+      rows = data.rows.map(row => {
         const [x, ...rest] = row;
-        const newRow = [
-          replaceNullValuesForOrdinal(x),
-          ...rest,
-        ]
+        const newRow = [replaceNullValuesForOrdinal(x), ...rest];
         newRow._origin = row._origin;
         return newRow;
       });
