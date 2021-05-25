@@ -648,6 +648,38 @@ describe("scenarios > question > filter", () => {
     popover().contains(/case/i);
   });
 
+  it("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .type("c");
+
+    // First highlighted selection is Created At
+    // "C" is wrapped in a <span>
+    // so we must look for string "reated At"
+    cy.findByText("reated At")
+      .closest("li")
+      .should("have.css", "background-color")
+      .and("eq", "rgb(80, 158, 227)");
+
+    cy.get("[contenteditable='true']")
+      .click()
+      .type("{downarrow}");
+
+    cy.findByText("reated At")
+      .closest("li")
+      .should("have.css", "background-color")
+      .and("not.eq", "rgb(80, 158, 227)");
+
+    cy.findByText(/ategory/i)
+      .closest("li")
+      .should("have.css", "background-color")
+      .and("eq", "rgb(80, 158, 227)");
+  });
+
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.createQuestion({
