@@ -648,7 +648,7 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
-    const brandColor = "rgb(80, 158, 227)";
+    const transparent = "rgba(0, 0, 0, 0)";
 
     openExpressionEditorFromFreshlyLoadedPage();
 
@@ -657,19 +657,19 @@ describe("scenarios > question > filter", () => {
     cy.contains("Created At")
       .closest("li")
       .should("have.css", "background-color")
-      .and("eq", brandColor);
+      .and("not.eq", transparent);
 
     typeInExpressionEditor("{downarrow}");
 
     cy.contains("Created At")
       .closest("li")
       .should("have.css", "background-color")
-      .and("not.eq", brandColor);
+      .and("eq", transparent);
 
     cy.contains("Product → Category")
       .closest("li")
       .should("have.css", "background-color")
-      .and("eq", brandColor);
+      .and("not.eq", transparent);
   });
 
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
