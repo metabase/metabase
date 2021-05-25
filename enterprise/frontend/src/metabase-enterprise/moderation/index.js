@@ -106,7 +106,6 @@ export function getModerationEvents(question, usersById) {
       title: `${userDisplayName} ${MODERATION_TEXT.user[request.type].creationEvent}`,
       description: request.text,
       showFooter: true,
-      footerClass: "",
       requestStatusText: MODERATION_TEXT.requestStatuses[request.status],
       request,
     };
