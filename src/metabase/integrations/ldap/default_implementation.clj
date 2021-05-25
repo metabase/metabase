@@ -37,9 +37,10 @@
   [group-membership-filter :- su/NonBlankString
    dn                      :- su/NonBlankString
    uid                     :- (s/maybe su/NonBlankString)]
-  (-> group-membership-filter
-      (str/replace "{dn}" (Filter/encodeValue ^String dn))
-      (str/replace "{uid}" (Filter/encodeValue ^String (or uid "")))))
+  (let [uid-string (or uid "")]
+    (-> group-membership-filter
+        (str/replace "{dn}" (Filter/encodeValue ^String dn))
+        (str/replace "{uid}" (Filter/encodeValue ^String uid-string)))))
 
 (s/defn ^:private user-groups :- (s/maybe [su/NonBlankString])
   "Retrieve groups for a supplied DN."
