@@ -23,27 +23,6 @@
 
 (models/defmodel ModerationReview :moderation_review)
 
-(u/strict-extend (class ModerationReview)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties (constantly {:timestamped? true})
-          :types      (constantly {:moderated_item_type :keyword})})
-
-  ;; Todo: this is wrong, but what should it be?
-  i/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection)
-
-
-(s/defn create-review!
-  "Create a new ModerationReview"
-  [params :-
-   {:moderated_item_id       su/IntGreaterThanZero
-    :moderated_item_type     moderation/moderated-item-types
-    :moderator_id            su/IntGreaterThanZero
-    (s/optional-key :status) statuses
-    (s/optional-key :text)   (s/maybe s/Str)}]
-  (db/insert! ModerationReview params))
-
 (defn- newly-verified?
   [old-status new-status]
   (and
@@ -59,17 +38,45 @@
                                         :status              "open"}
     :status "resolved"))
 
-(s/defn post-update
-  [old-review :- ReviewChanges, new-review :- ReviewChanges]
-  (when (newly-verified? (:status old-review) (:status new-review))
-    (resolve-requests! new-review)))
+(defn- pre-insert-or-update
+  [maybe-old-review new-review]
+  (u/prog1 new-review
+    (when (newly-verified? (:status maybe-old-review) (:status new-review))
+      (resolve-requests! (merge maybe-old-review new-review)))))
+
+(defn- pre-insert
+  [new-review]
+  (pre-insert-or-update nil new-review))
+
+(defn- pre-update
+  [new-review]
+  (pre-insert-or-update (ModerationReview (u/the-id new-review)) new-review))
+
+(u/strict-extend (class ModerationReview)
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties (constantly {:timestamped? true})
+          :types      (constantly {:moderated_item_type :keyword})
+          :pre-insert pre-insert
+          :pre-update pre-update})
+
+  ;; Todo: this is wrong, but what should it be?
+  i/IObjectPermissions
+  perms/IObjectPermissionsForParentCollection)
+
+(s/defn create-review!
+  "Create a new ModerationReview"
+  [params :-
+   {:moderated_item_id       su/IntGreaterThanZero
+    :moderated_item_type     moderation/moderated-item-types
+    :moderator_id            su/IntGreaterThanZero
+    (s/optional-key :status) statuses
+    (s/optional-key :text)   (s/maybe s/Str)}]
+  (db/insert! ModerationReview params))
 
 (s/defn update-review!
   "Update the given keys for an existing ModerationReview with the given `:id`"
   [review :- ReviewChanges]
-  (let [id         (u/the-id review)
-        old-review (ModerationReview id)]
-    (when-let [new-review (and (db/update! ModerationReview id review)
-                               (ModerationReview id))]
-      (post-update old-review new-review)
-      new-review)))
+  (let [id (u/the-id review)]
+    (and (db/update! ModerationReview id review)
+         (ModerationReview id))))

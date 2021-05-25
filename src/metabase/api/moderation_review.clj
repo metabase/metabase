@@ -29,7 +29,6 @@
    (s/optional-key :moderated_item_type) moderation/moderated-item-types
    (s/optional-key :status)              moderation-review/statuses}
   ;; TODO permissions
-  (println "here we go")
   (moderation-review/update-review!
    (assoc (select-keys review-updates [:text :moderated_item_id :moderated_item_type :status])
           :id id)))
