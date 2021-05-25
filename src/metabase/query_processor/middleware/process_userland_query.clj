@@ -51,8 +51,9 @@
                                                              (catch Throwable e
                                                                (log/error e (trs "Error saving query execution info"))))))))
 
-(defn- save-successful-query-execution! [query-execution result-rows]
-  (save-query-execution! (assoc query-execution :result_rows result-rows)))
+(defn- save-successful-query-execution! [query-execution cached? result-rows]
+  (save-query-execution!
+    (assoc query-execution :cache_hit (boolean cached?) :result_rows result-rows)))
 
 (defn- save-failed-query-execution! [query-execution message]
   (save-query-execution! (assoc query-execution :error (str message))))
@@ -74,24 +75,21 @@
 
 (defn- add-and-save-execution-info-xform! [{:keys [cached?]} execution-info rf]
   {:pre [(fn? rf)]}
-  ;; don't do anything for cached results
-  ;; TODO - we should test for this
-  (if cached?
-    rf
-    (let [row-count (volatile! 0)]
-      (fn execution-info-rf*
-        ([]
-         (rf))
+  ;; previously we did nothing for cached results, now we have `cache_hit?` column
+  (let [row-count (volatile! 0)]
+    (fn execution-info-rf*
+      ([]
+       (rf))
 
-        ([acc]
-         (save-successful-query-execution! execution-info @row-count)
-         (rf (if (map? acc)
-               (success-response execution-info acc)
-               acc)))
+      ([acc]
+       (save-successful-query-execution! execution-info cached? @row-count)
+       (rf (if (map? acc)
+             (success-response execution-info acc)
+             acc)))
 
-        ([result row]
-         (vswap! row-count inc)
-         (rf result row))))))
+      ([result row]
+       (vswap! row-count inc)
+       (rf result row)))))
 
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
