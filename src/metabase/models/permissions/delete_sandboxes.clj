@@ -6,22 +6,16 @@
 
 (p/defprotocol+ DeleteSandboxes
   "Protocol for Sandbox deletion behavior when permissions are granted or revoked."
-  (revoke-perms-delete-sandboxes-if-needed!* [this group-or-id path]
-    "Only for internal use in `metabase.models.permissions`; don't invoke this method elsewhere. Delete any
-sandboxes (GTAPs) for when PermissionsGroup `group-or-id` has their permissions for object `path` revoked, if
-applicable (e.g. getting all perms for a Database or Table should delete any associated sandboxes.)")
-
-  (grant-perms-delete-sandboxes-if-needed!* [this group-or-id path]
-    "Only for internal use in `metabase.models.permissions`; don't invoke this method elsewhere. Delete any
-sandboxes (GTAPs) for when PermissionsGroup `group-or-id` is granted permissions for object `path`, if
-applicable (e.g. getting full unrestricted perms for a Database or Table should delete any associated sandboxes.)"))
+  (delete-gtaps-if-needed-after-permissions-change!* [this changes]
+    "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete GTAPs that are no longer
+needed after the permissions graph is updated. See docstring for `delete-gtaps-if-needed-after-permissions-change!` for
+ more information."))
 
 (def oss-default-impl
   "OSS no-op impl for Sandbox (GTAP) deletion behavior. Don't use this directly."
   (reify
     DeleteSandboxes
-    (revoke-perms-delete-sandboxes-if-needed!* [_ _ _] nil)
-    (grant-perms-delete-sandboxes-if-needed!* [_ _ _] nil)
+    (delete-gtaps-if-needed-after-permissions-change!* [_ _] nil)
 
     pretty/PrettyPrintable
     (pretty [_]
@@ -34,18 +28,10 @@ applicable (e.g. getting full unrestricted perms for a Database or Table should 
           (var-get (resolve 'metabase-enterprise.sandbox.models.permissions.delete-sandboxes/ee-strategy-impl)))
         oss-default-impl)))
 
-(defn revoke-perms-delete-sandboxes-if-needed!
-  "Only for internal use in `metabase.models.permissions`; don't invoke this function elsewhere. Delete any
-  sandboxes (GTAPs) for when PermissionsGroup `group-or-id` has their permissions for object `path` revoked, if
-  applicable (e.g. getting all perms for a Database or Table should delete any associated sandboxes.) OSS impl is a
-  no-op, since Sandboxes are EE-only."
-  [group-or-id path]
-  (revoke-perms-delete-sandboxes-if-needed!* @impl group-or-id path))
-
-(defn grant-perms-delete-sandboxes-if-needed!
-  "Only for internal use in `metabase.models.permissions`; don't invoke this function elsewhere. Delete any
-  sandboxes (GTAPs) for when PermissionsGroup `group-or-id` is granted permissions for object `path`, if
-  applicable (e.g. getting full unrestricted perms for a Database or Table should delete any associated sandboxes.)
-  OSS impl is a no-op, since Sandboxes are EE-only."
-  [group-or-id path]
-  (grant-perms-delete-sandboxes-if-needed!* @impl group-or-id path))
+(defn delete-gtaps-if-needed-after-permissions-change!
+  "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no
+  longer needed after the permissions graph is updated. This is EE-specific -- OSS impl is a no-op, since sandboxes
+  are an EE-only feature. `changes` are the parts of the graph that have changed, i.e. the `things-only-in-new`
+  returned by `clojure.data/diff`."
+  [changes]
+  (delete-gtaps-if-needed-after-permissions-change!* @impl changes))

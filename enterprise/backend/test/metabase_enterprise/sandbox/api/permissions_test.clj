@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.models :refer [Database PermissionsGroup Table]]
+            [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -19,7 +20,7 @@
    (db-graph-keypath group)
    [:schemas :PUBLIC (id->keyword (mt/id :venues))]))
 
-(deftest graph-update-should-delete-gtaps-test
+(deftest revoke-perms-delete-gtaps-test
   (testing "PUT /api/permissions/graph"
     (testing "removing sandboxed permissions for a group should delete the associated GTAP (#16190)"
       (doseq [[message {:keys [updated-db-perms expected-perms]}]
@@ -114,3 +115,18 @@
                                         :attribute_remappings (s/eq nil)}
                                        "GTAP")]
                                (db/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
+
+(deftest grant-sandbox-perms-dont-delete-gtaps-test
+  (testing "PUT /api/permissions/graph"
+    (testing "granting sandboxed permissions for a group should *not* delete an associated GTAP (#16190)"
+      (mt/with-temp-copy-of-db
+        (mt/with-temp GroupTableAccessPolicy [_ {:group_id (u/the-id (group/all-users))
+                                                 :table_id (mt/id :venues)}]
+          (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
+                graph'   (assoc-in graph (db-graph-keypath (group/all-users)) {:schemas
+                                                                               {"PUBLIC"
+                                                                                {(id->keyword (mt/id :venues))
+                                                                                 {:read :all, :query :segmented}}}})]
+            (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')
+            (testing "GTAP should not have been deleted"
+              (is (db/exists? GroupTableAccessPolicy :group_id (u/the-id (group/all-users)), :table_id (mt/id :venues))))))))))

@@ -478,8 +478,7 @@
                              other-conditions)}]
     (when-let [revoked (db/select-field :object Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/get-id group-or-id) revoked))
-      (db/delete! Permissions where))
-    (delete-sandboxes/revoke-perms-delete-sandboxes-if-needed! group-or-id path)))
+      (db/delete! Permissions where))))
 
 (defn revoke-permissions!
   "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
@@ -502,7 +501,6 @@
      (db/insert! Permissions
        :group_id (u/get-id group-or-id)
        :object   path)
-     (delete-sandboxes/grant-perms-delete-sandboxes-if-needed! group-or-id path)
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red (tru "Failed to grant permissions")))
@@ -717,7 +715,8 @@
        (db/transaction
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
-         (save-perms-revision! (:revision old-graph) old new)))))
+         (save-perms-revision! (:revision old-graph) old new)
+         (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any], new-value]
