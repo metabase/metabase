@@ -9,7 +9,7 @@
             [toucan.db :as db]))
 
 (def ^:private ^:const ^Long width 12)
-(def ^:private ^:const ^Long total-width 18)
+(def ^:private ^:const ^Long total-width 24)
 (def ^:private ^:const ^Long height 4)
 
 (defn- cards->section

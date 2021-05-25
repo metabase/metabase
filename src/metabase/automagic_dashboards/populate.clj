@@ -13,7 +13,7 @@
 
 (def ^Long grid-width
   "Total grid width."
-  18)
+  24)
 
 (def ^Long default-card-width
   "Default card width."
