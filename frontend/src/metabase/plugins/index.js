@@ -61,7 +61,7 @@ export const PLUGIN_MODERATION_COMPONENTS = {
   ModerationIssueActionMenu: PluginPlaceholder,
   CreateModerationIssuePanel: PluginPlaceholder,
   OpenModerationIssuesButton: PluginPlaceholder,
-  OpenModerationIssuesPanel: PluginPlaceholder,
+  ModerationRequestsPanel: PluginPlaceholder,
 };
 
 export const PLUGIN_MODERATION_SERVICE = {
@@ -69,5 +69,6 @@ export const PLUGIN_MODERATION_SERVICE = {
   getColorForReview: _.noop,
   getOpenRequests: _.noop,
   isRequestDismissal: _.noop,
+  isRequestOpen: _.noop,
   getModerationRequestActionTypes: _.noop,
 };

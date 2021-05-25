@@ -8,27 +8,29 @@ import User from "metabase/entities/users";
 import { getUser } from "metabase/selectors/user";
 
 import Button from "metabase/components/Button";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { ModerationIssueThread } from "metabase-enterprise/moderation/components/ModerationIssueThread";
 
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
-import { SIDEBAR_VIEWS } from "metabase/query_builder/components/view/sidebars/constants";
 
-OpenModerationIssuesPanel.propTypes = {
-  setView: PropTypes.func.isRequired,
+ModerationRequestsPanel.propTypes = {
+  onModerate: PropTypes.func.isRequired,
   requests: PropTypes.array.isRequired,
   onReturn: PropTypes.func.isRequired,
   users: PropTypes.array,
   isModerator: PropTypes.bool.isRequired,
   currentUser: PropTypes.object,
+  returnText: PropTypes.string,
 };
 
-function OpenModerationIssuesPanel({
-  setView,
+function ModerationRequestsPanel({
+  onModerate,
   requests,
   onReturn,
   users,
   isModerator,
   currentUser,
+  returnText,
 }) {
   const usersById = users.reduce((map, user) => {
     map[user.id] = user;
@@ -44,23 +46,17 @@ function OpenModerationIssuesPanel({
     };
   });
 
-  const onModerate = async (moderationReviewType, moderationRequest) => {
-    setView({
-      name: SIDEBAR_VIEWS.CREATE_ISSUE_PANEL,
-      props: { issueType: moderationReviewType, moderationRequest },
-      previousView: SIDEBAR_VIEWS.OPEN_ISSUES_PANEL,
-    });
-  };
-
   return (
-    <div className="px1">
+    <SidebarContent className="full-height px1">
       <div className="pt1">
         <Button
           className="text-brand text-brand-hover"
           borderless
           icon="chevronleft"
           onClick={onReturn}
-        >{t`Open issues`}</Button>
+        >
+          {returnText || t`Back`}
+        </Button>
       </div>
       <div className="px2">
         {requestsWithMetadata.length > 0 ? (
@@ -75,10 +71,10 @@ function OpenModerationIssuesPanel({
             );
           })
         ) : (
-          <div className="text-body text-medium p1">{t`No open issues`}</div>
+          <div className="text-body text-medium p1">{t`No issues found`}</div>
         )}
       </div>
-    </div>
+    </SidebarContent>
   );
 }
 
@@ -90,4 +86,4 @@ const mapStateToProps = (state, props) => ({
 export default _.compose(
   User.loadList(),
   connect(mapStateToProps),
-)(OpenModerationIssuesPanel);
+)(ModerationRequestsPanel);

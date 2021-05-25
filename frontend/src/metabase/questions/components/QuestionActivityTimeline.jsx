@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
+import cx from "classnames";
 
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getRevisionEvents } from "metabase/lib/revisions";
@@ -11,14 +12,16 @@ import Revision from "metabase/entities/revisions";
 import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
 import Timeline from "metabase/components/Timeline";
 import ActionButton from "metabase/components/ActionButton";
+import Button from "metabase/components/Button";
 
-const { getModerationEvents } = PLUGIN_MODERATION_SERVICE;
+const { getModerationEvents, isRequestOpen } = PLUGIN_MODERATION_SERVICE;
 
 QuestionActivityTimeline.propTypes = {
   question: PropTypes.object,
   className: PropTypes.string,
   revisions: PropTypes.array,
   revertToRevision: PropTypes.func.isRequired,
+  onRequestClick: PropTypes.func.isRequired,
   users: PropTypes.array,
 };
 
@@ -27,6 +30,7 @@ function QuestionActivityTimeline({
   className,
   revisions,
   revertToRevision,
+  onRequestClick,
   users,
 }) {
   const usersById = _.indexBy(users, "id");
@@ -42,7 +46,13 @@ function QuestionActivityTimeline({
       <Timeline
         items={events}
         renderFooter={item =>
-          renderQuestionActivityTimelineFooter(item, revertToRevision)
+          item.showFooter ? (
+            <QuestionActivityTimelineFooter
+              item={item}
+              onRevisionClick={revertToRevision}
+              onRequestClick={onRequestClick}
+            />
+          ) : null
         }
       />
     </div>
@@ -66,13 +76,39 @@ export default _.compose(
   ),
 )(QuestionActivityTimeline);
 
-// this looks ugly, so not showing it for now
-function renderQuestionActivityTimelineFooter(item, revertToRevision) {
-  if (item.showFooter) {
+QuestionActivityTimelineFooter.propTypes = {
+  item: PropTypes.object.isRequired,
+  onRevisionClick: PropTypes.func.isRequired,
+  onRequestClick: PropTypes.func.isRequired,
+};
+
+function QuestionActivityTimelineFooter({
+  item,
+  onRevisionClick,
+  onRequestClick,
+}) {
+  const { revision, request } = item;
+  if (request) {
     return (
-      <div className="pt2 pb1">
+      <div className="py1">
+        <Button
+          className={cx(
+            "p0 borderless text-underline-hover bg-transparent-hover",
+            isRequestOpen(request)
+              ? "text-dark text-dark-hover"
+              : "text-light text-light-hover",
+          )}
+          onClick={() => onRequestClick(request)}
+        >
+          {item.requestStatusText}
+        </Button>
+      </div>
+    );
+  } else if (revision) {
+    return (
+      <div className="py1">
         <ActionButton
-          actionFn={() => revertToRevision(item.revision)}
+          actionFn={() => onRevisionClick(revision)}
           className="p0 borderless text-accent3 text-underline-hover bg-transparent-hover"
           successClassName=""
           failedClassName=""
@@ -84,4 +120,6 @@ function renderQuestionActivityTimelineFooter(item, revertToRevision) {
       </div>
     );
   }
+
+  return null;
 }

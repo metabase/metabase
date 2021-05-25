@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+
 import QuestionDetailsSidebarPanel from "metabase/query_builder/components/view/sidebars/QuestionDetailsSidebarPanel";
 import {
   PLUGIN_MODERATION_COMPONENTS,
@@ -8,7 +10,7 @@ import {
 import { SIDEBAR_VIEWS } from "./constants";
 const {
   CreateModerationIssuePanel,
-  OpenModerationIssuesPanel,
+  ModerationRequestsPanel,
 } = PLUGIN_MODERATION_COMPONENTS;
 
 const { getOpenRequests } = PLUGIN_MODERATION_SERVICE;
@@ -33,17 +35,26 @@ function QuestionDetailsSidebar({
   });
   const { name, props: viewProps } = view;
   const id = question.id();
-  const setBaseView = () =>
+
+  const onReturn = () =>
     setView(({ previousView }) => ({
       name: previousView || SIDEBAR_VIEWS.DETAILS,
     }));
+
+  const onModerate = (moderationReviewType, moderationRequest) => {
+    setView({
+      name: SIDEBAR_VIEWS.CREATE_ISSUE_PANEL,
+      props: { issueType: moderationReviewType, moderationRequest },
+      previousView: SIDEBAR_VIEWS.OPEN_ISSUES_PANEL,
+    });
+  };
 
   switch (name) {
     case SIDEBAR_VIEWS.CREATE_ISSUE_PANEL:
       return (
         <CreateModerationIssuePanel
           {...viewProps}
-          onReturn={setBaseView}
+          onReturn={onReturn}
           createModerationReview={createModerationReview}
           createModerationRequest={createModerationRequest}
           itemId={id}
@@ -51,12 +62,15 @@ function QuestionDetailsSidebar({
       );
     case SIDEBAR_VIEWS.OPEN_ISSUES_PANEL:
       return (
-        <OpenModerationIssuesPanel
-          setView={setView}
+        <ModerationRequestsPanel
+          returnText={t`Open issues`}
           requests={getOpenRequests(question)}
-          onReturn={setBaseView}
+          onModerate={onModerate}
+          onReturn={onReturn}
         />
       );
+    case SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL:
+      return <ModerationRequestsPanel {...viewProps} onReturn={onReturn} />;
     case SIDEBAR_VIEWS.DETAILS:
     default:
       return (
