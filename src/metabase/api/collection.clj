@@ -446,7 +446,6 @@
     (api/check-403 (or (not (contains? collection-updates :type)) ;; update doesn't include it
                        (= (:type collection-before-update) type)  ;; update doesn't change it
                        api/*is-superuser?*))
-    ;; should there be an enhancements check here?
     (api/check-403 (or (nil? type_sub_tree)
                        api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
@@ -461,8 +460,8 @@
       (db/execute! {:update Collection
                     :set    {:type type}
                     :where  [:or
-                            [:= :id id]
-                            [:like :location (hx/literal (format "%%/%d/%%" id))]]}))
+                             [:= :id id]
+                             [:like :location (hx/literal (format "%%/%d/%%" id))]]}))
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notificaitons! collection-before-update collection-updates))
   ;; finally, return the updated object
