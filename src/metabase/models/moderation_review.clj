@@ -23,14 +23,15 @@
 
 (models/defmodel ModerationReview :moderation_review)
 
-(defn- newly-verified?
-  [old-status new-status]
+(s/defn ^:private newly-reviewed?
+  [old-status :- (s/maybe statuses)
+   new-status :- (s/maybe statuses)]
   (and
-   (not= "verified" old-status)
-   (= "verified" new-status)))
+   (not= old-status new-status)
+   (#{"misleading" "confusing" "verified"} new-status)))
 
 (defn- resolve-requests!
-  "All open moderation requests for verification connected to the same question/dashboard should be closed"
+  "Close all open requests for verification connected to the same question/dashboard"
   [{:keys [moderated_item_id moderated_item_type]}]
   (db/update-where! 'ModerationRequest {:moderated_item_id   moderated_item_id
                                         :moderated_item_type (name moderated_item_type)
@@ -41,7 +42,7 @@
 (defn- pre-insert-or-update
   [maybe-old-review new-review]
   (u/prog1 new-review
-    (when (newly-verified? (:status maybe-old-review) (:status new-review))
+    (when (newly-reviewed? (:status maybe-old-review) (:status new-review))
       (resolve-requests! (merge maybe-old-review new-review)))))
 
 (defn- pre-insert
