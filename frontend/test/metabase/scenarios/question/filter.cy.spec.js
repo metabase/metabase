@@ -1030,4 +1030,84 @@ describe("scenarios > question > filter", () => {
         .and("contain", "Average of Total");
     }
   });
+
+  describe.skip("specific combination of filters can cause frontend reload or blank screen (metabase#16198)", () => {
+    it("shouldn't display chosen category in a breadcrumb (metabase#16198-1)", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": PRODUCTS_ID,
+            filter: [
+              "and",
+              ["=", ["field", PRODUCTS.CATEGORY, null], "Gizmo"],
+              ["=", ["field", PRODUCTS.ID, null], 1],
+            ],
+          },
+          type: "query",
+        },
+      });
+
+      cy.findByRole("link", { name: "Sample Dataset" })
+        .parent()
+        .within(() => {
+          cy.findByText("Gizmo").should("not.exist");
+        });
+    });
+
+    it("adding an ID filter shouldn't cause page error and page reload (metabase#16198-2)", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Filter").click();
+      cy.findByText("Custom Expression").click();
+      cy.get("[contenteditable=true]")
+        .type("[Total] < [Product → Price]")
+        .blur();
+      cy.button("Done").click();
+      // Filter currently says "Total is less than..." but it can change in https://github.com/metabase/metabase/pull/16174 to "Total < Price"
+      // See: https://github.com/metabase/metabase/pull/16209#discussion_r638129099
+      cy.findByText(/^Total/);
+      cy.icon("add")
+        .last()
+        .click();
+      popover()
+        .findByText(/^ID$/i)
+        .click();
+      cy.findByPlaceholderText("Enter an ID").type("1");
+      cy.button("Add filter").click();
+      cy.findByText(/^Total/);
+      cy.findByText("Something went wrong").should("not.exist");
+    });
+
+    it("removing first filter in a sequence shouldn't result in an empty page (metabase#16198-3)", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("Total")
+        .click();
+      cy.findByPlaceholderText("Enter a number").type("123");
+      cy.button("Add filter").click();
+      cy.icon("add")
+        .last()
+        .click();
+      cy.findByText("Custom Expression").click();
+      cy.get("[contenteditable=true]")
+        .type("[Total] < [Product → Price]")
+        .blur();
+      cy.button("Done").click();
+      // cy.findByText(/^Total/);
+      cy.icon("add")
+        .last()
+        .click();
+      popover()
+        .findByText(/^ID$/i)
+        .click();
+      cy.findByPlaceholderText("Enter an ID").type("1");
+      cy.button("Add filter").click();
+      cy.findByText("Total is equal to 123")
+        .parent()
+        .find(".Icon-close")
+        .click();
+      cy.button("Visualize");
+    });
+  });
 });
