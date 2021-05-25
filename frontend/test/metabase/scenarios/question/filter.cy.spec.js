@@ -648,7 +648,9 @@ describe("scenarios > question > filter", () => {
     popover().contains(/case/i);
   });
 
-  it("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
+  it.only("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
+    const brandColor = "rgb(80, 158, 227)";
+
     openReviewsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
@@ -657,27 +659,24 @@ describe("scenarios > question > filter", () => {
       .click()
       .type("c");
 
-    // First highlighted selection is Created At
-    // "C" is wrapped in a <span>
-    // so we must look for string "reated At"
-    cy.findByText("reated At")
+    cy.contains("Created At")
       .closest("li")
       .should("have.css", "background-color")
-      .and("eq", "rgb(80, 158, 227)");
+      .and("eq", brandColor);
 
     cy.get("[contenteditable='true']")
       .click()
       .type("{downarrow}");
 
-    cy.findByText("reated At")
+    cy.contains("Created At")
       .closest("li")
       .should("have.css", "background-color")
-      .and("not.eq", "rgb(80, 158, 227)");
+      .and("not.eq", brandColor);
 
-    cy.findByText(/ategory/i)
+    cy.contains("Product → Category")
       .closest("li")
       .should("have.css", "background-color")
-      .and("eq", "rgb(80, 158, 227)");
+      .and("eq", brandColor);
   });
 
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
