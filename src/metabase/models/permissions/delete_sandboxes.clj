@@ -5,6 +5,7 @@
             [pretty.core :as pretty]))
 
 (p/defprotocol+ DeleteSandboxes
+  "Protocol for Sandbox deletion behavior when permissions are granted or revoked."
   (revoke-perms-delete-sandboxes-if-needed!* [this group-or-id path]
     "Only for internal use in `metabase.models.permissions`; don't invoke this method elsewhere. Delete any
 sandboxes (GTAPs) for when PermissionsGroup `group-or-id` has their permissions for object `path` revoked, if
