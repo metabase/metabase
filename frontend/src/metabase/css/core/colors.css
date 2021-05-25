@@ -376,16 +376,16 @@
 }
 
 .text-accent2,
-.text-accent2:hover {
+.text-accent2-hover:hover {
   color: var(--color-accent2);
 }
 
 .text-accent3,
-.text-accent3:hover {
+.text-accent3-hover:hover {
   color: var(--color-accent3);
 }
 
 .text-accent5,
-.text-accent5:hover {
+.text-accent5-hover:hover {
   color: var(--color-accent5);
 }

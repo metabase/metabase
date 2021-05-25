@@ -38,7 +38,7 @@ function CreateModerationIssuePanel({
   const [description, setDescription] = useState("");
   const icon = getModerationStatusIcon(issueType);
   const color = getColor(issueType);
-  const textColorClass = `text-${color}`;
+  const textColorClass = `text-${color} text-${color}-hover`;
   const userType = getUserTypeTextKey(isModerator);
 
   const [createModerationReview, isModerationReviewPending] = useAsyncFunction(

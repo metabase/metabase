@@ -109,7 +109,7 @@ function QuestionActivityTimelineFooter({
       <div className="py1">
         <ActionButton
           actionFn={() => onRevisionClick(revision)}
-          className="p0 borderless text-accent3 text-underline-hover bg-transparent-hover"
+          className="p0 borderless text-accent3 text-accent3-hover text-underline-hover bg-transparent-hover"
           successClassName=""
           failedClassName=""
           normalText={t`Revert back`}

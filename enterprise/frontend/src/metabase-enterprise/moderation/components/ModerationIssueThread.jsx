@@ -36,7 +36,9 @@ export function ModerationIssueThread({
 
   return (
     <div className={cx(className, "")}>
-      <div className={`flex align-center text-${color} text-bold`}>
+      <div
+        className={`flex align-center text-${color} text-${color}-hover text-bold`}
+      >
         <Icon name={icon} className="mr1" />
         {MODERATION_TEXT.user[request.type].action}
       </div>
