@@ -5,7 +5,6 @@ import {
   PLUGIN_MODERATION_COMPONENTS,
   PLUGIN_MODERATION_SERVICE,
 } from "metabase/plugins";
-import { capitalize } from "metabase/lib/formatting";
 
 import {
   ACTIONS,

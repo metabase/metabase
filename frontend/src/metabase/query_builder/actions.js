@@ -36,7 +36,6 @@ import {
   getCard,
   getQuestion,
   getOriginalQuestion,
-  getOriginalCard,
   getIsEditing,
   getTransformedSeries,
   getRawSeries,
