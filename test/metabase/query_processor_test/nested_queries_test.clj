@@ -5,7 +5,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Dimension Field Segment Table]]
+            [metabase.models :refer [Dimension Field Metric Segment Table]]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as models]
@@ -1162,3 +1162,16 @@
                        (qp/query->native q2))))
               (is (= [[543]]
                      (mt/formatted-rows [int] (qp/process-query q2)))))))))))
+
+(deftest nested-query-with-metric-test
+  (testing "A nested query with a Metric should work as expected (#12507)"
+    (mt/with-temp Metric [metric (mt/$ids checkins
+                                   {:table_id   $$checkins
+                                    :definition {:source-table $$checkins
+                                                 :aggregation  [[:count]]
+                                                 :filter       [:not-null $id]}})]
+      (is (= :wow
+             (mt/run-mbql-query checkins
+               {:source-query {:source-table $$checkins
+                               :aggregation  [[:metric (u/the-id metric)]]
+                               :breakout     [[:field $venue_id nil]]}}))))))
