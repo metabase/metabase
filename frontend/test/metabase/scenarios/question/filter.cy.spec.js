@@ -636,9 +636,8 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should offer case expression in the auto-complete suggestions", () => {
-    openReviewsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
-    cy.findByText("Custom Expression").click();
+    openExpressionEditorFromFreshlyLoadedPage();
+
     popover().contains(/case/i);
 
     // "case" is still there after typing a bit
@@ -648,25 +647,19 @@ describe("scenarios > question > filter", () => {
     popover().contains(/case/i);
   });
 
-  it.only("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
+  it("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
     const brandColor = "rgb(80, 158, 227)";
 
-    openReviewsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
-    cy.findByText("Custom Expression").click();
+    openExpressionEditorFromFreshlyLoadedPage();
 
-    cy.get("[contenteditable='true']")
-      .click()
-      .type("c");
+    typeInExpressionEditor("c");
 
     cy.contains("Created At")
       .closest("li")
       .should("have.css", "background-color")
       .and("eq", brandColor);
 
-    cy.get("[contenteditable='true']")
-      .click()
-      .type("{downarrow}");
+    typeInExpressionEditor("{downarrow}");
 
     cy.contains("Created At")
       .closest("li")
@@ -1019,3 +1012,15 @@ describe("scenarios > question > filter", () => {
     cy.button("Add filter").isVisibleInPopover();
   });
 });
+
+function openExpressionEditorFromFreshlyLoadedPage() {
+  openReviewsTable({ mode: "notebook" });
+  cy.findByText("Filter").click();
+  cy.findByText("Custom Expression").click();
+}
+
+function typeInExpressionEditor(string) {
+  cy.get("[contenteditable='true']")
+    .click()
+    .type(string);
+}
