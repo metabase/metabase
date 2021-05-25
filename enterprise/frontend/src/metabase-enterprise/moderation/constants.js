@@ -64,8 +64,11 @@ export const ACTIONS = {
 };
 
 export const MODERATION_TEXT = {
-  cancel: t`Cancel`,
-  actionCreationPlaceholder: t`You can add details if you'd like`,
+  requestStatuses: {
+    open: t`Open`,
+    resolved: t`Resolved`,
+    dismissed: t`Dismissed`,
+  },
   user: {
     action: t`user action`,
     verification_request: {
@@ -92,11 +95,6 @@ export const MODERATION_TEXT = {
   },
   moderator: {
     action: t`Moderate`,
-    dismissAction: t`dismissed`,
-    requestActions: {
-      resolved: t`resolved`,
-      dismissed: t`dismissed`,
-    },
     verified: {
       action: t`Verify this`,
       actionCreationDescription: t`Everything look correct here? Verify this question to let others know.`,

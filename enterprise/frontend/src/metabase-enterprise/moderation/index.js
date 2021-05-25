@@ -107,7 +107,7 @@ export function getModerationEvents(question, usersById) {
       description: request.text,
       showFooter: true,
       footerClass: "",
-      requestStatusText: capitalize(request.status),
+      requestStatusText: MODERATION_TEXT.requestStatuses[request.status],
       request,
     };
   });

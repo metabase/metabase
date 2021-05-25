@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import cx from "classnames";
+import { t } from "ttag";
 
 import { useAsyncFunction } from "metabase/lib/hooks";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
@@ -95,12 +96,12 @@ function CreateModerationIssuePanel({
         rows={10}
         value={description}
         onChange={e => setDescription(e.target.value)}
-        placeholder={MODERATION_TEXT.actionCreationPlaceholder}
+        placeholder={t`You can add details if you'd like`}
         name="text"
       />
       <div className="flex column-gap-1 justify-end">
         <Button disabled={isPending} type="button" onClick={onReturn}>
-          {MODERATION_TEXT.cancel}
+          {t`Cancel`}
         </Button>
         <Button disabled={isPending} type="submit" primary>
           {MODERATION_TEXT[userType][issueType].actionCreationButton}
