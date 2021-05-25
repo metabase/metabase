@@ -31,12 +31,21 @@ export function ModerationIssueThread({
   onModerate,
 }) {
   const [showCommentForm, setShowCommentForm] = useState(false);
+  const [isCommentPending, setIsCommentPending] = useState(false);
   const color = getColor(request.type);
   const icon = getModerationStatusIcon(request.type);
   const showButtonBar = !showCommentForm && !!(onComment || onModerate);
 
-  const onSubmit = e => {
-    e.preventDefault();
+  const onSubmit = async comment => {
+    setIsCommentPending(true);
+    try {
+      await onComment(comment, request);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setShowCommentForm(false);
+      setIsCommentPending(false);
+    }
   };
 
   return (
@@ -49,9 +58,9 @@ export function ModerationIssueThread({
       </div>
       <Comment
         className="pt1"
-        title={request.requesterDisplayName}
+        title={request.title}
         text={request.text}
-        timestamp={request.created_at}
+        timestamp={request.timestamp}
         visibleLines={COMMMENT_VISIBLE_LINES}
       />
       {comments.map(comment => {
@@ -72,6 +81,7 @@ export function ModerationIssueThread({
           className="pt1"
           onSubmit={onSubmit}
           onCancel={() => setShowCommentForm(false)}
+          isPending={isCommentPending}
         />
       )}
       {showButtonBar && (
@@ -105,8 +115,15 @@ CommentForm.propTypes = {
 function CommentForm({ className, onSubmit, onCancel, isPending }) {
   const [value, setValue] = useState("");
   const isEmpty = value.trim().length === 0;
+
   return (
-    <form className={className} onSubmit={onSubmit}>
+    <form
+      className={className}
+      onSubmit={e => {
+        e.preventDefault();
+        onSubmit(value);
+      }}
+    >
       <textarea
         className="input full max-w-full min-w-full"
         value={value}

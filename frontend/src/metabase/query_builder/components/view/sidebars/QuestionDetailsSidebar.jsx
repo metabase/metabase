@@ -20,6 +20,7 @@ QuestionDetailsSidebar.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   createModerationReview: PropTypes.func.isRequired,
   createModerationRequest: PropTypes.func.isRequired,
+  createModerationRequestComment: PropTypes.func.isRequired,
 };
 
 function QuestionDetailsSidebar({
@@ -27,6 +28,7 @@ function QuestionDetailsSidebar({
   onOpenModal,
   createModerationReview,
   createModerationRequest,
+  createModerationRequestComment,
 }) {
   const [view, setView] = useState({
     name: undefined,
@@ -35,6 +37,7 @@ function QuestionDetailsSidebar({
   });
   const { name, props: viewProps } = view;
   const id = question.id();
+  const comments = question.getComments();
 
   const onReturn = () =>
     setView(({ previousView }) => ({
@@ -46,6 +49,13 @@ function QuestionDetailsSidebar({
       name: SIDEBAR_VIEWS.CREATE_ISSUE_PANEL,
       props: { issueType: moderationReviewType, moderationRequest },
       previousView: SIDEBAR_VIEWS.OPEN_ISSUES_PANEL,
+    });
+  };
+
+  const onComment = (text, moderationRequest) => {
+    return createModerationRequestComment({
+      text,
+      moderationRequestId: moderationRequest.id,
     });
   };
 
@@ -65,12 +75,22 @@ function QuestionDetailsSidebar({
         <ModerationRequestsPanel
           returnText={t`Open issues`}
           requests={getOpenRequests(question)}
+          comments={comments}
           onModerate={onModerate}
+          onComment={onComment}
           onReturn={onReturn}
         />
       );
     case SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL:
-      return <ModerationRequestsPanel {...viewProps} onReturn={onReturn} />;
+      return (
+        <ModerationRequestsPanel
+          {...viewProps}
+          comments={comments}
+          onReturn={onReturn}
+          onModerate={onModerate}
+          onComment={onComment}
+        />
+      );
     case SIDEBAR_VIEWS.DETAILS:
     default:
       return (
