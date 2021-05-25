@@ -640,10 +640,9 @@ describe("scenarios > question > filter", () => {
 
     popover().contains(/case/i);
 
+    typeInExpressionEditor("c");
+
     // "case" is still there after typing a bit
-    cy.get("[contenteditable='true']")
-      .click()
-      .type("c");
     popover().contains(/case/i);
   });
 
