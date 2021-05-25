@@ -1063,7 +1063,9 @@ describe("scenarios > question > filter", () => {
         .type("[Total] < [Product → Price]")
         .blur();
       cy.button("Done").click();
-      cy.findByText(/^Total is less than/);
+      // Filter currently says "Total is less than..." but it can change in https://github.com/metabase/metabase/pull/16174 to "Total < Price"
+      // See: https://github.com/metabase/metabase/pull/16209#discussion_r638129099
+      cy.findByText(/^Total/);
       cy.icon("add")
         .last()
         .click();
@@ -1072,7 +1074,7 @@ describe("scenarios > question > filter", () => {
         .click();
       cy.findByPlaceholderText("Enter an ID").type("1");
       cy.button("Add filter").click();
-      cy.findByText(/^Total is less than/);
+      cy.findByText(/^Total/);
       cy.findByText("Something went wrong").should("not.exist");
     });
   });
