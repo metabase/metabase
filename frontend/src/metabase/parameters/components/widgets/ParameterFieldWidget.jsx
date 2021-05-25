@@ -200,19 +200,28 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
               );
             })}
             {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
-            <div className={cx("flex mt1", isEqualsOp && "mr1 mb1")}>
-              <Button
-                primary
-                className="ml-auto"
-                disabled={savedValue.length === 0 && unsavedValue.length === 0}
-                onClick={() => {
-                  setValue(unsavedValue.length > 0 ? unsavedValue : null);
-                  focusChanged(false);
-                }}
-              >
-                {savedValue.length > 0 ? "Update filter" : "Add filter"}
-              </Button>
-            </div>
+          </div>
+          <div
+            className={cx("flex mt1", isEqualsOp && "mr1 mb1")}
+            style={{
+              position: "absolute",
+              width: "calc(100% - 2px)",
+              background: "white",
+              borderBottomRightRadius: 6,
+              borderBottomLeftRadius: 6,
+            }}
+          >
+            <Button
+              primary
+              className="ml-auto"
+              disabled={savedValue.length === 0 && unsavedValue.length === 0}
+              onClick={() => {
+                setValue(unsavedValue.length > 0 ? unsavedValue : null);
+                focusChanged(false);
+              }}
+            >
+              {savedValue.length > 0 ? "Update filter" : "Add filter"}
+            </Button>
           </div>
         </Popover>
       );
