@@ -636,16 +636,39 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should offer case expression in the auto-complete suggestions", () => {
-    openReviewsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
-    cy.findByText("Custom Expression").click();
+    openExpressionEditorFromFreshlyLoadedPage();
+
     popover().contains(/case/i);
 
+    typeInExpressionEditor("c");
+
     // "case" is still there after typing a bit
-    cy.get("[contenteditable='true']")
-      .click()
-      .type("c");
     popover().contains(/case/i);
+  });
+
+  it("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
+    const transparent = "rgba(0, 0, 0, 0)";
+
+    openExpressionEditorFromFreshlyLoadedPage();
+
+    typeInExpressionEditor("c");
+
+    cy.contains("Created At")
+      .closest("li")
+      .should("have.css", "background-color")
+      .and("not.eq", transparent);
+
+    typeInExpressionEditor("{downarrow}");
+
+    cy.contains("Created At")
+      .closest("li")
+      .should("have.css", "background-color")
+      .and("eq", transparent);
+
+    cy.contains("Product → Category")
+      .closest("li")
+      .should("have.css", "background-color")
+      .and("not.eq", transparent);
   });
 
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
@@ -988,3 +1011,15 @@ describe("scenarios > question > filter", () => {
     cy.button("Add filter").isVisibleInPopover();
   });
 });
+
+function openExpressionEditorFromFreshlyLoadedPage() {
+  openReviewsTable({ mode: "notebook" });
+  cy.findByText("Filter").click();
+  cy.findByText("Custom Expression").click();
+}
+
+function typeInExpressionEditor(string) {
+  cy.get("[contenteditable='true']")
+    .click()
+    .type(string);
+}
