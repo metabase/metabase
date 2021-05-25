@@ -6,21 +6,19 @@ export const GRID_ASPECT_RATIO = 4 / 3;
 const MOBILE_BREAKPOINT = 752;
 
 export const GRID_BREAKPOINTS = {
-  lg: 1200,
-  md: 996,
-  sm: MOBILE_BREAKPOINT,
+  desktop: MOBILE_BREAKPOINT + 1,
+  mobile: MOBILE_BREAKPOINT,
+};
+
+export const GRID_COLUMNS = {
+  desktop: GRID_WIDTH,
+  mobile: 1,
 };
 
 export function isMobileBreakpoint(breakpoint) {
   const width = GRID_BREAKPOINTS[breakpoint];
   return width <= MOBILE_BREAKPOINT;
 }
-
-export const GRID_COLUMNS = {
-  lg: 18,
-  md: 12,
-  sm: 1,
-};
 
 export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
 

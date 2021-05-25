@@ -2,8 +2,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Responsive as ReactGridLayout } from "react-grid-layout";
 
-import { isMobileBreakpoint } from "metabase/lib/dashboard_grid";
-
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
@@ -109,7 +107,7 @@ function GridLayout({
     [gridWidth, height, background, isEditing],
   );
 
-  const isMobile = isMobileBreakpoint(currentBreakpoint);
+  const isMobile = currentBreakpoint === "mobile";
 
   // https://github.com/react-grid-layout/react-grid-layout#performance
   const children = useMemo(() => items.map(renderItem), [items, renderItem]);

@@ -16,7 +16,6 @@ import {
   GRID_COLUMNS,
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
-  isMobileBreakpoint,
 } from "metabase/lib/dashboard_grid";
 
 import _ from "underscore";
@@ -78,7 +77,7 @@ export default class DashboardGrid extends Component {
     // We allow moving and resizing cards only on the desktop
     // Ensures onLayoutChange triggered by window resize,
     // won't break the main layout
-    if (breakpoint !== "lg") {
+    if (breakpoint !== "desktop") {
       return;
     }
 
@@ -150,27 +149,16 @@ export default class DashboardGrid extends Component {
   }
 
   getLayouts({ dashboard }) {
-    const lg = dashboard.ordered_cards.map(this.getLayoutForDashCard);
-    const layout = { lg };
-
-    layout.md = adaptLayoutForBreakpoint({
+    const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
+    const layout = { desktop };
+    layout.mobile = adaptLayoutForBreakpoint({
       layout,
       breakpoints: GRID_BREAKPOINTS,
-      targetBreakpoint: "md",
-      closestBreakpoint: "lg",
-      columns: GRID_COLUMNS.md,
+      targetBreakpoint: "mobile",
+      closestBreakpoint: "desktop",
+      columns: GRID_COLUMNS.mobile,
       compactType: "vertical",
     });
-
-    layout.sm = adaptLayoutForBreakpoint({
-      layout,
-      breakpoints: GRID_BREAKPOINTS,
-      targetBreakpoint: "sm",
-      closestBreakpoint: "md",
-      columns: GRID_COLUMNS.sm,
-      compactType: "vertical",
-    });
-
     return layout;
   }
 
@@ -283,7 +271,7 @@ export default class DashboardGrid extends Component {
   renderGridItem = ({ item: dc, breakpoint, gridItemWidth }) => (
     <div key={String(dc.id)} className="DashCard">
       {this.renderDashCard(dc, {
-        isMobile: isMobileBreakpoint(breakpoint),
+        isMobile: breakpoint === "mobile",
         gridItemWidth,
       })}
     </div>
@@ -306,7 +294,7 @@ export default class DashboardGrid extends Component {
         breakpoints={GRID_BREAKPOINTS}
         cols={GRID_COLUMNS}
         width={width}
-        margin={{ lg: [6, 6], md: [6, 6], sm: [6, 10] }}
+        margin={{ desktop: [6, 6], mobile: [6, 10] }}
         containerPadding={[0, 0]}
         rowHeight={rowHeight}
         onLayoutChange={this.onLayoutChange}
