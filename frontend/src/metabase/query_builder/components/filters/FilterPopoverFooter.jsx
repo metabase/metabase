@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
+import { color } from "metabase/lib/colors";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -34,7 +34,7 @@ export default function FilterPopoverFooter({
         background: "white",
         position: "absolute",
         bottom: 0,
-        borderTop: "1px solid #f0f0f0",
+        borderTop: `1px solid ${color("border")}`,
         boxSizing: "border-box",
         borderBottomRightRadius: 6,
         borderBottomLeftRadius: 6,

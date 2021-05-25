@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-
+import { color } from "metabase/lib/colors";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
@@ -48,7 +48,6 @@ const BORDER_WIDTH = 1;
 const normalizeValue = value =>
   Array.isArray(value) ? value : value != null ? [value] : [];
 
-// TODO: rename this something else since we're using it for more than searching and more than text
 export default class ParameterFieldWidget extends Component<*, Props, State> {
   props: Props;
   state: State;
@@ -199,7 +198,6 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                 />
               );
             })}
-            {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
           </div>
           <div
             className={cx("flex mt1 px1", isEqualsOp && "mr1 mb1")}
@@ -207,7 +205,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
               background: "white",
               position: "absolute",
               bottom: 0,
-              borderTop: "1px solid #f0f0f0",
+              borderTop: `1px solid ${color("border")}`,
               boxSizing: "border-box",
               borderBottomRightRadius: 6,
               borderBottomLeftRadius: 6,
