@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.api.permissions-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+            [metabase.models :refer [Database PermissionsGroup Table]]
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -75,14 +76,41 @@
             (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
                   graph'   (assoc-in graph (db-graph-keypath &group) (updated-db-perms))
                   response (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')]
-              (testing "perms graph should be updated"
-                (testing "in API request response"
-                  (is (= (expected-perms)
-                         (get-in response (db-graph-keypath &group)))))
-                (testing "on subsequent fetch of the graph"
-                  (is (= (expected-perms)
-                         (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
-                                 (db-graph-keypath &group))))))
-              (testing "GTAP should be deleted from application DB"
-                (is (= []
-                       (db/select GroupTableAccessPolicy :group_id (u/the-id &group))))))))))))
+              (mt/with-temp* [Database               [db-2]
+                              Table                  [db-2-table {:db_id (u/the-id db-2)}]
+                              GroupTableAccessPolicy [_ {:group_id (u/the-id &group)
+                                                         :table_id (u/the-id db-2-table)}]
+                              PermissionsGroup       [other-group]
+                              GroupTableAccessPolicy [_ {:group_id (u/the-id other-group)
+                                                         :table_id (mt/id :venues)}]]
+                (testing "perms graph should be updated"
+                  (testing "in API request response"
+                    (is (= (expected-perms)
+                           (get-in response (db-graph-keypath &group)))))
+                  (testing "on subsequent fetch of the graph"
+                    (is (= (expected-perms)
+                           (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
+                                   (db-graph-keypath &group))))))
+                (testing "GTAP should be deleted from application DB"
+                  (is (= []
+                         (db/select GroupTableAccessPolicy
+                           :group_id (u/the-id &group)
+                           :table_id (mt/id :venues)))))
+                (testing "GTAP for same group, other database should not be affected"
+                  (is (schema= [(s/one {:id                   su/IntGreaterThanZero
+                                        :group_id             (s/eq (u/the-id &group))
+                                        :table_id             (s/eq (u/the-id db-2-table))
+                                        :card_id              (s/eq nil)
+                                        :attribute_remappings (s/eq nil)}
+                                       "GTAP")]
+                               (db/select GroupTableAccessPolicy
+                                 :group_id (u/the-id &group)
+                                 :table_id (u/the-id db-2-table)))))
+                (testing "GTAP for same table, other group should not be affected"
+                  (is (schema= [(s/one {:id                   su/IntGreaterThanZero
+                                        :group_id             (s/eq (u/the-id other-group))
+                                        :table_id             (s/eq (mt/id :venues))
+                                        :card_id              (s/eq nil)
+                                        :attribute_remappings (s/eq nil)}
+                                       "GTAP")]
+                               (db/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
