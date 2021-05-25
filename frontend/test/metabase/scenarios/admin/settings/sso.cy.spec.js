@@ -16,6 +16,13 @@ describe("scenarios > admin > settings > SSO", () => {
   });
 
   describe("LDAP", () => {
+    /**
+     * IMPORTANT:
+     * These repros currently rely on the broken behavior. It is possible to save settings without authentication turned on.
+     * See: https://github.com/metabase/metabase/issues/16225
+     * It is possible related repros will have to be rewritten/adjusted once #16255 gets fixed!
+     */
+
     beforeEach(() => {
       cy.visit("/admin/settings/authentication/ldap");
     });
@@ -33,7 +40,6 @@ describe("scenarios > admin > settings > SSO", () => {
         cy.findByPlaceholderText("389").type(port);
         cy.button("Save changes").click();
         cy.wait("@update").then(interception => {
-          console.log(interception);
           expect(interception.response.statusCode).to.eq(500);
           expect(interception.response.body.cause).to.include(port);
         });
