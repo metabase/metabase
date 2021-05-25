@@ -8,6 +8,7 @@ import {
   LOCATION,
   COORDINATE,
   PRIMARY_KEY,
+  FOREIGN_KEY,
   foreignKeyCountsByOriginTable,
   isEqualsOperator,
   doesOperatorExist,
@@ -130,6 +131,25 @@ describe("schema_metadata", () => {
 
     it("should return a metadata object for specific operator type/name", () => {
       expect(getOperatorByTypeAndName(NUMBER, "between")).toEqual({
+        name: "between",
+        numFields: 2,
+        validArgumentsFilters: [expect.any(Function), expect.any(Function)],
+        verboseName: "Between",
+      });
+    });
+
+    it("should return a metadata object for primary key", () => {
+      expect(getOperatorByTypeAndName(PRIMARY_KEY, "=")).toEqual({
+        multi: true,
+        name: "=",
+        numFields: 1,
+        validArgumentsFilters: [expect.any(Function)],
+        verboseName: "Is",
+      });
+    });
+
+    it("should return a metadata object for foreign key", () => {
+      expect(getOperatorByTypeAndName(FOREIGN_KEY, "between")).toEqual({
         name: "between",
         numFields: 2,
         validArgumentsFilters: [expect.any(Function), expect.any(Function)],
