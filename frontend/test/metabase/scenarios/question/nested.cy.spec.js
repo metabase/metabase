@@ -223,7 +223,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it.skip("should apply metrics including filter to the nested question (metabase#12507)", () => {
+  it("should apply metrics including filter to the nested question (metabase#12507)", () => {
     const METRIC_NAME = "Discount Applied";
 
     cy.log("Create a metric with a filter");
