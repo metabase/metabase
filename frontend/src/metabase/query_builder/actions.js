@@ -1420,15 +1420,12 @@ export const revertToRevision = createThunkAction(
 
 export async function createModerationRequestComment({
   text,
-  cardId,
   moderationRequestId,
 }) {
-  // something like this
-  // await ModerationCommentApi.create({
-  //   text,
-  //   commented_item_id: cardId,
-  //   commented_item_type: "card",
-  //   moderationRequestId // this prop doesn't exist yet and obv won't be named this exactly
-  // })
+  await ModerationCommentApi.create({
+    text,
+    commented_item_id: moderationRequestId,
+    commented_item_type: "moderation_request",
+  });
   return reloadCard();
 }
