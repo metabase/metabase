@@ -202,13 +202,17 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
             {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
           </div>
           <div
-            className={cx("flex mt1", isEqualsOp && "mr1 mb1")}
+            className={cx("flex mt1 px1", isEqualsOp && "mr1 mb1")}
             style={{
-              position: "absolute",
-              width: "calc(100% - 2px)",
               background: "white",
+              position: "absolute",
+              bottom: 0,
+              borderTop: "1px solid #f0f0f0",
+              boxSizing: "border-box",
               borderBottomRightRadius: 6,
               borderBottomLeftRadius: 6,
+              paddingTop: 8,
+              width: "calc(100% - 2px)",
             }}
           >
             <Button

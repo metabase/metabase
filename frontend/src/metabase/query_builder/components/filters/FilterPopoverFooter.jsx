@@ -36,8 +36,8 @@ export default function FilterPopoverFooter({
         bottom: 0,
         borderTop: "1px solid #f0f0f0",
         boxSizing: "border-box",
-        borderBottomRightRadius: "6px",
-        borderBottomLeftRadius: "6px",
+        borderBottomRightRadius: 6,
+        borderBottomLeftRadius: 6,
         paddingTop: 8,
         width: "calc(100% - 2px)",
       }}
