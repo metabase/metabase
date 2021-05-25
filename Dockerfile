@@ -40,7 +40,7 @@ RUN lein deps
 # STAGE 1.3: main builder
 ###################
 
-FROM adoptopenjdk/openjdk11:alpine as builder
+FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as builder
 
 ARG MB_EDITION=oss
 
