@@ -261,27 +261,51 @@
                                 keys
                                 set))
 
+(defn- partition-name-components
+  "This is more complicated than it needs to be due to potential clashes between an entity name (ex: a table called
+  \"users\" and a model name (ex: \"users\"). Could fix in a number of ways, including special prefix of model names,
+  but that would require changing the format and updating all the `defmethod` calls."
+  ([name-comps]
+   (partition-name-components {::name-components [] ::current-component []} name-comps))
+  ([acc [c & more-comps]]
+   (cond
+     (nil? more-comps)
+     (conj (::name-components acc) (conj (::current-component acc) c))
+
+     (::prev-model-name? acc)
+     (if (= \: (first c))
+       (partition-name-components (update acc ::current-component conj c) more-comps)
+       (partition-name-components (-> (assoc acc ::prev-model-name? false)
+                                      (update ::current-component
+                                              conj
+                                              c))
+                                  more-comps))
+
+     (contains? all-entities c)
+     (partition-name-components (cond-> (assoc acc ::prev-model-name? true
+                                                   ::current-component [c])
+                                  (not-empty (::current-component acc))
+                                  (update ::name-components conj (::current-component acc)))
+                                more-comps))))
+
 (defn fully-qualified-name->context
   "Parse a logical path into a context map."
   [fully-qualified-name]
   (when fully-qualified-name
     (let [components (->> (str/split fully-qualified-name separator-pattern)
                           rest ; we start with a /
-                          (partition-by (fn [part]
-                                          ;; keep the entities and any of their attributes together
-                                          (or (contains? all-entities part)
-                                              (= \: (first part)))))
-                          (map (fn [[part-name & part-rest]]
-                                 (cond-> {:name part-name}
-                                   (and (= "collections" part-name) (not-empty part-rest))
-                                   (assoc :namespace (->> part-rest
-                                                          first ; the ns is first/only item following "collections"
-                                                          rest  ; strip the starting :
-                                                          (apply str)))))))
+                          partition-name-components
+                          (map (fn [[model-name & entity-parts]]
+                                 (cond-> {::model-name model-name ::entity-name (last entity-parts)}
+                                         (and (= "collections" model-name) (> (count entity-parts) 1))
+                                         (assoc :namespace (->> entity-parts
+                                                                       first ; ns is first/only item after "collections"
+                                                                       rest  ; strip the starting :
+                                                                       (apply str)))))))
           context (loop [acc-context                   {}
-                         [{model :name :as model-map} {entity-name :name} & more] components]
-                    (let [model-attrs (dissoc model-map :name)
-                          new-context (path->context acc-context model model-attrs (unescape-name entity-name))]
+                         [{:keys [::model-name ::entity-name] :as model-map} & more] components]
+                    (let [model-attrs (dissoc model-map ::model-name ::entity-name)
+                          new-context (path->context acc-context model-name model-attrs (unescape-name entity-name))]
                       (if (empty? more)
                         new-context
                         (recur new-context more))))]

@@ -269,10 +269,6 @@
                                                              table-id-categories
                                                              table-id-users
                                                              table-id-checkins])
-                          #_(qp.store/fetch-and-store-fields! [table-id
-                                                             table-id-categories
-                                                             table-id-users
-                                                             table-id-checkins])
                           (dump dump-dir (:email (test-users/fetch-user :crowberto)) {:only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
