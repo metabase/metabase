@@ -22,7 +22,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import GridLayout from "./grid/GridLayout";
-import { adaptLayoutForBreakpoint } from "./grid/utils";
+import { generateMobileLayout } from "./grid/utils";
 import AddSeriesModal from "./AddSeriesModal";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
@@ -150,16 +150,18 @@ export default class DashboardGrid extends Component {
 
   getLayouts({ dashboard }) {
     const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
-    const layout = { desktop };
-    layout.mobile = adaptLayoutForBreakpoint({
-      layout,
-      breakpoints: GRID_BREAKPOINTS,
-      targetBreakpoint: "mobile",
-      closestBreakpoint: "desktop",
-      columns: GRID_COLUMNS.mobile,
-      compactType: "vertical",
+    const mobile = generateMobileLayout({
+      desktopLayout: desktop,
+      // We want to keep the heights for all visualizations equal not to break the visual rhythm
+      // Exceptions are text cards (can take too much vertical space)
+      // and scalar value cards (basically a number and some text on a big card)
+      heightByDisplayType: {
+        text: 2,
+        scalar: 4,
+      },
+      defaultCardHeight: 6,
     });
-    return layout;
+    return { desktop, mobile };
   }
 
   renderRemoveModal() {
