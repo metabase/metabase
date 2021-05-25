@@ -92,10 +92,24 @@ describe("Filter", () => {
   });
 
   const CASES = [
-    ["isStandard", ["=", ["field", 1, null]]],
+    ["isStandard", ["=", ["field", 1, null], 42]],
     ["isStandard", [null, ["field", 1, null]]], // assume null operator is standard
+    ["isStandard", ["between", ["field", 1, null], 1, 4]],
+    ["isStandard", ["contains", ["field", 1, null], "river"]],
+    ["isStandard", ["is-empty", ["field", 1, null]]],
+    ["isStandard", ["starts-with", ["field", 1, null], "X"]],
+    ["isStandard", ["ends-with", ["field", 1, null], "Y"]],
+    ["isStandard", ["=", ["field", 1, null], undefined]], // standard but invalid
+    ["isStandard", ["between", ["field", 1, null], undefined, 4]], // standard but invalid
     ["isSegment", ["segment", 1]],
     ["isCustom", ["or", ["=", ["field", 1, null], 42]]],
+    ["isCustom", ["=", ["field", 1, null], ["field", 2, null]]],
+    ["isCustom", ["between", ["field", 1, null], 1, ["field", 2, null]]],
+    ["isCustom", ["between", ["field", 1, null], ["field", 2, null], 3]],
+    ["isCustom", ["between", ["field", 1, null], ["field", 7], ["field", 9]]],
+    ["isCustom", ["contains", ["field", 8], ["upper", "cat"]]],
+    ["isCustom", ["starts-with", ["field", 1, null], ["lower", "X"]]],
+    ["isCustom", ["ends-with", ["field", 1, null], ["trim", "Y"]]],
   ];
   for (const method of ["isStandard", "isSegment", "isCustom"]) {
     describe(method, () => {
