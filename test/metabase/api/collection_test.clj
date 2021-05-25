@@ -899,7 +899,17 @@
         (is (= "official"
                (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
                                          {:name "foo" :type "official"})
-                   :type)))))
+                   :type))))
+      (testing "But not for personal collections"
+        (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
+          (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id personal-coll))
+                                {:type "official"})))
+      (testing "And not for children of personal collections"
+        (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
+          (mt/with-temp Collection [child-coll]
+            (collection/move-collection! child-coll (collection/children-location personal-coll))
+            (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id child-coll))
+                                  {:type "official"})))))
     (testing "Non-admins get a 403 when editing the type"
       (mt/with-temp Collection [collection]
         (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))

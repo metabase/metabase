@@ -443,11 +443,14 @@
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
-    (api/check-403 (or (not (contains? collection-updates :type)) ;; update doesn't include it
-                       (= (:type collection-before-update) type)  ;; update doesn't change it
-                       api/*is-superuser?*))
-    (api/check-403 (or (nil? type_sub_tree)
-                       api/*is-superuser?*))
+    (when (or (and (contains? collection-updates :type)
+                   (not= type (:type collection-before-update)))
+              type_sub_tree)
+      (api/check-403 (and api/*is-superuser?*
+                          ;; pre-update of model checks if the collection is a personal collection and rejects changes
+                          ;; to type, but it doesn't check if it is a sub-collection of a personal one so we add that
+                          ;; here
+                          (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :type])]

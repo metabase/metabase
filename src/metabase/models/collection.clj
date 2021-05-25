@@ -374,7 +374,7 @@
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
   Collection.
 
-     (children-location collection) ; -> \"/10/20/30/;
+     (children-location collection) ; -> \"/10/20/30/\";
 
      ;; To get children of this collection:
      (db/select Collection :location \"/10/20/30/\")"
@@ -617,7 +617,7 @@
    :personal_owner_id (s/maybe su/IntGreaterThanZero)
    s/Keyword          s/Any})
 
-(s/defn ^:private is-personal-collection-or-descendant-of-one? :- s/Bool
+(s/defn is-personal-collection-or-descendant-of-one? :- s/Bool
   "Is `collection` a Personal Collection, or a descendant of one?"
   [collection :- CollectionWithLocationAndPersonalOwnerID]
   (boolean
