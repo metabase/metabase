@@ -1103,8 +1103,7 @@ describe("scenarios > question > filter", () => {
         .click();
       cy.findByPlaceholderText("Enter an ID").type("1");
       cy.button("Add filter").click();
-      // Filter currently says "Total is equal to 123" but it can change in https://github.com/metabase/metabase/pull/16174, thus we guard against that change
-      cy.findByText(/.* 123$/)
+      cy.findByText("Total is equal to 123")
         .parent()
         .find(".Icon-close")
         .click();
