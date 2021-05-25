@@ -10,6 +10,7 @@ import { getUser } from "metabase/selectors/user";
 import Button from "metabase/components/Button";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { ModerationIssueThread } from "metabase-enterprise/moderation/components/ModerationIssueThread";
+import { isUserModerator } from "metabase-enterprise/moderation";
 
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 
@@ -50,13 +51,12 @@ function ModerationRequestsPanel({
 
   const commentsWithMetadata = comments.map(comment => {
     const user = usersById[comment.author_id];
-    console.log(user);
     const authorDisplayName = user && user.common_name;
     return {
       ...comment,
       title: authorDisplayName,
       timestamp: new Date(comment.created_at).valueOf(),
-      isModerator: true,
+      isModerator: isUserModerator(user),
     };
   });
 
