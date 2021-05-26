@@ -27,7 +27,6 @@
    :user-filter             su/NonBlankString
    :group-base              (s/maybe su/NonBlankString)
    :group-mappings          (s/maybe {DN [su/IntGreaterThanZero]})
-   :group-membership-filter su/NonBlankString
    s/Keyword                s/Any})
 
 (p/defprotocol+ LDAPIntegration

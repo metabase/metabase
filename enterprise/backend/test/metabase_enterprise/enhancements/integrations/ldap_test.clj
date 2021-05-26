@@ -50,7 +50,24 @@
                              :givenname "Fred"
                              :sn        "Taylor"}
                 :groups     []}
-               (ldap/find-user "fred.taylor@metabase.com")))))))
+               (ldap/find-user "fred.taylor@metabase.com"))))
+
+      (mt/with-temporary-setting-values [ldap-group-membership-filter "memberUid={uid}"]
+        (testing "find by username with custom group membership filter"
+          (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
+                  :first-name "Sally"
+                  :last-name  "Brown"
+                  :email      "sally.brown@metabase.com"
+                  :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
+                 (ldap/find-user "sbrown20"))))
+
+        (testing "find by email with custom group membership filter"
+          (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
+                  :first-name "Sally"
+                  :last-name  "Brown"
+                  :email      "sally.brown@metabase.com"
+                  :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
+                 (ldap/find-user "sally.brown@metabase.com"))))))))
 
 (deftest attribute-sync-test
   (with-redefs [metastore/enable-enhancements? (constantly true)]
@@ -96,80 +113,80 @@
 
       (testing "when creating a new user, user attributes should get synced"
         (try
-          (ldap/fetch-or-create-user! (ldap/find-user "jsmith1"))
-          (is (= {:first_name       "John"
-                  :last_name        "Smith"
-                  :email            "john.smith@metabase.com"
-                  :login_attributes {"uid"       "jsmith1"
-                                     "mail"      "John.Smith@metabase.com"
-                                     "givenname" "John"
-                                     "sn"        "Smith"
-                                     "cn"        "John Smith"}
-                  :common_name      "John Smith"}
-                 (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
-                            :email "john.smith@metabase.com"))))
-          (finally
-            (db/delete! User :%lower.email "john.smith@metabase.com"))))
+         (ldap/fetch-or-create-user! (ldap/find-user "jsmith1"))
+         (is (= {:first_name       "John"
+                 :last_name        "Smith"
+                 :email            "john.smith@metabase.com"
+                 :login_attributes {"uid"       "jsmith1"
+                                    "mail"      "John.Smith@metabase.com"
+                                    "givenname" "John"
+                                    "sn"        "Smith"
+                                    "cn"        "John Smith"}
+                 :common_name      "John Smith"}
+                (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
+                                        :email "john.smith@metabase.com"))))
+         (finally
+          (db/delete! User :%lower.email "john.smith@metabase.com"))))
 
       (testing "when creating a new user and attribute sync is disabled, attributes should not be synced"
         (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
           (try
-            (ldap/fetch-or-create-user! (ldap/find-user "jsmith1"))
-            (is (= {:first_name       "John"
-                    :last_name        "Smith"
-                    :email            "john.smith@metabase.com"
-                    :login_attributes nil
-                    :common_name      "John Smith"}
-                   (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
-                              :email "john.smith@metabase.com"))))
-            (finally
-              (db/delete! User :%lower.email "john.smith@metabase.com"))))))))
+           (ldap/fetch-or-create-user! (ldap/find-user "jsmith1"))
+           (is (= {:first_name       "John"
+                   :last_name        "Smith"
+                   :email            "john.smith@metabase.com"
+                   :login_attributes nil
+                   :common_name      "John Smith"}
+                  (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
+                                          :email "john.smith@metabase.com"))))
+           (finally
+            (db/delete! User :%lower.email "john.smith@metabase.com"))))))))
 
 (deftest update-attributes-on-login-test
   (with-redefs [metastore/enable-enhancements? (constantly true)]
     (ldap.test/with-ldap-server
       (testing "Existing user's attributes are updated on fetch"
         (try
-          (let [user-info (ldap/find-user "jsmith1")]
-            (testing "First let a user get created for John Smith"
-              (is (schema= {:email    (s/eq "john.smith@metabase.com")
-                            s/Keyword s/Any}
-                           (ldap/fetch-or-create-user! user-info))))
-            (testing "Call fetch-or-create-user! again to trigger update"
-              (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
-                           (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
-            (is (= {:first_name       "John"
-                    :last_name        "Smith"
-                    :common_name      "John Smith"
-                    :email            "john.smith@metabase.com"
-                    :login_attributes {"uid"          "jsmith1"
-                                       "mail"         "John.Smith@metabase.com"
-                                       "givenname"    "John"
-                                       "sn"           "Smith"
-                                       "cn"           "John Smith"
-                                       "unladenspeed" 100}}
-                   (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
-                              :email "john.smith@metabase.com")))))
-          (finally
-            (db/delete! User :%lower.email "john.smith@metabase.com"))))
+         (let [user-info (ldap/find-user "jsmith1")]
+           (testing "First let a user get created for John Smith"
+             (is (schema= {:email    (s/eq "john.smith@metabase.com")
+                           s/Keyword s/Any}
+                          (ldap/fetch-or-create-user! user-info))))
+           (testing "Call fetch-or-create-user! again to trigger update"
+             (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
+                          (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
+           (is (= {:first_name       "John"
+                   :last_name        "Smith"
+                   :common_name      "John Smith"
+                   :email            "john.smith@metabase.com"
+                   :login_attributes {"uid"          "jsmith1"
+                                      "mail"         "John.Smith@metabase.com"
+                                      "givenname"    "John"
+                                      "sn"           "Smith"
+                                      "cn"           "John Smith"
+                                      "unladenspeed" 100}}
+                  (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
+                                          :email "john.smith@metabase.com")))))
+         (finally
+          (db/delete! User :%lower.email "john.smith@metabase.com"))))
 
       (testing "Existing user's attributes are not updated on fetch, when attribute sync is disabled"
         (try
-          (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
-            (let [user-info (ldap/find-user "jsmith1")]
-              (testing "First let a user get created for John Smith"
-                (is (schema= {:email    (s/eq "john.smith@metabase.com")
-                              s/Keyword s/Any}
-                             (ldap/fetch-or-create-user! user-info))))
-              (testing "Call fetch-or-create-user! again to trigger update"
-                (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
-                             (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
-              (is (= {:first_name       "John"
-                      :last_name        "Smith"
-                      :common_name      "John Smith"
-                      :email            "john.smith@metabase.com"
-                      :login_attributes nil}
-                     (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
-                                :email "john.smith@metabase.com"))))))
-          (finally
-            (db/delete! User :%lower.email "john.smith@metabase.com")))))))
+         (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
+           (let [user-info (ldap/find-user "jsmith1")]
+             (testing "First let a user get created for John Smith"
+               (is (schema= {:email    (s/eq "john.smith@metabase.com")
+                             s/Keyword s/Any}
+                            (ldap/fetch-or-create-user! user-info))))
+             (testing "Call fetch-or-create-user! again to trigger update"
+               (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
+                            (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
+             (is (= {:first_name       "John"
+                     :last_name        "Smith"
+                     :common_name      "John Smith"
+                     :email            "john.smith@metabase.com"
+                     :login_attributes nil}
+                    (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
+                                            :email "john.smith@metabase.com"))))))
+         (finally
+          (db/delete! User :%lower.email "john.smith@metabase.com")))))))

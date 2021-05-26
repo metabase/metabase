@@ -266,6 +266,18 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["authentication/ldap", "settings"], settings => [
     ...settings,
     {
+      key: "ldap-group-membership-filter",
+      display_name: t`Group membership filter`,
+      type: "string",
+      validations: [
+        value =>
+        (value.match(/\(/g) || []).length !==
+          (value.match(/\)/g) || []).length
+        ? t`Check your parentheses`
+        : null,
+      ],
+    },
+    {
       key: "ldap-sync-admin-group",
       display_name: t`Sync Administrator group`,
       type: "boolean",

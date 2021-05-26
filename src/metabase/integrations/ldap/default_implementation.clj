@@ -18,6 +18,9 @@
 (def ^:private filter-placeholder
   "{login}")
 
+(def ^:private group-membership-filter
+  "(member={dn})")
+
 (s/defn search :- (s/maybe su/Map)
   "Search for a LDAP user with `username`."
   [ldap-connection                 :- LDAPConnectionPool
@@ -47,7 +50,8 @@
   [ldap-connection                              :- LDAPConnectionPool
    dn                                           :- su/NonBlankString
    uid                                          :- su/NonBlankString
-   {:keys [group-base group-membership-filter]} :- i/LDAPSettings]
+   {:keys [group-base]}                         :- i/LDAPSettings
+   group-membership-filter                      :- su/NonBlankString]
   (when group-base
     (let [results (ldap-client/search
                    ldap-connection
@@ -58,13 +62,14 @@
 
 (s/defn ldap-search-result->user-info :- (s/maybe i/UserInfo)
   "Convert the result "
-  [ldap-connection          :- LDAPConnectionPool
+  [ldap-connection               :- LDAPConnectionPool
    {:keys [dn, uid], :as result} :- su/Map
    {:keys [first-name-attribute
            last-name-attribute
            email-attribute
            sync-groups?]
-    :as   settings} :- i/LDAPSettings]
+    :as   settings}              :- i/LDAPSettings
+   group-membership-filter       :- su/NonBlankString]
   (let [{first-name (keyword first-name-attribute)
          last-name  (keyword last-name-attribute)
          email      (keyword email-attribute)} result]
@@ -78,7 +83,7 @@
                      ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
                      ;; groups. Otherwise we have to make the inverse query to get them.
                      (or (:memberof result)
-                         (user-groups ldap-connection dn uid settings)
+                         (user-groups ldap-connection dn uid settings group-membership-filter)
                          []))})))
 
 (s/defn ^:private find-user* :- (s/maybe i/UserInfo)
@@ -86,7 +91,7 @@
    username        :- su/NonBlankString
    settings        :- i/LDAPSettings]
   (when-let [result (search ldap-connection username settings)]
-    (ldap-search-result->user-info ldap-connection result settings)))
+    (ldap-search-result->user-info ldap-connection result settings group-membership-filter)))
 
 
 ;;; --------------------------------------------- fetch-or-create-user! ----------------------------------------------

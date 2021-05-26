@@ -84,10 +84,6 @@
                  (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
              (setting/set-json! :ldap-group-mappings new-value)))
 
-(defsetting ldap-group-membership-filter
-  (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
-  :default "(member={dn})")
-
 (defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
   :type       :boolean
@@ -200,8 +196,7 @@
    :user-base               (ldap-user-base)
    :user-filter             (ldap-user-filter)
    :group-base              (ldap-group-base)
-   :group-mappings          (ldap-group-mappings)
-   :group-membership-filter (ldap-group-membership-filter)})
+   :group-mappings          (ldap-group-mappings)})
 
 (s/defn find-user :- (s/maybe i/UserInfo)
   "Get user information for the supplied username."

@@ -35,6 +35,10 @@
   :type    :boolean
   :default false)
 
+(defsetting ldap-group-membership-filter
+  (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
+  :default "(member={dn})")
+
 (defn- syncable-user-attributes [m]
   (when (ldap-sync-user-attributes)
     (apply dissoc m :objectclass (map (comp keyword u/lower-case-en) (ldap-sync-user-attributes-blacklist)))))
@@ -54,7 +58,11 @@
    username        :- su/NonBlankString
    settings        :- i/LDAPSettings]
   (when-let [result (default-impl/search ldap-connection username settings)]
-    (when-let [user-info (default-impl/ldap-search-result->user-info ldap-connection result settings)]
+    (when-let [user-info (default-impl/ldap-search-result->user-info
+                          ldap-connection
+                          result
+                          settings
+                          (ldap-group-membership-filter))]
       (assoc user-info :attributes (syncable-user-attributes result)))))
 
 (s/defn ^:private fetch-or-create-user!* :- (class User)

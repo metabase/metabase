@@ -96,25 +96,7 @@
                 :last-name  "Taylor"
                 :email      "fred.taylor@metabase.com"
                 :groups     []}
-               (ldap/find-user "fred.taylor@metabase.com"))))
-
-      (mt/with-temporary-setting-values [ldap-group-membership-filter "memberUid={uid}"]
-        (testing "find by username with custom group membership filter"
-          (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
-                  :first-name "Sally"
-                  :last-name  "Brown"
-                  :email      "sally.brown@metabase.com"
-                  :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
-                 (ldap/find-user "sbrown20")))))
-
-      (mt/with-temporary-setting-values [ldap-group-membership-filter "memberUid={uid}"]
-        (testing "find by email with custom group membership filter"
-          (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
-                  :first-name "Sally"
-                  :last-name  "Brown"
-                  :email      "sally.brown@metabase.com"
-                  :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
-                 (ldap/find-user "sally.brown@metabase.com"))))))))
+               (ldap/find-user "fred.taylor@metabase.com")))))))
 
 (deftest group-matching-test
   (testing "LDAP group matching should identify Metabase groups using DN equality rules"
