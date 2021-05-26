@@ -50,6 +50,13 @@ function PinnedItemsTable({ items, onToggleSelected }) {
   );
 
   return (
+    <table className="ContentTable">
+      <colgroup>
+        <col span="1" style={{ width: "5%" }} />
+        <col span="1" style={{ width: "60%" }} />
+        <col span="1" style={{ width: "15%" }} />
+        <col span="1" style={{ width: "20%" }} />
+      </colgroup>
       <thead>
         <tr>
           <th>{t`Type`}</th>
