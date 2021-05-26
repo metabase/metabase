@@ -4,8 +4,10 @@
   `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`)."
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [clojure.string :as str]
+            [compojure.core :refer [GET POST PUT]]
             [honeysql.helpers :as h]
+            [medley.core :as m]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
             [metabase.models.card :refer [Card]]
@@ -132,9 +134,7 @@
   [_ collection {:keys [archived? pinned-state]}]
   (-> {:select    [:p.id
                    :p.name
-                   [nil :p.description]
                    :p.collection_position
-                   [nil :p.display]
                    [(hx/literal "pulse") :model]]
        :modifiers [:distinct]
        :from      [[Pulse :p]]
@@ -155,7 +155,7 @@
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [nil :description] [nil :collection_position] [nil :display] [(hx/literal "snippet") :model]]
+  {:select [:id :name [(hx/literal "snippet") :model]]
        :from   [[NativeQuerySnippet :nqs]]
        :where  [:and
                 [:= :collection_id (:id collection)]
@@ -168,8 +168,13 @@
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:id :name :description :collection_position :display [(hx/literal "card") :model]]
+  (-> {:select [:c.id :c.name :c.description :c.collection_position :c.display [(hx/literal "card") :model]
+                [:u.id :last_edit_user] [:u.email :last_edit_email]
+                [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
+                [:r.timestamp :last_edit_timestamp]]
        :from   [[Card :c]]
+       :left-join [[:revision :r] [:and [:= :r.model (hx/literal "card")] [:= :r.model_id :c.id]]
+                   [:core_user :u] [:= :u.id :r.user_id]]
        :where  [:and
                 [:= :collection_id (:id collection)]
                 [:= :archived (boolean archived?)]]}
@@ -185,7 +190,7 @@
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:id :name :description :collection_position [nil :display] [(hx/literal "dashboard") :model]]
+  (-> {:select [:id :name :description :collection_position [(hx/literal "dashboard") :model]]
        :from   [[Dashboard :d]]
        :where  [:and
                 [:= :collection_id (:id collection)]
@@ -212,8 +217,6 @@
              :select [:id
                       :name
                       :description
-                      [nil :collection_position]
-                      [nil :display]
                       [(hx/literal "collection") :model]])
       ;; the nil indicates that collections are never pinned.
       (h/merge-where (pinned-state->clause pinned-state nil))))
@@ -243,11 +246,52 @@
     :pulse      Pulse
     :snippet    NativeQuerySnippet))
 
+(defn- select-name
+  "Takes a honeysql select column and returns a keyword of which column it is.
+
+  eg:
+  (select-name :id) -> :id
+  (select-name [(literal \"card\") :model]) -> :model
+  (select-name :p.id) -> :id"
+  [x]
+  (if (vector? x)
+    (recur (second x))
+    (-> x name (str/split #"\.") peek keyword)))
+
+(def ^:private all-select-columns
+  "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
+  are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
+  the correct column type."
+  [:id :name :description :display :model :collection_position
+   :last_edit_email :last_edit_first_name :last_edit_last_name
+   [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
+
+(defn- add-missing-columns
+  "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."
+  [select-columns necessary-columns]
+  (let [columns (m/index-by select-name select-columns)]
+    (map (fn [col]
+           (let [[col-name typpe] (u/one-or-many col)]
+             (get columns col-name (if typpe
+                                     [(hx/cast typpe nil) col-name]
+                                     [nil col-name]))))
+         necessary-columns)))
+
+(comment
+  ;; generate the set of columns across all child queries. Remember to add type info if not a text column
+  (into []
+        (comp cat (map select-name) (distinct))
+        (for [model [:card :dashboard :snippet :pulse :collection]]
+          (:select (collection-children-query model {:id 1 :location "/"} nil))))
+
+  )
+
 (defn- collection-children*
   [collection models options]
   (let [models            (sort (map keyword models))
         queries           (for [model models]
-                            (collection-children-query model collection options))
+                            (-> (collection-children-query model collection options)
+                                (update :select add-missing-columns all-select-columns)))
         total-query       {:select [[:%count.* :count]]
                            :from   [[{:union-all queries} :dummy_alias]]}
         rows-query        {:select   [:*]
