@@ -8340,9 +8340,9 @@ databaseChangeLog:
                                   'DateTimeField', 'DecimalField', 'DictionaryField', 'FloatField', 'IntegerField',
                                   'TextField', 'TimeField', 'UUIDField', 'UnknownField');
   - changeSet:
-      id: 308
+      id: 306
       author: howonlee
-      comment: Track cache hits in query_execution table
+      comment: Added 0.40.0 Track cache hits in query_execution table
       changes:
         - addColumn:
             tableName: query_execution
