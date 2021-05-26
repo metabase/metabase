@@ -42,7 +42,14 @@ function PinnedItemsTable({ items, onToggleSelected }) {
   );
 
   return (
-    <table>
+    <table
+      style={{
+        width: "100%",
+        borderCollapse: "collapse",
+        borderSpacing: 0,
+        textAlign: "left",
+      }}
+    >
       <thead>
         <tr>
           <th>{t`Type`}</th>
