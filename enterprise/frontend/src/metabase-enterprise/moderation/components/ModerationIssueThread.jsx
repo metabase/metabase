@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -112,16 +112,8 @@ CommentForm.propTypes = {
 };
 
 function CommentForm({ className, onSubmit, onCancel, isPending }) {
-  const textAreaRef = useRef();
   const [value, setValue] = useState("");
   const isEmpty = value.trim().length === 0;
-
-  useEffect(() => {
-    const textAreaEl = textAreaRef.current;
-    if (textAreaEl) {
-      textAreaEl.focus();
-    }
-  }, []);
 
   return (
     <form
@@ -136,7 +128,7 @@ function CommentForm({ className, onSubmit, onCancel, isPending }) {
         value={value}
         onChange={e => setValue(e.target.value)}
         name="comment"
-        ref={textAreaRef}
+        autoFocus
       />
       <div className="pt1 flex column-gap-1 justify-end">
         <Button
