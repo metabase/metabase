@@ -8340,7 +8340,7 @@ databaseChangeLog:
                                   'DateTimeField', 'DecimalField', 'DictionaryField', 'FloatField', 'IntegerField',
                                   'TextField', 'TimeField', 'UUIDField', 'UnknownField');
   - changeSet:
-      id: 306
+      id: 308
       author: howonlee
       comment: Added 0.40.0 Track cache hits in query_execution table
       changes:
@@ -8353,8 +8353,6 @@ databaseChangeLog:
                   remarks: "Cache hit on query execution"
                   constraints:
                     nullable: true
-                    deferrable: false
-                    initiallyDeferred: false
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
