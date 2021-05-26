@@ -5,6 +5,8 @@ import moment from "moment";
 
 import { color } from "metabase/lib/colors";
 
+import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+
 import EntityItem from "metabase/components/EntityItem";
 import Link from "metabase/components/Link";
 
@@ -14,12 +16,15 @@ export function BaseTableItem({
   item,
   collection,
   pinned,
+  selectedItems,
   onCopy,
   onMove,
+  onDrop,
   onToggleSelected,
   getIsSelected,
   getLinkProps,
 }) {
+  const isSelected = getIsSelected(item);
   const lastEditInfo = item["last-edit-info"];
   const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
@@ -37,47 +42,55 @@ export function BaseTableItem({
   const handleArchive = useCallback(() => item.setArchived(true), [item]);
 
   return (
-    <tr>
-      <td>
-        <EntityItem.Icon
-          item={item}
-          variant="list"
-          iconName={item.getIcon()}
-          pinned={pinned}
-          selectable
-          selected={getIsSelected(item)}
-          onToggleSelected={handleSelectionToggled}
-          height="3em"
-          width="3em"
-          mr={0}
-        />
-      </td>
-      <td>
-        <Link {...getLinkProps(item)} to={item.getUrl()}>
-          <EntityItem.Name name={item.name} />
-        </Link>
-      </td>
-      <td>
-        <p className="text-dark text-bold">{lastEditedBy}</p>
-      </td>
-      <td>
-        <p className="text-dark text-bold">{lastEditedAt}</p>
-      </td>
-      <td>
-        <EntityItem.Menu
-          item={item}
-          onPin={collection.can_write ? handlePin : null}
-          onMove={
-            collection.can_write && item.setCollection ? handleMove : null
-          }
-          onCopy={item.copy ? handleCopy : null}
-          onArchive={
-            collection.can_write && item.setArchived ? handleArchive : null
-          }
-          ANALYTICS_CONTEXT={ANALYTICS_CONTEXT}
-        />
-      </td>
-    </tr>
+    <ItemDragSource
+      item={item}
+      collection={collection}
+      isSelected={isSelected}
+      selected={selectedItems}
+      onDrop={onDrop}
+    >
+      <tr>
+        <td>
+          <EntityItem.Icon
+            item={item}
+            variant="list"
+            iconName={item.getIcon()}
+            pinned={pinned}
+            selectable
+            selected={isSelected}
+            onToggleSelected={handleSelectionToggled}
+            height="3em"
+            width="3em"
+            mr={0}
+          />
+        </td>
+        <td>
+          <Link {...getLinkProps(item)} to={item.getUrl()}>
+            <EntityItem.Name name={item.name} />
+          </Link>
+        </td>
+        <td>
+          <p className="text-dark text-bold">{lastEditedBy}</p>
+        </td>
+        <td>
+          <p className="text-dark text-bold">{lastEditedAt}</p>
+        </td>
+        <td>
+          <EntityItem.Menu
+            item={item}
+            onPin={collection.can_write ? handlePin : null}
+            onMove={
+              collection.can_write && item.setCollection ? handleMove : null
+            }
+            onCopy={item.copy ? handleCopy : null}
+            onArchive={
+              collection.can_write && item.setArchived ? handleArchive : null
+            }
+            ANALYTICS_CONTEXT={ANALYTICS_CONTEXT}
+          />
+        </td>
+      </tr>
+    </ItemDragSource>
   );
 }
 
@@ -87,8 +100,10 @@ function defaultItemRenderer({
   collection,
   onCopy,
   onMove,
-  onToggleSelected,
+  onDrop,
+  selectedItems,
   getIsSelected,
+  onToggleSelected,
   getLinkProps,
 }) {
   return (
@@ -99,6 +114,8 @@ function defaultItemRenderer({
       collection={collection}
       onCopy={onCopy}
       onMove={onMove}
+      onDrop={onDrop}
+      selectedItems={selectedItems}
       onToggleSelected={onToggleSelected}
       getIsSelected={getIsSelected}
       getLinkProps={getLinkProps}
@@ -123,7 +140,9 @@ function BaseItemsTable({
   renderItem,
   onCopy,
   onMove,
+  onDrop,
   onToggleSelected,
+  selectedItems,
   getIsSelected,
   getLinkProps,
 }) {
@@ -135,8 +154,10 @@ function BaseItemsTable({
         pinned,
         onCopy,
         onMove,
+        onDrop,
         onToggleSelected,
         getLinkProps,
+        selectedItems,
         getIsSelected,
       }),
     [
@@ -145,7 +166,9 @@ function BaseItemsTable({
       pinned,
       onCopy,
       onMove,
+      onDrop,
       onToggleSelected,
+      selectedItems,
       getLinkProps,
       getIsSelected,
     ],
