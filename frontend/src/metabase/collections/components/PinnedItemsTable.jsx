@@ -20,6 +20,8 @@ function PinnedItem({ item, onToggleSelected }) {
           iconName={item.getIcon()}
           pinned
           onToggleSelected={onToggleSelected}
+          height="3em"
+          width="3em"
         />
       </td>
       <td>
@@ -48,14 +50,6 @@ function PinnedItemsTable({ items, onToggleSelected }) {
   );
 
   return (
-    <table
-      style={{
-        width: "100%",
-        borderCollapse: "collapse",
-        borderSpacing: 0,
-        textAlign: "left",
-      }}
-    >
       <thead>
         <tr>
           <th>{t`Type`}</th>
