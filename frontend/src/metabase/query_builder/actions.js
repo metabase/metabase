@@ -1427,5 +1427,5 @@ export async function createModerationRequestComment({
     commented_item_id: moderationRequestId,
     commented_item_type: "moderation_request",
   });
-  return reloadCard();
+  return softReloadCard();
 }
