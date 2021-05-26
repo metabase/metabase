@@ -1053,6 +1053,10 @@ export default class Question {
   getModerationRequests() {
     return getIn(this, ["_card", "moderation_requests"]) || [];
   }
+
+  getComments() {
+    return getIn(this, ["_card", "comments"]) || [];
+  }
 }
 
 window.Question = Question;

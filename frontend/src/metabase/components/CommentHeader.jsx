@@ -38,7 +38,7 @@ function CommentHeader({ className, icon, title, timestamp, actions = [] }) {
   return (
     <div className={cx("flex justify-between align-center", className)}>
       <div className="flex align-center">
-        {icon && <StyledIcon name={icon} />}
+        {icon && <StyledIcon name={icon} size={12} />}
         <span className="text-bold">{title}</span>
         {timestamp && (
           <time className="pl1 text-light" dateTime={timestamp}>
