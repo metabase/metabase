@@ -174,12 +174,16 @@
                    [:r.timestamp :last_edit_timestamp]]
        :from      [[Card :c]]
        ;; todo: should there be a flag, or a realized view?
-       :left-join [[{:select   [[:%max.id :id] :model_id]
-                     :from     [[:revision :rev_latest]]
-                     :where    [:and
-                                [:= :rev_latest.model (hx/literal "Card")]]
-                     :group-by [:model_id]} :r_latest] [:= :r_latest.model_id :c.id]
-                   [:revision :r] [:= :r.id :r_latest.id]
+       :left-join [[{:select [:r1.*]
+                     :from [[:revision :r1]]
+                     :left-join [[:revision :r2] [:and
+                                                  [:= :r1.model_id :r2.model_id]
+                                                  [:= :r1.model :r2.model]
+                                                  [:> :r1.id :r2.id]]]
+                     :where [:and
+                             [:= :r2.id nil]
+                             [:= :r1.model (hx/literal "Card")]]} :r]
+                   [:= :r.model_id :c.id]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -193,12 +197,16 @@
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
        :from      [[Dashboard :d]]
-       :left-join [[{:select   [[:%max.id :id] :model_id]
-                     :from     [[:revision :rev_latest]]
-                     :where    [:and
-                                [:= :rev_latest.model (hx/literal "Dashboard")]]
-                     :group-by [:model_id]} :r_latest] [:= :r_latest.model_id :d.id]
-                   [:revision :r] [:= :r.id :r_latest.id]
+       :left-join [[{:select [:r1.*]
+                     :from [[:revision :r1]]
+                     :left-join [[:revision :r2] [:and
+                                                  [:= :r1.model_id :r2.model_id]
+                                                  [:= :r1.model :r2.model]
+                                                  [:> :r1.id :r2.id]]]
+                     :where [:and
+                             [:= :r2.id nil]
+                             [:= :r1.model (hx/literal "Dashboard")]]} :r]
+                   [:= :r.model_id :d.id]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
