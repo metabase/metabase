@@ -21,7 +21,11 @@ function PinnedItem({
   const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
 
-  const handlePin = useCallback(() => item.setPinned(false), [item]);
+  const handlePin = useCallback(() => {
+    const isPinned = item.collection_position != null;
+    item.setPinned(!isPinned);
+  }, [item]);
+
   const handleMove = useCallback(() => onMove([item]), [item, onMove]);
   const handleCopy = useCallback(() => onCopy([item]), [item, onCopy]);
   const handleArchive = useCallback(() => item.setArchived(true), [item]);

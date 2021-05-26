@@ -20,6 +20,11 @@ function TableItem({
   const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
 
+  const handlePin = useCallback(() => {
+    const isPinned = item.collection_position != null;
+    item.setPinned(!isPinned);
+  }, [item]);
+
   const handleMove = useCallback(() => onMove([item]), [item, onMove]);
   const handleCopy = useCallback(() => onCopy([item]), [item, onCopy]);
   const handleArchive = useCallback(() => item.setArchived(true), [item]);
@@ -58,6 +63,7 @@ function TableItem({
       <td>
         <EntityItem.Menu
           item={item}
+          onPin={collection.can_write ? handlePin : null}
           onMove={
             collection.can_write && item.setCollection ? handleMove : null
           }
