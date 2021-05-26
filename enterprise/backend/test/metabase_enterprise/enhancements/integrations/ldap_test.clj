@@ -58,6 +58,11 @@
                   :first-name "Sally"
                   :last-name  "Brown"
                   :email      "sally.brown@metabase.com"
+                  :attributes {:uid       "sbrown20"
+                               :mail      "sally.brown@metabase.com"
+                               :givenname "Sally"
+                               :sn        "Brown"
+                               :cn        "Sally Brown"}
                   :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
                  (ldap/find-user "sbrown20"))))
 
@@ -65,7 +70,12 @@
           (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
                   :first-name "Sally"
                   :last-name  "Brown"
-                  :email      "sally.brown@metabase.com"
+                  :email      "sally.brown@metabasercom"
+                  :attributes {:uid       "sbrown20"
+                               :mail      "sally.brown@metabase.com"
+                               :givenname "Sally"
+                               :sn        "Brown"
+                               :cn        "Sally Brown"}
                   :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
                  (ldap/find-user "sally.brown@metabase.com"))))))))
 

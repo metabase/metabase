@@ -189,14 +189,14 @@
 
 (s/defn ^:private ldap-settings :- i/LDAPSettings
   []
-  {:first-name-attribute    (ldap-attribute-firstname)
-   :last-name-attribute     (ldap-attribute-lastname)
-   :email-attribute         (ldap-attribute-email)
-   :sync-groups?            (ldap-group-sync)
-   :user-base               (ldap-user-base)
-   :user-filter             (ldap-user-filter)
-   :group-base              (ldap-group-base)
-   :group-mappings          (ldap-group-mappings)})
+  {:first-name-attribute (ldap-attribute-firstname)
+   :last-name-attribute  (ldap-attribute-lastname)
+   :email-attribute      (ldap-attribute-email)
+   :sync-groups?         (ldap-group-sync)
+   :user-base            (ldap-user-base)
+   :user-filter          (ldap-user-filter)
+   :group-base           (ldap-group-base)
+   :group-mappings       (ldap-group-mappings)})
 
 (s/defn find-user :- (s/maybe i/UserInfo)
   "Get user information for the supplied username."
