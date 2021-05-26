@@ -10,7 +10,6 @@ function PinnedItem({ item, onToggleSelected }) {
   const lastEditInfo = item["last-edit-info"];
   const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
-
   return (
     <tr>
       <td>
@@ -25,13 +24,13 @@ function PinnedItem({ item, onToggleSelected }) {
         />
       </td>
       <td>
-        <p>{item.name}</p>
+        <EntityItem.Name name={item.name} />
       </td>
       <td>
-        <p>{lastEditedBy}</p>
+        <p className="text-dark text-bold">{lastEditedBy}</p>
       </td>
       <td>
-        <p>{lastEditedAt}</p>
+        <p className="text-dark text-bold">{lastEditedAt}</p>
       </td>
     </tr>
   );
