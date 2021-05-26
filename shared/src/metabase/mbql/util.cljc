@@ -129,7 +129,7 @@
 (s/defn add-filter-clause :- mbql.s/Query
   "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
   [outer-query :- mbql.s/Query new-clause :- (s/maybe mbql.s/Filter)]
-  (update outer-query :filter add-filter-clause-to-inner-query new-clause))
+  (update outer-query :query add-filter-clause-to-inner-query new-clause))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
