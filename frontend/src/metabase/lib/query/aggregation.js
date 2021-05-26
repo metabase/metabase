@@ -136,7 +136,7 @@ export function setName(
   return [
     "aggregation-options",
     getContent(aggregation),
-    { "display-name": name, ...getOptions(aggregation) },
+    { name, "display-name": name, ...getOptions(aggregation) },
   ];
 }
 export function setContent(
