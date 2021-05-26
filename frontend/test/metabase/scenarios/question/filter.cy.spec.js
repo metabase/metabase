@@ -977,7 +977,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".dot");
   });
 
-  it.only("user shouldn't need to scroll to add filter (metabase#14307)", () => {
+  it("user shouldn't need to scroll to add filter (metabase#14307)", () => {
     cy.viewport(1280, 720);
     openPeopleTable({ mode: "notebook" });
     cy.findByText("Filter").click();
