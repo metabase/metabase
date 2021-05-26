@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { t } from "ttag";
 
 import {
@@ -49,7 +48,7 @@ export function ModerationIssueThread({
   };
 
   return (
-    <div className={cx(className, "")}>
+    <div className={className}>
       <div
         className={`flex align-center text-${color} text-${color}-hover text-bold`}
       >
@@ -113,8 +112,16 @@ CommentForm.propTypes = {
 };
 
 function CommentForm({ className, onSubmit, onCancel, isPending }) {
+  const textAreaRef = useRef();
   const [value, setValue] = useState("");
   const isEmpty = value.trim().length === 0;
+
+  useEffect(() => {
+    const textAreaEl = textAreaRef.current;
+    if (textAreaEl) {
+      textAreaEl.focus();
+    }
+  }, []);
 
   return (
     <form
@@ -129,6 +136,7 @@ function CommentForm({ className, onSubmit, onCancel, isPending }) {
         value={value}
         onChange={e => setValue(e.target.value)}
         name="comment"
+        ref={textAreaRef}
       />
       <div className="pt1 flex column-gap-1 justify-end">
         <Button
