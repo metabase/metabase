@@ -9,3 +9,20 @@ export function getRevisionDescription(revision) {
     return revision.description;
   }
 }
+
+export function getRevisionEvents(revisions, canWrite) {
+  return revisions.map((revision, index) => {
+    const canRevert = canWrite && index !== 0;
+    const username = revision.user.common_name;
+    return {
+      timestamp: new Date(revision.timestamp).valueOf(),
+      icon: "pencil",
+      title: revision.is_creation
+        ? t`${username} created this`
+        : t`${username} edited this`,
+      description: getRevisionDescription(revision),
+      showFooter: canRevert,
+      revision,
+    };
+  });
+}
