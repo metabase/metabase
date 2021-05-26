@@ -12,7 +12,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import Header from "metabase/collections/components/Header";
-import ItemList from "metabase/collections/components/ItemList";
+import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemsTable from "metabase/collections/components/PinnedItemsTable";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
@@ -179,8 +179,8 @@ function CollectionContent({
                   };
 
                   return (
-                    <React.Fragment>
-                      <ItemList
+                    <Box mt={3}>
+                      <ItemsTable
                         filter={filter}
                         items={unpinnedItems}
                         empty={unpinnedItems.length === 0}
@@ -221,7 +221,7 @@ function CollectionContent({
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
                       />
-                    </React.Fragment>
+                    </Box>
                   );
                 }}
               </Search.ListLoader>
