@@ -40,6 +40,17 @@ function getForeground(model) {
   return model === "dashboard" ? color("white") : color("brand");
 }
 
+const ENTITY_ITEM_SPACING = {
+  list: {
+    px: 2,
+    py: 2,
+  },
+  small: {
+    px: 2,
+    py: 1,
+  },
+};
+
 const EntityItem = ({
   analyticsContext,
   name,
@@ -90,29 +101,8 @@ const EntityItem = ({
     },
   ].filter(action => action);
 
-  let spacing;
-  let iconSize = 18;
-
-  switch (variant) {
-    case "list":
-      spacing = {
-        px: 2,
-        py: 2,
-      };
-      break;
-    case "small":
-      spacing = {
-        px: 2,
-        py: 1,
-      };
-      iconSize = 12;
-      break;
-    default:
-      spacing = {
-        py: 2,
-      };
-      break;
-  }
+  const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
+  const iconSize = variant === "small" ? 12 : 18;
 
   return (
     <EntityItemWrapper
