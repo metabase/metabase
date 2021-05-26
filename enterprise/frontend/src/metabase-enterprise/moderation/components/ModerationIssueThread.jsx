@@ -128,7 +128,7 @@ function CommentForm({ className, onSubmit, onCancel, isPending }) {
       className={className}
       onSubmit={e => {
         e.preventDefault();
-        onSubmit(value);
+        onSubmit(value.trim());
       }}
     >
       <textarea

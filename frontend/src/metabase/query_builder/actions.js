@@ -1363,16 +1363,25 @@ export const createModerationReview = createThunkAction(
     const currentUser = getUser(getState());
     const moderatorId = currentUser.id;
     const { type, cardId, description } = moderationReview;
-    if (isRequestDismissal(type)) {
+    if (type === "dismiss") {
       if (!moderationRequest) {
         throw new Error("Missing moderation request -- unable to dismiss.");
       }
 
-      await ModerationRequestApi.update({
+      const commentPromise =
+        description &&
+        ModerationCommentApi.create({
+          text: description,
+          commented_item_id: moderationRequest.id,
+          commented_item_type: "moderation_request",
+        });
+      const requestPromise = ModerationRequestApi.update({
         id: moderationRequest.id,
-        status: "dismissed", // todo
+        status: "dismissed",
         closed_by_id: moderatorId,
       });
+
+      await Promise.all([commentPromise, requestPromise]);
     } else {
       const reviewPromise = ModerationReviewApi.create({
         status: type,
@@ -1380,15 +1389,13 @@ export const createModerationReview = createThunkAction(
         moderated_item_type: "card",
         text: description,
       });
-
-      let requestPromise;
-      if (moderationRequest) {
-        requestPromise = ModerationRequestApi.update({
+      const requestPromise =
+        moderationRequest &&
+        ModerationRequestApi.update({
           id: moderationRequest.id,
-          status: "resolved", // todo
+          status: "resolved",
           closed_by_id: moderatorId,
         });
-      }
 
       await Promise.all([reviewPromise, requestPromise]);
     }
