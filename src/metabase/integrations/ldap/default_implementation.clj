@@ -63,7 +63,7 @@
 (s/defn ldap-search-result->user-info :- (s/maybe i/UserInfo)
   "Convert the result "
   [ldap-connection               :- LDAPConnectionPool
-   {:keys [dn, uid], :as result} :- su/Map
+   {:keys [dn uid], :as result} :- su/Map
    {:keys [first-name-attribute
            last-name-attribute
            email-attribute

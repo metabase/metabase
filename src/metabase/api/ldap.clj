@@ -21,8 +21,7 @@
    :ldap-attribute-firstname        :attribute-firstname
    :ldap-attribute-lastname         :attribute-lastname
    :ldap-group-sync                 :group-sync
-   :ldap-group-base                 :group-base
-   :ldap-attribute-group-membership :attribute-group-membership})
+   :ldap-group-base                 :group-base})
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
