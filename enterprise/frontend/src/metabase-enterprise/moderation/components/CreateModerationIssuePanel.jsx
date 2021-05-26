@@ -96,7 +96,9 @@ function CreateModerationIssuePanel({
         rows={10}
         value={description}
         onChange={e => setDescription(e.target.value)}
-        placeholder={t`You can add details if you'd like`}
+        placeholder={
+          MODERATION_TEXT[userType][issueType].actionCreationPlaceholder
+        }
         name="text"
       />
       <div className="flex column-gap-1 justify-end">
