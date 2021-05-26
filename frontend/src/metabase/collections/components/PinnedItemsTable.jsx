@@ -3,7 +3,7 @@ import React, { useCallback } from "react";
 import { color } from "metabase/lib/colors";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
-import ItemsTable from "./ItemsTable";
+import BaseItemsTable from "./BaseItemsTable";
 
 function PinnedItemsTable(props) {
   const getLinkProps = useCallback(
@@ -15,7 +15,7 @@ function PinnedItemsTable(props) {
     [],
   );
 
-  return <ItemsTable {...props} pinned getLinkProps={getLinkProps} />;
+  return <BaseItemsTable {...props} pinned getLinkProps={getLinkProps} />;
 }
 
 export default PinnedItemsTable;
