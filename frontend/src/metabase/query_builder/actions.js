@@ -57,6 +57,7 @@ import {
   UserApi,
   ModerationReviewApi,
   ModerationRequestApi,
+  ModerationCommentApi,
 } from "metabase/services";
 
 import { parse as urlParse } from "url";
@@ -77,9 +78,6 @@ import { getUser } from "metabase/selectors/user";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";
-import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
-
-const { isRequestDismissal } = PLUGIN_MODERATION_SERVICE;
 
 type UiControls = {
   isEditing?: boolean,
@@ -742,7 +740,7 @@ export const setParameterValue = createAction(
 export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    const outdatedCard = getState().qb.card;
+    const outdatedCard = getCard(getState());
     const action = await dispatch(
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
     );
@@ -755,7 +753,7 @@ export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     await dispatch(softReloadCard());
-    const card = getState().qb.card;
+    const card = getCard(getState());
 
     dispatch(loadMetadataForCard(card));
 
@@ -1368,16 +1366,25 @@ export const createModerationReview = createThunkAction(
     const currentUser = getUser(getState());
     const moderatorId = currentUser.id;
     const { type, cardId, description } = moderationReview;
-    if (isRequestDismissal(type)) {
+    if (type === "dismiss") {
       if (!moderationRequest) {
         throw new Error("Missing moderation request -- unable to dismiss.");
       }
 
-      await ModerationRequestApi.update({
+      const commentPromise =
+        description &&
+        ModerationCommentApi.create({
+          text: description,
+          commented_item_id: moderationRequest.id,
+          commented_item_type: "moderation_request",
+        });
+      const requestPromise = ModerationRequestApi.update({
         id: moderationRequest.id,
-        status: "dismissed", // todo
+        status: "dismissed",
         closed_by_id: moderatorId,
       });
+
+      await Promise.all([commentPromise, requestPromise]);
     } else {
       const reviewPromise = ModerationReviewApi.create({
         status: type,
@@ -1385,15 +1392,13 @@ export const createModerationReview = createThunkAction(
         moderated_item_type: "card",
         text: description,
       });
-
-      let requestPromise;
-      if (moderationRequest) {
-        requestPromise = ModerationRequestApi.update({
+      const requestPromise =
+        moderationRequest &&
+        ModerationRequestApi.update({
           id: moderationRequest.id,
-          status: "resolved", // todo
+          status: "resolved",
           closed_by_id: moderatorId,
         });
-      }
 
       await Promise.all([reviewPromise, requestPromise]);
     }
@@ -1412,7 +1417,25 @@ export async function createModerationRequest({ type, cardId, description }) {
   return softReloadCard();
 }
 
-export async function revertToRevision(revision) {
-  await revision.revert();
-  return reloadCard();
+export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
+export const revertToRevision = createThunkAction(
+  REVERT_TO_REVISION,
+  revision => {
+    return async dispatch => {
+      await revision.revert();
+      await dispatch(reloadCard());
+    };
+  },
+);
+
+export async function createModerationRequestComment({
+  text,
+  moderationRequestId,
+}) {
+  await ModerationCommentApi.create({
+    text,
+    commented_item_id: moderationRequestId,
+    commented_item_type: "moderation_request",
+  });
+  return softReloadCard();
 }

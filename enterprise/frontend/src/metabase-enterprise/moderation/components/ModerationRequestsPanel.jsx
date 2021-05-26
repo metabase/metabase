@@ -8,77 +8,97 @@ import User from "metabase/entities/users";
 import { getUser } from "metabase/selectors/user";
 
 import Button from "metabase/components/Button";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { ModerationIssueThread } from "metabase-enterprise/moderation/components/ModerationIssueThread";
+import { isUserModerator } from "metabase-enterprise/moderation";
 
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
-import { SIDEBAR_VIEWS } from "metabase/query_builder/components/view/sidebars/constants";
 
-OpenModerationIssuesPanel.propTypes = {
-  setView: PropTypes.func.isRequired,
+ModerationRequestsPanel.propTypes = {
+  onModerate: PropTypes.func.isRequired,
+  onComment: PropTypes.func.isRequired,
   requests: PropTypes.array.isRequired,
+  comments: PropTypes.array.isRequired,
   onReturn: PropTypes.func.isRequired,
   users: PropTypes.array,
   isModerator: PropTypes.bool.isRequired,
   currentUser: PropTypes.object,
+  returnText: PropTypes.string,
 };
 
-function OpenModerationIssuesPanel({
-  setView,
+function ModerationRequestsPanel({
+  onModerate,
+  onComment,
   requests,
+  comments,
   onReturn,
   users,
   isModerator,
   currentUser,
+  returnText,
 }) {
-  const usersById = users.reduce((map, user) => {
-    map[user.id] = user;
-    return map;
-  }, {});
+  const usersById = _.indexBy(users, "id");
 
   const requestsWithMetadata = requests.map(request => {
     const user = usersById[request.requester_id];
     const requesterDisplayName = user && user.common_name;
     return {
       ...request,
-      requesterDisplayName,
+      title: requesterDisplayName,
+      timestamp: new Date(request.created_at).valueOf(),
     };
   });
 
-  const onModerate = async (moderationReviewType, moderationRequest) => {
-    setView({
-      name: SIDEBAR_VIEWS.CREATE_ISSUE_PANEL,
-      props: { issueType: moderationReviewType, moderationRequest },
-      previousView: SIDEBAR_VIEWS.OPEN_ISSUES_PANEL,
-    });
-  };
+  const commentsWithMetadata = comments.map(comment => {
+    const user = usersById[comment.author_id];
+    const authorDisplayName = user && user.common_name;
+    return {
+      ...comment,
+      title: authorDisplayName,
+      timestamp: new Date(comment.created_at).valueOf(),
+      isModerator: isUserModerator(user),
+    };
+  });
+
+  const commentsByRequestId = _.groupBy(
+    commentsWithMetadata,
+    "commented_item_id",
+  );
 
   return (
-    <div className="px1">
+    <SidebarContent className="full-height px1">
       <div className="pt1">
         <Button
           className="text-brand text-brand-hover"
           borderless
           icon="chevronleft"
           onClick={onReturn}
-        >{t`Open issues`}</Button>
+        >
+          {returnText || t`Back`}
+        </Button>
       </div>
       <div className="px2">
         {requestsWithMetadata.length > 0 ? (
           requestsWithMetadata.map(request => {
+            const canComment =
+              isModerator || request.requester_id === currentUser.id;
+            const comments = commentsByRequestId[request.id];
             return (
               <ModerationIssueThread
                 key={request.id}
                 className="py2 border-row-divider"
                 request={request}
+                comments={comments}
                 onModerate={isModerator && onModerate}
+                onComment={canComment && onComment}
               />
             );
           })
         ) : (
-          <div className="text-body text-medium p1">{t`No open issues`}</div>
+          <div className="text-body text-medium p1">{t`No issues found`}</div>
         )}
       </div>
-    </div>
+    </SidebarContent>
   );
 }
 
@@ -90,4 +110,4 @@ const mapStateToProps = (state, props) => ({
 export default _.compose(
   User.loadList(),
   connect(mapStateToProps),
-)(OpenModerationIssuesPanel);
+)(ModerationRequestsPanel);
