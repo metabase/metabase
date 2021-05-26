@@ -1,24 +1,28 @@
 import { getIn } from "icepick";
+import { t } from "ttag";
+
 import {
   PLUGIN_MODERATION_COMPONENTS,
   PLUGIN_MODERATION_SERVICE,
 } from "metabase/plugins";
+
 import {
   ACTIONS,
   REQUEST_TYPES,
   REQUEST_STATUSES,
   REVIEW_STATUSES,
+  MODERATION_TEXT,
 } from "metabase-enterprise/moderation/constants";
 import ModerationIssueActionMenu from "metabase-enterprise/moderation/components/ModerationIssueActionMenu";
 import CreateModerationIssuePanel from "metabase-enterprise/moderation/components/CreateModerationIssuePanel";
 import { OpenModerationIssuesButton } from "metabase-enterprise/moderation/components/OpenModerationIssuesButton";
-import OpenModerationIssuesPanel from "metabase-enterprise/moderation/components/OpenModerationIssuesPanel";
+import ModerationRequestsPanel from "metabase-enterprise/moderation/components/ModerationRequestsPanel";
 
 Object.assign(PLUGIN_MODERATION_COMPONENTS, {
   ModerationIssueActionMenu,
   CreateModerationIssuePanel,
   OpenModerationIssuesButton,
-  OpenModerationIssuesPanel,
+  ModerationRequestsPanel,
 });
 
 Object.assign(PLUGIN_MODERATION_SERVICE, {
@@ -26,6 +30,8 @@ Object.assign(PLUGIN_MODERATION_SERVICE, {
   getColorForReview,
   getOpenRequests,
   isRequestDismissal,
+  getModerationEvents,
+  isRequestOpen,
 });
 
 export function getModerationIssueActionTypes(isModerator, moderationRequest) {
@@ -86,4 +92,39 @@ export function isRequestDismissal(type) {
 
 export function getUserTypeTextKey(isModerator) {
   return isModerator ? "moderator" : "user";
+}
+
+export function getModerationEvents(question, usersById) {
+  const requests = question.getModerationRequests().map(request => {
+    const user = usersById[request.requester_id];
+    const userDisplayName = user ? user.common_name : t`Someone`;
+
+    return {
+      timestamp: new Date(request.created_at).valueOf(),
+      icon: getModerationStatusIcon(request.type),
+      title: `${userDisplayName} ${MODERATION_TEXT.user[request.type].creationEvent}`,
+      description: request.text,
+      showFooter: true,
+      requestStatusText: MODERATION_TEXT.requestStatuses[request.status],
+      request,
+    };
+  });
+
+  const reviews = question.getModerationReviews().map((review, index) => {
+    const moderator = usersById[review.moderator_id];
+    const moderatorDisplayName = moderator ? moderator.common_name : t`Someone`;
+    const text = MODERATION_TEXT.moderator[review.status].creationEvent;
+    return {
+      timestamp: new Date(review.created_at).valueOf(),
+      icon: getModerationStatusIcon(review.status),
+      title: `${moderatorDisplayName} ${text}`,
+      description: review.text,
+    };
+  });
+
+  return [...requests, ...reviews];
+}
+
+export function isUserModerator(user) {
+  return user.id === 1;
 }
