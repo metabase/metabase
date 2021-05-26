@@ -42,6 +42,7 @@ function PinnedItem({
           }}
           height="3em"
           width="3em"
+          mr={0}
         />
       </td>
       <td>
@@ -105,10 +106,10 @@ function PinnedItemsTable({
     <table className="ContentTable">
       <colgroup>
         <col span="1" style={{ width: "5%" }} />
-        <col span="1" style={{ width: "50%" }} />
+        <col span="1" style={{ width: "55%" }} />
         <col span="1" style={{ width: "15%" }} />
         <col span="1" style={{ width: "20%" }} />
-        <col span="1" style={{ width: "10%" }} />
+        <col span="1" style={{ width: "5%" }} />
       </colgroup>
       <thead>
         <tr>
