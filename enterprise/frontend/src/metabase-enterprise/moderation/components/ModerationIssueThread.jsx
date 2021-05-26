@@ -53,7 +53,7 @@ export function ModerationIssueThread({
         className={`flex align-center text-${color} text-${color}-hover text-bold`}
       >
         <Icon name={icon} className="mr1" />
-        {MODERATION_TEXT.user[request.type].action}
+        {MODERATION_TEXT.user[request.type].pillLabel}
       </div>
       <Comment
         className="pt1"
