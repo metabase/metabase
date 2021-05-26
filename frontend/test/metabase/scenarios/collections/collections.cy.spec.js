@@ -258,7 +258,7 @@ describe("scenarios > collection_defaults", () => {
             // Fetch collection permission graph
             cy.request("GET", "/api/collection/graph").then(
               ({ body: { groups, revision } }) => {
-                // Give `Data` group permission to "curate" Child collection only
+                // Give `Data` group permission to "edit" Child collection only
                 // Access to everything else is revoked by default - that's why we chose `Data` group
                 groups[DATA_GROUP][CHILD_COLLECTION_ID] = "write";
 

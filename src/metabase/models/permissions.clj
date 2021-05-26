@@ -50,7 +50,7 @@
   (u.regex/rx (or #"[^\\/]" #"\\/" #"\\\\")))
 
 (def ^:private valid-object-path-regex
-  "Regex for a valid permissions path. `rx` macro is used to make the big-and-hairy macro somewhat readable."
+  "Regex for a valid permissions path. `rx` macro is used to make the big-and-hairy regex somewhat readable."
   (u.regex/rx "^/"
               ;; any path starting with /db/ is a DATA PERMISSIONS path
               (or

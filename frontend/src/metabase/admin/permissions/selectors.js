@@ -278,7 +278,7 @@ const OPTION_NATIVE_WRITE = {
 const OPTION_COLLECTION_WRITE = {
   ...OPTION_GREEN,
   value: "write",
-  title: t`Curate collection`,
+  title: t`Edit collection`,
   tooltip: t`Can edit this collection and its contents`,
 };
 
