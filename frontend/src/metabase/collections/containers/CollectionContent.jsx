@@ -182,6 +182,14 @@ function CollectionContent({
 
                   const hasPinnedItems = pinnedItems.length > 0;
 
+                  if (!hasPinnedItems && unpinnedItems.length === 0) {
+                    return (
+                      <Box mt="120px">
+                        <CollectionEmptyState />
+                      </Box>
+                    );
+                  }
+
                   return (
                     <Box mt={hasPinnedItems ? 3 : 0}>
                       <ItemsTable
