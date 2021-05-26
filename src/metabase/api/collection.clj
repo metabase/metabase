@@ -168,43 +168,46 @@
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:c.id :c.name :c.description :c.collection_position :c.display [(hx/literal "card") :model]
-                [:u.id :last_edit_user] [:u.email :last_edit_email]
-                [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
-                [:r.timestamp :last_edit_timestamp]]
-       :from   [[Card :c]]
-       :left-join [[:revision :r] [:and [:= :r.model (hx/literal "card")] [:= :r.model_id :c.id]]
+  (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display [(hx/literal "card") :model]
+                   [:u.id :last_edit_user] [:u.email :last_edit_email]
+                   [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
+                   [:r.timestamp :last_edit_timestamp]]
+       :from      [[Card :c]]
+       ;; todo: should there be a flag, or a realized view?
+       :left-join [[{:select   [[:%max.id :id] :model_id]
+                     :from     [[:revision :rev_latest]]
+                     :where    [:and
+                                [:= :rev_latest.model (hx/literal "Card")]]
+                     :group-by [:model_id]} :r_latest] [:= :r_latest.model_id :c.id]
+                   [:revision :r] [:= :r.id :r_latest.id]
                    [:core_user :u] [:= :u.id :r.user_id]]
-       :where  [:and
-                [:= :collection_id (:id collection)]
-                [:= :archived (boolean archived?)]]}
+       :where     [:and
+                   [:= :collection_id (:id collection)]
+                   [:= :archived (boolean archived?)]]}
       (h/merge-where (pinned-state->clause pinned-state))))
-
-(defmethod post-process-collection-children :card
-  [_ rows]
-  (let [last-edits (last-edit/fetch-last-edited-info {:card-ids (->> rows (map :id))})]
-    (for [row (hydrate rows :favorite)]
-        (if-let [edit-info (get-in last-edits [:card (:id row)])]
-          (assoc row :last-edit-info edit-info)
-          row))))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select [:id :name :description :collection_position [(hx/literal "dashboard") :model]]
-       :from   [[Dashboard :d]]
-       :where  [:and
-                [:= :collection_id (:id collection)]
-                [:= :archived (boolean archived?)]]}
+  (-> {:select    [:d.id :d.name :d.description :d.collection_position [(hx/literal "dashboard") :model]
+                   [:u.id :last_edit_user] [:u.email :last_edit_email]
+                   [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
+                   [:r.timestamp :last_edit_timestamp]]
+       :from      [[Dashboard :d]]
+       :left-join [[{:select   [[:%max.id :id] :model_id]
+                     :from     [[:revision :rev_latest]]
+                     :where    [:and
+                                [:= :rev_latest.model (hx/literal "Dashboard")]]
+                     :group-by [:model_id]} :r_latest] [:= :r_latest.model_id :d.id]
+                   [:revision :r] [:= :r.id :r_latest.id]
+                   [:core_user :u] [:= :u.id :r.user_id]]
+       :where     [:and
+                   [:= :collection_id (:id collection)]
+                   [:= :archived (boolean archived?)]]}
       (h/merge-where (pinned-state->clause pinned-state))))
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (let [last-edits (last-edit/fetch-last-edited-info {:dashboard-ids (->> rows (map :id))})]
-    (for [row (hydrate rows :favorite)]
-      (let [res (dissoc row :display)]
-        (if-let [edit-info (get-in last-edits [:dashboard (:id res)])]
-          (assoc res :last-edit-info edit-info)
-          res)))))
+  (hydrate rows :favorite))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -232,11 +235,30 @@
            :can_write
            (mi/can-write? Collection (:id row)))))
 
+(s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
+  "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
+  if `:last_edit_user` is not nil."
+  [row]
+  (letfn [(select-as [m k->k']
+            (reduce (fn [m [k k']] (assoc m k' (get m k)))
+                    {}
+                    k->k'))]
+    (let [mapping {:last_edit_user       :id
+                   :last_edit_last_name  :last_name
+                   :last_edit_first_name :first_name
+                   :last_edit_email      :email
+                   :last_edit_timestamp  :timestamp}]
+      (cond-> (apply dissoc row (keys mapping))
+        ;; don't use contains as they all have the key, we care about a value present
+        (:last_edit_user last) (assoc :last-edit-info (select-as row mapping))))))
+
 (defn- post-process-rows [rows]
-  (mapcat
-    (fn [[model rows]]
-      (post-process-collection-children (keyword model) rows))
-    (group-by :model rows)))
+  (into []
+        (comp (map (fn [[model rows]]
+                     (post-process-collection-children (keyword model) rows)))
+              cat
+              (map coalesce-edit-info))
+        (group-by :model rows)))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
