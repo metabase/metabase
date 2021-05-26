@@ -13,6 +13,14 @@ describe("scenarios > search", () => {
     cy.signInAsAdmin();
   });
 
+  it("should not search on an empty string", () => {
+    cy.intercept("/api/search", req => {
+      expect("Unexpected call to /api/search").to.be.false;
+    });
+    cy.visit("/");
+    cy.findByPlaceholderText("Search…").type(" ");
+  });
+
   it("should allow users to paginate results", () => {
     generateQuestions(TOTAL_ITEMS);
 
