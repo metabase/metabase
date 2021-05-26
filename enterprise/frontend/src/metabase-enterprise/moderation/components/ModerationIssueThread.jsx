@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { t } from "ttag";
 
 import {
@@ -30,21 +29,37 @@ export function ModerationIssueThread({
   onComment,
   onModerate,
 }) {
+  const [showCommentForm, setShowCommentForm] = useState(false);
+  const [isCommentPending, setIsCommentPending] = useState(false);
   const color = getColor(request.type);
   const icon = getModerationStatusIcon(request.type);
-  const hasButtonBar = !!(onComment || onModerate);
+  const showButtonBar = !showCommentForm && !!(onComment || onModerate);
+
+  const onSubmit = async comment => {
+    setIsCommentPending(true);
+    try {
+      await onComment(comment, request);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setShowCommentForm(false);
+      setIsCommentPending(false);
+    }
+  };
 
   return (
-    <div className={cx(className, "")}>
-      <div className={`flex align-center text-${color} text-bold`}>
+    <div className={className}>
+      <div
+        className={`flex align-center text-${color} text-${color}-hover text-bold`}
+      >
         <Icon name={icon} className="mr1" />
-        {MODERATION_TEXT.user[request.type].action}
+        {MODERATION_TEXT.user[request.type].pillLabel}
       </div>
       <Comment
         className="pt1"
-        title={request.requesterDisplayName}
+        title={request.title}
         text={request.text}
-        timestamp={request.created_at}
+        timestamp={request.timestamp}
         visibleLines={COMMMENT_VISIBLE_LINES}
       />
       {comments.map(comment => {
@@ -60,10 +75,21 @@ export function ModerationIssueThread({
           />
         );
       })}
-      {hasButtonBar && (
+      {showCommentForm && (
+        <CommentForm
+          className="pt1"
+          onSubmit={onSubmit}
+          onCancel={() => setShowCommentForm(false)}
+          isPending={isCommentPending}
+        />
+      )}
+      {showButtonBar && (
         <div className="flex justify-end column-gap-1 pt1">
           {onComment && (
-            <Button className="py1" onClick={onComment}>{t`Comment`}</Button>
+            <Button
+              className="py1"
+              onClick={() => setShowCommentForm(true)}
+            >{t`Comment`}</Button>
           )}
           {onModerate && (
             <ModerationIssueActionMenu
@@ -75,5 +101,53 @@ export function ModerationIssueThread({
         </div>
       )}
     </div>
+  );
+}
+
+CommentForm.propTypes = {
+  className: PropTypes.string,
+  onSubmit: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  isPending: PropTypes.bool,
+};
+
+function CommentForm({ className, onSubmit, onCancel, isPending }) {
+  const [value, setValue] = useState("");
+  const isEmpty = value.trim().length === 0;
+
+  return (
+    <form
+      className={className}
+      onSubmit={e => {
+        e.preventDefault();
+        onSubmit(value.trim());
+      }}
+    >
+      <textarea
+        className="input full max-w-full min-w-full"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        name="comment"
+        autoFocus
+      />
+      <div className="pt1 flex column-gap-1 justify-end">
+        <Button
+          className="py1"
+          disabled={isPending}
+          type="button"
+          onClick={onCancel}
+        >
+          {t`Cancel`}
+        </Button>
+        <Button
+          className="py1"
+          disabled={isPending || isEmpty}
+          type="submit"
+          primary
+        >
+          {t`Done`}
+        </Button>
+      </div>
+    </form>
   );
 }

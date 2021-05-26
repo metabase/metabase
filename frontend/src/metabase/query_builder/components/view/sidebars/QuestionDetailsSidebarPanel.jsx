@@ -55,7 +55,16 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
             }}
           />
         </div>
-        <QuestionActivityTimeline className="pl3 pr2 pt3" question={question} />
+        <QuestionActivityTimeline
+          className="pl3 pr2 pt3"
+          question={question}
+          onRequestClick={request => {
+            setView({
+              name: SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL,
+              props: { requests: [request] },
+            });
+          }}
+        />
       </div>
     </SidebarContent>
   );
