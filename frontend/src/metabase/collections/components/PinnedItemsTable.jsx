@@ -112,7 +112,7 @@ function PinnedItemsTable({
       </colgroup>
       <thead>
         <tr>
-          <th>{t`Type`}</th>
+          <th className="text-centered">{t`Type`}</th>
           <th>{t`Name`}</th>
           <th>{t`Last edited by`}</th>
           <th>{t`Last edited at`}</th>
