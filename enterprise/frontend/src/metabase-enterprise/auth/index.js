@@ -271,10 +271,10 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       type: "string",
       validations: [
         value =>
-        (value.match(/\(/g) || []).length !==
+          (value.match(/\(/g) || []).length !==
           (value.match(/\)/g) || []).length
-        ? t`Check your parentheses`
-        : null,
+            ? t`Check your parentheses`
+            : null,
       ],
     },
     {
