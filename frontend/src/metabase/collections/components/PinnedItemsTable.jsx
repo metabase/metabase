@@ -12,7 +12,7 @@ function PinnedItem({ item, onToggleSelected }) {
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
 
   return (
-    <tr key={item.id}>
+    <tr>
       <td>
         <EntityItem.Icon
           item={item}
@@ -37,7 +37,13 @@ function PinnedItem({ item, onToggleSelected }) {
 
 function PinnedItemsTable({ items, onToggleSelected }) {
   const renderItem = useCallback(
-    item => <PinnedItem item={item} onToggleSelected={onToggleSelected} />,
+    item => (
+      <PinnedItem
+        key={`${item.model}-${item.id}`}
+        item={item}
+        onToggleSelected={onToggleSelected}
+      />
+    ),
     [onToggleSelected],
   );
 
