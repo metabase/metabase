@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-/* eslint-disable react/jsx-key */
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
