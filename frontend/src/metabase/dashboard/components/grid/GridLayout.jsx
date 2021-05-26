@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useMemo } from "react";
-import ReactGridLayout from "react-grid-layout";
+import React, { useCallback, useMemo, useState } from "react";
+import { Responsive as ReactGridLayout } from "react-grid-layout";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -10,17 +10,59 @@ import { generateGridBackground } from "./utils";
 function GridLayout({
   items,
   itemRenderer,
-  layout,
-  cols,
+  breakpoints,
+  layouts,
+  cols: columnsMap,
   width: gridWidth,
-  margin,
+  margin: marginMap,
   rowHeight,
   isEditing,
+  onLayoutChange,
   ...props
 }) {
+  const [currentBreakpoint, setCurrentBreakpoint] = useState(
+    ReactGridLayout.utils.getBreakpointFromWidth(breakpoints, gridWidth),
+  );
+
+  const onLayoutChangeWrapped = useCallback(
+    nextLayout => {
+      onLayoutChange({
+        layout: nextLayout,
+        // Calculating the breakpoint right here,
+        // so we're definitely passing the most recent one
+        // Workaround for https://github.com/react-grid-layout/react-grid-layout/issues/889
+        breakpoint: ReactGridLayout.utils.getBreakpointFromWidth(
+          breakpoints,
+          gridWidth,
+        ),
+      });
+    },
+    [onLayoutChange, breakpoints, gridWidth],
+  );
+
+  const onBreakpointChange = useCallback(newBreakpoint => {
+    setCurrentBreakpoint(newBreakpoint);
+  }, []);
+
+  const margin = useMemo(() => marginMap[currentBreakpoint], [
+    marginMap,
+    currentBreakpoint,
+  ]);
+
+  const layout = useMemo(() => layouts[currentBreakpoint], [
+    layouts,
+    currentBreakpoint,
+  ]);
+
+  const cols = useMemo(() => columnsMap[currentBreakpoint], [
+    columnsMap,
+    currentBreakpoint,
+  ]);
+
   const cellSize = useMemo(() => {
     const marginSlotsCount = cols - 1;
-    const totalHorizontalMargin = marginSlotsCount * margin;
+    const [horizontalMargin] = margin;
+    const totalHorizontalMargin = marginSlotsCount * horizontalMargin;
     const freeSpace = gridWidth - totalHorizontalMargin;
     return {
       width: freeSpace / cols,
@@ -31,13 +73,14 @@ function GridLayout({
   const renderItem = useCallback(
     item => {
       const itemLayout = layout.find(l => String(l.i) === String(item.id));
-      const gridItemWidth = cellSize.width * itemLayout.w - margin;
+      const gridItemWidth = cellSize.width * itemLayout.w;
       return itemRenderer({
         item,
         gridItemWidth,
+        breakpoint: currentBreakpoint,
       });
     },
-    [layout, cellSize, margin, itemRenderer],
+    [layout, cellSize, itemRenderer, currentBreakpoint],
   );
 
   const height = useMemo(() => {
@@ -45,7 +88,9 @@ function GridLayout({
     if (isEditing) {
       lowestLayoutCellPoint += Math.ceil(window.innerHeight / cellSize.height);
     }
-    return (cellSize.height + margin) * lowestLayoutCellPoint;
+    // eslint-disable-next-line no-unused-vars
+    const [horizontalMargin, verticalMargin] = margin;
+    return (cellSize.height + verticalMargin) * lowestLayoutCellPoint;
   }, [cellSize.height, layout, margin, isEditing]);
 
   const background = useMemo(
@@ -62,20 +107,28 @@ function GridLayout({
     [gridWidth, height, background, isEditing],
   );
 
+  const isMobile = currentBreakpoint === "mobile";
+
+  // https://github.com/react-grid-layout/react-grid-layout#performance
+  const children = useMemo(() => items.map(renderItem), [items, renderItem]);
+
   return (
     <ReactGridLayout
-      cols={cols}
-      layout={layout}
+      breakpoints={breakpoints}
+      cols={columnsMap}
+      layouts={layouts}
       width={gridWidth}
-      margin={[margin, margin]}
+      margin={margin}
       rowHeight={rowHeight}
-      isDraggable={isEditing}
-      isResizable={isEditing}
+      isDraggable={isEditing && !isMobile}
+      isResizable={isEditing && !isMobile}
       {...props}
       autoSize={false}
+      onLayoutChange={onLayoutChangeWrapped}
+      onBreakpointChange={onBreakpointChange}
       style={style}
     >
-      {items.map(renderItem)}
+      {children}
     </ReactGridLayout>
   );
 }

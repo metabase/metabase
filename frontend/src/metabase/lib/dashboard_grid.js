@@ -2,7 +2,23 @@ import type { DashCard } from "metabase-types/types/Dashboard";
 
 export const GRID_WIDTH = 18;
 export const GRID_ASPECT_RATIO = 4 / 3;
-export const GRID_MARGIN = 6;
+
+const MOBILE_BREAKPOINT = 752;
+
+export const GRID_BREAKPOINTS = {
+  desktop: MOBILE_BREAKPOINT + 1,
+  mobile: MOBILE_BREAKPOINT,
+};
+
+export const GRID_COLUMNS = {
+  desktop: GRID_WIDTH,
+  mobile: 1,
+};
+
+export function isMobileBreakpoint(breakpoint) {
+  const width = GRID_BREAKPOINTS[breakpoint];
+  return width <= MOBILE_BREAKPOINT;
+}
 
 export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
 
