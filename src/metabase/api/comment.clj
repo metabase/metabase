@@ -8,9 +8,9 @@
 (api/defendpoint POST "/"
   "Create a new `Comment`."
   [:as {{:keys [text commented_item_id commented_item_type]} :body}]
-  {text                s/Str
-   commented_item_id   su/IntGreaterThanZero
-   commented_item_type comment/commented-item-types}
+  {:text                s/Str
+   :commented_item_id   su/IntGreaterThanZero
+   :commented_item_type comment/commented-item-types}
   (let [comment-data {:text                text
                       :commented_item_id   commented_item_id
                       :commented_item_type commented_item_type
