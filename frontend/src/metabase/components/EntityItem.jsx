@@ -40,6 +40,47 @@ function getForeground(model) {
   return model === "dashboard" ? color("white") : color("brand");
 }
 
+function EntityItemIcon({
+  item,
+  variant,
+  iconName,
+  pinned,
+  selectable,
+  selected,
+  onToggleSelected,
+}) {
+  const iconSize = variant === "small" ? 12 : 18;
+  const handleClick = e => {
+    e.preventDefault();
+    onToggleSelected();
+  };
+
+  return (
+    <IconWrapper
+      p={"12px 13px"}
+      mr={2}
+      bg={pinned ? getPinnedBackground(item.model) : getBackground(item.model)}
+      color={
+        pinned ? getPinnedForeground(item.model) : getForeground(item.model)
+      }
+      borderRadius={"99px"}
+      onClick={selectable ? handleClick : null}
+    >
+      {selectable ? (
+        <Swapper
+          startSwapped={selected}
+          defaultElement={
+            <Icon name={iconName} color={"inherit"} size={iconSize} />
+          }
+          swappedElement={<CheckBox checked={selected} size={iconSize} />}
+        />
+      ) : (
+        <Icon name={iconName} color={"inherit"} size={iconSize} />
+      )}
+    </IconWrapper>
+  );
+}
+
 const ENTITY_ITEM_SPACING = {
   list: {
     px: 2,
@@ -102,7 +143,6 @@ const EntityItem = ({
   ].filter(action => action);
 
   const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
-  const iconSize = variant === "small" ? 12 : 18;
 
   return (
     <EntityItemWrapper
@@ -111,37 +151,16 @@ const EntityItem = ({
         "bg-light-hover": variant === "list",
       })}
     >
-      <IconWrapper
-        p={"12px 13px"}
-        mr={2}
-        bg={
-          pinned ? getPinnedBackground(item.model) : getBackground(item.model)
-        }
-        color={
-          pinned ? getPinnedForeground(item.model) : getForeground(item.model)
-        }
-        borderRadius={"99px"}
-        onClick={
-          selectable
-            ? e => {
-                e.preventDefault();
-                onToggleSelected();
-              }
-            : null
-        }
-      >
-        {selectable ? (
-          <Swapper
-            startSwapped={selected}
-            defaultElement={
-              <Icon name={iconName} color={"inherit"} size={iconSize} />
-            }
-            swappedElement={<CheckBox checked={selected} size={iconSize} />}
-          />
-        ) : (
-          <Icon name={iconName} color={"inherit"} size={iconSize} />
-        )}
-      </IconWrapper>
+      <EntityItemIcon
+        item={item}
+        variant={variant}
+        iconName={iconName}
+        pinned={pinned}
+        selectable={selectable}
+        selected={selected}
+        onToggleSelected={onToggleSelected}
+      />
+
       <Box>
         <h3 className="overflow-hidden">
           <Ellipsified>{name}</Ellipsified>
@@ -173,5 +192,7 @@ const EntityItem = ({
 EntityItem.defaultProps = {
   selectable: false,
 };
+
+EntityItem.Icon = EntityItemIcon;
 
 export default EntityItem;
