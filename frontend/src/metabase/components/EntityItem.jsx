@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import { Box, Flex } from "grid-styled";
@@ -91,6 +91,59 @@ function EntityItemName({ name }) {
   );
 }
 
+function EntityItemMenu({
+  item,
+  onPin,
+  onMove,
+  onCopy,
+  onArchive,
+  analyticsContext,
+}) {
+  const actions = useMemo(
+    () =>
+      [
+        onPin && {
+          title:
+            item.collection_position != null
+              ? t`Unpin this item`
+              : t`Pin this item`,
+          icon: "pin",
+          action: onPin,
+          event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
+        },
+        onMove && {
+          title: t`Move this item`,
+          icon: "move",
+          action: onMove,
+          event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
+        },
+        onCopy && {
+          title: t`Duplicate this item`,
+          icon: "clone",
+          action: onCopy,
+          event: `${analyticsContext};Entity Item;Copy Item;${item.model}`,
+        },
+        onArchive && {
+          title: t`Archive this item`,
+          icon: "archive",
+          action: onArchive,
+          event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
+        },
+      ].filter(action => action),
+    [item, onPin, onMove, onCopy, onArchive, analyticsContext],
+  );
+  if (actions.length === 0) {
+    return null;
+  }
+  return (
+    <EntityMenu
+      className="ml1 hover-child"
+      triggerIcon="ellipsis"
+      items={actions}
+    />
+  );
+}
+
 const ENTITY_ITEM_SPACING = {
   list: {
     px: 2,
@@ -122,36 +175,6 @@ const EntityItem = ({
   extraInfo,
   pinned,
 }) => {
-  const actions = [
-    onPin && {
-      title:
-        item.collection_position != null
-          ? t`Unpin this item`
-          : t`Pin this item`,
-      icon: "pin",
-      action: onPin,
-      event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
-    },
-    onMove && {
-      title: t`Move this item`,
-      icon: "move",
-      action: onMove,
-      event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
-    },
-    onCopy && {
-      title: t`Duplicate this item`,
-      icon: "clone",
-      action: onCopy,
-      event: `${analyticsContext};Entity Item;Copy Item;${item.model}`,
-    },
-    onArchive && {
-      title: t`Archive this item`,
-      icon: "archive",
-      action: onArchive,
-      event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
-    },
-  ].filter(action => action);
-
   const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
 
   return (
@@ -185,13 +208,14 @@ const EntityItem = ({
             className="ml1 text-medium"
           />
         )}
-        {actions.length > 0 && (
-          <EntityMenu
-            className="ml1 hover-child"
-            triggerIcon="ellipsis"
-            items={actions}
-          />
-        )}
+        <EntityItemMenu
+          item={item}
+          onPin={onPin}
+          onMove={onMove}
+          onCopy={onCopy}
+          onArchive={onArchive}
+          analyticsContext={analyticsContext}
+        />
       </Flex>
     </EntityItemWrapper>
   );
@@ -203,5 +227,6 @@ EntityItem.defaultProps = {
 
 EntityItem.Icon = EntityItemIcon;
 EntityItem.Name = EntityItemName;
+EntityItem.Menu = EntityItemMenu;
 
 export default EntityItem;
