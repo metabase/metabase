@@ -19,15 +19,15 @@
   "Options passed to LDAP integration implementations. These are just the various LDAP Settings from
   `metabase.integrations.ldap`, packaged up as a single map so implementations don't need to fetch Setting values
   directly."
-  {:first-name-attribute    su/NonBlankString
-   :last-name-attribute     su/NonBlankString
-   :email-attribute         su/NonBlankString
-   :sync-groups?            s/Bool
-   :user-base               su/NonBlankString
-   :user-filter             su/NonBlankString
-   :group-base              (s/maybe su/NonBlankString)
-   :group-mappings          (s/maybe {DN [su/IntGreaterThanZero]})
-   s/Keyword                s/Any})
+  {:first-name-attribute su/NonBlankString
+   :last-name-attribute  su/NonBlankString
+   :email-attribute      su/NonBlankString
+   :sync-groups?         s/Bool
+   :user-base            su/NonBlankString
+   :user-filter          su/NonBlankString
+   :group-base           (s/maybe su/NonBlankString)
+   :group-mappings       (s/maybe {DN [su/IntGreaterThanZero]})
+   s/Keyword             s/Any})
 
 (p/defprotocol+ LDAPIntegration
   "Protocol for LDAP integration implementations."
