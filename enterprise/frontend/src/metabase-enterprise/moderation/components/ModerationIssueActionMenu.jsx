@@ -44,7 +44,7 @@ function ModerationIssueActionMenu({
         return {
           icon,
           iconSize: 18,
-          className: `text-${color}`,
+          className: `text-${color} text-${color}-hover`,
           action: () => onAction(issueType),
           title: MODERATION_TEXT[userType][issueType].action,
         };
