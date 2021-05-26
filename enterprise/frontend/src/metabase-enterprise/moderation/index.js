@@ -124,3 +124,7 @@ export function getModerationEvents(question, usersById) {
 
   return [...requests, ...reviews];
 }
+
+export function isUserModerator(user) {
+  return user.id === 1;
+}
