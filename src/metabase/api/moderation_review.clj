@@ -9,10 +9,10 @@
 (api/defendpoint POST "/"
   "Create a new `ModerationReview`."
   [:as {{:keys [text moderated_item_id moderated_item_type status]} :body}]
-  {text                    (s/maybe s/Str)
-   moderated_item_id       su/IntGreaterThanZero
-   moderated_item_type     moderation/moderated-item-types
-   (s/optional-key status) moderation-review/statuses}
+  {:text                    (s/maybe s/Str)
+   :moderated_item_id       su/IntGreaterThanZero
+   :moderated_item_type     moderation/moderated-item-types
+   (s/optional-key :status) moderation-review/statuses}
   (let [review-data (merge {:text                text
                             :moderated_item_id   moderated_item_id
                             :moderated_item_type moderated_item_type
@@ -24,13 +24,14 @@
 
 (api/defendpoint PUT "/:id"
   [id :as {{:keys [text moderated_item_id moderated_item_type status] :as review-updates} :body}]
-  {(s/optional-key text)                (s/maybe s/Str)
-   (s/optional-key moderated_item_id)   su/IntGreaterThanZero
-   (s/optional-key moderated_item_type) moderation/moderated-item-types
-   (s/optional-key status)              moderation-review/statuses}
+  {(s/optional-key :text)                (s/maybe s/Str)
+   (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
+   (s/optional-key :moderated_item_type) moderation/moderated-item-types
+   (s/optional-key :status)              moderation-review/statuses}
   ;; TODO permissions
-  (moderation-review/update-review!
-   (assoc (select-keys review-updates [:text :moderated_item_id :moderated_item_type :status])
-          :id id)))
+  (api/check-500
+   (moderation-review/update-review!
+    (assoc (select-keys review-updates [:text :moderated_item_id :moderated_item_type :status])
+           :id id))))
 
 (api/define-routes)
