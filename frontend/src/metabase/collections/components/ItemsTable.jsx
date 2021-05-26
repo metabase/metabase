@@ -10,20 +10,25 @@ import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 function TableItem({
   item,
-  collection = {},
+  collection,
+  pinned,
   onCopy,
   onMove,
   onToggleSelected,
   getIsSelected,
+  getLinkProps,
 }) {
   const lastEditInfo = item["last-edit-info"];
   const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
 
+  const handleSelectionToggled = useCallback(() => {
+    onToggleSelected(item);
+  }, [item, onToggleSelected]);
+
   const handlePin = useCallback(() => {
-    const isPinned = item.collection_position != null;
-    item.setPinned(!isPinned);
-  }, [item]);
+    item.setPinned(!pinned);
+  }, [item, pinned]);
 
   const handleMove = useCallback(() => onMove([item]), [item, onMove]);
   const handleCopy = useCallback(() => onCopy([item]), [item, onCopy]);
@@ -36,21 +41,17 @@ function TableItem({
           item={item}
           variant="list"
           iconName={item.getIcon()}
+          pinned={pinned}
           selectable
           selected={getIsSelected(item)}
-          onToggleSelected={() => {
-            onToggleSelected(item);
-          }}
+          onToggleSelected={handleSelectionToggled}
           height="3em"
           width="3em"
           mr={0}
         />
       </td>
       <td>
-        <Link
-          to={item.getUrl()}
-          data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
-        >
+        <Link {...getLinkProps(item)} to={item.getUrl()}>
           <EntityItem.Name name={item.name} />
         </Link>
       </td>
@@ -78,27 +79,46 @@ function TableItem({
   );
 }
 
+const defaultProps = {
+  collection: {},
+  getLinkProps: item => ({
+    "data-metabase-event": `${ANALYTICS_CONTEXT};Item Click;${item.model}`,
+  }),
+};
+
 function ItemsTable({
   items,
+  pinned,
   collection,
   onCopy,
   onMove,
   onToggleSelected,
   getIsSelected,
+  getLinkProps,
 }) {
   const renderItem = useCallback(
     item => (
       <TableItem
         key={`${item.model}-${item.id}`}
         item={item}
+        pinned={pinned}
         collection={collection}
         onCopy={onCopy}
         onMove={onMove}
         onToggleSelected={onToggleSelected}
         getIsSelected={getIsSelected}
+        getLinkProps={getLinkProps}
       />
     ),
-    [collection, onCopy, onMove, onToggleSelected, getIsSelected],
+    [
+      collection,
+      pinned,
+      onCopy,
+      onMove,
+      onToggleSelected,
+      getLinkProps,
+      getIsSelected,
+    ],
   );
 
   return (
@@ -123,5 +143,7 @@ function ItemsTable({
     </table>
   );
 }
+
+ItemsTable.defaultProps = defaultProps;
 
 export default ItemsTable;
