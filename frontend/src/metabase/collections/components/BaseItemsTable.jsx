@@ -3,6 +3,8 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import moment from "moment";
 
+import { color } from "metabase/lib/colors";
+
 import EntityItem from "metabase/components/EntityItem";
 import Link from "metabase/components/Link";
 
@@ -108,6 +110,8 @@ const defaultProps = {
   collection: {},
   renderItem: defaultItemRenderer,
   getLinkProps: item => ({
+    className: "hover-parent hover--visibility",
+    hover: { color: color("brand") },
     "data-metabase-event": `${ANALYTICS_CONTEXT};Item Click;${item.model}`,
   }),
 };
