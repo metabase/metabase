@@ -109,23 +109,21 @@
   [{:keys [id series parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
   (let [{:keys [sizeX sizeY row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
-      ;; update the dashcard itself (positional attributes)
-      (when (and sizeX sizeY row col)
-        (db/update-non-nil-keys! DashboardCard id
-          :sizeX                  sizeX
-          :sizeY                  sizeY
-          :row                    row
-          :col                    col
-          :parameter_mappings     parameter_mappings
-          :visualization_settings visualization_settings))
-      ;; update series (only if they changed)
-      (when-not (= series (map :card_id (db/select [DashboardCardSeries :card_id]
-                                          :dashboardcard_id id
-                                          {:order-by [[:position :asc]]})))
-        (update-dashboard-card-series! dashboard-card series))
-      ;; fetch the fully updated dashboard card then return it (and fire off an event)
-      (->> (retrieve-dashboard-card id)
-           (events/publish-event! :dashboard-card-update)))))
+     ;; update the dashcard itself (positional attributes)
+     (when (and sizeX sizeY row col)
+       (db/update-non-nil-keys! DashboardCard id
+                                :sizeX                  sizeX
+                                :sizeY                  sizeY
+                                :row                    row
+                                :col                    col
+                                :parameter_mappings     parameter_mappings
+                                :visualization_settings visualization_settings))
+     ;; update series (only if they changed)
+     (when-not (= series (map :card_id (db/select [DashboardCardSeries :card_id]
+                                                  :dashboardcard_id id
+                                                  {:order-by [[:position :asc]]})))
+       (update-dashboard-card-series! dashboard-card series)))
+    (retrieve-dashboard-card id)))
 
 (def ^:private NewDashboardCard
   {:dashboard_id                            su/IntGreaterThanZero
@@ -142,22 +140,19 @@
   (let [{:keys [dashboard_id card_id creator_id parameter_mappings visualization_settings sizeX sizeY row col series]
          :or   {sizeX 2, sizeY 2, series []}} dashboard-card]
     (db/transaction
-      (let [{:keys [id] :as dashboard-card} (db/insert! DashboardCard
-                                              :dashboard_id           dashboard_id
-                                              :card_id                card_id
-                                              :sizeX                  sizeX
-                                              :sizeY                  sizeY
-                                              :row                    (or row 0)
-                                              :col                    (or col 0)
-                                              :parameter_mappings     (or parameter_mappings [])
-                                              :visualization_settings (or visualization_settings {}))]
-        ;; add series to the DashboardCard
-        (update-dashboard-card-series! dashboard-card series)
-        ;; return the full DashboardCard (and record our create event)
-        (as-> (retrieve-dashboard-card id) dashcard
-          (assoc dashcard :actor_id creator_id)
-          (events/publish-event! :dashboard-card-create dashcard)
-          (dissoc dashcard :actor_id))))))
+     (let [dashboard-card (db/insert! DashboardCard
+                                      :dashboard_id           dashboard_id
+                                      :card_id                card_id
+                                      :sizeX                  sizeX
+                                      :sizeY                  sizeY
+                                      :row                    (or row 0)
+                                      :col                    (or col 0)
+                                      :parameter_mappings     (or parameter_mappings [])
+                                      :visualization_settings (or visualization_settings {}))]
+       ;; add series to the DashboardCard
+       (update-dashboard-card-series! dashboard-card series)
+       ;; return the full DashboardCard
+       (retrieve-dashboard-card (:id dashboard-card))))))
 
 (defn delete-dashboard-card!
   "Delete a DashboardCard."

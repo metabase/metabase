@@ -23,6 +23,28 @@ import Link from "metabase/components/Link";
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "metabase/browse/constants";
 
+function getDatabaseId(props) {
+  const { params } = props;
+  const dbId =
+    parseInt(props.dbId) ||
+    parseInt(params.dbId) ||
+    Urls.extractEntityId(params.slug);
+  return Number.isSafeInteger(dbId) ? dbId : undefined;
+}
+
+function getSchemaName(props) {
+  return props.schemaName || props.params.schemaName;
+}
+
+function mapStateToProps(state, props) {
+  return {
+    dbId: getDatabaseId(props),
+    schemaName: getSchemaName(props),
+    metadata: getMetadata(state),
+    xraysEnabled: getXraysEnabled(state),
+  };
+}
+
 function TableBrowser(props) {
   const {
     tables,
@@ -119,13 +141,8 @@ function TableBrowser(props) {
 }
 
 export default Table.loadList({
-  query: (state, { dbId, schemaName }) => ({
-    dbId,
-    schemaName,
+  query: (state, props) => ({
+    dbId: getDatabaseId(props),
+    schemaName: getSchemaName(props),
   }),
-})(
-  connect(state => ({
-    metadata: getMetadata(state),
-    xraysEnabled: getXraysEnabled(state),
-  }))(TableBrowser),
-);
+})(connect(mapStateToProps)(TableBrowser));

@@ -55,13 +55,14 @@
   For builds from `master`, increment the minor version instead e.g.
 
     v0.37.1 -> v0.38.0-SNAPSHOT"
-  ([]
-   (current-snapshot-version (git-branch) (most-recent-tag)))
+  ([edition]
+   (current-snapshot-version edition (git-branch) (most-recent-tag)))
 
-  ([branch tag]
+  ([edition branch tag]
+   {:pre [(#{:oss :ee} edition)]}
    (if-let [tag-parts (not-empty (tag-parts tag))]
-     (let [[major minor patch] tag-parts
-           major               (or major 0)
+     (let [[_ minor patch] tag-parts
+           major               (case edition :oss 0 :ee 1)
            [minor patch]       (if (= branch "master")
                                  [(inc (or minor 0)) 0]
                                  [(or minor 0) (inc (or patch 0))])]
@@ -70,10 +71,10 @@
 
 (defn generate-version-info-file!
   "Generate version.properties file"
-  ([]
-   (generate-version-info-file! (current-snapshot-version)))
+  ([edition]
+   (generate-version-info-file! edition (current-snapshot-version edition)))
 
-  ([version]
+  ([edition version]
    (u/delete-file-if-exists! version-properties-filename)
    (u/step (format "Generate version.properties file for version %s" version)
      (spit version-properties-filename (version-properties version))

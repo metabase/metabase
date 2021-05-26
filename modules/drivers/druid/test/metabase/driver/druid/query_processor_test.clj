@@ -2,6 +2,7 @@
   "Some tests to make sure the Druid Query Processor is generating sane Druid queries when compiling MBQL."
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
+            [clojure.tools.macro :as tools.macro]
             [java-time :as t]
             [medley.core :as m]
             [metabase.db.metadata-queries :as metadata-queries]
@@ -580,60 +581,101 @@
 
 (deftest numeric-filter-test
   (mt/test-driver :druid
-    (testing
-        (tqpt/with-flattened-dbdef
-          (letfn [(compiled [query]
-                    (-> (qp/query->native query) :query (select-keys [:filter :queryType])))]
-            (doseq [[message field] {"Make sure we can filter by numeric columns (#10935)" :venue_price
-                                     "We should be able to filter by Metrics (#11823)"     :count}
-                    :let            [field-clause [:field (mt/id :checkins field) nil]
-                                     field-name   (name field)]]
-              (testing message
-                (testing "scan query"
-                  (let [query (mt/mbql-query checkins
-                                {:fields   [$id $venue_price $venue_name]
-                                 :filter   [:= field-clause 1]
-                                 :order-by [[:desc $id]]
-                                 :limit    5})]
-                    (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
-                            :queryType :scan}
-                           (compiled query)))
-                    (is (= [931 1 "Kinaree Thai Bistro"]
-                           (mt/first-row (qp/process-query query))))))
+    (tqpt/with-flattened-dbdef
+      (letfn [(compiled [query]
+                (-> (qp/query->native query) :query (select-keys [:filter :queryType])))]
+        (doseq [[message field] {"Make sure we can filter by numeric columns (#10935)" :venue_price
+                                 "We should be able to filter by Metrics (#11823)"     :count}
+                :let            [field-clause [:field (mt/id :checkins field) nil]
+                                 field-name   (name field)]]
+          (testing message
+            (testing "scan query"
+              (let [query (mt/mbql-query checkins
+                            {:fields   [$id $venue_price $venue_name]
+                             :filter   [:= field-clause 1]
+                             :order-by [[:desc $id]]
+                             :limit    5})]
+                (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
+                        :queryType :scan}
+                       (compiled query)))
+                (is (= [931 1 "Kinaree Thai Bistro"]
+                       (mt/first-row (qp/process-query query))))))
 
-                (testing "topN query"
-                  (let [query (mt/mbql-query checkins
-                                {:aggregation [[:count]]
-                                 :breakout    [$venue_price]
-                                 :filter      [:= field-clause 1]})]
-                    (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
-                            :queryType :topN}
-                           (compiled query)))
-                    (is (= ["1" 221]
-                           (mt/first-row (qp/process-query query))))))
+            (testing "topN query"
+              (let [query (mt/mbql-query checkins
+                            {:aggregation [[:count]]
+                             :breakout    [$venue_price]
+                             :filter      [:= field-clause 1]})]
+                (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
+                        :queryType :topN}
+                       (compiled query)))
+                (is (= ["1" 221]
+                       (mt/first-row (qp/process-query query))))))
 
-                (testing "groupBy query"
-                  (let [query (mt/mbql-query checkins
-                                {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
-                                 :breakout    [$venue_category_name $user_name]
-                                 :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
-                                 :filter      [:= field-clause 1]})]
-                    (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
-                            :queryType :groupBy}
-                           (compiled query)))
-                    (is (= (case field
-                             :count       ["Bar" "Felipinho Asklepios" 8]
-                             :venue_price ["Mexican" "Conchúr Tihomir" 4])
-                           (mt/first-row (qp/process-query query))))))
+            (testing "groupBy query"
+              (let [query (mt/mbql-query checkins
+                            {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
+                             :breakout    [$venue_category_name $user_name]
+                             :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
+                             :filter      [:= field-clause 1]})]
+                (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
+                        :queryType :groupBy}
+                       (compiled query)))
+                (is (= (case field
+                         :count       ["Bar" "Felipinho Asklepios" 8]
+                         :venue_price ["Mexican" "Conchúr Tihomir" 4])
+                       (mt/first-row (qp/process-query query))))))
 
-                (testing "timeseries query"
-                  (let [query (mt/mbql-query checkins
-                                {:aggregation [[:count]]
-                                 :filter      [:= field-clause 1]})]
-                    (is (= {:queryType :timeseries
-                            :filter    {:type :selector, :dimension field-name, :value 1}}
-                           (compiled query)))
-                    (is (= (case field
-                             :count       [1000]
-                             :venue_price [221])
-                           (mt/first-row (qp/process-query query)))))))))))))
+            (testing "timeseries query"
+              (let [query (mt/mbql-query checkins
+                            {:aggregation [[:count]]
+                             :filter      [:= field-clause 1]})]
+                (is (= {:queryType :timeseries
+                        :filter    {:type :selector, :dimension field-name, :value 1}}
+                       (compiled query)))
+                (is (= (case field
+                         :count       [1000]
+                         :venue_price [221])
+                       (mt/first-row (qp/process-query query))))))))))))
+
+(deftest parse-filter-test
+  (mt/test-driver :druid
+    (testing "parse-filter should generate the correct filter clauses"
+      (tqpt/with-flattened-dbdef
+        (mt/with-everything-store
+          (tools.macro/macrolet [(parse-filter [filter-clause]
+                                   `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
+            (testing "normal non-compound filters should work as expected"
+              (is (= {:type :selector, :dimension "venue_price", :value 2}
+                     (parse-filter [:= $venue_price [:value 2 {:base_type :type/Integer}]]))))
+            (testing "temporal filters should get stripped out"
+              (is (= nil
+                     (parse-filter [:>= !default.timestamp [:absolute-datetime #t "2015-09-01T00:00Z[UTC]" :default]])))
+              (is (= {:type :selector, :dimension "venue_category_name", :value "Mexican"}
+                     (parse-filter
+                      [:and
+                       [:= $venue_category_name [:value "Mexican" {:base_type :type/Text}]]
+
+                       [:< !default.timestamp [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))))
+
+(deftest multiple-filters-test
+  (mt/test-driver :druid
+    (testing "Should be able to filter by both a temporal and a non-temporal filter (#15903)"
+      (tqpt/with-flattened-dbdef
+        (is (= [4]
+               (mt/first-row
+                (mt/run-mbql-query checkins
+                  {:aggregation [[:count]]
+                   :filter      [:and
+                                 [:= $venue_category_name "Mexican"]
+                                 [:= !month.timestamp "2015-09"]]}))))))))
+
+(deftest open-ended-temporal-filter-test
+  (mt/test-driver :druid
+    (testing "Should be able to filter by an open-ended absolute temporal moment (#15902)"
+      (tqpt/with-flattened-dbdef
+        (is (= [58]
+               (mt/first-row
+                (mt/run-mbql-query checkins
+                  {:aggregation [[:count]]
+                   :filter      [:> $timestamp "2015-10-01T00:00:00Z"]}))))))))

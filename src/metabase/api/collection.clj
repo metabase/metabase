@@ -4,8 +4,8 @@
   `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`)."
-  (:require [clojure.string :as str]
-            [compojure.core :refer [GET POST PUT]]
+  (:require [compojure.core :refer [GET POST PUT]]
+            [honeysql.helpers :as h]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
             [metabase.models.card :refer [Card]]
@@ -19,7 +19,9 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.revision.last-edit :as last-edit]
+            [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -79,64 +81,159 @@
   "Valid values for the `?model=` param accepted by endpoints in this namespace."
   #{"card" "collection" "dashboard" "pulse" "snippet"})
 
-(def ^:private CollectionChildrenOptions
-  {:archived? s/Bool
-   ;; when specified, only return results of this type.
-   :model     (s/maybe (apply s/enum (map keyword valid-model-param-values)))})
+(def ^:private ModelString
+  (apply s/enum valid-model-param-values))
 
-(defmulti ^:private fetch-collection-children
-  "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
+; This is basically a union type. defendpoint splits the string if it only gets one
+(def ^:private models-schema (s/conditional #(vector? %) [ModelString] :else ModelString))
+
+(def ^:private valid-pinned-state-values
+  "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
+  #{"all" "is_pinned" "is_not_pinned"})
+
+
+(def ^:private CollectionChildrenOptions
+  {:archived?      s/Bool
+   :pinned-state   (s/maybe (apply s/enum (map keyword valid-pinned-state-values)))
+   ;; when specified, only return results of this type.
+   :models         (s/maybe #{(apply s/enum (map keyword valid-model-param-values))})})
+
+(defmulti ^:private collection-children-query
+  "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
   in the `CollectionChildrenOptions` schema above.
 
   NOTES:
 
   *  `collection` will be either a CollectionInstance, or the Root Collection special placeholder object, so do not use
-     `u/get-id` on it! Use `:id`, which will return `nil` for the Root Collection, which is exactly what we want."
+     `u/the-id` on it! Use `:id`, which will return `nil` for the Root Collection, which is exactly what we want."
   {:arglists '([model collection options])}
   (fn [model _ _] (keyword model)))
 
-(defmethod fetch-collection-children :card
-  [_ collection {:keys [archived?]}]
-  (-> (db/select [Card :id :name :description :collection_position :display]
-        ;; use `:id` here so if it's the root collection we get `id = nil` (no ID)
-        :collection_id (:id collection)
-        :archived      (boolean archived?))
-      (hydrate :favorite)))
+(defn- pinned-state->clause
+  ([pinned-state]
+   (pinned-state->clause pinned-state :collection_position))
+  ([pinned-state col]
+   (case pinned-state
+     :all [:= 1 1]
+     :is_pinned [:<> col nil]
+     :is_not_pinned [:= col nil]
+     [:= 1 1])))
 
-(defmethod fetch-collection-children :dashboard
-  [_ collection {:keys [archived?]}]
-  (db/select [Dashboard :id :name :description :collection_position]
-    :collection_id (:id collection)
-    :archived      (boolean archived?)))
+(defmulti ^:private post-process-collection-children
+  {:arglists '([model rows])}
+  (fn [model _]
+    (keyword model)))
 
-(defmethod fetch-collection-children :pulse
-  [_ collection {:keys [archived?]}]
-  (db/query
-   {:select    [:p.id :p.name :p.collection_position]
-    :modifiers [:distinct]
-    :from      [[Pulse :p]]
-    :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
-    :where     [:and
-                [:= :p.collection_id      (:id collection)]
-                [:= :p.archived           (boolean archived?)]
-                 ;; exclude alerts
-                [:= :p.alert_condition    nil]
-                 ;; exclude dashboard subscriptions
-                [:= :pc.dashboard_card_id nil]]}))
+(defmethod ^:private post-process-collection-children :default
+  [_ rows]
+  rows)
 
-(defmethod fetch-collection-children :snippet
-  [_ collection {:keys [archived?]}]
-  (db/select [NativeQuerySnippet :id :name]
-    :collection_id (:id collection)
-    :archived      (boolean archived?)))
+(defmethod collection-children-query :pulse
+  [_ collection {:keys [archived? pinned-state]}]
+  (-> {:select    [:p.id
+                   :p.name
+                   [nil :p.description]
+                   :p.collection_position
+                   [nil :p.display]
+                   [(hx/literal "pulse") :model]]
+       :modifiers [:distinct]
+       :from      [[Pulse :p]]
+       :left-join [[PulseCard :pc] [:= :p.id :pc.pulse_id]]
+       :where     [:and
+                   [:= :p.collection_id      (:id collection)]
+                   [:= :p.archived           (boolean archived?)]
+                   ;; exclude alerts
+                   [:= :p.alert_condition    nil]
+                   ;; exclude dashboard subscriptions
+                   [:= :p.dashboard_id nil]]}
+      (h/merge-where (pinned-state->clause pinned-state :p.collection_position))))
 
-(defmethod fetch-collection-children :collection
-  [_ collection {:keys [archived? collection-namespace]}]
-  (-> (for [child-collection (collection/effective-children collection
-                                                            [:= :archived archived?]
-                                                            [:= :namespace (u/qualified-name collection-namespace)])]
-        (assoc child-collection :model "collection"))
-      (hydrate :can_write)))
+(defmethod post-process-collection-children :pulse
+  [_ rows]
+  (for [row rows]
+    (dissoc row :description :display)))
+
+(defmethod collection-children-query :snippet
+  [_ collection {:keys [archived? pinned-state]}]
+  {:select [:id :name [nil :description] [nil :collection_position] [nil :display] [(hx/literal "snippet") :model]]
+       :from   [[NativeQuerySnippet :nqs]]
+       :where  [:and
+                [:= :collection_id (:id collection)]
+                [:= :archived (boolean archived?)]]})
+
+(defmethod post-process-collection-children :snippet
+  [_ rows]
+  (for [row rows]
+    (dissoc row :description :collection_position :display)))
+
+(defmethod collection-children-query :card
+  [_ collection {:keys [archived? pinned-state]}]
+  (-> {:select [:id :name :description :collection_position :display [(hx/literal "card") :model]]
+       :from   [[Card :c]]
+       :where  [:and
+                [:= :collection_id (:id collection)]
+                [:= :archived (boolean archived?)]]}
+      (h/merge-where (pinned-state->clause pinned-state))))
+
+(defmethod post-process-collection-children :card
+  [_ rows]
+  (let [last-edits (last-edit/fetch-last-edited-info {:card-ids (->> rows (map :id))})]
+    (for [row (hydrate rows :favorite)]
+        (if-let [edit-info (get-in last-edits [:card (:id row)])]
+          (assoc row :last-edit-info edit-info)
+          row))))
+
+(defmethod collection-children-query :dashboard
+  [_ collection {:keys [archived? pinned-state]}]
+  (-> {:select [:id :name :description :collection_position [nil :display] [(hx/literal "dashboard") :model]]
+       :from   [[Dashboard :d]]
+       :where  [:and
+                [:= :collection_id (:id collection)]
+                [:= :archived (boolean archived?)]]}
+      (h/merge-where (pinned-state->clause pinned-state))))
+
+(defmethod post-process-collection-children :dashboard
+  [_ rows]
+  (let [last-edits (last-edit/fetch-last-edited-info {:dashboard-ids (->> rows (map :id))})]
+    (for [row (hydrate rows :favorite)]
+      (let [res (dissoc row :display)]
+        (if-let [edit-info (get-in last-edits [:dashboard (:id res)])]
+          (assoc res :last-edit-info edit-info)
+          res)))))
+
+(defmethod collection-children-query :collection
+  [_ collection {:keys [archived? collection-namespace pinned-state]}]
+  (-> (assoc (collection/effective-children-query
+               collection
+               [:= :archived archived?]
+               [:= :namespace (u/qualified-name collection-namespace)])
+             ;; We get from the effective-children-query a normal set of columns selected:
+             ;; want to make it fit the others to make UNION ALL work
+             :select [:id
+                      :name
+                      :description
+                      [nil :collection_position]
+                      [nil :display]
+                      [(hx/literal "collection") :model]])
+      ;; the nil indicates that collections are never pinned.
+      (h/merge-where (pinned-state->clause pinned-state nil))))
+
+(defmethod post-process-collection-children :collection
+  [_ rows]
+  (for [row rows]
+    ;; Go through this rigamarole instead of hydration because we
+    ;; don't get models back from ulterior over-query
+    ;; Previous examination with logging to DB says that there's no N+1 query for this.
+    ;; However, this was only tested on H2 and Postgres
+    (assoc (dissoc row :collection_position :display)
+           :can_write
+           (mi/can-write? Collection (:id row)))))
+
+(defn- post-process-rows [rows]
+  (mapcat
+    (fn [[model rows]]
+      (post-process-collection-children (keyword model) rows))
+    (group-by :model rows)))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -146,34 +243,37 @@
     :pulse      Pulse
     :snippet    NativeQuerySnippet))
 
+(defn- collection-children*
+  [collection models options]
+  (let [models            (sort (map keyword models))
+        queries           (for [model models]
+                            (collection-children-query model collection options))
+        total-query       {:select [[:%count.* :count]]
+                           :from   [[{:union-all queries} :dummy_alias]]}
+        rows-query        {:select   [:*]
+                           :from     [[{:union-all queries} :dummy_alias]]
+                           :order-by [[:%lower.name :asc]]
+                           :limit    offset-paging/*limit*
+                           :offset   offset-paging/*offset*}]
+    {:total  (-> (db/query total-query) first :count)
+     :data   (-> (db/query rows-query) post-process-rows)
+     :limit  offset-paging/*limit*
+     :offset offset-paging/*offset*
+     :models models}))
+
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [model collections-only?], :as options}    :- CollectionChildrenOptions]
-  (let [item-groups (into {}
-                          (for [model-kw [:collection :card :dashboard :pulse :snippet]
-                                ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-                                :when    (or (not model) (= model model-kw))
-                                :let     [toucan-model       (model-name->toucan-model model-kw)
-                                          allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                                :when    (or (= model-kw :collection)
-                                             (contains? allowed-namespaces (keyword collection-namespace)))]
-                            [model-kw (fetch-collection-children model-kw collection (assoc options :collection-namespace collection-namespace))]))
-        last-edited (last-edit/fetch-last-edited-info
-                     {:card-ids (->> item-groups :card (map :id))
-                      :dashboard-ids (->> item-groups :dashboard (map :id))})]
-    (sort-by (comp str/lower-case :name) ;; sorting by name should be fine for now.
-             (into []
-                   ;; items are grouped by model, needed for last-edit lookup. put model on each one, cat them, then
-                   ;; plop edit information on them if present
-                   (comp (map (fn [[model items]]
-                                (map #(assoc % :model model) items)))
-                         cat
-                         (map (fn [{:keys [model id] :as item}]
-                                (if-let [edit-info (get-in last-edited [model id])]
-                                  (assoc item :last-edit-info edit-info)
-                                  item))))
-                   item-groups))))
+  [{collection-namespace :namespace, :as collection}            :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [models collections-only? pinned-state], :as options} :- CollectionChildrenOptions]
+  (let [valid-models (for [model-kw [:collection :card :dashboard :pulse :snippet]
+                           ;; only fetch models that are specified by the `model` param; or everything if it's empty
+                           :when    (or (empty? models) (contains? models model-kw))
+                           :let     [toucan-model       (model-name->toucan-model model-kw)
+                                     allowed-namespaces (collection/allowed-namespaces toucan-model)]
+                           :when    (or (= model-kw :collection)
+                                        (contains? allowed-namespaces (keyword collection-namespace)))]
+                       model-kw)]
+    (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))))
 
 (s/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -190,15 +290,20 @@
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
-  *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
-  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`."
-  [id model archived]
-  {model    (s/maybe (apply s/enum valid-model-param-values))
-   archived (s/maybe su/BooleanString)}
-  (collection-children
-    (api/read-check Collection id)
-    {:model     (keyword model)
-     :archived? (Boolean/parseBoolean archived)}))
+  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
+  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
+  *  `pinned_state` - when `is_pinned`, return pinned objects only.
+                   when `is_not_pinned`, return non pinned objects only.
+                   when `all`, return everything. By default returns everything"
+  [id models archived pinned_state]
+  {models       (s/maybe models-schema)
+   archived     (s/maybe su/BooleanString)
+   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))}
+  (let [model-kwds    (set (map keyword (u/one-or-many models)))]
+    (collection-children (api/read-check Collection id)
+                         {:models       model-kwds
+                          :archived?    (Boolean/parseBoolean archived)
+                          :pinned-state (keyword pinned_state)})))
 
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -226,19 +331,22 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [model archived namespace]
-  {model     (s/maybe (apply s/enum valid-model-param-values))
-   archived  (s/maybe su/BooleanString)
-   namespace (s/maybe su/NonBlankString)}
+  [models archived namespace pinned_state]
+  {models       (s/maybe models-schema)
+   archived     (s/maybe su/BooleanString)
+   namespace    (s/maybe su/NonBlankString)
+   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (let [root-collection (assoc collection/root-collection :namespace namespace)]
+  (let [root-collection (assoc collection/root-collection :namespace namespace)
+        model-kwds      (if (mi/can-read? root-collection)
+                          (set (map keyword (u/one-or-many models)))
+                          #{:collection})]
     (collection-children
-     root-collection
-     {:model     (if (mi/can-read? root-collection)
-                   (keyword model)
-                   :collection)
-      :archived? (Boolean/parseBoolean archived)})))
+      root-collection
+      {:models         model-kwds
+       :archived?      (Boolean/parseBoolean archived)
+       :pinned-state   (keyword pinned_state)})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -315,7 +423,7 @@
   [collection-before-update collection-updates]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card
-                                                                    :collection_id (u/get-id collection-before-update))))]
+                                                                    :collection_id (u/the-id collection-before-update))))]
         (card-api/delete-alert-and-notify-archived! alerts))))
 
 (api/defendpoint PUT "/:id"

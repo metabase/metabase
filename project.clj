@@ -85,7 +85,8 @@
     :exclusions [commons-codec
                  org.apache.httpcomponents/httpclient
                  net.sourceforge.nekohtml/nekohtml
-                 ring/ring-core]]
+                 ring/ring-core
+                 slingshot]]
    [com.clearspring.analytics/stream "2.9.6"                          ; Various sketching algorithms
     :exclusions [org.slf4j/slf4j-api
                  it.unimi.dsi/fastutil]]
@@ -159,6 +160,7 @@
    [ring/ring-core "1.8.1"]
    [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
+   [slingshot "0.12.2"]                                               ; enhanced throw/catch, used by other deps
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.15.3" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
@@ -170,9 +172,11 @@
 
   :main ^:skip-aot metabase.core
 
-  ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
   :manifest
-  {"Liquibase-Package"
+  {;; log4j is multi-release and lein uberjar doesn't set this correctly in the manifest
+   "Multi-Release" true
+   ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
+   "Liquibase-Package"
    #= (eval
        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"

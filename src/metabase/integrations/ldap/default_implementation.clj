@@ -94,7 +94,7 @@
 (s/defn ^:private fetch-or-create-user!* :- (class User)
   [{:keys [first-name last-name email groups]} :- i/UserInfo
    {:keys [sync-groups?], :as settings}        :- i/LDAPSettings]
-  (let [user (or (db/select-one [User :id :last_login] :email email)
+  (let [user (or (db/select-one [User :id :last_login] :email (u/lower-case-en email))
                  (user/create-new-ldap-auth-user!
                   {:first_name first-name
                    :last_name  last-name

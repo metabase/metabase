@@ -217,12 +217,16 @@
         (num-to-ds-interval :second field-or-value)))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
-  [_driver _semantic_type expr]
+  [_driver _coercion-strategy expr]
   (hsql/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->Date]
-  [_driver _semantic_type expr]
+  [_driver _coercion-strategy expr]
   (hsql/call :to_date expr "YYYY-MM-DD"))
+
+(defmethod sql.qp/cast-temporal-string [:oracle :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (hsql/call :to_timestamp expr "YYYYMMDDHH24miSS"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]

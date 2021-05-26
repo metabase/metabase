@@ -103,4 +103,26 @@ describe("scenarios > question > saved", () => {
       cy.wait("@cardCreate");
     });
   });
+
+  it.skip("should be able to use integer filter on a saved native query (metabase#15808)", () => {
+    cy.createNativeQuestion({
+      name: "15808",
+      native: { query: "select * from products" },
+    });
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("15808").click();
+    cy.findByText("Filter").click();
+    cy.findByTestId("sidebar-right")
+      .findByText(/Rating/i)
+      .click();
+    cy.get(".AdminSelect").findByText("Equal to");
+    cy.findByPlaceholderText("Enter a number").type("4");
+    cy.button("Add filter")
+      .should("not.be.disabled")
+      .click();
+    cy.findByText("Synergistic Granite Chair");
+    cy.findByText("Rustic Paper Wallet").should("not.exist");
+  });
 });

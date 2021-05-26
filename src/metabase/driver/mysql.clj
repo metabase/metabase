@@ -170,8 +170,16 @@
   (hsql/call :from_unixtime expr))
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/ISO8601->DateTime]
-  [_driver _semantic_type expr]
+  [_driver _coercion-strategy expr]
   (hx/->datetime expr))
+
+(defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (hsql/call :convert expr (hsql/raw "DATETIME")))
+
+(defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal expr))
 
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))

@@ -3,6 +3,7 @@ import {
   openOrdersTable,
   openProductsTable,
   openReviewsTable,
+  openPeopleTable,
   popover,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
@@ -635,16 +636,39 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should offer case expression in the auto-complete suggestions", () => {
-    openReviewsTable({ mode: "notebook" });
-    cy.findByText("Filter").click();
-    cy.findByText("Custom Expression").click();
+    openExpressionEditorFromFreshlyLoadedPage();
+
     popover().contains(/case/i);
 
+    typeInExpressionEditor("c");
+
     // "case" is still there after typing a bit
-    cy.get("[contenteditable='true']")
-      .click()
-      .type("c");
     popover().contains(/case/i);
+  });
+
+  it("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
+    const transparent = "rgba(0, 0, 0, 0)";
+
+    openExpressionEditorFromFreshlyLoadedPage();
+
+    typeInExpressionEditor("c");
+
+    cy.contains("Created At")
+      .closest("li")
+      .should("have.css", "background-color")
+      .and("not.eq", transparent);
+
+    typeInExpressionEditor("{downarrow}");
+
+    cy.contains("Created At")
+      .closest("li")
+      .should("have.css", "background-color")
+      .and("eq", transparent);
+
+    cy.contains("Product → Category")
+      .closest("li")
+      .should("have.css", "background-color")
+      .and("not.eq", transparent);
   });
 
   it.skip("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
@@ -906,4 +930,96 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Doohickey");
     cy.findByText("Gizmo").should("not.exist");
   });
+
+  it("custom expression filter should reference fields by their name, not by their id (metabase#15748)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]").type("[Total] < [Subtotal]");
+    cy.button("Done").click();
+    cy.findByText("Total < Subtotal");
+  });
+
+  it("custom expression filter should allow the use of parentheses in combination with logical operators (metabase#15754)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]")
+      .type("([ID] > 2 OR [Subtotal] = 100) and [Tax] < 4")
+      .blur();
+    cy.findByText(/^Expected closing parenthesis but found/).should(
+      "not.exist",
+    );
+    cy.button("Done").should("not.be.disabled");
+  });
+
+  it.skip("custom expression filter should work with numeric value before an operator (metabase#15893)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get("[contenteditable=true]")
+      .type("0 < [ID]")
+      .blur();
+    cy.button("Done").click();
+    cy.button("Visualize").click();
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).to.not.exist;
+    });
+  });
+
+  it.skip("should work on twice summarized questions (metabase#15620)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-query": {
+            "source-table": 1,
+            aggregation: [["count"]],
+            breakout: [["field", 7, { "temporal-unit": "month" }]],
+          },
+          aggregation: [
+            ["avg", ["field", "count", { "base-type": "type/Integer" }]],
+          ],
+        },
+        type: "query",
+      },
+    });
+    cy.get(".ScalarValue").contains("5");
+    cy.findAllByRole("button")
+      .contains("Filter")
+      .click();
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("Category").click();
+      cy.findByText("Gizmo").click();
+    });
+    cy.button("Add filter")
+      .should("not.be.disabled")
+      .click();
+    cy.get(".dot");
+  });
+
+  it.skip("user shouldn't need to scroll to add filter (metabase#14307)", () => {
+    cy.viewport(1280, 720);
+    openPeopleTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    popover()
+      .findByText("State")
+      .click();
+    cy.findByText("AL").click();
+    cy.button("Add filter").isVisibleInPopover();
+  });
 });
+
+function openExpressionEditorFromFreshlyLoadedPage() {
+  openReviewsTable({ mode: "notebook" });
+  cy.findByText("Filter").click();
+  cy.findByText("Custom Expression").click();
+}
+
+function typeInExpressionEditor(string) {
+  cy.get("[contenteditable='true']")
+    .click()
+    .type(string);
+}

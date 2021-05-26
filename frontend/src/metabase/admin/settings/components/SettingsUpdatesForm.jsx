@@ -43,7 +43,7 @@ export default class SettingsUpdatesForm extends Component {
               {jt`You're running ${formatVersion(currentVersion)}`}
             </span>
             <ExternalLink
-              dataMetabaseEvent={
+              data-metabase-event={
                 "Updates Settings; Update link clicked; " + latestVersion
               }
               className="Button Button--white Button--medium borderless"
@@ -52,7 +52,6 @@ export default class SettingsUpdatesForm extends Component {
                 latestVersion +
                 "/operations-guide/upgrading-metabase.html"
               }
-              target="_blank"
             >
               {t`Update`}
             </ExternalLink>

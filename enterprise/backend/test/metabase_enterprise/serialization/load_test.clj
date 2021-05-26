@@ -59,7 +59,8 @@
                          [Card          (Card card-id-nested)]
                          [Card          (Card card-id-nested-query)]
                          [Card          (Card card-id-native-query)]
-                         [DashboardCard (DashboardCard dashcard-id)]])]
+                         [DashboardCard (DashboardCard dashcard-id)]
+                         [DashboardCard (DashboardCard dashcard-with-click-actions)]])]
       (with-world-cleanup
         (load dump-dir {:on-error :abort :mode :skip})
         (doseq [[model entity] fingerprint]

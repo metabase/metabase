@@ -16,7 +16,15 @@ import NormalItem from "metabase/collections/components/NormalItem";
 import CollectionSectionHeading from "metabase/collections/components/CollectionSectionHeading";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
-const PinnedItem = ({ item, index, collection, onCopy, onMove }) => (
+const PinnedItem = ({
+  item,
+  index,
+  collection,
+  onCopy,
+  onMove,
+  onToggleSelected,
+  getIsSelected,
+}) => (
   <Link
     key={index}
     to={item.getUrl()}
@@ -28,14 +36,25 @@ const PinnedItem = ({ item, index, collection, onCopy, onMove }) => (
       item={item}
       collection={collection}
       onPin={() => item.setPinned(false)}
+      onToggleSelected={onToggleSelected}
       onMove={onMove}
       onCopy={onCopy}
+      isSelected={getIsSelected(item)}
       pinned
     />
   </Link>
 );
 
-export default function PinnedItems({ items, collection, onMove, onCopy }) {
+export default function PinnedItems({
+  items,
+  collection,
+  selected,
+  onMove,
+  onCopy,
+  onDrop,
+  onToggleSelected,
+  getIsSelected,
+}) {
   if (items.length === 0) {
     return (
       <PinDropTarget pinIndex={1} hideUntilDrag>
@@ -64,7 +83,13 @@ export default function PinnedItems({ items, collection, onMove, onCopy }) {
       >
         {items.map((item, index) => (
           <Box w={[1]} className="relative" key={index}>
-            <ItemDragSource item={item} collection={collection}>
+            <ItemDragSource
+              item={item}
+              isSelected={getIsSelected(item)}
+              collection={collection}
+              selected={selected}
+              onDrop={onDrop}
+            >
               <PinnedItem
                 key={`${item.model}:${item.id}`}
                 index={index}
@@ -72,6 +97,8 @@ export default function PinnedItems({ items, collection, onMove, onCopy }) {
                 collection={collection}
                 onMove={onMove}
                 onCopy={onCopy}
+                onToggleSelected={onToggleSelected}
+                getIsSelected={getIsSelected}
               />
               <PinPositionDropTarget pinIndex={item.collection_position} left />
               <PinPositionDropTarget
