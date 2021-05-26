@@ -19,6 +19,28 @@
                :group-by [(hx/cast :date :started_at)]
                :order-by [[(hx/cast :date :started_at) :asc]]})})
 
+(defn ^:internal-query-fn views-by-day
+  []
+  {:metadata [[:day   {:display_name "Date" :base_type :type/Date}]
+              [:views {:display_name "Views" :base_type :type/Integer}]]
+   :results (common/reducible-query
+              {:select   [[(hx/cast :date :started_at) :day]
+                          [:%count.* :views]]
+               :from     [:query_execution]
+               :group-by [(hx/cast :date :started_at)]
+               :order-by [[(hx/cast :date :started_at) :asc]]})})
+
+(defn ^:internal-query-fn avg-execution-time-by-day
+  []
+  {:metadata [[:day              {:display_name "Date" :base_type :type/Date}]
+              [:avg_running_time {:display_name "Avg. Running Time (ms)" :base_type :type/Decimal}]]
+   :results (common/reducible-query
+              {:select   [[(hx/cast :date :started_at) :day]
+                          [:%avg.running_time :avg_running_time]]
+               :from     [:query_execution]
+               :group-by [(hx/cast :date :started_at)]
+               :order-by [[(hx/cast :date :started_at) :asc]]})})
+
 (defn ^:internal-query-fn most-popular
   "Query that returns the 10 most-popular Cards based on number of query executions, in descending order."
   []
@@ -52,11 +74,32 @@
                :limit    10})})
 
 (s/defn ^:internal-query-fn table
-  "A list of all questions."
+  "A list of all questions.
+
+  Three possible argument lists. All arguments are always nullable.
+  - [] :
+  Dump them all, sort by name ascending
+
+  - [questionFilter] :
+  Dump all filtered by the questionFilter string, sort by name ascending.
+  questionFilter filters on the `name` column in `cards` table.
+
+  - [questionFilter, collectionFilter, sortColumn, sortDirection] :
+  Dump all filtered by both questionFilter and collectionFilter,
+  sort by the given column and sort direction.
+  questionFilter filters on the `name` column in `cards` table.
+  collectionFilter filters on the `name` column in `collections` table.
+
+  Sort column is given over in keyword form to honeysql. Default `card.name`
+
+  Sort direction can be `asc` or `desc`, ascending and descending respectively. Default `asc`.
+
+  All inputs have to be strings because that's how the magic middleware
+  that turns these functions into clojure-backed 'datasets' works."
   ([]
-   (table nil nil "card.name" "asc"))
+   (table nil nil nil nil))
   ([questionFilter :- (s/maybe s/Str)]
-   (table questionFilter nil "card.name" "asc"))
+   (table questionFilter nil nil nil))
   ([questionFilter   :- (s/maybe s/Str)
     collectionFilter :- (s/maybe s/Str)
     sortColumn       :- (s/maybe s/Str)
@@ -101,4 +144,6 @@
                   :where     [:= :card.archived false]}
                  (common/add-search-clause questionFilter :card.name)
                  (common/add-search-clause collectionFilter :coll.name)
-                 (common/add-sort-clause sortColumn sortDirection)))}))
+                 (common/add-sort-clause
+                   (or sortColumn "card.name")
+                   (or sortDirection "asc"))))}))
