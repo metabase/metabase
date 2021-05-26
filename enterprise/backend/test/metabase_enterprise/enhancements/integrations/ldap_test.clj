@@ -70,7 +70,7 @@
           (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
                   :first-name "Sally"
                   :last-name  "Brown"
-                  :email      "sally.brown@metabasercom"
+                  :email      "sally.brown@metabase.com"
                   :attributes {:uid       "sbrown20"
                                :mail      "sally.brown@metabase.com"
                                :givenname "Sally"
