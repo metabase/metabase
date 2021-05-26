@@ -255,6 +255,14 @@
        (str/starts-with? table-name "/databases/")
        (not (str/starts-with? table-name "card__"))))
 
+(defn fully-qualified-card-name?
+  "Returns true if the given `card-name` is a fully-qualified card name for serialization purposes."
+  [card-name]
+  (and (some? card-name)
+       (string? card-name)
+       (str/starts-with? card-name "/collections/root/")
+       (str/includes? card-name "/cards/")))
+
 ;; WARNING: THIS MUST APPEAR AFTER ALL path->context* IMPLEMENTATIONS
 (def ^:private all-entities (-> path->context*
                                 methods

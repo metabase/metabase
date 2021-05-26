@@ -56,6 +56,7 @@
                    Table      [{~'table-id-categories :id}  (temp-table (data/id :categories) ~'db-id)]
                    Table      [{~'table-id-users :id}       (temp-table (data/id :users) ~'db-id)]
                    Table      [{~'table-id-checkins :id}    (temp-table (data/id :checkins) ~'db-id)]
+                   Field      [{~'venues-pk-field-id :id}   (temp-field (data/id :venues :id) ~'table-id)]
                    Field      [{~'numeric-field-id :id}     (temp-field (data/id :venues :price) ~'table-id)]
                    Field      [{~'name-field-id :id}        (temp-field (data/id :venues :name) ~'table-id)]
                    Field      [{~'latitude-field-id :id}    (temp-field (data/id :venues :latitude) ~'table-id)]
@@ -70,6 +71,9 @@
                    Field      [{~'user-id-field-id :id}     (-> (temp-field (data/id :checkins :user_id)
                                                                             ~'table-id-checkins)
                                                                 (assoc :fk_target_field_id ~'users-pk-field-id))]
+                   Field      [{~'checkins->venues-field-id :id} (-> (temp-field (data/id :checkins :venue_id)
+                                                                                 ~'table-id-checkins)
+                                                                     (assoc :fk_target_field_id ~'venues-pk-field-id))]
                    Field      [{~'last-login-field-id :id}  (temp-field (data/id :users :last_login)
                                                                         ~'table-id-users)]
                    Collection [{~'collection-id :id} {:name "My Collection"}]
@@ -323,7 +327,24 @@
                                                                    :display-name "Snippet: A Venues"
                                                                    :type         "snippet"
                                                                    :snippet-name "A Venues"
-                                                                   :snippet-id   ~'nested-snippet-id}}}}}]]
+                                                                   :snippet-id   ~'nested-snippet-id}}}}}]
+                   Card               [{~'card-join-card-id :id}
+                                       {:table_id ~'table-id-checkins
+                                        :name "Card Joining to Another Card"
+                                        :collection_id ~'collection-id
+                                        :dataset_query {:type    :query
+                                                        :database ~'db-id
+                                                        :query   {:source-table ~'table-id-checkins
+                                                                  :joins [{:source-table (str "card__" ~'card-id-root)
+                                                                           :alias        "v"
+                                                                           :fields       "all"
+                                                                           :condition    [:=
+                                                                                          [:field
+                                                                                           ~'checkins->venues-field-id
+                                                                                           nil]
+                                                                                          [:field
+                                                                                           ~'venues-pk-field-id
+                                                                                           {:join-alias "v"}]]}]}}}]]
      (qp.store/with-store ~@body)))
 
 ;; Don't memoize as IDs change in each `with-world` context

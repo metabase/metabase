@@ -282,7 +282,8 @@
                                                                 card-id-filter-agg
                                                                 card-id-temporal-unit
                                                                 card-id-with-native-snippet
-                                                                card-id-temporal-unit])
+                                                                card-id-temporal-unit
+                                                                card-join-card-id])
                            :collections   (gather-collections [card-id
                                                                card-arch-id
                                                                card-id-root
@@ -295,7 +296,8 @@
                                                                card-id-filter-agg
                                                                card-id-temporal-unit
                                                                card-id-with-native-snippet
-                                                               card-id-temporal-unit])
+                                                               card-id-temporal-unit
+                                                               card-join-card-id])
                            :entities      [[Database           (Database db-id)]
                                            [Table              (Table table-id)]
                                            [Table              (Table table-id-categories)]
@@ -340,7 +342,8 @@
                                            [Collection         (Collection snippet-collection-id)]
                                            [Collection         (Collection snippet-nested-collection-id)]
                                            [NativeQuerySnippet (NativeQuerySnippet nested-snippet-id)]
-                                           [Card               (Card card-id-with-native-snippet)]]})]
+                                           [Card               (Card card-id-with-native-snippet)]
+                                           [Card               (Card card-join-card-id)]]})]
         (with-world-cleanup
           (load dump-dir {:on-error :continue :mode :update})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
@@ -356,4 +359,4 @@
                     (str " failed " (pr-str entity)))))
             fingerprint))))
     (finally
-      (delete-directory! dump-dir))))
+      #_(delete-directory! dump-dir))))

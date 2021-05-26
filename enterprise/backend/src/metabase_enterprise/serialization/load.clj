@@ -61,55 +61,18 @@
 
 (defn- source-table
   [source-table]
-  (let [{:keys [card table]} (fully-qualified-name->context source-table)]
-    (if card
-      (str "card__" card)
-      table)))
+  (if (and (string? source-table) (str/starts-with? source-table "card__"))
+    source-table
+    (let [{:keys [card table]} (fully-qualified-name->context source-table)]
+      (if card
+        (str "card__" card)
+        table))))
 
-(defn- mbql-fully-qualified-names->ids*
-  [entity]
-  (mbql.util/replace entity
-    ;; handle legacy `:field-id` forms encoded prior to 0.39.0
-    ;; and also *current* expresion forms used in parameter mapping dimensions
-    ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
-    [:field-id (fully-qualified-name :guard string?)]
-    (mbql-fully-qualified-names->ids* [:field fully-qualified-name nil])
-
-    [:field (fully-qualified-name :guard names/fully-qualified-field-name?) opts]
-    [:field (:field (fully-qualified-name->context fully-qualified-name)) (mbql-fully-qualified-names->ids* opts)]
-
-    ;; source-field is also used within parameter mapping dimensions
-    ;; example relevant clause - [:field 2 {:source-field 1}]
-    {:source-field (fully-qualified-name :guard string?)}
-    (assoc &match :source-field (:field (fully-qualified-name->context fully-qualified-name)))
-
-    [:metric (fully-qualified-name :guard string?)]
-    [:metric (:metric (fully-qualified-name->context fully-qualified-name))]
-
-    [:segment (fully-qualified-name :guard string?)]
-    [:segment (:segment (fully-qualified-name->context fully-qualified-name))]
-
-    (_ :guard (every-pred map? #(names/fully-qualified-table-name? (:source-table %))))
-    (assoc
-     ;; process other keys
-     (mbql-fully-qualified-names->ids* (dissoc &match :source-table))
-      ;; but associate :source-table to the resolved ID
-     :source-table
-     (source-table (:source-table &match)))))
-
-(defn- mbql-fully-qualified-names->ids
-  [entity]
-  (mbql-fully-qualified-names->ids* (mbql.normalize/normalize-tokens entity)))
-
-(def ^:private default-user (delay
-                             (let [user (db/select-one-id User :is_superuser true)]
-                               (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
-                               user)))
-
-(defn- terminal-dir
-  "Return the last path component (presumably a dir)"
-  [path]
-  (.getName (clojure.java.io/file path)))
+(defn- fq-table-or-card?
+  "Returns true if the given `nm` is either a fully qualified table name OR fully
+  qualified card name."
+  [nm]
+  (or (names/fully-qualified-table-name? nm) (names/fully-qualified-card-name? nm)))
 
 (defn- update-capture-missing*
   [m ks resolve-fn get-fn update-fn]
@@ -136,11 +99,86 @@
   "Assocs the given value `v` to the given key sequence `ks` in the given map `m`. If the given `v` contains any
   ::unresolved-names, these are \"pulled into\" `m` directly by prepending `ks` to their existing paths and dissocing
   them from `v`."
-  [m ks v]
-  (if-let [unresolved-names (::unresolved-names v)]
-    (-> (update m ::unresolved-names (fn [nms] (merge nms (m/map-vals #(vec (concat ks %)) unresolved-names))))
-        (assoc-in ks (dissoc v ::unresolved-names)))
-    (assoc-in m ks v)))
+  ([m ks]
+   (pull-unresolved-names-up m ks (get-in m ks)))
+  ([m ks v]
+   (if-let [unresolved-names (::unresolved-names v)]
+     (-> (update m ::unresolved-names (fn [nms] (merge nms (m/map-vals #(vec (concat ks %)) unresolved-names))))
+         (assoc-in ks (dissoc v ::unresolved-names)))
+     (assoc-in m ks v))))
+
+(defn- paths-to-key-in
+  "Finds all paths to a particular key anywhere in the structure `m` (recursively).  `m` must be a map, but values
+  inside can also be vectors (in which case, the index will be used as the key).
+
+  Adapted from: https://dnaeon.github.io/clojure-map-ks-paths/"
+  [m match-key]
+  (letfn [(children [node]
+            (let [v (get-in m node)]
+              (cond
+                (map? v)
+                (map (fn [x] (conj node x)) (keys v))
+
+                (vector? v)
+                (map (fn [x] (conj node x)) (range (count v)))
+
+                :default
+                [])))
+          (branch? [node] (-> (children node) seq boolean))]
+    (->> (keys m)
+         (map vector)
+         (mapcat #(tree-seq branch? children %))
+         (filter #(= match-key (last %))))))
+
+(defn- gather-all-unresolved-names
+  "This is less efficient than calling `pull-unresolved-names-up` because it walks the entire tree, but is
+  necessary when dealing with the full MBQL query tree (which can have arbitrary nesting of maps and
+  vectors)."
+  [m]
+  (reduce (fn [acc ks]
+            (pull-unresolved-names-up acc (drop-last ks))) m (paths-to-key-in m ::unresolved-names)))
+
+(defn- mbql-fully-qualified-names->ids*
+  [entity]
+  (mbql.util/replace entity
+    ;; handle legacy `:field-id` forms encoded prior to 0.39.0
+    ;; and also *current* expresion forms used in parameter mapping dimensions
+    ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
+    [:field-id (fully-qualified-name :guard string?)]
+    (mbql-fully-qualified-names->ids* [:field fully-qualified-name nil])
+
+    [:field (fully-qualified-name :guard names/fully-qualified-field-name?) opts]
+    [:field (:field (fully-qualified-name->context fully-qualified-name)) (mbql-fully-qualified-names->ids* opts)]
+
+    ;; source-field is also used within parameter mapping dimensions
+    ;; example relevant clause - [:field 2 {:source-field 1}]
+    {:source-field (fully-qualified-name :guard string?)}
+    (assoc &match :source-field (:field (fully-qualified-name->context fully-qualified-name)))
+
+    [:metric (fully-qualified-name :guard string?)]
+    [:metric (:metric (fully-qualified-name->context fully-qualified-name))]
+
+    [:segment (fully-qualified-name :guard string?)]
+    [:segment (:segment (fully-qualified-name->context fully-qualified-name))]
+
+    (_ :guard (every-pred map? #(fq-table-or-card? (:source-table %))))
+    (-> (mbql-fully-qualified-names->ids* (dissoc &match :source-table)) ;; process other keys
+        (assoc :source-table (:source-table &match))                     ;; add :source-table back in for lookup
+        (update-existing-capture-missing :source-table source-table))))  ;; look up :source-table and capture missing
+
+(defn- mbql-fully-qualified-names->ids
+  [entity]
+  (mbql-fully-qualified-names->ids* (mbql.normalize/normalize-tokens entity)))
+
+(def ^:private default-user (delay
+                             (let [user (db/select-one-id User :is_superuser true)]
+                               (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
+                               user)))
+
+(defn- terminal-dir
+  "Return the last path component (presumably a dir)"
+  [path]
+  (.getName (clojure.java.io/file path)))
 
 (defn- unresolved-names->string
   ([entity]
@@ -478,11 +516,10 @@
   (binding [names/*suppress-log-name-lookup-exception* true]
     (load-pulses (slurp-dir path) context)))
 
-(defn- fully-qualified-name->id-rec [query]
-  (cond
-    (string? (:source-table query)) (update-in-capture-missing query [:source-table] source-table)
-    (:source-query query) (update-in-capture-missing query [:source-query] fully-qualified-name->id-rec)
-    :default query))
+(defn- resolve-source-query [query]
+  (if (:source-query query)
+    (update-in-capture-missing query [:source-query] resolve-source-query)
+    query))
 
 (defn- source-card
   [fully-qualified-name]
@@ -513,8 +550,9 @@
 
 (defn- resolve-card-dataset-query [card]
   (let [ks    [:dataset_query :query]
-        new-q (update-in-capture-missing card ks fully-qualified-name->id-rec)]
-    (pull-unresolved-names-up card ks (get-in new-q ks))))
+        new-q (update-in-capture-missing card ks resolve-source-query)]
+    (-> (pull-unresolved-names-up card ks (get-in new-q ks))
+        (gather-all-unresolved-names))))
 
 (defn- resolve-card [card context]
   (-> card
