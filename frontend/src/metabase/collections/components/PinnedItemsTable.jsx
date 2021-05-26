@@ -6,7 +6,7 @@ import moment from "moment";
 
 import EntityItem from "metabase/components/EntityItem";
 
-function PinnedItem({ item, onToggleSelected }) {
+function PinnedItem({ item, onToggleSelected, getIsSelected }) {
   const lastEditInfo = item["last-edit-info"];
   const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
@@ -18,7 +18,11 @@ function PinnedItem({ item, onToggleSelected }) {
           variant="list"
           iconName={item.getIcon()}
           pinned
-          onToggleSelected={onToggleSelected}
+          selectable
+          selected={getIsSelected(item)}
+          onToggleSelected={() => {
+            onToggleSelected(item);
+          }}
           height="3em"
           width="3em"
         />
@@ -36,16 +40,17 @@ function PinnedItem({ item, onToggleSelected }) {
   );
 }
 
-function PinnedItemsTable({ items, onToggleSelected }) {
+function PinnedItemsTable({ items, onToggleSelected, getIsSelected }) {
   const renderItem = useCallback(
     item => (
       <PinnedItem
         key={`${item.model}-${item.id}`}
         item={item}
         onToggleSelected={onToggleSelected}
+        getIsSelected={getIsSelected}
       />
     ),
-    [onToggleSelected],
+    [onToggleSelected, getIsSelected],
   );
 
   return (
