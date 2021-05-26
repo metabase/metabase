@@ -2,6 +2,7 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import moment from "moment";
+import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
 
@@ -11,6 +12,11 @@ import EntityItem from "metabase/components/EntityItem";
 import Link from "metabase/components/Link";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+
+const TableItemSecondaryField = styled.p`
+  font-size: 0.95em;
+  font-weight: bold;
+`;
 
 export function BaseTableItem({
   item,
@@ -70,10 +76,14 @@ export function BaseTableItem({
           </Link>
         </td>
         <td>
-          <p className="text-dark text-bold">{lastEditedBy}</p>
+          <TableItemSecondaryField className="text-dark">
+            {lastEditedBy}
+          </TableItemSecondaryField>
         </td>
         <td>
-          <p className="text-dark text-bold">{lastEditedAt}</p>
+          <TableItemSecondaryField className="text-dark">
+            {lastEditedAt}
+          </TableItemSecondaryField>
         </td>
         <td>
           <EntityItem.Menu
