@@ -83,6 +83,14 @@ function EntityItemIcon({
   );
 }
 
+function EntityItemName({ name }) {
+  return (
+    <h3 className="overflow-hidden">
+      <Ellipsified>{name}</Ellipsified>
+    </h3>
+  );
+}
+
 const ENTITY_ITEM_SPACING = {
   list: {
     px: 2,
@@ -164,9 +172,7 @@ const EntityItem = ({
       />
 
       <Box>
-        <h3 className="overflow-hidden">
-          <Ellipsified>{name}</Ellipsified>
-        </h3>
+        <EntityItemName name={name} />
         <Box>{extraInfo && extraInfo}</Box>
       </Box>
 
@@ -196,5 +202,6 @@ EntityItem.defaultProps = {
 };
 
 EntityItem.Icon = EntityItemIcon;
+EntityItem.Name = EntityItemName;
 
 export default EntityItem;
