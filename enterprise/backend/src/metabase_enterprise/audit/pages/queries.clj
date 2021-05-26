@@ -20,6 +20,7 @@
                :order-by [[(hx/cast :date :started_at) :asc]]})})
 
 (defn ^:internal-query-fn views-by-day
+  "View broken out by day."
   []
   {:metadata [[:day   {:display_name "Date" :base_type :type/Date}]
               [:views {:display_name "Views" :base_type :type/Integer}]]
@@ -31,6 +32,7 @@
                :order-by [[(hx/cast :date :started_at) :asc]]})})
 
 (defn ^:internal-query-fn avg-execution-time-by-day
+  "Average execution time broken out by day."
   []
   {:metadata [[:day              {:display_name "Date" :base_type :type/Date}]
               [:avg_running_time {:display_name "Avg. Running Time (ms)" :base_type :type/Decimal}]]
