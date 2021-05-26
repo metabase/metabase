@@ -22,6 +22,24 @@ const EntityItemWrapper = Flex.extend`
   }
 `;
 
+function getPinnedBackground(model) {
+  return model === "dashboard"
+    ? color("accent4")
+    : lighten(color("accent4"), 0.28);
+}
+
+function getPinnedForeground(model) {
+  return model === "dashboard" ? color("white") : color("accent4");
+}
+
+function getBackground(model) {
+  return model === "dashboard" ? color("brand") : color("brand-light");
+}
+
+function getForeground(model) {
+  return model === "dashboard" ? color("white") : color("brand");
+}
+
 const EntityItem = ({
   analyticsContext,
   name,
@@ -94,24 +112,6 @@ const EntityItem = ({
         py: 2,
       };
       break;
-  }
-
-  function getPinnedBackground(model) {
-    return model === "dashboard"
-      ? color("accent4")
-      : lighten(color("accent4"), 0.28);
-  }
-
-  function getPinnedForeground(model) {
-    return model === "dashboard" ? color("white") : color("accent4");
-  }
-
-  function getBackground(model) {
-    return model === "dashboard" ? color("brand") : color("brand-light");
-  }
-
-  function getForeground(model) {
-    return model === "dashboard" ? color("white") : color("brand");
   }
 
   return (
