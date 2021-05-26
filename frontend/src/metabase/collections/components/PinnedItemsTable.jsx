@@ -2,9 +2,13 @@
 /* eslint-disable react/jsx-key */
 import React, { useCallback } from "react";
 import { t } from "ttag";
+import { color } from "metabase/lib/colors";
 import moment from "moment";
 
 import EntityItem from "metabase/components/EntityItem";
+import Link from "metabase/components/Link";
+
+import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 function PinnedItem({ item, onToggleSelected, getIsSelected }) {
   const lastEditInfo = item["last-edit-info"];
@@ -28,7 +32,14 @@ function PinnedItem({ item, onToggleSelected, getIsSelected }) {
         />
       </td>
       <td>
-        <EntityItem.Name name={item.name} />
+        <Link
+          to={item.getUrl()}
+          className="hover-parent hover--visibility"
+          hover={{ color: color("brand") }}
+          data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
+        >
+          <EntityItem.Name name={item.name} />
+        </Link>
       </td>
       <td>
         <p className="text-dark text-bold">{lastEditedBy}</p>
