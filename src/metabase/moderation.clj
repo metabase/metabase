@@ -7,7 +7,7 @@
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"
-  (s/enum "card" "dashboard"))
+  (s/enum "card" "dashboard" :card :dashboard))
 
 (defn- object->type
   "Convert a moderated item instance to the keyword stored in the database"
