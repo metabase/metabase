@@ -77,9 +77,6 @@ import { getUser } from "metabase/selectors/user";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";
-import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
-
-const { isRequestDismissal } = PLUGIN_MODERATION_SERVICE;
 
 type UiControls = {
   isEditing?: boolean,
