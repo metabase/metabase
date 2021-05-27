@@ -5,6 +5,7 @@ import {
   openOrdersTable,
   remapDisplayValueToFK,
   sidebar,
+  visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -223,68 +224,54 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it.skip("should apply metrics including filter to the nested question (metabase#12507)", () => {
-    const METRIC_NAME = "Discount Applied";
+  it("should apply metrics including filter to the nested question (metabase#12507)", () => {
+    const METRIC_NAME = "Sum of discounts";
 
     cy.log("Create a metric with a filter");
-
     cy.request("POST", "/api/metric", {
       name: METRIC_NAME,
       description: "Discounted orders.",
-      definition: {
-        aggregation: [["count"]],
-        filter: ["not-null", ["field", ORDERS.DISCOUNT, null]],
-        "source-table": ORDERS_ID,
-      },
       table_id: ORDERS_ID,
-    }).then(({ body: { id: METRIC_ID } }) => {
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        filter: ["!=", ["field", ORDERS.DISCOUNT, null], 0],
+      },
+    }).then(({ body: { id: metricId } }) => {
       // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
       const ORIGINAL_QUERY = {
-        aggregation: ["metric", METRIC_ID],
+        "source-table": ORDERS_ID,
+        aggregation: [["metric", metricId]],
         breakout: [
           ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
         ],
-        "source-table": ORDERS_ID,
       };
 
       // Create new question which uses previously defined metric
       cy.createQuestion({
-        name: "Orders with discount applied",
+        name: "12507",
         query: ORIGINAL_QUERY,
-        display: "bar",
-        visualization_settings: {
-          "graph.dimension": ["TOTAL"],
-          "graph.metrics": [METRIC_NAME],
-        },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+      }).then(({ body: { id: questionId } }) => {
+        cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
 
-        cy.log("Create a nested question based on the previous one");
-
-        // we're adding filter and saving/overwriting the original question, keeping the same ID
-        cy.request("PUT", `/api/card/${QUESTION_ID}`, {
+        cy.log("Create and visit a nested question based on the previous one");
+        visitQuestionAdhoc({
           dataset_query: {
-            database: 1,
-            query: {
-              filter: [
-                ">",
-                ["field", "TOTAL", { "base-type": "type/Float" }],
-                50,
-              ],
-              "source-query": ORIGINAL_QUERY,
-            },
             type: "query",
+            query: {
+              "source-table": `card__${questionId}`,
+              filter: [">", ["field", ORDERS.TOTAL, null], 50],
+            },
+            database: 1,
           },
         });
 
         cy.log("Reported failing since v0.35.2");
-        cy.visit(`/question/${QUESTION_ID}`);
+        cy.visit(`/question/${questionId}`);
         cy.wait("@cardQuery").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
         });
-        cy.findByText(METRIC_NAME);
-        cy.get(".bar");
+        cy.get(".cellData").contains(METRIC_NAME);
       });
     });
   });
