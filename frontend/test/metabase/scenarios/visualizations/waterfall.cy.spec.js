@@ -152,6 +152,35 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.get(".Visualization .bar");
   });
 
+  it.skip("should display correct values when one of them is 0 (metabase#16246)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "SELECT * FROM (\nVALUES \n('a',2),\n('b',1),\n('c',-0.5),\n('d',-0.5),\n('e',0.1),\n('f',0),\n('g', -2)\n)\n",
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "waterfall",
+      visualization_settings: {
+        "graph.show_values": true,
+      },
+    });
+
+    cy.get(".value-label")
+      .as("labels")
+      .eq(-3)
+      .invoke("text")
+      .should("eq", "0");
+
+    cy.get("@labels")
+      .last()
+      .invoke("text")
+      .should("eq", "0.1");
+  });
+
   describe("scenarios > visualizations > waterfall settings", () => {
     beforeEach(() => {
       restore();
