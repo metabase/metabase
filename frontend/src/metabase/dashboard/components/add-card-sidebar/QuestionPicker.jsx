@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import { Box } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -60,7 +61,7 @@ function QuestionPicker({
   const collections = (collection && collection.children) || [];
 
   return (
-    <div>
+    <Box p={2}>
       <SearchInput
         hasClearButton
         placeholder={t`Search…`}
@@ -96,7 +97,7 @@ function QuestionPicker({
         collectionId={currentCollectionId}
         onSelect={onSelect}
       />
-    </div>
+    </Box>
   );
 }
 

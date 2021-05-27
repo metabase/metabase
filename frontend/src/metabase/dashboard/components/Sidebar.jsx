@@ -8,8 +8,7 @@ const WIDTH = 384;
 
 function Sidebar({ onClose, onCancel, closeIsDisabled, children }) {
   return (
-    <div
-      data-testid="sidebar"
+    <aside
       style={{ width: WIDTH, minWidth: WIDTH }}
       className="flex flex-column border-left bg-white"
     >
@@ -40,7 +39,7 @@ function Sidebar({ onClose, onCancel, closeIsDisabled, children }) {
           )}
         </div>
       )}
-    </div>
+    </aside>
   );
 }
 

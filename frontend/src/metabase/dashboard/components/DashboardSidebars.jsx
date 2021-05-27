@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import _ from "underscore";
 
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
@@ -8,6 +8,33 @@ import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+
+DashboardSidebars.propTypes = {
+  dashboard: PropTypes.object,
+  parameters: PropTypes.array,
+  showAddParameterPopover: PropTypes.func.isRequired,
+  removeParameter: PropTypes.func.isRequired,
+  addCardToDashboard: PropTypes.func.isRequired,
+  editingParameter: PropTypes.object,
+  isEditingParameter: PropTypes.bool.isRequired,
+  showAddQuestionSidebar: PropTypes.bool.isRequired,
+  clickBehaviorSidebarDashcard: PropTypes.object.isRequired,
+  onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
+  onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
+  onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
+  hideClickBehaviorSidebar: PropTypes.func.isRequired,
+  setEditingParameter: PropTypes.func.isRequired,
+  setParameter: PropTypes.func.isRequired,
+  setParameterName: PropTypes.func.isRequired,
+  setParameterDefaultValue: PropTypes.func.isRequired,
+  dashcardData: PropTypes.object,
+  setParameterFilteringParameters: PropTypes.func.isRequired,
+  isSharing: PropTypes.bool.isRequired,
+  isEditing: PropTypes.bool.isRequired,
+  isFullscreen: PropTypes.bool.isRequired,
+  onCancel: PropTypes.func.isRequired,
+  params: PropTypes.object,
+};
 
 export function DashboardSidebars({
   dashboard,
@@ -99,8 +126,8 @@ export function DashboardSidebars({
     );
   }
 
-  // SharingSidebar should only show if we're not editing or in fullscreen
-  if (!isEditing && !isFullscreen && isSharing) {
+  const shouldShowSidebar = !isEditing && !isFullscreen && isSharing;
+  if (shouldShowSidebar) {
     return (
       <SharingSidebar
         dashboard={dashboard}

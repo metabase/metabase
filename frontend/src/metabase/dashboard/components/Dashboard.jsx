@@ -132,6 +132,7 @@ export default class Dashboard extends Component {
   props: Props;
   state: State = {
     error: null,
+    showAddQuestionSidebar: false,
   };
 
   static propTypes = {

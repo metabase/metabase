@@ -33,7 +33,7 @@ export function main() {
 }
 
 export function sidebar() {
-  return cy.findByTestId("sidebar");
+  return cy.get("aside");
 }
 
 export function browse() {

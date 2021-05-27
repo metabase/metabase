@@ -12,9 +12,7 @@ AddCardSidebar.propTypes = {
 export function AddCardSidebar(props) {
   return (
     <Sidebar>
-      <div className="p2">
-        <QuestionPicker {...props} />
-      </div>
+      <QuestionPicker {...props} />
     </Sidebar>
   );
 }

@@ -41,7 +41,9 @@ export function QuestionList({
   return (
     <Search.ListLoader entityQuery={query} wrapped>
       {({ list }) => {
-        if (list.length === 0 && (isSearching || !hasCollections)) {
+        const shouldShowEmptyState =
+          list.length === 0 && (isSearching || !hasCollections);
+        if (shouldShowEmptyState) {
           return (
             <EmptyStateContainer>
               <EmptyState message={t`Nothing here`} icon="all" />
