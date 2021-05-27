@@ -44,10 +44,7 @@ export function QuestionList({
         if (list.length === 0 && (isSearching || !hasCollections)) {
           return (
             <EmptyStateContainer>
-              <EmptyState
-                message={t`No questions have been found.`}
-                icon="search"
-              />
+              <EmptyState message={t`Nothing here`} icon="all" />
             </EmptyStateContainer>
           );
         }
