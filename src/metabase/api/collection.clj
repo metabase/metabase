@@ -402,8 +402,8 @@
                          {:models       model-kwds
                           :archived?    (Boolean/parseBoolean archived)
                           :pinned-state (keyword pinned_state)
-                          :sort-info    [(normalize-sort-choice sort_column)
-                                         (normalize-sort-choice sort_direction)]})))
+                          :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
+                                         (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -449,8 +449,8 @@
       {:models       model-kwds
        :archived?    (Boolean/parseBoolean archived)
        :pinned-state (keyword pinned_state)
-       :sort-info    [(normalize-sort-choice sort_column)
-                      (normalize-sort-choice sort_direction)]})))
+       :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
+                      (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
