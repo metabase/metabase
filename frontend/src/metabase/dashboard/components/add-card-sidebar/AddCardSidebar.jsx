@@ -6,7 +6,7 @@ import QuestionPicker from "./QuestionPicker";
 
 AddCardSidebar.propTypes = {
   onSelect: PropTypes.func.isRequired,
-  initialCollection: PropTypes.number.isRequired,
+  initialCollection: PropTypes.number,
 };
 
 export function AddCardSidebar(props) {

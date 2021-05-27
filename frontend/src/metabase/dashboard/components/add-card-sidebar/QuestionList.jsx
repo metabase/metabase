@@ -11,7 +11,7 @@ import { EmptyStateContainer } from "./QuestionList.styled";
 
 QuestionList.propTypes = {
   searchText: PropTypes.string,
-  collectionId: PropTypes.number,
+  collectionId: PropTypes.string,
   onSelect: PropTypes.func.isRequired,
   hasCollections: PropTypes.bool,
 };
