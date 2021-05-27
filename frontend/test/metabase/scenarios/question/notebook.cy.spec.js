@@ -310,7 +310,7 @@ describe("scenarios > question > notebook", () => {
       });
     });
 
-    it.skip("should join saved questions that themselves contain joins (metabase#12928)", () => {
+    it("should join saved questions that themselves contain joins (metabase#12928)", () => {
       // Save Question 1
       cy.createQuestion({
         name: "12928_Q1",

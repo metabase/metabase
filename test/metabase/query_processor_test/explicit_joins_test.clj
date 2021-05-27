@@ -518,3 +518,39 @@
                                  :alias        "CategoriesStats"
                                  :fields       :all}]
                   :limit       3})))))))
+
+(deftest join-source-queries-with-joins-test
+  (testing "Should be able to join against source queries that themselves contain joins (#12928)"
+    ;; sample-dataset doesn't work on Redshift yet -- see #14784
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys) :redshift)
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :joins        [{:fields       :all
+                                                      :source-table $$products
+                                                      :condition    [:= $orders.product_id &P1.products.id]
+                                                      :alias        "P1"}
+                                                     {:fields       :all
+                                                      :source-table $$people
+                                                      :condition    [:= $orders.user_id &People.people.id]
+                                                      :alias        "People"}]
+                                      :aggregation  [[:count]]
+                                      :breakout     [&P1.products.category
+                                                     [:field %people.source {:join-alias "People"}]]}
+                       :joins        [{:fields       :all
+                                       :condition    [:= $products.category &Q2.products.category]
+                                       :alias        "Q2"
+                                       :source-query {:source-table $$reviews
+                                                      :joins        [{:fields       :all
+                                                                      :source-table $$products
+                                                                      :condition    [:=
+                                                                                     $reviews.product_id
+                                                                                     &P2.products.id]
+                                                                      :alias        "P2"}]
+                                                      :aggregation  [[:avg $reviews.rating]]
+                                                      :breakout     [&P2.products.category]}}]
+                       :limit        2})]
+          (is (= [["Doohickey" "Affiliate" 783 "Doohickey" 3]
+                  ["Doohickey" "Facebook" 816 "Doohickey" 3]]
+                 (mt/formatted-rows [str str int str int]
+                   (qp/process-query query)))))))))

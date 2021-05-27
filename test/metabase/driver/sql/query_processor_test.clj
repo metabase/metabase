@@ -9,10 +9,10 @@
             [metabase.models.setting :as setting]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [pretty.core :refer [PrettyPrintable]]
-            [schema.core :as s]
-            [toucan.db :as db])
+            [schema.core :as s])
   (:import metabase.util.honeysql_extensions.Identifier))
 
 (deftest process-mbql-query-keys-test
@@ -485,3 +485,129 @@
             (is (schema= [(s/one s/Str "date")
                           (s/one s/Num "expression")]
                          (-> results mt/rows first)))))))))
+
+(defn- normalized-sql [s]
+  (-> s
+      pretty-sql
+      (str/replace #"\s+" " ")
+      (str/replace #"\(\s*" "(")
+      (str/replace #"\s*\)" ")")
+      (str/replace #"PUBLIC\." "")
+      str/trim))
+
+(defn- mega-query []
+  (mt/mbql-query nil
+    {:fields       [&P1.products.category
+                    &People.people.source
+                    [:field "count" {:base-type :type/BigInteger}]
+                    &Q2.products.category
+                    [:field "avg" {:base-type :type/Integer, :join-alias "Q2"}]]
+     :source-query {:source-table $$orders
+                    :aggregation  [[:aggregation-options [:count] {:name "count"}]]
+                    :breakout     [&P1.products.category
+                                   &People.people.source]
+                    :order-by     [[:asc &P1.products.category]
+                                   [:asc &People.people.source]]
+                    :joins        [{:strategy     :left-join
+                                    :source-table $$products
+                                    :condition
+                                    [:= $orders.product_id &P1.products.id]
+                                    :alias        "P1"}
+                                   {:strategy     :left-join
+                                    :source-table $$people
+                                    :condition    [:= $orders.user_id &People.people.id]
+                                    :alias        "People"}]}
+     :joins        [{:strategy     :left-join
+                     :condition    [:= $products.category &Q2.products.category]
+                     :alias        "Q2"
+                     :source-query {:source-table $$reviews
+                                    :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
+                                    :breakout     [&P2.products.category]
+                                    :joins        [{:strategy     :left-join
+                                                    :source-table $$products
+                                                    :condition    [:= $reviews.product_id &P2.products.id]
+                                                    :alias        "P2"}]}}]
+     :limit        2}))
+
+(deftest source-aliases-test
+  (mt/dataset sample-dataset
+    (mt/with-everything-store
+      (let [query       (mega-query)
+            small-query (get-in query [:query :source-query])]
+        (testing (format "Query =\n%s" (u/pprint-to-str small-query))
+          (is (= {:sources           {"P1"     {:sources {}, :this-level-fields {}, :source-fields {}}
+                                      "People" {:sources {}, :this-level-fields {}, :source-fields {}}}
+                  :this-level-fields {[:field (mt/id :products :category) nil] "P1__CATEGORY"
+                                      [:field (mt/id :people :source) nil]     "People__SOURCE"
+                                      [:field "count" {:base-type :type/*}]    "count"}
+                  :source-fields     {}}
+                 (#'sql.qp/source-aliases :h2 small-query))))
+
+        (testing (format "Query =\n%s" (u/pprint-to-str query))
+          (is (= {[:field (mt/id :products :category) nil]                "P1__CATEGORY"
+                  [:field (mt/id :people :source) nil]                    "People__SOURCE"
+                  [:field "count" {:base-type :type/*}]                   "count"
+                  [:field (mt/id :products :category) {:join-alias "Q2"}] "P2__CATEGORY"
+                  [:field "avg" {:base-type :type/*, :join-alias "Q2"}]   "avg"}
+                 (:source-fields (#'sql.qp/source-aliases :h2 (:query query))))))))))
+
+(defn mini-query []
+  (mt/dataset sample-dataset
+    (qp/query->preprocessed
+     (mt/mbql-query orders
+       {:source-table $$orders
+        :fields       [$id &Q2.products.category]
+        :joins        [{:fields       :none
+                        :condition    [:= $products.category &Q2.products.category]
+                        :alias        "Q2"
+                        :source-query {:source-table $$reviews
+                                       :joins        [{:fields       :all
+                                                       :source-table $$products
+                                                       :condition    [:=
+                                                                      $reviews.product_id
+                                                                      &Products.products.id]
+                                                       :alias        "Products"}]
+                                       :aggregation  [[:avg $reviews.rating]]
+                                       :breakout     [&Products.products.category]}}]
+        :limit        2}))))
+
+(deftest use-correct-source-aliases-test
+  (testing "Should generate correct SQL for joins against source queries that contain joins (#12928)")
+  (mt/dataset sample-dataset
+    (mt/with-everything-store
+      (let [query (mega-query)]
+        (driver/with-driver :h2
+          (is (= (->> ["SELECT source.P1__CATEGORY AS P1__CATEGORY,"
+                       "       source.People__SOURCE AS People__SOURCE,"
+                       "       source.count AS count,"
+                       "       Q2.P2__CATEGORY AS Q2__CATEGORY,"
+                       "       Q2.avg AS avg"
+                       "FROM ("
+                       "    SELECT P1.CATEGORY AS P1__CATEGORY,"
+                       "           People.SOURCE AS People__SOURCE,"
+                       "           count(*) AS count"
+                       "    FROM ORDERS"
+                       "    LEFT JOIN PRODUCTS P1"
+                       "           ON ORDERS.PRODUCT_ID = P1.ID"
+                       "    LEFT JOIN PEOPLE People"
+                       "           ON ORDERS.USER_ID = People.ID"
+                       "    GROUP BY P1.CATEGORY,"
+                       "             People.SOURCE"
+                       "    ORDER BY P1.CATEGORY ASC,"
+                       "             People.SOURCE ASC"
+                       ") source"
+                       "LEFT JOIN ("
+                       "    SELECT P2.CATEGORY AS P2__CATEGORY,"
+                       "           avg(REVIEWS.RATING) AS avg"
+                       "    FROM REVIEWS"
+                       "    LEFT JOIN PRODUCTS P2"
+                       "           ON REVIEWS.PRODUCT_ID = P2.ID"
+                       "    GROUP BY P2.CATEGORY"
+                       ") Q2"
+                       "       ON source.P1__CATEGORY = Q2.P2__CATEGORY"
+                       "LIMIT 2"]
+                      (str/join " ")
+                      normalized-sql)
+                 (-> (#'sql.qp/mbql->native :h2 query)
+                     :query
+                     normalized-sql))))))))

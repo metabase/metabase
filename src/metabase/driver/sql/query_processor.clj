@@ -8,6 +8,7 @@
             [honeysql.helpers :as h]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.mbql.predicates :as mbql.preds]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field :refer [Field]]
@@ -30,6 +31,9 @@
 ;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic ^:private *query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
+  nil)
+
+(def ^:dynamic ^:private *source-aliases*
   nil)
 
 (def ^:dynamic *nested-query-level*
@@ -370,8 +374,15 @@
 (defmethod ->honeysql [:sql :field]
   [driver [_ field-id-or-name options :as field-clause]]
   (binding [*field-options* options]
-    (if (:join-alias options)
+    (cond
+      (get *source-aliases* field-clause)
+      (let [field-alias (get *source-aliases* field-clause)]
+        (->honeysql driver [:field field-alias (assoc options ::aliased? true)]))
+
+      (:join-alias options)
       (compile-field-with-join-aliases driver field-clause)
+
+      :else
       (let [honeysql-form (cond
                             ;; selects from an inner select should not
                             (and (integer? field-id-or-name) (contains? options ::outer-select))
@@ -939,11 +950,67 @@
 
 ;;; -------------------------------------------- putting it all together --------------------------------------------
 
+(s/defn ^:private source-aliases-as-field :- mbql.s/field
+  [clause :- (s/pred vector?)]
+  (cond
+    (mbql.u/is-clause? :aggregation-options clause)
+    (let [[_ _ {aggregation-name :name}] clause]
+      [:field aggregation-name {:base-type :type/*}])
+
+    (mbql.u/is-clause? :expression clause)
+    (let [[_ expression-name] clause]
+      [:field expression-name {:base-type :type/*}])
+
+    :else
+    (do
+      (assert (mbql.preds/Field? clause) (str "Not a Field: " (pr-str clause)))
+      clause)))
+
+(def ^:private ExposedColumns
+  {:sources           {s/Str (s/recursive #'ExposedColumns)}
+   :this-level-fields {(s/pred vector?) s/Str}
+   :source-fields     {(s/pred vector?) s/Str}})
+
+(declare source-aliases)
+
+(s/defn ^:private join-source-aliases :- ExposedColumns
+  [driver join :- mbql.s/Join]
+  (let [aliases (source-aliases driver join)]
+    {:sources           (:sources aliases)
+     :source-fields     (:source-fields aliases)
+     :this-level-fields (into {} (for [fields        [(:this-level-fields aliases)
+                                                      (:source-fields aliases)]
+                                       [field alias] fields
+                                       :let          [field (mbql.u/assoc-field-options
+                                                             field
+                                                             :join-alias (:alias join))]]
+                                   [field alias]))}))
+
+(s/defn ^:private source-aliases :- ExposedColumns
+  [driver inner-query :- mbql.s/MBQLQuery]
+  (let [recursive (merge
+                   (when-let [source-query (:source-query inner-query)]
+                     {"source" (source-aliases driver source-query)})
+                   (into {} (for [join (:joins inner-query)]
+                              [(:alias join) (join-source-aliases driver join)])))]
+    {:sources           recursive
+     :this-level-fields (into {} (concat (for [k      [:breakout :aggregation :fields]
+                                               clause (k inner-query)
+                                               :let   [[_ id-or-name :as field] (source-aliases-as-field clause)]]
+                                           [(mbql.u/update-field-options field dissoc :join-alias)
+                                            (if (integer? id-or-name)
+                                              (unambiguous-field-alias driver field)
+                                              id-or-name)])))
+     :source-fields     (into {} (for [[source {:keys [this-level-fields]}] recursive
+                                       field                                this-level-fields]
+                                   field))}))
+
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (binding [*query* inner-query]
+  (binding [*query*          inner-query
+            *source-aliases* (:source-fields (source-aliases driver inner-query))]
     (if source-query
       (apply-clauses-with-aliased-source-query-table
        driver
