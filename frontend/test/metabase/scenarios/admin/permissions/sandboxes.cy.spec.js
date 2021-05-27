@@ -7,7 +7,6 @@ import {
   modal,
   restore,
   remapDisplayValueToFK,
-  sidebar,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
