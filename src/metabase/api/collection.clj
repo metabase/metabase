@@ -93,12 +93,18 @@
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
   #{"all" "is_pinned" "is_not_pinned"})
 
+(def ^:private valid-sort-columns #{"name" "last_edited" "model"})
+(def ^:private valid-sort-directions #{"asc" "desc"})
+(defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
+
 
 (def ^:private CollectionChildrenOptions
-  {:archived?      s/Bool
-   :pinned-state   (s/maybe (apply s/enum (map keyword valid-pinned-state-values)))
+  {:archived?    s/Bool
+   :pinned-state (s/maybe (apply s/enum (map keyword valid-pinned-state-values)))
    ;; when specified, only return results of this type.
-   :models         (s/maybe #{(apply s/enum (map keyword valid-model-param-values))})})
+   :models       (s/maybe #{(apply s/enum (map keyword valid-model-param-values))})
+   :sort-info    (s/maybe [(s/one (apply s/enum (map normalize-sort-choice valid-sort-columns)) "sort-columns")
+                           (s/one (apply s/enum (map normalize-sort-choice valid-sort-directions)) "sort-direction")])})
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -107,7 +113,11 @@
   NOTES:
 
   *  `collection` will be either a CollectionInstance, or the Root Collection special placeholder object, so do not use
-     `u/the-id` on it! Use `:id`, which will return `nil` for the Root Collection, which is exactly what we want."
+     `u/the-id` on it! Use `:id`, which will return `nil` for the Root Collection, which is exactly what we want.
+
+  * These queries will be combined into a union-all query. You do not need to put all of the columns into the query,
+  any you don't select will be added in the correct position so the union will work (see `all-select-columns` for more
+  details)."
   {:arglists '([model collection options])}
   (fn [model _ _] (keyword model)))
 
@@ -247,8 +257,8 @@
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]
-  (letfn [(select-as [m k->k']
-            (reduce (fn [m [k k']] (assoc m k' (get m k)))
+  (letfn [(select-as [original k->k']
+            (reduce (fn [m [k k']] (assoc m k' (get original k)))
                     {}
                     k->k'))]
     (let [mapping {:last_edit_user       :id
@@ -258,15 +268,20 @@
                    :last_edit_timestamp  :timestamp}]
       (cond-> (apply dissoc row (keys mapping))
         ;; don't use contains as they all have the key, we care about a value present
-        (:last_edit_user last) (assoc :last-edit-info (select-as row mapping))))))
+        (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
-(defn- post-process-rows [rows]
-  (into []
-        (comp (map (fn [[model rows]]
-                     (post-process-collection-children (keyword model) rows)))
-              cat
-              (map coalesce-edit-info))
-        (group-by :model rows)))
+(defn- post-process-rows
+  "Post process any data. Have a chance to process all of the same type at once using
+  `post-process-collection-children`. Must respect the order passed in."
+  [rows]
+  (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
+       (group-by :model)
+       (into []
+             (comp (map (fn [[model rows]]
+                          (post-process-collection-children (keyword model) rows)))
+                   cat
+                   (map coalesce-edit-info)))
+       (sort-by (comp ::index meta))))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -313,24 +328,31 @@
         (comp cat (map select-name) (distinct))
         (for [model [:card :dashboard :snippet :pulse :collection]]
           (:select (collection-children-query model {:id 1 :location "/"} nil))))
-
   )
 
 (defn- collection-children*
-  [collection models options]
-  (let [models            (sort (map keyword models))
-        queries           (for [model models]
-                            (-> (collection-children-query model collection options)
-                                (update :select add-missing-columns all-select-columns)))
-        total-query       {:select [[:%count.* :count]]
-                           :from   [[{:union-all queries} :dummy_alias]]}
-        rows-query        {:select   [:*]
-                           :from     [[{:union-all queries} :dummy_alias]]
-                           :order-by [[:%lower.name :asc]]
-                           :limit    offset-paging/*limit*
-                           :offset   offset-paging/*offset*}]
-    {:total  (-> (db/query total-query) first :count)
-     :data   (-> (db/query rows-query) post-process-rows)
+  [collection models {:keys [sort-info] :as options}]
+  (let [sql-order   (case sort-info
+                      nil                  [[:%lower.name :asc]]
+                      [:name :asc]         [[:%lower.name :asc]]
+                      [:name :desc]        [[:%lower.name :desc]]
+                      [:last-edited :asc]  [[:last_edit_timestamp :asc]]
+                      [:last-edited :desc] [[:last_edit_timestamp :desc]]
+                      [:model :asc]        [[:model :asc]  [:%lower.name :asc]]
+                      [:model :desc]       [[:model :desc] [:%lower.name :asc]])
+        models      (sort (map keyword models))
+        queries     (for [model models]
+                      (-> (collection-children-query model collection options)
+                          (update :select add-missing-columns all-select-columns)))
+        total-query {:select [[:%count.* :count]]
+                     :from   [[{:union-all queries} :dummy_alias]]}
+        rows-query  {:select   [:*]
+                     :from     [[{:union-all queries} :dummy_alias]]
+                     :order-by sql-order
+                     :limit    offset-paging/*limit*
+                     :offset   offset-paging/*offset*}]
+    {:total  (->> (db/query total-query) first :count)
+     :data   (->> (db/query rows-query) post-process-rows)
      :limit  offset-paging/*limit*
      :offset offset-paging/*offset*
      :models models}))
@@ -369,15 +391,19 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything"
-  [id models archived pinned_state]
-  {models       (s/maybe models-schema)
-   archived     (s/maybe su/BooleanString)
-   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))}
-  (let [model-kwds    (set (map keyword (u/one-or-many models)))]
+  [id models archived pinned_state sort_column sort_direction]
+  {models         (s/maybe models-schema)
+   archived       (s/maybe su/BooleanString)
+   pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
+   sort_column    (s/maybe (apply s/enum valid-sort-columns))
+   sort_direction (s/maybe (apply s/enum valid-sort-directions))}
+  (let [model-kwds (set (map keyword (u/one-or-many models)))]
     (collection-children (api/read-check Collection id)
                          {:models       model-kwds
                           :archived?    (Boolean/parseBoolean archived)
-                          :pinned-state (keyword pinned_state)})))
+                          :pinned-state (keyword pinned_state)
+                          :sort-info    [(normalize-sort-choice sort_column)
+                                         (normalize-sort-choice sort_direction)]})))
 
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -405,11 +431,13 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models archived namespace pinned_state]
-  {models       (s/maybe models-schema)
-   archived     (s/maybe su/BooleanString)
-   namespace    (s/maybe su/NonBlankString)
-   pinned_state (s/maybe (apply s/enum valid-pinned-state-values))}
+  [models archived namespace pinned_state sort_column sort_direction]
+  {models         (s/maybe models-schema)
+   archived       (s/maybe su/BooleanString)
+   namespace      (s/maybe su/NonBlankString)
+   pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
+   sort_column    (s/maybe (apply s/enum valid-sort-columns))
+   sort_direction (s/maybe (apply s/enum valid-sort-directions))}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -418,9 +446,11 @@
                           #{:collection})]
     (collection-children
       root-collection
-      {:models         model-kwds
-       :archived?      (Boolean/parseBoolean archived)
-       :pinned-state   (keyword pinned_state)})))
+      {:models       model-kwds
+       :archived?    (Boolean/parseBoolean archived)
+       :pinned-state (keyword pinned_state)
+       :sort-info    [(normalize-sort-choice sort_column)
+                      (normalize-sort-choice sort_direction)]})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
