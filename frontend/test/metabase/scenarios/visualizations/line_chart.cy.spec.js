@@ -106,6 +106,9 @@ describe("scenarios > visualizations > line chart", () => {
   });
 
   describe.skip("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
+    const RENAMED_FIRST_SERIES = "Foo";
+    const RENAMED_SECOND_SERIES = "Bar";
+
     it("custom expression names (metabase#16249-1)", () => {
       createOrdersQuestionWithAggregation({
         name: "16249_Q1",
@@ -136,18 +139,24 @@ describe("scenarios > visualizations > line chart", () => {
             cy.visit(`/dashboard/${dashboardId}`);
 
             // Rename both series
-            renameSeries([["16249_Q1", "Foo"], ["16249_Q2", "Bar"]]);
+            renameSeries([
+              ["16249_Q1", RENAMED_FIRST_SERIES],
+              ["16249_Q2", RENAMED_SECOND_SERIES],
+            ]);
+
+            assertOnLegendItemsValues();
+            assertOnYAxisValues();
 
             showTooltipForFirstCircleInSeries(0);
             popover().within(() => {
               testPairedTooltipValues("Created At", "2016");
-              testPairedTooltipValues("Foo", "42,156.87");
+              testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
             showTooltipForFirstCircleInSeries(1);
             popover().within(() => {
               testPairedTooltipValues("Created At", "2016");
-              testPairedTooltipValues("Bar", "54.44");
+              testPairedTooltipValues(RENAMED_SECOND_SERIES, "54.44");
             });
           });
         });
@@ -179,18 +188,24 @@ describe("scenarios > visualizations > line chart", () => {
 
             cy.visit(`/dashboard/${dashboardId}`);
 
-            renameSeries([["16249_Q3", "Foo"], ["16249_Q4", "Bar"]]);
+            renameSeries([
+              ["16249_Q3", RENAMED_FIRST_SERIES],
+              ["16249_Q4", RENAMED_SECOND_SERIES],
+            ]);
+
+            assertOnLegendItemsValues();
+            assertOnYAxisValues();
 
             showTooltipForFirstCircleInSeries(0);
             popover().within(() => {
               testPairedTooltipValues("Created At", "2016");
-              testPairedTooltipValues("Foo", "42,156.87");
+              testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
             showTooltipForFirstCircleInSeries(1);
             popover().within(() => {
               testPairedTooltipValues("Created At", "2016");
-              testPairedTooltipValues("Bar", "2,829.03");
+              testPairedTooltipValues(RENAMED_SECOND_SERIES, "2,829.03");
             });
           });
         });
@@ -267,6 +282,18 @@ describe("scenarios > visualizations > line chart", () => {
         });
       cy.button("Save").click();
       cy.findByText("You're editing this dashboard.").should("not.exist");
+    }
+
+    function assertOnLegendItemsValues() {
+      cy.get(".LegendItem")
+        .should("contain", RENAMED_FIRST_SERIES)
+        .and("contain", RENAMED_SECOND_SERIES);
+    }
+
+    function assertOnYAxisValues() {
+      cy.get(".y-axis-label")
+        .should("contain", RENAMED_FIRST_SERIES)
+        .and("contain", RENAMED_SECOND_SERIES);
     }
   });
 });
