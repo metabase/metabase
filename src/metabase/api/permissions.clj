@@ -91,11 +91,22 @@
   (-> (ordered-groups offset-paging/*limit* offset-paging/*offset*)
       (hydrate :member_count)))
 
+(api/defendpoint GET "/database/:id"
+  ;;;;;;;;;;;;;;;; just fetch for one database, basically?
+  ;;;;;;;;;;;;;;;;
+  ;;;;;;;;;;;;;;;;
+  [])
+
 (api/defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."
   [id]
   (api/check-superuser)
   (-> (PermissionsGroup id)
+      ;;;;;;;;;;;;;;; paginate and have name filter
+      ;;;;;;;;;;;;;;;
+      ;;;;;;;;;;;;;;;
+      ;;;;;;;;;;;;;;;
+      ;;;;;;;;;;;;;;;
       (hydrate :members)))
 
 (api/defendpoint POST "/group"
