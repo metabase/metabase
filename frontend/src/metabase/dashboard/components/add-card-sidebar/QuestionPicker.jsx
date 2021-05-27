@@ -76,7 +76,7 @@ function QuestionPicker({
             <Breadcrumbs crumbs={crumbs} />
           </BreadcrumbsWrapper>
 
-          <ul>
+          <ul role="menu">
             {collections.map(collection => (
               <QuestionPickerItem
                 isCollection

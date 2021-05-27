@@ -52,7 +52,7 @@ export function QuestionList({
         }
 
         return (
-          <ul>
+          <ul role="menu">
             {list.map(item => (
               <QuestionPickerItem
                 key={item.id}

@@ -13,7 +13,7 @@ QuestionPickerItem.propTypes = {
 
 export function QuestionPickerItem({ id, name, icon, isCollection, onSelect }) {
   return (
-    <ItemRoot onClick={() => onSelect(id)}>
+    <ItemRoot role="menuitem" tabIndex={0} onClick={() => onSelect(id)}>
       <ItemIcon name={icon} isHighlighted={!isCollection} />
       <ItemTitle>{name}</ItemTitle>
       {isCollection && <ItemIcon name="chevronright" />}
