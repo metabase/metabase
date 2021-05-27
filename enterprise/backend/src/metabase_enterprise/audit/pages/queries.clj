@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit.pages.queries
-  (:require [metabase-enterprise.audit.pages.common :as common]
+  (:require [clj-time.core :refer [days ago]]
+            [metabase-enterprise.audit.pages.common :as common]
             [metabase-enterprise.audit.pages.common.cards :as cards]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]))
@@ -28,6 +29,7 @@
               {:select   [[(hx/cast :date :started_at) :day]
                           [:%count.* :views]]
                :from     [:query_execution]
+               :where    [:> (hx/cast :date :started_at) (hx/->date (-> 45 days ago))]
                :group-by [(hx/cast :date :started_at)]
                :order-by [[(hx/cast :date :started_at) :asc]]})})
 
@@ -106,23 +108,27 @@
     collectionFilter :- (s/maybe s/Str)
     sortColumn       :- (s/maybe s/Str)
     sortDirection    :- (s/maybe (s/enum "asc" "desc"))]
-   {:metadata [[:card_id         {:display_name "Card ID",       :base_type :type/Integer, :remapped_to   :card_name}]
-               [:card_name       {:display_name "Name",          :base_type :type/Name,    :remapped_from :card_id}]
-               [:collection_id   {:display_name "Collection ID", :base_type :type/Integer, :remapped_to   :collection_name}]
-               [:collection_name {:display_name "Collection",    :base_type :type/Text,    :remapped_from :collection_id}]
-               [:database_id     {:display_name "Database ID",   :base_type :type/Integer, :remapped_to   :database_name}]
-               [:database_name   {:display_name "Database",      :base_type :type/Text,    :remapped_from :database_id}]
-               [:table_id        {:display_name "Table ID",      :base_type :type/Integer, :remapped_to   :table_name}]
-               [:table_name      {:display_name "Table",         :base_type :type/Text,    :remapped_from :table_id}]
-               [:user_id         {:display_name "Created By ID", :base_type :type/Integer, :remapped_to   :user_name}]
-               [:user_name       {:display_name "Created By",    :base_type :type/Text,    :remapped_from :user_id}]
-               [:public_link     {:display_name "Public Link",   :base_type :type/URL}]
-               [:cache_ttl       {:display_name "Cache TTL",     :base_type :type/Number}]
-               [:total_views     {:display_name "Views",         :base_type :type/Integer}]]
+   {:metadata [[:card_id         {:display_name "Card ID",        :base_type :type/Integer, :remapped_to   :card_name}]
+               [:card_name       {:display_name "Name",           :base_type :type/Name,    :remapped_from :card_id}]
+               [:collection_id   {:display_name "Collection ID",  :base_type :type/Integer, :remapped_to   :collection_name}]
+               [:collection_name {:display_name "Collection",     :base_type :type/Text,    :remapped_from :collection_id}]
+               [:database_id     {:display_name "Database ID",    :base_type :type/Integer, :remapped_to   :database_name}]
+               [:database_name   {:display_name "Database",       :base_type :type/Text,    :remapped_from :database_id}]
+               [:table_id        {:display_name "Table ID",       :base_type :type/Integer, :remapped_to   :table_name}]
+               [:table_name      {:display_name "Table",          :base_type :type/Text,    :remapped_from :table_id}]
+               [:user_id         {:display_name "Created By ID",  :base_type :type/Integer, :remapped_to   :user_name}]
+               [:user_name       {:display_name "Created By",     :base_type :type/Text,    :remapped_from :user_id}]
+               [:public_link     {:display_name "Public Link",    :base_type :type/URL}]
+               [:cache_ttl       {:display_name "Cache Duration", :base_type :type/Number}]
+               [:total_runtime   {:display_name "Total Runtime",  :base_type :type/Number}]
+               [:query_runs      {:display_name "Query Runs",     :base_type :type/Integer}]
+               [:avg_exec_time   {:display_name "Average Runtime", :base_type :type/Integer}]
+               ]
     :results  (common/reducible-query
                 (->
                  {:with      [cards/avg-exec-time
-                              cards/views]
+                              cards/total-exec-time
+                              cards/query-runs]
                   :select    [[:card.id :card_id]
                               [:card.name :card_name]
                               :collection_id
@@ -134,15 +140,15 @@
                               [:card.creator_id :user_id]
                               [(common/user-full-name :u) :user_name]
                               [(common/card-public-url :card.public_uuid) :public_link]
-                              :card.cache_ttl
-                              [:card_views.count :total_views]]
+                              :card.cache_ttl]
                   :from      [[:report_card :card]]
                   :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
                               [:metabase_database :db] [:= :card.database_id :db.id]
                               [:metabase_table :t]     [:= :card.table_id :t.id]
                               [:core_user :u]          [:= :card.creator_id :u.id]
                               :avg_exec_time           [:= :card.id :avg_exec_time.card_id]
-                              :card_views              [:= :card.id :card_views.card_id]]
+                              :total_exec_time         [:= :card.id :total_exec_time.card_id]
+                              :query_runs              [:= :card.id :query_runs.card_id]]
                   :where     [:= :card.archived false]}
                  (common/add-search-clause questionFilter :card.name)
                  (common/add-search-clause collectionFilter :coll.name)
