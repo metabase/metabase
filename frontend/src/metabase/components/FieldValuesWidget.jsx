@@ -442,6 +442,7 @@ export class FieldValuesWidget extends Component {
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
           maxWidth: this.props.maxWidth,
+          marginBottom: 60,
         }}
       >
         <TokenField
@@ -453,7 +454,7 @@ export class FieldValuesWidget extends Component {
           multi={multi}
           autoFocus={autoFocus}
           color={color}
-          style={{ ...style, marginBottom: 60 }}
+          style={style}
           className={className}
           optionsStyle={
             optionsMaxHeight !== undefined
