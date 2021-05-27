@@ -8,6 +8,7 @@
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [honeysql.helpers :as h]
+            [java-time :as t]
             [medley.core :as m]
             [metabase-enterprise.audit.query-processor.middleware.handle-audit-queries :as qp.middleware.audit]
             [metabase.db :as mdb]
@@ -205,6 +206,13 @@
   "Lowercase a SQL field, to enter into honeysql query"
   [field]
   (keyword (str "%lower." (name field))))
+
+(defn add-45-days-clause
+  "Add an appropriate `WHERE` clause to limit query to 45 days"
+  [query date_column]
+  (h/merge-where query [:>
+                        (hx/cast :date date_column)
+                        (hx/literal (t/format "yyyy-MM-dd" (t/minus (t/local-date) (t/days 45))))]))
 
 (defn add-search-clause
   "Add an appropriate `WHERE` clause to `query` to see if any of the `fields-to-search` match `query-string`.

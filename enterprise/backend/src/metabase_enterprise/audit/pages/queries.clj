@@ -13,12 +13,13 @@
               [:views            {:display_name "Views",                  :base_type :type/Integer}]
               [:avg_running_time {:display_name "Avg. Running Time (ms)", :base_type :type/Decimal}]]
    :results  (common/reducible-query
-              {:select   [[(hx/cast :date :started_at) :day]
+              (-> {:select   [[(hx/cast :date :started_at) :day]
                           [:%count.* :views]
                           [:%avg.running_time :avg_running_time]]
                :from     [:query_execution]
                :group-by [(hx/cast :date :started_at)]
-               :order-by [[(hx/cast :date :started_at) :asc]]})})
+               :order-by [[(hx/cast :date :started_at) :asc]]}
+               (common/add-45-days-clause :started_at)))})
 
 (defn ^:internal-query-fn views-by-day
   "View broken out by day."
