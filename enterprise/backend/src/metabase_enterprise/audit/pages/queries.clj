@@ -127,9 +127,9 @@
                ]
     :results  (common/reducible-query
                 (->
-                 {:with      [cards/avg-exec-time
-                              cards/total-exec-time
-                              cards/query-runs]
+                 {:with      [cards/avg-exec-time-45
+                              cards/total-exec-time-45
+                              cards/query-runs-45]
                   :select    [[:card.id :card_id]
                               [:card.name :card_name]
                               :collection_id
