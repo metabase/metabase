@@ -10,6 +10,7 @@
             [medley.core :as m]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
+            [metabase.db.env :as mdb.env]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection.graph :as collection.graph]
@@ -317,7 +318,7 @@
   (let [columns (m/index-by select-name select-columns)]
     (map (fn [col]
            (let [[col-name typpe] (u/one-or-many col)]
-             (get columns col-name (if typpe
+             (get columns col-name (if (and typpe (= @mdb.env/db-type :postgres))
                                      [(hx/cast typpe nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
