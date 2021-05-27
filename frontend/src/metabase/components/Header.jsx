@@ -144,7 +144,7 @@ export default class Header extends Component {
           }
           ref={this.header}
         >
-          <div className="Entity py3">
+          <div className="Entity py2">
             <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
             {this.props.showBadge && (
