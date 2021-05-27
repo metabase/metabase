@@ -105,7 +105,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findAllByText("Filter")
         .first()
         .click();
-      sidebar().within(() => {
+      cy.findByTestId("sidebar-right").within(() => {
         cy.contains("Product ID").click();
       });
       cy.findByText("Cancel");

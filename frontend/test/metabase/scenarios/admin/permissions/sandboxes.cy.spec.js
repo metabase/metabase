@@ -813,7 +813,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       cy.findByText("Settings").click();
-      sidebar()
+      cy.findByTestId("sidebar-left")
         .should("be.visible")
         .within(() => {
           // Remove the "Subtotal" column from within sidebar
