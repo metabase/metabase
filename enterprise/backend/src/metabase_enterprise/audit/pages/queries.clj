@@ -121,9 +121,9 @@
                [:user_name       {:display_name "Created By",     :base_type :type/Text,    :remapped_from :user_id}]
                [:public_link     {:display_name "Public Link",    :base_type :type/URL}]
                [:cache_ttl       {:display_name "Cache Duration", :base_type :type/Number}]
+               [:avg_exec_time   {:display_name "Average Runtime", :base_type :type/Integer}]
                [:total_runtime   {:display_name "Total Runtime",  :base_type :type/Number}]
                [:query_runs      {:display_name "Query Runs",     :base_type :type/Integer}]
-               [:avg_exec_time   {:display_name "Average Runtime", :base_type :type/Integer}]
                ]
     :results  (common/reducible-query
                 (->
@@ -141,7 +141,10 @@
                               [:card.creator_id :user_id]
                               [(common/user-full-name :u) :user_name]
                               [(common/card-public-url :card.public_uuid) :public_link]
-                              :card.cache_ttl]
+                              :card.cache_ttl
+                              [:avg_exec_time.avg_running_time_ms :avg_exec_time]
+                              [:total_exec_time.total_running_time_ms :total_exec_time]
+                              [:query_runs.count :query_runs]]
                   :from      [[:report_card :card]]
                   :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
                               [:metabase_database :db] [:= :card.database_id :db.id]
