@@ -453,7 +453,7 @@ export class FieldValuesWidget extends Component {
           multi={multi}
           autoFocus={autoFocus}
           color={color}
-          style={style}
+          style={{ ...style, marginBottom: 60 }}
           className={className}
           optionsStyle={
             optionsMaxHeight !== undefined
