@@ -51,8 +51,8 @@
   (doseq [entity (flatten entities)]
     (try
       (spit-entity path entity)
-      (catch Throwable _
-        (log/error (trs "Error dumping {0}" (name-for-logging entity))))))
+      (catch Throwable e
+        (log/error e (trs "Error dumping {0}" (name-for-logging entity))))))
   (spit-yaml (str path "/manifest.yaml")
              {:serialization-version serialize/serialization-protocol-version
               :metabase-version      config/mb-version-info}))

@@ -2,7 +2,8 @@
   (:require [clojure.data :as diff]
             [clojure.test :refer :all]
             [metabase-enterprise.serialization.upsert :as upsert]
-            [metabase.models :refer [Card Collection Dashboard Database Field Metric Pulse Segment Table User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
+                                     Pulse Segment Table User]]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -68,23 +69,49 @@
       (testing "Card 2"
         (is (same? (Card id2) e2))))))
 
+(defn- dummy-entity [dummy-dashboard model entity instance-num]
+  (cond
+    (= (type DashboardCard) (type model))
+    ;; hack to make sure that :visualization_settings are slightly different between the two dummy instances
+    ;; this is necessary because DashboardCards have that as part of their identity-condition
+    (assoc entity :dashboard_id (u/the-id dummy-dashboard)
+                  :visualization_settings (if (= 1 instance-num) {:column_settings {}}
+                                                                 {:click_behavior {}}))
+
+    :else
+    entity))
+
 (deftest identical-test
   (letfn [(test-select-identical [model]
             (testing (name model)
-              (let [[e1 e2] (if (contains? (set (#'upsert/identity-condition model)) :name)
+              (let [id-cond (#'upsert/identity-condition model)
+                    [e1 e2] (if (contains? (set id-cond) :name)
                               [{:name "a"} {:name "b"}]
                               [{} {}])]
-                (mt/with-temp* [model [_ e1] ; create an additional entity so we're sure whe get the right one
-                                model [{id :id} e2]]
+                (mt/with-temp* [Dashboard [dashboard {:name "Dummy Dashboard"}]
+                                ;; create an additional entity so we're sure whe get the right one
+                                model     [_ (dummy-entity dashboard model e1 1)]
+                                model     [{id :id} (dummy-entity dashboard model e2 2)]]
                   (let [e (model id)]
-                    (is (= (#'upsert/select-identical model e) e)))))))]
+                    ;; make sure that all columns in identity-condition actually exist in the model
+                    (is (= (set id-cond) (-> e
+                                             (select-keys id-cond)
+                                             keys
+                                             set)))
+                    (is (= (#'upsert/select-identical model (cond-> e
+                                                              ;; engine is a keyword but has to be a string for
+                                                              ;; HoneySQL to not interpret it as a col name
+                                                              (= (class e) (class Database)) (update :engine name)))
+                           e)))))))]
     (doseq [model [Collection
                    Card
                    Table
                    Field
                    Metric
+                   NativeQuerySnippet
                    Segment
                    Dashboard
+                   DashboardCard
                    Database
                    Pulse
                    User]]

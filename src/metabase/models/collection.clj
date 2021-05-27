@@ -752,6 +752,18 @@
 
 ;; PUTTING IT ALL TOGETHER <3
 
+(defn- namespace-equals?
+  "Returns true if the :namespace values (for a collection) are equal between multiple instances. Either one can be a
+  string or keyword.
+
+  This is necessary because on select, the :namespace value becomes a keyword (and hence, is a keyword in `pre-update`,
+  but when passing an entity to update, it must be given as a string, not a keyword, because otherwise HoneySQL will
+  attempt to quote it as a column name instead of a string value (and the update statement will fail)."
+  [& namespaces]
+  (let [std-fn (fn [v]
+                 (if (keyword? v) (name v) (str v)))]
+    (apply = (map std-fn namespaces))))
+
 (defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
   (let [collection-before-updates (Collection id)]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
@@ -762,7 +774,7 @@
     (assert-valid-location collection-updates)
     ;; (3) make sure Collection namespace is valid
     (when (contains? collection-updates :namespace)
-      (when (not= (:namespace collection-before-updates) (:namespace collection-updates))
+      (when-not (namespace-equals? (:namespace collection-before-updates) (:namespace collection-updates))
         (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))

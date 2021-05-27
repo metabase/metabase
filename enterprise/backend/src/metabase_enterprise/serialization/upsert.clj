@@ -16,6 +16,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.metric :refer [Metric]]
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :refer [PulseChannel]]
@@ -29,14 +30,14 @@
             [toucan.models :as models]))
 
 (def ^:private identity-condition
-  {Database            [:name]
+  {Database            [:name :engine]
    Table               [:schema :name :db_id]
    Field               [:name :table_id]
    Metric              [:name :table_id]
    Segment             [:name :table_id]
-   Collection          [:name :location]
+   Collection          [:name :location :namespace]
    Dashboard           [:name :collection_id]
-   DashboardCard       [:card_id :dashboard_id :visualiation_settings]
+   DashboardCard       [:card_id :dashboard_id :visualization_settings]
    DashboardCardSeries [:dashboardcard_id :card_id]
    FieldValues         [:field_id]
    Dimension           [:field_id :human_readable_field_id]
@@ -46,7 +47,8 @@
    PulseCard           [:pulse_id :card_id]
    PulseChannel        [:pulse_id :channel_type :details]
    Card                [:name :collection_id]
-   User                [:email]})
+   User                [:email]
+   NativeQuerySnippet  [:name :collection_id]})
 
 ;; This could potentially be unrolled into one giant select
 (defn- select-identical
@@ -70,7 +72,7 @@
   `(try
      (do ~@body)
      (catch Throwable e#
-       (log/error (u/format-color 'red "%s: %s" ~message (.getMessage e#)))
+       (log/error e# (u/format-color 'red "%s: %s" ~message (.getMessage e#)))
        nil)))
 
 (defn- insert-many-individually!
