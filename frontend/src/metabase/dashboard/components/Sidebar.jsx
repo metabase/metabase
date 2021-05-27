@@ -9,6 +9,7 @@ const WIDTH = 384;
 function Sidebar({ onClose, onCancel, closeIsDisabled, children }) {
   return (
     <div
+      data-testid="sidebar"
       style={{ width: WIDTH, minWidth: WIDTH }}
       className="flex flex-column border-left bg-white"
     >

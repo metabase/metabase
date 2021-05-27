@@ -122,9 +122,7 @@ export default class Header extends Component {
               className="Header-buttonSection flex align-center"
             >
               {section.map((button, buttonIndex) => (
-                <span key={buttonIndex} className="Header-button">
-                  {button}
-                </span>
+                <span key={buttonIndex}>{button}</span>
               ))}
             </span>
           )

@@ -33,7 +33,7 @@ export function main() {
 }
 
 export function sidebar() {
-  return cy.get(".scroll-y");
+  return cy.findByTestId("sidebar");
 }
 
 export function browse() {

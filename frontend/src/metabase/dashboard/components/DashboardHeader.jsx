@@ -284,7 +284,9 @@ export default class DashboardHeader extends Component {
             className="text-brand-hover cursor-pointer"
             onClick={() => this.handleEdit(dashboard)}
           >
-            <Icon name="pencil" />
+            <DashboardHeaderButton>
+              <Icon name="pencil" />
+            </DashboardHeaderButton>
           </a>
         </Tooltip>,
       );
@@ -352,7 +354,9 @@ export default class DashboardHeader extends Component {
       buttons.push(
         <PopoverWithTrigger
           triggerElement={
-            <Icon name="ellipsis" size={20} className="text-brand-hover" />
+            <DashboardHeaderButton>
+              <Icon name="ellipsis" size={20} className="text-brand-hover" />
+            </DashboardHeaderButton>
           }
         >
           <div className="py1">

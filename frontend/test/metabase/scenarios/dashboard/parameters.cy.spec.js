@@ -1,4 +1,4 @@
-import { modal, popover, restore } from "__support__/e2e/cypress";
+import { sidebar, popover, restore } from "__support__/e2e/cypress";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
 describe("scenarios > dashboard > parameters", () => {
@@ -55,6 +55,8 @@ describe("scenarios > dashboard > parameters", () => {
 
     // add the same question twice
     cy.icon("pencil").click();
+
+    cy.get(".DashboardHeader .Icon-add").click();
     addQuestion("Orders, Count");
     addQuestion("Orders, Count");
 
@@ -113,6 +115,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     // add a question
     cy.icon("pencil").click();
+    cy.get(".DashboardHeader .Icon-add").click();
     addQuestion("Orders, Count");
 
     // add a Number - Between filter
@@ -339,8 +342,7 @@ function selectFilter(selection, filterName) {
 }
 
 function addQuestion(name) {
-  cy.get(".DashboardHeader .Icon-add").click();
-  modal()
+  sidebar()
     .contains(name)
     .click();
 }

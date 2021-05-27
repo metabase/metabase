@@ -54,17 +54,15 @@ export function QuestionList({
 
         return (
           <ul>
-            {list.map(item => {
-              return (
-                <QuestionPickerItem
-                  key={item.id}
-                  id={item.id}
-                  name={item.getName()}
-                  icon={item.getIcon()}
-                  onSelect={onSelect}
-                />
-              );
-            })}
+            {list.map(item => (
+              <QuestionPickerItem
+                key={item.id}
+                id={item.id}
+                name={item.getName()}
+                icon={item.getIcon()}
+                onSelect={onSelect}
+              />
+            ))}
           </ul>
         );
       }}
