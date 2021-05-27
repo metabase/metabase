@@ -165,7 +165,7 @@ describe("scenarios > visualizations > line chart", () => {
             "source-table": PRODUCTS_ID,
             aggregation: [["sum", ["field", PRODUCTS.PRICE, null]]],
             breakout: [
-              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
             ],
           },
           display: "line",
@@ -189,8 +189,8 @@ describe("scenarios > visualizations > line chart", () => {
 
             showTooltipForFirstCircleInSeries(1);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "April, 2016");
-              testPairedTooltipValues("Bar", "136.83");
+              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Bar", "2,829.03");
             });
           });
         });
