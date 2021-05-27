@@ -1,24 +1,5 @@
 import _ from "underscore";
-import { Responsive as ResponsiveGrid } from "react-grid-layout";
 import { color } from "metabase/lib/colors";
-
-export function adaptLayoutForBreakpoint({
-  layout,
-  breakpoints,
-  targetBreakpoint,
-  closestBreakpoint,
-  columns,
-  compactType,
-}) {
-  return ResponsiveGrid.utils.findOrGenerateResponsiveLayout(
-    layout,
-    breakpoints,
-    targetBreakpoint,
-    closestBreakpoint,
-    columns,
-    compactType,
-  );
-}
 
 function sumVerticalSpace(layout) {
   return layout.reduce((sum, current) => sum + current.h, 0);

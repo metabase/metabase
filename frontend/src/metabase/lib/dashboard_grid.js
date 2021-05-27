@@ -15,11 +15,6 @@ export const GRID_COLUMNS = {
   mobile: 1,
 };
 
-export function isMobileBreakpoint(breakpoint) {
-  const width = GRID_BREAKPOINTS[breakpoint];
-  return width <= MOBILE_BREAKPOINT;
-}
-
 export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
 
 export const MIN_ROW_HEIGHT = 54;
