@@ -249,7 +249,7 @@ describe("scenarios > question > notebook", () => {
     // NOTE: - This repro is really tightly coupled to the `joinTwoSavedQuestions()` function.
     //       - Be extremely careful when changing any of the steps within that function.
     //       - The alternative approach would have been to write one longer repro instead of two separate ones.
-    it.skip("joined questions should create custom column (metabase#13649)", () => {
+    it("joined questions should create custom column (metabase#13649)", () => {
       // pass down a joined question alias
       joinTwoSavedQuestions("13649");
 

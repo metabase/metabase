@@ -63,6 +63,11 @@
   Each nested query increments this counter by 1."
   0)
 
+(def ^:dynamic *field-options*
+  "Bound to the `options` part of a `:field` clause when that clause is being compiled to HoneySQL. Useful if you store
+  additional keys there and need to access them."
+  nil)
+
 (p.types/deftype+ SQLSourceQuery [sql params]
   hformat/ToSql
   (to-sql [_]
@@ -389,11 +394,6 @@
       hx/floor
       (hx/* bin-width)
       (hx/+ min-value)))
-
-(def ^:dynamic *field-options*
-  "Bound to the `options` part of a `:field` clause when that clause is being compiled to HoneySQL. Useful if you store
-  additional keys there and need to access them."
-  nil)
 
 (defmethod ->honeysql [:sql :field]
   [driver [_ field-id-or-name options :as field-clause]]
