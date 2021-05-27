@@ -88,10 +88,12 @@ export default class DashboardGrid extends Component {
       const dashboardCard = dashboard.ordered_cards.find(
         card => String(card.id) === layoutItem.i,
       );
+
       const changed = !_.isEqual(
         layoutItem,
         this.getLayoutForDashCard(dashboardCard),
       );
+
       if (changed) {
         changes.push({
           id: dashboardCard.id,
