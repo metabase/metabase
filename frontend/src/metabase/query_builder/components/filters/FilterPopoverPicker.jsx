@@ -30,15 +30,18 @@ export default class FilterPopoverPicker extends React.Component {
       minWidth,
       maxWidth,
     } = this.props;
+
     const setValue = (index: number, value: any) => {
       onFilterChange(filter.setArgument(index, value));
     };
+
     const setValues = (values: any[]) => {
       onFilterChange(filter.setArguments(values));
     };
 
     const dimension = filter.dimension();
     const field = dimension.field();
+
     return field.isTime() ? (
       <TimePicker
         className={className}
