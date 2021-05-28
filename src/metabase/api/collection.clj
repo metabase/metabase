@@ -341,8 +341,10 @@
                       nil                  [[:%lower.name :asc]]
                       [:name :asc]         [[:%lower.name :asc]]
                       [:name :desc]        [[:%lower.name :desc]]
-                      [:last-edited :asc]  [[:last_edit_timestamp :asc]]
-                      [:last-edited :desc] [[:last_edit_timestamp :desc]]
+                      [:last-edited :asc]  [[:last_edit_timestamp :asc]
+                                            [:%lower.name :asc]]
+                      [:last-edited :desc] [[:last_edit_timestamp :desc]
+                                            [:%lower.name :asc]]
                       [:model :asc]        [[:model :asc]  [:%lower.name :asc]]
                       [:model :desc]       [[:model :desc] [:%lower.name :asc]])
         models      (sort (map keyword models))

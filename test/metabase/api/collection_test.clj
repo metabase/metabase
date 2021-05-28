@@ -1,6 +1,7 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
-  (:require [clojure.string :as str]
+  (:require [clj-time.core :as time]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
                                      PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
@@ -300,15 +301,15 @@
       (mt/with-temp* [Collection [collection]
                       Card       [card        {:collection_id (u/the-id collection)}]]
         (is (= (mt/obj->json->obj
-                 [{:id                  (u/the-id card)
-                   :name                (:name card)
-                   :collection_position nil
-                   :display             "table"
-                   :description         nil
-                   :favorite            false
-                   :model               "card"}])
+                [{:id                  (u/the-id card)
+                  :name                (:name card)
+                  :collection_position nil
+                  :display             "table"
+                  :description         nil
+                  :favorite            false
+                  :model               "card"}])
                (mt/obj->json->obj
-                 (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
+                (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
                       Card       [card3        {:collection_id (u/the-id collection)}]
@@ -358,26 +359,53 @@
           (is (= [(default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})]
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
-    (testing "Results include last edited information from the `Revision` table"
-      (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
-                      User       [{user-id :id} {:first_name "Test" :last_name "User" :email "testuser@example.com"}]
-                      Card       [{card-id :id :as card}
-                                  {:name          "Card with history" :collection_id collection-id}]
-                      Revision   [_revision {:model    "Card"
-                                             :model_id card-id
-                                             :user_id  user-id
-                                             :object   (revision/serialize-instance card card-id card)}]]
-        (is (= [{:name "Card with history",
+    (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
+                    User       [{user-id :id} {:first_name "Test" :last_name "User" :email "testuser@example.com"}]
+                    Card       [{card-id :id :as card}
+                                {:name "Card with history" :collection_id collection-id}]
+                    Card       [_ {:name "ZZ" :collection_id collection-id}]
+                    Card       [_ {:name "AA" :collection_id collection-id}]
+                    Revision   [_revision {:model    "Card"
+                                           :model_id card-id
+                                           :user_id  user-id
+                                           :object   (revision/serialize-instance card card-id card)}]]
+      (testing "Results include last edited information from the `Revision` table"
+        (is (= [{:name "AA"}
+                {:name "Card with history",
                  :last-edit-info
                  {:id         true,
                   :email      "testuser@example.com",
                   :first_name "Test",
                   :last_name  "User",
                   ;; timestamp collapsed to true, ordinarily a OffsetDateTime
-                  :timestamp  true}}]
+                  :timestamp  true}}
+                {:name "ZZ"}]
                (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
                     mt/boolean-ids-and-timestamps
-                    (map #(select-keys % [:name :last-edit-info])))))))))
+                    (map #(select-keys % [:name :last-edit-info]))))))
+      (testing "Results can be ordered by last-edited"
+        (is (= ["Card with history" "AA" "ZZ"]
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited&sort_direction=asc"))
+                    :data
+                    (map :name)))))
+      (testing "Results can be ordered by model"
+        (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
+                        Card       [_ {:name "ZZ" :collection_id collection-id}]
+                        Card       [_ {:name "AA" :collection_id collection-id}]
+                        Dashboard  [_ {:name "ZZ" :collection_id collection-id}]
+                        Dashboard  [_ {:name "AA" :collection_id collection-id}]
+                        Pulse      [_ {:name "ZZ" :collection_id collection-id}]
+                        Pulse      [_ {:name "AA" :collection_id collection-id}]]
+          (testing "sort direction asc"
+            (is (= [["card" "AA"] ["card" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"]]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=asc"))
+                        :data
+                        (map (juxt :model :name))))))
+          (testing "sort direction desc"
+            (is (= [["pulse" "AA"] ["pulse" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"] ["card" "AA"] ["card" "ZZ"]]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=desc"))
+                        :data
+                        (map (juxt :model :name)))))))))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
