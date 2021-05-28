@@ -442,11 +442,10 @@
          db-ids      (db/select-ids 'Database)]
      {:revision (perms-revision/latest-id)
       :groups   (permissions->groups permissions db-ids)}))
-  ([group-start group-end]
+  ([group-filter]
    (let [permissions (db/select [Permissions :group_id :object],
-                                :group_id [:>= group-start]
-                                :group_id [:< group-end]
-                                :group_id [:not= (:id (group/metabot))])
+                                :group_id [:not= (:id (group/metabot))]
+                                :name [:like (str "%" group-filter "%")])
          db-ids      (db/select-ids 'Database)]
      {:revision (perms-revision/latest-id)
       :groups   (permissions->groups permissions db-ids)})))
