@@ -11,6 +11,8 @@ import {
   SearchInput,
 } from "metabase/nav/components/SearchBar.styled.jsx";
 
+import RecentsList from "./RecentsList";
+
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
 export default class SearchBar extends React.Component {
@@ -89,7 +91,7 @@ export default class SearchBar extends React.Component {
               {searchText.trim().length > 0 ? (
                 <SearchResults searchText={searchText} />
               ) : (
-                <div>Recents!</div>
+                <RecentsList />
               )}
             </div>
           )}
