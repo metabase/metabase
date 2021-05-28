@@ -379,7 +379,7 @@
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (db/execute! {:update :revision
                     ;; in the past
-                    :set {:timestamp "2021-05-01T12:34:56"}
+                    :set {:timestamp (.minusHours (java.time.OffsetDateTime/now) 2)}
                     :where [:= :id (:id _revision1)]})
       (testing "Results include last edited information from the `Revision` table"
         (is (= [{:name "AA"}

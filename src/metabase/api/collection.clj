@@ -347,11 +347,16 @@
                                               [:last_edit_timestamp :nulls-last])
                                             [:last_edit_timestamp :asc]
                                             [:%lower.name :asc]]
-                      [:last-edited :desc] [(if (= @mdb.env/db-type :mysql)
-                                              [(hsql/call :ISNULL :last_edit_timestamp)]
-                                              [:last_edit_timestamp :nulls-last])
-                                            [:last_edit_timestamp :desc]
-                                            [:%lower.name :asc]]
+                      [:last-edited :desc] (into
+                                            (case @mdb.env/db-type
+                                              :mysql
+                                              [[(hsql/call :ISNULL :last_edit_timestamp)]]
+                                              :postgres
+                                              [[(hsql/raw "last_edit_timestamp DESC NULLS LAST")]]
+                                              :h2
+                                              [])
+                                            [[:last_edit_timestamp :desc]
+                                             [:%lower.name :asc]])
                       [:model :asc]        [[:model :asc]  [:%lower.name :asc]]
                       [:model :desc]       [[:model :desc] [:%lower.name :asc]])
         models      (sort (map keyword models))
