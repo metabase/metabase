@@ -259,7 +259,7 @@ describe("scenarios > question > notebook", () => {
       popover().within(() => {
         cy.get("[contenteditable='true']").type(
           // reference joined question by previously set alias
-          "[13649 → Sum of Rating] / [Sum of Rating]",
+          "[13649 → sum] / [Sum of Rating]",
         );
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
