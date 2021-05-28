@@ -1722,7 +1722,7 @@ exports[`TokenField should render "" correctly 1`] = `
     </li>
   </ul>
   <ul
-    className="pl1 my1 scroll-y scroll-show"
+    className="pl1 my1 scroll-hide"
     onMouseEnter={[Function]}
     onMouseLeave={[Function]}
     style={
@@ -1822,7 +1822,7 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
     </li>
   </ul>
   <ul
-    className="pl1 my1 scroll-y scroll-show"
+    className="pl1 my1 scroll-hide"
     onMouseEnter={[Function]}
     onMouseLeave={[Function]}
     style={
