@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -24,6 +23,20 @@ import type {
   ExpressionReference,
 } from "metabase-types/types/Query";
 
+const singleDatePickerPropTypes = {
+  className: PropTypes.string,
+  filter: PropTypes.object,
+  onFilterChange: PropTypes.func,
+  hideTimeSelectors: PropTypes.func,
+};
+
+const multiDatePickerPropTypes = {
+  className: PropTypes.string,
+  filter: PropTypes.object,
+  onFilterChange: PropTypes.func,
+  hideTimeSelectors: PropTypes.func,
+};
+
 const SingleDatePicker = ({
   className,
   filter: [op, field, value],
@@ -38,6 +51,8 @@ const SingleDatePicker = ({
     calendar
   />
 );
+
+SingleDatePicker.propTypes = singleDatePickerPropTypes;
 
 const MultiDatePicker = ({
   className,
@@ -74,6 +89,8 @@ const MultiDatePicker = ({
     </div>
   </div>
 );
+
+MultiDatePicker.propTypes = multiDatePickerPropTypes;
 
 const PreviousPicker = props => (
   <RelativeDatePicker {...props} formatter={value => value * -1} />
@@ -171,7 +188,6 @@ export function getDateTimeFieldTarget(
   if (dimension && dimension.temporalUnit()) {
     return dimension.withoutTemporalBucketing().mbql();
   } else {
-    // $FlowFixMe
     return field;
   }
 }
@@ -186,7 +202,6 @@ function getDateTimeFieldAndValues(
     .map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const field = getDateTimeField(filter[1], bucketing);
-  // $FlowFixMe
   return [field, ...values];
 }
 
