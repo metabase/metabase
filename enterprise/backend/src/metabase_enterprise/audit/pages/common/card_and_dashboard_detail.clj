@@ -33,6 +33,21 @@
                 :group-by [grouped-timestamp]
                 :order-by [[grouped-timestamp :asc]]}))})
 
+(s/defn avg-execution-time-by-time
+  "Get average execution time of a Card broken out by a time `unit`, e.g. `day` or `day-of-week`.
+  Still here instead of in cards because of similarity to views-by-time"
+  [card-id :- su/IntGreaterThanZero, unit :- common/DateTimeUnitStr]
+  {:metadata [[:date        {:display_name "Date",            :base_type (common/datetime-unit-str->base-type unit)}]
+              [:avg_runtime {:display_name "Average Runtime", :base_type :type/Number}]]
+   :results (let [grouped-timestamp (common/grouped-datetime unit :started_at)]
+              (common/reducible-query
+               {:select   [[grouped-timestamp :date]
+                           [:%avg.running_time :avg_runtime]]
+                :from     [:query_execution]
+                :where    [:= :card_id card-id]
+                :group-by [grouped-timestamp]
+                :order-by [[grouped-timestamp :asc]]}))})
+
 (s/defn revision-history
   "Get a revision history table for a Card or Dashboard."
   [model-entity :- (s/cond-pre (class Card) (class Dashboard)), model-id :- su/IntGreaterThanZero]
