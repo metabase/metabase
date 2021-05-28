@@ -9,8 +9,9 @@ import cx from "classnames";
 
 import "./Popover.css";
 
-// space we should leave berween page edge and popover edge
+// space we should leave between page edge and popover edge
 const PAGE_PADDING = 10;
+
 // Popover padding and border
 const POPOVER_BODY_PADDING = 2;
 
@@ -31,7 +32,6 @@ export default class Popover extends Component {
     isOpen: PropTypes.bool,
     hasArrow: PropTypes.bool,
     hasBackground: PropTypes.bool,
-    // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
     tetherOptions: PropTypes.object,
     // used to prevent popovers from being taller than the screen
     sizeToFit: PropTypes.bool,
@@ -394,8 +394,6 @@ export default class Popover extends Component {
     const maxHeight = space - PAGE_PADDING;
     if (bodyHeight > maxHeight) {
       body.style.maxHeight = maxHeight + "px";
-      // body.classList.add("scroll-y");
-      // body.classList.add("scroll-show");
     }
   }
 
