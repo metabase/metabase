@@ -5,6 +5,7 @@ import {
   modal,
   popover,
   openOrdersTable,
+  sidebar,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -534,15 +535,14 @@ describe("scenarios > collection_defaults", () => {
 
     it("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
       cy.visit("/collection/root");
-      cy.findByTestId("sidebar")
-        .as("sidebar")
+      sidebar()
         .findByText("Your personal collection")
         .parent()
         .find(".Icon-chevronright")
         .should("not.exist");
 
       // Ensure if sub-collection is archived, the chevron is not displayed
-      cy.get("@sidebar")
+      sidebar()
         .findByText("First collection")
         .click()
         .findByText("Second collection")
@@ -554,7 +554,7 @@ describe("scenarios > collection_defaults", () => {
       cy.get(".Modal")
         .findByRole("button", { name: "Archive" })
         .click();
-      cy.get("@sidebar")
+      sidebar()
         .findByText("First collection")
         .parent()
         .find(".Icon-chevrondown")
@@ -663,8 +663,7 @@ function selectItemUsingCheckbox(item, icon = "table") {
 }
 
 function getSidebarCollectionChildrenFor(item) {
-  return cy
-    .findByTestId("sidebar")
+  return sidebar()
     .findByText(item)
     .closest("a")
     .parent()

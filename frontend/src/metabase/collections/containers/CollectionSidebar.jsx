@@ -26,7 +26,7 @@ import {
 const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
 // TODO - what's different about this from another sidebar component?
-const Sidebar = styled(Box)`
+const Sidebar = styled(Box.withComponent("aside"))`
   position: fixed;
   left: 0;
   bottom: 0;
@@ -141,7 +141,7 @@ class CollectionSidebar extends React.Component {
     const { allFetched } = this.props;
 
     return (
-      <Sidebar w={340} pt={3} data-testid="sidebar" role="tree">
+      <Sidebar w={340} pt={3} role="tree">
         {allFetched ? (
           this.renderContent()
         ) : (

@@ -1,12 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { Box } from "grid-styled";
+import { t } from "ttag";
 
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import HeaderModal from "metabase/components/HeaderModal";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import EditBar from "metabase/components/EditBar";
 import EditWarning from "metabase/components/EditWarning";
-import { t } from "ttag";
 import { getScrollY } from "metabase/lib/dom";
 
 export default class Header extends Component {
@@ -122,9 +123,7 @@ export default class Header extends Component {
               className="Header-buttonSection flex align-center"
             >
               {section.map((button, buttonIndex) => (
-                <span key={buttonIndex} className="Header-button">
-                  {button}
-                </span>
+                <span key={buttonIndex}>{button}</span>
               ))}
             </span>
           )
@@ -144,7 +143,7 @@ export default class Header extends Component {
           }
           ref={this.header}
         >
-          <div className="Entity py3">
+          <Box py={2}>
             <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
             {this.props.showBadge && (
@@ -153,7 +152,7 @@ export default class Header extends Component {
                 analyticsContext={this.props.analyticsContext}
               />
             )}
-          </div>
+          </Box>
 
           <div
             className="flex align-center flex-align-right"

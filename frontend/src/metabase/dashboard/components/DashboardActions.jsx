@@ -12,6 +12,8 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 import Tooltip from "metabase/components/Tooltip";
 
+import { DashboardHeaderButton } from "./DashboardHeader.styled";
+
 export const getDashboardActions = (
   self,
   {
@@ -58,13 +60,15 @@ export const getDashboardActions = (
                 : t`Add data to share this dashboard`
             }
           >
-            <Icon
-              name="share"
-              className={cx({
-                "text-brand-hover": canShareDashboard,
-                "text-light": !canShareDashboard,
-              })}
-            />
+            <DashboardHeaderButton>
+              <Icon
+                name="share"
+                className={cx({
+                  "text-brand-hover": canShareDashboard,
+                  "text-light": !canShareDashboard,
+                })}
+              />
+            </DashboardHeaderButton>
           </Tooltip>
         }
       >
@@ -121,11 +125,13 @@ export const getDashboardActions = (
         tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}
       >
         <span data-metabase-event={"Dashboard;Night Mode;" + !isNightMode}>
-          <NightModeIcon
-            className="text-brand-hover cursor-pointer"
-            isNightMode={isNightMode}
-            onClick={() => onNightModeChange(!isNightMode)}
-          />
+          <DashboardHeaderButton>
+            <NightModeIcon
+              className="text-brand-hover cursor-pointer"
+              isNightMode={isNightMode}
+              onClick={() => onNightModeChange(!isNightMode)}
+            />
+          </DashboardHeaderButton>
         </span>
       </Tooltip>,
     );
@@ -141,11 +147,13 @@ export const getDashboardActions = (
         <span
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >
-          <FullscreenIcon
-            className="text-brand-hover cursor-pointer"
-            isFullscreen={isFullscreen}
-            onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-          />
+          <DashboardHeaderButton>
+            <FullscreenIcon
+              className="text-brand-hover cursor-pointer"
+              isFullscreen={isFullscreen}
+              onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
+            />
+          </DashboardHeaderButton>
         </span>
       </Tooltip>,
     );

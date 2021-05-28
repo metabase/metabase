@@ -2,7 +2,6 @@ import {
   restore,
   modal,
   popover,
-  sidebar,
   describeWithToken,
 } from "__support__/e2e/cypress";
 
@@ -70,7 +69,7 @@ describeWithToken("scenarios > question > snippets", () => {
     cy.contains("Native query").click();
     cy.icon("snippet").click();
 
-    sidebar()
+    cy.findByTestId("sidebar-right")
       .find(".Icon-ellipsis")
       .click({ force: true });
     popover().within(() => cy.findByText("Change permissions").click());
@@ -123,7 +122,8 @@ describeWithToken("scenarios > question > snippets", () => {
 
     // create folder
     cy.icon("snippet").click();
-    sidebar()
+    cy.findByTestId("sidebar-right")
+      .as("sidebar")
       .find(".Icon-add")
       .click();
     popover().within(() => cy.findByText("New folder").click());
@@ -136,7 +136,7 @@ describeWithToken("scenarios > question > snippets", () => {
     });
 
     // move snippet into folder
-    sidebar()
+    cy.get("@sidebar")
       .findByText("snippet 1")
       .parent()
       .parent()

@@ -11,7 +11,7 @@
  */
 
 import { onlyOn } from "@cypress/skip-test";
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, sidebar } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
@@ -39,7 +39,7 @@ describe("collection permissions", () => {
               describe("create dashboard", () => {
                 it("should offer to save dashboard to a currently opened collection", () => {
                   cy.visit("/collection/root");
-                  cy.findByTestId("sidebar").within(() => {
+                  sidebar().within(() => {
                     cy.findByText("First collection").click();
                     cy.findByText("Second collection").click();
                   });
@@ -173,13 +173,11 @@ describe("collection permissions", () => {
                     cy.get("[class*=PageHeading]")
                       .as("title")
                       .contains("Second collection");
-                    cy.findByTestId("sidebar")
-                      .as("sidebar")
-                      .within(() => {
-                        cy.findByText("First collection");
-                        cy.findByText("Second collection");
-                        cy.findByText("Third collection").should("not.exist");
-                      });
+                    sidebar().within(() => {
+                      cy.findByText("First collection");
+                      cy.findByText("Second collection");
+                      cy.findByText("Third collection").should("not.exist");
+                    });
                     // While we're here, we can test unarchiving the collection as well
                     cy.findByText("Archived collection");
                     cy.findByText("Undo").click();
@@ -189,7 +187,7 @@ describe("collection permissions", () => {
                     // We're still in the parent collection
                     cy.get("@title").contains("Second collection");
                     // But unarchived collection is now visible in the sidebar
-                    cy.get("@sidebar").within(() => {
+                    sidebar().within(() => {
                       cy.findByText("Third collection");
                     });
                   });
