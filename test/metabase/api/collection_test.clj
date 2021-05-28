@@ -331,9 +331,9 @@
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (with-some-children-of-collection collection
           (is (= (map default-item [{:name "Acme Products", :model "pulse"}
-                                    {:name "Electro-Magnetic Pulse", :model "pulse"}
                                     {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"}
-                                    {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"}])
+                                    {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"}
+                                    {:name "Electro-Magnetic Pulse", :model "pulse"}])
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
@@ -601,11 +601,11 @@
              (with-some-children-of-collection nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))
     (testing "Make sure you can see everything for Users that can see everything"
-      (is (= [(default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
-              (default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+      (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
               (collection-item "Crowberto Corv's Personal Collection")
               (default-item {:name "Dine & Dashboard",
-                             :favorite false, :description nil, :model "dashboard"}) ]
+                             :favorite false, :description nil, :model "dashboard"})
+              (default-item {:name "Electro-Magnetic Pulse", :model "pulse"}) ]
              (with-some-children-of-collection nil
                (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                    (remove-non-test-items &ids)
@@ -635,9 +635,9 @@
             (mt/with-temp* [PermissionsGroup           [group]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-              (is (= [(default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
-                      (default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+              (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
                       (default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})
+                      (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
                      (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                          (remove-non-test-items &ids)
