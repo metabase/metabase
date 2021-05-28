@@ -27,12 +27,12 @@
   {:metadata [[:day   {:display_name "Date" :base_type :type/Date}]
               [:views {:display_name "Views" :base_type :type/Integer}]]
    :results (common/reducible-query
-              {:select   [[(hx/cast :date :started_at) :day]
+              (-> {:select   [[(hx/cast :date :started_at) :day]
                           [:%count.* :views]]
                :from     [:query_execution]
-               :where    [:> (hx/cast :date :started_at) (hx/->date (-> 45 days ago))]
                :group-by [(hx/cast :date :started_at)]
-               :order-by [[(hx/cast :date :started_at) :asc]]})})
+               :order-by [[(hx/cast :date :started_at) :asc]]}
+                  (common/add-45-days-clause :started_at)))})
 
 (defn ^:internal-query-fn avg-execution-time-by-day
   "Average execution time broken out by day."
@@ -40,11 +40,12 @@
   {:metadata [[:day              {:display_name "Date" :base_type :type/Date}]
               [:avg_running_time {:display_name "Avg. Running Time (ms)" :base_type :type/Decimal}]]
    :results (common/reducible-query
-              {:select   [[(hx/cast :date :started_at) :day]
+              (-> {:select   [[(hx/cast :date :started_at) :day]
                           [:%avg.running_time :avg_running_time]]
                :from     [:query_execution]
                :group-by [(hx/cast :date :started_at)]
-               :order-by [[(hx/cast :date :started_at) :asc]]})})
+               :order-by [[(hx/cast :date :started_at) :asc]]}
+                  (common/add-45-days-clause :started_at)))})
 
 (defn ^:internal-query-fn most-popular
   "Query that returns the 10 most-popular Cards based on number of query executions, in descending order."
