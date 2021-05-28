@@ -19,11 +19,11 @@
 
 (def total-exec-time-45
   "HoneySQL for a CTE to include the total execution time for each Card for 45 days."
-  [:total_exec_time (-> {:select   [:card_id
-                                    [:%sum.running_time :total_running_time_ms]]
-                         :from     [:query_execution]
-                         :group-by [:card_id]}
-                        (common/add-45-days-clause :started_at))])
+  [:total_runtime (-> {:select   [:card_id
+                                  [:%sum.running_time :total_running_time_ms]]
+                       :from     [:query_execution]
+                       :group-by [:card_id]}
+                      (common/add-45-days-clause :started_at))])
 
 (def query-runs-45
   "HoneySQL for a CTE to include the total number of queries for each Card for 45 days."

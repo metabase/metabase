@@ -144,7 +144,7 @@
                               [(common/card-public-url :card.public_uuid) :public_link]
                               :card.cache_ttl
                               [:avg_exec_time.avg_running_time_ms :avg_exec_time]
-                              [:total_exec_time.total_running_time_ms :total_exec_time]
+                              [:total_runtime.total_running_time_ms :total_runtime]
                               [:query_runs.count :query_runs]]
                   :from      [[:report_card :card]]
                   :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
@@ -152,7 +152,7 @@
                               [:metabase_table :t]     [:= :card.table_id :t.id]
                               [:core_user :u]          [:= :card.creator_id :u.id]
                               :avg_exec_time           [:= :card.id :avg_exec_time.card_id]
-                              :total_exec_time         [:= :card.id :total_exec_time.card_id]
+                              :total_runtime           [:= :card.id :total_runtime.card_id]
                               :query_runs              [:= :card.id :query_runs.card_id]]
                   :where     [:= :card.archived false]}
                  (common/add-search-clause questionFilter :card.name)
