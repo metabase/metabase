@@ -1,8 +1,10 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropType from "prop-types";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
+
+import { OptionsMessageStyled } from "./FieldValuesWidget.styled";
 
 import TokenField from "metabase/components/TokenField";
 import ValueComponent from "metabase/components/Value";
@@ -26,6 +28,10 @@ import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 import type { Parameter } from "metabase-types/types/Parameter";
 
 const MAX_SEARCH_RESULTS = 100;
+
+const optionsMessagePropTypes = {
+  message: PropType.string.isRequired,
+};
 
 // fetch the possible values of a parameter based on the values of the other parameters in a dashboard.
 // parameterId = the auto-generated ID of the parameter
@@ -548,8 +554,10 @@ const EveryOptionState = () => (
 );
 
 const OptionsMessage = ({ message }) => (
-  <div className="flex layout-centered p4 border-bottom">{message}</div>
+  <OptionsMessageStyled>{message}</OptionsMessageStyled>
 );
+
+OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(
   mapStateToProps,
