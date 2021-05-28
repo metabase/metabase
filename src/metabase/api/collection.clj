@@ -6,6 +6,7 @@
   `?namespace=snippet`)."
   (:require [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
+            [honeysql.core :as hsql]
             [honeysql.helpers :as h]
             [medley.core :as m]
             [metabase.api.card :as card-api]
@@ -341,10 +342,14 @@
                       nil                  [[:%lower.name :asc]]
                       [:name :asc]         [[:%lower.name :asc]]
                       [:name :desc]        [[:%lower.name :desc]]
-                      [:last-edited :asc]  [[:last_edit_timestamp :nulls-last]
+                      [:last-edited :asc]  [(if (= @mdb.env/db-type :mysql)
+                                              [(hsql/call :ISNULL :last_edit_timestamp)]
+                                              [:last_edit_timestamp :nulls-last])
                                             [:last_edit_timestamp :asc]
                                             [:%lower.name :asc]]
-                      [:last-edited :desc] [[:last_edit_timestamp :nulls-last]
+                      [:last-edited :desc] [(if (= @mdb.env/db-type :mysql)
+                                              [(hsql/call :ISNULL :last_edit_timestamp)]
+                                              [:last_edit_timestamp :nulls-last])
                                             [:last_edit_timestamp :desc]
                                             [:%lower.name :asc]]
                       [:model :asc]        [[:model :asc]  [:%lower.name :asc]]
