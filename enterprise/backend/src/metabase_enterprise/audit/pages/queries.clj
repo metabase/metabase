@@ -1,6 +1,5 @@
 (ns metabase-enterprise.audit.pages.queries
-  (:require [clj-time.core :refer [ago days]]
-            [metabase-enterprise.audit.pages.common :as common]
+  (:require [metabase-enterprise.audit.pages.common :as common]
             [metabase-enterprise.audit.pages.common.cards :as cards]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]))
