@@ -190,7 +190,7 @@ describe("scenarios > admin > people", () => {
       assertTableRowsCount(5);
 
       cy.findByPlaceholderText("Find someone").type("ne");
-      cy.findByText("1 people found");
+      cy.findByText("1 person found");
       assertTableRowsCount(1);
 
       cy.findByPlaceholderText("Find someone").clear();
