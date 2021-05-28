@@ -51,7 +51,7 @@
                                                              (catch Throwable e
                                                                (log/error e (trs "Error saving query execution info"))))))))
 
-(defn- save-successful-query-execution! [query-execution cached? result-rows]
+(defn- save-successful-query-execution! [cached? query-execution result-rows]
   (save-query-execution!
     (assoc query-execution :cache_hit (boolean cached?) :result_rows result-rows)))
 
@@ -73,7 +73,7 @@
     :average_execution_time (when cached?
                               (query/average-execution-time-ms query-hash))}))
 
-(defn- add-and-save-execution-info-xform! [{:keys [cached?]} execution-info rf]
+(defn- add-and-save-execution-info-xform! [execution-info rf]
   {:pre [(fn? rf)]}
   ;; previously we did nothing for cached results, now we have `cache_hit?` column
   (let [row-count (volatile! 0)]
@@ -82,7 +82,7 @@
        (rf))
 
       ([acc]
-       (save-successful-query-execution! execution-info cached? @row-count)
+       (save-successful-query-execution! (:cached acc) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
@@ -122,7 +122,7 @@
     (let [query          (assoc-in query [:info :query-hash] (qputil/query-hash query))
           execution-info (query-execution-info query)]
       (letfn [(rff* [metadata]
-                (add-and-save-execution-info-xform! metadata execution-info (rff metadata)))
+                (add-and-save-execution-info-xform! execution-info (rff metadata)))
               (raisef* [^Throwable e context]
                 (save-failed-query-execution! execution-info (.getMessage e))
                 (raisef (ex-info (.getMessage e)
