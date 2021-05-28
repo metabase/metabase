@@ -149,7 +149,7 @@ export default function DefaultPicker({
 DefaultPicker.propTypes = defaultPickerPropTypes;
 
 const DefaultLayout = ({ className, fieldWidgets }) => (
-  <div className={className} style={{ marginBottom: 60 }}>
+  <div className={className}>
     {fieldWidgets.map((fieldWidget, index) => (
       <div
         key={index}
