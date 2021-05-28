@@ -22,11 +22,11 @@
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Permissions."
-  [group-filter]
-  {group-start (s/maybe s/Str)}
+  [group-id]
+  {group-id (s/maybe su/IntStringGreaterThanZero)}
   (api/check-superuser)
   (if (some? group-filter)
-      (perms/graph group-filter)
+      (perms/graph (Integer/parseInt group-id))
       (perms/graph)))
 
 (api/defendpoint PUT "/graph"
@@ -65,14 +65,15 @@
 
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`, including the `MetaBot` group only if MetaBot is enabled."
-  [limit offset]
+  [group-filter limit offset]
   (db/select PermissionsGroup
              (cond-> {:where    (if (metabot/metabot-enabled)
                                   true
                                   [:not= :id (u/get-id (group/metabot))])
-                      :order-by [:%lower.name]}
-               (some? limit)  (hh/limit  limit)
-               (some? offset) (hh/offset offset))))
+                      :order-by [:id :desc]}
+               (some? group-filter) (hh/merge-where [:like (str "%" group-filter "%")])
+               (some? limit)        (hh/limit  limit)
+               (some? offset)       (hh/offset offset))))
 
 (defn add-member-counts
   "Efficiently add `:member_count` to PermissionGroups."
@@ -84,27 +85,16 @@
 
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
-  []
+  [group-filter]
   (api/check-superuser)
-  (-> (ordered-groups offset-paging/*limit* offset-paging/*offset*)
+  (-> (ordered-groups group-filter offset-paging/*limit* offset-paging/*offset*)
       (hydrate :member_count)))
-
-(api/defendpoint GET "/database/:id"
-  ;;;;;;;;;;;;;;;; just fetch for one database, basically?
-  ;;;;;;;;;;;;;;;;
-  ;;;;;;;;;;;;;;;;
-  [])
 
 (api/defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."
   [id]
   (api/check-superuser)
   (-> (PermissionsGroup id)
-      ;;;;;;;;;;;;;;; paginate and have name filter
-      ;;;;;;;;;;;;;;;
-      ;;;;;;;;;;;;;;;
-      ;;;;;;;;;;;;;;;
-      ;;;;;;;;;;;;;;;
       (hydrate :members)))
 
 (api/defendpoint POST "/group"
