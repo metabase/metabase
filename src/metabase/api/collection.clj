@@ -201,6 +201,10 @@
                    [:= :archived (boolean archived?)]]}
       (h/merge-where (pinned-state->clause pinned-state))))
 
+(defmethod post-process-collection-children :card
+  [_ rows]
+  (hydrate rows :favorite))
+
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.collection_position [(hx/literal "dashboard") :model]
@@ -226,7 +230,7 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (hydrate rows :favorite))
+  (hydrate (map #(dissoc % :display) rows) :favorite))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
