@@ -91,6 +91,88 @@ Cypress.Commands.add(
 );
 
 /**
+ * Creates a new question,
+ * Creates a new dashboard,
+ * Adds the previously created question to that dashboard.
+ */
+Cypress.Commands.add(
+  "addNewQuestionToNewDashboard",
+  /**
+   * The bare minimum settings we need to provide to the question are the`name` and the `query`.
+   * This relies on some defaults from other custom command `cy.createQuestion()`.
+   * Please note that you can still pass (override) other properties, such as `display`, `visualization_settings`, or `database`
+   */
+  ({
+    questionDetails,
+    dashboardName = "Custom dashboard", // Dashboard name is irrelevant in most cases. We can safely give it a default value.
+    dashboardCardDetails,
+    visitDashboard = true,
+  } = {}) => {
+    cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+      cy.createDashboard(dashboardName).then(
+        ({ body: { id: dashboardId } }) => {
+          /**
+           * Adding a question to the dashboard happens in two steps (explained below).
+           * There are also two distinct ids incolved in this. It is important to understand their difference.
+           * One is question's own id (global). The other one is local to the dashboard only (question "becomes" the dashboard card).
+           *
+           *  1. POST request adds the question to the dashboard but it shrinks the card down to 2x2 size
+           *    (which seems wrong given that the minimum possible dashboard card size in UI is 4x4)
+           *
+           *  2. PUT request is essential for this process. It does the following:
+           *     - registers the question to the dashboard as the dashboard card (`id`, `card_id`),
+           *     - dashboard card sizing (`sizeX` and sizeY`),
+           *     - adds multiple card series (`series`),
+           *     - connects dashboard filters to the dashboard cards (`parameter_mappings`),
+           *     - takes care of custom visualization settings (`visualization_settings`)
+           */
+          cy.log(
+            `Add previously created question ${questionId}: "${questionDetails.name}" to the created dashboard`,
+          );
+
+          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+            cardId: questionId,
+          }).then(({ body: { id: dashCardId } }) => {
+            /**
+             * The most important part (that is always the same) is connecting `id` to the `dashCardId` and `card_id` to the `questionId`.
+             * For the most basic scenario, we don't have to provide `dashboardCardDetails`.
+             * However, it is to override all other settings, depending on the scenario we're after.
+             * The default values for the card size should render legible card for most scenarios, regardless of the chosen visualization.
+             */
+            const defaultCardSettings = {
+              id: dashCardId,
+              card_id: questionId,
+              row: 0,
+              col: 0,
+              sizeX: 12, // Our dashboard grid width is 18 fields
+              sizeY: 8,
+              series: [],
+              visualization_settings: {},
+              parameter_mappings: [],
+            };
+
+            const dashboardCard = Object.assign(
+              defaultCardSettings,
+              dashboardCardDetails,
+            );
+
+            cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+              cards: [dashboardCard],
+            });
+          });
+
+          /**
+           * I can hardly imagine a scenarion in which we don't want to visit newly created dashboard.
+           * However, let's have this option configurable.
+           */
+          visitDashboard && cy.visit(`/dashboard/${dashboardId}`);
+        },
+      );
+    });
+  },
+);
+
+/**
  * PERMISSIONS
  *
  * As per definition for `PUT /graph` from `permissions.clj`:
