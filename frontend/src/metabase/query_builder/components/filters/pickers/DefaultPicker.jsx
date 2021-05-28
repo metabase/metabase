@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 
 import NumberPicker from "./NumberPicker";
 import SelectPicker from "./SelectPicker";
@@ -23,6 +23,22 @@ type Props = {
   isSidebar?: boolean,
   minWidth?: number,
   maxWidth?: number,
+};
+
+const defaultPickerPropTypes = {
+  filter: PropTypes.object,
+  setValue: PropTypes.func,
+  setValues: PropTypes.func,
+  onCommit: PropTypes.func,
+  className: PropTypes.string,
+  isSidebar: PropTypes.bool,
+  minWidth: PropTypes.number,
+  maxWidth: PropTypes.number,
+};
+
+const defaultLayoutPropTypes = {
+  className: PropTypes.string,
+  fieldWidgets: PropTypes.array,
 };
 
 export default function DefaultPicker({
@@ -130,6 +146,8 @@ export default function DefaultPicker({
   }
 }
 
+DefaultPicker.propTypes = defaultPickerPropTypes;
+
 const DefaultLayout = ({ className, fieldWidgets }) => (
   <div className={className} style={{ marginBottom: 60 }}>
     {fieldWidgets.map((fieldWidget, index) => (
@@ -142,3 +160,5 @@ const DefaultLayout = ({ className, fieldWidgets }) => (
     ))}
   </div>
 );
+
+DefaultLayout.propTypes = defaultLayoutPropTypes;
