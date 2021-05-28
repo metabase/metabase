@@ -24,14 +24,15 @@
               [:views {:display_name "Views", :base_type :type/Integer}]]
    :results (let [grouped-timestamp (common/grouped-datetime unit :timestamp)]
               (common/reducible-query
-               {:select   [[grouped-timestamp :date]
-                           [:%count.* :views]]
-                :from     [:view_log]
-                :where    [:and
-                           [:= :model (hx/literal model)]
-                           [:= :model_id model-id]]
-                :group-by [grouped-timestamp]
-                :order-by [[grouped-timestamp :asc]]}))})
+                (-> {:select   [[grouped-timestamp :date]
+                                [:%count.* :views]]
+                     :from     [:view_log]
+                     :where    [:and
+                                [:= :model (hx/literal model)]
+                                [:= :model_id model-id]]
+                     :group-by [grouped-timestamp]
+                     :order-by [[grouped-timestamp :asc]]}
+                    (common/add-45-days-clause :timestamp))))})
 
 (s/defn cached-views-by-time
   "Get number of views of a Card broken out by a time `unit`, e.g. `day` or `day-of-week` and by cache status.
@@ -42,13 +43,14 @@
               [:views          {:display_name "Views",  :base_type :type/Integer}]]
    :results (let [grouped-timestamp (common/grouped-datetime unit :started_at)]
               (common/reducible-query
-                {:select   [[grouped-timestamp :date]
-                            :cache_hit
-                            [:%count.* :count]]
-                 :from     [:query_execution]
-                 :where    [:= :card_id card-id]
-                 :group-by [grouped-timestamp :cache_hit]
-                 :order-by [[grouped-timestamp :asc]]}))})
+                (-> {:select   [[grouped-timestamp :date]
+                                :cache_hit
+                                [:%count.* :count]]
+                     :from     [:query_execution]
+                     :where    [:= :card_id card-id]
+                     :group-by [grouped-timestamp :cache_hit]
+                     :order-by [[grouped-timestamp :asc]]}
+                    (common/add-45-days-clause :started_at))))})
 
 (s/defn avg-execution-time-by-time
   "Get average execution time of a Card broken out by a time `unit`, e.g. `day` or `day-of-week`.
@@ -58,12 +60,13 @@
               [:avg_runtime {:display_name "Average Runtime", :base_type :type/Number}]]
    :results (let [grouped-timestamp (common/grouped-datetime unit :started_at)]
               (common/reducible-query
-                {:select   [[grouped-timestamp :date]
-                            [:%avg.running_time :avg_runtime]]
-                 :from     [:query_execution]
-                 :where    [:= :card_id card-id]
-                 :group-by [grouped-timestamp]
-                 :order-by [[grouped-timestamp :asc]]}))})
+                (-> {:select   [[grouped-timestamp :date]
+                                [:%avg.running_time :avg_runtime]]
+                     :from     [:query_execution]
+                     :where    [:= :card_id card-id]
+                     :group-by [grouped-timestamp]
+                     :order-by [[grouped-timestamp :asc]]}
+                    (common/add-45-days-clause :started_at)) ))})
 
 (s/defn revision-history
   "Get a revision history table for a Card or Dashboard."
