@@ -2,7 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_NAV_ITEMS,
+  PLUGIN_NOTIFICATION_COMPONENTS,
+} from "metabase/plugins";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -292,6 +295,9 @@ export default class Navbar extends Component {
               </Link>
             </IconWrapper>
           )}
+          <PLUGIN_NOTIFICATION_COMPONENTS.NotificationCenterLink
+            {...this.props}
+          />
           <ProfileLink {...this.props} />
         </Flex>
         {this.renderModal()}
