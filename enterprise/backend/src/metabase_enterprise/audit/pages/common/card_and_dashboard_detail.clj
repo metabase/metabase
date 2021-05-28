@@ -47,7 +47,9 @@
                                 :cache_hit
                                 [:%count.* :count]]
                      :from     [:query_execution]
-                     :where    [:= :card_id card-id]
+                     :where    [:and
+                                [:= :card_id card-id]
+                                [:not= :cache_hit nil]]
                      :group-by [grouped-timestamp :cache_hit]
                      :order-by [[grouped-timestamp :asc]]}
                     (common/add-45-days-clause :started_at))))})
