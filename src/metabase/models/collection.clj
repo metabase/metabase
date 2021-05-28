@@ -245,11 +245,11 @@
   SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
   `visible-collection-ids->honeysql-filter-clause` to generate appropriate HoneySQL."
   [permissions-set :- #{perms/UserPath}]
-  (if (contains? permissions-set "/")
+  (if (#{"/" "/moderate/"} permissions-set)
     :all
     (set
      (for [path  permissions-set
-           :let  [[_ id-str] (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)]
+           :let  [[_ id-str] (re-matches #"/collection/((?:\d+)|root)/((read|moderate)/)?" path)]
            :when id-str]
        (cond-> id-str
          (not= id-str "root") Integer/parseInt)))))

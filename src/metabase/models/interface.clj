@@ -247,7 +247,7 @@
       this)")
 
   (^{:added "0.32.0"} can-create? [entity m]
-    "NEW! Check whether or not current user is allowed to CREATE a new instance of `entity` with properties in map
+   "NEW! Check whether or not current user is allowed to CREATE a new instance of `entity` with properties in map
     `m`.
 
   Because this method was added YEARS after `can-read?` and `can-write?`, most models do not have an implementation
@@ -261,7 +261,12 @@
 
   This method is appropriate for powering `PUT` API endpoints. Like `can-create?` this method was added YEARS after
   most of the current API endpoints were written, so it is used in very few places, and this logic is determined
-  ad-hoc in the API endpoints themselves. Use this method going forward!"))
+  ad-hoc in the API endpoints themselves. Use this method going forward!")
+
+  (^{:added "0.40.0"} can-moderate? [instance changes]
+   "NEW! Check whether or not the current user is allowed to create `ModerationReview`s for the object
+
+  This method is appropriate for powering `PUT` API endpoints."))
 
 (def IObjectPermissionsDefaults
   "Default implementations for `IObjectPermissions`."
@@ -274,6 +279,13 @@
       (NoSuchMethodException.
        (str (format "%s does not yet have an implementation for `can-create?`. " (name entity))
             "Please consider adding one. See dox for `can-create?` for more details."))))
+
+   :can-moderate?
+   (fn [entity _]
+     (throw
+      (NoSuchMethodException.
+       (str (format "%s does not yet have an implementation for `can-moderate?`. " (name entity))
+            "Please consider adding one. See dox for `can-moderate?` for more details."))))
 
    :can-update?
    (fn

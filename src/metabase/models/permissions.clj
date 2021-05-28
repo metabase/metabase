@@ -78,18 +78,27 @@
                     (or
                      ;; /collection/:id/ -> readwrite perms for a specific Collection
                      (and #"\d+/"
-                          ;; /collection/:id/read/ -> read perms for a specific Collection
-                          (opt "read/"))
+                          ;; /collection/:id/read/     -> read perms for a specific Collection
+                          ;; /collection/:id/moderate/ -> moderate perms for a specific Collection
+                          (opt
+                           (or
+                            "moderate/"
+                            "read/")))
                      ;; /collection/root/ -> readwrite perms for the Root Collection
                      (and "root/"
-                          ;; /collection/root/read/ -> read perms for the Root Collection
-                          (opt "read/"))
+                          ;; /collection/root/read/     -> read perms for the Root Collection
+                          ;; /collection/root/moderate/ -> moderate perms for the Root Collection
+                          (opt
+                           (or "moderate/"
+                               "read/")))
                      ;; /collection/namespace/:namespace/root/ -> readwrite perms for 'Root' Collection in non-default
                      ;; namespace (only really used for EE)
                      (and "namespace/" path-char "+/root/"
                           ;; /collection/namespace/:namespace/root/read/ -> read perms for 'Root' Collection in
                           ;; non-default namespace
-                          (opt "read/")))))
+                          (opt
+                           (or "moderate/"
+                               "read/"))))))
               "$"))
 
 (def segmented-perm-regex
@@ -110,9 +119,9 @@
   "Does `object-path` follow a known, allowed format to an *object*? (The root path, \"/\", is not considered an object;
   this returns `false` for it)."
   ^Boolean [^String object-path]
-  (boolean (when (and (string? object-path)
-                      (seq object-path))
-             (re-matches valid-object-path-regex object-path))))
+  (boolean (and (string? object-path)
+                (seq object-path)
+                (re-matches valid-object-path-regex object-path))))
 
 (def ObjectPath
   "Schema for a valid permissions path to an object."
@@ -199,6 +208,11 @@
       (format "/collection/namespace/%s/root/" (escape-path-component (u/qualified-name collection-namespace)))
       "/collection/root/")))
 
+(s/defn collection-moderate-path :- ObjectPath
+  "Return the permissions path for *moderate* access for a `collection-or-id`."
+  [collection-or-id :- MapOrID]
+  (str (collection-readwrite-path collection-or-id) "moderate/"))
+
 (s/defn collection-read-path :- ObjectPath
   "Return the permissions path for *read* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
@@ -282,16 +296,17 @@
   "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`), or for the Root
   Collection if `collection_id` is `nil`."
-  ([this read-or-write]
-   (perms-objects-set-for-parent-collection nil this read-or-write))
+  ([this permission-type]
+   (perms-objects-set-for-parent-collection nil this permission-type))
 
   ([collection-namespace :- (s/maybe su/KeywordOrString)
     this                 :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
-    read-or-write        :- (s/enum :read :write)]
+    read-or-write        :- (s/enum :read :write :moderate)]
    ;; based on value of read-or-write determine the approprite function used to calculate the perms path
    (let [path-fn (case read-or-write
-                   :read  collection-read-path
-                   :write collection-readwrite-path)]
+                   :read     collection-read-path
+                   :write    collection-readwrite-path
+                   :moderate collection-moderate-path)]
      ;; now pass that function our collection_id if we have one, or if not, pass it an object representing the Root
      ;; Collection
      #{(path-fn (or (:collection_id this)
@@ -308,6 +323,7 @@
          ;; up with a good name for the Mixin. - Cam)
          {:can-read?         (partial i/current-user-has-full-permissions? :read)
           :can-write?        (partial i/current-user-has-full-permissions? :write)
+          :can-moderate?     (partial i/current-user-has-full-permissions? :moderate)
           :perms-objects-set perms-objects-set-for-parent-collection}))
 
 
@@ -564,6 +580,13 @@
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-not-personal-collection-or-descendant collection-or-id)
   (delete-related-permissions! group-or-id (collection-readwrite-path collection-or-id)))
+
+(s/defn grant-collection-moderate-permissions!
+  "Grant moderate access to a Collection, which means a user can verify or flag items in the collection, view all
+  Cards, and add/remove Cards."
+  [group-or-id :- MapOrID collection-or-id :- MapOrID]
+  (check-not-personal-collection-or-descendant collection-or-id)
+  (grant-permissions! (u/the-id group-or-id) (collection-moderate-path collection-or-id)))
 
 (s/defn grant-collection-readwrite-permissions!
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."

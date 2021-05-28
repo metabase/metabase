@@ -175,12 +175,12 @@
       ;;
       ;; + Our analytics (Revoke permissions to All Users)
       ;; +--+ Parent collection (Revoke permissions to All Users)
-      ;;    +--+ Child collection (Give All Users group Curate access)
+      ;;    +--+ Child collection (Give All Users group Moderate access)
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp* [Collection [parent-collection {:name "Parent"}]
                         Collection [child-collection  {:name "Child", :location (format "/%d/" (:id parent-collection))}]]
           (perms/revoke-collection-permissions! (group/all-users) parent-collection)
-          (perms/grant-collection-readwrite-permissions! (group/all-users) child-collection)
+          (perms/grant-collection-moderate-permissions! (group/all-users) child-collection)
           (is (= [{:name "Child", :children []}]
                  (collection-tree-names-only (map :id [parent-collection child-collection])
                                              (mt/user-http-request :rasta :get 200 "collection/tree")))))))

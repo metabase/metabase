@@ -247,7 +247,7 @@
 
 (deftest permissions-set->visible-collection-ids-test
   (testing "Make sure we can look at the current user's permissions set and figure out which Collections they're allowed to see"
-    (is (= #{8 9}
+    (is (= #{8 9 10}
            (collection/permissions-set->visible-collection-ids
             #{"/db/1/"
               "/db/2/native/"
@@ -255,7 +255,8 @@
               "/db/5/schema/PUBLIC/"
               "/db/6/schema/PUBLIC/table/7/"
               "/collection/8/"
-              "/collection/9/read/"}))))
+              "/collection/9/read/"
+              "/collection/10/moderate/"}))))
 
   (testing "If the current user has root permissions then make sure the function returns `:all`, which signifies that they are able to see all Collections"
     (is (= :all
