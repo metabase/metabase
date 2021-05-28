@@ -104,6 +104,9 @@ export const parseSchemaId = id => String(id || "").split(":");
 export const generateSchemaId = (dbId, schemaName) =>
   `${dbId}:${schemaName || ""}`;
 
+export const RecentsSchema = new schema.Entity("recents", undefined, {
+  idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
+});
 export const LoginHistorySchema = new schema.Entity("loginHistory", undefined, {
   idAttribute: ({ timestamp }) => `${timestamp}`,
 });
