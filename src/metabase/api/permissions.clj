@@ -22,13 +22,11 @@
 
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Permissions."
-  [group-start group-end]
-  {group-start (s/maybe su/IntGreaterThanZero)
-   group-end   (s/maybe su/IntGreaterThanZero)}
-  (api/check-valid-page-params group-start group-end)
+  [group-filter]
+  {group-start (s/maybe s/Str)}
   (api/check-superuser)
-  (if (some? group-start)
-      (perms/graph group-start group-end)
+  (if (some? group-filter)
+      (perms/graph group-filter)
       (perms/graph)))
 
 (api/defendpoint PUT "/graph"
