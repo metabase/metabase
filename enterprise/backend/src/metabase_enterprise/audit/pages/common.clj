@@ -212,7 +212,7 @@
   [query date_column]
   (h/merge-where query [:>
                         (hx/cast :date date_column)
-                        (hx/literal (t/format "yyyy-MM-dd" (t/minus (t/local-date) (t/days 45))))]))
+                        (hx/cast :date (hx/literal (t/format "yyyy-MM-dd" (t/minus (t/local-date) (t/days 45)))))]))
 
 (defn add-search-clause
   "Add an appropriate `WHERE` clause to `query` to see if any of the `fields-to-search` match `query-string`.
