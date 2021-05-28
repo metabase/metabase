@@ -692,4 +692,34 @@ describe("scenarios > question > custom columns", () => {
     cy.contains("37.65");
     cy.findByText("No discount");
   });
+
+  it.skip("should work with relative date filter applied to a custom column (metabase#16273)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']")
+        .type("case([Discount] >0, [Created At], [Product → Created At])")
+        .blur();
+      cy.findByPlaceholderText("Something nice and descriptive").type(
+        "MiscDate",
+      );
+      cy.button("Done").click();
+    });
+    cy.findByText("Filter").click();
+    popover()
+      .contains("MiscDate")
+      .click();
+    // The popover shows up with the default value selected - previous 30 days.
+    // Since we don't have any orders in the Sample Dataset for that period, we have to change it to the previous 30 years.
+    cy.findByText("Days").click();
+    cy.findByText("Years").click();
+    cy.button("Add filter").click();
+    cy.button("Visualize").click();
+    cy.wait("@dataset").then(interception => {
+      expect(interception.response.body.error).not.to.exist;
+    });
+    cy.findByText("MiscDate");
+  });
 });
