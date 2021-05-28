@@ -12,6 +12,9 @@ NotificationCenterLink.propTypes = {
   className: PropTypes.string,
 };
 
+// TODO -- I should refactor this `hover` nonsense so that I don't have to dup the logic from NavBar.
+// TODO -- maybe use styled-components instead of existing util classes
+// TODO -- another issue: props like p="11px" on `<Icon>`; may want to abstract that out, too.
 function NotificationCenterLink({ className }) {
   return (
     <IconWrapper
@@ -28,7 +31,7 @@ function NotificationCenterLink({ className }) {
       >
         <Icon
           size={18}
-          p={"11px"}
+          p="11px"
           name="document_curled"
           tooltip={t`View notifications`}
         />
