@@ -3,11 +3,14 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.models :refer [Card]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test.timezones-test :as timezones-test]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
-            [metabase.test.data.interface :as tx]))
+            [metabase.test.data.interface :as tx]
+            [metabase.util :as u]))
 
 (defn- native-form [query]
   (:query (qp/query->native query)))
@@ -580,3 +583,30 @@
             (is (= [[4 89 0.46 89]]
                    (mt/formatted-rows [int int 2.0 int]
                      (qp/process-query query))))))))))
+
+(deftest dont-require-data-perms-to-join-saved-sql-question-test
+  (testing "You shouldn't require data perms to join against a saved SQL question (#14495)"
+    (mt/dataset sample-dataset
+      (mt/with-temp-copy-of-db
+        (mt/with-temp Card [card {:dataset_query (mt/native-query {:query "SELECT ID FROM ORDERS"})}]
+          (let [query (mt/mbql-query orders
+                        {:fields   [$id $product_id]
+                         :joins    [{:fields       :none
+                                     :source-table (format "card__%d" (u/the-id card))
+                                     :condition    [:= $id &Q.*ID/BigInteger]
+                                     :alias        "Q"}]
+                         :filter   [:= $product_id "6"]
+                         :order-by [[:asc $id]]
+                         :limit    2})]
+            (is (= [[10 6]
+                    [282 6]]
+                   (mt/formatted-rows [int int]
+                     (qp/process-query query))))
+            (testing "Should be able to run the query with data perms but not SQL perms"
+              (perms/revoke-permissions! (group/all-users) (mt/id))
+              (perms/grant-permissions! (group/all-users) (perms/all-schemas-path (mt/id)))
+              (mt/with-test-user :rasta
+                (is (= [[10 6]
+                        [282 6]]
+                       (mt/formatted-rows [int int]
+                         (qp/process-query query))))))))))))
