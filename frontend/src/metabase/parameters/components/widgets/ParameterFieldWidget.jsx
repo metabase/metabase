@@ -200,11 +200,11 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
             })}
           </div>
           <div
-            className={cx("flex mt1 px1", isEqualsOp && "mr1 mb1")}
+            className={cx("flex mt1 px1 pb1", isEqualsOp && "mr1 mb1")}
             style={{
               background: "white",
-              position: "absolute",
-              bottom: 0,
+              position: "fixed",
+              bottom: -7,
               borderTop: `1px solid ${color("border")}`,
               boxSizing: "border-box",
               borderBottomRightRadius: 6,

@@ -586,7 +586,7 @@ export default class TokenField extends Component {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className={cx(optionsClassName, "pl1 my1 scroll-y scroll-show")}
+          className={cx(optionsClassName, "pl1 my1 scroll-hide")}
           style={{ ...optionsStyle, maxHeight: 300 }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
