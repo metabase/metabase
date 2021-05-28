@@ -448,7 +448,6 @@ export class FieldValuesWidget extends Component {
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
           maxWidth: this.props.maxWidth,
-          marginBottom: 60,
         }}
       >
         <TokenField
