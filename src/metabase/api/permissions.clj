@@ -71,7 +71,7 @@
              (cond-> {:where    (if (metabot/metabot-enabled)
                                   true
                                   [:not= :id (u/get-id (group/metabot))])
-                      :order-by [:id :desc]}
+                      :order-by [[:id :desc]]}
                (some? group-filter) (hh/merge-where [:like (str "%" group-filter "%")])
                (some? limit)        (hh/limit  limit)
                (some? offset)       (hh/offset offset))))
