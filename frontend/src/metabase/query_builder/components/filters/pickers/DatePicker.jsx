@@ -245,7 +245,6 @@ export const DATE_OPERATORS: Operator[] = [
       getOptions(filter),
     ],
     test: ([op, field, value]) =>
-      // $FlowFixMe
       (op === "time-interval" && value < 0) || Object.is(value, -0),
     widget: PreviousPicker,
     options: { "include-current": true },
@@ -359,6 +358,7 @@ export default class DatePicker extends Component {
     className: PropTypes.string,
     hideEmptinessOperators: PropTypes.bool,
     hideTimeSelectors: PropTypes.bool,
+    isSidebar: PropTypes.bool,
     operators: PropTypes.array,
   };
 
@@ -375,8 +375,16 @@ export default class DatePicker extends Component {
   }
 
   render() {
-    const { filter, onFilterChange, includeAllTime, className } = this.props;
+    const {
+      className,
+      filter,
+      onFilterChange,
+      includeAllTime,
+      isSidebar,
+    } = this.props;
+
     let { operators } = this.state;
+
     if (includeAllTime) {
       operators = [ALL_TIME_OPERATOR, ...operators];
     }
@@ -384,13 +392,18 @@ export default class DatePicker extends Component {
     const operator = getOperator(this.props.filter, operators);
     const Widget = operator && operator.widget;
 
+    const style = {
+      minWidth: 300,
+      marginBottom: isSidebar ? 0 : 60,
+    };
+
     return (
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
         className={cx(className, {
           "flex align-center": Widget && Widget.horizontalLayout,
         })}
-        style={{ minWidth: 300, marginBottom: 60 }}
+        style={style}
       >
         <DateOperatorSelector
           className={cx({

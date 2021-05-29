@@ -12,6 +12,7 @@ import { getOperator as datePickerOperator } from "../filters/pickers/DatePicker
 export default function FilterPopoverFooter({
   filter,
   isNew,
+  isSidebar,
   onFilterChange,
   onCommit,
   className,
@@ -27,10 +28,9 @@ export default function FilterPopoverFooter({
 
   const buttonText = isNew ? t`Add filter` : t`Update filter`;
 
-  return (
-    <div
-      className={cx(className, "flex align-center")}
-      style={{
+  const style = isSidebar
+    ? {}
+    : {
         background: "white",
         position: "absolute",
         bottom: 0,
@@ -40,10 +40,12 @@ export default function FilterPopoverFooter({
         borderBottomLeftRadius: 6,
         paddingTop: 8,
         width: "calc(100% - 2px)",
-        // Without zIndex, calendar day marks scroll above this component
+        // Without zIndex, calendar days, if selected, scroll above this component
         zIndex: 1,
-      }}
-    >
+      };
+
+  return (
+    <div className={cx(className, "flex align-center")} style={style}>
       <FilterOptions
         filter={filter}
         onFilterChange={onFilterChange}
@@ -67,6 +69,7 @@ export default function FilterPopoverFooter({
 FilterPopoverFooter.propTypes = {
   filter: PropTypes.object,
   isNew: PropTypes.bool,
+  isSidebar: PropTypes.bool,
   onFilterChange: PropTypes.func,
   onCommit: PropTypes.func,
   className: PropTypes.string,
