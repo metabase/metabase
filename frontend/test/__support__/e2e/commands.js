@@ -4,6 +4,8 @@ import "./commands/ui/icon";
 import "./commands/user/createUser";
 import "./commands/user/authentication";
 
+import "./commands/overwrites/log";
+
 Cypress.Commands.add("createDashboard", name => {
   cy.log(`Create a dashboard: ${name}`);
   cy.request("POST", "/api/dashboard", { name });
@@ -254,22 +256,3 @@ Cypress.Commands.add(
     });
   },
 );
-
-/**
- * OVERWRITES
- */
-
-Cypress.Commands.overwrite("log", (originalFn, message) => {
-  Cypress.log({
-    displayName: `--- ${window.logCalls}. ${message} ---`,
-    name: `--- ${window.logCalls}. ${message} ---`,
-    message: "",
-  });
-
-  window.logCalls++;
-});
-
-// We want to reset the log counter for every new test (do not remove from this file)
-beforeEach(() => {
-  window.logCalls = 1;
-});
