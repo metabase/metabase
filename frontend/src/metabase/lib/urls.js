@@ -133,10 +133,7 @@ export function collection(collection) {
     const id = collection && collection.id ? collection.id : "root";
     return `/collection/${id}`;
   }
-  const slug = collection.slug
-    ? collection.slug.split("_").join("-")
-    : slugg(collection.name);
-  return appendSlug(`/collection/${collection.id}`, slug);
+  return appendSlug(`/collection/${collection.id}`, slugg(collection.name));
 }
 
 export function label(label) {
