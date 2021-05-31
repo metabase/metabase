@@ -156,7 +156,6 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                     <Box mt={hasPinnedItems ? 3 : 0}>
                       <ItemsTable
                         items={unpinnedItems}
-                        empty={unpinnedItems.length === 0}
                         selectedItems={selected}
                         getIsSelected={getIsSelected}
                         collection={collection}
