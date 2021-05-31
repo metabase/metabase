@@ -586,11 +586,10 @@ export default class TokenField extends Component {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className={cx(optionsClassName, "pl1 my1 scroll-hide")}
+          className={cx(optionsClassName, "overflow-auto pl1 my1 scroll-hide")}
           style={{
             ...optionsStyle,
             maxHeight: 300,
-            overflow: "auto",
           }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}

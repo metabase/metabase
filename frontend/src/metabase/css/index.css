@@ -12,6 +12,7 @@
 @import "./components/table.css";
 @import "./components/token.css";
 @import "./components/grabber.css";
+@import "./components/popover.css";
 
 @import "./containers/entity_search.css";
 
@@ -23,3 +24,4 @@
 @import "./pulse.css";
 @import "./query_builder.css";
 @import "./setup.css";
+

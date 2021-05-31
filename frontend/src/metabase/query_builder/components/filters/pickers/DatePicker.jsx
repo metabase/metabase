@@ -392,18 +392,14 @@ export default class DatePicker extends Component {
     const operator = getOperator(this.props.filter, operators);
     const Widget = operator && operator.widget;
 
-    const style = {
-      minWidth: 300,
-      marginBottom: isSidebar ? 0 : 60,
-    };
-
     return (
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
         className={cx(className, {
           "flex align-center": Widget && Widget.horizontalLayout,
+          "popover-options-margin-bottom": !isSidebar,
         })}
-        style={style}
+        style={{ minWidth: 300 }}
       >
         <DateOperatorSelector
           className={cx({
