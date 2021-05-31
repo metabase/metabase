@@ -215,7 +215,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                 focusChanged(false);
               }}
             >
-              {savedValue.length > 0 ? "Update filter" : "Add filter"}
+              {savedValue.length > 0 ? t`Update filter` : t`Add filter`}
             </Button>
           </div>
         </Popover>
