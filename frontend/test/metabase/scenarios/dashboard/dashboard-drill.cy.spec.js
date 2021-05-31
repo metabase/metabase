@@ -257,26 +257,26 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .within(() => cy.findByText("foo"));
   });
 
-  ["field value", "card title"].forEach(testCase => {
-    it(`should pass multiple filters for numeric column on drill-through the ${testCase} (metabase#13062)`, () => {
+  describe("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
+    const questionDetails = {
+      name: "13062Q",
+      query: {
+        "source-table": REVIEWS_ID,
+      },
+    };
+
+    const filter = {
+      id: "18024e69",
+      name: "Category",
+      slug: "category",
+      type: "category",
+    };
+
+    beforeEach(() => {
       // Set "Rating" Field type to: "Category"
       cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
         semantic_type: "type/Category",
       });
-
-      const questionDetails = {
-        name: "13062Q",
-        query: {
-          "source-table": REVIEWS_ID,
-        },
-      };
-
-      const filter = {
-        id: "18024e69",
-        name: "Category",
-        slug: "category",
-        type: "category",
-      };
 
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
@@ -311,22 +311,20 @@ describe("scenarios > dashboard > dashboard drill", () => {
           cy.findByText("2 selections");
         },
       );
+    });
 
-      // Drill-throughs for each of the cases
-      if (testCase === "field value") {
-        cy.findByText("xavier").click();
-        cy.findByText("=").click();
+    it("when clicking on the field value (metabase#13062-1)", () => {
+      cy.findByText("xavier").click();
+      cy.findByText("=").click();
 
-        cy.findByText("Reviewer is xavier");
-        cy.findByText("Rating is equal to 2 selections");
-        cy.contains("Reprehenderit non error"); // xavier's review
-      }
-
-      if (testCase === "card title") {
-        cy.findByText(questionDetails.name).click();
-        cy.findByText("Rating is equal to 2 selections");
-        cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
-      }
+      cy.findByText("Reviewer is xavier");
+      cy.findByText("Rating is equal to 2 selections");
+      cy.contains("Reprehenderit non error"); // xavier's review
+    });
+    it("when clicking on the card title (metabase#13062-2)", () => {
+      cy.findByText(questionDetails.name).click();
+      cy.findByText("Rating is equal to 2 selections");
+      cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
     });
   });
 
