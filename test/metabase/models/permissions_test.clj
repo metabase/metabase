@@ -551,12 +551,15 @@
         (is (= {(mt/id :categories) :all, (mt/id :venues) :all}
                (test-data-graph group)))))))
 
-;;(deftest pagination-test
-;;  (testing "start-end pagination works for groups"
-;;    (mt/with-temp* [PermissionsGroup [group1]
-;;                    PermissionsGroup [group2]]
-;;      (is (= 1 (count (keys perms/graph [(group1 :id) (group2 :id)]))))
-;;      (is (= 2 (count (keys perms/graph [(group1 :id) (+ 1 (group2 :id))])))))))
+(deftest graph-groupid-test
+  (testing "groupid filter works for groups"
+    (mt/with-temp* [PermissionsGroup [group1]
+                    PermissionsGroup [group2]
+                    Database         [database]
+                    Table            [table    {:db_id (u/get-id database)}]]
+      (perms/update-graph! [(u/get-id group1) (u/get-id database) :schemas] {"" {(u/get-id table) :all}})
+      (perms/update-graph! [(u/get-id group2) (u/get-id database) :schemas] {"" {(u/get-id table) :all}})
+      (is (= 1 (count (:groups (perms/graph (u/the-id group2)))))))))
 
 (deftest graph-for-tables-without-schemas-test
   (testing "Make sure that the graph functions work correctly for DBs with no schemas (#4000)"
