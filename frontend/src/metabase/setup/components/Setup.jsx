@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -24,6 +25,12 @@ const USER_STEP_NUMBER = 2;
 const DATABASE_CONNECTION_STEP_NUMBER = 3;
 const DATABASE_SCHEDULING_STEP_NUMBER = 4;
 const PREFERENCES_STEP_NUMBER = 5;
+
+const AddDatabaseHelpCardHolder = styled.div`
+  position: fixed;
+  left: 1em;
+  bottom: 1em;
+`;
 
 export default class Setup extends Component {
   static propTypes = {
@@ -199,13 +206,7 @@ export default class Setup extends Component {
 
           {selectedDatabaseEngine &&
             activeStep === DATABASE_CONNECTION_STEP_NUMBER && (
-              <div
-                style={{
-                  position: "fixed",
-                  left: "1em",
-                  bottom: "1em",
-                }}
-              >
+              <AddDatabaseHelpCardHolder>
                 <AddDatabaseHelpCard
                   engine={selectedDatabaseEngine}
                   hasCircle={false}
@@ -215,7 +216,7 @@ export default class Setup extends Component {
                     backgroundColor: color("white"),
                   }}
                 />
-              </div>
+              </AddDatabaseHelpCardHolder>
             )}
         </div>
       );
