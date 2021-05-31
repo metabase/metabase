@@ -1,38 +1,8 @@
 import "./commands/ui/button";
 import "./commands/ui/icon";
 
-import { USERS } from "__support__/e2e/cypress_data";
-
-Cypress.Commands.add("createUser", user => {
-  cy.log(`Create ${user} user`);
-  return cy.request("POST", "/api/user", USERS[user]).then(({ body }) => {
-    // Dismiss `it's ok to play around` modal for the created user
-    cy.request("PUT", `/api/user/${body.id}/qbnewb`, {});
-  });
-});
-
-Cypress.Commands.add("signIn", (user = "admin") => {
-  const { email: username, password } = USERS[user];
-  cy.log(`Logging in as ${user}`);
-  cy.request("POST", "/api/session", { username, password });
-});
-
-Cypress.Commands.add("signInAsAdmin", () => {
-  cy.signIn("admin");
-});
-
-Cypress.Commands.add("signInAsNormalUser", () => {
-  cy.signIn("normal");
-});
-
-Cypress.Commands.add("signInAsSandboxedUser", () => {
-  cy.signIn("sandboxed");
-});
-
-Cypress.Commands.add("signOut", () => {
-  cy.log("Signing out");
-  cy.clearCookie("metabase.SESSION");
-});
+import "./commands/user/createUser";
+import "./commands/user/authentication";
 
 Cypress.Commands.add("createDashboard", name => {
   cy.log(`Create a dashboard: ${name}`);
