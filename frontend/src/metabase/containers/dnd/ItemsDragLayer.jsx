@@ -18,7 +18,7 @@ import NormalItem from "metabase/collections/components/NormalItem";
 @BodyComponent
 export default class ItemsDragLayer extends React.Component {
   render() {
-    const { isDragging, currentOffset, selected, item } = this.props;
+    const { isDragging, currentOffset, selected, pinned, item } = this.props;
     if (!isDragging || !currentOffset) {
       return null;
     }
@@ -35,7 +35,11 @@ export default class ItemsDragLayer extends React.Component {
           pointerEvents: "none",
         }}
       >
-        <DraggedItems items={items} draggedItem={item.item} />
+        <DraggedItems
+          items={items}
+          pinnedItems={pinned}
+          draggedItem={item.item}
+        />
       </div>
     );
   }
@@ -46,9 +50,22 @@ class DraggedItems extends React.Component {
     // necessary for decent drag performance
     return (
       nextProps.items.length !== this.props.items.length ||
+      nextProps.pinnedItems.length !== this.props.pinnedItems.length ||
       nextProps.draggedItem !== this.props.draggedItem
     );
   }
+
+  compareItems = (item1, item2) =>
+    item1.model === item2.model && item1.id === item2.id;
+
+  isDraggedItemPinned = () => {
+    const { pinnedItems, draggedItem } = this.props;
+    const index = pinnedItems.findIndex(
+      item => item.model === draggedItem.model && item.id === draggedItem.id,
+    );
+    return index >= 0;
+  };
+
   render() {
     const { items, draggedItem } = this.props;
     const index = _.findIndex(items, draggedItem);
@@ -60,7 +77,11 @@ class DraggedItems extends React.Component {
         }}
       >
         {items.map(item => (
-          <NormalItem key={item.id} item={item} />
+          <NormalItem
+            key={item.id}
+            item={item}
+            pinned={this.isDraggedItemPinned()}
+          />
         ))}
       </div>
     );

@@ -236,7 +236,7 @@ function CollectionContent({
                 }}
               </Search.ListLoader>
             </Box>
-            <ItemsDragLayer selected={selected} />
+            <ItemsDragLayer selected={selected} pinned={pinnedItems} />
           </Box>
         );
       }}
