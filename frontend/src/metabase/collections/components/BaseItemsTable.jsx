@@ -13,7 +13,7 @@ import Link from "metabase/components/Link";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
-export const ROW_HEIGHT = 90;
+export const ROW_HEIGHT = 80;
 
 const TableItemSecondaryField = styled.p`
   font-size: 0.95em;
