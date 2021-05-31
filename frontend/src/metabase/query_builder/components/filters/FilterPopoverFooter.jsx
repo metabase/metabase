@@ -1,13 +1,10 @@
-import React from "react";
-import PropTypes from "prop-types";
-import { color } from "metabase/lib/colors";
 import { t } from "ttag";
+import PropTypes from "prop-types";
 import cx from "classnames";
-
 import Button from "metabase/components/Button";
-
-import FilterOptions from "./FilterOptions";
+import React from "react";
 import { getOperator as datePickerOperator } from "../filters/pickers/DatePicker";
+import FilterOptions from "./FilterOptions";
 
 export default function FilterPopoverFooter({
   filter,
@@ -26,26 +23,15 @@ export default function FilterPopoverFooter({
     ? datePickerOperator(filter)
     : filter.operator();
 
-  const buttonText = isNew ? t`Add filter` : t`Update filter`;
+  const containerClassName = cx(className, "flex align-center", {
+    PopoverFooter: !isSidebar,
+  });
 
-  const style = isSidebar
-    ? {}
-    : {
-        background: "white",
-        position: "absolute",
-        bottom: 0,
-        borderTop: `1px solid ${color("border")}`,
-        boxSizing: "border-box",
-        borderBottomRightRadius: 6,
-        borderBottomLeftRadius: 6,
-        paddingTop: 8,
-        width: "calc(100% - 2px)",
-        // Without zIndex, calendar days, if selected, scroll above this component
-        zIndex: 1,
-      };
+  const buttonText = isNew ? t`Add filter` : t`Update filter`;
+  const isButtonDisabled = !filter.isValid();
 
   return (
-    <div className={cx(className, "flex align-center")} style={style}>
+    <div className={containerClassName}>
       <FilterOptions
         filter={filter}
         onFilterChange={onFilterChange}
@@ -55,7 +41,7 @@ export default function FilterPopoverFooter({
         <Button
           data-ui-tag="add-filter"
           purple
-          disabled={!filter.isValid()}
+          disabled={isButtonDisabled}
           ml="auto"
           onClick={onCommit}
         >

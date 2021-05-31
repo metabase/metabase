@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import { color } from "metabase/lib/colors";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
@@ -130,6 +129,11 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       this.setState({ isFocused });
     };
 
+    const footerClassName = cx(
+      "flex mt1 px1 pb1 PopoverFooter PopoverParameterFieldWidgetFooter",
+      isEqualsOp && "mr1 mb1",
+    );
+
     const handleButtonClick = () => {
       setValue(unsavedValue.length > 0 ? unsavedValue : null);
       focusChanged(false);
@@ -204,20 +208,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
               );
             })}
           </div>
-          <div
-            className={cx("flex mt1 px1 pb1", isEqualsOp && "mr1 mb1")}
-            style={{
-              background: "white",
-              position: "fixed",
-              bottom: -7,
-              borderTop: `1px solid ${color("border")}`,
-              boxSizing: "border-box",
-              borderBottomRightRadius: 6,
-              borderBottomLeftRadius: 6,
-              paddingTop: 8,
-              width: "calc(100% - 2px)",
-            }}
-          >
+          <div className={footerClassName}>
             <Button
               primary
               className="ml-auto"
