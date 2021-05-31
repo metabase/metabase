@@ -164,7 +164,8 @@ function BaseItemsTable({
   onDrop,
   onToggleSelected,
   selectedItems,
-  getIsSelected,
+  getIsSelected = () => false,
+  headless, // used when displaying dragged element
   ...props
 }) {
   const itemRenderer = useCallback(
@@ -203,15 +204,17 @@ function BaseItemsTable({
         <col span="last-edited-at" style={{ width: "20%" }} />
         <col span="actions" style={{ width: "5%" }} />
       </colgroup>
-      <thead>
-        <tr>
-          <th className="text-centered">{t`Type`}</th>
-          <th>{t`Name`}</th>
-          <th>{t`Last edited by`}</th>
-          <th>{t`Last edited at`}</th>
-          <th></th>
-        </tr>
-      </thead>
+      {!headless && (
+        <thead>
+          <tr>
+            <th className="text-centered">{t`Type`}</th>
+            <th>{t`Name`}</th>
+            <th>{t`Last edited by`}</th>
+            <th>{t`Last edited at`}</th>
+            <th></th>
+          </tr>
+        </thead>
+      )}
       <tbody className="relative">{items.map(itemRenderer)}</tbody>
     </table>
   );

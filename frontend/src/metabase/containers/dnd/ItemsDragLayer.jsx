@@ -4,7 +4,9 @@ import { DragLayer } from "react-dnd";
 import _ from "underscore";
 
 import BodyComponent from "metabase/components/BodyComponent";
-import NormalItem from "metabase/collections/components/NormalItem";
+import BaseItemsTable, {
+  BaseTableItem,
+} from "metabase/collections/components/BaseItemsTable";
 
 // NOTE: our verison of react-hot-loader doesn't play nice with react-dnd's DragLayer, so we exclude files named `*DragLayer.jsx` in webpack.config.js
 
@@ -66,6 +68,16 @@ class DraggedItems extends React.Component {
     return index >= 0;
   };
 
+  renderDraggedItem = itemProps => {
+    return (
+      <BaseTableItem
+        {...itemProps}
+        isPinned={this.isDraggedItemPinned()}
+        hasBottomBorder={false}
+      />
+    );
+  };
+
   render() {
     const { items, draggedItem } = this.props;
     const index = _.findIndex(items, draggedItem);
@@ -77,10 +89,12 @@ class DraggedItems extends React.Component {
         }}
       >
         {items.map(item => (
-          <NormalItem
+          <BaseItemsTable
             key={item.id}
-            item={item}
-            pinned={this.isDraggedItemPinned()}
+            items={[draggedItem]}
+            renderItem={this.renderDraggedItem}
+            style={{ width: "960px" }}
+            headless
           />
         ))}
       </div>
