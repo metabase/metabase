@@ -88,6 +88,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
 
   const unpinnedQuery = {
     collection: collectionId,
+    models: ["dashboard", "card", "snippet", "pulse"],
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     pinned_state: "is_not_pinned",
