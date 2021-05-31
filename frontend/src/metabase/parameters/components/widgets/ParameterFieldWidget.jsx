@@ -128,7 +128,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     };
 
     const placeholder = isEditing
-      ? "Enter a default value..."
+      ? t`Enter a default value...`
       : defaultPlaceholder;
 
     if (!isFocused) {
