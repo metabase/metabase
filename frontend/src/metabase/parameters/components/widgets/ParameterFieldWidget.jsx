@@ -110,11 +110,14 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       parameters,
       dashboard,
     } = this.props;
+
     const { isFocused, widgetWidth } = this.state;
     const { numFields = 1, multi = false, verboseName } = operator || {};
+
     const savedValue = normalizeValue(this.props.value);
     const unsavedValue = normalizeValue(this.state.value);
     const isEqualsOp = isEqualsOperator(operator);
+
     const disableSearch = operator && isFuzzyOperator(operator);
     const defaultPlaceholder = isFocused
       ? ""
@@ -127,9 +130,18 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       this.setState({ isFocused });
     };
 
+    const handleButtonClick = () => {
+      setValue(unsavedValue.length > 0 ? unsavedValue : null);
+      focusChanged(false);
+    };
+
     const placeholder = isEditing
       ? t`Enter a default value...`
       : defaultPlaceholder;
+
+    const isButtonDisabled =
+      savedValue.length === 0 && unsavedValue.length === 0;
+    const buttonText = savedValue.length > 0 ? t`Update filter` : t`Add filter`;
 
     if (!isFocused) {
       return (
@@ -209,13 +221,10 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
             <Button
               primary
               className="ml-auto"
-              disabled={savedValue.length === 0 && unsavedValue.length === 0}
-              onClick={() => {
-                setValue(unsavedValue.length > 0 ? unsavedValue : null);
-                focusChanged(false);
-              }}
+              disabled={isButtonDisabled}
+              onClick={handleButtonClick}
             >
-              {savedValue.length > 0 ? t`Update filter` : t`Add filter`}
+              {buttonText}
             </Button>
           </div>
         </Popover>
