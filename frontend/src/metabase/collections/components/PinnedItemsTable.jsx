@@ -82,7 +82,7 @@ function PinnedItemsTable({ items, ...props }) {
       marginLeft={8}
       marginRight={8}
     >
-      <BaseItemsTable {...props} items={items} pinned renderItem={renderItem} />
+      <BaseItemsTable {...props} items={items} pinned renderItem={renderItem} data-testid="pinned-items" />
       {items.length % 2 === 1 ? (
         <Box w={1} className="relative">
           <PinPositionDropTarget pinIndex={bottomPinIndex} />
