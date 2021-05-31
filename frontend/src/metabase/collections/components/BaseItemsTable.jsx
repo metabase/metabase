@@ -24,16 +24,15 @@ export function BaseTableItem({
   item,
   collection = {},
   pinned,
+  isSelected,
   selectedItems,
   onCopy,
   onMove,
   onDrop,
   onToggleSelected,
-  getIsSelected,
   linkProps = {},
   children,
 }) {
-  const isSelected = getIsSelected(item);
   const lastEditInfo = item["last-edit-info"];
   const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
@@ -120,12 +119,12 @@ function defaultItemRenderer({
   item,
   index,
   pinned,
+  isSelected,
   collection,
   onCopy,
   onMove,
   onDrop,
   selectedItems,
-  getIsSelected,
   onToggleSelected,
 }) {
   return (
@@ -133,14 +132,14 @@ function defaultItemRenderer({
       key={`${item.model}-${item.id}`}
       item={item}
       index={index}
-      pinned={pinned}
+      isPinned={isPinned}
+      isSelected={isSelected}
       collection={collection}
       onCopy={onCopy}
       onMove={onMove}
       onDrop={onDrop}
       selectedItems={selectedItems}
       onToggleSelected={onToggleSelected}
-      getIsSelected={getIsSelected}
       linkProps={getDefaultLinkProps(item)}
     />
   );
@@ -165,12 +164,12 @@ function BaseItemsTable({
         index,
         collection,
         pinned,
+        isSelected: getIsSelected(item),
         onCopy,
         onMove,
         onDrop,
         onToggleSelected,
         selectedItems,
-        getIsSelected,
       }),
     [
       renderItem,
