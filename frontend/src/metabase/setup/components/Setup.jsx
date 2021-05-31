@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { color } from "metabase/lib/colors";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -210,8 +211,8 @@ export default class Setup extends Component {
                   hasCircle={false}
                   data-testid="database-setup-help-card"
                   style={{
-                    border: "1px solid #F0F0F0",
-                    backgroundColor: "#FFF",
+                    border: `1px solid ${color("border")}`,
+                    backgroundColor: color("white"),
                   }}
                 />
               </div>

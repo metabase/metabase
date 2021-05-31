@@ -38,7 +38,7 @@ const defaultProps = {
   style: {},
 };
 
-function AddDatabaseHelpCard({ engine, hasCircle, style, ...props }) {
+function AddDatabaseHelpCard({ engine, hasCircle, ...props }) {
   const displayName = useMemo(() => {
     const hasEngineDoc = !!ENGINE_DOCS[engine];
     if (!hasEngineDoc) {
