@@ -143,7 +143,7 @@ export default function DefaultPicker({
   if (fieldWidgets.length > 0) {
     return <DefaultLayout className={className} fieldWidgets={fieldWidgets} />;
   } else {
-    return <div className={cx(className, "popover-options-margin-bottom")} />;
+    return <div className={cx(className, "PopoverBody--marginBottom")} />;
   }
 }
 

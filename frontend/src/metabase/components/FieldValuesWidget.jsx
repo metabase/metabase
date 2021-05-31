@@ -444,7 +444,7 @@ export class FieldValuesWidget extends Component {
 
     return (
       <div
-        className="popover-options-margin-bottom"
+        className="PopoverBody--marginBottom"
         style={{
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,

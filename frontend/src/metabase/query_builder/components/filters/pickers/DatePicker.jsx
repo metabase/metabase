@@ -397,7 +397,7 @@ export default class DatePicker extends Component {
         // apply flex to align the operator selector and the "Widget" if necessary
         className={cx(className, {
           "flex align-center": Widget && Widget.horizontalLayout,
-          "popover-options-margin-bottom": !isSidebar,
+          "PopoverBody--marginBottom": !isSidebar,
         })}
         style={{ minWidth: 300 }}
       >
