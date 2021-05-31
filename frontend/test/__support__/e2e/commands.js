@@ -1,3 +1,6 @@
+import "./commands/ui/button";
+import "./commands/ui/icon";
+
 import { USERS } from "__support__/e2e/cypress_data";
 
 Cypress.Commands.add("createUser", user => {
@@ -29,14 +32,6 @@ Cypress.Commands.add("signInAsSandboxedUser", () => {
 Cypress.Commands.add("signOut", () => {
   cy.log("Signing out");
   cy.clearCookie("metabase.SESSION");
-});
-
-Cypress.Commands.add("icon", icon_name => {
-  cy.get(`.Icon-${icon_name}`);
-});
-
-Cypress.Commands.add("button", button_name => {
-  cy.findByRole("button", { name: button_name });
 });
 
 Cypress.Commands.add("createDashboard", name => {
