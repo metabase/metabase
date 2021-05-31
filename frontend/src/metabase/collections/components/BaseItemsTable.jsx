@@ -23,7 +23,7 @@ const TableItemSecondaryField = styled.p`
 export function BaseTableItem({
   item,
   collection = {},
-  pinned,
+  isPinned,
   isSelected,
   selectedItems,
   onCopy,
@@ -42,8 +42,8 @@ export function BaseTableItem({
   }, [item, onToggleSelected]);
 
   const handlePin = useCallback(() => {
-    item.setPinned(!pinned);
-  }, [item, pinned]);
+    item.setPinned(!isPinned);
+  }, [item, isPinned]);
 
   const handleMove = useCallback(() => onMove([item]), [item, onMove]);
   const handleCopy = useCallback(() => onCopy([item]), [item, onCopy]);
@@ -63,7 +63,7 @@ export function BaseTableItem({
             item={item}
             variant="list"
             iconName={item.getIcon()}
-            pinned={pinned}
+            pinned={isPinned}
             selectable
             selected={isSelected}
             onToggleSelected={handleSelectionToggled}
@@ -118,7 +118,7 @@ function getDefaultLinkProps(item) {
 function defaultItemRenderer({
   item,
   index,
-  pinned,
+  isPinned,
   isSelected,
   collection,
   onCopy,
@@ -163,7 +163,7 @@ function BaseItemsTable({
         item,
         index,
         collection,
-        pinned,
+        isPinned: pinned,
         isSelected: getIsSelected(item),
         onCopy,
         onMove,
