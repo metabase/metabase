@@ -22,7 +22,7 @@ const TableItemSecondaryField = styled.p`
 
 export function BaseTableItem({
   item,
-  collection,
+  collection = {},
   pinned,
   selectedItems,
   onCopy,
@@ -146,21 +146,11 @@ function defaultItemRenderer({
   );
 }
 
-const defaultProps = {
-  collection: {},
-  renderItem: defaultItemRenderer,
-  getLinkProps: item => ({
-    className: "hover-parent hover--visibility",
-    hover: { color: color("brand") },
-    "data-metabase-event": `${ANALYTICS_CONTEXT};Item Click;${item.model}`,
-  }),
-};
-
 function BaseItemsTable({
   items,
   pinned,
   collection,
-  renderItem,
+  renderItem = defaultItemRenderer,
   onCopy,
   onMove,
   onDrop,
@@ -217,7 +207,5 @@ function BaseItemsTable({
     </table>
   );
 }
-
-BaseItemsTable.defaultProps = defaultProps;
 
 export default BaseItemsTable;
