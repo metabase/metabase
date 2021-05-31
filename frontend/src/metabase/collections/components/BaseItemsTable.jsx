@@ -59,6 +59,7 @@ export function BaseTableItem({
       onDrop={onDrop}
     >
       <tr
+        data-testid={isPinned ? "pinned-collection-entry" : "collection-entry"}
         style={{
           height: `${ROW_HEIGHT}px`,
           "border-bottom": hasBottomBorder
