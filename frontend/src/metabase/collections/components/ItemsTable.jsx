@@ -39,7 +39,7 @@ function ItemsTable(props) {
   }
 
   return (
-    <PinDropTarget pinIndex={null} margin={8}>
+    <PinDropTarget pinIndex={null}>
       <BaseItemsTable {...props} />
     </PinDropTarget>
   );
