@@ -7,19 +7,13 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget";
 
 import EntityItem from "metabase/components/EntityItem";
 import Link from "metabase/components/Link";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
-const TABLE_HEAD_HEIGHT = 45;
-const ROW_HEIGHT = 90;
-
-const TableHead = styled.thead`
-  height: ${TABLE_HEAD_HEIGHT}px;
-`;
+export const ROW_HEIGHT = 90;
 
 const TableItemSecondaryField = styled.p`
   font-size: 0.95em;
@@ -28,7 +22,6 @@ const TableItemSecondaryField = styled.p`
 
 export function BaseTableItem({
   item,
-  index,
   collection,
   pinned,
   selectedItems,
@@ -38,6 +31,7 @@ export function BaseTableItem({
   onToggleSelected,
   getIsSelected,
   getLinkProps,
+  children,
 }) {
   const isSelected = getIsSelected(item);
   const lastEditInfo = item["last-edit-info"];
@@ -108,22 +102,7 @@ export function BaseTableItem({
             ANALYTICS_CONTEXT={ANALYTICS_CONTEXT}
           />
         </td>
-        <PinPositionDropTarget
-          left
-          pinIndex={item.collection_position}
-          style={{
-            height: ROW_HEIGHT,
-            top: TABLE_HEAD_HEIGHT + index * ROW_HEIGHT,
-          }}
-        />
-        <PinPositionDropTarget
-          right
-          pinIndex={item.collection_position + 1}
-          style={{
-            height: ROW_HEIGHT,
-            top: TABLE_HEAD_HEIGHT + index * ROW_HEIGHT,
-          }}
-        />
+        {children}
       </tr>
     </ItemDragSource>
   );
@@ -131,6 +110,7 @@ export function BaseTableItem({
 
 function defaultItemRenderer({
   item,
+  index,
   pinned,
   collection,
   onCopy,
@@ -145,6 +125,7 @@ function defaultItemRenderer({
     <BaseTableItem
       key={`${item.model}-${item.id}`}
       item={item}
+      index={index}
       pinned={pinned}
       collection={collection}
       onCopy={onCopy}
@@ -211,7 +192,7 @@ function BaseItemsTable({
   );
 
   return (
-    <table className="ContentTable relative">
+    <table className="ContentTable">
       <colgroup>
         <col span="1" style={{ width: "5%" }} />
         <col span="1" style={{ width: "55%" }} />
@@ -219,7 +200,7 @@ function BaseItemsTable({
         <col span="1" style={{ width: "20%" }} />
         <col span="1" style={{ width: "5%" }} />
       </colgroup>
-      <TableHead>
+      <thead>
         <tr>
           <th className="text-centered">{t`Type`}</th>
           <th>{t`Name`}</th>
@@ -227,8 +208,8 @@ function BaseItemsTable({
           <th>{t`Last edited at`}</th>
           <th></th>
         </tr>
-      </TableHead>
-      <tbody>{items.map(itemRenderer)}</tbody>
+      </thead>
+      <tbody className="relative">{items.map(itemRenderer)}</tbody>
     </table>
   );
 }

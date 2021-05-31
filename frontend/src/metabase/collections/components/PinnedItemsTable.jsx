@@ -12,7 +12,11 @@ import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget
 import Icon from "metabase/components/Icon";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
-import BaseItemsTable from "./BaseItemsTable";
+import BaseItemsTable, {
+  BaseTableItem,
+  TABLE_HEAD_HEIGHT,
+  ROW_HEIGHT,
+} from "./BaseItemsTable";
 
 function PinnedItemsEmptyState() {
   return (
@@ -33,6 +37,30 @@ function PinnedItemsEmptyState() {
 }
 
 function PinnedItemsTable({ items, ...props }) {
+  const renderItem = useCallback(itemProps => {
+    const { item, index } = itemProps;
+    const dropTargetStyle = {
+      height: ROW_HEIGHT,
+      top: TABLE_HEAD_HEIGHT + index * ROW_HEIGHT,
+    };
+    return (
+      <BaseTableItem {...itemProps}>
+        <React.Fragment>
+          <PinPositionDropTarget
+            left
+            pinIndex={item.collection_position}
+            style={dropTargetStyle}
+          />
+          <PinPositionDropTarget
+            right
+            pinIndex={item.collection_position + 1}
+            style={dropTargetStyle}
+          />
+        </React.Fragment>
+      </BaseTableItem>
+    );
+  }, []);
+
   const getLinkProps = useCallback(
     item => ({
       className: "hover-parent hover--visibility",
@@ -47,7 +75,7 @@ function PinnedItemsTable({ items, ...props }) {
   }
 
   const lastItem = items[items.length - 1];
-  const bottomPinIndex = lastItem.collection_position + 1
+  const bottomPinIndex = lastItem.collection_position + 1;
 
   return (
     <PinDropTarget
@@ -60,6 +88,7 @@ function PinnedItemsTable({ items, ...props }) {
         {...props}
         items={items}
         pinned
+        renderItem={renderItem}
         getLinkProps={getLinkProps}
       />
       {items.length % 2 === 1 ? (
