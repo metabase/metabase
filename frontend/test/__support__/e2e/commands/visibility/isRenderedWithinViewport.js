@@ -1,5 +1,5 @@
 Cypress.Commands.add(
-  "isInViewport",
+  "isRenderedWithinViewport",
   {
     prevSubject: true,
   },

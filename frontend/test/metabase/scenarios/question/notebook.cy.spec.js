@@ -694,11 +694,11 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Add filters to narrow your answer")
         .as("filter")
         .click();
-      popover().isInViewport();
+      popover().isRenderedWithinViewport();
       // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
       cy.icon("gear").click();
       cy.get("@filter").click();
-      popover().isInViewport();
+      popover().isRenderedWithinViewport();
     });
 
     it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
