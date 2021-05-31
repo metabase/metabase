@@ -1,6 +1,9 @@
 import "./commands/ui/button";
 import "./commands/ui/icon";
 
+import "./commands/api/question";
+import "./commands/api/dashboard";
+
 import "./commands/user/createUser";
 import "./commands/user/authentication";
 
@@ -8,57 +11,6 @@ import "./commands/permissions/updatePermissions";
 import "./commands/permissions/sandboxTable";
 
 import "./commands/overwrites/log";
-
-Cypress.Commands.add("createDashboard", name => {
-  cy.log(`Create a dashboard: ${name}`);
-  cy.request("POST", "/api/dashboard", { name });
-});
-
-Cypress.Commands.add(
-  "createQuestion",
-  ({
-    name = "card",
-    query = {},
-    display = "table",
-    database = 1,
-    visualization_settings = {},
-  } = {}) => {
-    cy.log(`Create a question: ${name}`);
-    cy.request("POST", "/api/card", {
-      name,
-      dataset_query: {
-        type: "query",
-        query,
-        database,
-      },
-      display,
-      visualization_settings,
-    });
-  },
-);
-
-Cypress.Commands.add(
-  "createNativeQuestion",
-  ({
-    name = "native",
-    native = {},
-    display = "table",
-    database = 1,
-    visualization_settings = {},
-  } = {}) => {
-    cy.log(`Create a native question: ${name}`);
-    cy.request("POST", "/api/card", {
-      name,
-      dataset_query: {
-        type: "native",
-        native,
-        database,
-      },
-      display,
-      visualization_settings,
-    });
-  },
-);
 
 Cypress.Commands.add(
   "isVisibleInPopover",
