@@ -30,7 +30,7 @@ export function BaseTableItem({
   onDrop,
   onToggleSelected,
   getIsSelected,
-  getLinkProps,
+  linkProps = {},
   children,
 }) {
   const isSelected = getIsSelected(item);
@@ -74,7 +74,7 @@ export function BaseTableItem({
           />
         </td>
         <td>
-          <Link {...getLinkProps(item)} to={item.getUrl()}>
+          <Link {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} />
           </Link>
         </td>
@@ -108,6 +108,14 @@ export function BaseTableItem({
   );
 }
 
+function getDefaultLinkProps(item) {
+  return {
+    className: "hover-parent hover--visibility",
+    hover: { color: color("brand") },
+    "data-metabase-event": `${ANALYTICS_CONTEXT};Item Click;${item.model}`,
+  };
+}
+
 function defaultItemRenderer({
   item,
   index,
@@ -119,7 +127,6 @@ function defaultItemRenderer({
   selectedItems,
   getIsSelected,
   onToggleSelected,
-  getLinkProps,
 }) {
   return (
     <BaseTableItem
@@ -134,7 +141,7 @@ function defaultItemRenderer({
       selectedItems={selectedItems}
       onToggleSelected={onToggleSelected}
       getIsSelected={getIsSelected}
-      getLinkProps={getLinkProps}
+      linkProps={getDefaultLinkProps(item)}
     />
   );
 }
@@ -160,7 +167,6 @@ function BaseItemsTable({
   onToggleSelected,
   selectedItems,
   getIsSelected,
-  getLinkProps,
 }) {
   const itemRenderer = useCallback(
     (item, index) =>
@@ -173,7 +179,6 @@ function BaseItemsTable({
         onMove,
         onDrop,
         onToggleSelected,
-        getLinkProps,
         selectedItems,
         getIsSelected,
       }),
@@ -186,7 +191,6 @@ function BaseItemsTable({
       onDrop,
       onToggleSelected,
       selectedItems,
-      getLinkProps,
       getIsSelected,
     ],
   );

@@ -44,7 +44,14 @@ function PinnedItemsTable({ items, ...props }) {
       top: TABLE_HEAD_HEIGHT + index * ROW_HEIGHT,
     };
     return (
-      <BaseTableItem {...itemProps}>
+      <BaseTableItem
+        {...itemProps}
+        linkProps={{
+          className: "hover-parent hover--visibility",
+          hover: { color: color("brand") },
+          "data-metabase-event": `${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`,
+        }}
+      >
         <React.Fragment>
           <PinPositionDropTarget
             left
@@ -61,15 +68,6 @@ function PinnedItemsTable({ items, ...props }) {
     );
   }, []);
 
-  const getLinkProps = useCallback(
-    item => ({
-      className: "hover-parent hover--visibility",
-      hover: { color: color("brand") },
-      "data-metabase-event": `${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`,
-    }),
-    [],
-  );
-
   if (items.length === 0) {
     return <PinnedItemsEmptyState />;
   }
@@ -84,13 +82,7 @@ function PinnedItemsTable({ items, ...props }) {
       marginLeft={8}
       marginRight={8}
     >
-      <BaseItemsTable
-        {...props}
-        items={items}
-        pinned
-        renderItem={renderItem}
-        getLinkProps={getLinkProps}
-      />
+      <BaseItemsTable {...props} items={items} pinned renderItem={renderItem} />
       {items.length % 2 === 1 ? (
         <Box w={1} className="relative">
           <PinPositionDropTarget pinIndex={bottomPinIndex} />
