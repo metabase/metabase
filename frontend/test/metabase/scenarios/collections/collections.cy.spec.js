@@ -646,14 +646,14 @@ function openDropdownFor(collectionName) {
 
 function openEllipsisMenuFor(item) {
   cy.findByText(item)
-    .closest("a")
+    .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
 }
 
 function selectItemUsingCheckbox(item, icon = "table") {
   cy.findByText(item)
-    .closest("a")
+    .closest("tr")
     .within(() => {
       cy.icon(icon).trigger("mouseover");
       cy.findByRole("checkbox")
@@ -665,7 +665,7 @@ function selectItemUsingCheckbox(item, icon = "table") {
 function getSidebarCollectionChildrenFor(item) {
   return sidebar()
     .findByText(item)
-    .closest("a")
+    .closest("tr")
     .parent()
     .parent();
 }
