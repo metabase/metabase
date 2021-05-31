@@ -301,25 +301,6 @@ describe("scenarios > collection_defaults", () => {
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
     });
-
-    it("should allow to filter by item type", () => {
-      cy.visit("/collection/root");
-
-      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-
-      cy.findByText("Dashboards").click();
-      cy.findAllByTestId("collection-entry").should("have.length", 13);
-
-      cy.findByText("Questions").click();
-      cy.findAllByTestId("collection-entry").should("have.length", 16);
-
-      cy.findByText("Pulses").click();
-      cy.findAllByTestId("collection-entry").should("have.length", 0);
-
-      cy.findByText("Everything").click();
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-    });
   });
 
   describe("Collection related issues reproductions", () => {
