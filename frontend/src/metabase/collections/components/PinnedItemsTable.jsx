@@ -2,10 +2,12 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import cx from "classnames";
+import { Box } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
+import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget";
 
 import Icon from "metabase/components/Icon";
 
@@ -44,13 +46,28 @@ function PinnedItemsTable({ items, ...props }) {
     return <PinnedItemsEmptyState />;
   }
 
+  const lastItem = items[items.length - 1];
+  const bottomPinIndex = lastItem.collection_position + 1
+
   return (
-    <BaseItemsTable
-      {...props}
-      items={items}
-      pinned
-      getLinkProps={getLinkProps}
-    />
+    <PinDropTarget
+      pinIndex={bottomPinIndex}
+      noDrop
+      marginLeft={8}
+      marginRight={8}
+    >
+      <BaseItemsTable
+        {...props}
+        items={items}
+        pinned
+        getLinkProps={getLinkProps}
+      />
+      {items.length % 2 === 1 ? (
+        <Box w={1} className="relative">
+          <PinPositionDropTarget pinIndex={bottomPinIndex} />
+        </Box>
+      ) : null}
+    </PinDropTarget>
   );
 }
 

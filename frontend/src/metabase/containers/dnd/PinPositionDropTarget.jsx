@@ -37,6 +37,7 @@ const PIN_DROP_TARGET_INDICATOR_WIDTH = 3;
 export default class PinPositionDropTarget extends React.Component {
   render() {
     const {
+      style,
       left,
       right,
       connectDropTarget,
@@ -46,10 +47,11 @@ export default class PinPositionDropTarget extends React.Component {
     } = this.props;
     return connectDropTarget(
       <div
-        className={cx("absolute top bottom", {
+        className={cx("absolute", {
           "pointer-events-none": !highlighted,
         })}
         style={{
+          ...style,
           width: left | right ? "50%" : undefined,
           left: !right ? 0 : undefined,
           right: !left ? 0 : undefined,

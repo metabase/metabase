@@ -7,11 +7,19 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget";
 
 import EntityItem from "metabase/components/EntityItem";
 import Link from "metabase/components/Link";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+
+const TABLE_HEAD_HEIGHT = 45;
+const ROW_HEIGHT = 90;
+
+const TableHead = styled.thead`
+  height: ${TABLE_HEAD_HEIGHT}px;
+`;
 
 const TableItemSecondaryField = styled.p`
   font-size: 0.95em;
@@ -20,6 +28,7 @@ const TableItemSecondaryField = styled.p`
 
 export function BaseTableItem({
   item,
+  index,
   collection,
   pinned,
   selectedItems,
@@ -55,7 +64,7 @@ export function BaseTableItem({
       selected={selectedItems}
       onDrop={onDrop}
     >
-      <tr>
+      <tr style={{ height: `${ROW_HEIGHT}px` }}>
         <td>
           <EntityItem.Icon
             item={item}
@@ -99,6 +108,22 @@ export function BaseTableItem({
             ANALYTICS_CONTEXT={ANALYTICS_CONTEXT}
           />
         </td>
+        <PinPositionDropTarget
+          left
+          pinIndex={item.collection_position}
+          style={{
+            height: ROW_HEIGHT,
+            top: TABLE_HEAD_HEIGHT + index * ROW_HEIGHT,
+          }}
+        />
+        <PinPositionDropTarget
+          right
+          pinIndex={item.collection_position + 1}
+          style={{
+            height: ROW_HEIGHT,
+            top: TABLE_HEAD_HEIGHT + index * ROW_HEIGHT,
+          }}
+        />
       </tr>
     </ItemDragSource>
   );
@@ -157,9 +182,10 @@ function BaseItemsTable({
   getLinkProps,
 }) {
   const itemRenderer = useCallback(
-    item =>
+    (item, index) =>
       renderItem({
         item,
+        index,
         collection,
         pinned,
         onCopy,
@@ -185,7 +211,7 @@ function BaseItemsTable({
   );
 
   return (
-    <table className="ContentTable">
+    <table className="ContentTable relative">
       <colgroup>
         <col span="1" style={{ width: "5%" }} />
         <col span="1" style={{ width: "55%" }} />
@@ -193,7 +219,7 @@ function BaseItemsTable({
         <col span="1" style={{ width: "20%" }} />
         <col span="1" style={{ width: "5%" }} />
       </colgroup>
-      <thead>
+      <TableHead>
         <tr>
           <th className="text-centered">{t`Type`}</th>
           <th>{t`Name`}</th>
@@ -201,7 +227,7 @@ function BaseItemsTable({
           <th>{t`Last edited at`}</th>
           <th></th>
         </tr>
-      </thead>
+      </TableHead>
       <tbody>{items.map(itemRenderer)}</tbody>
     </table>
   );
