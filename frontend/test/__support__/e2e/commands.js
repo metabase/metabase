@@ -12,7 +12,7 @@ import "./commands/permissions/sandboxTable";
 
 import "./commands/database/addH2SampleDataset";
 
-import "./commands/helpers/isVisibleInPopover";
-import "./commands/helpers/isInViewport";
+import "./commands/visibility/isVisibleInPopover";
+import "./commands/visibility/isInViewport";
 
 import "./commands/overwrites/log";
