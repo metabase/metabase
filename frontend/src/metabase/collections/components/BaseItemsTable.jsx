@@ -31,6 +31,7 @@ export function BaseTableItem({
   onDrop,
   onToggleSelected,
   linkProps = {},
+  hasBottomBorder = true,
   children,
 }) {
   const lastEditInfo = item["last-edit-info"];
@@ -57,7 +58,14 @@ export function BaseTableItem({
       selected={selectedItems}
       onDrop={onDrop}
     >
-      <tr style={{ height: `${ROW_HEIGHT}px` }}>
+      <tr
+        style={{
+          height: `${ROW_HEIGHT}px`,
+          "border-bottom": hasBottomBorder
+            ? `1px solid ${color("bg-medium")}`
+            : "none",
+        }}
+      >
         <td>
           <EntityItem.Icon
             item={item}
