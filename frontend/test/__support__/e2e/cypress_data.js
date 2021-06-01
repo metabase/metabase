@@ -67,7 +67,7 @@ export const USERS = {
   nosql: {
     first_name: "No SQL",
     last_name: "Tableton",
-    email: "nosqln@metabase.com",
+    email: "nosql@metabase.com",
     password: "12341234",
     group_ids: [ALL_USERS_GROUP, NOSQL_GROUP],
   },
