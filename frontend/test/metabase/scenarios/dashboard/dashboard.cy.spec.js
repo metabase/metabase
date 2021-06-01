@@ -148,75 +148,73 @@ describe("scenarios > dashboard", () => {
   });
 
   it.skip("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
-    cy.createQuestion({
-      name: "13597",
+    const questionDetails = {
       query: {
         "source-table": PEOPLE_ID,
         limit: 2,
       },
       display: "map",
-    }).then(({ body: { id: questionId } }) => {
-      cy.createDashboard("13597D").then(({ body: { id: dashboardId } }) => {
-        // add filter (ID) to the dashboard
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-          parameters: [
-            {
-              id: "92eb69ea",
-              name: "ID",
-              slug: "id",
-              type: "id",
-            },
-          ],
+    };
+
+    const filter = {
+      id: "92eb69ea",
+      name: "ID",
+      slug: "id",
+      type: "id",
+    };
+
+    cy.createQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        // Add filter to the dashboard
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [filter],
         });
 
-        // add previously created question to the dashboard
-        cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-          cardId: questionId,
-        }).then(({ body: { id: dashCardId } }) => {
-          // connect filter to that question
-          cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-            cards: [
-              {
-                id: dashCardId,
-                card_id: questionId,
-                row: 0,
-                col: 0,
-                sizeX: 10,
-                sizeY: 8,
-                parameter_mappings: [
-                  {
-                    parameter_id: "92eb69ea",
-                    card_id: questionId,
-                    target: ["dimension", ["field", PEOPLE.ID, null]],
-                  },
-                ],
-                visualization_settings: {
-                  // set click behavior to update filter (ID)
-                  click_behavior: {
-                    type: "crossfilter",
-                    parameterMapping: {
-                      id: "92eb69ea",
-                      source: { id: "ID", name: "ID", type: "column" },
-                      target: {
-                        id: "92eb69ea",
-                        type: "parameter",
-                      },
+        // Connect filter to the card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              sizeX: 10,
+              sizeY: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: filter.id,
+                  card_id,
+                  target: ["dimension", ["field", PEOPLE.ID, null]],
+                },
+              ],
+              visualization_settings: {
+                // Set click behavior to update filter (ID)
+                click_behavior: {
+                  type: "crossfilter",
+                  parameterMapping: {
+                    id: filter.id,
+                    source: { id: "ID", name: "ID", type: "column" },
+                    target: {
+                      id: filter.id,
+                      type: "parameter",
                     },
                   },
                 },
               },
-            ],
-          });
+            },
+          ],
         });
 
-        cy.visit(`/dashboard/${dashboardId}`);
-        cy.get(".leaflet-marker-icon") // pin icon
+        cy.visit(`/dashboard/${dashboard_id}`);
+
+        cy.get(".leaflet-marker-icon")
+          .as("pin-icon")
           .eq(0)
           .click({ force: true });
-        cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
+        cy.url().should("include", `/dashboard/${dashboard_id}?id=1`);
         cy.contains("Hudson Borer - 1");
-      });
-    });
+      },
+    );
   });
 
   it("should display column options for cross-filter (metabase#14473)", () => {
