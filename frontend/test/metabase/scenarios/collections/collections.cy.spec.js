@@ -591,7 +591,7 @@ describe("scenarios > collection_defaults", () => {
       });
 
       it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
-        cy.findByText(/Pinned items/i);
+        cy.findByTestId("pinned-items");
         selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
         cy.findByText("1 item selected");
       });
