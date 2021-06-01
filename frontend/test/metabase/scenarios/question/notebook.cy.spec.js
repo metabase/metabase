@@ -456,7 +456,7 @@ describe("scenarios > question > notebook", () => {
       });
     });
 
-    it.skip("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
+    it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
       cy.createQuestion({
         name: "14649_min",
         query: {
@@ -466,7 +466,7 @@ describe("scenarios > question > notebook", () => {
               [
                 "aggregation-options",
                 ["sum", ["field", ORDERS.SUBTOTAL, null]],
-                { "display-name": "Revenue" },
+                { name: "Revenue", "display-name": "Revenue" },
               ],
             ],
             breakout: [
