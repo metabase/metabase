@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
 
 import NumberPicker from "./NumberPicker";
 import SelectPicker from "./SelectPicker";
@@ -140,11 +141,9 @@ export default function DefaultPicker({
     .filter(f => f);
 
   if (fieldWidgets.length > 0) {
-    const Layout = DefaultLayout;
-    // TODO: custom layouts for different operators
-    return <Layout className={className} fieldWidgets={fieldWidgets} />;
+    return <DefaultLayout className={className} fieldWidgets={fieldWidgets} />;
   } else {
-    return <div className={className} />;
+    return <div className={cx(className, "PopoverBody--marginBottom")} />;
   }
 }
 
