@@ -151,6 +151,9 @@ describe("scenarios > setup", () => {
       cy.findByText("Never, I'll do this manually if I need to").click();
       cy.findByText("Next").click();
 
+      // test database setup help card is hidden on the next step
+      cy.findByTestId("database-setup-help-card").should("not.be.visible");
+
       // ================
       // Data Preferences
       // ================
