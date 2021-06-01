@@ -4,6 +4,8 @@ import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
+import { OptionsMessageStyled } from "./FieldValuesWidget.styled";
+
 import TokenField from "metabase/components/TokenField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -440,6 +442,7 @@ export class FieldValuesWidget extends Component {
 
     return (
       <div
+        className="PopoverBody--marginBottom"
         style={{
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
@@ -549,7 +552,7 @@ const EveryOptionState = () => (
 );
 
 const OptionsMessage = ({ message }) => (
-  <div className="flex layout-centered p4 border-bottom">{message}</div>
+  <OptionsMessageStyled>{message}</OptionsMessageStyled>
 );
 
 OptionsMessage.propTypes = optionsMessagePropTypes;
