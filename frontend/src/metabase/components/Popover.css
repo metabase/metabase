@@ -57,7 +57,7 @@
   pointer-events: none;
 }
 
-/* As Popover footer use absolute positioning
+/* As Popover footer uses absolute positioning
  * to stick to bottom, options lists and other
  * middle content need extra margin-bottom
  */
