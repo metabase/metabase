@@ -20,8 +20,8 @@
             [weavejester.dependency :as dep])
   (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
-           java.util.concurrent.TimeoutException
            (java.util Locale PriorityQueue)
+           java.util.concurrent.TimeoutException
            javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
