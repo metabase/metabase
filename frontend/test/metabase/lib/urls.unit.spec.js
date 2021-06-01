@@ -110,6 +110,17 @@ describe("urls", () => {
         }),
       ).toBe("/collection/1-personal-collection");
     });
+
+    it("uses originalName to build a slug if present", () => {
+      expect(
+        collection({
+          id: 1,
+          name: "Your personal collection",
+          originalName: "John Doe's Personal Collection",
+          personal_owner_id: 1,
+        }),
+      ).toBe("/collection/1-john-doe-s-personal-collection");
+    });
   });
 
   describe("extractEntityId", () => {

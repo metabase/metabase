@@ -11,6 +11,7 @@ function preparePersonalCollection(c) {
   return {
     ...c,
     name: t`Your personal collection`,
+    originalName: c.name,
   };
 }
 

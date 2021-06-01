@@ -125,7 +125,13 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
 }
 
 function slugifyPersonalCollection(collection) {
-  let slug = slugg(collection.name, {
+  // Current user's personal collection name is replaced with "Your personal collection"
+  // `originalName` keeps the original name like "John Doe's Personal Collection"
+  const name = collection.originalName || collection.name;
+
+  // Will keep single quote characters,
+  // so "John's" can be converted to `john-s` instead of `johns`
+  let slug = slugg(name, {
     toStrip: /["”“]/g,
   });
 
