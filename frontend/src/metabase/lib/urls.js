@@ -124,6 +124,20 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   return question(null, query);
 }
 
+function slugifyPersonalCollection(collection) {
+  let slug = slugg(collection.name, {
+    toStrip: /["”“]/g,
+  });
+
+  // If can't build a slug out of user's name (e.g. if it contains only emojis)
+  // removes the "s-" part of a slug
+  if (slug === "s-personal-collection") {
+    slug = slug.replace("s-", "");
+  }
+
+  return slug;
+}
+
 export function collection(collection) {
   const isSystemCollection =
     !collection || collection.id === null || typeof collection.id === "string";
@@ -132,7 +146,13 @@ export function collection(collection) {
     const id = collection && collection.id ? collection.id : "root";
     return `/collection/${id}`;
   }
-  return appendSlug(`/collection/${collection.id}`, slugg(collection.name));
+
+  const isPersonalCollection = typeof collection.personal_owner_id === "number";
+  const slug = isPersonalCollection
+    ? slugifyPersonalCollection(collection)
+    : slugg(collection.name);
+
+  return appendSlug(`/collection/${collection.id}`, slug);
 }
 
 export function label(label) {

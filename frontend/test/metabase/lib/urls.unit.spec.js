@@ -90,6 +90,26 @@ describe("urls", () => {
         }),
       ).toBe("/collection/1-first-collection");
     });
+
+    it("handles possessives correctly", () => {
+      expect(
+        collection({
+          id: 1,
+          name: "John Doe's Personal Collection",
+          personal_owner_id: 1,
+        }),
+      ).toBe("/collection/1-john-doe-s-personal-collection");
+    });
+
+    it("omits possessive form if name can't be turned into a slug", () => {
+      expect(
+        collection({
+          id: 1,
+          name: "🍎's Personal Collection",
+          personal_owner_id: 1,
+        }),
+      ).toBe("/collection/1-personal-collection");
+    });
   });
 
   describe("extractEntityId", () => {
