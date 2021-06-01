@@ -35,8 +35,12 @@ export function BaseTableItem({
   children,
 }) {
   const lastEditInfo = item["last-edit-info"];
-  const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
-  const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
+  const lastEditedBy = lastEditInfo
+    ? `${lastEditInfo.first_name} ${lastEditInfo.last_name}`
+    : "";
+  const lastEditedAt = lastEditInfo
+    ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
+    : "";
 
   const handleSelectionToggled = useCallback(() => {
     onToggleSelected(item);
