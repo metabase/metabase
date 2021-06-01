@@ -521,59 +521,53 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it.skip("should not remove click behavior on 'reset to defaults' (metabase#14919)", () => {
     const LINK_NAME = "Home";
 
-    cy.createQuestion({
-      name: "14919",
-      query: { "source-table": PRODUCTS_ID },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("14919D").then(({ body: { id: DASHBOARD_ID } }) => {
-        // Add previously added question to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Add click through behavior to that question
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                sizeX: 10,
-                sizeY: 6,
-                series: [],
-                visualization_settings: {
-                  column_settings: {
-                    [`["ref",["field-id",${PRODUCTS.CATEGORY}]]`]: {
-                      click_behavior: {
-                        type: "link",
-                        linkType: "url",
-                        linkTemplate: "/",
-                        linkTextTemplate: LINK_NAME,
-                      },
+    const questionDetails = { query: { "source-table": PRODUCTS_ID } };
+
+    cy.createQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        // Add click through behavior to the card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              sizeX: 10,
+              sizeY: 6,
+              series: [],
+              visualization_settings: {
+                column_settings: {
+                  [`["ref",["field-id",${PRODUCTS.CATEGORY}]]`]: {
+                    click_behavior: {
+                      type: "link",
+                      linkType: "url",
+                      linkTemplate: "/",
+                      linkTextTemplate: LINK_NAME,
                     },
                   },
                 },
-                parameter_mappings: [],
               },
-            ],
-          });
+              parameter_mappings: [],
+            },
+          ],
         });
+        cy.visit(`/dashboard/${dashboard_id}`);
+      },
+    );
 
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-        cy.icon("pencil").click();
-        // Edit "Visualization options"
-        cy.get(".DashCard .Icon-palette").click({ force: true });
-        cy.get(".Modal").within(() => {
-          cy.findByText("Reset to defaults").click();
-          cy.button("Done").click();
-        });
-        // Save the whole dashboard
-        cy.button("Save").click();
-        cy.findByText("You're editing this dashboard.").should("not.exist");
-        cy.log("Reported failing on v0.38.0 - link gets dropped");
-        cy.get(".DashCard").findAllByText(LINK_NAME);
-      });
+    cy.icon("pencil").click();
+    // Edit "Visualization options"
+    cy.get(".DashCard .Icon-palette").click({ force: true });
+    cy.get(".Modal").within(() => {
+      cy.findByText("Reset to defaults").click();
+      cy.button("Done").click();
     });
+    // Save the whole dashboard
+    cy.button("Save").click();
+    cy.findByText("You're editing this dashboard.").should("not.exist");
+    cy.log("Reported failing on v0.38.0 - link gets dropped");
+    cy.get(".DashCard").findAllByText(LINK_NAME);
   });
 
   it.skip('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
