@@ -24,8 +24,8 @@
                                             ;; Add nil to included group ids to ensure valid SQL if set is empty
                                             :group_id [:in (conj included-group-ids nil)]
                                             :group_id [:not-in excluded-group-ids])
-        new-group-ids      (set/intersection (set (map u/the-id mapped-groups-or-ids))
-                                             (set (map u/the-id new-groups-or-ids)))
+        new-group-ids      (set/intersection (set (map u/the-id new-groups-or-ids))
+                                             included-group-ids)
         ;; determine what's different between current mapped groups and new mapped groups
         [to-remove to-add] (data/diff current-group-ids new-group-ids)]
     ;; remove membership from any groups as needed

@@ -126,19 +126,19 @@
 
       (testing "are administrators removed appropriately?"
         (with-user-in-groups [user [(group/admin)]]
-          (integrations.common/sync-group-memberships! user [] true)
+          (integrations.common/sync-group-memberships! user [] #{} true)
           (is (= #{"All Users"}
                  (group-memberships user)))))))
 
   (testing "with admin group sync disabled"
     (testing "are admins synced?"
       (with-user-in-groups [user]
-        (integrations.common/sync-group-memberships! user [(group/admin)] false)
+        (integrations.common/sync-group-memberships! user [(group/admin)] #{} false)
         (is (= #{"All Users"}
                (group-memberships user)))))
 
     (testing "are administrators removed appropriately?"
       (with-user-in-groups [user [(group/admin)]]
-        (integrations.common/sync-group-memberships! user [] false)
+        (integrations.common/sync-group-memberships! user [] #{} false)
         (is (= #{"Administrators" "All Users"}
                (group-memberships user)))))))
