@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import { t } from "ttag";
 
@@ -238,7 +238,7 @@ export default class ViewFilterPopover extends Component {
             isSidebar={isSidebar}
             filter={filter}
             onFilterChange={this.handleFilterChange}
-            onCommit={!this.props.noCommitButton ? this.handleCommit : null}
+            onCommit={this.props.noCommitButton ? null : this.handleCommit}
             isNew={!this.props.filter}
           />
         </div>
@@ -246,3 +246,7 @@ export default class ViewFilterPopover extends Component {
     }
   }
 }
+
+ViewFilterPopover.propTypes = {
+  noCommitButton: PropTypes.bool,
+};
