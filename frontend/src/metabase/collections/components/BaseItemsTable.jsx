@@ -13,6 +13,12 @@ import Link from "metabase/components/Link";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
+import {
+  ColumnHeader,
+  SortingIcon,
+  SortingControlContainer,
+} from "./BaseItemsTable.styled";
+
 export const ROW_HEIGHT = 80;
 
 const TableItemSecondaryField = styled.p`
@@ -158,10 +164,47 @@ function defaultItemRenderer({
   );
 }
 
+function SortableColumnHeader({
+  children,
+  name,
+  sortingOptions,
+  onSortingOptionsChange,
+  ...props
+}) {
+  const isSortingThisColumn = sortingOptions.sort_column === name;
+  const direction = isSortingThisColumn
+    ? sortingOptions.sort_direction
+    : "desc";
+
+  const onSortingControlClick = () => {
+    const nextDirection = direction === "asc" ? "desc" : "asc";
+    onSortingOptionsChange({
+      sort_column: name,
+      sort_direction: nextDirection,
+    });
+  };
+
+  return (
+    <ColumnHeader>
+      <SortingControlContainer
+        {...props}
+        isActive={isSortingThisColumn}
+        onClick={onSortingControlClick}
+        role="button"
+      >
+        {children}
+        <SortingIcon name={direction === "asc" ? "chevronup" : "chevrondown"} />
+      </SortingControlContainer>
+    </ColumnHeader>
+  );
+}
+
 function BaseItemsTable({
   items,
   pinned,
   collection,
+  sortingOptions,
+  onSortingOptionsChange,
   renderItem = defaultItemRenderer,
   onCopy,
   onMove,
@@ -211,10 +254,29 @@ function BaseItemsTable({
       {!headless && (
         <thead>
           <tr>
-            <th className="text-centered">{t`Type`}</th>
-            <th>{t`Name`}</th>
-            <th>{t`Last edited by`}</th>
-            <th>{t`Last edited at`}</th>
+            <SortableColumnHeader
+              name="model"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+              style={{ marginLeft: 6 }}
+            >
+              {t`Type`}
+            </SortableColumnHeader>
+            <SortableColumnHeader
+              name="name"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+            >
+              {t`Name`}
+            </SortableColumnHeader>
+            <ColumnHeader>{t`Last edited by`}</ColumnHeader>
+            <SortableColumnHeader
+              name="last_edited"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+            >
+              {t`Last edited at`}
+            </SortableColumnHeader>
             <th></th>
           </tr>
         </thead>

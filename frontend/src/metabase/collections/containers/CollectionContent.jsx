@@ -141,6 +141,8 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
               <PinnedItemsTable
                 items={sortedPinnedItems}
                 collection={collection}
+                sortingOptions={pinnedItemsSorting}
+                onSortingOptionsChange={handlePinnedItemsSortingChange}
                 selectedItems={selected}
                 getIsSelected={getIsSelected}
                 onDrop={clear}
@@ -179,6 +181,10 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                     <Box mt={hasPinnedItems ? 3 : 0}>
                       <ItemsTable
                         items={unpinnedItems}
+                        sortingOptions={unpinnedItemsSorting}
+                        onSortingOptionsChange={
+                          handleUnpinnedItemsSortingChange
+                        }
                         selectedItems={selected}
                         getIsSelected={getIsSelected}
                         collection={collection}
