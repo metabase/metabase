@@ -1,3 +1,17 @@
+/*
+ *🎗️ Tip on debugging Popover
+ *
+ * React Dev Tools is of limited use in showing you the component stack
+ * as you drill down to subcomponents of Popover.
+ *
+ * As you point to a component and find it in React Dev Tools,
+ * consider using `console.trace()` from inside the found component code.
+ *
+ * This should save you time until Popover is migrated to a more debuggable API.
+ *
+ * tl;dr: Use `console.trace()` to understand component structure in Popover.
+ */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";

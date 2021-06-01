@@ -132,7 +132,6 @@
   position: absolute;
   bottom: 0;
   border-top: 1px solid var(--color-border);
-  box-sizing: border-box;
   border-bottom-right-radius: 6px;
   border-bottom-left-radius: 6px;
   padding-top: 8px;
