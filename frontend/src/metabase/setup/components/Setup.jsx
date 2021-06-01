@@ -30,6 +30,9 @@ const AddDatabaseHelpCardHolder = styled.div`
   position: fixed;
   left: 1em;
   bottom: 1em;
+  transform: translateY(200%);
+  transition: all 0.4s;
+  ${props => (props.isVisible ? "transform: translateY(0);" : "")}
 `;
 
 export default class Setup extends Component {
@@ -116,6 +119,9 @@ export default class Setup extends Component {
       selectedDatabaseEngine,
       userDetails,
     } = this.props;
+
+    const isDatabaseHelpCardVisible =
+      selectedDatabaseEngine && activeStep === DATABASE_CONNECTION_STEP_NUMBER;
 
     if (activeStep === WELCOME_STEP_NUMBER) {
       return (
@@ -204,20 +210,17 @@ export default class Setup extends Component {
             </div>
           </div>
 
-          {selectedDatabaseEngine &&
-            activeStep === DATABASE_CONNECTION_STEP_NUMBER && (
-              <AddDatabaseHelpCardHolder>
-                <AddDatabaseHelpCard
-                  engine={selectedDatabaseEngine}
-                  hasCircle={false}
-                  data-testid="database-setup-help-card"
-                  style={{
-                    border: `1px solid ${color("border")}`,
-                    backgroundColor: color("white"),
-                  }}
-                />
-              </AddDatabaseHelpCardHolder>
-            )}
+          <AddDatabaseHelpCardHolder isVisible={isDatabaseHelpCardVisible}>
+            <AddDatabaseHelpCard
+              engine={selectedDatabaseEngine}
+              hasCircle={false}
+              data-testid="database-setup-help-card"
+              style={{
+                border: `1px solid ${color("border")}`,
+                backgroundColor: color("white"),
+              }}
+            />
+          </AddDatabaseHelpCardHolder>
         </div>
       );
     }
