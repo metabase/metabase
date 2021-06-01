@@ -422,12 +422,12 @@
                         Pulse      [_ {:name "ZZ" :collection_id collection-id}]
                         Pulse      [_ {:name "AA" :collection_id collection-id}]]
           (testing "sort direction asc"
-            (is (= [["card" "AA"] ["card" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"]]
+            (is (= [["dashboard" "AA"] ["dashboard" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["card" "AA"] ["card" "ZZ"]]
                    (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=asc"))
                         :data
                         (map (juxt :model :name))))))
           (testing "sort direction desc"
-            (is (= [["pulse" "AA"] ["pulse" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"] ["card" "AA"] ["card" "ZZ"]]
+            (is (= [["card" "AA"] ["card" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"]]
                    (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=desc"))
                         :data
                         (map (juxt :model :name)))))))))))

@@ -272,7 +272,7 @@
                    :last_edit_first_name :first_name
                    :last_edit_email      :email
                    :last_edit_timestamp  :timestamp}]
-      (cond-> (apply dissoc row (keys mapping))
+      (cond-> (apply dissoc row :model_ranking (keys mapping))
         ;; don't use contains as they all have the key, we care about a value present
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
@@ -328,6 +328,16 @@
                                      [nil col-name]))))
          necessary-columns)))
 
+(defn- add-model-ranking
+  [select-clause model]
+  (let [rankings {:dashboard  1
+                  :pulse      2
+                  :card       3
+                  :snippet    4
+                  :collection 5}]
+    (conj select-clause [(get rankings model 100)
+                         :model_ranking])))
+
 (comment
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
   (into []
@@ -357,12 +367,13 @@
                                               [])
                                             [[:last_edit_timestamp :desc]
                                              [:%lower.name :asc]])
-                      [:model :asc]        [[:model :asc]  [:%lower.name :asc]]
-                      [:model :desc]       [[:model :desc] [:%lower.name :asc]])
+                      [:model :asc]        [[:model_ranking :asc]  [:%lower.name :asc]]
+                      [:model :desc]       [[:model_ranking :desc] [:%lower.name :asc]])
         models      (sort (map keyword models))
         queries     (for [model models]
                       (-> (collection-children-query model collection options)
-                          (update :select add-missing-columns all-select-columns)))
+                          (update :select add-missing-columns all-select-columns)
+                          (update :select add-model-ranking model)))
         total-query {:select [[:%count.* :count]]
                      :from   [[{:union-all queries} :dummy_alias]]}
         rows-query  {:select   [:*]
