@@ -189,6 +189,40 @@
 ;;; |                                                  Connectivity                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;;; Kerberos related definitions
+(def ^:private ^:const kerb-props->url-param-names
+  {:kerberos-principal "KerberosPrincipal"
+   :kerberos-remote-service-name "KerberosRemoteServiceName"
+   :kerberos-use-canonical-hostname "KerberosUseCanonicalHostname"
+   :kerberos-credential-cache-path "KerberosCredentialCachePath"
+   :kerberos-keytab-path "KerberosKeytabPath"
+   :kerberos-service-principal-pattern "KerberosServicePrincipalPattern"
+   :kerberos-config-path "KerberosConfigPath"})
+
+(defn- details->kerberos-url-params [details]
+  (let [remove-blank-vals (fn [m] (into {} (remove (fn [[_ v]]
+                                                       (or (nil? v) (= "" v))) m)))
+        ks                (keys kerb-props->url-param-names)]
+    (-> (select-keys details ks)
+      remove-blank-vals
+      (set/rename-keys kerb-props->url-param-names))))
+
+(defn- prepare-addl-opts [{:keys [SSL kerberos additional-options] :as details}]
+  (let [det (if kerberos
+              (if-not SSL
+                (throw (ex-info (trs "SSL must be enabled to use Kerberos authentication")
+                                {:db-details details}))
+                (update details
+                        :additional-options
+                        str
+                        ;; add separator if there are already additional-options
+                        (if-not (str/blank? additional-options) "&")
+                        ;; convert Kerberos options map to URL string
+                        (sql-jdbc.common/additional-opts->string :url (details->kerberos-url-params details))))
+              details)]
+    ;; in any case, remove the standalone Kerberos properties from details map
+    (apply dissoc (cons det (keys kerb-props->url-param-names)))))
+
 (defn- db-name
   "Creates a \"DB name\" for the given catalog `c` and (optional) schema `s`.  If both are specified, a slash is
   used to separate them.  See examples at:
@@ -208,22 +242,30 @@
   "Creates a spec for `clojure.java.jdbc` to use for connecting to Presto via JDBC, from the given `opts`."
   [{:keys [host port catalog schema]
     :or   {host "localhost", port 5432, catalog ""}
-    :as   opts}]
-  (-> (merge
-        {:classname                     "com.facebook.presto.jdbc.PrestoDriver"
-         :subprotocol                   "presto"
-         :subname                       (db.spec/make-subname host port (db-name catalog schema))}
-        (dissoc opts :host :port :db :catalog :schema))
+    :as   details}]
+  (-> details
+      (merge {:classname   "com.facebook.presto.jdbc.PrestoDriver"
+              :subprotocol "presto"
+              :subname     (db.spec/make-subname host port (db-name catalog schema))})
+      prepare-addl-opts
+      (dissoc :host :port :db :catalog :schema :tunnel-enabled :engine :kerberos)
     sql-jdbc.common/handle-additional-options))
 
+(defn- str->bool [v]
+  (if (string? v)
+    (Boolean/parseBoolean v)
+    v))
+
 (defmethod sql-jdbc.conn/connection-details->spec :presto-jdbc
-  [_ {ssl? :ssl, :as details-map}]
+  [_ details-map]
   (let [props (-> details-map
                 (update :port (fn [port]
                                 (if (string? port)
                                   (Integer/parseInt port)
                                   port)))
-                (assoc :SSL ssl?)
+                (update :ssl str->bool)
+                (update :kerberos str->bool)
+                (assoc :SSL (:ssl details-map))
                 ;; remove any Metabase specific properties that are not recognized by the PrestoDB JDBC driver, which is
                 ;; very picky about properties (throwing an error if any are unrecognized)
                 ;; all valid properties can be found in the JDBC Driver source here:

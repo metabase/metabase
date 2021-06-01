@@ -1,6 +1,39 @@
 (ns metabase.driver.sql-jdbc.common
   (:require [clojure.string :as str]))
 
+(def ^:private valid-separator-styles #{:url :comma :semicolon})
+
+(defn conn-str-with-additional-opts
+  "Adds `additional-opts` (a string) to the given `connection-string` based on the given `separator-style`. See
+  documentation for `handle-additional-options` for further details."
+  {:added "0.39.0", :arglists '([connection-string separator-style additional-opts])}
+  [connection-string separator-style additional-opts]
+  {:pre [(string? connection-string)
+         (or (nil? additional-opts) (string? additional-opts))
+         (contains? valid-separator-styles separator-style)]}
+  (str connection-string (when-not (str/blank? additional-opts)
+                           (str (case separator-style
+                                  :comma     ","
+                                  :semicolon ";"
+                                  :url       (if (str/includes? connection-string "?")
+                                               "&"
+                                               "?"))
+                                additional-opts))))
+
+(defn additional-opts->string
+  "Turns a map of `additional-opts` into a single string, based on the `separator-style`."
+  {:added "0.39.0", :arglists '([separator-style additional-opts])}
+  [separator-style additional-opts]
+  {:pre [(or (nil? additional-opts) (map? additional-opts)) (contains? valid-separator-styles separator-style)]}
+  (if (some? additional-opts)
+    (reduce-kv (fn [m k v]
+                 (str m
+                      (if (seq m)
+                        (case separator-style :comma "," :semicolon ";" :url "&"))
+                      (if (keyword? k) (name k) (str k))
+                      "="
+                      v)) "" additional-opts)))
+
 (defn handle-additional-options
   "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.
    (Some drivers like MySQL provide this details field to allow special behavior where needed).
@@ -16,11 +49,4 @@
   ([{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details} & {:keys [seperator-style]
                                                                                                                :or   {seperator-style :url}}]
    (-> (dissoc connection-spec :additional-options)
-       (assoc :subname (str connection-string (when (seq additional-options)
-                                                (str (case seperator-style
-                                                       :comma     ","
-                                                       :semicolon ";"
-                                                       :url       (if (str/includes? connection-string "?")
-                                                                    "&"
-                                                                    "?"))
-                                                     additional-options)))))))
+       (assoc :subname (conn-str-with-additional-opts connection-string seperator-style additional-options)))))
