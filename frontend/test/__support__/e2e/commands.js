@@ -4,6 +4,8 @@ import "./commands/ui/icon";
 import "./commands/api/question";
 import "./commands/api/dashboard";
 
+import "./commands/api/composite/createQuestionAndDashboard";
+
 import "./commands/user/createUser";
 import "./commands/user/authentication";
 
