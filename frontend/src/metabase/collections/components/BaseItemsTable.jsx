@@ -2,7 +2,6 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import moment from "moment";
-import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
 
@@ -17,14 +16,10 @@ import {
   ColumnHeader,
   SortingIcon,
   SortingControlContainer,
+  TableItemSecondaryField,
 } from "./BaseItemsTable.styled";
 
 export const ROW_HEIGHT = 80;
-
-const TableItemSecondaryField = styled.p`
-  font-size: 0.95em;
-  font-weight: bold;
-`;
 
 export function BaseTableItem({
   item,

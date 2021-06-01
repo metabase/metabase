@@ -34,3 +34,8 @@ export const SortingControlContainer = styled.div`
     }
   }
 `;
+
+export const TableItemSecondaryField = styled.p`
+  font-size: 0.95em;
+  font-weight: bold;
+`;
