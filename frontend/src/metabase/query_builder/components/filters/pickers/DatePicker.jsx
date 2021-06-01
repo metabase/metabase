@@ -374,13 +374,7 @@ export default class DatePicker extends Component {
   }
 
   render() {
-    const {
-      className,
-      filter,
-      onFilterChange,
-      includeAllTime,
-      isSidebar,
-    } = this.props;
+    const { filter, onFilterChange, includeAllTime, className } = this.props;
 
     let { operators } = this.state;
 
@@ -396,7 +390,6 @@ export default class DatePicker extends Component {
         // apply flex to align the operator selector and the "Widget" if necessary
         className={cx(className, {
           "flex align-center": Widget && Widget.horizontalLayout,
-          "PopoverBody--marginBottom": !isSidebar,
         })}
         style={{ minWidth: 300 }}
       >
