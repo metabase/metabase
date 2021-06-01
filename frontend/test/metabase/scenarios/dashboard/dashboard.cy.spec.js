@@ -648,76 +648,76 @@ describe("scenarios > dashboard", () => {
   ["normal", "corrupted"].forEach(test => {
     it(`${test.toUpperCase()} version:\n filters should work even if one of them is corrupted (metabase #15279)`, () => {
       cy.skipOn(test === "corrupted"); // Remove this line when the issue is fixed
-      cy.createQuestion({
-        name: "15279",
-        query: { "source-table": PEOPLE_ID },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard("15279D").then(({ body: { id: DASHBOARD_ID } }) => {
-          const parameters = [
-            {
-              name: "List",
-              slug: "list",
-              id: "6fe14171",
-              type: "category",
-            },
-            {
-              name: "Search",
-              slug: "search",
-              id: "4db4913a",
-              type: "category",
-            },
-          ];
 
-          if (test === "corrupted") {
-            // This filter is corrupted because it's missing `name` and the `slug`
-            parameters.push({
-              name: "",
-              slug: "",
-              id: "af72ce9c",
-              type: "category",
-            });
-          }
+      const questionDetails = { query: { "source-table": PEOPLE_ID } };
+
+      const filter1 = {
+        name: "List",
+        slug: "list",
+        id: "6fe14171",
+        type: "category",
+      };
+
+      const filter2 = {
+        name: "Search",
+        slug: "search",
+        id: "4db4913a",
+        type: "category",
+      };
+
+      // This filter is corrupted because it's missing the `name` and the `slug`
+      const corruptedFilter = {
+        name: "",
+        slug: "",
+        id: "af72ce9c",
+        type: "category",
+      };
+
+      const parameters = [filter1, filter2];
+
+      if (test === "corrupted") {
+        parameters.push(corruptedFilter);
+      }
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: { id, card_id, dashboard_id } }) => {
           // Add filters to the dashboard
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
             parameters,
           });
 
-          // Add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            // Connect filters to that question
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
-                {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 18,
-                  sizeY: 8,
-                  series: [],
-                  visualization_settings: {},
-                  parameter_mappings: [
-                    {
-                      parameter_id: "6fe14171",
-                      card_id: QUESTION_ID,
-                      target: ["dimension", ["field-id", PEOPLE.SOURCE]],
-                    },
-                    {
-                      parameter_id: "4db4913a",
-                      card_id: QUESTION_ID,
-                      target: ["dimension", ["field-id", PEOPLE.NAME]],
-                    },
-                  ],
-                },
-              ],
-            });
+          // Connect filters to dashboard card
+          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+            cards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                sizeX: 18,
+                sizeY: 8,
+                series: [],
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: filter1.id,
+                    card_id,
+                    target: ["dimension", ["field", PEOPLE.SOURCE, null]],
+                  },
+                  {
+                    parameter_id: filter2.id,
+                    card_id,
+                    target: ["dimension", ["field", PEOPLE.NAME, null]],
+                  },
+                ],
+              },
+            ],
           });
 
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
-        });
-      });
+          cy.visit(`/dashboard/${dashboard_id}`);
+        },
+      );
+
       // Check that dropdown list works
       cy.get("fieldset")
         .contains("List")
@@ -726,6 +726,7 @@ describe("scenarios > dashboard", () => {
         .findByText("Organic")
         .click();
       cy.button("Add filter").click();
+
       // Check that the search works
       cy.get("fieldset")
         .contains("Search")
