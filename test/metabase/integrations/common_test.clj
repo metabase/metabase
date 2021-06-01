@@ -53,7 +53,7 @@
   (testing "does syncing group memberships leave existing memberships in place if nothing has changed?"
     (with-user-in-groups [group {:name (str ::group)}
                           user  [group]]
-      (integrations.common/sync-group-memberships! user #{group} false)
+      (integrations.common/sync-group-memberships! user #{group} #{group} false)
       (is (= #{"All Users" ":metabase.integrations.common-test/group"}
              (group-memberships user)))))
 
@@ -64,7 +64,7 @@
                                                       :group_id (u/get-id group)
                                                       :user_id  (u/get-id user))
             original-membership-id (membership-id)]
-        (integrations.common/sync-group-memberships! user #{group} false)
+        (integrations.common/sync-group-memberships! user #{group} #{group} false)
         (is (= original-membership-id
                (membership-id))))))
 
@@ -72,7 +72,7 @@
     (with-user-in-groups [group-1 {:name (str ::group-1)}
                           group-2 {:name (str ::group-2)}
                           user    [group-1]]
-      (integrations.common/sync-group-memberships! user #{group-1 group-2} false)
+      (integrations.common/sync-group-memberships! user #{group-1 group-2} #{group-1 group-2} false)
       (is (= #{":metabase.integrations.common-test/group-1"
                ":metabase.integrations.common-test/group-2"
                "All Users"}
@@ -82,7 +82,7 @@
     (with-user-in-groups [group-1 {:name (str ::group-1)}
                           group-2 {:name (str ::group-2)}
                           user    [group-1]]
-      (integrations.common/sync-group-memberships! user #{} false)
+      (integrations.common/sync-group-memberships! user #{} #{group-1 group-2} false)
       (is (= #{"All Users"}
              (group-memberships user)))))
 
@@ -90,15 +90,29 @@
     (with-user-in-groups [group-1 {:name (str ::group-1)}
                           group-2 {:name (str ::group-2)}
                           user    [group-1]]
-      (integrations.common/sync-group-memberships! user #{group-2} false)
+      (integrations.common/sync-group-memberships! user #{group-2} #{group-1 group-2} false)
       (is (= #{":metabase.integrations.common-test/group-2" "All Users"}
+             (group-memberships user)))))
+
+  (testing "are unmapped groups ignored when adding group memberships?"
+    (with-user-in-groups [group-1 {:name (str ::group-1)}
+                          user    []]
+      (integrations.common/sync-group-memberships! user #{group-1} #{} false)
+      (is (= #{"All Users"} (group-memberships user)))))
+
+  (testing "are unmapped groups ignored when removing group memberships?"
+    (with-user-in-groups [group-1 {:name (str ::group-1)}
+                          user    [group-1]]
+      (integrations.common/sync-group-memberships! user #{} #{} false)
+      (is (= #{":metabase.integrations.common-test/group-1"
+               "All Users"}
              (group-memberships user)))))
 
   (testing "if we attempt to add a user to a group that doesn't exist, does the group sync complete for the other groups?"
     (with-user-in-groups [group {:name (str ::group)}
-                          user    [group]]
+                          user    []]
       (tu.log/suppress-output
-       (integrations.common/sync-group-memberships! user [Integer/MAX_VALUE group] false))
+       (integrations.common/sync-group-memberships! user #{Integer/MAX_VALUE group} #{Integer/MAX_VALUE group} false))
       (is (= #{"All Users" ":metabase.integrations.common-test/group"}
              (group-memberships user)))))
 
@@ -106,7 +120,7 @@
     (testing "with admin group sync enabled"
       (testing "are admins synced?"
         (with-user-in-groups [user]
-          (integrations.common/sync-group-memberships! user [(group/admin)] true)
+          (integrations.common/sync-group-memberships! user [(group/admin)] #{} true)
           (is (= #{"Administrators" "All Users"}
                  (group-memberships user)))))
 

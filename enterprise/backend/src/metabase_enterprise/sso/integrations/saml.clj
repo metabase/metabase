@@ -46,7 +46,7 @@
 (defn- sync-groups! [user group-names]
   (when (sso-settings/saml-group-sync)
     (when group-names
-      (integrations.common/sync-group-memberships! user (group-names->ids group-names) false))))
+      (integrations.common/sync-group-memberships! user (group-names->ids group-names) #{} false))))
 
 (s/defn ^:private fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Returns a Session for the given `email`. Will create the user if needed."
