@@ -839,52 +839,49 @@ describe("scenarios > dashboard", () => {
       has_field_values: "list",
     });
 
-    cy.createQuestion({
-      name: "15695",
-      query: { "source-table": PRODUCTS_ID },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("15695D").then(({ body: { id: DASHBOARD_ID } }) => {
+    const questionDetails = { query: { "source-table": PRODUCTS_ID } };
+
+    const filter = {
+      name: "Text",
+      slug: "text",
+      id: "de9f36f0",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    cy.createQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
         // Add filter to the dashboard
-        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-          parameters: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [filter],
+        });
+
+        // Connect filter to the card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
             {
-              name: "Text",
-              slug: "text",
-              id: "de9f36f0",
-              type: "string/=",
-              sectionId: "string",
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              sizeX: 12,
+              sizeY: 9,
+              visualization_settings: {},
+              parameter_mappings: [
+                {
+                  parameter_id: filter.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.TITLE, null]],
+                },
+              ],
             },
           ],
         });
-        // Add card to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Connect filter to the card
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                sizeX: 12,
-                sizeY: 9,
-                visualization_settings: {},
-                parameter_mappings: [
-                  {
-                    parameter_id: "de9f36f0",
-                    card_id: QUESTION_ID,
-                    target: ["dimension", ["field", PRODUCTS.TITLE, null]],
-                  },
-                ],
-              },
-            ],
-          });
-        });
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-      });
-    });
+
+        cy.visit(`/dashboard/${dashboard_id}`);
+      },
+    );
+
     cy.get("fieldset").click();
     cy.findByPlaceholderText("Search the list").type("Syner");
     cy.findByText("Synergistic Wool Coat");
