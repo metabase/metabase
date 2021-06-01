@@ -321,6 +321,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByText("Rating is equal to 2 selections");
       cy.contains("Reprehenderit non error"); // xavier's review
     });
+
     it("when clicking on the card title (metabase#13062-2)", () => {
       cy.findByText(questionDetails.name).click();
       cy.findByText("Rating is equal to 2 selections");
