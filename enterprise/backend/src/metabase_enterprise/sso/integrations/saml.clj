@@ -53,8 +53,9 @@
       flatten
       set))
 
-(defn- sync-groups! [user group-names]
+(defn- sync-groups!
   "Sync a user's groups based on mappings configured in the SAML settings"
+  [user group-names]
   (when (sso-settings/saml-group-sync)
     (when group-names
       (integrations.common/sync-group-memberships! user

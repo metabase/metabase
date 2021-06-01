@@ -56,8 +56,9 @@
       flatten
       set))
 
-(defn- sync-groups! [user jwt-data]
+(defn- sync-groups!
   "Sync a user's groups based on mappings configured in the JWT settings"
+  [user jwt-data]
   (when (sso-settings/jwt-group-sync)
     (when-let [groups-attribute (jwt-attribute-groups)]
       (when-let [group-names (get jwt-data (jwt-attribute-groups))]
