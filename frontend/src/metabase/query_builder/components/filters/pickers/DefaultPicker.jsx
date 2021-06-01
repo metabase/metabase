@@ -141,9 +141,11 @@ export default function DefaultPicker({
     .filter(f => f);
 
   if (fieldWidgets.length > 0) {
-    return <DefaultLayout className={className} fieldWidgets={fieldWidgets} />;
+    const Layout = DefaultLayout;
+    // TODO: custom layouts for different operators
+    return <Layout className={className} fieldWidgets={fieldWidgets} />;
   } else {
-    return <div className={cx(className, "PopoverBody--marginBottom")} />;
+    return <div className={className} />;
   }
 }
 
