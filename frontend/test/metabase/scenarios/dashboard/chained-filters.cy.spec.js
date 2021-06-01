@@ -256,62 +256,56 @@ describe("scenarios > dashboard > chained filter", () => {
       special_type: "type/PK",
     });
 
-    cy.createQuestion({
-      name: "15170",
-      query: { "source-table": PRODUCTS_ID },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("15170D").then(({ body: { id: DASHBOARD_ID } }) => {
+    const questionDetails = { query: { "source-table": PRODUCTS_ID } };
+
+    const filter = {
+      id: "50c9eac6",
+      name: "ID",
+      slug: "id",
+      type: "id",
+    };
+
+    cy.createQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
         // Add filter to the dashboard
-        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-          parameters: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [filter],
+        });
+
+        // Connect filter to the dashboard card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
             {
-              id: "50c9eac6",
-              name: "ID",
-              slug: "id",
-              type: "id",
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              sizeX: 8,
+              sizeY: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: filter.id,
+                  card_id,
+                  target: ["dimension", ["field-id", PRODUCTS.EAN]],
+                },
+              ],
             },
           ],
         });
+        cy.visit(`/dashboard/${dashboard_id}`);
+      },
+    );
 
-        // Add previously created question to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Connect filter to that question
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                sizeX: 8,
-                sizeY: 6,
-                parameter_mappings: [
-                  {
-                    parameter_id: "50c9eac6",
-                    card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.EAN]],
-                  },
-                ],
-              },
-            ],
-          });
-        });
-
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-        cy.icon("pencil").click();
-        cy.get(".DashCard .Icon-click").click({ force: true });
-        cy.findByText(/Ean/i).click();
-        cy.findByText("Update a dashboard filter").click();
-        cy.findByText("Available filters")
-          .parent()
-          .findByText(/ID/i)
-          .click();
-        popover().within(() => {
-          cy.findByText(/Ean/i);
-        });
-      });
+    cy.icon("pencil").click();
+    cy.get(".DashCard .Icon-click").click({ force: true });
+    cy.findByText(/Ean/i).click();
+    cy.findByText("Update a dashboard filter").click();
+    cy.findByText("Available filters")
+      .parent()
+      .findByText(/ID/i)
+      .click();
+    popover().within(() => {
+      cy.findByText(/Ean/i);
     });
   });
 });
