@@ -646,7 +646,7 @@ function selectItemUsingCheckbox(item, icon = "table") {
 function getSidebarCollectionChildrenFor(item) {
   return sidebar()
     .findByText(item)
-    .closest("tr")
+    .closest("a")
     .parent()
     .parent();
 }
