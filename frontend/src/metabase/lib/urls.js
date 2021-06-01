@@ -125,11 +125,10 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
 }
 
 export function collection(collection) {
-  if (
-    !collection ||
-    collection.id === null ||
-    typeof collection.id === "string"
-  ) {
+  const isSystemCollection =
+    !collection || collection.id === null || typeof collection.id === "string";
+
+  if (isSystemCollection) {
     const id = collection && collection.id ? collection.id : "root";
     return `/collection/${id}`;
   }
