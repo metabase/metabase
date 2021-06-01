@@ -91,7 +91,7 @@
       flatten
       set))
 
-(s/defn all-mapped-group-ids :- #{su?IntGreaterThanZero}
+(s/defn all-mapped-group-ids :- #{su/IntGreaterThanZero}
   "Returns the set of all MB group IDs that have configured mappings."
   [{:keys [group-mappings]} :- (select-keys i/LDAPSettings [:group-mappings s/Keyword])]
   (-> group-mappings

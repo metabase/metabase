@@ -13,19 +13,19 @@
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only touches groups with mappings set."
   [user-or-id new-groups-or-ids mapped-groups-or-ids sync-admin-group?]
-  (let [excluded-group-ids        (cond-> #{(u/the-id (group/all-users))}
-                                    (not sync-admin-group?) (conj (u/the-id (group/admin))))
-        included-group-ids        (cond-> (set (map u/the-id mapped-groups-or-ids))
-                                    sync-admin-group? (conj (u/the-id (group/admin))))
-        user-id                  (u/the-id user-or-id)
+  (let [included-group-ids (cond-> (set (map u/the-id mapped-groups-or-ids))
+                             sync-admin-group? (conj (u/the-id (group/admin))))
+        excluded-group-ids (cond-> #{(u/the-id (group/all-users))}
+                             (not sync-admin-group?) (conj (u/the-id (group/admin))))
+        user-id            (u/the-id user-or-id)
         ;; Get a set of mapped Group IDs the user currently belongs to
-        current-group-ids        (db/select-field :group_id PermissionsGroupMembership
-                                                  :user_id  user-id
-                                                  :group_id [:not-in excluded-group-ids]
-                                                  ;; Add nil to included group ids to ensure valid SQL if set is empty
-                                                  :group_id [:in (conj included-group-ids nil)])
-        new-group-ids     (set/intersection (set (map u/the-id mapped-groups-or-ids))
-                                            (set (map u/the-id new-groups-or-ids)))
+        current-group-ids  (db/select-field :group_id PermissionsGroupMembership
+                                            :user_id  user-id
+                                            ;; Add nil to included group ids to ensure valid SQL if set is empty
+                                            :group_id [:in (conj included-group-ids nil)]
+                                            :group_id [:not-in excluded-group-ids])
+        new-group-ids      (set/intersection (set (map u/the-id mapped-groups-or-ids))
+                                             (set (map u/the-id new-groups-or-ids)))
         ;; determine what's different between current mapped groups and new mapped groups
         [to-remove to-add] (data/diff current-group-ids new-group-ids)]
     ;; remove membership from any groups as needed
