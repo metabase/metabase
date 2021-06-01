@@ -121,7 +121,7 @@ describe("scenarios > question > filter", () => {
     });
 
     it.skip("Repro 2: should work for aggregated questions", () => {
-      cy.createQuestion({
+      const questionDetails = {
         name: "12985-v2",
         query: {
           "source-query": {
@@ -131,59 +131,51 @@ describe("scenarios > question > filter", () => {
           },
           filter: [">", ["field", "count", { "base-type": "type/Integer" }], 1],
         },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard("12985-v2D").then(
-          ({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add a category filter to the dashboard");
+      };
 
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-              parameters: [
-                {
-                  name: "Category",
-                  slug: "category",
-                  id: "7c4htcv8",
-                  type: "category",
-                },
-              ],
-            });
+      const filter = {
+        name: "Category",
+        slug: "category",
+        id: "7c4htcv8",
+        type: "category",
+      };
 
-            cy.log("Add previously created question to the dashboard");
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: { id, card_id, dashboard_id } }) => {
+          // Add a category filter to the dashboard
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            parameters: [filter],
+          });
 
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: QUESTION_ID,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              cy.log("Connect dashboard filter to the aggregated card");
-
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
+          // Connect dashboard filter to the aggregated card
+          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+            cards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                sizeX: 8,
+                sizeY: 6,
+                series: [],
+                visualization_settings: {},
+                // Connect filter to the card
+                parameter_mappings: [
                   {
-                    id: DASH_CARD_ID,
-                    card_id: QUESTION_ID,
-                    row: 0,
-                    col: 0,
-                    sizeX: 8,
-                    sizeY: 6,
-                    series: [],
-                    visualization_settings: {},
-                    // Connect filter to the card
-                    parameter_mappings: [
-                      {
-                        parameter_id: "7c4htcv8",
-                        card_id: QUESTION_ID,
-                        target: [
-                          "dimension",
-                          ["field", "CATEGORY", { "base-type": "type/Text" }],
-                        ],
-                      },
+                    parameter_id: filter.id,
+                    card_id,
+                    target: [
+                      "dimension",
+                      ["field", "CATEGORY", { "base-type": "type/Text" }],
                     ],
                   },
                 ],
-              });
-            });
-            cy.visit(`/dashboard/${DASHBOARD_ID}`);
-          },
-        );
-      });
+              },
+            ],
+          });
+          cy.visit(`/dashboard/${dashboard_id}`);
+        },
+      );
 
       cy.findByPlaceholderText("Category").click();
       // It will fail at this point until the issue is fixed because popover never appears
