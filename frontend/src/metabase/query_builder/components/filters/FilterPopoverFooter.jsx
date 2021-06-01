@@ -1,6 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -51,3 +50,12 @@ export default function FilterPopoverFooter({
     </div>
   );
 }
+
+FilterPopoverFooter.propTypes = {
+  filter: PropTypes.object,
+  isNew: PropTypes.bool,
+  isSidebar: PropTypes.bool,
+  onFilterChange: PropTypes.func,
+  onCommit: PropTypes.func,
+  className: PropTypes.string,
+};

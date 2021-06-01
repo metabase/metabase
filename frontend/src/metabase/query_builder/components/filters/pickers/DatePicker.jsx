@@ -1,7 +1,6 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { t } from "ttag";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 import cx from "classnames";
 import moment from "moment";
 import _ from "underscore";
@@ -24,6 +23,20 @@ import type {
   ExpressionReference,
 } from "metabase-types/types/Query";
 
+const singleDatePickerPropTypes = {
+  className: PropTypes.string,
+  filter: PropTypes.object,
+  onFilterChange: PropTypes.func,
+  hideTimeSelectors: PropTypes.func,
+};
+
+const multiDatePickerPropTypes = {
+  className: PropTypes.string,
+  filter: PropTypes.object,
+  onFilterChange: PropTypes.func,
+  hideTimeSelectors: PropTypes.func,
+};
+
 const SingleDatePicker = ({
   className,
   filter: [op, field, value],
@@ -38,6 +51,8 @@ const SingleDatePicker = ({
     calendar
   />
 );
+
+SingleDatePicker.propTypes = singleDatePickerPropTypes;
 
 const MultiDatePicker = ({
   className,
@@ -74,6 +89,8 @@ const MultiDatePicker = ({
     </div>
   </div>
 );
+
+MultiDatePicker.propTypes = multiDatePickerPropTypes;
 
 const PreviousPicker = props => (
   <RelativeDatePicker {...props} formatter={value => value * -1} />
@@ -340,6 +357,7 @@ export default class DatePicker extends Component {
     className: PropTypes.string,
     hideEmptinessOperators: PropTypes.bool,
     hideTimeSelectors: PropTypes.bool,
+    isSidebar: PropTypes.bool,
     operators: PropTypes.array,
   };
 
