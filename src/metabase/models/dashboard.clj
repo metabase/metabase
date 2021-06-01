@@ -45,17 +45,18 @@
                             [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                :order-by  [[:dashcard.created_at :asc]]})))
 
-(defn collection-type
-  "Returns the collection type associated with the dashboard"
-  {:hydrate :collection_type}
-  [dashboard-or-id]
-  (-> (db/query {:select    [[:collection.type :collection_type]]
-                 :from      [[:report_dashboard :dashboard]]
-                 :left-join [[Collection :collection] [:= :collection.id :dashboard.collection_id]]
-                 :where     [:= :dashboard.id (u/the-id dashboard-or-id)]})
-      first
-      :collection_type))
-
+(defn collections-type
+  "Efficiently hydrate the `:collection_type` of a sequence of dashboards."
+  {:batched-hydrate :collection_type}
+  [dashboards]
+  (let [coll-id->type (into {}
+                            (map (juxt :id :collection_type))
+                            (db/query {:select    [:dashboard.id [:collection.type :collection_type]]
+                                       :from      [[:report_dashboard :dashboard]]
+                                       :left-join [[Collection :collection] [:= :collection.id :dashboard.collection_id]]
+                                       :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
+    (for [dashboard dashboards]
+      (assoc dashboard :collection_type (get coll-id->type (u/the-id dashboard))))))
 
 (models/defmodel Dashboard :report_dashboard)
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------

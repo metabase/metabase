@@ -693,30 +693,18 @@
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [unchangeable {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")
-                      :type              (tru "You're not allowed to change the type of a Personal Collection.")}]
+                      :type              (tru "You're not allowed to change the type of a Personal Collection.")
+                      ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
+                      ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
+                      ;; doesn't hurt to check here too.
+                      :location          (tru "You're not allowed to move a Personal Collection.")
+                      :archived          (tru "You cannot archive a Personal Collection.")}]
     (when-let [[k msg] (->> unchangeable
                             (filter (fn [[k _msg]]
                                       (api/column-will-change? k collection-before-updates collection-updates)))
                             first)]
       (throw
-       (ex-info msg {:status-code 400 :errors {k msg}}))))
-  ;;
-  ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving` functions also
-  ;; check to make sure you're not operating on Personal Collections. But as an extra safety net it doesn't hurt to
-  ;; check here too.
-  ;;
-  ;; You also definitely cannot *move* a Personal Collection
-  (when (api/column-will-change? :location collection-before-updates collection-updates)
-    (throw
-     (ex-info (tru "You're not allowed to move a Personal Collection.")
-              {:status-code 400
-               :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
-  ;; You also can't archive a Personal Collection
-  (when (api/column-will-change? :archived collection-before-updates collection-updates)
-    (throw
-     (ex-info (tru "You cannot archive a Personal Collection.")
-              {:status-code 400
-               :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
+       (ex-info msg {:status-code 400 :errors {k msg}})))))
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."

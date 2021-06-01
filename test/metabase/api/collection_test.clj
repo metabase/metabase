@@ -930,16 +930,16 @@
                                      (collection/children-location (Collection (:id sub-collection))))
         (is (= "official"
                (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                         {:type "official" :type_sub_tree true})
+                                         {:type "official" :update_collection_tree_type true})
                    :type)))
         ;; descended and marked sub collections
         (is (= :official (db/select-one-field :type Collection :id (:id sub-collection))))
         (is (= :official (db/select-one-field :type Collection :id (:id sub-sub-collection))))
         (testing "Non-admins cannot apply types to the whole tree"
           (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :type_sub_tree true})
+                                {:name "new name" :update_collection_tree_type true})
           (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :type nil :type_sub_tree true}))))
+                                {:name "new name" :type nil :update_collection_tree_type true}))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]

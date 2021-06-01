@@ -431,21 +431,21 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id type type_sub_tree], :as collection-updates} :body}]
-  {name          (s/maybe su/NonBlankString)
-   color         (s/maybe collection/hex-color-regex)
-   description   (s/maybe su/NonBlankString)
-   archived      (s/maybe s/Bool)
-   parent_id     (s/maybe su/IntGreaterThanZero)
-   type          collection/Type
-   type_sub_tree (s/maybe s/Bool)}
+  [id, :as {{:keys [name color description archived parent_id type update_collection_tree_type], :as collection-updates} :body}]
+  {name                        (s/maybe su/NonBlankString)
+   color                       (s/maybe collection/hex-color-regex)
+   description                 (s/maybe su/NonBlankString)
+   archived                    (s/maybe s/Bool)
+   parent_id                   (s/maybe su/IntGreaterThanZero)
+   type                        collection/Type
+   update_collection_tree_type (s/maybe s/Bool)}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
     (when (or (and (contains? collection-updates :type)
                    (not= type (:type collection-before-update)))
-              type_sub_tree)
+              update_collection_tree_type)
       (api/check-403 (and api/*is-superuser?*
                           ;; pre-update of model checks if the collection is a personal collection and rejects changes
                           ;; to type, but it doesn't check if it is a sub-collection of a personal one so we add that
@@ -459,7 +459,7 @@
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; mark the tree after moving so the new tree is what is marked as official
-    (when type_sub_tree
+    (when update_collection_tree_type
       (db/execute! {:update Collection
                     :set    {:type type}
                     :where  [:or
