@@ -61,6 +61,12 @@
       (is (= [{:id 1, :name "All Users", :member_count 3}]
              (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
 
+(deftest groups-list-filter-test
+  (testing "GET /api/permissions/group?group_filter=meta"
+    (testing "Filter works"
+      (is (= [{:id 1, :name "All Users", :member_count 3}]
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :group_filter "All"))))))
+
 (deftest fetch-group-test
   (testing "GET /permissions/group/:id"
     (let [{:keys [members]} ((mt/user->client :crowberto) :get 200 (format "permissions/group/%d" (:id (group/all-users))))

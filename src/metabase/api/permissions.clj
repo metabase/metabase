@@ -72,7 +72,7 @@
                                   true
                                   [:not= :id (u/get-id (group/metabot))])
                       :order-by [[:id :desc]]}
-               (some? group-filter) (hh/merge-where [:like (str "%" group-filter "%")])
+               (some? group-filter) (hh/merge-where [:like :name (str "%" group-filter "%")])
                (some? limit)        (hh/limit  limit)
                (some? offset)       (hh/offset offset))))
 
@@ -86,9 +86,9 @@
 
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
-  [group-filter]
+  [group_filter]
   (api/check-superuser)
-  (-> (ordered-groups group-filter offset-paging/*limit* offset-paging/*offset*)
+  (-> (ordered-groups group_filter offset-paging/*limit* offset-paging/*offset*)
       (hydrate :member_count)))
 
 (api/defendpoint GET "/group/:id"
