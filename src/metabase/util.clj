@@ -21,7 +21,7 @@
   (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
            java.util.concurrent.TimeoutException
-           java.util.Locale
+           (java.util Locale PriorityQueue)
            javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
@@ -896,3 +896,33 @@
   [^String s]
   (and (string? s)
        (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) s)))
+
+(defn sorted-take
+  "A reducing function that maintains a queue of the largest items as determined by `kompare`. The queue is bounded
+  in size by `size`. Useful if you are interested in the largest `size` number of items without keeping the entire
+  collection in memory.
+
+  In general,
+  (=
+    (take-last 2 (sort-by identity kompare coll))
+    (transduce (map identity) (u/sorted-take 2 kompare) coll))
+  But the entire collection is not in memory, just at most
+  "
+  [size kompare]
+  (fn bounded-heap-acc
+    ([] (PriorityQueue. size kompare))
+    ([^PriorityQueue q]
+     (loop [acc []]
+       (if-let [x (.poll q)]
+         (recur (conj acc x))
+         acc)))
+    ([^PriorityQueue q item]
+     (if (>= (.size q) size)
+       (let [smallest (.peek q)]
+         (if (pos? (kompare item smallest))
+           (doto q
+             (.poll)
+             (.offer item))
+           q))
+       (doto q
+         (.offer item))))))

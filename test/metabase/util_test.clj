@@ -273,3 +273,31 @@
     ""                     false
     nil                    false
     100                    false))
+
+;; this would be such a good spot for test.check
+(deftest sorted-take-test
+  (testing "Only accumulates up to limit"
+    (let [limit 50
+          rf    (u/sorted-take limit compare)
+          coll  (shuffle (range 500))]
+      (is (= limit
+             (count (transduce (map identity) rf coll))))))
+  (testing "Sorts according to passed in comparator"
+    (let [metric  (fn [[x1 x2]] (+ (* x1 x1) (* x2 x2)))
+          kompare (fn [x y] (compare (metric x) (metric y)))
+          coll    (shuffle (map (fn [x] [x (/ 1 x)]) (range 1 420)))]
+      ;; points in a plane, shuffle, compare on magnitude from origin
+      (is (= (take-last 2 (sort-by identity kompare coll))
+             (transduce (map identity) (u/sorted-take 2 kompare) coll)))))
+  (testing "Returns in ascending (sorted) order"
+    (let [results (transduce (map identity) (u/sorted-take 20 compare) (shuffle (range 1000)))]
+      (is (= (sort results) results))))
+  (testing "It ensures there are never more than `size` items in the priority queue"
+    (let [limit 5
+          rf    (u/sorted-take limit compare)]
+      (reduce (fn [q x]
+                (let [q' (rf q x)]
+                  (is (<= (.size q) limit))
+                  q))
+              (rf)
+              (shuffle (range 30))))))

@@ -7,8 +7,7 @@
             [metabase.search.config :as search-config]
             [metabase.util :as u]
             [potemkin.types :as p.types]
-            [schema.core :as s])
-  (:import java.util.PriorityQueue))
+            [schema.core :as s]))
 
 ;;; Utility functions
 
@@ -247,29 +246,6 @@
     :score  (model-score result)
     :name   "model"}])
 
-(defn- bounded-heap-accumulator
-  "A reducing function that maintains a queue of the largest items as determined by `kompare`. The queue is bounded
-  in size by `size`. Useful if you are interested in the largest `size` number of items without keeping the entire
-  collection in memory."
-  [size kompare]
-  (fn bounded-heap-acc
-    ([] (PriorityQueue. size kompare))
-    ([^PriorityQueue q]
-     (loop [acc []]
-       (if-let [x (.poll q)]
-         (recur (conj acc x))
-         acc)))
-    ([^PriorityQueue q item]
-     (if (>= (.size q) size)
-       (let [smallest (.peek q)]
-         (if (pos? (kompare item smallest))
-           (doto q
-             (.poll)
-             (.offer item))
-           q))
-       (doto q
-         (.offer item))))))
-
 (p.types/defprotocol+ ResultScore
   "Protocol to score a result in search beyond the text scoring."
   (score-result [_ result]
@@ -314,7 +290,7 @@
   maps with `:score` and `:result` keys."
   [reducible-results xf]
   (->> reducible-results
-       (transduce xf (bounded-heap-accumulator search-config/max-filtered-results compare-score-and-result))
+       (transduce xf (u/sorted-take search-config/max-filtered-results compare-score-and-result))
        ;; Make it descending: high scores first
        rseq
        (map :result)))
