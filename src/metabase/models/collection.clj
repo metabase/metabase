@@ -692,12 +692,12 @@
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
-  (let [unchangeable {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")
-                      :type              (tru "You're not allowed to change the type of a Personal Collection.")
+  (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
+                      :type              (tru "You are not allowed to change the type of a Personal Collection.")
                       ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
                       ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
                       ;; doesn't hurt to check here too.
-                      :location          (tru "You're not allowed to move a Personal Collection.")
+                      :location          (tru "You are not allowed to move a Personal Collection.")
                       :archived          (tru "You cannot archive a Personal Collection.")}]
     (when-let [[k msg] (->> unchangeable
                             (filter (fn [[k _msg]]

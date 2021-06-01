@@ -1209,8 +1209,9 @@
   (testing "We are not allowed to change the type of a Personal Collection"
     (mt/with-temp User [my-cool-user]
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
-        (is (thrown?
+        (is (thrown-with-msg?
              Exception
+             #"You are not allowed to change the type of a Personal Collection."
              (db/update! Collection (u/get-id personal-collection) :type "official"))))))
 
   (testing "Does hydrating `:personal_collection_id` force creation of Personal Collections?"

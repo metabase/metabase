@@ -53,8 +53,9 @@
    {:name name}
    (apply array-map kvs)))
 
-(def ^:private test-collection (make-result "collection test collection", :model "collection",
-                                            :collection {:id true, :name true :type nil},
+(def ^:private test-collection (make-result "collection test collection"
+                                            :model "collection"
+                                            :collection {:id true, :name true :type nil}
                                             :updated_at false))
 
 (defn- default-search-results []

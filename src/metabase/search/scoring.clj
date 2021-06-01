@@ -1,6 +1,7 @@
 (ns metabase.search.scoring
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.plugins.classloader :as classloader]
             [metabase.search.config :as search-config]
@@ -291,7 +292,8 @@
                 (classloader/require 'metabase-enterprise.search.scoring)
                 (some-> (resolve 'metabase-enterprise.search.scoring/ee-scoring)
                         var-get))
-               oss-score-impl)))
+               oss-score-impl)
+           (log/debugf "Scoring implementation set to %s" <>)))
 
 (defn score-and-result
   "Returns a map with the `:score` and `:result`—or nil. The score is a vector of comparable things in priority order."

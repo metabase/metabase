@@ -866,8 +866,18 @@
     (testing "collection types"
       (mt/with-model-cleanup [Collection]
         (testing "Admins should be able to create with a type"
-          (mt/user-http-request :crowberto :post 200 "collection"
-                                {:name "foo", :color "#f38630", :type "official"})
+          (is (schema= {:description (s/eq nil)
+                        :archived (s/eq false)
+                        :slug (s/eq "foo")
+                        :color (s/eq "#f38630")
+                        :name (s/eq "foo")
+                        :personal_owner_id (s/eq nil)
+                        :type (s/eq nil)
+                        :id s/Int
+                        :location (s/eq "/")
+                        :namespace (s/eq nil)}
+                       (mt/user-http-request :crowberto :post 200 "collection"
+                                             {:name "foo", :color "#f38630", :type "official"})))
           (testing "But they have to be valid types"
             (mt/user-http-request :crowberto :post 400 "collection"
                                   {:name "foo", :color "#f38630", :type "no-way-this-is-valid-type"})))
@@ -899,11 +909,14 @@
         (is (= "official"
                (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
                                          {:name "foo" :type "official"})
-                   :type))))
+                   :type)))
+        (is (= :official
+               (db/select-one-field :type Collection :id (u/the-id collection)))))
       (testing "But not for personal collections"
         (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
           (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id personal-coll))
-                                {:type "official"})))
+                                {:type "official"})
+          (is (nil? (db/select-one-field :type Collection :id (u/the-id personal-coll))))))
       (testing "And not for children of personal collections"
         (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
           (mt/with-temp Collection [child-coll]
