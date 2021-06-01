@@ -35,7 +35,15 @@ function mapStateToProps(state) {
 function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
-  const { handleNextPage, handlePreviousPage, page } = usePagination();
+  const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
+    sort_column: "name",
+    sort_direction: "asc",
+  });
+  const [pinnedItemsSorting, setPinnedItemsSorting] = useState({
+    sort_column: "name",
+    sort_direction: "asc",
+  });
+  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
   const {
     selected,
     toggleItem,
@@ -71,6 +79,18 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
     [selectedItems, clear],
   );
 
+  const handleUnpinnedItemsSortingChange = useCallback(
+    sortingOpts => {
+      setUnpinnedItemsSorting(sortingOpts);
+      setPage(0);
+    },
+    [setPage],
+  );
+
+  const handlePinnedItemsSortingChange = useCallback(sortingOpts => {
+    setPinnedItemsSorting(sortingOpts);
+  }, []);
+
   const handleCloseModal = () => {
     setSelectedItems(null);
     setSelectedAction(null);
@@ -92,11 +112,13 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     pinned_state: "is_not_pinned",
+    ...unpinnedItemsSorting,
   };
 
   const pinnedQuery = {
     collection: collectionId,
     pinned_state: "is_pinned",
+    ...pinnedItemsSorting,
   };
 
   return (
