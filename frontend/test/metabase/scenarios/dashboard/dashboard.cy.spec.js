@@ -771,64 +771,62 @@ describe("scenarios > dashboard", () => {
   });
 
   it("dashboard filters should allow multiple selections (metabase#15689)", () => {
-    cy.createQuestion({
-      name: "15689",
-      query: { "source-table": PEOPLE_ID },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("15689D").then(({ body: { id: DASHBOARD_ID } }) => {
+    const questionDetails = { query: { "source-table": PEOPLE_ID } };
+
+    const filter = {
+      name: "Location",
+      slug: "location",
+      id: "5aefc725",
+      type: "string/=",
+      sectionId: "location",
+    };
+
+    cy.createQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
         // Add filter to the dashboard
-        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-          parameters: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [filter],
+        });
+
+        // Connect filter to the card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
             {
-              name: "Location",
-              slug: "location",
-              id: "5aefc725",
-              type: "string/=",
-              sectionId: "location",
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              sizeX: 12,
+              sizeY: 9,
+              visualization_settings: {},
+              parameter_mappings: [
+                {
+                  parameter_id: filter.id,
+                  card_id,
+                  target: ["dimension", ["field", PEOPLE.STATE, null]],
+                },
+              ],
             },
           ],
         });
-        // Add card to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Connect filter to the card
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                sizeX: 12,
-                sizeY: 9,
-                visualization_settings: {},
-                parameter_mappings: [
-                  {
-                    parameter_id: "5aefc725",
-                    card_id: QUESTION_ID,
-                    target: ["dimension", ["field", PEOPLE.STATE, null]],
-                  },
-                ],
-              },
-            ],
-          });
-        });
 
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-      });
-    });
+        cy.visit(`/dashboard/${dashboard_id}`);
+      },
+    );
 
     cy.get("fieldset").click();
     cy.findByText("AK").click();
     cy.findByText("CA").click();
+
     cy.icon("close")
       .as("close")
       .should("have.length", 2);
+
     cy.get("@close")
       .first()
       .closest("li")
       .contains("AK");
+
     cy.get("@close")
       .last()
       .closest("li")
