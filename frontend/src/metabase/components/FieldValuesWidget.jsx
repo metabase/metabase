@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import PropType from "prop-types";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
@@ -29,8 +29,13 @@ import type { Parameter } from "metabase-types/types/Parameter";
 
 const MAX_SEARCH_RESULTS = 100;
 
+const fieldValuesWidgetPropTypes = {
+  addRemappings: PropTypes.func,
+  expand: PropTypes.bool,
+};
+
 const optionsMessagePropTypes = {
-  message: PropType.string.isRequired,
+  message: PropTypes.string.isRequired,
 };
 
 // fetch the possible values of a parameter based on the values of the other parameters in a dashboard.
@@ -508,6 +513,8 @@ export class FieldValuesWidget extends Component {
     );
   }
 }
+
+FieldValuesWidget.propTypes = fieldValuesWidgetPropTypes;
 
 function dedupeValues(valuesList) {
   const uniqueValueMap = new Map(valuesList.flat().map(o => [o[0], o]));
