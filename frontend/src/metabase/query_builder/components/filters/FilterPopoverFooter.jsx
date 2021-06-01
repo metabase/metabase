@@ -1,10 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+
 import { t } from "ttag";
 import cx from "classnames";
+
 import Button from "metabase/components/Button";
-import { getOperator as datePickerOperator } from "../filters/pickers/DatePicker";
+
 import FilterOptions from "./FilterOptions";
+import { getOperator } from "../filters/pickers/DatePicker";
 
 export default function FilterPopoverFooter({
   filter,
@@ -17,12 +20,6 @@ export default function FilterPopoverFooter({
   const dimension = filter.dimension();
   const field = dimension.field();
 
-  // DatePicker uses a different set of operator objects
-  // Normal operators defined in schema_metadata
-  const operator = field.isDate()
-    ? datePickerOperator(filter)
-    : filter.operator();
-
   const containerClassName = cx(className, "flex align-center", {
     PopoverFooter: !isSidebar,
   });
@@ -32,7 +29,13 @@ export default function FilterPopoverFooter({
       <FilterOptions
         filter={filter}
         onFilterChange={onFilterChange}
-        operator={operator}
+        operator={
+          field.isDate()
+            ? // DatePicker uses a different set of operator objects
+              getOperator(filter)
+            : // Normal operators defined in schema_metadata
+              filter.operator()
+        }
       />
       {onCommit && (
         <Button
