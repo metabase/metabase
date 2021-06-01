@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
+
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
@@ -47,6 +48,7 @@ const BORDER_WIDTH = 1;
 const normalizeValue = value =>
   Array.isArray(value) ? value : value != null ? [value] : [];
 
+// TODO: rename this something else since we're using it for more than searching and more than text
 export default class ParameterFieldWidget extends Component<*, Props, State> {
   props: Props;
   state: State;
@@ -109,14 +111,11 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       parameters,
       dashboard,
     } = this.props;
-
     const { isFocused, widgetWidth } = this.state;
     const { numFields = 1, multi = false, verboseName } = operator || {};
-
     const savedValue = normalizeValue(this.props.value);
     const unsavedValue = normalizeValue(this.state.value);
     const isEqualsOp = isEqualsOperator(operator);
-
     const disableSearch = operator && isFuzzyOperator(operator);
     const defaultPlaceholder = isFocused
       ? ""
@@ -134,18 +133,9 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       isEqualsOp && "mr1 mb1",
     );
 
-    const handleButtonClick = () => {
-      setValue(unsavedValue.length > 0 ? unsavedValue : null);
-      focusChanged(false);
-    };
-
     const placeholder = isEditing
       ? t`Enter a default value...`
       : defaultPlaceholder;
-
-    const isButtonDisabled =
-      savedValue.length === 0 && unsavedValue.length === 0;
-    const buttonText = savedValue.length > 0 ? t`Update filter` : t`Add filter`;
 
     if (!isFocused) {
       return (
@@ -207,16 +197,19 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                 />
               );
             })}
-          </div>
-          <div className={footerClassName}>
-            <Button
-              primary
-              className="ml-auto"
-              disabled={isButtonDisabled}
-              onClick={handleButtonClick}
-            >
-              {buttonText}
-            </Button>
+            <div className={footerClassName}>
+              <Button
+                primary
+                className="ml-auto"
+                disabled={savedValue.length === 0 && unsavedValue.length === 0}
+                onClick={() => {
+                  setValue(unsavedValue.length > 0 ? unsavedValue : null);
+                  focusChanged(false);
+                }}
+              >
+                {savedValue.length > 0 ? t`Update filter` : t`Add filter`}
+              </Button>
+            </div>
           </div>
         </Popover>
       );
