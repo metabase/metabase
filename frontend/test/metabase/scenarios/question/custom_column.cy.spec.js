@@ -176,7 +176,7 @@ describe("scenarios > question > custom columns", () => {
       .findByText("1");
   });
 
-  it.skip("should be able to use custom expression after aggregation (metabase#13857)", () => {
+  it("should be able to use custom expression after aggregation (metabase#13857)", () => {
     const CE_NAME = "13857_CE";
     const CC_NAME = "13857_CC";
 
@@ -190,7 +190,11 @@ describe("scenarios > question > custom columns", () => {
         },
         "source-query": {
           aggregation: [
-            ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
+            [
+              "aggregation-options",
+              ["*", 1, 1],
+              { name: CE_NAME, "display-name": CE_NAME },
+            ],
           ],
           breakout: [
             ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],

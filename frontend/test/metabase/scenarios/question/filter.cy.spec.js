@@ -301,7 +301,7 @@ describe("scenarios > question > filter", () => {
     cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
   });
 
-  it.skip("should filter using Custom Expression from aggregated results (metabase#12839)", () => {
+  it("should filter using Custom Expression from aggregated results (metabase#12839)", () => {
     const CE_NAME = "Simple Math";
 
     cy.createQuestion({
@@ -310,7 +310,11 @@ describe("scenarios > question > filter", () => {
         filter: [">", ["field", CE_NAME, { "base-type": "type/Float" }], 0],
         "source-query": {
           aggregation: [
-            ["aggregation-options", ["+", 1, 1], { "display-name": CE_NAME }],
+            [
+              "aggregation-options",
+              ["+", 1, 1],
+              { name: CE_NAME, "display-name": CE_NAME },
+            ],
           ],
           breakout: [["field", PRODUCTS.CATEGORY, null]],
           "source-table": PRODUCTS_ID,
