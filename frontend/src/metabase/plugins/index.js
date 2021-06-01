@@ -71,4 +71,5 @@ export const PLUGIN_MODERATION_SERVICE = {
   isRequestDismissal: _.noop,
   isRequestOpen: _.noop,
   getModerationRequestActionTypes: _.noop,
+  getModerationEvents: _.noop,
 };

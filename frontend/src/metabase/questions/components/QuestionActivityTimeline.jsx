@@ -36,8 +36,8 @@ function QuestionActivityTimeline({
   const usersById = _.indexBy(users, "id");
   const canWrite = question.canWrite();
   const events = [
-    ...getModerationEvents(question, usersById),
-    ...getRevisionEvents(revisions, canWrite),
+    ...(getModerationEvents(question, usersById) || []),
+    ...(getRevisionEvents(revisions, canWrite) || []),
   ];
 
   return (
