@@ -1089,7 +1089,7 @@ workflows:
           e: presto
           before-steps:
             - wait-for-port:
-                port: 8080
+                port: 8443
           driver: presto
 
       - test-driver:
