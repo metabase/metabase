@@ -2130,11 +2130,7 @@ exports[`TokenField should render "" correctly 1`] = `
     className="overflow-auto pl1 my1 scroll-hide"
     onMouseEnter={[Function]}
     onMouseLeave={[Function]}
-    style={
-      Object {
-        "maxHeight": 300,
-      }
-    }
+    style={Object {}}
   >
     <li
       className="mr1"
@@ -2230,11 +2226,7 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
     className="overflow-auto pl1 my1 scroll-hide"
     onMouseEnter={[Function]}
     onMouseLeave={[Function]}
-    style={
-      Object {
-        "maxHeight": 300,
-      }
-    }
+    style={Object {}}
   >
     <li
       className="mr1"
