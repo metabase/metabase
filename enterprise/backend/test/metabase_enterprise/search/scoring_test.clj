@@ -5,14 +5,15 @@
 
 (deftest official-collection-tests
   (testing "it should bump up the value of items in official collections"
-    (let [score (comp :score (partial scoring/score-and-result ee-scoring/ee-scoring ""))
-          items [{:name                "needle"
-                  :dashboardcard_count 0
-                  :model               "card"}
-                 {:name  "foo"
-                  :model "dashboard"}
-                 {:name  "foo2"
-                  :model "pulse"}]]
+    ;; using the ee implementation that isn't wrapped by enable-enhancements? check
+    (let [score          (comp :score (partial scoring/score-and-result ee-scoring/scoring-impl ""))
+          items          [{:name                "needle"
+                           :dashboardcard_count 0
+                           :model               "card"}
+                          {:name  "foo"
+                           :model "dashboard"}
+                          {:name  "foo2"
+                           :model "pulse"}]]
       (doseq [item items]
         (is (> (score (assoc item :collection_authority_level "official")) (score item))
             (str "Item not greater for model: " (:model item))))
