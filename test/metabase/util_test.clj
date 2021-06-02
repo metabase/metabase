@@ -309,7 +309,3 @@
          (transduce (map identity)
                     (u/sorted-take size kompare)
                     coll)))))
-
-(defspec oops
-  (prop/for-all [x gen/int]
-    (even? x)))
