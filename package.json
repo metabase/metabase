@@ -168,7 +168,6 @@
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
     "test-unit": "yarn build-quick:cljs && jest --maxWorkers=2 --config jest.unit.conf.json",
     "test-unit-watch": "yarn test-unit --watch",
-    "test-unit-update-snapshot": "yarn test-unit --updateSnapshot",
     "test-timezones-unit": "yarn build-quick:cljs && jest --maxWorkers=2 --config jest.tz.unit.conf.json",
     "test-timezones": "yarn && ./frontend/test/__runner__/run_timezone_tests",
     "build:js": "yarn && webpack --bail",
