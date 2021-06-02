@@ -55,6 +55,8 @@ export function BaseTableItem({
   const handleCopy = useCallback(() => onCopy([item]), [item, onCopy]);
   const handleArchive = useCallback(() => item.setArchived(true), [item]);
 
+  const testID = isPinned ? "pinned-collection-entry" : "collection-entry";
+
   return (
     <ItemDragSource
       item={item}
@@ -64,7 +66,7 @@ export function BaseTableItem({
       onDrop={onDrop}
     >
       <tr
-        data-testid={isPinned ? "pinned-collection-entry" : "collection-entry"}
+        data-testid={testID}
         style={{
           height: `${ROW_HEIGHT}px`,
           "border-bottom": hasBottomBorder
@@ -72,7 +74,7 @@ export function BaseTableItem({
             : "none",
         }}
       >
-        <td>
+        <td data-testid={`${testID}-type`}>
           <EntityItem.Icon
             item={item}
             variant="list"
@@ -86,17 +88,17 @@ export function BaseTableItem({
             mr={0}
           />
         </td>
-        <td>
+        <td data-testid={`${testID}-name`}>
           <Link {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} />
           </Link>
         </td>
-        <td>
+        <td data-testid={`${testID}-last-edited-by`}>
           <TableItemSecondaryField className="text-dark">
             {lastEditedBy}
           </TableItemSecondaryField>
         </td>
-        <td>
+        <td data-testid={`${testID}-last-edited-at`}>
           <TableItemSecondaryField className="text-dark">
             {lastEditedAt}
           </TableItemSecondaryField>
@@ -247,7 +249,9 @@ function BaseItemsTable({
         <col span="actions" style={{ width: "5%" }} />
       </colgroup>
       {!headless && (
-        <thead>
+        <thead
+          data-testid={pinned ? "pinned-items-table-head" : "items-table-head"}
+        >
           <tr>
             <SortableColumnHeader
               name="model"
