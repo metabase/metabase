@@ -327,99 +327,84 @@ describe("scenarios > collection_defaults", () => {
     });
 
     const DEFAULT_ITEMS = {
+      DASHBOARDS: ["Orders in a dashboard"],
       QUESTIONS: [
         "Orders",
         "Orders, Count",
         "Orders, Count, Grouped by Created At (year)",
       ],
-      DASHBOARDS: ["Orders in a dashboard"],
     };
 
+    DEFAULT_ITEMS.ALL = [
+      ...DEFAULT_ITEMS.DASHBOARDS,
+      ...DEFAULT_ITEMS.QUESTIONS,
+    ];
+
     it("should sort entries alphabetically by default", () => {
-      cy.findAllByTestId("collection-entry-name").then(nodes => {
-        const itemNames = _.map(nodes, "innerText");
-        const sortedNames = _.sortBy(itemNames);
-        expect(itemNames, "sorted alphabetically by default").to.deep.equal(
+      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+        expect(actualNames, "sorted alphabetically by default").to.deep.equal(
           sortedNames,
         );
       });
 
       toggleSortingFor(/Name/i);
-      cy.findAllByTestId("collection-entry-name").then(nodes => {
-        const itemNames = _.map(nodes, "innerText");
-        const sortedNames = _.sortBy(itemNames).reverse();
-        expect(itemNames, "sorted alphabetically reversed").to.deep.equal(
-          sortedNames,
+      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+        expect(actualNames, "sorted alphabetically reversed").to.deep.equal(
+          sortedNames.reverse(),
         );
       });
 
       toggleSortingFor(/Name/i);
-      cy.findAllByTestId("collection-entry-name").then(nodes => {
-        const itemNames = _.map(nodes, "innerText");
-        const sortedNames = _.sortBy(itemNames);
-        expect(itemNames, "sorted alphabetically").to.deep.equal(sortedNames);
+      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+        expect(actualNames, "sorted alphabetically").to.deep.equal(sortedNames);
       });
 
       toggleSortingFor(/Type/i);
-      cy.findAllByTestId("collection-entry-name").then(nodes => {
-        const itemNames = _.map(nodes, "innerText");
-        const sortedNames = _.sortBy(itemNames);
+      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         const dashboardsFirst = _.sortBy(
           sortedNames,
           name =>
             name.toLowerCase().includes("question") ||
             DEFAULT_ITEMS.QUESTIONS.includes(name),
         );
-        expect(itemNames, "sorted dashboards first").to.deep.equal(
+        expect(actualNames, "sorted dashboards first").to.deep.equal(
           dashboardsFirst,
         );
       });
 
       toggleSortingFor(/Type/i);
-      cy.findAllByTestId("collection-entry-name").then(nodes => {
-        const itemNames = _.map(nodes, "innerText");
-        const sortedNames = _.sortBy(itemNames);
+      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         const questionsFirst = _.sortBy(
           sortedNames,
           name =>
             name.toLowerCase().includes("dashboard") ||
             DEFAULT_ITEMS.DASHBOARDS.includes(name),
         );
-        expect(itemNames, "sorted questions first").to.deep.equal(
+        expect(actualNames, "sorted questions first").to.deep.equal(
           questionsFirst,
         );
       });
 
       toggleSortingFor(/Last edited at/i);
-      cy.findAllByTestId("collection-entry-name").then(nodes => {
-        const itemNames = _.map(nodes, "innerText");
-        const testOnlyItems = _.without(
-          itemNames,
+      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+        const notDefaultItems = _.without(sortedNames, ...DEFAULT_ITEMS.ALL);
+        const newestLast = [
           ...DEFAULT_ITEMS.QUESTIONS,
           ...DEFAULT_ITEMS.DASHBOARDS,
-        );
-        const expectedSorting = [
-          ...DEFAULT_ITEMS.QUESTIONS,
-          ...DEFAULT_ITEMS.DASHBOARDS,
-          ..._.sortBy(testOnlyItems),
+          ...notDefaultItems,
         ];
-        expect(itemNames, "sorted newest last").to.deep.equal(expectedSorting);
+        expect(actualNames, "sorted newest last").to.deep.equal(newestLast);
       });
 
       toggleSortingFor(/Last edited at/i);
-      cy.findAllByTestId("collection-entry-name").then(nodes => {
-        const itemNames = _.map(nodes, "innerText");
-        const testOnlyItems = _.without(
-          itemNames,
-          ...DEFAULT_ITEMS.QUESTIONS,
-          ...DEFAULT_ITEMS.DASHBOARDS,
-        );
-        const expectedSorting = [
-          ..._.sortBy(testOnlyItems).reverse(),
+      getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
+        const notDefaultItems = _.without(sortedNames, ...DEFAULT_ITEMS.ALL);
+        const newestFirst = [
+          ...notDefaultItems.reverse(),
           ...DEFAULT_ITEMS.DASHBOARDS.reverse(),
           ...DEFAULT_ITEMS.QUESTIONS.reverse(),
         ];
-        expect(itemNames, "sorted newest first").to.deep.equal(expectedSorting);
+        expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
       });
     });
   });
@@ -776,4 +761,12 @@ function toggleSortingFor(columnName) {
   cy.findByTestId("items-table-head")
     .findByText(columnName)
     .click();
+}
+
+function getAllCollectionItemNames() {
+  return cy.findAllByTestId("collection-entry-name").then(nodes => {
+    const actualNames = _.map(nodes, "innerText");
+    const sortedNames = _.sortBy(actualNames);
+    return { actualNames, sortedNames };
+  });
 }
