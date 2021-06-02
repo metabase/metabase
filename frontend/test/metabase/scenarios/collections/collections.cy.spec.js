@@ -340,7 +340,7 @@ describe("scenarios > collection_defaults", () => {
       ...DEFAULT_ITEMS.QUESTIONS,
     ];
 
-    it("should sort entries alphabetically by default", () => {
+    it("should be possible to sort items by columns asc and desc", () => {
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
         expect(actualNames, "sorted alphabetically by default").to.deep.equal(
           sortedNames,
