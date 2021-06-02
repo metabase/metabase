@@ -592,7 +592,6 @@ export default class TokenField extends Component {
           className={cx(optionsClassName, "overflow-auto pl1 my1 scroll-hide")}
           style={{
             ...optionsStyle,
-            maxHeight: 300,
           }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
