@@ -78,10 +78,6 @@ describe("urls", () => {
     });
 
     it("returns correct url", () => {
-      expect(collection({ id: 1, slug: "first_collection" })).toBe(
-        "/collection/1-first-collection",
-      );
-
       expect(collection({ id: 1, name: "First collection" })).toBe(
         "/collection/1-first-collection",
       );
@@ -93,6 +89,37 @@ describe("urls", () => {
           name: "First collection",
         }),
       ).toBe("/collection/1-first-collection");
+    });
+
+    it("handles possessives correctly", () => {
+      expect(
+        collection({
+          id: 1,
+          name: "John Doe's Personal Collection",
+          personal_owner_id: 1,
+        }),
+      ).toBe("/collection/1-john-doe-s-personal-collection");
+    });
+
+    it("omits possessive form if name can't be turned into a slug", () => {
+      expect(
+        collection({
+          id: 1,
+          name: "🍎's Personal Collection",
+          personal_owner_id: 1,
+        }),
+      ).toBe("/collection/1-personal-collection");
+    });
+
+    it("uses originalName to build a slug if present", () => {
+      expect(
+        collection({
+          id: 1,
+          name: "Your personal collection",
+          originalName: "John Doe's Personal Collection",
+          personal_owner_id: 1,
+        }),
+      ).toBe("/collection/1-john-doe-s-personal-collection");
     });
   });
 
@@ -212,16 +239,28 @@ describe("urls", () => {
         return slug ? `${path}-${slug}` : path;
       }
 
-      it(`should handle ${caseName} correctly`, () => {
+      it(`should handle ${caseName} correctly for database browse URLs`, () => {
         expect(browseDatabase(entity)).toBe(
           expectedUrl("/browse/1", expectedString),
         );
-        expect(collection(entity)).toBe(
+      });
+
+      it(`should handle ${caseName} correctly for collection URLs`, () => {
+        // collection objects have not transliterated slugs separated by underscores
+        // this makes sure they don't affect the slug builder
+        const collectionOwnSlug = entity.name.split(" ").join("_");
+        expect(collection({ ...entity, slug: collectionOwnSlug })).toBe(
           expectedUrl("/collection/1", expectedString),
         );
+      });
+
+      it(`should handle ${caseName} correctly for dashboard URLs`, () => {
         expect(dashboard(entity)).toBe(
           expectedUrl("/dashboard/1", expectedString),
         );
+      });
+
+      it(`should handle ${caseName} correctly for question URLs`, () => {
         expect(question(entity)).toBe(
           expectedUrl("/question/1", expectedString),
         );
