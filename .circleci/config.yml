@@ -139,7 +139,6 @@ executors:
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: metabase/presto-mb-ci
-        name: presto
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     # Run instance with 8GB or RAM instead of the default 4GB for medium instances. The Presto Docker image runs
@@ -1089,7 +1088,7 @@ workflows:
           e: presto
           before-steps:
             - wait-for-port:
-                port: 8443
+                port: 8080
           driver: presto
 
       - test-driver:
