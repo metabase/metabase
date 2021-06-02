@@ -304,6 +304,14 @@ describe("scenarios > collection_defaults", () => {
   });
 
   describe("sorting", () => {
+    const TEST_QUESTION_QUERY = {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+      ],
+    };
+
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
@@ -335,17 +343,7 @@ describe("scenarios > collection_defaults", () => {
           cy.createQuestion({
             name: `${letter} Question`,
             collection_position: pinned ? i + 1 : null,
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-              breakout: [
-                [
-                  "field",
-                  ORDERS.CREATED_AT,
-                  { "temporal-unit": "hour-of-day" },
-                ],
-              ],
-            },
+            query: TEST_QUESTION_QUERY,
           });
         });
 
@@ -420,6 +418,52 @@ describe("scenarios > collection_defaults", () => {
           },
         );
       });
+    });
+
+    it("should allow to separately sort pinned and not pinned items", () => {
+      ["A", "B", "C"].forEach((letter, i) => {
+        cy.createDashboard(`${letter} Dashboard`);
+
+        cy.createDashboard(`${letter} Dashboard (pinned)`, {
+          collection_position: i + 1,
+        });
+
+        cy.createQuestion({
+          name: `${letter} Question`,
+          collection_position: null,
+          query: TEST_QUESTION_QUERY,
+        });
+
+        cy.createQuestion({
+          name: `${letter} Question (pinned)`,
+          collection_position: i + 1,
+          query: TEST_QUESTION_QUERY,
+        });
+      });
+
+      cy.visit("/collection/root");
+
+      toggleSortingFor(/Type/i, { pinned: true });
+      toggleSortingFor(/Name/, { pinned: false });
+
+      getAllCollectionItemNames({ pinned: true }).then(
+        ({ actualNames, sortedNames }) => {
+          const dashboardsFirst = _.sortBy(sortedNames, name =>
+            name.toLowerCase().includes("question"),
+          );
+          expect(actualNames, "sorted dashboards first").to.deep.equal(
+            dashboardsFirst,
+          );
+        },
+      );
+
+      getAllCollectionItemNames({ pinned: false }).then(
+        ({ actualNames, sortedNames }) => {
+          expect(actualNames, "sorted alphabetically reversed").to.deep.equal(
+            sortedNames.reverse(),
+          );
+        },
+      );
     });
   });
 
