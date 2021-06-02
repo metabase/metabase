@@ -66,7 +66,7 @@
                                 :base_type :type/Integer}]]
    :results (let [grouped-timestamp (common/grouped-datetime unit :query_execution.started_at)]
               (common/reducible-query
-                (-> {:with      [(cached-views-cte grouped-timestamp)
+                {:with      [(cached-views-cte grouped-timestamp)
                                  (uncached-views-cte grouped-timestamp)]
                      :select    [[grouped-timestamp :overall_date]
                                  [:cached_rows.count :cached_views]
@@ -76,7 +76,7 @@
                                  :uncached_rows [:= grouped-timestamp :uncached_rows.uncached_date]]
                      :group-by  [grouped-timestamp]
                      :where     [:= :query_execution.card_id card-id]
-                     :order-by  [[grouped-timestamp :asc]]})))})
+                     :order-by  [[grouped-timestamp :asc]]}))})
 
 (s/defn avg-execution-time-by-time
   "Get average execution time of a Card broken out by a time `unit`, e.g. `day` or `day-of-week`.
