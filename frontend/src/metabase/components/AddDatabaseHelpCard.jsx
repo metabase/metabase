@@ -34,15 +34,9 @@ export const CLOUD_HELP_URL = "https://www.metabase.com/help/cloud";
 const propTypes = {
   engine: PropTypes.string.isRequired,
   hasCircle: PropTypes.bool,
-  style: PropTypes.object,
 };
 
-const defaultProps = {
-  hasCircle: true,
-  style: {},
-};
-
-function AddDatabaseHelpCard({ engine, hasCircle, ...props }) {
+function AddDatabaseHelpCard({ engine, hasCircle = true, ...props }) {
   const displayName = useMemo(() => {
     const hasEngineDoc = !!ENGINE_DOCS[engine];
     if (!hasEngineDoc) {
@@ -96,6 +90,5 @@ function AddDatabaseHelpCard({ engine, hasCircle, ...props }) {
 }
 
 AddDatabaseHelpCard.propTypes = propTypes;
-AddDatabaseHelpCard.defaultProps = defaultProps;
 
 export default AddDatabaseHelpCard;
