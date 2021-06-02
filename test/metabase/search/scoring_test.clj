@@ -26,7 +26,7 @@
 
 (defn scorer->score
   [scorer]
-  (comp :text-score
+  (comp :score
         (partial #'search/text-score-with [{:weight 1 :scorer scorer}])))
 
 (deftest consecutivity-scorer-test

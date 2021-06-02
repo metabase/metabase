@@ -33,6 +33,10 @@
 
 (models/defmodel Collection :collection)
 
+(def AuthorityLevel
+  "Schema for valid collection authority levels"
+  (s/maybe (s/enum "official")))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Slug & Hex Color & Validation                                          |
@@ -370,7 +374,7 @@
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
   Collection.
 
-     (children-location collection) ; -> \"/10/20/30/;
+     (children-location collection) ; -> \"/10/20/30/\";
 
      ;; To get children of this collection:
      (db/select Collection :location \"/10/20/30/\")"
@@ -613,7 +617,7 @@
    :personal_owner_id (s/maybe su/IntGreaterThanZero)
    s/Keyword          s/Any})
 
-(s/defn ^:private is-personal-collection-or-descendant-of-one? :- s/Bool
+(s/defn is-personal-collection-or-descendant-of-one? :- s/Bool
   "Is `collection` a Personal Collection, or a descendant of one?"
   [collection :- CollectionWithLocationAndPersonalOwnerID]
   (boolean
@@ -688,28 +692,19 @@
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
-  (when (api/column-will-change? :personal_owner_id collection-before-updates collection-updates)
-    (throw
-     (ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
-       {:status-code 400
-        :errors      {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")}})))
-  ;;
-  ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving` functions also
-  ;; check to make sure you're not operating on Personal Collections. But as an extra safety net it doesn't hurt to
-  ;; check here too.
-  ;;
-  ;; You also definitely cannot *move* a Personal Collection
-  (when (api/column-will-change? :location collection-before-updates collection-updates)
-    (throw
-     (ex-info (tru "You're not allowed to move a Personal Collection.")
-       {:status-code 400
-        :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
-  ;; You also can't archive a Personal Collection
-  (when (api/column-will-change? :archived collection-before-updates collection-updates)
-    (throw
-     (ex-info (tru "You cannot archive a Personal Collection.")
-       {:status-code 400
-        :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
+  (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
+                      :authority_level   (tru "You are not allowed to change the authority level of a Personal Collection.")
+                      ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
+                      ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
+                      ;; doesn't hurt to check here too.
+                      :location          (tru "You are not allowed to move a Personal Collection.")
+                      :archived          (tru "You cannot archive a Personal Collection.")}]
+    (when-let [[k msg] (->> unchangeable
+                            (filter (fn [[k _msg]]
+                                      (api/column-will-change? k collection-before-updates collection-updates)))
+                            first)]
+      (throw
+       (ex-info msg {:status-code 400 :errors {k msg}})))))
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
@@ -865,7 +860,8 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:collection])
-          :types          (constantly {:namespace :keyword})
+          :types          (constantly {:namespace       :keyword
+                                       :authority_level :keyword})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update
