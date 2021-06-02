@@ -361,18 +361,18 @@
 
 (api/defendpoint POST "/"
   "Create a new Collection."
-  [:as {{:keys [name color description parent_id namespace type]} :body}]
-  {name        su/NonBlankString
-   color       collection/hex-color-regex
-   description (s/maybe su/NonBlankString)
-   parent_id   (s/maybe su/IntGreaterThanZero)
-   namespace   (s/maybe su/NonBlankString)
-   type        collection/Type}
+  [:as {{:keys [name color description parent_id namespace authority_level]} :body}]
+  {name            su/NonBlankString
+   color           collection/hex-color-regex
+   description     (s/maybe su/NonBlankString)
+   parent_id       (s/maybe su/IntGreaterThanZero)
+   namespace       (s/maybe su/NonBlankString)
+   authority_level collection/AuthorityLevel}
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id)
   ;; Now create the new Collection :)
-  (api/check-403 (or (nil? type)
-                     (and api/*is-superuser?* type)))
+  (api/check-403 (or (nil? authority_level)
+                     (and api/*is-superuser?* authority_level)))
   (db/insert! Collection
     (merge
      {:name        name
@@ -431,37 +431,37 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id type update_collection_tree_type], :as collection-updates} :body}]
-  {name                        (s/maybe su/NonBlankString)
-   color                       (s/maybe collection/hex-color-regex)
-   description                 (s/maybe su/NonBlankString)
-   archived                    (s/maybe s/Bool)
-   parent_id                   (s/maybe su/IntGreaterThanZero)
-   type                        collection/Type
-   update_collection_tree_type (s/maybe s/Bool)}
+  [id, :as {{:keys [name color description archived parent_id authority_level update_collection_tree_authority_level], :as collection-updates} :body}]
+  {name                                   (s/maybe su/NonBlankString)
+   color                                  (s/maybe collection/hex-color-regex)
+   description                            (s/maybe su/NonBlankString)
+   archived                               (s/maybe s/Bool)
+   parent_id                              (s/maybe su/IntGreaterThanZero)
+   authority_level                        collection/AuthorityLevel
+   update_collection_tree_authority_level (s/maybe s/Bool)}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
-    (when (or (and (contains? collection-updates :type)
-                   (not= type (:type collection-before-update)))
-              update_collection_tree_type)
+    (when (or (and (contains? collection-updates :authority_level)
+                   (not= authority_level (:authority_level collection-before-update)))
+              update_collection_tree_authority_level)
       (api/check-403 (and api/*is-superuser?*
                           ;; pre-update of model checks if the collection is a personal collection and rejects changes
-                          ;; to type, but it doesn't check if it is a sub-collection of a personal one so we add that
+                          ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
                           ;; here
                           (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :type])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
       (when (seq updates)
         (db/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; mark the tree after moving so the new tree is what is marked as official
-    (when update_collection_tree_type
+    (when update_collection_tree_authority_level
       (db/execute! {:update Collection
-                    :set    {:type type}
+                    :set    {:authority_level authority_level}
                     :where  [:or
                              [:= :id id]
                              [:like :location (hx/literal (format "%%/%d/%%" id))]]}))

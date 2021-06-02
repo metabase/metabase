@@ -33,8 +33,8 @@
 
 (models/defmodel Collection :collection)
 
-(def Type
-  "Schema for valid collection types"
+(def AuthorityLevel
+  "Schema for valid collection authority levels"
   (s/maybe (s/enum "official")))
 
 
@@ -693,7 +693,7 @@
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
-                      :type              (tru "You are not allowed to change the type of a Personal Collection.")
+                      :authority_level   (tru "You are not allowed to change the authority level of a Personal Collection.")
                       ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
                       ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
                       ;; doesn't hurt to check here too.
@@ -860,8 +860,8 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:collection])
-          :types          (constantly {:namespace :keyword
-                                       :type      :keyword})
+          :types          (constantly {:namespace       :keyword
+                                       :authority_level :keyword})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update

@@ -212,7 +212,7 @@
   "Massage the raw result from the DB and match data into something more useful for the client"
   [result {:keys [column match-context-thunk]} scores]
   (let [{:keys [name display_name
-                collection_id collection_name collection_type]} result]
+                collection_id collection_name collection_authority_level]} result]
     (-> result
         (assoc
          :name           (if (or (= column :name)
@@ -222,9 +222,9 @@
          :context        (when (and (not (search-config/displayed-columns column))
                                     match-context-thunk)
                            (match-context-thunk))
-         :collection     {:id   collection_id
-                          :name collection_name
-                          :type collection_type}
+         :collection     {:id              collection_id
+                          :name            collection_name
+                          :authority_level collection_authority_level}
          :scores          scores)
         (dissoc
          :collection_id

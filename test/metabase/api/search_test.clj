@@ -15,22 +15,22 @@
             [toucan.db :as db]))
 
 (def ^:private default-search-row
-  {:id                  true
-   :description         nil
-   :archived            false
-   :collection          {:id false :name nil :type nil}
-   :collection_type     nil
-   :collection_position nil
-   :context             nil
-   :dashboardcard_count nil
-   :favorite            nil
-   :table_id            false
-   :database_id         false
-   :dataset_query       nil
-   :table_schema        nil
-   :table_name          nil
-   :table_description   nil
-   :updated_at          true})
+  {:id                         true
+   :description                nil
+   :archived                   false
+   :collection                 {:id false :name nil :authority_level nil}
+   :collection_authority_level nil
+   :collection_position        nil
+   :context                    nil
+   :dashboardcard_count        nil
+   :favorite                   nil
+   :table_id                   false
+   :database_id                false
+   :dataset_query              nil
+   :table_schema               nil
+   :table_name                 nil
+   :table_description          nil
+   :updated_at                 true})
 
 (defn- table-search-results
   "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
@@ -55,7 +55,7 @@
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :model "collection"
-                                            :collection {:id true, :name true :type nil}
+                                            :collection {:id true, :name true :authority_level nil}
                                             :updated_at false))
 
 (defn- default-search-results []
@@ -89,7 +89,7 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card"}
-                   #(assoc % :collection {:id true, :name true :type nil})
+                   #(assoc % :collection {:id true, :name true :authority_level nil})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]

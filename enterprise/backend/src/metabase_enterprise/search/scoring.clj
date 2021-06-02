@@ -5,8 +5,8 @@
 
 (defn- official-collection-score
   "A scorer for items in official collections"
-  [{:keys [collection_type]}]
-  (if (contains? #{"official"} collection_type)
+  [{:keys [collection_authority_level]}]
+  (if (contains? #{"official"} collection_authority_level)
     1
     0))
 

@@ -34,7 +34,7 @@
   {:hydrate :ordered_cards}
   [dashboard-or-id]
   (db/do-post-select DashboardCard
-    (db/query {:select    [:dashcard.* [:collection.type :collection_type]]
+    (db/query {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
                :from      [[DashboardCard :dashcard]]
                :left-join [[Card :card] [:= :dashcard.card_id :card.id]
                            [Collection :collection] [:= :collection.id :card.collection_id]]
@@ -45,18 +45,18 @@
                             [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                :order-by  [[:dashcard.created_at :asc]]})))
 
-(defn collections-type
-  "Efficiently hydrate the `:collection_type` of a sequence of dashboards."
-  {:batched-hydrate :collection_type}
+(defn collections-authority-level
+  "Efficiently hydrate the `:collection_authority_level` of a sequence of dashboards."
+  {:batched-hydrate :collection_authority_level}
   [dashboards]
-  (let [coll-id->type (into {}
-                            (map (juxt :id :collection_type))
-                            (db/query {:select    [:dashboard.id [:collection.type :collection_type]]
-                                       :from      [[:report_dashboard :dashboard]]
-                                       :left-join [[Collection :collection] [:= :collection.id :dashboard.collection_id]]
-                                       :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
+  (let [coll-id->level (into {}
+                             (map (juxt :id :authority_level))
+                             (db/query {:select    [:dashboard.id :collection.authority_level]
+                                        :from      [[:report_dashboard :dashboard]]
+                                        :left-join [[Collection :collection] [:= :collection.id :dashboard.collection_id]]
+                                        :where     [:in :dashboard.id (into #{} (map u/the-id) dashboards)]}))]
     (for [dashboard dashboards]
-      (assoc dashboard :collection_type (get coll-id->type (u/the-id dashboard))))))
+      (assoc dashboard :collection_authority_level (get coll-id->level (u/the-id dashboard))))))
 
 (models/defmodel Dashboard :report_dashboard)
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------

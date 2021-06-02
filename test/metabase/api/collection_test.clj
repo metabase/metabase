@@ -160,7 +160,7 @@
                     :location          "/"
                     :namespace         nil
                     :children          []
-                    :type nil}
+                    :authority_level nil}
                    (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
                             %)
                          response)))))))))
@@ -872,18 +872,18 @@
                         :color (s/eq "#f38630")
                         :name (s/eq "foo")
                         :personal_owner_id (s/eq nil)
-                        :type (s/eq nil)
+                        :authority_level (s/eq nil)
                         :id s/Int
                         :location (s/eq "/")
                         :namespace (s/eq nil)}
                        (mt/user-http-request :crowberto :post 200 "collection"
-                                             {:name "foo", :color "#f38630", :type "official"})))
+                                             {:name "foo", :color "#f38630", :authority_level "official"})))
           (testing "But they have to be valid types"
             (mt/user-http-request :crowberto :post 400 "collection"
-                                  {:name "foo", :color "#f38630", :type "no-way-this-is-valid-type"})))
+                                  {:name "foo", :color "#f38630", :authority_level "no-way-this-is-valid-type"})))
         (testing "Non-admins cannot create a collection with a type"
           (mt/user-http-request :rasta :post 403 "collection"
-                                {:name "foo", :color "#f38630", :type "official"}))))))
+                                {:name "foo", :color "#f38630", :authority_level "official"}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUT /api/collection/:id                                             |
@@ -900,39 +900,39 @@
                  :slug     "my_beautiful_collection"
                  :color    "#ABCDEF"
                  :location "/"
-                 :type     "official"
+                 :authority_level "official"
                  :parent_id nil})
                (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                     {:name "My Beautiful Collection", :color "#ABCDEF", :type "official"})))))
+                                     {:name "My Beautiful Collection", :color "#ABCDEF", :authority_level "official"})))))
     (testing "Admins can edit the type"
       (mt/with-temp Collection [collection]
         (is (= "official"
                (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                         {:name "foo" :type "official"})
-                   :type)))
+                                         {:name "foo" :authority_level "official"})
+                   :authority_level)))
         (is (= :official
-               (db/select-one-field :type Collection :id (u/the-id collection)))))
+               (db/select-one-field :authority_level Collection :id (u/the-id collection)))))
       (testing "But not for personal collections"
         (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
           (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id personal-coll))
-                                {:type "official"})
-          (is (nil? (db/select-one-field :type Collection :id (u/the-id personal-coll))))))
+                                {:authority_level "official"})
+          (is (nil? (db/select-one-field :authority_level Collection :id (u/the-id personal-coll))))))
       (testing "And not for children of personal collections"
         (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
           (mt/with-temp Collection [child-coll]
             (collection/move-collection! child-coll (collection/children-location personal-coll))
             (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id child-coll))
-                                  {:type "official"})))))
+                                  {:authority_level "official"})))))
     (testing "Non-admins get a 403 when editing the type"
       (mt/with-temp Collection [collection]
         (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                              {:name "foo" :type "official"})))
+                              {:name "foo" :authority_level "official"})))
     (testing "Non-admins patching without type is fine"
-      (mt/with-temp Collection [collection {:name "whatever" :type "official"}]
+      (mt/with-temp Collection [collection {:name "whatever" :authority_level "official"}]
         (is (= "official"
                (-> (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id collection))
                                          {:name "foo"})
-                   :type)))))
+                   :authority_level)))))
     (testing "Admins can mark a tree as official"
       (mt/with-temp* [Collection [collection]
                       Collection [sub-collection]
@@ -943,16 +943,16 @@
                                      (collection/children-location (Collection (:id sub-collection))))
         (is (= "official"
                (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                         {:type "official" :update_collection_tree_type true})
-                   :type)))
+                                         {:authority_level "official" :update_collection_tree_authority_level true})
+                   :authority_level)))
         ;; descended and marked sub collections
-        (is (= :official (db/select-one-field :type Collection :id (:id sub-collection))))
-        (is (= :official (db/select-one-field :type Collection :id (:id sub-sub-collection))))
+        (is (= :official (db/select-one-field :authority_level Collection :id (:id sub-collection))))
+        (is (= :official (db/select-one-field :authority_level Collection :id (:id sub-sub-collection))))
         (testing "Non-admins cannot apply types to the whole tree"
           (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :update_collection_tree_type true})
+                                {:name "new name" :update_collection_tree_authority_level true})
           (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                {:name "new name" :type nil :update_collection_tree_type true}))))
+                                {:name "new name" :authority_level nil :update_collection_tree_authority_level true}))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]

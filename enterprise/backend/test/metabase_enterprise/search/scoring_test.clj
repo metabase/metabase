@@ -14,7 +14,7 @@
                  {:name  "foo2"
                   :model "pulse"}]]
       (doseq [item items]
-        (is (>= (score (assoc item :collection_type "official")) (score item))
+        (is (> (score (assoc item :collection_authority_level "official")) (score item))
             (str "Item not greater for model: " (:model item))))
       (doseq [item items]
         (is (= (score item)

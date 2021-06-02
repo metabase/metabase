@@ -75,7 +75,7 @@
    ;; returned for Card, Dashboard, Pulse, and Collection
    :collection_id       :integer
    :collection_name     :text
-   :collection_type     :text
+   :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
    :favorite            :boolean
@@ -325,7 +325,7 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[k v]] (= v :text)))
                                (map first)
-                               (remove #{:collection_type}))
+                               (remove #{:collection_authority_level}))
         case-clauses      (as-> columns-to-search <>
                                 (map (fn [col] [:like (hsql/call :lower col) match]) <>)
                                 (interleave <> (repeat 0))

@@ -124,14 +124,14 @@
   [_]
   (conj default-columns :collection_id :collection_position :dataset_query
         [:collection.name :collection_name]
-        [:collection.type :collection_type]
+        [:collection.authority_level :collection_authority_level]
         favorite-col dashboardcard-count-col))
 
 (defmethod columns-for-model (class Dashboard)
   [_]
   (conj default-columns :collection_id :collection_position favorite-col
         [:collection.name :collection_name]
-        [:collection.type :collection_type]))
+        [:collection.authority_level :collection_authority_level]))
 
 (defmethod columns-for-model (class Database)
   [_]
@@ -144,7 +144,7 @@
 (defmethod columns-for-model (class Collection)
   [_]
   (conj (remove #{:updated_at} default-columns) [:id :collection_id] [:name :collection_name]
-        [:type :collection_type]))
+        [:authority_level :collection_authority_level]))
 
 (defmethod columns-for-model (class Segment)
   [_]
