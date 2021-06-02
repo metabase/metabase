@@ -85,18 +85,15 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       // This is extremely fragile
       // TODO: update test once changes from `https://github.com/metabase/metabase/pull/14121` are merged into `master`
-      cy.findByText("Attach results")
-        .parent()
-        .parent()
-        .next()
-        .find("a") // Toggle
-        .click();
+      cy.findByText("Attach results").click();
       cy.findByText("Questions to attach").click();
       clickButton("Done");
+
       cy.findByText("Subscriptions");
       cy.findByText("Emailed daily at 8:00 AM").click();
       cy.findByText("Delete this subscription").scrollIntoView();
       cy.findByText("Questions to attach");
+
       cy.findAllByRole("listitem")
         .contains("Orders") // yields the whole <li> element
         .within(() => {
