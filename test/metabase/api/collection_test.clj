@@ -862,6 +862,7 @@
 (defn- api-get-root-collection-children
   [& additional-get-params]
   (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta :get 200 "collection/root/items" additional-get-params))) )
+
 (deftest fetch-root-collection-items-test
   (testing "GET /api/collection/root/items"
     (testing "Do top-level collections show up as children of the Root Collection?"

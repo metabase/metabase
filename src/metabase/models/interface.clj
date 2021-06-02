@@ -322,16 +322,16 @@
      (u/prog1 (f (current-user-permissions-set) perms-set)
        (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([permission-type entity object-id] [permission-type object] [perms-set])}
   current-user-has-full-permissions?
-  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *full*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
-  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of `can-read?`/`can-write?`/`can-moderate?` for the old permissions system. `true` if the current user has *full*
+  permissions for the paths returned by its implementation of `perms-objects-set`. (`permission-type` is either `:read`,
+  `:write`, or `:moderate` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-full-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([permission-type entity object-id] [permission-type object] [perms-set])}
   current-user-has-partial-permissions?
-  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *partial*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
-  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of `can-read?`/`can-write?`/`can-moderate?` for the old permissions system. `true` if the current user has *partial*
+  permissions for the paths returned by its implementation of `perms-objects-set`. (`permission-type` is either `:read`,
+  `:write`, or `:moderate` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))

@@ -301,9 +301,8 @@
 
   ([collection-namespace :- (s/maybe su/KeywordOrString)
     this                 :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
-    read-or-write        :- (s/enum :read :write :moderate)]
-   ;; based on value of read-or-write determine the approprite function used to calculate the perms path
-   (let [path-fn (case read-or-write
+    permission-type      :- (s/enum :read :write :moderate)]
+   (let [path-fn (case permission-type
                    :read     collection-read-path
                    :write    collection-readwrite-path
                    :moderate collection-moderate-path)]
