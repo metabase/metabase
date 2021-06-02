@@ -23,7 +23,7 @@ const AuditDashboardDetail = ({ params, ...props }: Props) => {
     <AuditContent
       {...props}
       title={<EntityName entityType="dashboards" entityId={dashboardId} />}
-      subtitle={<OpenInMetabase to={Urls.dashboard(dashboardId)} />}
+      subtitle={<OpenInMetabase to={Urls.dashboard({ id: dashboardId })} />}
       tabs={AuditDashboardDetail.tabs}
       dashboardId={dashboardId}
     />

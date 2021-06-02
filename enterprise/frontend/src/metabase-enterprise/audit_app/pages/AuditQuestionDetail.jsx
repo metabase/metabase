@@ -23,7 +23,7 @@ const AuditQuestionDetail = ({ params, ...props }: Props) => {
     <AuditContent
       {...props}
       title={<EntityName entityType="questions" entityId={questionId} />}
-      subtitle={<OpenInMetabase to={Urls.question(questionId)} />}
+      subtitle={<OpenInMetabase to={Urls.question({ id: questionId })} />}
       tabs={AuditQuestionDetail.tabs}
       questionId={questionId}
     />
