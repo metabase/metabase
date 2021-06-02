@@ -13,8 +13,9 @@ describe("scenarios > collection items listing", () => {
     ],
   };
 
+  const PAGE_SIZE = 25;
+
   describe("pagination", () => {
-    const PAGE_SIZE = 25;
     const ADDED_QUESTIONS = 15;
     const ADDED_DASHBOARDS = 14;
 
@@ -226,6 +227,25 @@ describe("scenarios > collection items listing", () => {
           );
         },
       );
+    });
+
+    it("should reset pagination if sorting applied on not first page", () => {
+      _.times(15, i => cy.createDashboard(`dashboard ${i}`));
+      _.times(15, i =>
+        cy.createQuestion({
+          name: `generated question ${i}`,
+          query: TEST_QUESTION_QUERY,
+        }),
+      );
+
+      cy.visit("/collection/root");
+
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+      cy.findByTestId("next-page-btn").click();
+
+      toggleSortingFor(/Last edited at/i);
+
+      cy.findByText(`1 - ${PAGE_SIZE}`);
     });
   });
 });
