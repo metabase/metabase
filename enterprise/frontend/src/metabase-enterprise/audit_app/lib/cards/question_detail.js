@@ -1,4 +1,4 @@
-export const viewsByTime = (questionId) => ({
+export const viewsByTime = questionId => ({
   card: {
     name: "Views last 45 days",
     display: "bar",
@@ -27,7 +27,7 @@ export const viewsByTime = (questionId) => ({
   },
 });
 
-export const averageExecutionTime = (questionId) => ({
+export const averageExecutionTime = questionId => ({
   card: {
     name: "Average execution time last 45 days",
     display: "line",
