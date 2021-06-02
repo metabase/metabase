@@ -15,18 +15,29 @@ describe("scenarios > collection items listing", () => {
 
   describe("pagination", () => {
     const PAGE_SIZE = 25;
-    const ADDED_QUESTIONS = 13;
-    const ADDED_DASHBOARDS = 12;
-    const PRE_EXISTED_ITEMS = 4;
+    const ADDED_QUESTIONS = 15;
+    const ADDED_DASHBOARDS = 14;
 
-    const TOTAL_ITEMS = ADDED_DASHBOARDS + ADDED_QUESTIONS + PRE_EXISTED_ITEMS;
+    const TOTAL_ITEMS = ADDED_DASHBOARDS + ADDED_QUESTIONS;
 
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
 
-      _.times(12, i => cy.createDashboard(`dashboard ${i}`));
-      _.times(13, i =>
+      // Removes questions and dashboards included in a default dataset,
+      // so the test won't fail if we change the default dataset
+      cy.request("GET", "/api/collection/root/items").then(response => {
+        response.body.data.forEach(({ model, id }) => {
+          if (model !== "collection") {
+            cy.request("PUT", `/api/${model}/${id}`, {
+              archived: true,
+            });
+          }
+        });
+      });
+
+      _.times(ADDED_DASHBOARDS, i => cy.createDashboard(`dashboard ${i}`));
+      _.times(ADDED_QUESTIONS, i =>
         cy.createQuestion({
           name: `generated question ${i}`,
           query: TEST_QUESTION_QUERY,
