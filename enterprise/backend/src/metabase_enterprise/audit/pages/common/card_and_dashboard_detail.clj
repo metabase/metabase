@@ -46,13 +46,18 @@
               [:uncached-views {:display_name "Uncached Views",
                                 :base_type :type/Integer}]]
    :results (let [grouped-timestamp (common/grouped-datetime unit :started_at)]
-              {:select    [[grouped-timestamp :date]
-                           [(hsql/call :sum (hsql/call :case [:= :cache_hit true] 1 :else 0)) :cached_views]
-                           [(hsql/call :sum (hsql/call :case [:= :cache_hit false] 1 :else 0)) :uncached_views]]
-               :from      [:query_execution]
-               :where     [:= :card_id card-id]
-               :group-by  [grouped-timestamp]
-               :order-by  [[grouped-timestamp :asc]]})})
+              (common/reducible-query
+                (->
+                  {:select    [[grouped-timestamp :date]
+                               [(hsql/call :sum (hsql/call :case [:= :cache_hit true] 1 :else 0)) :cached_views]
+                               [(hsql/call :sum (hsql/call :case [:= :cache_hit false] 1 :else 0)) :uncached_views]]
+                   :from      [:query_execution]
+                   :where     [:and
+                               [:= :card_id card-id]
+                               [:not= :cache_hit nil]]
+                   :group-by  [grouped-timestamp]
+                   :order-by  [[grouped-timestamp :asc]]}
+                  (common/add-45-days-clause :started_at))))})
 
 (s/defn avg-execution-time-by-time
   "Get average execution time of a Card broken out by a time `unit`, e.g. `day` or `day-of-week`.
