@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -13,11 +12,13 @@ import ExternalLink from "metabase/components/ExternalLink";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
 
+import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
+
 import LanguageStep from "./LanguageStep";
 import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
-import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
+import {AddDatabaseHelpCardHolder} from "./Setup.styled"
 
 const WELCOME_STEP_NUMBER = 0;
 const LANGUAGE_STEP_NUMBER = 1;
@@ -25,15 +26,6 @@ const USER_STEP_NUMBER = 2;
 const DATABASE_CONNECTION_STEP_NUMBER = 3;
 const DATABASE_SCHEDULING_STEP_NUMBER = 4;
 const PREFERENCES_STEP_NUMBER = 5;
-
-const AddDatabaseHelpCardHolder = styled.div`
-  position: fixed;
-  left: 1em;
-  bottom: 1em;
-  transform: translateY(200%);
-  transition: all 0.4s;
-  ${props => (props.isVisible ? "transform: translateY(0);" : "")}
-`;
 
 export default class Setup extends Component {
   static propTypes = {
