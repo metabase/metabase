@@ -509,7 +509,16 @@ export function getOperatorByTypeAndName(type, name) {
 }
 
 export function getFilterOperators(field, table, selected) {
-  const type = getFieldType(field) || UNKNOWN;
+  const fieldType = getFieldType(field) || UNKNOWN;
+  let type = fieldType;
+  if (type === PRIMARY_KEY || type === FOREIGN_KEY) {
+    if (isFieldType(STRING, field)) {
+      type = STRING;
+    } else if (isFieldType(STRING_LIKE, field)) {
+      type = STRING_LIKE;
+    }
+  }
+
   return FILTER_OPERATORS_BY_TYPE_ORDERED[type]
     .map(operatorForType => {
       const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
