@@ -124,10 +124,6 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
   return (
     <Search.ListLoader query={pinnedQuery} wrapped>
       {({ list: pinnedItems }) => {
-        const sortedPinnedItems = pinnedItems.sort(
-          (a, b) => a.collection_position - b.collection_position,
-        );
-
         return (
           <Box pt={2}>
             <Box w="90%" ml="auto" mr="auto">
@@ -139,7 +135,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
               />
 
               <PinnedItemsTable
-                items={sortedPinnedItems}
+                items={pinnedItems}
                 collection={collection}
                 sortingOptions={pinnedItemsSorting}
                 onSortingOptionsChange={handlePinnedItemsSortingChange}
