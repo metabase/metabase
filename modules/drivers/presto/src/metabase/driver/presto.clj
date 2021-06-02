@@ -30,7 +30,7 @@
   (:import java.sql.Time
            [java.time OffsetDateTime ZonedDateTime]))
 
-(driver/register! :presto, :parent :sql)
+(driver/register! :presto, :parent :sql, )
 
 ;;; Presto API helpers
 
