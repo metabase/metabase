@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 
 import NumberPicker from "./NumberPicker";
 import SelectPicker from "./SelectPicker";
@@ -25,6 +25,22 @@ type Props = {
   maxWidth?: number,
 };
 
+const defaultPickerPropTypes = {
+  filter: PropTypes.object,
+  setValue: PropTypes.func,
+  setValues: PropTypes.func,
+  onCommit: PropTypes.func,
+  className: PropTypes.string,
+  isSidebar: PropTypes.bool,
+  minWidth: PropTypes.number,
+  maxWidth: PropTypes.number,
+};
+
+const defaultLayoutPropTypes = {
+  className: PropTypes.string,
+  fieldWidgets: PropTypes.array,
+};
+
 export default function DefaultPicker({
   filter,
   setValue,
@@ -44,6 +60,7 @@ export default function DefaultPicker({
   const field = dimension && dimension.field();
   const operatorFields = operator.fields || [];
   const disableSearch = isFuzzyOperator(operator);
+
   const fieldWidgets = operatorFields
     .map((operatorField, index) => {
       let values, onValuesChange;
@@ -121,6 +138,7 @@ export default function DefaultPicker({
       return null;
     })
     .filter(f => f);
+
   if (fieldWidgets.length > 0) {
     const Layout = DefaultLayout;
     // TODO: custom layouts for different operators
@@ -129,6 +147,8 @@ export default function DefaultPicker({
     return <div className={className} />;
   }
 }
+
+DefaultPicker.propTypes = defaultPickerPropTypes;
 
 const DefaultLayout = ({ className, fieldWidgets }) => (
   <div className={className}>
@@ -142,3 +162,5 @@ const DefaultLayout = ({ className, fieldWidgets }) => (
     ))}
   </div>
 );
+
+DefaultLayout.propTypes = defaultLayoutPropTypes;
