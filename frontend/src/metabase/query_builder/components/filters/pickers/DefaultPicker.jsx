@@ -104,6 +104,7 @@ export default function DefaultPicker({
             placeholder={placeholder}
             fields={underlyingField ? [underlyingField] : []}
             disablePKRemappingForSearch={true}
+            isSidebar={isSidebar}
             autoFocus={index === 0}
             alwaysShowOptions={operator.fields.length === 1}
             formatOptions={getFilterArgumentFormatOptions(operator, index)}
