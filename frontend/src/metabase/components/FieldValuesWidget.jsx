@@ -460,6 +460,7 @@ export class FieldValuesWidget extends Component {
           color={color}
           style={style}
           className={className}
+          parameter={this.props.parameter}
           optionsStyle={
             optionsMaxHeight !== undefined
               ? { maxHeight: optionsMaxHeight }
