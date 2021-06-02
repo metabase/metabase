@@ -37,6 +37,10 @@ const AuditQuestionActivityTab = ({ questionId }) => (
         { x: 0, y: 0, w: 18, h: 10 },
         QuestionDetailCards.viewsByTime(questionId),
       ],
+      [
+        { x: 0, y: 10, w: 18, h: 10 },
+        QuestionDetailCards.averageExecutionTime(questionId),
+      ],
     ]}
   />
 );
