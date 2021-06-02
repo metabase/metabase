@@ -34,25 +34,49 @@
                      :order-by [[grouped-timestamp :asc]]}
                     (common/add-45-days-clause :timestamp))))})
 
+(s/defn cached-views-cte
+  "CTE for cached views"
+  [grouped-timestamp]
+  [:cached_rows (-> {:select [[:%count.* :count]
+                              [grouped-timestamp :cached_date]]
+                     :from   [:query_execution]
+                     :where  [:= :cache_hit true]
+                     :group-by [grouped-timestamp]}
+                    (common/add-45-days-clause :started_at))])
+
+(s/defn uncached-views-cte
+  "CTE for uncached views"
+  [grouped-timestamp]
+  [:uncached_rows (-> {:select [[:%count.* :count]
+                                [grouped-timestamp :uncached_date]]
+                       :from   [:query_execution]
+                       :where  [:= :cache_hit false]
+                       :group-by [grouped-timestamp]}
+                      (common/add-45-days-clause :started_at))])
+
 (s/defn cached-views-by-time
   "Get number of views of a Card broken out by a time `unit`, e.g. `day` or `day-of-week` and by cache status.
   Still here instead of in cards because of similarity to views-by-time"
   [card-id :- su/IntGreaterThanZero, unit :- common/DateTimeUnitStr]
-  {:metadata [[:date           {:display_name "Date",   :base_type (common/datetime-unit-str->base-type unit)}]
-              [:cache_hit      {:display_name "Cached", :base_type :type/Boolean}]
-              [:views          {:display_name "Views",  :base_type :type/Integer}]]
-   :results (let [grouped-timestamp (common/grouped-datetime unit :started_at)]
+  {:metadata [[:date           {:display_name "Date",
+                                :base_type (common/datetime-unit-str->base-type unit)}]
+              [:cached-views   {:display_name "Cached Views",
+                                :base_type :type/Integer}]
+              [:uncached-views {:display_name "Uncached Views",
+                                :base_type :type/Integer}]]
+   :results (let [grouped-timestamp (common/grouped-datetime unit :query_execution.started_at)]
               (common/reducible-query
-                (-> {:select   [[grouped-timestamp :date]
-                                :cache_hit
-                                [:%count.* :count]]
-                     :from     [:query_execution]
-                     :where    [:and
-                                [:= :card_id card-id]
-                                [:not= :cache_hit nil]]
-                     :group-by [grouped-timestamp :cache_hit]
-                     :order-by [[grouped-timestamp :asc]]}
-                    (common/add-45-days-clause :started_at))))})
+                (-> {:with      [(cached-views-cte grouped-timestamp)
+                                 (uncached-views-cte grouped-timestamp)]
+                     :select    [[grouped-timestamp :overall_date]
+                                 [:cached_rows.count :cached_views]
+                                 [:uncached_rows.count :uncached_views]]
+                     :from      [:query_execution]
+                     :left-join [:cached_rows   [:= grouped-timestamp :cached_rows.cached_date]
+                                 :uncached_rows [:= grouped-timestamp :uncached_rows.uncached_date]]
+                     :group-by  [grouped-timestamp]
+                     :where     [:= :query_execution.card_id card-id]
+                     :order-by  [[grouped-timestamp :asc]]})))})
 
 (s/defn avg-execution-time-by-time
   "Get average execution time of a Card broken out by a time `unit`, e.g. `day` or `day-of-week`.
