@@ -11,6 +11,7 @@ import { getOperator } from "../filters/pickers/DatePicker";
 export default function FilterPopoverFooter({
   filter,
   isNew,
+  isSidebar,
   onFilterChange,
   onCommit,
   className,
@@ -18,8 +19,12 @@ export default function FilterPopoverFooter({
   const dimension = filter.dimension();
   const field = dimension.field();
 
+  const containerClassName = cx(className, "flex align-center", {
+    PopoverFooter: !isSidebar,
+  });
+
   return (
-    <div className={cx(className, "flex align-center")}>
+    <div className={containerClassName}>
       <FilterOptions
         filter={filter}
         onFilterChange={onFilterChange}

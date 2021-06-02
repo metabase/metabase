@@ -348,7 +348,8 @@ function assignRecipient({ user = admin, dashboard_id = 1 } = {}) {
   cy.findByText("Email it").click();
   cy.findByPlaceholderText("Enter user names or email addresses")
     .click()
-    .type(`${user.first_name} ${user.last_name}{enter}`);
+    .type(`${user.first_name} ${user.last_name}{enter}`)
+    .blur(); // blur is needed to close the popover
 }
 
 function clickButton(button_name) {
