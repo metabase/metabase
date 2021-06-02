@@ -5,6 +5,14 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > collection items listing", () => {
+  const TEST_QUESTION_QUERY = {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+    ],
+  };
+
   describe("pagination", () => {
     const PAGE_SIZE = 25;
     const ADDED_QUESTIONS = 13;
@@ -21,13 +29,7 @@ describe("scenarios > collection items listing", () => {
       _.times(13, i =>
         cy.createQuestion({
           name: `generated question ${i}`,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-            ],
-          },
+          query: TEST_QUESTION_QUERY,
         }),
       );
     });
@@ -61,14 +63,6 @@ describe("scenarios > collection items listing", () => {
   });
 
   describe("sorting", () => {
-    const TEST_QUESTION_QUERY = {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-      ],
-    };
-
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
