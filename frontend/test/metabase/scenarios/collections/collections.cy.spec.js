@@ -308,6 +308,18 @@ describe("scenarios > collection_defaults", () => {
       restore();
       cy.signInAsAdmin();
 
+      // Removes questions and dashboards included in a default dataset,
+      // so it's easier to test sorting
+      cy.request("GET", "/api/collection/root/items").then(response => {
+        response.body.data.forEach(({ model, id }) => {
+          if (model !== "collection") {
+            cy.request("PUT", `/api/${model}/${id}`, {
+              archived: true,
+            });
+          }
+        });
+      });
+
       ["A", "B", "C"].forEach(letter => {
         cy.createDashboard(`${letter} Dashboard`);
 
@@ -325,20 +337,6 @@ describe("scenarios > collection_defaults", () => {
 
       cy.visit("/collection/root");
     });
-
-    const DEFAULT_ITEMS = {
-      DASHBOARDS: ["Orders in a dashboard"],
-      QUESTIONS: [
-        "Orders",
-        "Orders, Count",
-        "Orders, Count, Grouped by Created At (year)",
-      ],
-    };
-
-    DEFAULT_ITEMS.ALL = [
-      ...DEFAULT_ITEMS.DASHBOARDS,
-      ...DEFAULT_ITEMS.QUESTIONS,
-    ];
 
     it("should be possible to sort items by columns asc and desc", () => {
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
@@ -361,11 +359,8 @@ describe("scenarios > collection_defaults", () => {
 
       toggleSortingFor(/Type/i);
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        const dashboardsFirst = _.sortBy(
-          sortedNames,
-          name =>
-            name.toLowerCase().includes("question") ||
-            DEFAULT_ITEMS.QUESTIONS.includes(name),
+        const dashboardsFirst = _.sortBy(sortedNames, name =>
+          name.toLowerCase().includes("question"),
         );
         expect(actualNames, "sorted dashboards first").to.deep.equal(
           dashboardsFirst,
@@ -374,11 +369,8 @@ describe("scenarios > collection_defaults", () => {
 
       toggleSortingFor(/Type/i);
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        const questionsFirst = _.sortBy(
-          sortedNames,
-          name =>
-            name.toLowerCase().includes("dashboard") ||
-            DEFAULT_ITEMS.DASHBOARDS.includes(name),
+        const questionsFirst = _.sortBy(sortedNames, name =>
+          name.toLowerCase().includes("dashboard"),
         );
         expect(actualNames, "sorted questions first").to.deep.equal(
           questionsFirst,
@@ -387,24 +379,14 @@ describe("scenarios > collection_defaults", () => {
 
       toggleSortingFor(/Last edited at/i);
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        const notDefaultItems = _.without(sortedNames, ...DEFAULT_ITEMS.ALL);
-        const newestLast = [
-          ...DEFAULT_ITEMS.QUESTIONS,
-          ...DEFAULT_ITEMS.DASHBOARDS,
-          ...notDefaultItems,
-        ];
-        expect(actualNames, "sorted newest last").to.deep.equal(newestLast);
+        expect(actualNames, "sorted newest last").to.deep.equal(sortedNames);
       });
 
       toggleSortingFor(/Last edited at/i);
       getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-        const notDefaultItems = _.without(sortedNames, ...DEFAULT_ITEMS.ALL);
-        const newestFirst = [
-          ...notDefaultItems.reverse(),
-          ...DEFAULT_ITEMS.DASHBOARDS.reverse(),
-          ...DEFAULT_ITEMS.QUESTIONS.reverse(),
-        ];
-        expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
+        expect(actualNames, "sorted newest first").to.deep.equal(
+          sortedNames.reverse(),
+        );
       });
     });
   });
