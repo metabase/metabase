@@ -18,7 +18,7 @@ import LanguageStep from "./LanguageStep";
 import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
-import {AddDatabaseHelpCardHolder} from "./Setup.styled"
+import { AddDatabaseHelpCardHolder } from "./Setup.styled";
 
 const WELCOME_STEP_NUMBER = 0;
 const LANGUAGE_STEP_NUMBER = 1;
