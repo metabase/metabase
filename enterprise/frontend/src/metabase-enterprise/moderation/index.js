@@ -102,7 +102,7 @@ export function getModerationEvents(question, usersById) {
     return {
       timestamp: new Date(request.created_at).valueOf(),
       icon: getModerationStatusIcon(request.type),
-      title: `${userDisplayName} ${MODERATION_TEXT.user[request.type].creationEvent}`,
+      title: `${userDisplayName} ${MODERATION_TEXT[request.type].creationEvent}`,
       description: request.text,
       showFooter: true,
       requestStatusText: MODERATION_TEXT.requestStatuses[request.status],
@@ -113,7 +113,7 @@ export function getModerationEvents(question, usersById) {
   const reviews = question.getModerationReviews().map((review, index) => {
     const moderator = usersById[review.moderator_id];
     const moderatorDisplayName = moderator ? moderator.common_name : t`Someone`;
-    const text = MODERATION_TEXT.moderator[review.status].creationEvent;
+    const text = MODERATION_TEXT[review.status].creationEvent;
     return {
       timestamp: new Date(review.created_at).valueOf(),
       icon: getModerationStatusIcon(review.status),

@@ -1,14 +1,23 @@
 import React from "react";
-import { IndexRoute } from "react-router";
 import { Route } from "metabase/hoc/Title";
 import { t } from "ttag";
 
-import NotificationCenterApp from "metabase-enterprise/notifications/components/NotificationCenterApp";
+import NotificationsApp from "metabase-enterprise/notifications/components/NotificationsApp";
+import RequestNotificationsApp from "metabase-enterprise/notifications/components/RequestNotificationsApp";
 
 export function getNotificationRoutes() {
   return (
-    <Route path="notifications" title={t`Notifications`}>
-      <IndexRoute component={NotificationCenterApp} />
-    </Route>
+    <React.Fragment>
+      <Route
+        path="notifications"
+        title={t`Notifications`}
+        component={NotificationsApp}
+      />
+      <Route
+        path="requests"
+        title={t`Requests`}
+        component={RequestNotificationsApp}
+      />
+    </React.Fragment>
   );
 }

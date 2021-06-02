@@ -2,15 +2,10 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import {
-  getColor,
-  getModerationStatusIcon,
-} from "metabase-enterprise/moderation";
-import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
 import Comment from "metabase/components/Comment";
 import ModerationIssueActionMenu from "metabase-enterprise/moderation/components/ModerationIssueActionMenu";
+import ModerationIssuePill from "metabase-enterprise/moderation/components/ModerationIssuePill";
 
 ModerationIssueThread.propTypes = {
   className: PropTypes.string,
@@ -31,8 +26,6 @@ export function ModerationIssueThread({
 }) {
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [isCommentPending, setIsCommentPending] = useState(false);
-  const color = getColor(request.type);
-  const icon = getModerationStatusIcon(request.type);
   const showButtonBar = !showCommentForm && !!(onComment || onModerate);
 
   const onSubmit = async comment => {
@@ -49,12 +42,7 @@ export function ModerationIssueThread({
 
   return (
     <div className={className}>
-      <div
-        className={`flex align-center text-${color} text-${color}-hover text-bold`}
-      >
-        <Icon name={icon} className="mr1" />
-        {MODERATION_TEXT.user[request.type].pillLabel}
-      </div>
+      <ModerationIssuePill type={request.type} />
       <Comment
         className="pt1"
         title={request.title}
