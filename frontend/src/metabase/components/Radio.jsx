@@ -1,14 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import _ from "underscore";
+import cx from "classnames";
 import styled from "styled-components";
 import { space } from "styled-system";
 
-import Icon from "metabase/components/Icon";
 import { color, lighten } from "metabase/lib/colors";
-
-import _ from "underscore";
-import cx from "classnames";
+import Icon from "metabase/components/Icon";
 
 export default class Radio extends Component {
   static propTypes = {
