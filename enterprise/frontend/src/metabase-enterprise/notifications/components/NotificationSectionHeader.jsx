@@ -6,15 +6,15 @@ import { withRouter } from "react-router";
 import { HeaderContainer, RadioTabs } from "./NotificationSectionHeader.styled";
 
 const sections = {
-  user: [
-    { name: t`Notifications`, value: "/notifications" },
-    { name: t`Activity`, value: "/activity" },
-  ],
+  // user: [
+  //   { name: t`Notifications`, value: "/notifications" },
+  //   { name: t`Activity`, value: "/activity" },
+  // ],
   moderator: [
     { name: t`Review requests`, value: "/requests?status=open" },
-    { name: t`Resolved`, value: "/requests?status=resolved" },
-    { name: t`Notifications`, value: "/notifications" },
-    { name: t`Activity`, value: "/activity" },
+    { name: t`Resolved`, value: "/requests?status=resolved,closed" },
+    // { name: t`Notifications`, value: "/notifications" },
+    // { name: t`Activity`, value: "/activity" },
   ],
 };
 

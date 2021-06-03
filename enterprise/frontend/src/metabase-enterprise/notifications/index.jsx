@@ -4,8 +4,11 @@ import {
 } from "metabase/plugins";
 
 import { getNotificationRoutes } from "metabase-enterprise/notifications/routes";
+import NotificationsLink from "metabase-enterprise/notifications/components/NotificationsLink";
 
-Object.assign(PLUGIN_NOTIFICATION_COMPONENTS, {});
+Object.assign(PLUGIN_NOTIFICATION_COMPONENTS, {
+  NotificationsLink,
+});
 
 Object.assign(PLUGIN_NOTIFICATION_SERVICE, {
   getNotificationRoutes,

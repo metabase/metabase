@@ -1,4 +1,6 @@
 import React from "react";
+import PropTypes from "prop-types";
+
 import Comment from "metabase/components/Comment";
 import ModerationIssuePill from "metabase-enterprise/moderation/components/ModerationIssuePill";
 import {
@@ -8,22 +10,29 @@ import {
   CardHeader,
 } from "./RequestNotificationCard.styled";
 
-function RequestNotificationCard() {
-  const issueType = "verification_request";
-  const status = "open";
+RequestNotificationCard.propTypes = {
+  userDisplayName: PropTypes.string.isRequired,
+  questionDisplayName: PropTypes.string.isRequired,
+  request: PropTypes.object.isRequired,
+};
 
-  const userDisplayName = "Foo Bar";
-  const text = "a b c d \n e f g h";
-  const timestamp = Date.now();
-
+function RequestNotificationCard({
+  userDisplayName,
+  questionDisplayName,
+  request,
+}) {
   return (
     <BoundWidthLink to="/question/1">
       <PaddedCard hoverable>
         <CardHeader>
-          <ModerationIssuePill type={issueType} status={status} />
-          <QuestionName>Question Name</QuestionName>
+          <ModerationIssuePill type={request.type} status={request.status} />
+          <QuestionName>{questionDisplayName}</QuestionName>
         </CardHeader>
-        <Comment title={userDisplayName} text={text} timestamp={timestamp} />
+        <Comment
+          title={userDisplayName}
+          text={request.text}
+          timestamp={request.created_at}
+        />
       </PaddedCard>
     </BoundWidthLink>
   );

@@ -26,4 +26,5 @@ export const PaddedCard = styled(Card)`
 export const CardHeader = styled.div`
   display: flex;
   align-items: center;
+  padding-bottom: 0.5rem;
 `;

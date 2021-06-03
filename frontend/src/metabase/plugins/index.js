@@ -74,7 +74,9 @@ export const PLUGIN_MODERATION_SERVICE = {
   getModerationEvents: _.noop,
 };
 
-export const PLUGIN_NOTIFICATION_COMPONENTS = {};
+export const PLUGIN_NOTIFICATION_COMPONENTS = {
+  NotificationsLink: PluginPlaceholder,
+};
 
 export const PLUGIN_NOTIFICATION_SERVICE = {
   getNotificationRoutes: _.noop,
