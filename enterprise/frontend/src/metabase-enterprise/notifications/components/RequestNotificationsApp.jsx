@@ -56,6 +56,7 @@ function RequestNotifications({ questions, users, router }) {
         request,
         userDisplayName,
         questionDisplayName,
+        url: `/question/${question.id()}`,
       };
     });
 
@@ -64,13 +65,14 @@ function RequestNotifications({ questions, users, router }) {
       <NotificationSectionHeader />
       <ListContainer>
         {requestsWithMetadata.map(
-          ({ request, userDisplayName, questionDisplayName }) => {
+          ({ request, userDisplayName, questionDisplayName, url }) => {
             return (
               <RequestNotificationCard
                 key={request.id}
                 request={request}
                 userDisplayName={userDisplayName}
                 questionDisplayName={questionDisplayName}
+                url={url}
               />
             );
           },

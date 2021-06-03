@@ -13,16 +13,18 @@ import {
 RequestNotificationCard.propTypes = {
   userDisplayName: PropTypes.string.isRequired,
   questionDisplayName: PropTypes.string.isRequired,
+  url: PropTypes.string.isRequired,
   request: PropTypes.object.isRequired,
 };
 
 function RequestNotificationCard({
   userDisplayName,
   questionDisplayName,
+  url,
   request,
 }) {
   return (
-    <BoundWidthLink to="/question/1">
+    <BoundWidthLink to={url}>
       <PaddedCard hoverable>
         <CardHeader>
           <ModerationIssuePill type={request.type} status={request.status} />
