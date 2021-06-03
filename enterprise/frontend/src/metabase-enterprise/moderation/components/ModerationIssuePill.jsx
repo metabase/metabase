@@ -20,7 +20,11 @@ function ModerationIssuePill({ className, type, status }) {
 
   return (
     <PillContainer className={className} color={color}>
-      <GrayscaleIcon name={icon} size={18} grayscale={status !== "open"} />
+      <GrayscaleIcon
+        name={icon}
+        size={18}
+        grayscale={status && status !== "open"}
+      />
       <span className="text-bold">{MODERATION_TEXT[type].action}</span>
     </PillContainer>
   );
