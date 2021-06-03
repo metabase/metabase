@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { withRouter } from "react-router";
+import _ from "underscore";
 
 import QuestionDetailsSidebarPanel from "metabase/query_builder/components/view/sidebars/QuestionDetailsSidebarPanel";
 import {
@@ -21,6 +23,7 @@ QuestionDetailsSidebar.propTypes = {
   createModerationReview: PropTypes.func.isRequired,
   createModerationRequest: PropTypes.func.isRequired,
   createModerationRequestComment: PropTypes.func.isRequired,
+  router: PropTypes.object.isRequired,
 };
 
 function QuestionDetailsSidebar({
@@ -29,12 +32,10 @@ function QuestionDetailsSidebar({
   createModerationReview,
   createModerationRequest,
   createModerationRequestComment,
+  router,
 }) {
-  const [view, setView] = useState({
-    name: undefined,
-    props: undefined,
-    previousView: undefined,
-  });
+  const initialView = parseViewFromQueryParams(router.location.query, question);
+  const [view, setView] = useState(initialView);
   const { name, props: viewProps } = view;
   const id = question.id();
   const comments = question.getComments();
@@ -103,4 +104,25 @@ function QuestionDetailsSidebar({
   }
 }
 
-export default QuestionDetailsSidebar;
+export default withRouter(QuestionDetailsSidebar);
+
+function parseViewFromQueryParams(queryParams = {}, question) {
+  if (queryParams.moderationRequest) {
+    const requests = question.getModerationRequests();
+    const request = _.findWhere(requests, {
+      id: Number(queryParams.moderationRequest),
+    });
+    return {
+      name: SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL,
+      props: {
+        requests: [request],
+      },
+      previousView: undefined,
+    };
+  }
+  return {
+    name: undefined,
+    props: undefined,
+    previousView: undefined,
+  };
+}

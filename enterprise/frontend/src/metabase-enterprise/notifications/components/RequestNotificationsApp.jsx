@@ -56,7 +56,7 @@ function RequestNotifications({ questions, users, router }) {
         request,
         userDisplayName,
         questionDisplayName,
-        url: `/question/${question.id()}`,
+        url: `/question/${question.id()}?moderationRequest=${request.id}`,
       };
     });
 
