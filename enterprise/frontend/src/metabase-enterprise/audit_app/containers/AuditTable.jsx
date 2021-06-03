@@ -26,10 +26,6 @@ const mapDispatchToProps = {
 
 const DEFAULT_PAGE_SIZE = 100;
 
-AuditTable.defaultProps = {
-  pageSize: DEFAULT_PAGE_SIZE,
-};
-
 AuditTable.propTypes = {
   metadata: PropTypes.object.isRequired,
   table: PropTypes.object.isRequired,
@@ -37,7 +33,13 @@ AuditTable.propTypes = {
   pageSize: PropTypes.number.isRequired,
 };
 
-function AuditTable({ metadata, table, onChangeLocation, pageSize, ...rest }) {
+function AuditTable({
+  metadata,
+  table,
+  onChangeLocation,
+  pageSize = DEFAULT_PAGE_SIZE,
+  ...rest
+}) {
   const [loadedCount, setLoadedCount] = useState(0);
   const { handleNextPage, handlePreviousPage, page } = usePagination();
 
