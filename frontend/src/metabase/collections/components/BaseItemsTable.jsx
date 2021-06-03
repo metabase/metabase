@@ -84,7 +84,7 @@ export function BaseTableItem({
         data-testid={testID}
         style={{
           height: `${ROW_HEIGHT}px`,
-          "border-bottom": hasBottomBorder
+          borderBottom: hasBottomBorder
             ? `1px solid ${color("bg-medium")}`
             : "none",
         }}
