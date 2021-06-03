@@ -1,4 +1,3 @@
-import _ from "underscore";
 import {
   restore,
   setupLocalHostEmail,
