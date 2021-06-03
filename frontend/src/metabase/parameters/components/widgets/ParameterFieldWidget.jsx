@@ -128,8 +128,13 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       this.setState({ isFocused });
     };
 
+    const footerClassName = cx(
+      "flex mt1 px1 pb1 PopoverFooter PopoverParameterFieldWidgetFooter",
+      isEqualsOp && "mr1 mb1",
+    );
+
     const placeholder = isEditing
-      ? "Enter a default value..."
+      ? t`Enter a default value...`
       : defaultPlaceholder;
 
     if (!isFocused) {
@@ -149,7 +154,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     } else {
       return (
         <Popover hasArrow={false} onClose={() => focusChanged(false)}>
-          <div className={cx(!isEqualsOp && "p2")}>
+          <div className={cx("relative", { p2: !isEqualsOp })}>
             {verboseName && !isEqualsOp && (
               <div className="text-bold mb1">{verboseName}...</div>
             )}
@@ -192,8 +197,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                 />
               );
             })}
-            {/* border between input and footer comes from border-bottom on FieldValuesWidget */}
-            <div className={cx("flex mt1", isEqualsOp && "mr1 mb1")}>
+            <div className={footerClassName}>
               <Button
                 primary
                 className="ml-auto"
@@ -203,7 +207,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                   focusChanged(false);
                 }}
               >
-                {savedValue.length > 0 ? "Update filter" : "Add filter"}
+                {savedValue.length > 0 ? t`Update filter` : t`Add filter`}
               </Button>
             </div>
           </div>

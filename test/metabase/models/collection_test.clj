@@ -1206,6 +1206,14 @@
              Exception
              (db/update! Collection (u/get-id personal-collection) :personal_owner_id (mt/user->id :crowberto)))))))
 
+  (testing "We are not allowed to change the authority_level of a Personal Collection"
+    (mt/with-temp User [my-cool-user]
+      (let [personal-collection (collection/user->personal-collection my-cool-user)]
+        (is (thrown-with-msg?
+             Exception
+             #"You are not allowed to change the authority level of a Personal Collection."
+             (db/update! Collection (u/get-id personal-collection) :authority_level "official"))))))
+
   (testing "Does hydrating `:personal_collection_id` force creation of Personal Collections?"
     (mt/with-temp User [temp-user]
       (is (schema= {:personal_collection_id su/IntGreaterThanZero

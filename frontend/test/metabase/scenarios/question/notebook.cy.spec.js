@@ -70,7 +70,7 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Showing 1 row"); // ensure only one user was returned
   });
 
-  it.skip("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
+  it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
@@ -87,8 +87,13 @@ describe("scenarios > question > notebook", () => {
     });
 
     cy.wait("@dataset");
-    cy.findByText("ID 96 97").click();
-    cy.get("[contenteditable='true']").contains("between([ID], 96, 97)");
+    cy.findByText("ID between 96 97").click();
+    cy.findByText("Between").click();
+    popover().within(() => {
+      cy.contains("Is not");
+      cy.contains("Greater than");
+      cy.contains("Less than");
+    });
   });
 
   it("should show the correct number of function arguments in a custom expression", () => {
