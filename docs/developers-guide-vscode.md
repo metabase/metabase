@@ -31,6 +31,6 @@ Steps:
 3. From the _View_ menu, choose _Command Palette..._ and then find _Remote-Container: Reopen in Container_. (VS Code may also prompt you to do this with an "Open in container" popup).
 **Note**: VS Code will create the container for the first time and it may take some time. Subsequent loads should be much faster. 
 
-4. Use the menu _Terminal_, _New Terminal_ to open a new embedded terminal. In this terminal, type and run `yarn dev`.
+4. Use the menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_ (alternatively, use the shortcut `Ctrl+Shift+B`).
 
 5. After a while (after all JavaScript and Clojure dependencies are completely downloaded), open localhost:3000 with your web browser.
