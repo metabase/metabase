@@ -1,10 +1,16 @@
 (ns metabase.api.moderation-request
-  (:require [compojure.core :refer [POST PUT]]
+  (:require [compojure.core :refer [GET POST PUT]]
             [metabase.api.common :as api]
-            [metabase.models.moderation-request :as moderation-request]
+            [metabase.models.moderation-request :as moderation-request :refer [ModerationRequest]]
             [metabase.moderation :as moderation]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
+
+(api/defendpoint GET "/"
+  "Fetch all moderation requests"
+  []
+  (db/select ModerationRequest))
 
 (api/defendpoint POST "/"
   "Create a new `ModerationRequest`."
