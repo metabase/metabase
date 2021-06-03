@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -13,25 +12,31 @@ import cx from "classnames";
 
 export default class Radio extends Component {
   static propTypes = {
+    name: PropTypes.string,
     value: PropTypes.any,
     options: PropTypes.array.isRequired,
     onChange: PropTypes.func,
     optionNameFn: PropTypes.func,
     optionValueFn: PropTypes.func,
     optionKeyFn: PropTypes.func,
+    showButtons: PropTypes.bool,
+    xspace: PropTypes.number,
+    yspace: PropTypes.number,
+    py: PropTypes.number,
+
+    // Modes
+    bubble: PropTypes.bool,
     vertical: PropTypes.bool,
     underlined: PropTypes.bool,
-    showButtons: PropTypes.bool,
-    py: PropTypes.number,
   };
 
   static defaultProps = {
     optionNameFn: option => option.name,
     optionValueFn: option => option.value,
     optionKeyFn: option => option.value,
+    bubble: false,
     vertical: false,
     underlined: false,
-    bubble: false,
   };
 
   constructor(props, context) {
