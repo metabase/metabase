@@ -40,6 +40,7 @@
     "moment": "2.19.3",
     "moment-timezone": "^0.5.26",
     "mustache": "^2.3.2",
+    "node-polyfill-webpack-plugin": "^1.1.2",
     "normalizr": "^3.0.2",
     "number-to-locale-string": "^1.0.1",
     "password-generator": "^2.0.1",
@@ -86,6 +87,7 @@
     "tether": "^1.2.0",
     "ttag": "1.7.15",
     "underscore": "^1.8.3",
+    "yarn.lock": "^0.0.1-security",
     "z-index": "0.0.1"
   },
   "devDependencies": {
