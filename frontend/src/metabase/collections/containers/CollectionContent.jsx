@@ -3,9 +3,12 @@ import React, { useState, useCallback } from "react";
 import { Box } from "grid-styled";
 import _ from "underscore";
 import { withRouter } from "react-router";
+import { connect } from "react-redux";
 
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
+
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import Header from "metabase/collections/components/Header";
@@ -33,6 +36,12 @@ const getModelsByFilter = filter => {
 };
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
+
+function mapStateToProps(state) {
+  return {
+    isAdmin: getUserIsAdmin(state),
+  };
+}
 
 function CollectionContent({
   collection,
@@ -230,5 +239,6 @@ export default _.compose(
     id: (_, props) => props.collectionId,
     reload: true,
   }),
+  connect(mapStateToProps),
   withRouter,
 )(CollectionContent);
