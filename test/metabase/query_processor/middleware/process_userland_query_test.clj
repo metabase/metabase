@@ -58,6 +58,7 @@
               :card_id      nil
               :context      nil
               :running_time true
+              :cache_hit    false
               :dashboard_id nil}
              (qe))
           "QueryExecution should be saved"))))

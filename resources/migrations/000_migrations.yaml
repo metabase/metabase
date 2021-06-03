@@ -8339,6 +8339,21 @@ databaseChangeLog:
               WHERE base_type IN ('ArrayField', 'BigIntegerField', 'BooleanField', 'CharField', 'DateField',
                                   'DateTimeField', 'DecimalField', 'DictionaryField', 'FloatField', 'IntegerField',
                                   'TextField', 'TimeField', 'UUIDField', 'UnknownField');
+  - changeSet:
+      id: 308
+      author: howonlee
+      comment: Added 0.40.0 Track cache hits in query_execution table
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: cache_hit
+                  type: boolean
+                  remarks: "Cache hit on query execution"
+                  constraints:
+                    nullable: true
+
 
   - changeSet:
       id: 309

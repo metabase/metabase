@@ -52,7 +52,7 @@ export default class AuditParameters extends React.Component {
         <div className="pt4">
           {parameters.map(({ key, placeholder }) => (
             <input
-              className="input"
+              className="input mr2"
               key={key}
               type="text"
               value={inputValues[key] || ""}
