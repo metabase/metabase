@@ -12,11 +12,7 @@ import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget
 import Icon from "metabase/components/Icon";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
-import BaseItemsTable, {
-  BaseTableItem,
-  TABLE_HEAD_HEIGHT,
-  ROW_HEIGHT,
-} from "./BaseItemsTable";
+import BaseItemsTable, { BaseTableItem, ROW_HEIGHT } from "./BaseItemsTable";
 
 function PinnedItemsEmptyState() {
   return (
