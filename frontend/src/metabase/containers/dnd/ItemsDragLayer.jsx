@@ -71,6 +71,7 @@ class DraggedItems extends React.Component {
   renderDraggedItem = itemProps => {
     return (
       <BaseTableItem
+        key={itemProps.item.id}
         {...itemProps}
         isPinned={this.isDraggedItemPinned()}
         hasBottomBorder={false}

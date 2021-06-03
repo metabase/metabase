@@ -48,6 +48,7 @@ function PinnedItemsTable({ items, ...props }) {
     };
     return (
       <BaseTableItem
+        key={`${item.model}-${item.id}`}
         {...itemProps}
         linkProps={{
           className: "hover-parent hover--visibility",
