@@ -57,8 +57,7 @@
     :as   settings} :- i/LDAPSettings]
   (let [{first-name (keyword first-name-attribute)
          last-name  (keyword last-name-attribute)
-         email      (keyword email-attribute)
-         groups     :memberof} result]
+         email      (keyword email-attribute)} result]
     ;; Make sure we got everything as these are all required for new accounts
     (when-not (some empty? [dn first-name last-name email])
       {:dn         dn
@@ -68,8 +67,7 @@
        :groups     (when sync-groups?
                      ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
                      ;; groups. Otherwise we have to make the inverse query to get them.
-                     (or (if (string? groups) (list (:memberof result))
-                           (:memberof result))
+                     (or (u/one-or-many (:memberof result))
                          (user-groups ldap-connection dn settings)
                          []))})))
 
