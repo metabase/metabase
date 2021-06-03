@@ -1,7 +1,14 @@
 import { restore } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATASET;
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -83,6 +90,83 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
                   dimension: ["dimension", ["field", ORDERS.QUANTITY, null]],
                 },
                 id: [`["dimension",["field",${ORDERS.QUANTITY},null]]`],
+              },
+            },
+            linkType: "question",
+            type: "link",
+          },
+        },
+      },
+    });
+  });
+
+  it.skip("should not change the visualization type in a targetted question with mapped filter (metabase#16334)", () => {
+    // Question 2, that we're adding to the dashboard
+    const questionDetails = {
+      query: {
+        "source-table": REVIEWS_ID,
+      },
+    };
+
+    cy.createQuestion({
+      name: "16334",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+      display: "pie",
+    }).then(({ body: { id: question1Id } }) => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: { id, card_id, dashboard_id } }) => {
+          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+            cards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                sizeX: 12,
+                sizeY: 10,
+                visualization_settings: getVisualizationSettings(question1Id),
+              },
+            ],
+          });
+
+          cy.visit(`/dashboard/${dashboard_id}`);
+
+          cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+        },
+      );
+    });
+
+    cy.wait("@cardQuery");
+    cy.get(".cellData")
+      .contains("5")
+      .first()
+      .click();
+
+    cy.findByText("Rating is equal to 5");
+    cy.findAllByTestId("slice"); // Pie slices
+
+    const getVisualizationSettings = targetId => ({
+      column_settings: {
+        [`["ref",["field",${REVIEWS.RATING},null]]`]: {
+          click_behavior: {
+            targetId,
+            parameterMapping: {
+              [`["dimension",["field",${PRODUCTS.RATING},null]]`]: {
+                source: {
+                  type: "column",
+                  id: "RATING",
+                  name: "Rating",
+                },
+                target: {
+                  type: "dimension",
+                  id: [`["dimension",["field",${PRODUCTS.RATING},null]]`],
+                  dimension: ["dimension", ["field", PRODUCTS.RATING, null]],
+                },
+                id: [`["dimension",["field",${PRODUCTS.RATING},null]]`],
               },
             },
             linkType: "question",
