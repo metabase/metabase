@@ -38,7 +38,7 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
         />
         <div className="ml3 mr2 flex justify-between border-row-divider">
           <ModerationIssueActionMenu
-            className="pb3"
+            className="mb3"
             triggerClassName="Button--round text-brand border-brand py1"
             onAction={issueType => {
               setView({
@@ -48,7 +48,7 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
             }}
           />
           <OpenModerationIssuesButton
-            className="pb3"
+            className="mb3"
             question={question}
             onClick={() => {
               setView({
