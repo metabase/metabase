@@ -8,6 +8,7 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
@@ -83,6 +84,7 @@ export class ViewTitleHeader extends React.Component {
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
     const description = question.description();
+    const lastEditInfo = question.lastEditInfo();
 
     const isStructured = question.isStructured();
     const isNative = question.isNative();
@@ -121,6 +123,12 @@ export class ViewTitleHeader extends React.Component {
                 question={question}
                 onOpenModal={onOpenModal}
               />
+              {lastEditInfo && (
+                <LastEditInfoLabel
+                  className="ml1 text-light"
+                  item={question.card()}
+                />
+              )}
             </div>
             <ViewSubHeading className="flex align-center flex-wrap">
               <CollectionBadge
