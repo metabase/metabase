@@ -6,8 +6,7 @@ import {
   getModerationStatusIcon,
   getColor,
 } from "metabase-enterprise/moderation";
-import Icon from "metabase/components/Icon";
-import { PillContainer } from "./ModerationIssuePill.styled";
+import { PillContainer, GrayscaleIcon } from "./ModerationIssuePill.styled";
 
 ModerationIssuePill.propTypes = {
   className: PropTypes.string,
@@ -21,7 +20,7 @@ function ModerationIssuePill({ className, type, status }) {
 
   return (
     <PillContainer className={className} color={color}>
-      <Icon className="mr1" name={icon} size={18} />
+      <GrayscaleIcon name={icon} size={18} grayscale={status !== "open"} />
       <span className="text-bold">{MODERATION_TEXT[type].action}</span>
     </PillContainer>
   );
