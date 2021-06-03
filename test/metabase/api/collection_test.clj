@@ -16,7 +16,8 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import [java.time ZonedDateTime ZoneId]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
@@ -301,15 +302,15 @@
       (mt/with-temp* [Collection [collection]
                       Card       [card        {:collection_id (u/the-id collection)}]]
         (is (= (mt/obj->json->obj
-                 [{:id                  (u/the-id card)
-                   :name                (:name card)
-                   :collection_position nil
-                   :display             "table"
-                   :description         nil
-                   :favorite            false
-                   :model               "card"}])
+                [{:id                  (u/the-id card)
+                  :name                (:name card)
+                  :collection_position nil
+                  :display             "table"
+                  :description         nil
+                  :favorite            false
+                  :model               "card"}])
                (mt/obj->json->obj
-                 (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
+                (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
                       Card       [card3        {:collection_id (u/the-id collection)}]
@@ -332,9 +333,9 @@
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (with-some-children-of-collection collection
           (is (= (map default-item [{:name "Acme Products", :model "pulse"}
-                                    {:name "Electro-Magnetic Pulse", :model "pulse"}
                                     {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"}
-                                    {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"}])
+                                    {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"}
+                                    {:name "Electro-Magnetic Pulse", :model "pulse"}])
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
@@ -359,26 +360,77 @@
           (is (= [(default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})]
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
-    (testing "Results include last edited information from the `Revision` table"
-      (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
-                      User       [{user-id :id} {:first_name "Test" :last_name "User" :email "testuser@example.com"}]
-                      Card       [{card-id :id :as card}
-                                  {:name          "Card with history" :collection_id collection-id}]
-                      Revision   [_revision {:model    "Card"
-                                             :model_id card-id
-                                             :user_id  user-id
-                                             :object   (revision/serialize-instance card card-id card)}]]
-        (is (= [{:name "Card with history",
+    (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
+                    User       [{user-id :id} {:first_name "Test" :last_name "User" :email "testuser@example.com"}]
+                    Card       [{card1-id :id :as card1}
+                                {:name "Card with history 1" :collection_id collection-id}]
+                    Card       [{card2-id :id :as card2}
+                                {:name "Card with history 2" :collection_id collection-id}]
+                    Card       [_ {:name "ZZ" :collection_id collection-id}]
+                    Card       [_ {:name "AA" :collection_id collection-id}]
+                    Revision   [_revision1 {:model    "Card"
+                                            :model_id card1-id
+                                            :user_id  user-id
+                                            :object   (revision/serialize-instance card1 card1-id card1)}]
+                    Revision   [_revision2 {:model    "Card"
+                                            :model_id card2-id
+                                            :user_id  user-id
+                                            :object   (revision/serialize-instance card2 card2-id card2)}]]
+      ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
+      (db/execute! {:update :revision
+                    ;; in the past
+                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 2)}
+                    :where [:= :id (:id _revision1)]})
+      (testing "Results include last edited information from the `Revision` table"
+        (is (= [{:name "AA"}
+                {:name "Card with history 1",
                  :last-edit-info
                  {:id         true,
                   :email      "testuser@example.com",
                   :first_name "Test",
                   :last_name  "User",
                   ;; timestamp collapsed to true, ordinarily a OffsetDateTime
-                  :timestamp  true}}]
+                  :timestamp  true}}
+                {:name "Card with history 2",
+                 :last-edit-info
+                 {:id         true,
+                  :email      "testuser@example.com",
+                  :first_name "Test",
+                  :last_name  "User",
+                  :timestamp  true}}
+                {:name "ZZ"}]
                (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
                     mt/boolean-ids-and-timestamps
-                    (map #(select-keys % [:name :last-edit-info])))))))))
+                    (map #(select-keys % [:name :last-edit-info]))))))
+      (testing "Results can be ordered by last-edited"
+        (testing "ascending"
+          (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited&sort_direction=asc"))
+                      :data
+                      (map :name)))))
+        (testing "descending"
+          (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited&sort_direction=desc"))
+                      :data
+                      (map :name))))))
+      (testing "Results can be ordered by model"
+        (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
+                        Card       [_ {:name "ZZ" :collection_id collection-id}]
+                        Card       [_ {:name "AA" :collection_id collection-id}]
+                        Dashboard  [_ {:name "ZZ" :collection_id collection-id}]
+                        Dashboard  [_ {:name "AA" :collection_id collection-id}]
+                        Pulse      [_ {:name "ZZ" :collection_id collection-id}]
+                        Pulse      [_ {:name "AA" :collection_id collection-id}]]
+          (testing "sort direction asc"
+            (is (= [["dashboard" "AA"] ["dashboard" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["card" "AA"] ["card" "ZZ"]]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=asc"))
+                        :data
+                        (map (juxt :model :name))))))
+          (testing "sort direction desc"
+            (is (= [["card" "AA"] ["card" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"]]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=desc"))
+                        :data
+                        (map (juxt :model :name)))))))))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -602,11 +654,11 @@
              (with-some-children-of-collection nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))
     (testing "Make sure you can see everything for Users that can see everything"
-      (is (= [(default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
-              (default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+      (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
               (collection-item "Crowberto Corv's Personal Collection")
               (default-item {:name "Dine & Dashboard",
-                             :favorite false, :description nil, :model "dashboard"}) ]
+                             :favorite false, :description nil, :model "dashboard"})
+              (default-item {:name "Electro-Magnetic Pulse", :model "pulse"}) ]
              (with-some-children-of-collection nil
                (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                    (remove-non-test-items &ids)
@@ -636,9 +688,9 @@
             (mt/with-temp* [PermissionsGroup           [group]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-              (is (= [(default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
-                      (default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
+              (is (= [(default-item {:name "Birthday Card", :description nil, :favorite false, :model "card", :display "table"})
                       (default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})
+                      (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
                      (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                          (remove-non-test-items &ids)
