@@ -1,7 +1,6 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
-  (:require [clj-time.core :as time]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
                                      PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
@@ -17,7 +16,8 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import [java.time ZonedDateTime ZoneId]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
@@ -374,12 +374,11 @@
                     Revision   [_revision2 {:model    "Card"
                                             :model_id card2-id
                                             :user_id  user-id
-                                            :timestamp (time/from-now (time/days -2))
                                             :object   (revision/serialize-instance card2 card2-id card2)}]]
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (db/execute! {:update :revision
                     ;; in the past
-                    :set {:timestamp (.minusHours (java.time.OffsetDateTime/now) 24)}
+                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 2)}
                     :where [:= :id (:id _revision1)]})
       (testing "Results include last edited information from the `Revision` table"
         (is (= [{:name "AA"}
