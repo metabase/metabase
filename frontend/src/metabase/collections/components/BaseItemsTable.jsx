@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import moment from "moment";
 
@@ -20,6 +20,21 @@ import {
 } from "./BaseItemsTable.styled";
 
 export const ROW_HEIGHT = 80;
+
+BaseTableItem.propTypes = {
+  item: PropTypes.object.isRequired,
+  collection: PropTypes.object,
+  isPinned: PropTypes.bool,
+  isSelected: PropTypes.bool,
+  selectedItems: PropTypes.arrayOf(PropTypes.object),
+  onCopy: PropTypes.func,
+  onMove: PropTypes.func,
+  onDrop: PropTypes.func,
+  onToggleSelected: PropTypes.func,
+  linkProps: PropTypes.object,
+  hasBottomBorder: PropTypes.bool,
+  children: PropTypes.node,
+};
 
 export function BaseTableItem({
   item,
@@ -161,6 +176,16 @@ function defaultItemRenderer({
   );
 }
 
+SortableColumnHeader.propTypes = {
+  name: PropTypes.string.isRequired,
+  sortingOptions: PropTypes.shape({
+    sort_column: PropTypes.string.isRequired,
+    sort_direction: PropTypes.oneOf(["asc", "desc"]).isRequired,
+  }),
+  onSortingOptionsChange: PropTypes.func,
+  children: PropTypes.node,
+};
+
 function SortableColumnHeader({
   children,
   name,
@@ -195,6 +220,25 @@ function SortableColumnHeader({
     </ColumnHeader>
   );
 }
+
+BaseItemsTable.propTypes = {
+  items: PropTypes.arrayOf(PropTypes.object).isRequired,
+  pinned: PropTypes.bool,
+  collection: PropTypes.object,
+  sortingOptions: PropTypes.shape({
+    sort_column: PropTypes.string.isRequired,
+    sort_direction: PropTypes.oneOf(["asc", "desc"]).isRequired,
+  }),
+  onSortingOptionsChange: PropTypes.func,
+  renderItem: PropTypes.func,
+  onCopy: PropTypes.func,
+  onMove: PropTypes.func,
+  onDrop: PropTypes.func,
+  onToggleSelected: PropTypes.func,
+  selectedItems: PropTypes.arrayOf(PropTypes.object),
+  getIsSelected: PropTypes.func,
+  headless: PropTypes.bool,
+};
 
 function BaseItemsTable({
   items,

@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 import { Box } from "grid-styled";
@@ -35,6 +35,10 @@ function PinnedItemsEmptyState() {
     </PinDropTarget>
   );
 }
+
+PinnedItemsTable.propTypes = {
+  items: PropTypes.arrayOf(PropTypes.object).isRequired,
+};
 
 function PinnedItemsTable({ items, ...props }) {
   const renderItem = useCallback(itemProps => {
