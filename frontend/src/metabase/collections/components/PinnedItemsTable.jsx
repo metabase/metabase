@@ -42,10 +42,9 @@ PinnedItemsTable.propTypes = {
 
 function PinnedItemsTable({ items, ...props }) {
   const renderItem = useCallback(itemProps => {
-    const { item, index } = itemProps;
+    const { item } = itemProps;
     const dropTargetStyle = {
       height: ROW_HEIGHT,
-      top: TABLE_HEAD_HEIGHT + index * ROW_HEIGHT,
     };
     return (
       <BaseTableItem
