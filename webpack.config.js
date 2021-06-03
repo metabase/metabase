@@ -5,6 +5,8 @@ require("babel-register");
 require("core-js/stable");
 require("regenerator-runtime/runtime");
 
+const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
+
 const webpack = require("webpack");
 
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
@@ -127,10 +129,6 @@ const config = (module.exports = {
           ? ENTERPRISE_SRC_PATH + "/plugins"
           : SRC_PATH + "/lib/noop",
     },
-    fallback: {
-      path: false,
-      crypto: false,
-    },
   },
 
   optimization: {
@@ -181,6 +179,7 @@ const config = (module.exports = {
       banner:
         "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
     }),
+    new NodePolyfillPlugin(), // for crypto, among others
   ],
 });
 
