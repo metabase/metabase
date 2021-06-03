@@ -3,12 +3,13 @@ import React, { Component } from "react";
 import { Box } from "grid-styled";
 import { t } from "ttag";
 
+import { getScrollY } from "metabase/lib/dom";
+
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import HeaderModal from "metabase/components/HeaderModal";
-import TitleAndDescription from "metabase/components/TitleAndDescription";
 import EditBar from "metabase/components/EditBar";
 import EditWarning from "metabase/components/EditWarning";
-import { getScrollY } from "metabase/lib/dom";
+import HeaderModal from "metabase/components/HeaderModal";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 export default class Header extends Component {
   static defaultProps = {
