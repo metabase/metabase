@@ -64,6 +64,15 @@ describe("scenarios > admin > settings > SSO", () => {
       });
       cy.button("Changes saved!");
     });
+
+    it.skip("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+      cy.findByPlaceholderText("ldap.yourdomain.org").type("foobar");
+      cy.findByPlaceholderText("389").type("baz");
+      cy.button("Save changes").click();
+
+      cy.findByText('For input string: "baz"'); // The error message
+      cy.findByDisplayValue("foobar");
+    });
   });
 });
 
