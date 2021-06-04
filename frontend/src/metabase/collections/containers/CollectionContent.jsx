@@ -158,18 +158,16 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
 
                   return (
                     <Box mt={hasPinnedItems ? 3 : 0}>
-                      {unpinnedItems.length > 0 && (
-                        <ItemsTable
-                          items={unpinnedItems}
-                          selected={selected}
-                          getIsSelected={getIsSelected}
-                          collection={collection}
-                          onToggleSelected={toggleItem}
-                          onDrop={clear}
-                          onMove={handleMove}
-                          onCopy={handleCopy}
-                        />
-                      )}
+                      <ItemsTable
+                        items={unpinnedItems}
+                        selected={selected}
+                        getIsSelected={getIsSelected}
+                        collection={collection}
+                        onToggleSelected={toggleItem}
+                        onDrop={clear}
+                        onMove={handleMove}
+                        onCopy={handleCopy}
+                      />
                       <div className="flex justify-end my3">
                         {hasPagination && (
                           <PaginationControls
