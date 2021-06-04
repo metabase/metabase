@@ -81,4 +81,32 @@ describe("scenarios > admin > settings > email settings", () => {
     // Needed to scroll the page down first to be able to use findByRole() - it fails otherwise
     cy.button("Save changes").should("be.disabled");
   });
+
+  it.skip("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+    cy.visit("/admin/settings/email");
+
+    // First we fill out wrong settings
+    cy.findByPlaceholderText("smtp.yourservice.com")
+      .type("foo") // Invalid SMTP host
+      .blur();
+    cy.findByPlaceholderText("587")
+      .type("25")
+      .blur();
+    cy.findByPlaceholderText("youlooknicetoday")
+      .type("admin")
+      .blur();
+    cy.findByPlaceholderText("Shhh...")
+      .type("admin")
+      .blur();
+    cy.findByPlaceholderText("metabase@yourcompany.com")
+      .type("mailer@metabase.test")
+      .blur();
+
+    // Trying to save will trigger the error (as it should)
+    cy.button("Save changes").click();
+    cy.findByText("Sorry, something went wrong. Please try again.");
+
+    // But it shouldn't delete field values
+    cy.findByDisplayValue("mailer@metabase.test");
+  });
 });
