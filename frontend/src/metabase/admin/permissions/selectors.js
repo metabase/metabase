@@ -103,7 +103,7 @@ export const getIsDirty = createSelector(
 export const getSaveError = state => state.admin.permissions.saveError;
 
 // these are all the permission levels ordered by level of access
-const PERM_LEVELS = ["write", "read", "all", "controlled", "none"];
+const PERM_LEVELS = ["moderate", "write", "read", "all", "controlled", "none"];
 function hasGreaterPermissions(a, b) {
   return PERM_LEVELS.indexOf(a) - PERM_LEVELS.indexOf(b) < 0;
 }
@@ -245,6 +245,11 @@ const OPTION_RED = {
   iconColor: color("error"),
   bgColor: alpha(color("error"), BG_ALPHA),
 };
+const OPTION_BRAND = {
+  icon: "shield",
+  iconColor: color("brand"),
+  bgColor: alpha(color("brand"), BG_ALPHA),
+};
 
 const OPTION_ALL = {
   ...OPTION_GREEN,
@@ -279,15 +284,22 @@ const OPTION_NATIVE_WRITE = {
 const OPTION_COLLECTION_WRITE = {
   ...OPTION_GREEN,
   value: "write",
-  title: t`Curate collection`,
+  title: t`Grant Edit access`,
   tooltip: t`Can edit this collection and its contents`,
 };
 
 const OPTION_COLLECTION_READ = {
   ...OPTION_YELLOW,
   value: "read",
-  title: t`View collection`,
+  title: t`Grant View access`,
   tooltip: t`Can view items in this collection`,
+};
+
+const OPTION_COLLECTION_MODERATE = {
+  ...OPTION_BRAND,
+  value: "moderate",
+  title: t`Grant Moderator access`,
+  tooltip: t`Can moderate items in this collection`,
 };
 
 const OPTION_SNIPPET_COLLECTION_WRITE = {
@@ -797,7 +809,12 @@ export const getCollectionsPermissionsGrid = createSelector(
                   OPTION_SNIPPET_COLLECTION_READ,
                   OPTION_SNIPPET_COLLECTION_NONE,
                 ]
-              : [OPTION_COLLECTION_WRITE, OPTION_COLLECTION_READ, OPTION_NONE];
+              : [
+                  OPTION_COLLECTION_MODERATE,
+                  OPTION_COLLECTION_WRITE,
+                  OPTION_COLLECTION_READ,
+                  OPTION_NONE,
+                ];
           },
           actions(groupId, { collectionId }) {
             const collection = _.findWhere(collections, {
