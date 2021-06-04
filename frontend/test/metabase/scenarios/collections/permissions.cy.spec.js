@@ -680,7 +680,7 @@ function openEllipsisMenuFor(item, index = 0) {
   return cy
     .findAllByText(item)
     .eq(index)
-    .closest("a")
+    .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
 }
