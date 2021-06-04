@@ -9,8 +9,8 @@ import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   EntityIconCheckBox,
   ItemLink,
-  TableRow,
   TableItemSecondaryField,
+  TABLE_ROW_STYLE,
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
@@ -62,7 +62,7 @@ export function BaseTableItem({
   const testId = isPinned ? "pinned-collection-entry" : "collection-entry";
 
   return (
-    <TableRow key={item.id} data-testid={testId}>
+    <tr key={item.id} data-testid={testId} style={TABLE_ROW_STYLE}>
       <td>
         <EntityIconCheckBox
           item={item}
@@ -99,7 +99,7 @@ export function BaseTableItem({
           ANALYTICS_CONTEXT={ANALYTICS_CONTEXT}
         />
       </td>
-    </TableRow>
+    </tr>
   );
 }
 
