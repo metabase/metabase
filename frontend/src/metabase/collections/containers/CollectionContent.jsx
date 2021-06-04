@@ -177,10 +177,10 @@ function CollectionContent({
                   const hasUnselected = unselected.length > 0;
 
                   const handleSelectAll = () => {
-                    const pinnedUnselcted = pinnedItems.filter(
+                    const pinnedUnselected = pinnedItems.filter(
                       item => !getIsSelected(item),
                     );
-                    toggleAll([...unselected, ...pinnedUnselcted]);
+                    toggleAll([...unselected, ...pinnedUnselected]);
                   };
 
                   if (!hasPinnedItems && unpinnedItems.length === 0) {
