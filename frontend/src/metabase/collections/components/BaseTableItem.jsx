@@ -2,6 +2,8 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import moment from "moment";
 
+import { color } from "metabase/lib/colors";
+
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
 import EntityItem from "metabase/components/EntityItem";
@@ -12,7 +14,6 @@ import {
   EntityIconCheckBox,
   ItemLink,
   TableItemSecondaryField,
-  TABLE_ROW_STYLE,
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
@@ -23,6 +24,7 @@ BaseTableItem.propTypes = {
   isSelected: PropTypes.bool,
   isPinned: PropTypes.bool,
   linkProps: PropTypes.object,
+  hasBottomBorder: PropTypes.bool,
   onCopy: PropTypes.func,
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
@@ -37,6 +39,7 @@ export function BaseTableItem({
   isSelected,
   isPinned,
   linkProps = {},
+  hasBottomBorder = true,
   onCopy,
   onMove,
   onDrop,
@@ -71,7 +74,18 @@ export function BaseTableItem({
     const testId = isPinned ? "pinned-collection-entry" : "collection-entry";
 
     return (
-      <tr key={item.id} data-testid={testId} style={TABLE_ROW_STYLE}>
+      <tr
+        key={item.id}
+        data-testid={testId}
+        style={{
+          // Table row can be wrapped with ItemDragSource,
+          // that only accepts native DOM elements as its children
+          // So styled-components can't be used here
+
+          height: "80px",
+          borderBottom: hasBottomBorder ? `1px solid ${color("border")}` : "",
+        }}
+      >
         <td>
           <EntityIconCheckBox
             item={item}
@@ -116,6 +130,7 @@ export function BaseTableItem({
     isPinned,
     isSelected,
     linkProps,
+    hasBottomBorder,
     handleArchive,
     handleCopy,
     handleMove,
