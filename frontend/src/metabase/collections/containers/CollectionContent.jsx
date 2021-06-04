@@ -196,7 +196,10 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 }}
               </Search.ListLoader>
             </Box>
-            <ItemsDragLayer selected={selected} />
+            <ItemsDragLayer
+              selectedItems={selected}
+              pinnedItems={pinnedItems}
+            />
           </Box>
         );
       }}
