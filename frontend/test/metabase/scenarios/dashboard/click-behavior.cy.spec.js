@@ -146,8 +146,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       .first()
       .click();
 
+    // Make sure filter is set
     cy.findByText("Rating is equal to 5");
-    cy.findAllByTestId("slice"); // Pie slices
+
+    // Make sure it's connected to the original question
+    cy.contains("Started from 16334");
+
+    // Make sure the original visualization didn't change
+    cy.findAllByTestId("slice");
 
     const getVisualizationSettings = targetId => ({
       column_settings: {
