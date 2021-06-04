@@ -37,8 +37,15 @@ export function BaseTableItem({
   const canSelect = typeof onToggleSelected === "function";
 
   const lastEditInfo = item["last-edit-info"];
-  const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
-  const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
+
+  // We don't keep last edit info for pulses
+  // TODO Remove ternary when Pulses are gone
+  const lastEditedBy = lastEditInfo
+    ? `${lastEditInfo.first_name} ${lastEditInfo.last_name}`
+    : "";
+  const lastEditedAt = lastEditInfo
+    ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
+    : "";
 
   const handleSelectionToggled = useCallback(() => {
     onToggleSelected(item);
