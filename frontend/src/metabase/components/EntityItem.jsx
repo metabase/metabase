@@ -48,6 +48,7 @@ function EntityItemIcon({
   selectable,
   selected,
   onToggleSelected,
+  ...props
 }) {
   const iconSize = variant === "small" ? 12 : 18;
   const handleClick = e => {
@@ -65,6 +66,7 @@ function EntityItemIcon({
       }
       borderRadius={"99px"}
       onClick={selectable ? handleClick : null}
+      {...props}
     >
       {selectable ? (
         <Swapper

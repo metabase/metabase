@@ -61,6 +61,9 @@ export function BaseTableItem({
           selectable={canSelect}
           selected={isSelected}
           onToggleSelected={handleSelectionToggled}
+          height="3em"
+          width="3em"
+          mr={0}
         />
       </td>
       <td>
@@ -153,7 +156,7 @@ function BaseItemsTable({
       </colgroup>
       <thead>
         <tr>
-          <th>{t`Type`}</th>
+          <th className="text-centered">{t`Type`}</th>
           <th>{t`Name`}</th>
           <th>{t`Last edited by`}</th>
           <th>{t`Last edited at`}</th>
