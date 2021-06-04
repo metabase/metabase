@@ -123,7 +123,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 <PinnedItemsTable
                   items={sortedPinnedItems}
                   collection={collection}
-                  selected={selected}
+                  selectedItems={selected}
                   getIsSelected={getIsSelected}
                   onDrop={clear}
                   onToggleSelected={toggleItem}
@@ -157,7 +157,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                     <Box mt={hasPinnedItems ? 3 : 0}>
                       <ItemsTable
                         items={unpinnedItems}
-                        selected={selected}
+                        selectedItems={selected}
                         getIsSelected={getIsSelected}
                         collection={collection}
                         onToggleSelected={toggleItem}
