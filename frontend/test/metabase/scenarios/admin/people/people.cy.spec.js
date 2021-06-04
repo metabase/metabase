@@ -96,6 +96,15 @@ describe("scenarios > admin > people", () => {
       cy.contains("Email address already in use.");
     });
 
+    it.skip("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
+      cy.viewport(1000, 600);
+
+      cy.visit("/admin/people");
+      cy.button("Invite someone").click();
+      // Modal should appear with the following input field
+      cy.findByLabelText("First name");
+    });
+
     it("should disallow admin to deactivate themselves", () => {
       const { first_name, last_name } = admin;
       const FULL_NAME = `${first_name} ${last_name}`;
@@ -271,8 +280,7 @@ function showUserOptions(full_name) {
 }
 
 function clickButton(button_name) {
-  cy.findByText(button_name)
-    .closest(".Button")
+  cy.button(button_name)
     .should("not.be.disabled")
     .click();
 }
