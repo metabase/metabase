@@ -1,18 +1,21 @@
 (ns metabase.models.setting.multi-setting
   (:require [metabase.models.setting :as setting]))
 
-(defn get-multi-setting [setting-key disp])
-
 (defmulti dispatch-multi-setting
+  "Determine the dispatch value for a multi-Setting defined by `define-multi-setting`."
   {:arglists '([setting-key])}
   keyword)
 
 (defmulti get-multi-setting
+  "Get the value of a multi-Setting defined by `define-multi-setting` for the `impl` obtained by
+  calling `(dispatch-multi-setting setting-key)`."
   {:arglists '([setting-key impl])}
   (fn [setting-key impl]
     [(keyword setting-key) (keyword impl)]))
 
 (defmulti set-multi-setting
+  "Update the value of a multi-Setting defined by `define-multi-setting` for the `impl` obtained by
+  calling `(dispatch-multi-setting setting-key)`."
   {:arglists '([setting-key impl new-value])}
   (fn [setting-key impl _]
     [(keyword setting-key) (keyword impl)]))
