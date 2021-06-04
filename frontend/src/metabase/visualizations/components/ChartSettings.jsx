@@ -64,6 +64,16 @@ class ChartSettings extends Component {
     };
   }
 
+  componentDidUpdate(prevProps) {
+    const { initial } = this.props;
+    if (!_.isEqual(initial, prevProps.initial)) {
+      this.setState({
+        currentSection: (initial && initial.section) || null,
+        currentWidget: (initial && initial.widget) || null,
+      });
+    }
+  }
+
   handleShowSection = section => {
     this.setState({ currentSection: section, currentWidget: null });
   };
