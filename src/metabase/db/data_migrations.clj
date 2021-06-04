@@ -99,6 +99,7 @@
               :group_id admin-group-id)))))))
 
 ;; admin group has a single entry that lets it access to everything
+;; See below (added 0.41.0) for the moderate permission
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-admin-group-root-entry
   (binding [perms/*allow-admin-permissions-changes* true
             perms/*allow-root-entries* true]
@@ -383,6 +384,13 @@
                                   :dashcard.visualization_settings "%\"link_template\":%"]
                                  [:like
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
+
+(defmigration ^{:author "tsmacdonald", :added "0.41.0"} add-admin-group-root-moderate-entry
+  (binding [perms/*allow-admin-permissions-changes* true]
+    (u/ignore-exceptions
+      (db/insert! Permissions
+        :group_id (:id (perm-group/admin))
+        :object   "/collection/root/moderate/"))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

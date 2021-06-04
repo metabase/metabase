@@ -245,8 +245,7 @@
   SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
   `visible-collection-ids->honeysql-filter-clause` to generate appropriate HoneySQL."
   [permissions-set :- #{perms/UserPath}]
-  (if (or (contains? permissions-set "/")
-          (contains? permissions-set "/moderate/"))
+  (if (contains? permissions-set "/")
     :all
     (set
      (for [path  permissions-set

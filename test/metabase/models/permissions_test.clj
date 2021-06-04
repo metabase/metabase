@@ -295,7 +295,22 @@
           perms-path inputs]
     (testing (pr-str (list 'is-permissions-for-object? perms-path "/db/1/schema/PUBLIC/table/1/"))
       (is (= expected
-             (perms/is-permissions-for-object? perms-path "/db/1/schema/PUBLIC/table/1/"))))))
+             (perms/is-permissions-for-object? perms-path "/db/1/schema/PUBLIC/table/1/")))))
+  (doseq [[expected perm obj]
+          [[true  "/collection/1/read/" "/collection/1/read/"]
+           [false "/collection/1/read/" "/collection/1/"]
+           [false "/collection/1/read/" "/collection/1/moderate/"]
+
+           [true  "/collection/1/" "/collection/1/read/"]
+           [true  "/collection/1/" "/collection/1/"]
+           [false "/collection/1/" "/collection/1/moderate/"]
+
+           [true "/collection/1/moderate/" "/collection/1/read/"]
+           [true "/collection/1/moderate/" "/collection/1/"]
+           [true "/collection/1/moderate/" "/collection/1/moderate/"]]]
+    (testing (pr-str (list 'is-permissions-for-object? perm obj))
+      (is (= expected
+             (perms/is-permissions-for-object? perm obj))))))
 
 
 ;;; --------------------------------------- is-partial-permissions-for-object? ---------------------------------------

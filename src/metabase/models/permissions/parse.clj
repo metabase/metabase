@@ -19,7 +19,7 @@
   table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
   table-perm  = ('read'|'query'|'query/segmented')
 
-  collection  = <'/collection/'> #'[^/]*' <'/'> ('read' <'/'>)?")
+  collection  = <'/collection/'> #'[^/]*' <'/'> (('read'|'moderate') <'/'>)?")
 
 (def ^:private parser
   "Function that parses permission strings"
@@ -53,7 +53,8 @@
     [:native]                    [:native :write]
 
     [:collection id]             [:collection (collection-id id) :write]
-    [:collection id "read"]      [:collection (collection-id id) :read]))
+    [:collection id "read"]      [:collection (collection-id id) :read]
+    [:collection id "moderate"]  [:collection (collection-id id) :moderate]))
 
 (defn- graph
   "Given a set of permission paths, return a graph that expresses the most permissions possible for the set
@@ -88,7 +89,7 @@
        (walk/prewalk (fn [x]
                        (if-let [terminal (and (map? x)
                                               (some #(and (= (% x) '()) %)
-                                                    [:all :some :write :read :segmented]))]
+                                                    [:all :some :write :read :segmented :moderate]))]
                          terminal
                          x)))))
 

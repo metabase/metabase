@@ -19,7 +19,7 @@
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
 (def ^:private CollectionPermissions
-  (s/enum :write :read :none))
+  (s/enum :write :read :moderate :none))
 
 (def ^:private GroupPermissionsGraph
   "collection-id -> status"
@@ -40,6 +40,7 @@
 (s/defn ^:private perms-type-for-collection :- CollectionPermissions
   [permissions-set collection-or-id]
   (cond
+    (perms/set-has-full-permissions? permissions-set (perms/collection-moderate-path collection-or-id))  :moderate
     (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-or-id)) :write
     (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-or-id))      :read
     :else                                                                                                :none))
@@ -103,9 +104,10 @@
     ;; remove whatever entry is already there (if any) and add a new entry if applicable
     (perms/revoke-collection-permissions! group-id collection-id)
     (case new-collection-perms
-      :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
-      :read  (perms/grant-collection-read-permissions! group-id collection-id)
-      :none  nil)))
+      :moderate (perms/grant-collection-moderate-permissions! group-id collection-id)
+      :write    (perms/grant-collection-readwrite-permissions! group-id collection-id)
+      :read     (perms/grant-collection-read-permissions! group-id collection-id)
+      :none     nil)))
 
 (s/defn ^:private update-group-permissions!
   [collection-namespace :- (s/maybe su/KeywordOrString)
@@ -125,7 +127,7 @@
     ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
     ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
     (db/insert! CollectionPermissionGraphRevision
-      :id     (inc current-revision)
+      :id      (inc current-revision)
       :before  (assoc before-graph :namespace collection-namespace)
       :after   changes
       :user_id *current-user-id*)))

@@ -249,14 +249,31 @@
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
+(defn- moderate?
+  [path]
+  (str/ends-with? path "/moderate/"))
+
+(defn- path-without-access-level
+  [path]
+  (str/replace path #"(read|moderate)/$" ""))
+
 (defn is-permissions-for-object?
   "Does `permissions-path` grant *full* access for `object-path`?"
   [permissions-path object-path]
-  (str/starts-with? object-path permissions-path))
+  (if (= "/" permissions-path)
+    true
+    (if (moderate? permissions-path)
+      ;; Moderate permission has access to everything in that path
+      (str/starts-with? object-path (path-without-access-level permissions-path))
+      (and (not (moderate? object-path)) ;; We don't have moderate permission
+           ;; Hack since /collection/1 permission grants access to both /collection/1 and /collection/1/read
+           (str/starts-with? object-path permissions-path)))))
 
 (defn is-partial-permissions-for-object?
   "Does `permissions-path` grant access full access for `object-path` *or* for a descendant of `object-path`?"
   [permissions-path object-path]
+  ;; This "doesn't work" for moderate permissions, but collection paths won't have descendants and only collections
+  ;; can be moderated so in practice this is fine.
   (or (is-permissions-for-object? permissions-path object-path)
       (str/starts-with? permissions-path object-path)))
 

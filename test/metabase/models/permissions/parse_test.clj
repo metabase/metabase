@@ -54,10 +54,11 @@
 
 (deftest permissions->graph-collections
   (are [x y] (= y (parse/permissions->graph [x]))
-    "/collection/root/"      {:collection {:root :write}}
-    "/collection/root/read/" {:collection {:root :read}}
-    "/collection/1/"         {:collection {1 :write}}
-    "/collection/1/read/"    {:collection {1 :read}}))
+    "/collection/root/"       {:collection {:root :write}}
+    "/collection/root/read/"  {:collection {:root :read}}
+    "/collection/1/"          {:collection {1 :write}}
+    "/collection/1/read/"     {:collection {1 :read}}
+    "/collection/1/moderate/" {:collection {1 :moderate}}))
 
 (deftest combines-all-permissions
   (testing "Permision graph includes broadest permissions for all dbs in permission set"
@@ -65,8 +66,10 @@
                             :schemas :all}
                          5 {:schemas {"PUBLIC" {10 {:read :all}}}}}
             :collection {:root :write
-                         1     :read}}
+                         1     :read
+                         2     :moderate}}
            (parse/permissions->graph #{"/db/3/"
                                        "/db/5/schema/PUBLIC/table/10/read/"
                                        "/collection/root/"
-                                       "/collection/1/read/"})))))
+                                       "/collection/1/read/"
+                                       "/collection/2/moderate/"})))))
