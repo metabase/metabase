@@ -17,6 +17,9 @@ BaseItemsTable.propTypes = {
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
   getIsSelected: PropTypes.func,
+
+  // Used for dragging
+  headless: PropTypes.bool,
 };
 
 function defaultItemRenderer({ item, ...props }) {
@@ -40,6 +43,7 @@ function BaseItemsTable({
   onDrop,
   onToggleSelected,
   getIsSelected = () => false,
+  headless = false,
   ...props
 }) {
   const itemRenderer = item =>
@@ -64,15 +68,17 @@ function BaseItemsTable({
         <col span="1" style={{ width: "20%" }} />
         <col span="1" style={{ width: "5%" }} />
       </colgroup>
-      <thead>
-        <tr>
-          <th className="text-centered">{t`Type`}</th>
-          <th>{t`Name`}</th>
-          <th>{t`Last edited by`}</th>
-          <th>{t`Last edited at`}</th>
-          <th></th>
-        </tr>
-      </thead>
+      {!headless && (
+        <thead>
+          <tr>
+            <th className="text-centered">{t`Type`}</th>
+            <th>{t`Name`}</th>
+            <th>{t`Last edited by`}</th>
+            <th>{t`Last edited at`}</th>
+            <th></th>
+          </tr>
+        </thead>
+      )}
       <tbody>{items.map(itemRenderer)}</tbody>
     </table>
   );
