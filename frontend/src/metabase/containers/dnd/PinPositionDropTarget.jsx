@@ -46,7 +46,7 @@ export default class PinPositionDropTarget extends React.Component {
     } = this.props;
     return connectDropTarget(
       <div
-        className={cx("absolute top button", {
+        className={cx("absolute top bottom", {
           "pointer-events-none": !highlighted,
         })}
         style={{
