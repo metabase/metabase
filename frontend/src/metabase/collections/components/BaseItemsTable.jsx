@@ -44,18 +44,23 @@ function BaseTableItem({ item, isPinned }) {
 BaseItemsTable.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object),
   isPinned: PropTypes.bool,
+  renderItem: PropTypes.func,
 };
 
-function BaseItemsTable({ items, isPinned }) {
-  const renderItem = useCallback(
-    item => (
-      <BaseTableItem
-        key={`${item.model}-${item.id}`}
-        item={item}
-        isPinned={isPinned}
-      />
-    ),
-    [isPinned],
+function defaultItemRenderer({ item, ...props }) {
+  return (
+    <BaseTableItem key={`${item.model}-${item.id}`} item={item} {...props} />
+  );
+}
+
+function BaseItemsTable({ items, isPinned, renderItem = defaultItemRenderer }) {
+  const itemRenderer = useCallback(
+    item =>
+      renderItem({
+        item,
+        isPinned,
+      }),
+    [isPinned, renderItem],
   );
 
   return (
@@ -76,7 +81,7 @@ function BaseItemsTable({ items, isPinned }) {
           <th></th>
         </tr>
       </thead>
-      <tbody>{items.map(renderItem)}</tbody>
+      <tbody>{items.map(itemRenderer)}</tbody>
     </table>
   );
 }
