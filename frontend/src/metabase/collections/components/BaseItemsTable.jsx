@@ -7,7 +7,11 @@ import EntityItem from "metabase/components/EntityItem";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
-import { ItemLink, TableItemSecondaryField } from "./BaseItemsTable.styled";
+import {
+  ItemLink,
+  TableRow,
+  TableItemSecondaryField,
+} from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
   item: PropTypes.object,
@@ -51,7 +55,7 @@ export function BaseTableItem({
   const testId = isPinned ? "pinned-collection-entry" : "collection-entry";
 
   return (
-    <tr key={item.id} data-testid={testId}>
+    <TableRow key={item.id} data-testid={testId}>
       <td>
         <EntityItem.Icon
           item={item}
@@ -91,7 +95,7 @@ export function BaseTableItem({
           ANALYTICS_CONTEXT={ANALYTICS_CONTEXT}
         />
       </td>
-    </tr>
+    </TableRow>
   );
 }
 
