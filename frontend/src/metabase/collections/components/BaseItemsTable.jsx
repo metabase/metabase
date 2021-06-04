@@ -5,6 +5,8 @@ import moment from "moment";
 
 import EntityItem from "metabase/components/EntityItem";
 
+import { TableItemSecondaryField } from "./BaseItemsTable.styled";
+
 BaseTableItem.propTypes = {
   item: PropTypes.object,
   isPinned: PropTypes.bool,
@@ -29,10 +31,10 @@ function BaseTableItem({ item, isPinned }) {
         <EntityItem.Name name={item.name} />
       </td>
       <td>
-        <p>{lastEditedBy}</p>
+        <TableItemSecondaryField>{lastEditedBy}</TableItemSecondaryField>
       </td>
       <td>
-        <p>{lastEditedAt}</p>
+        <TableItemSecondaryField>{lastEditedAt}</TableItemSecondaryField>
       </td>
       <td></td>
     </tr>
