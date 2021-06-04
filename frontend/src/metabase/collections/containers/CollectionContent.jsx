@@ -12,8 +12,8 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import Header from "metabase/collections/components/Header";
-import ItemList from "metabase/collections/components/ItemList";
-import PinnedItems from "metabase/collections/components/PinnedItems";
+import ItemsTable from "metabase/collections/components/ItemsTable";
+import PinnedItemsTable from "metabase/collections/components/PinnedItemsTable";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -149,7 +149,7 @@ function CollectionContent({
                 collection={collection}
               />
 
-              <PinnedItems
+              <PinnedItemsTable
                 items={sortedPinnedItems}
                 collection={collection}
                 selected={selected}
@@ -180,7 +180,7 @@ function CollectionContent({
 
                   return (
                     <React.Fragment>
-                      <ItemList
+                      <ItemsTable
                         filter={filter}
                         items={unpinnedItems}
                         empty={unpinnedItems.length === 0}
