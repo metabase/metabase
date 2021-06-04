@@ -2,12 +2,12 @@ import React, { useCallback } from "react";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
-import BaseItemsTable, { BaseTableItem } from "./BaseItemsTable";
+import BaseItemsTable from "./BaseItemsTable";
 
 function ItemsTable(props) {
   const renderItem = useCallback(
     ({ item, ...itemProps }) => (
-      <BaseTableItem
+      <BaseItemsTable.Item
         key={`${item.model}-${item.id}`}
         {...itemProps}
         item={item}
