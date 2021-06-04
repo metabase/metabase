@@ -26,7 +26,7 @@ function BaseTableItem({ item, isPinned }) {
         />
       </td>
       <td>
-        <p>{item.name}</p>
+        <EntityItem.Name name={item.name} />
       </td>
       <td>
         <p>{lastEditedBy}</p>
