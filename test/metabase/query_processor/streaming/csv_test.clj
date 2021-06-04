@@ -54,4 +54,17 @@
             ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00"]
             ["4" "Simcha Yan"          "2014-01-01T08:30:00"]
             ["5" "Quentin Sören"       "2014-10-03T17:30:00"]]
-           (parse-and-sort-csv result)))))
+           (parse-and-sort-csv result))))
+  (testing "Even if they are at 00:00.00 timestamp (#14504)"
+    (let [result (csv/read-csv
+                  (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+                                        (json/generate-string
+                                         {:type "native"
+                                          :native
+                                          {:query
+                                           "SELECT CAST(TIMESTAMP '2020-01-01 00:00:00' AS TIMESTAMP(0)) AS \"DATETIME\", CAST(TIMESTAMP '2020-01-01 00:00:00' AS DATE) AS \"DATE\"\nUNION ALL \nSELECT CAST(TIMESTAMP '2020-01-02 00:00:22' AS TIMESTAMP(0)), CAST(TIMESTAMP '2020-01-02 00:00:22' AS DATE)"}
+                                          :database 1})))]
+      (is (= [["DATETIME"            "DATE"]
+              ["2020-01-01T00:00:00" "2020-01-01"]
+              ["2020-01-02T00:00:22" "2020-01-02"]]
+             result)))))

@@ -35,9 +35,7 @@
 
   LocalDateTime
   (format-value [t]
-    (if (= (t/local-time t) (t/local-time 0))
-      (format-value (t/local-date t))
-      (u.date/format t)))
+    (u.date/format t))
 
   LocalTime
   (format-value [t]
