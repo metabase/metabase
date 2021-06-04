@@ -9,14 +9,28 @@ import { ItemLink, TableItemSecondaryField } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
   item: PropTypes.object,
+  isSelected: PropTypes.bool,
   isPinned: PropTypes.bool,
   linkProps: PropTypes.object,
+  onToggleSelected: PropTypes.func,
 };
 
-export function BaseTableItem({ item, isPinned, linkProps = {} }) {
+export function BaseTableItem({
+  item,
+  isSelected,
+  isPinned,
+  linkProps = {},
+  onToggleSelected,
+}) {
+  const canSelect = typeof onToggleSelected === "function";
+
   const lastEditInfo = item["last-edit-info"];
   const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
+
+  const handleSelectionToggled = useCallback(() => {
+    onToggleSelected(item);
+  }, [item, onToggleSelected]);
 
   return (
     <tr key={item.id}>
@@ -26,6 +40,9 @@ export function BaseTableItem({ item, isPinned, linkProps = {} }) {
           variant="list"
           iconName={item.getIcon()}
           pinned={isPinned}
+          selectable={canSelect}
+          selected={isSelected}
+          onToggleSelected={handleSelectionToggled}
         />
       </td>
       <td>
@@ -48,6 +65,8 @@ BaseItemsTable.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object),
   isPinned: PropTypes.bool,
   renderItem: PropTypes.func,
+  onToggleSelected: PropTypes.func,
+  getIsSelected: PropTypes.func,
 };
 
 function defaultItemRenderer({ item, ...props }) {
@@ -56,14 +75,22 @@ function defaultItemRenderer({ item, ...props }) {
   );
 }
 
-function BaseItemsTable({ items, isPinned, renderItem = defaultItemRenderer }) {
+function BaseItemsTable({
+  items,
+  isPinned,
+  renderItem = defaultItemRenderer,
+  onToggleSelected,
+  getIsSelected = () => false,
+}) {
   const itemRenderer = useCallback(
     item =>
       renderItem({
         item,
+        isSelected: getIsSelected(item),
         isPinned,
+        onToggleSelected,
       }),
-    [isPinned, renderItem],
+    [isPinned, onToggleSelected, renderItem, getIsSelected],
   );
 
   return (
