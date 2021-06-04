@@ -10,9 +10,10 @@ import { ItemLink, TableItemSecondaryField } from "./BaseItemsTable.styled";
 BaseTableItem.propTypes = {
   item: PropTypes.object,
   isPinned: PropTypes.bool,
+  linkProps: PropTypes.object,
 };
 
-function BaseTableItem({ item, isPinned }) {
+export function BaseTableItem({ item, isPinned, linkProps = {} }) {
   const lastEditInfo = item["last-edit-info"];
   const lastEditedBy = `${lastEditInfo.first_name} ${lastEditInfo.last_name}`;
   const lastEditedAt = moment(lastEditInfo.timestamp).format("MMMM DD, YYYY");
@@ -28,7 +29,7 @@ function BaseTableItem({ item, isPinned }) {
         />
       </td>
       <td>
-        <ItemLink to={item.getUrl()}>
+        <ItemLink {...linkProps} to={item.getUrl()}>
           <EntityItem.Name name={item.name} />
         </ItemLink>
       </td>
