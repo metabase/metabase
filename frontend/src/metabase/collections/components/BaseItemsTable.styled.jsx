@@ -12,6 +12,7 @@ export const ItemLink = styled(Link)`
 
 export const TableRow = styled.tr`
   height: 80px;
+  border-bottom: 1px solid ${color("bg-medium")};
 `;
 
 export const TableItemSecondaryField = styled.p`
