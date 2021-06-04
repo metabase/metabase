@@ -665,7 +665,7 @@ describe("scenarios > question > native", () => {
     cy.get("@sidebar").contains(/added/i);
   });
 
-  it.skip("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
+  it("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
     cy.createNativeQuestion({
       name: "16327",
       native: { query: "select * from products limit 5" },
