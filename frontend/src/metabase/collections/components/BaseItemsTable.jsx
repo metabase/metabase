@@ -9,11 +9,13 @@ BaseItemsTable.Item = BaseTableItem;
 BaseItemsTable.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object),
   collection: PropTypes.object,
+  selectedItems: PropTypes.arrayOf(PropTypes.object),
   isPinned: PropTypes.bool,
   renderItem: PropTypes.func,
   onToggleSelected: PropTypes.func,
   onCopy: PropTypes.func,
   onMove: PropTypes.func,
+  onDrop: PropTypes.func,
   getIsSelected: PropTypes.func,
 };
 
@@ -30,10 +32,12 @@ function defaultItemRenderer({ item, ...props }) {
 function BaseItemsTable({
   items,
   collection = {},
+  selectedItems,
   isPinned,
   renderItem = defaultItemRenderer,
   onCopy,
   onMove,
+  onDrop,
   onToggleSelected,
   getIsSelected = () => false,
   ...props
@@ -42,10 +46,12 @@ function BaseItemsTable({
     renderItem({
       item,
       collection,
+      selectedItems,
       isSelected: getIsSelected(item),
       isPinned,
       onCopy,
       onMove,
+      onDrop,
       onToggleSelected,
     });
 
