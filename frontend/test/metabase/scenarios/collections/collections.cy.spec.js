@@ -248,7 +248,7 @@ describe("scenarios > collection_defaults", () => {
     });
   });
 
-  describe("pagination and filtering", () => {
+  describe("pagination", () => {
     const PAGE_SIZE = 25;
     const ADDED_QUESTIONS = 13;
     const ADDED_DASHBOARDS = 12;
