@@ -2,17 +2,15 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import { Box } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
-import PinPositionDropTarget from "metabase/containers/dnd/PinPositionDropTarget";
 
 import Icon from "metabase/components/Icon";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
-import BaseItemsTable, { BaseTableItem, ROW_HEIGHT } from "./BaseItemsTable";
+import BaseItemsTable, { BaseTableItem } from "./BaseItemsTable";
 
 function PinnedItemsEmptyState() {
   return (
@@ -39,9 +37,6 @@ PinnedItemsTable.propTypes = {
 function PinnedItemsTable({ items, ...props }) {
   const renderItem = useCallback(itemProps => {
     const { item } = itemProps;
-    const dropTargetStyle = {
-      height: ROW_HEIGHT,
-    };
     return (
       <BaseTableItem
         key={`${item.model}-${item.id}`}
@@ -51,20 +46,7 @@ function PinnedItemsTable({ items, ...props }) {
           hover: { color: color("brand") },
           "data-metabase-event": `${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`,
         }}
-      >
-        <React.Fragment>
-          <PinPositionDropTarget
-            left
-            pinIndex={item.collection_position}
-            style={dropTargetStyle}
-          />
-          <PinPositionDropTarget
-            right
-            pinIndex={item.collection_position + 1}
-            style={dropTargetStyle}
-          />
-        </React.Fragment>
-      </BaseTableItem>
+      />
     );
   }, []);
 
@@ -73,15 +55,8 @@ function PinnedItemsTable({ items, ...props }) {
   }
 
   const lastItem = items[items.length - 1];
-  const bottomPinIndex = lastItem.collection_position + 1;
-
   return (
-    <PinDropTarget
-      pinIndex={bottomPinIndex}
-      noDrop
-      marginLeft={8}
-      marginRight={8}
-    >
+    <PinDropTarget pinIndex={lastItem.collection_position + 1}>
       <BaseItemsTable
         {...props}
         items={items}
@@ -89,11 +64,6 @@ function PinnedItemsTable({ items, ...props }) {
         renderItem={renderItem}
         data-testid="pinned-items"
       />
-      {items.length % 2 === 1 ? (
-        <Box w={1} className="relative">
-          <PinPositionDropTarget pinIndex={bottomPinIndex} />
-        </Box>
-      ) : null}
     </PinDropTarget>
   );
 }

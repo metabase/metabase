@@ -33,7 +33,6 @@ BaseTableItem.propTypes = {
   onToggleSelected: PropTypes.func,
   linkProps: PropTypes.object,
   hasBottomBorder: PropTypes.bool,
-  children: PropTypes.node,
 };
 
 export function BaseTableItem({
@@ -48,7 +47,6 @@ export function BaseTableItem({
   onToggleSelected,
   linkProps = {},
   hasBottomBorder = true,
-  children,
 }) {
   const lastEditInfo = item["last-edit-info"];
   const lastEditedBy = lastEditInfo
@@ -132,7 +130,6 @@ export function BaseTableItem({
             ANALYTICS_CONTEXT={ANALYTICS_CONTEXT}
           />
         </td>
-        {children}
       </tr>
     </ItemDragSource>
   );
