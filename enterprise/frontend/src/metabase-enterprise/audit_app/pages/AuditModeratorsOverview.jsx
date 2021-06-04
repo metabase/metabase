@@ -1,6 +1,11 @@
 import React from "react";
 
+import {
+  moderatorsTable,
+  moderatorGroupsTable,
+} from "metabase-enterprise/audit_app/lib/cards/moderation";
 import AuditContent from "../components/AuditContent";
+import AuditTable from "../containers/AuditTable";
 
 function AuditModeratorsOverview(props) {
   return (
@@ -13,11 +18,11 @@ function AuditModeratorsOverview(props) {
 }
 
 function AuditModeratorsTab() {
-  return <div />;
+  return <AuditTable table={moderatorsTable()} />;
 }
 
 function AuditModeratorGroupsTab() {
-  return <div />;
+  return <AuditTable table={moderatorGroupsTable()} />;
 }
 
 AuditModeratorsOverview.tabs = [
