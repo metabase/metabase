@@ -5,21 +5,29 @@ import moment from "moment";
 
 import EntityItem from "metabase/components/EntityItem";
 
+import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+
 import { ItemLink, TableItemSecondaryField } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
   item: PropTypes.object,
+  collection: PropTypes.object,
   isSelected: PropTypes.bool,
   isPinned: PropTypes.bool,
   linkProps: PropTypes.object,
+  onCopy: PropTypes.func,
+  onMove: PropTypes.func,
   onToggleSelected: PropTypes.func,
 };
 
 export function BaseTableItem({
   item,
+  collection = {},
   isSelected,
   isPinned,
   linkProps = {},
+  onCopy,
+  onMove,
   onToggleSelected,
 }) {
   const canSelect = typeof onToggleSelected === "function";
@@ -32,8 +40,18 @@ export function BaseTableItem({
     onToggleSelected(item);
   }, [item, onToggleSelected]);
 
+  const handlePin = useCallback(() => {
+    item.setPinned(!isPinned);
+  }, [item, isPinned]);
+
+  const handleMove = useCallback(() => onMove([item]), [item, onMove]);
+  const handleCopy = useCallback(() => onCopy([item]), [item, onCopy]);
+  const handleArchive = useCallback(() => item.setArchived(true), [item]);
+
+  const testId = isPinned ? "pinned-collection-entry" : "collection-entry";
+
   return (
-    <tr key={item.id}>
+    <tr key={item.id} data-testid={testId}>
       <td>
         <EntityItem.Icon
           item={item}
@@ -56,16 +74,32 @@ export function BaseTableItem({
       <td>
         <TableItemSecondaryField>{lastEditedAt}</TableItemSecondaryField>
       </td>
-      <td></td>
+      <td>
+        <EntityItem.Menu
+          item={item}
+          onPin={collection.can_write ? handlePin : null}
+          onMove={
+            collection.can_write && item.setCollection ? handleMove : null
+          }
+          onCopy={item.copy ? handleCopy : null}
+          onArchive={
+            collection.can_write && item.setArchived ? handleArchive : null
+          }
+          ANALYTICS_CONTEXT={ANALYTICS_CONTEXT}
+        />
+      </td>
     </tr>
   );
 }
 
 BaseItemsTable.propTypes = {
   items: PropTypes.arrayOf(PropTypes.object),
+  collection: PropTypes.object,
   isPinned: PropTypes.bool,
   renderItem: PropTypes.func,
   onToggleSelected: PropTypes.func,
+  onCopy: PropTypes.func,
+  onMove: PropTypes.func,
   getIsSelected: PropTypes.func,
 };
 
@@ -77,8 +111,11 @@ function defaultItemRenderer({ item, ...props }) {
 
 function BaseItemsTable({
   items,
+  collection = {},
   isPinned,
   renderItem = defaultItemRenderer,
+  onCopy,
+  onMove,
   onToggleSelected,
   getIsSelected = () => false,
   ...props
@@ -87,11 +124,22 @@ function BaseItemsTable({
     item =>
       renderItem({
         item,
+        collection,
         isSelected: getIsSelected(item),
         isPinned,
+        onCopy,
+        onMove,
         onToggleSelected,
       }),
-    [isPinned, onToggleSelected, renderItem, getIsSelected],
+    [
+      collection,
+      isPinned,
+      onCopy,
+      onMove,
+      onToggleSelected,
+      renderItem,
+      getIsSelected,
+    ],
   );
 
   return (
