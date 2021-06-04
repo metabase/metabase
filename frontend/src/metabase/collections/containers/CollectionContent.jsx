@@ -139,6 +139,8 @@ function CollectionContent({
           (a, b) => a.collection_position - b.collection_position,
         );
 
+        const hasPinnedItems = pinnedItems.length > 0;
+
         return (
           <Box pt={2}>
             <Box w="90%" ml="auto" mr="auto">
@@ -149,16 +151,18 @@ function CollectionContent({
                 collection={collection}
               />
 
-              <PinnedItemsTable
-                items={sortedPinnedItems}
-                collection={collection}
-                selected={selected}
-                getIsSelected={getIsSelected}
-                onDrop={clear}
-                onToggleSelected={toggleItem}
-                onMove={handleMove}
-                onCopy={handleCopy}
-              />
+              {hasPinnedItems && (
+                <PinnedItemsTable
+                  items={sortedPinnedItems}
+                  collection={collection}
+                  selected={selected}
+                  getIsSelected={getIsSelected}
+                  onDrop={clear}
+                  onToggleSelected={toggleItem}
+                  onMove={handleMove}
+                  onCopy={handleCopy}
+                />
+              )}
 
               <Search.ListLoader query={unpinnedQuery} wrapped>
                 {({ list: unpinnedItems, metadata }) => {
@@ -179,22 +183,24 @@ function CollectionContent({
                   };
 
                   return (
-                    <React.Fragment>
-                      <ItemsTable
-                        filter={filter}
-                        items={unpinnedItems}
-                        empty={unpinnedItems.length === 0}
-                        showFilters={showFilters}
-                        selected={selected}
-                        getIsSelected={getIsSelected}
-                        collection={collection}
-                        onToggleSelected={toggleItem}
-                        onDrop={clear}
-                        collectionHasPins={pinnedItems.length > 0}
-                        onFilterChange={handleFilterChange}
-                        onMove={handleMove}
-                        onCopy={handleCopy}
-                      />
+                    <Box mt={hasPinnedItems ? 3 : 0}>
+                      {unpinnedItems.length > 0 && (
+                        <ItemsTable
+                          filter={filter}
+                          items={unpinnedItems}
+                          empty={unpinnedItems.length === 0}
+                          showFilters={showFilters}
+                          selected={selected}
+                          getIsSelected={getIsSelected}
+                          collection={collection}
+                          onToggleSelected={toggleItem}
+                          onDrop={clear}
+                          collectionHasPins={pinnedItems.length > 0}
+                          onFilterChange={handleFilterChange}
+                          onMove={handleMove}
+                          onCopy={handleCopy}
+                        />
+                      )}
                       <div className="flex justify-end my3">
                         {hasPagination && (
                           <PaginationControls
@@ -221,7 +227,7 @@ function CollectionContent({
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
                       />
-                    </React.Fragment>
+                    </Box>
                   );
                 }}
               </Search.ListLoader>
