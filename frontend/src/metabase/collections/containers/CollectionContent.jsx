@@ -2,7 +2,6 @@
 import React, { useState, useCallback } from "react";
 import { Box } from "grid-styled";
 import _ from "underscore";
-import { withRouter } from "react-router";
 import { connect } from "react-redux";
 
 import Collection from "metabase/entities/collections";
@@ -24,17 +23,7 @@ import { useListSelect } from "metabase/hooks/use-list-select";
 
 const PAGE_SIZE = 25;
 
-const MIN_ITEMS_TO_SHOW_FILTERS = 5;
-
 const ALL_MODELS = ["dashboard", "card", "snippet", "pulse"];
-
-const getModelsByFilter = filter => {
-  if (!filter) {
-    return ALL_MODELS;
-  }
-
-  return [filter];
-};
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
@@ -44,19 +33,10 @@ function mapStateToProps(state) {
   };
 }
 
-function CollectionContent({
-  collection,
-  collectionId,
-
-  isAdmin,
-  isRoot,
-  location,
-  router,
-}) {
+function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
-  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
-  const [filter, setFilter] = useState(location.query.type || null);
+  const { handleNextPage, handlePreviousPage, page } = usePagination();
   const {
     selected,
     toggleItem,
@@ -107,22 +87,9 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
-  const handleFilterChange = useCallback(
-    type => {
-      router.push({
-        pathname: location.pathname,
-        search: type ? "?" + new URLSearchParams({ type }).toString() : null,
-      });
-
-      setFilter(type);
-      setPage(0);
-    },
-    [location.pathname, router, setPage],
-  );
-
   const unpinnedQuery = {
     collection: collectionId,
-    models: getModelsByFilter(filter),
+    models: ALL_MODELS,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     pinned_state: "is_not_pinned",
@@ -168,8 +135,6 @@ function CollectionContent({
               <Search.ListLoader query={unpinnedQuery} wrapped>
                 {({ list: unpinnedItems, metadata }) => {
                   const hasPagination = metadata.total > PAGE_SIZE;
-                  const showFilters =
-                    filter || unpinnedItems.length >= MIN_ITEMS_TO_SHOW_FILTERS;
 
                   const unselected = unpinnedItems.filter(
                     item => !getIsSelected(item),
@@ -195,17 +160,12 @@ function CollectionContent({
                     <Box mt={hasPinnedItems ? 3 : 0}>
                       {unpinnedItems.length > 0 && (
                         <ItemsTable
-                          filter={filter}
                           items={unpinnedItems}
-                          empty={unpinnedItems.length === 0}
-                          showFilters={showFilters}
                           selected={selected}
                           getIsSelected={getIsSelected}
                           collection={collection}
                           onToggleSelected={toggleItem}
                           onDrop={clear}
-                          collectionHasPins={pinnedItems.length > 0}
-                          onFilterChange={handleFilterChange}
                           onMove={handleMove}
                           onCopy={handleCopy}
                         />
@@ -255,5 +215,4 @@ export default _.compose(
     reload: true,
   }),
   connect(mapStateToProps),
-  withRouter,
 )(CollectionContent);
