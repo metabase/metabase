@@ -119,18 +119,16 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 collection={collection}
               />
 
-              {hasPinnedItems && (
-                <PinnedItemsTable
-                  items={sortedPinnedItems}
-                  collection={collection}
-                  selectedItems={selected}
-                  getIsSelected={getIsSelected}
-                  onDrop={clear}
-                  onToggleSelected={toggleItem}
-                  onMove={handleMove}
-                  onCopy={handleCopy}
-                />
-              )}
+              <PinnedItemsTable
+                items={sortedPinnedItems}
+                collection={collection}
+                selectedItems={selected}
+                getIsSelected={getIsSelected}
+                onDrop={clear}
+                onToggleSelected={toggleItem}
+                onMove={handleMove}
+                onCopy={handleCopy}
+              />
 
               <Search.ListLoader query={unpinnedQuery} wrapped>
                 {({ list: unpinnedItems, metadata }) => {
