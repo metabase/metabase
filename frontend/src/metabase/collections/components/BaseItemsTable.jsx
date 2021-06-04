@@ -5,7 +5,7 @@ import moment from "moment";
 
 import EntityItem from "metabase/components/EntityItem";
 
-import { TableItemSecondaryField } from "./BaseItemsTable.styled";
+import { ItemLink, TableItemSecondaryField } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
   item: PropTypes.object,
@@ -28,7 +28,9 @@ function BaseTableItem({ item, isPinned }) {
         />
       </td>
       <td>
-        <EntityItem.Name name={item.name} />
+        <ItemLink to={item.getUrl()}>
+          <EntityItem.Name name={item.name} />
+        </ItemLink>
       </td>
       <td>
         <TableItemSecondaryField>{lastEditedBy}</TableItemSecondaryField>
