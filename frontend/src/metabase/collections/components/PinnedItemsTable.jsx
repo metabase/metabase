@@ -19,7 +19,14 @@ function PinnedItemsTable(props) {
     [],
   );
 
-  return <BaseItemsTable {...props} isPinned renderItem={renderItem} />;
+  return (
+    <BaseItemsTable
+      {...props}
+      isPinned
+      renderItem={renderItem}
+      data-testid="pinned-items"
+    />
+  );
 }
 
 export default PinnedItemsTable;

@@ -81,6 +81,7 @@ function BaseItemsTable({
   renderItem = defaultItemRenderer,
   onToggleSelected,
   getIsSelected = () => false,
+  ...props
 }) {
   const itemRenderer = useCallback(
     item =>
@@ -94,7 +95,7 @@ function BaseItemsTable({
   );
 
   return (
-    <table className="ContentTable">
+    <table className="ContentTable" {...props}>
       <colgroup>
         <col span="type" style={{ width: "5%" }} />
         <col span="name" style={{ width: "55%" }} />
