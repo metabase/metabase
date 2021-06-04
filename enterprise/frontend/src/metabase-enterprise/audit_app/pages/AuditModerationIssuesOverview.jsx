@@ -1,7 +1,9 @@
 import React from "react";
 
-function AuditModerationIssuesOverview() {
-  return <div />;
+import AuditContent from "../components/AuditContent";
+
+function AuditModerationIssuesOverview(props) {
+  return <AuditContent {...props} title="Moderation Issues" />;
 }
 
 export default AuditModerationIssuesOverview;
