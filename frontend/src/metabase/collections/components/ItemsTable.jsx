@@ -58,7 +58,11 @@ function ItemsTable(props) {
     return <ItemsEmptyState />;
   }
 
-  return <BaseItemsTable {...props} renderItem={Item} />;
+  return (
+    <PinDropTarget pinIndex={null}>
+      <BaseItemsTable {...props} renderItem={Item} />
+    </PinDropTarget>
+  );
 }
 
 export default ItemsTable;
