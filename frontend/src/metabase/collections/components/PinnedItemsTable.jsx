@@ -58,13 +58,16 @@ function PinnedItemsTable(props) {
     return <PinnedItemsEmptyState />;
   }
 
+  const lastItem = items[items.length - 1];
   return (
-    <BaseItemsTable
-      {...props}
-      isPinned
-      renderItem={PinnedItem}
-      data-testid="pinned-items"
-    />
+    <PinDropTarget pinIndex={lastItem.collection_position + 1}>
+      <BaseItemsTable
+        {...props}
+        isPinned
+        renderItem={PinnedItem}
+        data-testid="pinned-items"
+      />
+    </PinDropTarget>
   );
 }
 
