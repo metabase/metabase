@@ -70,6 +70,10 @@ const AuditAppSidebar = (props: Props) => (
       <AuditSidebarItem title="Dashboards" path="/admin/audit/dashboards" />
       <AuditSidebarItem title="Downloads" path="/admin/audit/downloads" />
     </AuditSidebarSection>
+    <AuditSidebarSection title="Moderation">
+      <AuditSidebarItem title="Issues" path="/admin/audit/moderation-issues" />
+      <AuditSidebarItem title="Moderators" path="/admin/audit/moderators" />
+    </AuditSidebarSection>
   </AuditSidebar>
 );
 

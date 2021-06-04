@@ -27,6 +27,9 @@ import AuditUserDetail from "./pages/AuditUserDetail";
 
 import AuditDownloads from "./pages/AuditDownloads";
 
+import AuditModerationIssuesOverview from "./pages/AuditModerationIssuesOverview";
+import AuditModeratorsOverview from "./pages/AuditModeratorsOverview";
+
 type Page = {
   tabs?: Tab[],
 };
@@ -92,6 +95,8 @@ const getRoutes = (store: any) => (
     {getPageRoutes("downloads", AuditDownloads)}
     {getPageRoutes("members", AuditUsers)}
     {getPageRoutes("member/:userId", AuditUserDetail)}
+    {getPageRoutes("moderation-issues", AuditModerationIssuesOverview)}
+    {getPageRoutes("moderators", AuditModeratorsOverview)}
   </Route>
 );
 
