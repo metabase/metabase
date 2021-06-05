@@ -64,8 +64,13 @@
                                    "*.gstatic.com"
                                    ;; for webpack hot reloading
                                    (when config/is-dev?
-                                     "localhost:8080")]
-                                  (map (partial format "'sha256-%s'") inline-js-hashes))
+                                     "localhost:8080")
+                                   ;; for react dev tools to work in Firefox until resolution of
+                                   ;; https://github.com/facebook/react/issues/17997
+                                   (when config/is-dev?
+                                     "'unsafe-inline'")]
+                                   (when-not config/is-dev?
+                                     (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
