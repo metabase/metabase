@@ -1,5 +1,6 @@
 (ns metabase.driver.sqlite
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
@@ -37,6 +38,18 @@
 ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
 ;; for now we'll just skip the foreign key stuff in the tests.
 (defmethod driver/supports? [:sqlite :foreign-keys] [_ _] (not config/is-test?))
+
+;; Every SQLite3 file starts with "SQLite Format 3"
+;; or "** This file contains an SQLite
+;; There is also SQLite2 but last 2 version was 2005
+(defmethod driver/can-connect? :sqlite
+  [driver details]
+  (with-open [reader (io/input-stream (:db details))]
+    (let [outarr (byte-array 50)]
+      (.read reader outarr)
+      (let [line (String. outarr)]
+        (or (str/includes? line "SQLite format 3")
+            (str/includes? line "This file contains an SQLite"))))))
 
 (defmethod driver/db-start-of-week :sqlite
   [_]
