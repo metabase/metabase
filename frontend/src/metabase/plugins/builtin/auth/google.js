@@ -13,6 +13,7 @@ import GoogleButton from "metabase/auth/components/GoogleButton";
 
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import SettingsSingleSignOnForm from "metabase/admin/settings/components/SettingsSingleSignOnForm";
+import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
 
 const GOOGLE_PROVIDER = {
   name: "google",
@@ -38,10 +39,35 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   ]),
 );
 
+PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
+  updateIn(sections, ["authentication", "settings"], settings => [
+    ...settings,
+    {
+      authName: t`Sign in with Google2`,
+      authDescription: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
+      authType: "google2",
+      authEnabled: settings => !!settings["google-auth-client-id"],
+      widget: AuthenticationOption,
+    },
+  ]),
+);
+
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
     component: SettingsSingleSignOnForm,
+    sidebar: false,
+    settings: [
+      { key: "google-auth-client-id" },
+      { key: "google-auth-auto-create-accounts-domain" },
+    ],
+  },
+}));
+
+PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+  ...sections,
+  "authentication/google2": {
+    component: SettingsGoogleForm,
     sidebar: false,
     settings: [
       { key: "google-auth-client-id" },

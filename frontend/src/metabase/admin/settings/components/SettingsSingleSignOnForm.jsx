@@ -13,10 +13,10 @@ export default class SettingsSingleSignOnForm extends Component {
     super(props, context);
     this.updateClientID = this.updateClientID.bind(this);
     this.updateDomain = this.updateDomain.bind(this);
-    (this.onCheckboxClicked = this.onCheckboxClicked.bind(this)),
-      (this.saveChanges = this.saveChanges.bind(this)),
-      (this.clientIDChanged = this.clientIDChanged.bind(this)),
-      (this.domainChanged = this.domainChanged.bind(this));
+    this.onCheckboxClicked = this.onCheckboxClicked.bind(this);
+    this.saveChanges = this.saveChanges.bind(this);
+    this.clientIDChanged = this.clientIDChanged.bind(this);
+    this.domainChanged = this.domainChanged.bind(this);
   }
 
   static propTypes = {
