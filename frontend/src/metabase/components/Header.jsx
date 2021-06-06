@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
 
@@ -12,15 +12,35 @@ import HeaderModal from "metabase/components/HeaderModal";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
-export default class Header extends Component {
-  static defaultProps = {
-    headerButtons: [],
-    editingTitle: "",
-    editingSubtitle: "",
-    editingButtons: [],
-    headerClassName: "py1 lg-py2 xl-py3 wrapper",
-  };
+const propTypes = {
+  analyticsContext: PropTypes.string,
+  editingTitle: PropTypes.string,
+  editingSubtitle: PropTypes.string,
+  editingButtons: PropTypes.arrayOf(PropTypes.node),
+  editWarning: PropTypes.string,
+  headerButtons: PropTypes.arrayOf(PropTypes.node),
+  headerClassName: PropTypes.string,
+  headerModalMessage: PropTypes.string,
+  isEditing: PropTypes.bool,
+  isEditingInfo: PropTypes.bool,
+  item: PropTypes.object.isRequired,
+  objectType: PropTypes.string.isRequired,
+  showBadge: PropTypes.bool,
+  children: PropTypes.node,
+  setItemAttributeFn: PropTypes.func,
+  onHeaderModalDone: PropTypes.func,
+  onHeaderModalCancel: PropTypes.func,
+};
 
+const defaultProps = {
+  headerButtons: [],
+  editingTitle: "",
+  editingSubtitle: "",
+  editingButtons: [],
+  headerClassName: "py1 lg-py2 xl-py3 wrapper",
+};
+
+class Header extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -176,3 +196,8 @@ export default class Header extends Component {
     );
   }
 }
+
+Header.propTypes = propTypes;
+Header.defaultProps = defaultProps;
+
+export default Header;
