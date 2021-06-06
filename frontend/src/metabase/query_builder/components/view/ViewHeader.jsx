@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 import { Box } from "grid-styled";
@@ -27,6 +27,40 @@ import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+const viewTitleHeaderPropTypes = {
+  question: PropTypes.object.isRequired,
+  originalQuestion: PropTypes.object,
+
+  queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
+  setQueryBuilderMode: PropTypes.func,
+
+  result: PropTypes.object,
+
+  isDirty: PropTypes.bool,
+  isRunnable: PropTypes.bool,
+  isRunning: PropTypes.bool,
+  isResultDirty: PropTypes.bool,
+  isNativeEditorOpen: PropTypes.bool,
+  isShowingFilterSidebar: PropTypes.bool,
+  isShowingSummarySidebar: PropTypes.bool,
+
+  runQuestionQuery: PropTypes.func,
+  cancelQuery: PropTypes.func,
+
+  onOpenModal: PropTypes.func,
+  onEditSummary: PropTypes.func,
+  onCloseSummary: PropTypes.func,
+  onAddFilter: PropTypes.func,
+  onCloseFilter: PropTypes.func,
+
+  isPreviewable: PropTypes.bool,
+  isPreviewing: PropTypes.bool,
+  setIsPreviewing: PropTypes.func,
+
+  className: PropTypes.string,
+  style: PropTypes.object,
+};
 
 export class ViewTitleHeader extends React.Component {
   constructor(props) {
@@ -307,6 +341,14 @@ export class ViewTitleHeader extends React.Component {
   }
 }
 
+ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
+
+const viewSubHeaderPropTypes = {
+  isPreviewable: PropTypes.bool,
+  isPreviewing: PropTypes.bool,
+  setIsPreviewing: PropTypes.func,
+};
+
 export class ViewSubHeader extends React.Component {
   render() {
     const { isPreviewable, isPreviewing, setIsPreviewing } = this.props;
@@ -338,3 +380,5 @@ export class ViewSubHeader extends React.Component {
     ) : null;
   }
 }
+
+ViewSubHeader.propTypes = viewSubHeaderPropTypes;
