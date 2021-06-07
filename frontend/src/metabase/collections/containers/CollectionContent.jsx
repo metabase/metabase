@@ -36,15 +36,15 @@ function mapStateToProps(state) {
 function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
-  const [unpinnedItemsSorting] = useState({
+  const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
     sort_column: "name",
     sort_direction: "asc",
   });
-  const [pinnedItemsSorting] = useState({
+  const [pinnedItemsSorting, setPinnedItemsSorting] = useState({
     sort_column: "name",
     sort_direction: "asc",
   });
-  const { handleNextPage, handlePreviousPage, page } = usePagination();
+  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
   const {
     selected,
     toggleItem,
@@ -79,6 +79,18 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
     },
     [selectedItems, clear],
   );
+
+  const handleUnpinnedItemsSortingChange = useCallback(
+    sortingOpts => {
+      setUnpinnedItemsSorting(sortingOpts);
+      setPage(0);
+    },
+    [setPage],
+  );
+
+  const handlePinnedItemsSortingChange = useCallback(sortingOpts => {
+    setPinnedItemsSorting(sortingOpts);
+  }, []);
 
   const handleCloseModal = () => {
     setSelectedItems(null);
@@ -128,10 +140,12 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
               <PinnedItemsTable
                 items={pinnedItems}
                 collection={collection}
+                sortingOptions={pinnedItemsSorting}
+                onSortingOptionsChange={handlePinnedItemsSortingChange}
                 selectedItems={selected}
                 getIsSelected={getIsSelected}
-                onDrop={clear}
                 onToggleSelected={toggleItem}
+                onDrop={clear}
                 onMove={handleMove}
                 onCopy={handleCopy}
               />
@@ -161,9 +175,13 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                     <Box mt={hasPinnedItems ? 3 : 0}>
                       <ItemsTable
                         items={unpinnedItems}
+                        collection={collection}
+                        sortingOptions={unpinnedItemsSorting}
+                        onSortingOptionsChange={
+                          handleUnpinnedItemsSortingChange
+                        }
                         selectedItems={selected}
                         getIsSelected={getIsSelected}
-                        collection={collection}
                         onToggleSelected={toggleItem}
                         onDrop={clear}
                         onMove={handleMove}
