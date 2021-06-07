@@ -65,8 +65,6 @@ export function getModerationStatusIcon(type, status) {
   const color = getIn(ACTIONS, [type, "color"]);
   const isGrayscale = status && status !== REQUEST_STATUSES.open;
 
-  console.log(status, isGrayscale, REQUEST_STATUSES.open, REQUEST_STATUSES);
-
   return {
     icon,
     color,
@@ -81,6 +79,10 @@ export function getOpenRequests(question) {
 
 export function isRequestOpen(request) {
   return request.status === REQUEST_STATUSES.open;
+}
+
+export function getRequestStatuses() {
+  return Object.values(REQUEST_STATUSES);
 }
 
 export function getNumberOfOpenRequests(question) {
@@ -131,4 +133,15 @@ export function getModerationEvents(question, usersById) {
 
 export function isUserModerator(user) {
   return user.id === 1;
+}
+
+export function buildModerationRequestPath(request) {
+  const { moderated_item_type, moderated_item_id, id } = request;
+
+  switch (moderated_item_type) {
+    case "card":
+      return `/question/${moderated_item_id}?moderationRequest=${id}`;
+    default:
+      throw new Error("The given `moderated_item_type` has no associated path");
+  }
 }
