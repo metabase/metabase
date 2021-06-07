@@ -50,8 +50,8 @@
   {"Strict-Transport-Security" "max-age=31536000"})
 
 (defn- content-security-policy-header
-  []
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
+  []
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
