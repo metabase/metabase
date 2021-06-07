@@ -2,7 +2,13 @@ import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
 
+import EntityItem from "metabase/components/EntityItem";
 import Link from "metabase/components/Link";
+
+export const EntityIcon = styled(EntityItem.Icon)`
+  width: 3em;
+  height: 3em;
+`;
 
 export const ItemLink = styled(Link)`
   &:hover {

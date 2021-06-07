@@ -7,6 +7,7 @@ import EntityItem from "metabase/components/EntityItem";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 import {
+  EntityIcon,
   ItemLink,
   TableRow,
   TableItemSecondaryField,
@@ -63,7 +64,7 @@ export function BaseTableItem({
   return (
     <TableRow key={item.id} data-testid={testId}>
       <td>
-        <EntityItem.Icon
+        <EntityIcon
           item={item}
           variant="list"
           iconName={item.getIcon()}
@@ -71,8 +72,6 @@ export function BaseTableItem({
           selectable={canSelect}
           selected={isSelected}
           onToggleSelected={handleSelectionToggled}
-          height="3em"
-          width="3em"
         />
       </td>
       <td>
