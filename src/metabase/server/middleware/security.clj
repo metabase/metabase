@@ -49,7 +49,8 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
 
-(def ^:private content-security-policy-header
+(defn- content-security-policy-header
+  []
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
   {"Content-Security-Policy"
    (str/join
@@ -96,7 +97,7 @@
 
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes?]
-  (update content-security-policy-header
+  (update (content-security-policy-header)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 
