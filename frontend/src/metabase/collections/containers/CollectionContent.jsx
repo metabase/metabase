@@ -36,6 +36,14 @@ function mapStateToProps(state) {
 function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
+  const [unpinnedItemsSorting] = useState({
+    sort_column: "name",
+    sort_direction: "asc",
+  });
+  const [pinnedItemsSorting] = useState({
+    sort_column: "name",
+    sort_direction: "asc",
+  });
   const { handleNextPage, handlePreviousPage, page } = usePagination();
   const {
     selected,
@@ -93,11 +101,13 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     pinned_state: "is_not_pinned",
+    ...unpinnedItemsSorting,
   };
 
   const pinnedQuery = {
     collection: collectionId,
     pinned_state: "is_pinned",
+    ...pinnedItemsSorting,
   };
 
   return (
