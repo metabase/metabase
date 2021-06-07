@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 
 import { registerVisualization } from "metabase/visualizations/index";
 
@@ -19,6 +19,19 @@ import _ from "underscore";
 import cx from "classnames";
 
 const getColumnName = column => column.remapped_to || column.name;
+
+const propTypes = {
+  series: PropTypes.array,
+  visualizationIsClickable: PropTypes.func,
+  onVisualizationClick: PropTypes.func,
+  onSortingChange: PropTypes.func,
+  settings: PropTypes.object,
+  isSortable: PropTypes.bool,
+  sorting: PropTypes.shape({
+    column: PropTypes.string.isRequired,
+    isAscending: PropTypes.bool.isRequired,
+  }),
+};
 
 export default class AuditTableVisualization extends React.Component {
   static identifier = "audit-table";
@@ -141,5 +154,7 @@ export default class AuditTableVisualization extends React.Component {
     );
   }
 }
+
+AuditTableVisualization.propTypes = propTypes;
 
 registerVisualization(AuditTableVisualization);
