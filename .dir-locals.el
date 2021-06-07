@@ -36,6 +36,7 @@
                               (p.types/deftype+ '(2 nil nil (:defn)))
                               (p/def-map-type '(2 nil nil (:defn)))
                               (p.types/defrecord+ '(2 nil nil (:defn)))
+                              (prop/for-all 1)
                               (tools.macro/macrolet '(1 (:defn))))))
                   (clojure-indent-style . always-align)
                   ;; if you're using clj-refactor (highly recommended!)

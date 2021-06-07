@@ -1,6 +1,7 @@
 (ns metabase-enterprise.audit.pages.common.card-and-dashboard-detail
   "Common queries used by both Card (Question) and Dashboard detail pages."
-  (:require [metabase-enterprise.audit.pages.common :as common]
+  (:require [honeysql.core :as hsql]
+            [metabase-enterprise.audit.pages.common :as common]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.revision :as revision]
@@ -24,14 +25,55 @@
               [:views {:display_name "Views", :base_type :type/Integer}]]
    :results (let [grouped-timestamp (common/grouped-datetime unit :timestamp)]
               (common/reducible-query
-               {:select   [[grouped-timestamp :date]
-                           [:%count.* :views]]
-                :from     [:view_log]
-                :where    [:and
-                           [:= :model (hx/literal model)]
-                           [:= :model_id model-id]]
-                :group-by [grouped-timestamp]
-                :order-by [[grouped-timestamp :asc]]}))})
+                (-> {:select   [[grouped-timestamp :date]
+                                [:%count.* :views]]
+                     :from     [:view_log]
+                     :where    [:and
+                                [:= :model (hx/literal model)]
+                                [:= :model_id model-id]]
+                     :group-by [grouped-timestamp]
+                     :order-by [[grouped-timestamp :asc]]}
+                    (common/add-45-days-clause :timestamp))))})
+
+(s/defn cached-views-by-time
+  "Get number of views of a Card broken out by a time `unit`, e.g. `day` or `day-of-week` and by cache status.
+  Still here instead of in cards because of similarity to views-by-time"
+  [card-id :- su/IntGreaterThanZero, unit :- common/DateTimeUnitStr]
+  {:metadata [[:date           {:display_name "Date",
+                                :base_type (common/datetime-unit-str->base-type unit)}]
+              [:cached-views   {:display_name "Cached Views",
+                                :base_type :type/Integer}]
+              [:uncached-views {:display_name "Uncached Views",
+                                :base_type :type/Integer}]]
+   :results (let [grouped-timestamp (common/grouped-datetime unit :started_at)]
+              (common/reducible-query
+                (->
+                  {:select    [[grouped-timestamp :date]
+                               [(hsql/call :sum (hsql/call :case [:= :cache_hit true] 1 :else 0)) :cached_views]
+                               [(hsql/call :sum (hsql/call :case [:= :cache_hit false] 1 :else 0)) :uncached_views]]
+                   :from      [:query_execution]
+                   :where     [:and
+                               [:= :card_id card-id]
+                               [:not= :cache_hit nil]]
+                   :group-by  [grouped-timestamp]
+                   :order-by  [[grouped-timestamp :asc]]}
+                  (common/add-45-days-clause :started_at))))})
+
+(s/defn avg-execution-time-by-time
+  "Get average execution time of a Card broken out by a time `unit`, e.g. `day` or `day-of-week`.
+  Still here instead of in cards because of similarity to views-by-time"
+  [card-id :- su/IntGreaterThanZero, unit :- common/DateTimeUnitStr]
+  {:metadata [[:date        {:display_name "Date",            :base_type (common/datetime-unit-str->base-type unit)}]
+              [:avg_runtime {:display_name "Average Runtime", :base_type :type/Number}]]
+   :results (let [grouped-timestamp (common/grouped-datetime unit :started_at)]
+              (common/reducible-query
+                (-> {:select   [[grouped-timestamp :date]
+                                [:%avg.running_time :avg_runtime]]
+                     :from     [:query_execution]
+                     :where    [:= :card_id card-id]
+                     :group-by [grouped-timestamp]
+                     :order-by [[grouped-timestamp :asc]]}
+                    (common/add-45-days-clause :started_at)) ))})
 
 (s/defn revision-history
   "Get a revision history table for a Card or Dashboard."
