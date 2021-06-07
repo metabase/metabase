@@ -571,8 +571,7 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should display original custom expression filter with dates on subsequent click (metabase#12492)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     visitQuestionAdhoc({
       dataset_query: {
@@ -595,11 +594,9 @@ describe("scenarios > question > filter", () => {
     });
 
     cy.wait("@dataset");
-    cy.findByText(/^Created At is after/i)
-      .should("not.contain", "Unknown")
-      .click();
+    cy.findByText(/Created At > Product? → Created At/i).click();
     cy.get("[contenteditable='true']").contains(
-      /\[Created At\] > \[Products? -> Created At\]/,
+      /\[Created At\] > \[Products? → Created At\]/,
     );
   });
 
