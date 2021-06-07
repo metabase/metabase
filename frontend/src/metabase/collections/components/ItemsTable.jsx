@@ -1,25 +1,30 @@
-import React, { useCallback } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 import BaseItemsTable from "./BaseItemsTable";
 
-function ItemsTable(props) {
-  const renderItem = useCallback(
-    ({ item, ...itemProps }) => (
-      <BaseItemsTable.Item
-        key={`${item.model}-${item.id}`}
-        {...itemProps}
-        item={item}
-        linkProps={{
-          "data-metabase-event": `${ANALYTICS_CONTEXT};Item Click;${item.model}`,
-        }}
-      />
-    ),
-    [],
-  );
+Item.propTypes = {
+  item: PropTypes.object.isRequired,
+};
 
-  return <BaseItemsTable {...props} renderItem={renderItem} />;
+function Item({ item, ...props }) {
+  const metabaseEvent = `${ANALYTICS_CONTEXT};Item Click;${item.model}`;
+  return (
+    <BaseItemsTable.Item
+      key={`${item.model}-${item.id}`}
+      {...props}
+      item={item}
+      linkProps={{
+        "data-metabase-event": metabaseEvent,
+      }}
+    />
+  );
+}
+
+function ItemsTable(props) {
+  return <BaseItemsTable {...props} renderItem={Item} />;
 }
 
 export default ItemsTable;
