@@ -384,12 +384,6 @@
                                  [:like
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
-;; We whacked the overly-friendly field names because nobody wanted them
-;; If we have them in settings, default to the simple field names. Otherwise do nothing
-(defmigration ^{:author "howonlee", :added "0.40.0"} reduce-field-name-friendliness
-  (when (= "advanced" (setting/get "humanization-strategy"))
-    (setting/set! "humanization-strategy" :simple)))
-
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
 ;; !!    Please seriously consider whether any new migrations you write here could be written as Liquibase ones     !!

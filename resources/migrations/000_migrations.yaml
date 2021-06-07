@@ -8369,6 +8369,20 @@ databaseChangeLog:
                   remarks: 'Nullable column to incidate collection''s authority level. Initially values are "official" and nil.'
                   constraints:
                     nullable: true
+
+
+  - changeSet:
+      id: 310
+      author: howonlee
+      comment: Added 0.40.0 Migrate friendly field names
+      changes:
+        - update:
+            tableName: settings
+            columns:
+              - column:
+                  name: value
+                  value: 'simple'
+            where: key='humanization-strategy' and value='advanced'
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
