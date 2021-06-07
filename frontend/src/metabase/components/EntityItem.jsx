@@ -59,7 +59,6 @@ function EntityItemIcon({
   return (
     <IconWrapper
       p={"12px 13px"}
-      mr={2}
       bg={pinned ? getPinnedBackground(item.model) : getBackground(item.model)}
       color={
         pinned ? getPinnedForeground(item.model) : getForeground(item.model)
@@ -192,6 +191,7 @@ const EntityItem = ({
         selectable={selectable}
         selected={selected}
         onToggleSelected={onToggleSelected}
+        mr={2}
       />
 
       <Box>

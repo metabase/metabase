@@ -73,7 +73,6 @@ export function BaseTableItem({
           onToggleSelected={handleSelectionToggled}
           height="3em"
           width="3em"
-          mr={0}
         />
       </td>
       <td>
