@@ -58,12 +58,12 @@ function EntityItemIcon({
 
   return (
     <IconWrapper
-      p={"12px 13px"}
+      p="12px 13px"
       bg={pinned ? getPinnedBackground(item.model) : getBackground(item.model)}
       color={
         pinned ? getPinnedForeground(item.model) : getForeground(item.model)
       }
-      borderRadius={"99px"}
+      borderRadius="99px"
       onClick={selectable ? handleClick : null}
       {...props}
     >
