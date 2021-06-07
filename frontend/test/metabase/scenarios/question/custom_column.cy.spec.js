@@ -628,7 +628,7 @@ describe("scenarios > question > custom columns", () => {
     });
   });
 
-  it.skip("should maintain data type (metabase#13122)", () => {
+  it("should maintain data type (metabase#13122)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     popover().within(() => {
