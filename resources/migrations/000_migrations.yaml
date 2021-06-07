@@ -8382,7 +8382,8 @@ databaseChangeLog:
               - column:
                   name: value
                   value: 'simple'
-            where: key='humanization-strategy' and value='advanced'
+            where: key='humanization-strategy' AND value='advanced';
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
