@@ -645,7 +645,7 @@ describe("scenarios > question > custom columns", () => {
     cy.findByPlaceholderText("Enter a number").should("not.exist");
   });
 
-  it.skip("filter based on `concat` function should not offer numeric options (metabase#13217)", () => {
+  it("filter based on `concat` function should not offer numeric options (metabase#13217)", () => {
     openPeopleTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     popover().within(() => {
