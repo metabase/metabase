@@ -103,10 +103,6 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
   return (
     <Search.ListLoader query={pinnedQuery} wrapped>
       {({ list: pinnedItems }) => {
-        const sortedPinnedItems = pinnedItems.sort(
-          (a, b) => a.collection_position - b.collection_position,
-        );
-
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
@@ -120,7 +116,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
               />
 
               <PinnedItemsTable
-                items={sortedPinnedItems}
+                items={pinnedItems}
                 collection={collection}
                 selectedItems={selected}
                 getIsSelected={getIsSelected}
