@@ -13,12 +13,10 @@ import * as Urls from "metabase/lib/urls";
 
 import * as QuestionDetailCards from "../lib/cards/question_detail";
 
-const tabPropTypes = {
-  questionId: PropTypes.number.isRequired,
-};
-
-AuditQuestionDetail.propTypes = {
-  params: PropTypes.shape(tabPropTypes),
+const pagePropTypes = {
+  params: PropTypes.shape({
+    questionId: PropTypes.string,
+  }),
 };
 
 function AuditQuestionDetail({ params, ...props }) {
@@ -38,7 +36,11 @@ function AuditQuestionDetail({ params, ...props }) {
   );
 }
 
-AuditQuestionActivityTab.propTypes = tabPropTypes;
+AuditQuestionDetail.propTypes = pagePropTypes;
+
+const tabPropTypes = {
+  questionId: PropTypes.number,
+};
 
 function AuditQuestionActivityTab({ questionId }) {
   return (
@@ -57,17 +59,19 @@ function AuditQuestionActivityTab({ questionId }) {
   );
 }
 
-AuditQuestionRevisionsTab.propTypes = tabPropTypes;
+AuditQuestionActivityTab.propTypes = tabPropTypes;
 
 function AuditQuestionRevisionsTab({ questionId }) {
   return <AuditTable table={QuestionDetailCards.revisionHistory(questionId)} />;
 }
 
-AuditQuestionAuditLogTab.propTypes = tabPropTypes;
+AuditQuestionRevisionsTab.propTypes = tabPropTypes;
 
 function AuditQuestionAuditLogTab({ questionId }) {
   return <AuditTable table={QuestionDetailCards.auditLog(questionId)} />;
 }
+
+AuditQuestionAuditLogTab.propTypes = tabPropTypes;
 
 AuditQuestionDetail.tabs = [
   { path: "activity", title: "Activity", component: AuditQuestionActivityTab },
