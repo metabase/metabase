@@ -2,10 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import cx from "classnames";
 import { t } from "ttag";
 
-import { color, darken } from "metabase/lib/colors";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 
 import Icon, { IconWrapper } from "metabase/components/Icon";
@@ -14,18 +12,12 @@ import Link from "metabase/components/Link";
 NotificationsLink.propTypes = {
   className: PropTypes.string,
   isModerator: PropTypes.bool,
+  hover: PropTypes.object,
 };
 
-// TODO -- some of this styling is duped from other Navbar components
-function NotificationsLink({ className, isModerator }) {
+function NotificationsLink({ className, hover, isModerator }) {
   return isModerator ? (
-    <IconWrapper
-      className={cx(className, "relative hide sm-show mr1 overflow-hidden")}
-      hover={{
-        backgroundColor: darken(color("nav")),
-        color: "white",
-      }}
-    >
+    <IconWrapper className={className} hover={hover}>
       <Link
         to="/requests?status=open"
         className="flex align-center"

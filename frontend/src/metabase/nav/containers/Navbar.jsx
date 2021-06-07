@@ -232,9 +232,7 @@ export default class Navbar extends Component {
               mr={[1, 2]}
               to={Urls.newQuestionFlow()}
               p={1}
-              hover={{
-                backgroundColor: darken(color("brand")),
-              }}
+              hover={NavHover}
               className="flex align-center rounded transition-background"
               data-metabase-event={`NavBar;New Question`}
             >
@@ -295,7 +293,11 @@ export default class Navbar extends Component {
               </Link>
             </IconWrapper>
           )}
-          <PLUGIN_NOTIFICATION_COMPONENTS.NotificationsLink {...this.props} />
+          <PLUGIN_NOTIFICATION_COMPONENTS.NotificationsLink
+            className="relative hide sm-show mr1 overflow-hidden"
+            hover={NavHover}
+            {...this.props}
+          />
           <ProfileLink {...this.props} />
         </Flex>
         {this.renderModal()}
