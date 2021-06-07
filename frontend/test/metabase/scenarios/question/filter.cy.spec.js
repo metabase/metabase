@@ -570,7 +570,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText(/^Created At is before/i);
   });
 
-  it.skip("should display original custom expression filter with dates on subsequent click (metabase#12492)", () => {
+  it("should display original custom expression filter with dates on subsequent click (metabase#12492)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
