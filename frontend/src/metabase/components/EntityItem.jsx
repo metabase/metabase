@@ -6,12 +6,13 @@ import { Box, Flex } from "grid-styled";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
-import IconWrapper from "metabase/components/IconWrapper";
 import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
-import { color, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+
+import { EntityIconWrapper } from "./EntityItem.styled";
 
 const EntityItemWrapper = Flex.extend`
   border-bottom: 1px solid ${color("bg-medium")};
@@ -21,24 +22,6 @@ const EntityItemWrapper = Flex.extend`
     color: ${color("brand")};
   }
 `;
-
-function getPinnedBackground(model) {
-  return model === "dashboard"
-    ? color("accent4")
-    : lighten(color("accent4"), 0.28);
-}
-
-function getPinnedForeground(model) {
-  return model === "dashboard" ? color("white") : color("accent4");
-}
-
-function getBackground(model) {
-  return model === "dashboard" ? color("brand") : color("brand-light");
-}
-
-function getForeground(model) {
-  return model === "dashboard" ? color("white") : color("brand");
-}
 
 function EntityItemIcon({
   item,
@@ -57,14 +40,11 @@ function EntityItemIcon({
   };
 
   return (
-    <IconWrapper
-      p="12px 13px"
-      bg={pinned ? getPinnedBackground(item.model) : getBackground(item.model)}
-      color={
-        pinned ? getPinnedForeground(item.model) : getForeground(item.model)
-      }
-      borderRadius="99px"
+    <EntityIconWrapper
+      isPinned={pinned}
+      model={item.model}
       onClick={selectable ? handleClick : null}
+      circle
       {...props}
     >
       {selectable ? (
@@ -78,7 +58,7 @@ function EntityItemIcon({
       ) : (
         <Icon name={iconName} color={"inherit"} size={iconSize} />
       )}
-    </IconWrapper>
+    </EntityIconWrapper>
   );
 }
 
@@ -188,7 +168,9 @@ const EntityItem = ({
         selectable={selectable}
         selected={selected}
         onToggleSelected={onToggleSelected}
-        mr={2}
+        style={{
+          marginRight: "16px",
+        }}
       />
 
       <Box>
