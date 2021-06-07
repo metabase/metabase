@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { Flex } from "grid-styled";
 
 import { color, lighten } from "metabase/lib/colors";
 
@@ -34,4 +35,12 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
     props.isPinned
       ? getPinnedBackground(props.model)
       : getBackground(props.model)};
+`;
+
+export const EntityItemWrapper = Flex.extend`
+  border-bottom: 1px solid ${color("bg-medium")};
+  align-items: center;
+  &:hover {
+    color: ${color("brand")};
+  }
 `;

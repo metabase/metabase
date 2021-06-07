@@ -10,18 +10,7 @@ import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
-import { color } from "metabase/lib/colors";
-
-import { EntityIconWrapper } from "./EntityItem.styled";
-
-const EntityItemWrapper = Flex.extend`
-  border-bottom: 1px solid ${color("bg-medium")};
-  /* TODO - figure out how to use the prop instead of this? */
-  align-items: center;
-  &:hover {
-    color: ${color("brand")};
-  }
-`;
+import { EntityIconWrapper, EntityItemWrapper } from "./EntityItem.styled";
 
 function EntityItemIcon({
   item,
