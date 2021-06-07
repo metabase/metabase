@@ -47,7 +47,7 @@ function getSection(pathname, queryParams) {
     return "/activity";
   } else if (pathname.includes("/requests")) {
     return `/requests?status=${queryParams.status}`;
-  } else if (pathname.includes("/notifications/")) {
+  } else if (pathname.includes("/notifications")) {
     return "/notifications";
   }
 }
