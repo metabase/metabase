@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -38,27 +38,16 @@ function BaseItemsTable({
   getIsSelected = () => false,
   ...props
 }) {
-  const itemRenderer = useCallback(
-    item =>
-      renderItem({
-        item,
-        collection,
-        isSelected: getIsSelected(item),
-        isPinned,
-        onCopy,
-        onMove,
-        onToggleSelected,
-      }),
-    [
+  const itemRenderer = item =>
+    renderItem({
+      item,
       collection,
+      isSelected: getIsSelected(item),
       isPinned,
       onCopy,
       onMove,
       onToggleSelected,
-      renderItem,
-      getIsSelected,
-    ],
-  );
+    });
 
   return (
     <table className="ContentTable" {...props}>
