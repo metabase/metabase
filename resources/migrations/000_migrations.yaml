@@ -8384,6 +8384,19 @@ databaseChangeLog:
                   value: 'simple'
             where: "'key'='humanization-strategy' AND value='advanced'"
 
+  - changeSet:
+      id: 311
+      author: howonlee
+      comment: Added 0.40.0 Migrate friendly field names, not noop
+      changes:
+        - update:
+            tableName: setting
+            columns:
+              - column:
+                  name: value
+                  value: 'simple'
+            where: "\`key\`='humanization-strategy' AND value='advanced'"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
