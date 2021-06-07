@@ -4,13 +4,14 @@ import PropTypes from "prop-types";
 import Comment from "metabase/components/Comment";
 import ModerationIssuePill from "metabase-enterprise/moderation/components/ModerationIssuePill";
 import {
-  QuestionName,
-  BoundWidthLink,
-  PaddedCard,
+  QuestionNameHeader,
+  CardLink,
+  HoverableCard,
   CardHeader,
 } from "./RequestNotificationCard.styled";
 
 RequestNotificationCard.propTypes = {
+  className: PropTypes.string,
   userDisplayName: PropTypes.string.isRequired,
   questionDisplayName: PropTypes.string.isRequired,
   url: PropTypes.string.isRequired,
@@ -18,25 +19,26 @@ RequestNotificationCard.propTypes = {
 };
 
 function RequestNotificationCard({
+  className,
   userDisplayName,
   questionDisplayName,
   url,
   request,
 }) {
   return (
-    <BoundWidthLink to={url}>
-      <PaddedCard hoverable>
+    <CardLink className={className} to={url}>
+      <HoverableCard hoverable>
         <CardHeader>
           <ModerationIssuePill type={request.type} status={request.status} />
-          <QuestionName>{questionDisplayName}</QuestionName>
+          <QuestionNameHeader>{questionDisplayName}</QuestionNameHeader>
         </CardHeader>
         <Comment
           title={userDisplayName}
           text={request.text}
           timestamp={request.created_at}
         />
-      </PaddedCard>
-    </BoundWidthLink>
+      </HoverableCard>
+    </CardLink>
   );
 }
 

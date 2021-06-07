@@ -3,22 +3,22 @@ import { Link } from "react-router";
 import { color } from "metabase/lib/colors";
 import Card from "metabase/components/Card";
 
-export const QuestionName = styled.span`
+export const QuestionNameHeader = styled.span`
   font-size: 16px;
   font-weight: bold;
   margin-left: 0.5rem;
 `;
 
-export const BoundWidthLink = styled(Link)`
+export const CardLink = styled(Link)`
   max-width: 800px;
   width: 100%;
 
-  &:hover ${QuestionName} {
+  &:hover ${QuestionNameHeader} {
     color: ${color("brand")};
   }
 `;
 
-export const PaddedCard = styled(Card)`
+export const HoverableCard = styled(Card)`
   padding: 1.5rem;
   transition: box-shadow 200ms;
 `;
