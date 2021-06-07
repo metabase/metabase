@@ -8377,7 +8377,7 @@ databaseChangeLog:
       comment: Added 0.40.0 Migrate friendly field names
       changes:
         - update:
-            tableName: settings
+            tableName: setting
             columns:
               - column:
                   name: value
