@@ -5,29 +5,43 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > collection items listing", () => {
-  describe("pagination", () => {
-    const PAGE_SIZE = 25;
-    const ADDED_QUESTIONS = 13;
-    const ADDED_DASHBOARDS = 12;
-    const PRE_EXISTED_ITEMS = 4;
+  const TEST_QUESTION_QUERY = {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+    ],
+  };
 
-    const TOTAL_ITEMS = ADDED_DASHBOARDS + ADDED_QUESTIONS + PRE_EXISTED_ITEMS;
+  const PAGE_SIZE = 25;
+
+  describe("pagination", () => {
+    const ADDED_QUESTIONS = 15;
+    const ADDED_DASHBOARDS = 14;
+
+    const TOTAL_ITEMS = ADDED_DASHBOARDS + ADDED_QUESTIONS;
 
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
 
-      _.times(12, i => cy.createDashboard(`dashboard ${i}`));
-      _.times(13, i =>
+      // Removes questions and dashboards included in a default dataset,
+      // so the test won't fail if we change the default dataset
+      cy.request("GET", "/api/collection/root/items").then(response => {
+        response.body.data.forEach(({ model, id }) => {
+          if (model !== "collection") {
+            cy.request("PUT", `/api/${model}/${id}`, {
+              archived: true,
+            });
+          }
+        });
+      });
+
+      _.times(ADDED_DASHBOARDS, i => cy.createDashboard(`dashboard ${i}`));
+      _.times(ADDED_QUESTIONS, i =>
         cy.createQuestion({
           name: `generated question ${i}`,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-            ],
-          },
+          query: TEST_QUESTION_QUERY,
         }),
       );
     });
