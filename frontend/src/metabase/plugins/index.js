@@ -66,7 +66,6 @@ export const PLUGIN_MODERATION_COMPONENTS = {
 
 export const PLUGIN_MODERATION_SERVICE = {
   getStatusIconForReview: _.noop,
-  getColorForReview: _.noop,
   getOpenRequests: _.noop,
   isRequestDismissal: _.noop,
   isRequestOpen: _.noop,

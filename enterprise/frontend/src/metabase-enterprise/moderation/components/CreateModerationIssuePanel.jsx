@@ -69,10 +69,6 @@ function CreateModerationIssuePanel({
       onSubmit={onCreateModerationIssue}
       className="p2 flex flex-column row-gap-2"
     >
-      {/* <div className={cx(textColorClass, "flex align-center")}>
-        <Icon className="mr1" name={icon} size={18} />
-        <span className="text-bold">{MODERATION_TEXT[issueType].action}</span>
-      </div> */}
       <ModerationIssuePill type={issueType} />
       <div>{MODERATION_TEXT[issueType].actionCreationDescription}</div>
       <label className="text-bold">

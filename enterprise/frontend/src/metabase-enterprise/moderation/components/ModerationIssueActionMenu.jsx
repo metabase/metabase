@@ -6,7 +6,6 @@ import EntityMenu from "metabase/components/EntityMenu";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
 import {
   getModerationIssueActionTypes,
-  getColor,
   getModerationStatusIcon,
   getUserTypeTextKey,
 } from "metabase-enterprise/moderation";
@@ -39,8 +38,7 @@ function ModerationIssueActionMenu({
       }}
       className={className}
       items={issueTypes.map(issueType => {
-        const color = getColor(issueType);
-        const icon = getModerationStatusIcon(issueType);
+        const { icon, color } = getModerationStatusIcon(issueType);
         return {
           icon,
           iconSize: 18,

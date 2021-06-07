@@ -27,7 +27,6 @@ Object.assign(PLUGIN_MODERATION_COMPONENTS, {
 
 Object.assign(PLUGIN_MODERATION_SERVICE, {
   getStatusIconForReview,
-  getColorForReview,
   getOpenRequests,
   isRequestDismissal,
   getModerationEvents,
@@ -61,16 +60,18 @@ export function getStatusIconForReview(review) {
   return getModerationStatusIcon(review && review.status);
 }
 
-export function getColorForReview(review) {
-  return getColor(review && review.status);
-}
+export function getModerationStatusIcon(type, status) {
+  const icon = getIn(ACTIONS, [type, "icon"]);
+  const color = getIn(ACTIONS, [type, "color"]);
+  const isGrayscale = status && status !== REQUEST_STATUSES.open;
 
-export function getModerationStatusIcon(type) {
-  return getIn(ACTIONS, [type, "icon"]);
-}
+  console.log(status, isGrayscale, REQUEST_STATUSES.open, REQUEST_STATUSES);
 
-export function getColor(type) {
-  return getIn(ACTIONS, [type, "color"]);
+  return {
+    icon,
+    color,
+    filter: isGrayscale ? "grayscale(1)" : "",
+  };
 }
 
 export function getOpenRequests(question) {
@@ -78,7 +79,7 @@ export function getOpenRequests(question) {
   return moderationRequests.filter(isRequestOpen);
 }
 
-function isRequestOpen(request) {
+export function isRequestOpen(request) {
   return request.status === REQUEST_STATUSES.open;
 }
 
@@ -98,10 +99,11 @@ export function getModerationEvents(question, usersById) {
   const requests = question.getModerationRequests().map(request => {
     const user = usersById[request.requester_id];
     const userDisplayName = user ? user.common_name : t`Someone`;
+    const { icon } = getModerationStatusIcon(request.type);
 
     return {
       timestamp: new Date(request.created_at).valueOf(),
-      icon: getModerationStatusIcon(request.type),
+      icon,
       title: `${userDisplayName} ${MODERATION_TEXT[request.type].creationEvent}`,
       description: request.text,
       showFooter: true,
@@ -114,9 +116,11 @@ export function getModerationEvents(question, usersById) {
     const moderator = usersById[review.moderator_id];
     const moderatorDisplayName = moderator ? moderator.common_name : t`Someone`;
     const text = MODERATION_TEXT[review.status].creationEvent;
+    const { icon } = getModerationStatusIcon(review.status);
+
     return {
       timestamp: new Date(review.created_at).valueOf(),
-      icon: getModerationStatusIcon(review.status),
+      icon,
       title: `${moderatorDisplayName} ${text}`,
       description: review.text,
     };
