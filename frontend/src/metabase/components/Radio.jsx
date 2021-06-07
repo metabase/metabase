@@ -8,35 +8,35 @@ import { space } from "styled-system";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
-export default class Radio extends Component {
-  static propTypes = {
-    name: PropTypes.string,
-    value: PropTypes.any,
-    options: PropTypes.array.isRequired,
-    onChange: PropTypes.func,
-    optionNameFn: PropTypes.func,
-    optionValueFn: PropTypes.func,
-    optionKeyFn: PropTypes.func,
-    showButtons: PropTypes.bool,
-    xspace: PropTypes.number,
-    yspace: PropTypes.number,
-    py: PropTypes.number,
+const propTypes = {
+  name: PropTypes.string,
+  value: PropTypes.any,
+  options: PropTypes.array.isRequired,
+  onChange: PropTypes.func,
+  optionNameFn: PropTypes.func,
+  optionValueFn: PropTypes.func,
+  optionKeyFn: PropTypes.func,
+  showButtons: PropTypes.bool,
+  xspace: PropTypes.number,
+  yspace: PropTypes.number,
+  py: PropTypes.number,
 
-    // Modes
-    bubble: PropTypes.bool,
-    vertical: PropTypes.bool,
-    underlined: PropTypes.bool,
-  };
+  // Modes
+  bubble: PropTypes.bool,
+  vertical: PropTypes.bool,
+  underlined: PropTypes.bool,
+};
 
-  static defaultProps = {
-    optionNameFn: option => option.name,
-    optionValueFn: option => option.value,
-    optionKeyFn: option => option.value,
-    bubble: false,
-    vertical: false,
-    underlined: false,
-  };
+const defaultProps = {
+  optionNameFn: option => option.name,
+  optionValueFn: option => option.value,
+  optionKeyFn: option => option.value,
+  bubble: false,
+  vertical: false,
+  underlined: false,
+};
 
+class Radio extends Component {
   constructor(props, context) {
     super(props, context);
     this._id = _.uniqueId("radio-");
@@ -110,6 +110,11 @@ export default class Radio extends Component {
     );
   }
 }
+
+Radio.propTypes = propTypes;
+Radio.defaultProps = defaultProps;
+
+export default Radio;
 
 // BASE components all variants inherit from
 const BaseList = styled.ul`
