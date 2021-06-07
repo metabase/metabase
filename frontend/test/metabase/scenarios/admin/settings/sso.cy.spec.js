@@ -80,7 +80,7 @@ describe("scenarios > admin > settings > SSO", () => {
       cy.visit("/admin/settings/authentication/jwt");
     });
 
-    it.skip("should save JWT without an error (metabase#16378)", () => {
+    it("should save JWT without an error (metabase#16378)", () => {
       cy.intercept("PUT", "/api/**").as("update");
 
       cy.findByText("JWT Authentication")
