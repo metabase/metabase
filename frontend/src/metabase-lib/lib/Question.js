@@ -689,6 +689,10 @@ export default class Question {
     return this._card && this._card.description;
   }
 
+  lastEditInfo() {
+    return this._card && this._card["last-edit-info"];
+  }
+
   isSaved(): boolean {
     return !!this.id();
   }
