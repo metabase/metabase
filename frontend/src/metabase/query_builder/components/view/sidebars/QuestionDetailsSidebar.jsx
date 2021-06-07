@@ -112,14 +112,19 @@ function parseViewFromQueryParams(queryParams = {}, question) {
     const request = _.findWhere(requests, {
       id: Number(queryParams.moderationRequest),
     });
-    return {
-      name: SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL,
-      props: {
-        requests: [request],
-      },
-      previousView: undefined,
-    };
+
+    // `request` might not exist if the previous `question` stored in state hasn't yet been replaced
+    if (request) {
+      return {
+        name: SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL,
+        props: {
+          requests: [request],
+        },
+        previousView: undefined,
+      };
+    }
   }
+
   return {
     name: undefined,
     props: undefined,
