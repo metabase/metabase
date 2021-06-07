@@ -121,7 +121,11 @@ function BaseItemsTable({
         <col span="1" style={{ width: "2%" }} />
       </colgroup>
       {!headless && (
-        <thead>
+        <thead
+          data-testid={
+            isPinned ? "pinned-items-table-head" : "items-table-head"
+          }
+        >
           <tr>
             <SortableColumnHeader
               name="model"

@@ -85,7 +85,7 @@ export function BaseTableItem({
     // So styled-components can't be used here
     return (
       <tr key={item.id} data-testid={testId} style={trStyles}>
-        <td>
+        <td data-testid={`${testId}-type`}>
           <EntityIconCheckBox
             item={item}
             variant="list"
@@ -96,15 +96,15 @@ export function BaseTableItem({
             onToggleSelected={handleSelectionToggled}
           />
         </td>
-        <td>
+        <td data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} />
           </ItemLink>
         </td>
-        <td>
+        <td data-testid={`${testId}-last-edited-by`}>
           <TableItemSecondaryField>{lastEditedBy}</TableItemSecondaryField>
         </td>
-        <td>
+        <td data-testid={`${testId}-last-edited-at`}>
           {lastEditInfo && (
             <Tooltip tooltip={<DateTime value={lastEditInfo.timestamp} />}>
               <TableItemSecondaryField>{lastEditedAt}</TableItemSecondaryField>
