@@ -16,6 +16,7 @@ import AuthenticationOption from "metabase/admin/settings/components/widgets/Aut
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 
+import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
 
@@ -235,6 +236,23 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
       },
       {
         key: "jwt-group-mappings",
+      },
+    ],
+  },
+}));
+
+PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
+  ...sections,
+  "authentication/google2": {
+    component: SettingsGoogleForm,
+    sidebar: false,
+    settings: [
+      {
+        key: "google-auth-client-id",
+      },
+      {
+        key: "google-auth-auto-create-accounts-domain",
+        description: "Test enterprise description"
       },
     ],
   },

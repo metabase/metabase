@@ -70,8 +70,13 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     component: SettingsGoogleForm,
     sidebar: false,
     settings: [
-      { key: "google-auth-client-id" },
-      { key: "google-auth-auto-create-accounts-domain" },
+      {
+        key: "google-auth-client-id",
+      },
+      {
+        key: "google-auth-auto-create-accounts-domain",
+        description: "Test open source description"
+      },
     ],
   },
 }));
