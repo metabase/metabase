@@ -1,4 +1,12 @@
 (ns metabase.models.setting.multi-setting
+  "Helper macros for defining Settings that can have multiple getter/setter implementations. The implementation that
+  gets used is determined at runtime when the getter or setter is invoked by a dispatch function.
+
+  This functionality was originally intended to facilitate separate EE and OSS versions of Settings, but rather than
+  restrict the impls to just `:oss` and `:ee`, these macros allow an arbitrary dispatch function and any number of
+  implementations.
+
+  See PR #16365 for more context."
   (:require [metabase.models.setting :as setting]
             [metabase.util.i18n :refer [tru]]))
 
