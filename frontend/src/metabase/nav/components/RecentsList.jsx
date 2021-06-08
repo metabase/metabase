@@ -18,8 +18,8 @@ export default function RecentsList() {
   return (
     <Recents.ListLoader wrapped reload>
       {({ list }) => (
-        <Card>
-          <Box p={3}>
+        <Card py={1}>
+          <Box px={2} py={1}>
             <h4>{t`Recently viewed`}</h4>
           </Box>
           <ol>
