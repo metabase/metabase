@@ -414,11 +414,10 @@ describe("scenarios > question > custom columns", () => {
     it("should relay the type of a date field", () => {
       openPeopleTable({ mode: "notebook" });
       cy.findByText("Custom column").click();
-      popover().within(() => {
-        _typeUsingGet("[contenteditable='true']", "[Birth Date]", 400);
-        _typeUsingPlaceholder("Something nice and descriptive", "DoB");
-        cy.findByText("Done").click();
-      });
+
+      enterCustomColumnDetails({ formula: "[Birth Date]", name: "DoB" });
+      cy.findByText("Done").click();
+
       cy.findByText("Filter").click();
       popover()
         .findByText("DoB")
