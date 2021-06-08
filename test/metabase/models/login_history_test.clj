@@ -8,6 +8,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.server.request.util :as request.u]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -53,7 +54,7 @@
                           (fn [login-history]
                             (when-let [futur (original-maybe-send login-history)]
                               ;; block in tests
-                              (deref futur)))]
+                              (u/deref-with-timeout futur 10000)))]
               (mt/with-temp* [LoginHistory [_ {:user_id   user-id
                                                :device_id (str (java.util.UUID/randomUUID))}]
                               LoginHistory [_ {:user_id   user-id
