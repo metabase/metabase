@@ -28,7 +28,12 @@ describe("scenarios > setup", () => {
       // ========
 
       cy.findByText("What's your preferred language?");
-      cy.findByText("English").click();
+
+      // We use aria here because, if we did `cy.findByText("English")`,
+      // local runs of this test in computers not using English as their
+      // main language will show the language names in other languages.
+      // That is, if your computer is in French, it would show "Anglais",
+      cy.get(`[aria-language="en"]`).click();
       cy.findByText("Next").click();
 
       // ====

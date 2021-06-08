@@ -67,6 +67,7 @@ export default class LanguageStep extends React.Component {
               ).map(([code, name]) => (
                 <li
                   key={code}
+                  aria-language={code}
                   className={cx(
                     "p1 rounded bg-brand-hover text-white-hover cursor-pointer",
                     {
