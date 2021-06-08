@@ -248,7 +248,7 @@ describe("scenarios > collection_defaults", () => {
     });
   });
 
-  describe("pagination and filtering", () => {
+  describe("pagination", () => {
     const PAGE_SIZE = 25;
     const ADDED_QUESTIONS = 13;
     const ADDED_DASHBOARDS = 12;
@@ -299,25 +299,6 @@ describe("scenarios > collection_defaults", () => {
       // First page
       cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-    });
-
-    it("should allow to filter by item type", () => {
-      cy.visit("/collection/root");
-
-      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-
-      cy.findByText("Dashboards").click();
-      cy.findAllByTestId("collection-entry").should("have.length", 13);
-
-      cy.findByText("Questions").click();
-      cy.findAllByTestId("collection-entry").should("have.length", 16);
-
-      cy.findByText("Pulses").click();
-      cy.findAllByTestId("collection-entry").should("have.length", 0);
-
-      cy.findByText("Everything").click();
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
     });
   });
@@ -610,7 +591,7 @@ describe("scenarios > collection_defaults", () => {
       });
 
       it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
-        cy.findByText(/Pinned items/i);
+        cy.findByTestId("pinned-items");
         selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
         cy.findByText("1 item selected");
       });
@@ -646,14 +627,14 @@ function openDropdownFor(collectionName) {
 
 function openEllipsisMenuFor(item) {
   cy.findByText(item)
-    .closest("a")
+    .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
 }
 
 function selectItemUsingCheckbox(item, icon = "table") {
   cy.findByText(item)
-    .closest("a")
+    .closest("tr")
     .within(() => {
       cy.icon(icon).trigger("mouseover");
       cy.findByRole("checkbox")

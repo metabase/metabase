@@ -2,7 +2,6 @@
 import React, { useState, useCallback } from "react";
 import { Box } from "grid-styled";
 import _ from "underscore";
-import { withRouter } from "react-router";
 import { connect } from "react-redux";
 
 import Collection from "metabase/entities/collections";
@@ -11,9 +10,10 @@ import Search from "metabase/entities/search";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import BulkActions from "metabase/collections/components/BulkActions";
+import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import Header from "metabase/collections/components/Header";
-import ItemList from "metabase/collections/components/ItemList";
-import PinnedItems from "metabase/collections/components/PinnedItems";
+import ItemsTable from "metabase/collections/components/ItemsTable";
+import PinnedItemsTable from "metabase/collections/components/PinnedItemsTable";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -23,17 +23,7 @@ import { useListSelect } from "metabase/hooks/use-list-select";
 
 const PAGE_SIZE = 25;
 
-const MIN_ITEMS_TO_SHOW_FILTERS = 5;
-
 const ALL_MODELS = ["dashboard", "card", "snippet", "pulse"];
-
-const getModelsByFilter = filter => {
-  if (!filter) {
-    return ALL_MODELS;
-  }
-
-  return [filter];
-};
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
@@ -43,19 +33,10 @@ function mapStateToProps(state) {
   };
 }
 
-function CollectionContent({
-  collection,
-  collectionId,
-
-  isAdmin,
-  isRoot,
-  location,
-  router,
-}) {
+function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
-  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
-  const [filter, setFilter] = useState(location.query.type || null);
+  const { handleNextPage, handlePreviousPage, page } = usePagination();
   const {
     selected,
     toggleItem,
@@ -106,22 +87,9 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
-  const handleFilterChange = useCallback(
-    type => {
-      router.push({
-        pathname: location.pathname,
-        search: type ? "?" + new URLSearchParams({ type }).toString() : null,
-      });
-
-      setFilter(type);
-      setPage(0);
-    },
-    [location.pathname, router, setPage],
-  );
-
   const unpinnedQuery = {
     collection: collectionId,
-    models: getModelsByFilter(filter),
+    models: ALL_MODELS,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     pinned_state: "is_not_pinned",
@@ -139,9 +107,11 @@ function CollectionContent({
           (a, b) => a.collection_position - b.collection_position,
         );
 
+        const hasPinnedItems = pinnedItems.length > 0;
+
         return (
           <Box pt={2}>
-            <Box w={"80%"} ml="auto" mr="auto">
+            <Box w="90%" ml="auto" mr="auto">
               <Header
                 isRoot={isRoot}
                 isAdmin={isAdmin}
@@ -149,22 +119,22 @@ function CollectionContent({
                 collection={collection}
               />
 
-              <PinnedItems
-                items={sortedPinnedItems}
-                collection={collection}
-                selected={selected}
-                getIsSelected={getIsSelected}
-                onDrop={clear}
-                onToggleSelected={toggleItem}
-                onMove={handleMove}
-                onCopy={handleCopy}
-              />
+              {hasPinnedItems && (
+                <PinnedItemsTable
+                  items={sortedPinnedItems}
+                  collection={collection}
+                  selected={selected}
+                  getIsSelected={getIsSelected}
+                  onDrop={clear}
+                  onToggleSelected={toggleItem}
+                  onMove={handleMove}
+                  onCopy={handleCopy}
+                />
+              )}
 
               <Search.ListLoader query={unpinnedQuery} wrapped>
                 {({ list: unpinnedItems, metadata }) => {
                   const hasPagination = metadata.total > PAGE_SIZE;
-                  const showFilters =
-                    filter || unpinnedItems.length >= MIN_ITEMS_TO_SHOW_FILTERS;
 
                   const unselected = unpinnedItems.filter(
                     item => !getIsSelected(item),
@@ -172,26 +142,29 @@ function CollectionContent({
                   const hasUnselected = unselected.length > 0;
 
                   const handleSelectAll = () => {
-                    const pinnedUnselcted = pinnedItems.filter(
+                    const pinnedUnselected = pinnedItems.filter(
                       item => !getIsSelected(item),
                     );
-                    toggleAll([...unselected, ...pinnedUnselcted]);
+                    toggleAll([...unselected, ...pinnedUnselected]);
                   };
 
+                  if (!hasPinnedItems && unpinnedItems.length === 0) {
+                    return (
+                      <Box mt="120px">
+                        <CollectionEmptyState />
+                      </Box>
+                    );
+                  }
+
                   return (
-                    <React.Fragment>
-                      <ItemList
-                        filter={filter}
+                    <Box mt={hasPinnedItems ? 3 : 0}>
+                      <ItemsTable
                         items={unpinnedItems}
-                        empty={unpinnedItems.length === 0}
-                        showFilters={showFilters}
                         selected={selected}
                         getIsSelected={getIsSelected}
                         collection={collection}
                         onToggleSelected={toggleItem}
                         onDrop={clear}
-                        collectionHasPins={pinnedItems.length > 0}
-                        onFilterChange={handleFilterChange}
                         onMove={handleMove}
                         onCopy={handleCopy}
                       />
@@ -221,7 +194,7 @@ function CollectionContent({
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
                       />
-                    </React.Fragment>
+                    </Box>
                   );
                 }}
               </Search.ListLoader>
@@ -240,5 +213,4 @@ export default _.compose(
     reload: true,
   }),
   connect(mapStateToProps),
-  withRouter,
 )(CollectionContent);
