@@ -4,8 +4,10 @@ import { Box, Flex } from "grid-styled";
 import Recents from "metabase/entities/recents";
 
 import Card from "metabase/components/Card";
+import Text from "metabase/components/type/Text";
 
 import * as Urls from "metabase/lib/urls";
+import { capitalize } from "metabase/lib/formatting";
 
 import {
   ResultLink,
@@ -30,6 +32,7 @@ export default function RecentsList() {
                     <ItemIcon item={l} type={l.model} />
                     <Box>
                       <Title>{l.model_object.name}</Title>
+                      <Text>{capitalize(l.model === "card" ? `question` : l.model)}</Text>
                     </Box>
                   </Flex>
                 </ResultLink>
