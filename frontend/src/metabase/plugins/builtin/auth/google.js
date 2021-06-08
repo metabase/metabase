@@ -46,12 +46,13 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     settings: [
       {
         key: "google-auth-client-id",
-        description: ""
+        description: "",
       },
       {
         key: "google-auth-auto-create-accounts-domain",
-        description: "Allow users to sign up on their own if their Google account email address is from:",
-        placeholder: "mycompany.com"
+        description:
+          "Allow users to sign up on their own if their Google account email address is from:",
+        placeholder: "mycompany.com",
       },
     ],
   },

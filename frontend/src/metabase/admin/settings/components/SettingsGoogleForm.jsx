@@ -23,9 +23,11 @@ const settingToFormField = setting => ({
   validate: setting.required ? value => !value && "required" : null,
 });
 
-@connect(null, { updateSettings })
+@connect(
+  null,
+  { updateSettings },
+)
 export default class SettingsGoogleForm extends Component {
-
   render() {
     const { elements, settingValues, updateSettings } = this.props;
 
@@ -42,34 +44,34 @@ export default class SettingsGoogleForm extends Component {
         initialValues={initialValues}
         onSubmit={updateSettings}
       >
-          <Breadcrumbs
-            crumbs={[
-              [t`Authentication`, "/admin/settings/authentication"],
-              [t`Google Sign-In`],
-            ]}
-            className="mb2"
-          />
-          <h2>{t`Sign in with Google`}</h2>
-          <p className="text-medium">
-            {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
-          </p>
-          <p className="text-medium">
-            {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
-              <ExternalLink
-                href="https://developers.google.com/identity/sign-in/web/devconsole-project"
-                target="_blank"
-              >
-                {t`here`}
-              </ExternalLink>
-            )}.`}
-          </p>
-          <FormField
-            {...settingField("google-auth-client-id")}
-            title={t`Client ID`}
-            placeholder="{your-client-id}.apps.googleusercontent.com"
-            required
-            autoFocus
-          />
+        <Breadcrumbs
+          crumbs={[
+            [t`Authentication`, "/admin/settings/authentication"],
+            [t`Google Sign-In`],
+          ]}
+          className="mb2"
+        />
+        <h2>{t`Sign in with Google`}</h2>
+        <p className="text-medium">
+          {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
+        </p>
+        <p className="text-medium">
+          {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
+            <ExternalLink
+              href="https://developers.google.com/identity/sign-in/web/devconsole-project"
+              target="_blank"
+            >
+              {t`here`}
+            </ExternalLink>
+          )}.`}
+        </p>
+        <FormField
+          {...settingField("google-auth-client-id")}
+          title={t`Client ID`}
+          placeholder="{your-client-id}.apps.googleusercontent.com"
+          required
+          autoFocus
+        />
         <FormField
           {...settingField("google-auth-auto-create-accounts-domain")}
           title={t`Domain`}
