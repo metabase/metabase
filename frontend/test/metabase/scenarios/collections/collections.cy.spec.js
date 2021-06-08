@@ -638,6 +638,35 @@ describe("scenarios > collection_defaults", () => {
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
         });
       });
+
+      describe("move", () => {
+        it("should be possible to bulk move items", () => {
+          cy.visit("/collection/root");
+          selectItemUsingCheckbox("Orders");
+          selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
+
+          cy.findByTestId("bulk-action-bar")
+            .findByRole("button", { name: "Move" })
+            .click();
+
+          modal().within(() => {
+            cy.findByText("First collection").click();
+            cy.findByRole("button", { name: "Move" }).click();
+          });
+
+          // Check exited bulk actions mode
+          cy.findByText("Orders").should("not.exist");
+          cy.findByText("Orders in a dashboard").should("not.exist");
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+
+          // Check items are actually moved
+          sidebar()
+            .findByText("First collection")
+            .click();
+          cy.findByText("Orders");
+          cy.findByText("Orders in a dashboard");
+        });
+      });
     });
   });
 });
