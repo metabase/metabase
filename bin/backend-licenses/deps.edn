@@ -1,9 +1,7 @@
-{:paths ["src"]
+{:paths ["src" "resources"]
 
  :deps
- {common/common        {:local/root "../common"}
-  cheshire/cheshire    {:mvn/version "5.8.1"}
-  org.clojure/data.xml {:mvn/version "0.0.8"}}
+ {org.clojure/data.xml {:mvn/version "0.2.0-alpha6"}}
 
  :aliases
  {:test {:extra-paths ["test"]
