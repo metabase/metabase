@@ -42,14 +42,19 @@
 ;; Every SQLite3 file starts with "SQLite Format 3"
 ;; or "** This file contains an SQLite
 ;; There is also SQLite2 but last 2 version was 2005
-(defmethod driver/can-connect? :sqlite
-  [driver details]
-  (with-open [reader (io/input-stream (:db details))]
+(defn- confirm-file-is-sqlite [filename]
+  (with-open [reader (io/input-stream filename)]
     (let [outarr (byte-array 50)]
       (.read reader outarr)
       (let [line (String. outarr)]
         (or (str/includes? line "SQLite format 3")
             (str/includes? line "This file contains an SQLite"))))))
+
+(defmethod driver/can-connect? :sqlite
+  [driver details]
+  (if (confirm-file-is-sqlite (:db details))
+    (sql-jdbc.conn/can-connect? driver details)
+    false ))
 
 (defmethod driver/db-start-of-week :sqlite
   [_]
