@@ -166,16 +166,13 @@ function CollectionContent({
                   const showFilters =
                     filter || unpinnedItems.length >= MIN_ITEMS_TO_SHOW_FILTERS;
 
-                  const unselected = unpinnedItems.filter(
+                  const unselected = [...pinnedItems, ...unpinnedItems].filter(
                     item => !getIsSelected(item),
                   );
                   const hasUnselected = unselected.length > 0;
 
                   const handleSelectAll = () => {
-                    const pinnedUnselcted = pinnedItems.filter(
-                      item => !getIsSelected(item),
-                    );
-                    toggleAll([...unselected, ...pinnedUnselcted]);
+                    toggleAll(unselected);
                   };
 
                   return (
