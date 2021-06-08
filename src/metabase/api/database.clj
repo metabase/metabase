@@ -22,6 +22,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
+            [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.field-values :as sync-field-values]
             [metabase.sync.schedules :as sync.schedules]
@@ -165,8 +166,15 @@
     (cond-> dbs
       (and (source-query-cards-exist?) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
-(defn- dbs-list [& {:keys [include-tables? include-saved-questions-db? include-saved-questions-tables?]}]
-  (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
+(defn- dbs-list [& {:keys [include-tables?
+                           include-saved-questions-db?
+                           include-saved-questions-tables?
+                           limit
+                           offset]}]
+  (when-let [dbs (seq (filter mi/can-read? (db/select Database
+                                                      {:order-by [:%lower.name :%lower.engine]
+                                                       :limit limit
+                                                       :offset offset})))]
     (cond-> (add-native-perms-info dbs)
       include-tables?             add-tables
       include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
@@ -210,10 +218,15 @@
                                           (if (seq include_cards)
                                             true
                                             include-tables?))]
-    (or (dbs-list :include-tables?                  include-tables?
-                  :include-saved-questions-db?      include-saved-questions-db?
-                  :include-saved-questions-tables?  include-saved-questions-tables?)
-        [])))
+    {:data  (or (dbs-list :include-tables?                  include-tables?
+                          :include-saved-questions-db?      include-saved-questions-db?
+                          :include-saved-questions-tables?  include-saved-questions-tables?
+                          :limit                            offset-paging/*limit*
+                          :offset                           offset-paging/*offset*)
+                [])
+     :limit  offset-paging/*limit*
+     :offset offset-paging/*offset*
+     :total  (db/count Database)}))
 
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------

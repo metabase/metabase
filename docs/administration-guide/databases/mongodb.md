@@ -6,7 +6,7 @@ This article covers:
 - [Configuring SSL via the command line](#configuring-ssl-via-the-command-line).
 - [Connecting to a MongoDB Atlas cluster](#connecting-to-a-mongodb-atlas-cluster).
 - [General connectivity concerns](#general-connectivity-concerns).
-- [I added fields to my database but don't see them in Metabase](#i-added-fields-to-my-database-but-don't-see-them-in-metabase).
+- [I added fields to my database but don't see them in Metabase](#i-added-fields-to-my-database-but-dont-see-them-in-metabase).
 
 ## How does MongoDB work in Metabase
 
