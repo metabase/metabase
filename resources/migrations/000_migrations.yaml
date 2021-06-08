@@ -8387,30 +8387,18 @@ databaseChangeLog:
   - changeSet:
       id: 311
       author: howonlee
-      comment: Added 0.40.0 Migrate friendly field names, not noop, mysql only
-      dbms: mysql,mariadb
+      comment: Added 0.40.0 Migrate friendly field names, not noop
       changes:
-        - update:
-            tableName: setting
-            columns:
-              - column:
-                  name: value
-                  value: 'simple'
-            where: "`key`='humanization-strategy' AND value='advanced'"
-
-  - changeSet:
-      id: 312
-      author: howonlee
-      comment: Added 0.40.0 Migrate friendly field names, not noop, not mysql
-      dbms: postgresql,h2
-      changes:
-        - update:
-            tableName: setting
-            columns:
-              - column:
-                  name: value
-                  value: 'simple'
-            where: key='humanization-strategy' AND value='advanced'
+        - sql:
+            dbms: mariadb,mysql
+            sql: |
+                UPDATE setting SET value='simple' WHERE `key`='humanization-strategy'
+                AND value='advanced'
+        - sql:
+            dbms: postgresql,h2
+            sql: |
+                UPDATE setting SET value='simple' WHERE key='humanization-strategy'
+                AND value='advanced'
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
