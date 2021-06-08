@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 
 import { registerVisualization } from "metabase/visualizations/index";
 
@@ -9,6 +9,7 @@ import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 import Table from "metabase/visualizations/visualizations/Table";
 
 import EmptyState from "metabase/components/EmptyState";
+import Icon from "metabase/components/Icon";
 
 import NoResults from "assets/img/no_results.svg";
 
@@ -16,6 +17,21 @@ import { t } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
+
+const getColumnName = column => column.remapped_to || column.name;
+
+const propTypes = {
+  series: PropTypes.array,
+  visualizationIsClickable: PropTypes.func,
+  onVisualizationClick: PropTypes.func,
+  onSortingChange: PropTypes.func,
+  settings: PropTypes.object,
+  isSortable: PropTypes.bool,
+  sorting: PropTypes.shape({
+    column: PropTypes.string.isRequired,
+    isAscending: PropTypes.bool.isRequired,
+  }),
+};
 
 export default class AuditTableVisualization extends React.Component {
   static identifier = "audit-table";
@@ -26,6 +42,21 @@ export default class AuditTableVisualization extends React.Component {
   static settings = Table.settings;
   static columnSettings = Table.columnSettings;
 
+  handleColumnHeaderClick = column => {
+    const { isSortable, onSortingChange, sorting } = this.props;
+
+    if (!isSortable || !onSortingChange) {
+      return;
+    }
+
+    const columnName = getColumnName(column);
+
+    onSortingChange({
+      column: columnName,
+      isAscending: columnName !== sorting.column || !sorting.isAscending,
+    });
+  };
+
   render() {
     const {
       series: [
@@ -33,6 +64,7 @@ export default class AuditTableVisualization extends React.Component {
           data: { cols, rows },
         },
       ],
+      sorting,
       visualizationIsClickable,
       onVisualizationClick,
       settings,
@@ -55,16 +87,31 @@ export default class AuditTableVisualization extends React.Component {
       <table className="ContentTable">
         <thead>
           <tr>
-            {columnIndexes.map(colIndex => (
-              <th
-                key={colIndex}
-                className={cx({
-                  "text-right": isColumnRightAligned(cols[colIndex]),
-                })}
-              >
-                {formatColumn(cols[colIndex])}
-              </th>
-            ))}
+            {columnIndexes.map(colIndex => {
+              const column = cols[colIndex];
+              const isSortedByColumn =
+                sorting && sorting.column === getColumnName(column);
+
+              return (
+                <th
+                  key={colIndex}
+                  onClick={() => this.handleColumnHeaderClick(column)}
+                  className={cx("text-nowrap", {
+                    "text-right": isColumnRightAligned(column),
+                    "text-brand": isSortedByColumn,
+                  })}
+                >
+                  {formatColumn(cols[colIndex])}
+                  {isSortedByColumn && (
+                    <Icon
+                      className="ml1"
+                      name={sorting.isAscending ? "chevronup" : "chevrondown"}
+                      size={10}
+                    />
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
@@ -76,6 +123,7 @@ export default class AuditTableVisualization extends React.Component {
                 const clicked = { column, value, origin: { row, cols } };
                 const clickable = visualizationIsClickable(clicked);
                 const columnSettings = settings.column(column);
+
                 return (
                   <td
                     key={colIndex}
@@ -106,5 +154,7 @@ export default class AuditTableVisualization extends React.Component {
     );
   }
 }
+
+AuditTableVisualization.propTypes = propTypes;
 
 registerVisualization(AuditTableVisualization);

@@ -8,6 +8,7 @@
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [honeysql.helpers :as h]
+            [java-time :as t]
             [medley.core :as m]
             [metabase-enterprise.audit.query-processor.middleware.handle-audit-queries :as qp.middleware.audit]
             [metabase.db :as mdb]
@@ -201,6 +202,17 @@
   [expr]
   (hsql/call :case [:not= expr nil] expr :else 0))
 
+(defn lowercase-field
+  "Lowercase a SQL field, to enter into honeysql query"
+  [field]
+  (keyword (str "%lower." (name field))))
+
+(defn add-45-days-clause
+  "Add an appropriate `WHERE` clause to limit query to 45 days"
+  [query date_column]
+  (h/merge-where query [:>
+                        (hx/cast :date date_column)
+                        (hx/cast :date (hx/literal (t/format "yyyy-MM-dd" (t/minus (t/local-date) (t/days 45)))))]))
 
 (defn add-search-clause
   "Add an appropriate `WHERE` clause to `query` to see if any of the `fields-to-search` match `query-string`.
@@ -212,7 +224,14 @@
                            (cons
                             :or
                             (for [field fields-to-search]
-                              [:like (keyword (str "%lower." (name field))) query-string]))))))
+                              [:like (lowercase-field field) query-string]))))))
+
+(defn add-sort-clause
+  "Add an `ORDER BY` clause to `query` on `sort-column` and `sort-direction`.
+
+  Most queries will just have explicit default `ORDER BY` clauses"
+  [query sort-column sort-direction]
+  (h/merge-order-by query [(keyword sort-column) (keyword sort-direction)]))
 
 (defn card-public-url
   "Return HoneySQL for a `CASE` statement to return a Card's public URL if the `public_uuid` `field` is non-NULL."
