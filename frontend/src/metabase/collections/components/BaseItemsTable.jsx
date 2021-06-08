@@ -19,11 +19,7 @@ BaseItemsTable.propTypes = {
 
 function defaultItemRenderer({ item, ...props }) {
   return (
-    <BaseTableItem.Item
-      key={`${item.model}-${item.id}`}
-      item={item}
-      {...props}
-    />
+    <BaseTableItem key={`${item.model}-${item.id}`} item={item} {...props} />
   );
 }
 
