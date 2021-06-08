@@ -7,7 +7,7 @@ import EntityItem from "metabase/components/EntityItem";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 import {
-  EntityIcon,
+  EntityIconCheckBox,
   ItemLink,
   TableRow,
   TableItemSecondaryField,
@@ -64,7 +64,7 @@ export function BaseTableItem({
   return (
     <TableRow key={item.id} data-testid={testId}>
       <td>
-        <EntityIcon
+        <EntityIconCheckBox
           item={item}
           variant="list"
           iconName={item.getIcon()}

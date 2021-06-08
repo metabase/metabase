@@ -12,7 +12,7 @@ import Icon from "metabase/components/Icon";
 
 import { EntityIconWrapper, EntityItemWrapper } from "./EntityItem.styled";
 
-function EntityItemIcon({
+function EntityIconCheckBox({
   item,
   variant,
   iconName,
@@ -149,7 +149,7 @@ const EntityItem = ({
         "bg-light-hover": variant === "list",
       })}
     >
-      <EntityItemIcon
+      <EntityIconCheckBox
         item={item}
         variant={variant}
         iconName={iconName}
@@ -193,7 +193,7 @@ EntityItem.defaultProps = {
   selectable: false,
 };
 
-EntityItem.Icon = EntityItemIcon;
+EntityItem.IconCheckBox = EntityIconCheckBox;
 EntityItem.Name = EntityItemName;
 EntityItem.Menu = EntityItemMenu;
 

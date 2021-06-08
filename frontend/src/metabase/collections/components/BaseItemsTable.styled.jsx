@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import EntityItem from "metabase/components/EntityItem";
 import Link from "metabase/components/Link";
 
-export const EntityIcon = styled(EntityItem.Icon)`
+export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
   width: 3em;
   height: 3em;
 `;
