@@ -327,7 +327,8 @@
     {$match {$expr {$eq [$field rvalue]}}}"
   [rvalue]
   (or (rvalue-is-field? rvalue)
-      (not (map? rvalue))))
+      (and (not (map? rvalue))
+           (not (instance? java.util.regex.Pattern rvalue)))))
 
 (defn- filter-expr [operator field value]
   (let [field-rvalue (->rvalue field)
@@ -336,11 +337,15 @@
              (rvalue-can-be-compared-directly? value-rvalue))
       ;; if we don't need to do anything fancy with field we can generate a clause like
       ;;
-      ;;    {field {$eq 100}}
-      {(str/replace-first field-rvalue #"^\$" "") {operator value-rvalue}}
+      ;;    {field {$lte 100}}
+      {(str/replace-first field-rvalue #"^\$" "")
+       ;; for the $eq operator we actually don't need to do {field {$eq 100}}, we can just do {field 100}
+       (if (= (name operator) "$eq")
+         value-rvalue
+         {operator value-rvalue})}
       ;; if we need to do something fancy then we have to use `$expr` e.g.
       ;;
-      ;;    {$expr {$eq [{$add [$field 1]} 100]}}
+      ;;    {$expr {$lte [{$add [$field 1]} 100]}}
       {:$expr {operator [field-rvalue value-rvalue]}})))
 
 (defmethod compile-filter :=  [[_ field value]] (filter-expr $eq field value))
@@ -409,9 +414,9 @@
 (defmethod compile-cond :ends-with
   [[_ field value opts]]
   (let [strcmp (fn [a b]
-                 (if (get opts :case-sensitive true)
-                   {$eq [a b]}
-                   {$eq [{$strcasecmp [a b]} 0]}))]
+                 {$eq (if (get opts :case-sensitive true)
+                        [a b]
+                        [{$strcasecmp [a b]} 0])})]
     (strcmp {:$substrCP [(->rvalue field)
                          {$subtract [{:$strLenCP (->rvalue field)}
                                      {:$strLenCP (->rvalue value)}]}
