@@ -295,11 +295,6 @@
   {:arglists '([clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(def ^:private ^:dynamic *top-level-filter?*
-  "Whether we are compiling a top-level filter clause. This means we can generate somewhat simpler `$match` clauses that
-  don't need to use `$expr` (see below)."
-  true)
-
 (defmethod compile-filter :between
   [[_ field min-val max-val]]
   (compile-filter [:and
@@ -325,12 +320,10 @@
 (defn- filter-expr [operator field value]
   (let [field-rvalue (->rvalue field)
         value-rvalue (->rvalue value)]
-    (if (and (simple-rvalue? field-rvalue) *top-level-filter?*)
+    (if (simple-rvalue? field-rvalue)
       ;; if we don't need to do anything fancy with field we can generate a clause like
       ;;
       ;;    {field {$eq 100}}
-      ;;
-      ;; this only works at the top level. Doesn't work inside compound expressions
       {(str/replace-first field-rvalue #"^\$" "") {operator value-rvalue}}
       ;; if we need to do something fancy then we have to use `$expr` e.g.
       ;;
@@ -346,13 +339,11 @@
 
 (defmethod compile-filter :and
   [[_ & args]]
-  (binding [*top-level-filter?* false]
-    {$and (mapv compile-filter args)}))
+  {$and (mapv compile-filter args)})
 
 (defmethod compile-filter :or
   [[_ & args]]
-  (binding [*top-level-filter?* false]
-    {$or (mapv compile-filter args)}))
+  {$or (mapv compile-filter args)})
 
 
 ;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
