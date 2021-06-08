@@ -614,6 +614,29 @@ describe("scenarios > collection_defaults", () => {
         selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
         cy.findByText("1 item selected");
       });
+
+      it("should be possible to select pinned items for bulk operations when all items are pinned (metabase#16497)", () => {
+        // Pinning one more item and moving them to another collection, so they are the only items there
+        openEllipsisMenuFor("Orders");
+        cy.findByText("Pin this item").click();
+        selectItemUsingCheckbox("Orders");
+        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
+        cy.findByTestId("bulk-action-bar")
+          .findByRole("button", { name: "Move" })
+          .click();
+        modal().within(() => {
+          cy.findByText("First collection").click();
+          cy.findByRole("button", { name: "Move" }).click();
+        });
+        sidebar()
+          .findByText("First collection")
+          .click();
+
+        selectItemUsingCheckbox("Orders");
+        cy.icon("dash").click();
+        cy.icon("dash").should("not.exist");
+        cy.findByText("2 items selected");
+      });
     });
   });
 });
