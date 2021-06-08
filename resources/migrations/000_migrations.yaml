@@ -8471,50 +8471,6 @@ databaseChangeLog:
               WHERE base_type IN ('ArrayField', 'BigIntegerField', 'BooleanField', 'CharField', 'DateField',
                                   'DateTimeField', 'DecimalField', 'DictionaryField', 'FloatField', 'IntegerField',
                                   'TextField', 'TimeField', 'UUIDField', 'UnknownField');
-  - changeSet:
-      id: 308
-      author: howonlee
-      comment: Added 0.40.0 Track cache hits in query_execution table
-      changes:
-        - addColumn:
-            tableName: query_execution
-            columns:
-              - column:
-                  name: cache_hit
-                  type: boolean
-                  remarks: "Cache hit on query execution"
-                  constraints:
-                    nullable: true
-
-
-  - changeSet:
-      id: 309
-      author: dpsutton
-      comment: 'Added 0.40.0 - Add type to collections'
-      changes:
-        - addColumn:
-            tableName: collection
-            columns:
-              - column:
-                  name: authority_level
-                  type: varchar(255)
-                  remarks: 'Nullable column to incidate collection''s authority level. Initially values are "official" and nil.'
-                  constraints:
-                    nullable: true
-
-
-  - changeSet:
-      id: 310
-      author: howonlee
-      comment: Added 0.40.0 Migrate friendly field names
-      changes:
-        - update:
-            tableName: setting
-            columns:
-              - column:
-                  name: value
-                  value: 'simple'
-            where: "'key'='humanization-strategy' AND value='advanced'"
 
   - changeSet:
       id: 307
@@ -8570,6 +8526,51 @@ databaseChangeLog:
                   remarks: "ID of the user who made the comment"
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: 308
+      author: howonlee
+      comment: Added 0.40.0 Track cache hits in query_execution table
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: cache_hit
+                  type: boolean
+                  remarks: "Cache hit on query execution"
+                  constraints:
+                    nullable: true
+
+
+  - changeSet:
+      id: 309
+      author: dpsutton
+      comment: 'Added 0.40.0 - Add type to collections'
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: authority_level
+                  type: varchar(255)
+                  remarks: 'Nullable column to incidate collection''s authority level. Initially values are "official" and nil.'
+                  constraints:
+                    nullable: true
+
+
+  - changeSet:
+      id: 310
+      author: howonlee
+      comment: Added 0.40.0 Migrate friendly field names
+      changes:
+        - update:
+            tableName: setting
+            columns:
+              - column:
+                  name: value
+                  value: 'simple'
+            where: "'key'='humanization-strategy' AND value='advanced'"
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
