@@ -60,7 +60,8 @@ export default class SettingsGoogleForm extends Component {
         <FormField
           {...settingField("google-auth-client-id")}
           title={t`Client ID`}
-          placeholder="{your-client-id}.apps.googleusercontent.com"
+          description=""
+          placeholder={t`{your-client-id}.apps.googleusercontent.com`}
           required
           autoFocus
         />
