@@ -11,17 +11,9 @@ import Form, {
 } from "metabase/containers/Form";
 
 import { updateSettings } from "metabase/admin/settings/settings";
+import { settingToFormField } from "metabase/admin/settings/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/components/ExternalLink";
-
-const settingToFormField = setting => ({
-  name: setting.key,
-  description: setting.description,
-  placeholder: setting.is_env_setting
-    ? t`Using ${setting.env_name}`
-    : setting.placeholder || setting.default,
-  validate: setting.required ? value => !value && "required" : null,
-});
 
 @connect(
   null,
