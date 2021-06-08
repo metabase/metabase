@@ -622,6 +622,22 @@ describe("scenarios > collection_defaults", () => {
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
         }
       });
+
+      describe("archive", () => {
+        it("should be possible to bulk archive items (metabase#16496)", () => {
+          cy.visit("/collection/root");
+          selectItemUsingCheckbox("Orders");
+          selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
+
+          cy.findByTestId("bulk-action-bar")
+            .findByRole("button", { name: "Archive" })
+            .click();
+
+          cy.findByText("Orders").should("not.exist");
+          cy.findByText("Orders in a dashboard").should("not.exist");
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+        });
+      });
     });
   });
 });
