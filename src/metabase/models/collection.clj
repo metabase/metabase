@@ -13,11 +13,13 @@
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
             [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models])
   (:import metabase.models.collection.root.RootCollection))
 
@@ -30,6 +32,10 @@
   254)
 
 (models/defmodel Collection :collection)
+
+(def AuthorityLevel
+  "Schema for valid collection authority levels"
+  (s/maybe (s/enum "official")))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -248,7 +254,6 @@
        (cond-> id-str
          (not= id-str "root") Integer/parseInt)))))
 
-
 (s/defn visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
   returned by `permissions-set->visible-collection-ids`. Correctly handles all possible values returned by that
@@ -280,6 +285,27 @@
 
          :else
          false)))))
+
+(s/defn visible-collection-ids->direct-visible-descendant-clause
+  "Generates an appropriate HoneySQL `:where` clause to filter out descendants of a collection A with a specific property.
+  This property is being a descendant of a visible collection other than A. Used for effective children calculations"
+  [parent-collection :- CollectionWithLocationAndIDOrRoot, collection-ids :- VisibleCollections]
+  (let [parent-id           (or (:id parent-collection) "")
+        child-literal       (if (collection.root/is-root-collection? parent-collection)
+                              "/"
+                              (format "%%/%s/" (str parent-id))) ]
+    (into
+      ; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
+      ; the [:= 1 1] is to prevent this
+      [:and [:= 1 1]]
+      (if (= collection-ids :all)
+        ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
+        ; meaning, the effective children are always the direct children. So check for being a direct child.
+        [[:like :location (hx/literal child-literal)]]
+        (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
+              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id)) ]
+          (for [visible-collection-id disj-collection-ids]
+            [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 
 (s/defn effective-location-path :- (s/maybe LocationPath)
@@ -348,7 +374,7 @@
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
   Collection.
 
-     (children-location collection) ; -> \"/10/20/30/;
+     (children-location collection) ; -> \"/10/20/30/\";
 
      ;; To get children of this collection:
      (db/select Collection :location \"/10/20/30/\")"
@@ -410,9 +436,29 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
 
-(s/defn effective-children :- #{CollectionInstance}
-  "Return the descendant Collections of a `collection` that should be presented to the current user as the children of
-  this Collection. This takes into account descendants that get filtered out when the current user can't see them. For
+(s/defn ^:private effective-children-where-clause
+  [collection & additional-honeysql-where-clauses]
+  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*)]
+    ;; Collection B is an effective child of Collection A if...
+    (into
+      [:and
+       ;; it is a descendant of Collection A
+       [:like :location (hx/literal (str (children-location collection) "%"))]
+       ;; it is visible.
+       (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
+       ;; it is NOT a descendant of a visible Collection other than A
+       (visible-collection-ids->direct-visible-descendant-clause (hydrate collection :effective_location) visible-collection-ids)
+       ;; if it is a personal Collection, it belongs to the current User.
+       [:or
+        [:= :personal_owner_id nil]
+        [:= :personal_owner_id *current-user-id*]]]
+      ;; (any additional conditions)
+      additional-honeysql-where-clauses)))
+
+(s/defn effective-children-query :- {:select s/Any :from s/Any :where s/Any}
+  "Return a query for the descendant Collections of a `collection`
+  that should be presented to the current user as the children of this Collection.
+  This takes into account descendants that get filtered out when the current user can't see them. For
   example, suppose we have some Collections with a hierarchy like this:
 
        +-> B
@@ -433,20 +479,16 @@
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
-   {:hydrate :effective_children}
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
-  ;; Hydrate `:children` if it's not already done
-  (-> (for [child (if (contains? collection :children)
-                    (:children collection)
-                    (apply descendants collection additional-honeysql-where-clauses))]
-        ;; if we can read this `child` then we can go ahead and keep it as is. Discard its `children` and `location`
-        (if (i/can-read? child)
-          (dissoc child :children :location)
-          ;; otherwise recursively call on each of the grandchildren. Make it a `vec` so flatten works on it
-          (vec (effective-children child))))
-      ;; since the results will be nested once for each recursive call, un-nest the results and convert back to a set
-      flatten
-      set))
+  {:select [:id :name :description]
+   :from   [[Collection :col]]
+   :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
+
+(s/defn effective-children :- #{CollectionInstance}
+  {:hydrate :effective_children}
+  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
+  (set (db/select [Collection :id :name :description]
+                  {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -575,7 +617,7 @@
    :personal_owner_id (s/maybe su/IntGreaterThanZero)
    s/Keyword          s/Any})
 
-(s/defn ^:private is-personal-collection-or-descendant-of-one? :- s/Bool
+(s/defn is-personal-collection-or-descendant-of-one? :- s/Bool
   "Is `collection` a Personal Collection, or a descendant of one?"
   [collection :- CollectionWithLocationAndPersonalOwnerID]
   (boolean
@@ -650,28 +692,19 @@
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
-  (when (api/column-will-change? :personal_owner_id collection-before-updates collection-updates)
-    (throw
-     (ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
-       {:status-code 400
-        :errors      {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")}})))
-  ;;
-  ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving` functions also
-  ;; check to make sure you're not operating on Personal Collections. But as an extra safety net it doesn't hurt to
-  ;; check here too.
-  ;;
-  ;; You also definitely cannot *move* a Personal Collection
-  (when (api/column-will-change? :location collection-before-updates collection-updates)
-    (throw
-     (ex-info (tru "You're not allowed to move a Personal Collection.")
-       {:status-code 400
-        :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
-  ;; You also can't archive a Personal Collection
-  (when (api/column-will-change? :archived collection-before-updates collection-updates)
-    (throw
-     (ex-info (tru "You cannot archive a Personal Collection.")
-       {:status-code 400
-        :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
+  (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
+                      :authority_level   (tru "You are not allowed to change the authority level of a Personal Collection.")
+                      ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
+                      ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
+                      ;; doesn't hurt to check here too.
+                      :location          (tru "You are not allowed to move a Personal Collection.")
+                      :archived          (tru "You cannot archive a Personal Collection.")}]
+    (when-let [[k msg] (->> unchangeable
+                            (filter (fn [[k _msg]]
+                                      (api/column-will-change? k collection-before-updates collection-updates)))
+                            first)]
+      (throw
+       (ex-info msg {:status-code 400 :errors {k msg}})))))
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
@@ -839,7 +872,8 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:collection])
-          :types          (constantly {:namespace :keyword})
+          :types          (constantly {:namespace       :keyword
+                                       :authority_level :keyword})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update

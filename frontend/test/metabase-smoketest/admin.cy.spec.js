@@ -273,7 +273,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findAllByText("Groups");
 
       // Inputs user info (first modal)
-      cy.findByText("Add someone").click();
+      cy.findByText("Invite someone").click();
       cy.findByLabelText("First name").type(new_user.first_name);
       cy.findByLabelText("Last name").type(new_user.last_name);
       cy.findByLabelText("Email").type(new_user.email);

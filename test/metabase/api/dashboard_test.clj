@@ -9,12 +9,13 @@
             [metabase.http-client :as http]
             [metabase.models
              :refer
-             [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues Pulse Revision Table]]
+             [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues Pulse Revision Table User]]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-test :as dashboard-test]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
+            [metabase.models.revision :as revision]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -55,12 +56,18 @@
                              (update :collection_id boolean)))))
 
 (defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
+  ;; todo: should be udpated to use mt/boolean-ids-and-timestamps
   (let [dash (-> (into {} dashboard)
                  (dissoc :id)
                  (assoc :created_at (boolean created_at)
                         :updated_at (boolean updated_at))
                  (update :collection_id boolean))]
     (cond-> dash
+      (contains? dash :last-edit-info)
+      (update :last-edit-info (fn [info]
+                                (-> info
+                                    (update :id boolean)
+                                    (update :timestamp boolean))))
       creator       (update :creator #(into {} %))
       ordered_cards (update :ordered_cards #(mapv dashcard-response %)))))
 
@@ -131,12 +138,14 @@
           (try
             (is (= (merge
                     dashboard-defaults
-                    {:name          test-dashboard-name
-                     :creator_id    (mt/user->id :rasta)
-                     :parameters    [{:id "abc123", :name "test", :type "date"}]
-                     :updated_at    true
-                     :created_at    true
-                     :collection_id true})
+                    {:name           test-dashboard-name
+                     :creator_id     (mt/user->id :rasta)
+                     :parameters     [{:id "abc123", :name "test", :type "date"}]
+                     :updated_at     true
+                     :created_at     true
+                     :collection_id  true
+                     :last-edit-info {:timestamp true :id true :first_name "Rasta"
+                                      :last_name "Toucan" :email "rasta@metabase.com"}})
                    (-> (mt/user-http-request :rasta :post 200 "dashboard" {:name          test-dashboard-name
                                                                            :parameters    [{:id "abc123", :name "test", :type "date"}]
                                                                            :collection_id (u/get-id collection)})
@@ -179,9 +188,18 @@
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard WITH a dashboard card on it"
-      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+      (mt/with-temp* [Dashboard     [{dashboard-id :id
+                                      :as dashboard}    {:name "Test Dashboard"}]
                       Card          [{card-id :id}      {:name "Dashboard Test Card"}]
-                      DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
+                      DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]
+                      User          [{user-id :id}      {:first_name "Test" :last_name "User"
+                                                         :email "test@example.com"}]
+                      Revision      [_                  {:user_id user-id
+                                                         :model "Dashboard"
+                                                         :model_id dashboard-id
+                                                         :object (revision/serialize-instance dashboard
+                                                                                              dashboard-id
+                                                                                              dashboard)}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (card-api-test/with-cards-in-readable-collection [card-id]
             (is (= (merge
@@ -189,13 +207,16 @@
                     {:name          "Test Dashboard"
                      :creator_id    (mt/user->id :rasta)
                      :collection_id true
+                     :collection_authority_level nil
                      :can_write     false
                      :param_values  nil
                      :param_fields  nil
+                     :last-edit-info {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
                      :ordered_cards [{:sizeX                  2
                                       :sizeY                  2
                                       :col                    0
                                       :row                    0
+                                      :collection_authority_level        nil
                                       :updated_at             true
                                       :created_at             true
                                       :parameter_mappings     []
@@ -227,6 +248,7 @@
                           {:name          "Test Dashboard"
                            :creator_id    (mt/user->id :rasta)
                            :collection_id true
+                           :collection_authority_level nil
                            :can_write     false
                            :param_values  nil
                            :param_fields  {(keyword (str field-id)) {:id               field-id
@@ -243,6 +265,7 @@
                                             :row                    0
                                             :updated_at             true
                                             :created_at             true
+                                            :collection_authority_level nil
                                             :parameter_mappings     [{:card_id      1
                                                                       :parameter_id "foo"
                                                                       :target       ["dimension" ["field" field-id nil]]}]
@@ -256,7 +279,22 @@
                                                                             :visualization_settings {}
                                                                             :result_metadata        nil})
                                             :series                 []}]})
-                   (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))))
+                   (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
+    (testing "fetch a dashboard from an official collection includes the collection type"
+      (mt/with-temp* [Dashboard     [{dashboard-id :id
+                                      :as dashboard}    {:name "Test Dashboard"}]
+                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
+                      DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
+        (with-dashboards-in-readable-collection [dashboard-id]
+          (card-api-test/with-cards-in-readable-collection [card-id]
+            (is (nil?
+                 (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
+                     :collection_authority_level)))
+            (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
+              (db/update! Collection collection-id :authority_level "official"))
+            (is (= "official"
+                   (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
+                       :collection_authority_level)))))))))
 
 (deftest fetch-dashboard-permissions-test
   (testing "GET /api/dashboard/:id"
@@ -320,9 +358,11 @@
                  (dashboard-response (Dashboard dashboard-id)))))
 
         (testing "PUT response"
-          (is (= (merge dashboard-defaults {:name          "My Cool Dashboard"
-                                            :description   "Some awesome description"
-                                            :creator_id    (mt/user->id :rasta)
+          (is (= (merge dashboard-defaults {:name           "My Cool Dashboard"
+                                            :description    "Some awesome description"
+                                            :creator_id     (mt/user->id :rasta)
+                                            :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
+                                                             :last_name "Toucan" :email "rasta@metabase.com"}
                                             :collection_id true})
                  (dashboard-response
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
@@ -348,6 +388,9 @@
                                             :collection_id           true
                                             :caveats                 ""
                                             :points_of_interest      ""
+                                            :last-edit-info
+                                            {:timestamp true, :id true, :first_name "Rasta",
+                                             :last_name "Toucan", :email "rasta@metabase.com"}
                                             :show_in_getting_started true})
                  (dashboard-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                                            {:caveats                 ""

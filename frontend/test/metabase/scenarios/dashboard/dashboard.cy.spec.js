@@ -1,10 +1,9 @@
-// Mostly ported from `dashboard.e2e.spec.js`
-// *** Haven't ported: should add the parameter values to state tree for public dashboards
 import {
   popover,
   restore,
   selectDashboardFilter,
   expectedRouteCalls,
+  showDashboardCardActions,
   modal,
 } from "__support__/e2e/cypress";
 
@@ -257,7 +256,8 @@ describe("scenarios > dashboard", () => {
 
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
-    cy.get(".DashCard .Icon-click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
     cy.findByText("COUNT(*)").click();
     cy.findByText("Update a dashboard filter").click();
 
@@ -365,6 +365,73 @@ describe("scenarios > dashboard", () => {
         .click();
       cy.findByText(/^January 17, 2020/);
     }
+  });
+
+  it("should not get the parameter values from the field API", () => {
+    // In this test we're using already present dashboard ("Orders in a dashboard")
+    const FILTER_ID = "d7988e02";
+
+    cy.log("Add filter to the dashboard");
+    cy.request("PUT", "/api/dashboard/1", {
+      parameters: [
+        {
+          id: FILTER_ID,
+          name: "Category",
+          slug: "category",
+          type: "category",
+        },
+      ],
+    });
+
+    cy.log("Connect filter to the existing card");
+    cy.request("PUT", "/api/dashboard/1/cards", {
+      cards: [
+        {
+          id: 1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          sizeX: 12,
+          sizeY: 8,
+          parameter_mappings: [
+            {
+              parameter_id: FILTER_ID,
+              card_id: 1,
+              target: [
+                "dimension",
+                [
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
+                ],
+              ],
+            },
+          ],
+          visualization_settings: {},
+        },
+      ],
+    });
+
+    cy.server();
+    cy.route(`/api/dashboard/1/params/${FILTER_ID}/values`).as(
+      "fetchDashboardParams",
+    );
+    cy.route(`/api/field/${PRODUCTS.CATEGORY}`).as("fetchField");
+    cy.route(`/api/field/${PRODUCTS.CATEGORY}/values`).as("fetchFieldValues");
+
+    cy.visit("/dashboard/1");
+
+    cy.get("fieldset")
+      .as("filterWidget")
+      .click();
+
+    ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(category => {
+      cy.findByText(category);
+    });
+
+    expectedRouteCalls({ route_alias: "fetchDashboardParams", calls: 1 });
+    expectedRouteCalls({ route_alias: "fetchField", calls: 0 });
+    expectedRouteCalls({ route_alias: "fetchFieldValues", calls: 0 });
   });
 
   it.skip("filter dropdown should not send request for values every time the widget is opened (metabase#16103)", () => {

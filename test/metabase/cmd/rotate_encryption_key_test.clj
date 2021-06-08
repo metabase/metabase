@@ -54,7 +54,7 @@
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
 
 (deftest rotate-encryption-key!-test
-  ;; (metabase.test.data.env/set-test-drivers! #{:mysql})
+  ;; (metabase.test/set-test-drivers! #{:mysql})
   (eu/with-secret-key nil
     (let [h2-fixture-db-file @cmd.test-util/fixture-db-file-path
           db-name            (str "test_" (str/lower-case (mt/random-name)))

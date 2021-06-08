@@ -20,10 +20,10 @@ const PinnedItem = ({
   item,
   index,
   collection,
-  selection,
-  onToggleSelected,
   onCopy,
   onMove,
+  onToggleSelected,
+  getIsSelected,
 }) => (
   <Link
     key={index}
@@ -35,11 +35,11 @@ const PinnedItem = ({
     <NormalItem
       item={item}
       collection={collection}
-      selection={selection}
       onPin={() => item.setPinned(false)}
       onToggleSelected={onToggleSelected}
       onMove={onMove}
       onCopy={onCopy}
+      isSelected={getIsSelected(item)}
       pinned
     />
   </Link>
@@ -48,10 +48,12 @@ const PinnedItem = ({
 export default function PinnedItems({
   items,
   collection,
-  selection,
-  onToggleSelected,
+  selected,
   onMove,
   onCopy,
+  onDrop,
+  onToggleSelected,
+  getIsSelected,
 }) {
   if (items.length === 0) {
     return (
@@ -83,18 +85,20 @@ export default function PinnedItems({
           <Box w={[1]} className="relative" key={index}>
             <ItemDragSource
               item={item}
-              selection={selection}
+              isSelected={getIsSelected(item)}
               collection={collection}
+              selected={selected}
+              onDrop={onDrop}
             >
               <PinnedItem
                 key={`${item.model}:${item.id}`}
                 index={index}
                 item={item}
                 collection={collection}
-                selection={selection}
-                onToggleSelected={onToggleSelected}
                 onMove={onMove}
                 onCopy={onCopy}
+                onToggleSelected={onToggleSelected}
+                getIsSelected={getIsSelected}
               />
               <PinPositionDropTarget pinIndex={item.collection_position} left />
               <PinPositionDropTarget

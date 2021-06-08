@@ -14,7 +14,6 @@ const MetabaseAnalytics = {
 
       const { tag } = MetabaseSettings.get("version") || {};
 
-      // $FlowFixMe
       if (typeof ga === "function") {
         ga("set", "dimension1", tag);
         ga("set", "page", url);
@@ -33,7 +32,6 @@ const MetabaseAnalytics = {
     const { tag } = MetabaseSettings.get("version") || {};
 
     // category & action are required, rest are optional
-    // $FlowFixMe
     if (typeof ga === "function" && category && action) {
       ga("set", "dimension1", tag);
       ga("send", "event", category, action, label, value);
@@ -47,7 +45,6 @@ const MetabaseAnalytics = {
 export default MetabaseAnalytics;
 
 export function registerAnalyticsClickListener() {
-  // $FlowFixMe
   document.body.addEventListener(
     "click",
     function(e) {

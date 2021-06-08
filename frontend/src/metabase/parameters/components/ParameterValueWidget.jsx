@@ -98,6 +98,9 @@ export default class ParameterValueWidget extends Component {
     if (_.isEmpty(this.props.values)) {
       this.updateFieldValues(this.props);
     }
+
+    this.valuePopover = React.createRef();
+    this.trigger = React.createRef();
   }
 
   componentDidUpdate(prevProps) {
@@ -112,9 +115,16 @@ export default class ParameterValueWidget extends Component {
   }
 
   updateFieldValues(props) {
-    for (const id of getFieldIds(props.parameter)) {
-      props.fetchField(id);
-      props.fetchFieldValues(id);
+    // in a dashboard? the field values will be fetched via
+    // DashboardApi.parameterValues instead and thus, no need to
+    // manually update field values
+    const { dashboard } = props;
+    const useChainFilter = dashboard && dashboard.id;
+    if (!useChainFilter) {
+      for (const id of getFieldIds(props.parameter)) {
+        props.fetchField(id);
+        props.fetchFieldValues(id);
+      }
     }
   }
 
@@ -127,13 +137,13 @@ export default class ParameterValueWidget extends Component {
   };
 
   onPopoverClose = () => {
-    if (this.refs.valuePopover) {
-      this.refs.valuePopover.close();
+    if (this.valuePopover.current) {
+      this.valuePopover.current.close();
     }
   };
 
   getTargetRef = () => {
-    return this.refs.trigger;
+    return this.trigger.current;
   };
 
   render() {
@@ -185,10 +195,10 @@ export default class ParameterValueWidget extends Component {
 
       return (
         <PopoverWithTrigger
-          ref="valuePopover"
+          ref={this.valuePopover}
           triggerElement={
             <div
-              ref="trigger"
+              ref={this.trigger}
               className={cx(S.parameter, className, { [S.selected]: hasValue })}
             >
               {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}

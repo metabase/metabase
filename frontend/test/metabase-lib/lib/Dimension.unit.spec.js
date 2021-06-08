@@ -621,7 +621,7 @@ describe("Dimension", () => {
           id: ["expression", "Hello World"],
           name: "Hello World",
           display_name: "Hello World",
-          base_type: "type/Float",
+          base_type: "type/Text",
           semantic_type: null,
           field_ref: ["expression", "Hello World"],
         });

@@ -2,6 +2,7 @@ import "@testing-library/cypress/add-commands";
 import "cypress-real-events/support";
 import "@cypress/skip-test/support";
 import "./commands";
+import _ from "underscore";
 
 export const version = require("../../../../version.json");
 
@@ -32,7 +33,7 @@ export function main() {
 }
 
 export function sidebar() {
-  return cy.get(".scroll-y");
+  return cy.get("aside");
 }
 
 export function browse() {
@@ -306,4 +307,24 @@ export function mockSessionProperty(propertyOrObject, value) {
 
 export function mockCurrentUserProperty(propertyOrObject, value) {
   mockProperty(propertyOrObject, value, "/api/user/current");
+}
+
+export function showDashboardCardActions(index = 0) {
+  cy.get(".DashCard")
+    .eq(index)
+    .realHover();
+}
+
+export function generateUsers(count, groupIds) {
+  const users = _.range(count).map(index => ({
+    first_name: `FirstName ${index}`,
+    last_name: `LastName ${index}`,
+    email: `user_${index}@metabase.com`,
+    password: `secure password ${index}`,
+    groupIds,
+  }));
+
+  users.forEach(u => cy.createUserFromRawData(u));
+
+  return users;
 }

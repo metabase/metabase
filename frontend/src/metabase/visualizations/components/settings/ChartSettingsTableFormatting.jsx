@@ -321,6 +321,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
       >
         {cols.map(col => (
           <Option
+            key={col.name}
             value={col.name}
             disabled={
               (isStringRule && !isString(col)) ||
@@ -357,7 +358,9 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
             {Object.entries(
               isNumericRule ? NUMBER_OPERATOR_NAMES : STRING_OPERATOR_NAMES,
             ).map(([operator, operatorName]) => (
-              <Option value={operator}>{operatorName}</Option>
+              <Option key={operatorName} value={operator}>
+                {operatorName}
+              </Option>
             ))}
           </Select>
           {hasOperand && isNumericRule ? (

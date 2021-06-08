@@ -7,7 +7,6 @@ import {
   modal,
   restore,
   remapDisplayValueToFK,
-  sidebar,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -46,7 +45,7 @@ describeWithToken("formatting > sandboxes", () => {
     });
 
     it("should add key attributes to a new user", () => {
-      cy.findByText("Add someone").click();
+      cy.findByText("Invite someone").click();
       cy.findByPlaceholderText("Johnny").type("John");
       cy.findByPlaceholderText("Appleseed").type("Smith");
       cy.findByPlaceholderText("youlooknicetoday@email.com").type(
@@ -813,7 +812,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       cy.findByText("Settings").click();
-      sidebar()
+      cy.findByTestId("sidebar-left")
         .should("be.visible")
         .within(() => {
           // Remove the "Subtotal" column from within sidebar

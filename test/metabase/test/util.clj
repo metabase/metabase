@@ -1,6 +1,7 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
@@ -17,12 +18,15 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.setting :as setting]
+            [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
             [metabase.test.data :as data]
+            [metabase.test.fixtures :as fixtures]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
+            [metabase.util.files :as u.files]
             [potemkin :as p]
             [schema.core :as s]
             [toucan.db :as db]
@@ -34,6 +38,8 @@
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (comment tu.log/keep-me)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; these are imported because these functions originally lived in this namespace, and some tests might still be
 ;; referencing them from here. We can remove the imports once everyone is using `metabase.test` instead of using this
@@ -89,7 +95,7 @@
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
+                           :date_joined :date-joined :last_login :dimension-id :human-readable-field-id :timestamp}
                          #(str/ends-with? % "_id")
                          #(str/ends-with? % "_at")))
     data))
@@ -297,7 +303,9 @@
   works much the same way as `binding`.
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
-       (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
+       (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
+
+  To temporarily override the value of *read-only* env-var based Settings, use `with-temp-env-var-value`."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
@@ -825,3 +833,160 @@
   {:arglists '([rename-fn & body])}
   [rename-fn & body]
   `(do-with-env-keys-renamed-by ~rename-fn (fn [] ~@body)))
+
+(defn do-with-temp-file
+  "Impl for `with-temp-file` macro."
+  [filename f]
+  {:pre [(or (string? filename) (nil? filename))]}
+  (let [filename (if (string? filename)
+                   filename
+                   (random-name))
+        filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") filename))]
+    ;; delete file if it already exists
+    (io/delete-file (io/file filename) :silently)
+    (try
+      (f filename)
+      (finally
+        (io/delete-file (io/file filename) :silently)))))
+
+(defmacro with-temp-file
+  "Execute `body` with newly created temporary file(s) in the system temporary directory. You may optionally specify the
+  `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
+  filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
+  something in to it.
+
+    ;; create a random temp filename. File is deleted if it already exists.
+    (with-temp-file [filename]
+      ...)
+
+    ;; get a temp filename ending in `parrot-list.txt`
+    (with-temp-file [filename \"parrot-list.txt\"]
+      ...)"
+  [[filename-binding filename-or-nil & more :as bindings] & body]
+  {:pre [(vector? bindings) (>= (count bindings) 1)]}
+  `(do-with-temp-file
+    ~filename-or-nil
+    (fn [~(vary-meta filename-binding assoc :tag `String)]
+      ~@(if (seq more)
+          [`(with-temp-file ~(vec more) ~@body)]
+          body))))
+
+(deftest with-temp-file-test
+  (testing "random filename"
+    (let [temp-filename (atom nil)]
+      (with-temp-file [filename]
+        (is (string? filename))
+        (is (not (.exists (io/file filename))))
+        (spit filename "wow")
+        (reset! temp-filename filename))
+      (testing "File should be deleted at end of macro form"
+        (is (not (.exists (io/file @temp-filename)))))))
+
+  (testing "explicit filename"
+    (with-temp-file [filename "parrot-list.txt"]
+      (is (string? filename))
+      (is (not (.exists (io/file filename))))
+      (is (str/ends-with? filename "parrot-list.txt"))
+      (spit filename "wow")
+      (testing "should delete existing file"
+        (with-temp-file [filename "parrot-list.txt"]
+          (is (not (.exists (io/file filename))))))))
+
+  (testing "multiple bindings"
+    (with-temp-file [filename nil, filename-2 "parrot-list.txt"]
+      (is (string? filename))
+      (is (string? filename-2))
+      (is (not (.exists (io/file filename))))
+      (is (not (.exists (io/file filename-2))))
+      (is (not (str/ends-with? filename "parrot-list.txt")))
+      (is (str/ends-with? filename-2 "parrot-list.txt"))))
+
+  (testing "should delete existing file"
+    (with-temp-file [filename "parrot-list.txt"]
+      (spit filename "wow")
+      (with-temp-file [filename "parrot-list.txt"]
+        (is (not (.exists (io/file filename)))))))
+
+  (testing "validation"
+    (are [form] (thrown?
+                 clojure.lang.Compiler$CompilerException
+                 (macroexpand form))
+      `(with-temp-file [])
+      `(with-temp-file (+ 1 2)))))
+
+(defn- ->lisp-case-keyword [s]
+  (-> (name s)
+      (str/replace #"_" "-")
+      str/lower-case
+      keyword))
+
+(defn do-with-temp-env-var-value
+  "Impl for `with-temp-env-var-value` macro."
+  [env-var-keyword value thunk]
+  (let [value (str value)]
+    (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
+      (try
+        ;; temporarily override the underlying environment variable value
+        (with-redefs [env/env (assoc env/env env-var-keyword value)]
+          ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
+          (setting.cache/restore-cache!)
+          (thunk))
+        (finally
+          ;; flush the cache again so the original value of any env var Settings get restored
+          (setting.cache/restore-cache!))))))
+
+(defmacro with-temp-env-var-value
+  "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
+  any env var Settings will see the updated value, and resets the cache again at the conclusion of `body` so the
+  original values are restored.
+
+    (with-temp-env-var-value [mb-send-email-on-first-login-from-new-device \"FALSE\"]
+      ...)"
+  [[env-var value & more :as bindings] & body]
+  {:pre [(vector? bindings) (even? (count bindings))]}
+  `(do-with-temp-env-var-value
+    ~(->lisp-case-keyword env-var)
+    ~value
+    (fn [] ~@(if (seq more)
+               [`(with-temp-env-var-value ~(vec more) ~@body)]
+               body))))
+
+(setting/defsetting with-temp-env-var-value-test-setting
+  "Setting for the `with-temp-env-var-value-test` test."
+  :visibility :internal
+  :setter     :none
+  :default    "abc")
+
+(deftest with-temp-env-var-value-test
+  (is (= "abc"
+         (with-temp-env-var-value-test-setting)))
+  (with-temp-env-var-value [mb-with-temp-env-var-value-test-setting "def"]
+    (testing "env var value"
+      (is (= "def"
+             (env/env :mb-with-temp-env-var-value-test-setting))))
+    (testing "Setting value"
+      (is (= "def"
+             (with-temp-env-var-value-test-setting)))))
+  (testing "original value should be restored"
+    (testing "env var value"
+      (is (= nil
+             (env/env :mb-with-temp-env-var-value-test-setting))))
+    (testing "Setting value"
+      (is (= "abc"
+             (with-temp-env-var-value-test-setting)))))
+
+  (testing "override multiple env vars"
+    (with-temp-env-var-value [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
+      (testing "Should convert values to strings"
+        (is (= "123"
+               (:some-fake-env-var env/env))))
+      (testing "should handle CAPITALS/SNAKE_CASE"
+        (is (= "def"
+               (:another-fake-env-var env/env))))))
+
+  (testing "validation"
+    (are [form] (thrown?
+                 clojure.lang.Compiler$CompilerException
+                 (macroexpand form))
+      (list `with-temp-env-var-value '[a])
+      (list `with-temp-env-var-value '[a b c]))))

@@ -138,21 +138,21 @@ export default class SearchBar extends React.Component {
               if (e.key === "Enter" && (searchText || "").trim().length > 0) {
                 this.props.onChangeLocation({
                   pathname: "search",
-                  query: { q: searchText },
+                  query: { q: searchText.trim() },
                 });
               }
             }}
           />
           {active && MetabaseSettings.searchTypeaheadEnabled() && (
             <div className="absolute left right text-dark" style={{ top: 60 }}>
-              {searchText.length > 0 ? (
+              {searchText.trim().length > 0 ? (
                 <Card
                   className="overflow-y-auto"
                   style={{ maxHeight: 400 }}
                   py={1}
                 >
                   <Search.ListLoader
-                    query={{ q: searchText }}
+                    query={{ q: searchText.trim() }}
                     wrapped
                     reload
                     debounced

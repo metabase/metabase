@@ -83,7 +83,7 @@ const AdvancedSettingsPane = ({
           <p>{t`This ${resourceType} doesn't have any parameters to configure yet.`}</p>
         )}
         {resourceParameters.map(parameter => (
-          <div className="flex align-center my1">
+          <div key={parameter.id} className="flex align-center my1">
             <Icon
               name={getIconForParameter(parameter)}
               className="mr2"

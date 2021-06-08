@@ -85,10 +85,8 @@ export default class Parameters extends Component {
           const fieldIds = parameter.field_ids || [];
           const fields = fieldIds.map(
             id =>
-              // $FlowFixMe
               metadata.field(id) || Dimension.parseMBQL(id, metadata).field(),
           );
-          // $FlowFixMe
           setParameterValue(parameter.id, parseQueryParam(value, fields));
         }
       }

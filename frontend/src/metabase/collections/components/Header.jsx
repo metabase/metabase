@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { Flex } from "grid-styled";
-
 import { t } from "ttag";
-import cx from "classnames";
+
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
@@ -12,24 +11,9 @@ import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 
-export default function Header({
-  showFilters,
-  collectionHasPins,
-  unpinnedItems,
-  collection,
-  isAdmin,
-  isRoot,
-  collectionId,
-}) {
+export default function Header({ collection, isAdmin, isRoot, collectionId }) {
   return (
-    <Flex
-      align="center"
-      py={3}
-      className={cx({
-        "border-bottom":
-          !showFilters && !collectionHasPins && unpinnedItems.length > 0,
-      })}
-    >
+    <Flex align="center" py={3}>
       <Flex align="center">
         <PageHeading className="text-wrap">{collection.name}</PageHeading>
         {collection.description && (
@@ -48,7 +32,7 @@ export default function Header({
       <Flex ml="auto">
         {isAdmin && !collection.personal_owner_id && (
           <Tooltip tooltip={t`Edit the permissions for this collection`}>
-            <Link to={Urls.collectionPermissions(collectionId)}>
+            <Link to={`${Urls.collection(collection)}/permissions`}>
               <IconWrapper>
                 <Icon name="lock" />
               </IconWrapper>
@@ -60,7 +44,7 @@ export default function Header({
           !collection.personal_owner_id && (
             <CollectionEditMenu
               tooltip={t`Edit collection`}
-              collectionId={collectionId}
+              collection={collection}
               isAdmin={isAdmin}
               isRoot={isRoot}
             />

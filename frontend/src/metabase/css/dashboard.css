@@ -112,9 +112,13 @@
   margin-top: 1em;
 }
 
+.Dash--editing {
+  margin-top: 1.5em;
+}
+
 .DashCard {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .DashCard .Card {
@@ -123,7 +127,6 @@
   left: 0;
   bottom: 0;
   right: 0;
-  overflow: hidden;
   background-color: white;
   border: 1px solid var(--color-border);
 }
@@ -133,8 +136,11 @@
 }
 
 .Dash--editing .DashCard .Card {
-  pointer-events: none;
   transition: border 0.3s, background-color 0.3s;
+}
+
+.Dash--editing .Card-title:first-of-type {
+  margin-top: 0.5rem;
 }
 
 .Dash--editing .DashCard:hover .Card .Card-heading {
@@ -166,45 +172,25 @@
   color: var(--color-text-light);
 }
 
-.Dash--editing .DashCard .Card {
-  user-select: none;
-}
-
 .DashCard .Card {
   box-shadow: 0px 1px 3px var(--color-shadow);
   border-color: transparent;
   border-radius: 8px;
 }
 
-.Dash--editing .DashCard.dragging .Card {
+.Dash--editing .DashCard.react-draggable-dragging .Card {
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
-.Dash--editing .DashCard.dragging,
-.Dash--editing .DashCard.resizing {
-  z-index: 2;
+.Dash--editing .DashCard.react-draggable-dragging,
+.Dash--editing .DashCard.react-resizable-resizing {
+  z-index: 3;
 }
 
-.Dash--editing .DashCard.dragging .Card,
-.Dash--editing .DashCard.resizing .Card {
+.Dash--editing .DashCard.react-draggable-dragging .Card,
+.Dash--editing .DashCard.react-resizable-resizing .Card {
   background-color: var(--color-bg-medium) !important;
   border: 1px solid var(--color-brand);
-}
-
-.DashCard .DashCard-actions {
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s linear;
-}
-
-.DashCard .DashCard-actions-persistent {
-  pointer-events: all;
-}
-
-.Dash--editing .DashCard:hover .DashCard-actions {
-  height: initial;
-  opacity: 1;
-  pointer-events: all;
 }
 
 .Dash--editing .DashCard .Visualization-slow-spinner {
@@ -217,21 +203,6 @@
   transition: opacity 0.15s linear;
 }
 
-.Dash--editing .DashCard.dragging .DashCard-actions,
-.Dash--editing .DashCard.resizing .DashCard-actions {
-  opacity: 0;
-  transition: opacity 0.3s linear;
-}
-
-.Dash--editing .DashCard {
-  transition: transform 0.3s;
-}
-
-.Dash--editing .DashCard.dragging,
-.Dash--editing .DashCard.resizing {
-  transition: transform 0s;
-}
-
 .Dash--editing .DashCard {
   cursor: move;
 }
@@ -242,8 +213,11 @@
   height: 40px;
   bottom: 0;
   right: 0;
-  cursor: nwse-resize;
   z-index: 1; /* ensure the handle is above the card contents */
+
+  /* overwrites the style coming from react-grid-layout */
+  cursor: nwse-resize !important;
+  background: none; /* hide default RGL's resize handle */
 }
 
 .Dash--editing .DashCard .react-resizable-handle:after {
@@ -251,8 +225,8 @@
   position: absolute;
   width: 8px;
   height: 8px;
-  bottom: 10px;
-  right: 10px;
+  bottom: 6px;
+  right: 6px;
   border-bottom: 2px solid var(--color-border);
   border-right: 2px solid var(--color-border);
   border-bottom-right-radius: 2px;
@@ -268,24 +242,21 @@
   opacity: 1;
 }
 
-.Dash--editing .DashCard.dragging .react-resizable-handle:after,
-.Dash--editing .DashCard.resizing .react-resizable-handle:after {
+.Dash--editing .DashCard.react-draggable-dragging .react-resizable-handle:after,
+.Dash--editing
+  .DashCard.react-resizable-resizing
+  .react-resizable-handle:after {
   opacity: 0.01;
 }
 
 .Dash--editing .react-grid-placeholder {
   z-index: 0;
-  background-color: var(--color-bg-light);
+  background-color: var(--color-bg-light) !important;
   transition: all 0.15s linear;
 }
 
 .Dash--editing .Card-title {
   pointer-events: none;
-}
-
-/* ensure action buttons do not respond to events when dragging */
-.Dash--editing.Dash--dragging .DashCard-actions {
-  pointer-events: none !important;
 }
 
 .Modal.AddSeriesModal {
@@ -313,7 +284,10 @@
   .Dashboard.Dashboard--fullscreen .Header-title-name {
     font-size: 1em;
   }
-
+  /* keep the single row text cards to avoid overflow with a scroll bar */
+  .Dashboard.Dashboard--fullscreen .Text--single-row {
+    font-size: 0.85em;
+  }
   .Dashboard.Dashboard--fullscreen .fullscreen-text-small .LegendItem {
     font-size: 1em;
   }

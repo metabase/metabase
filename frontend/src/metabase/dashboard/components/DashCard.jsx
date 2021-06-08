@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import styled from "styled-components";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -60,6 +61,14 @@ export default class DashCard extends Component {
     navigateToNewCardFromDashboard: PropTypes.func.isRequired,
   };
 
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      isPreviewingCard: false,
+    };
+  }
+
   async componentDidMount() {
     const { dashcard, markNewCardSeen } = this.props;
 
@@ -76,6 +85,12 @@ export default class DashCard extends Component {
   componentWillUnmount() {
     window.clearInterval(this.visibilityTimer);
   }
+
+  handlePreviewToggle = () => {
+    this.setState(prevState => ({
+      isPreviewingCard: !prevState.isPreviewingCard,
+    }));
+  };
 
   render() {
     const {
@@ -144,6 +159,9 @@ export default class DashCard extends Component {
       !isEditing &&
       mainCard.visualization_settings["dashcard.background"] === false;
 
+    const isEditingDashboardLayout =
+      isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
+
     return (
       <div
         className={cx(
@@ -158,8 +176,29 @@ export default class DashCard extends Component {
             : null
         }
       >
+        {isEditingDashboardLayout ? (
+          <DashboardCardActionsPanel className="drag-disabled">
+            <DashCardActionButtons
+              series={series}
+              hasError={!!errorMessage}
+              isVirtualDashCard={isVirtualDashCard(dashcard)}
+              onRemove={onRemove}
+              onAddSeries={onAddSeries}
+              onReplaceAllVisualizationSettings={
+                this.props.onReplaceAllVisualizationSettings
+              }
+              showClickBehaviorSidebar={() =>
+                this.props.showClickBehaviorSidebar(dashcard.id)
+              }
+              isPreviewing={this.state.isPreviewingCard}
+              onPreviewToggle={this.handlePreviewToggle}
+            />
+          </DashboardCardActionsPanel>
+        ) : null}
         <WrappedVisualization
-          className="flex-full"
+          className={cx("flex-full overflow-hidden", {
+            "pointer-events-none": isEditingDashboardLayout,
+          })}
           classNameWidgets={isEmbed && "text-light text-medium-hover"}
           error={errorMessage}
           errorIcon={errorIcon}
@@ -173,27 +212,14 @@ export default class DashCard extends Component {
           dashboard={dashboard}
           parameterValuesBySlug={params}
           isEditing={isEditing}
+          isPreviewing={this.state.isPreviewingCard}
           gridSize={
             this.props.isMobile
               ? undefined
               : { width: dashcard.sizeX, height: dashcard.sizeY }
           }
           actionButtons={
-            isEditing ? (
-              <DashCardActionButtons
-                series={series}
-                hasError={!!errorMessage}
-                isVirtualDashCard={isVirtualDashCard(dashcard)}
-                onRemove={onRemove}
-                onAddSeries={onAddSeries}
-                onReplaceAllVisualizationSettings={
-                  this.props.onReplaceAllVisualizationSettings
-                }
-                showClickBehaviorSidebar={() =>
-                  this.props.showClickBehaviorSidebar(dashcard.id)
-                }
-              />
-            ) : isEmbed ? (
+            isEmbed ? (
               <QueryDownloadWidget
                 className="m1 text-brand-hover text-light"
                 classNameClose="hover-child"
@@ -203,9 +229,7 @@ export default class DashCard extends Component {
                 token={dashcard.dashboard_id}
                 icon="download"
               />
-            ) : (
-              undefined
-            )
+            ) : null
           }
           onUpdateVisualizationSettings={
             this.props.onUpdateVisualizationSettings
@@ -251,6 +275,31 @@ export default class DashCard extends Component {
   }
 }
 
+const DashboardCardActionsPanel = styled.div`
+  padding: 0.125em 0.25em;
+  position: absolute;
+  background: white;
+  transform: translateY(-50%);
+  top: 0;
+  right: 20px;
+  border-radius: 8px;
+  box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
+  z-index: 3;
+  cursor: default;
+  transition: opacity 200ms;
+  opacity: 0;
+  pointer-events: none;
+
+  .Card:hover & {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .Dash--dragging & {
+    display: none;
+  }
+`;
+
 const DashCardActionButtons = ({
   series,
   isVirtualDashCard,
@@ -259,8 +308,20 @@ const DashCardActionButtons = ({
   onAddSeries,
   onReplaceAllVisualizationSettings,
   showClickBehaviorSidebar,
+  onPreviewToggle,
+  isPreviewing,
 }) => {
   const buttons = [];
+
+  if (getVisualizationRaw(series).visualization.supportPreviewing) {
+    buttons.push(
+      <ToggleCardPreviewButton
+        isPreviewing={isPreviewing}
+        onPreviewToggle={onPreviewToggle}
+      />,
+    );
+  }
+
   if (!hasError) {
     if (
       onReplaceAllVisualizationSettings &&
@@ -277,7 +338,7 @@ const DashCardActionButtons = ({
       buttons.push(
         <Tooltip tooltip={t`Click behavior`}>
           <a
-            className="text-light text-medium-hover drag-disabled mr1"
+            className="text-dark-hover drag-disabled mr1"
             data-metabase-event="Dashboard;Open Click Behavior Sidebar"
             onClick={showClickBehaviorSidebar}
             style={HEADER_ACTION_STYLE}
@@ -296,10 +357,7 @@ const DashCardActionButtons = ({
   }
 
   return (
-    <span
-      className="DashCard-actions flex align-center"
-      style={{ lineHeight: 1 }}
-    >
+    <span className="flex align-center text-medium" style={{ lineHeight: 1 }}>
       {buttons}
       <Tooltip tooltip={t`Remove`}>
         <RemoveButton className="ml1" onRemove={onRemove} />
@@ -321,7 +379,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
         />
       </Tooltip>
     }
-    triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
+    triggerClasses="text-dark-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
   >
     <ChartSettingsWithState
       className="spread"
@@ -334,7 +392,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
 
 const RemoveButton = ({ onRemove }) => (
   <a
-    className="text-light text-medium-hover drag-disabled"
+    className="text-dark-hover drag-disabled"
     data-metabase-event="Dashboard;Remove Card Modal"
     onClick={onRemove}
     style={HEADER_ACTION_STYLE}
@@ -346,7 +404,7 @@ const RemoveButton = ({ onRemove }) => (
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
     data-metabase-event={"Dashboard;Edit Series Modal;open"}
-    className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
+    className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
   >
@@ -366,6 +424,29 @@ const AddSeriesButton = ({ series, onAddSeries }) => (
   </a>
 );
 
+const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
+  return (
+    <a
+      data-metabase-event={"Dashboard;Text;edit"}
+      className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
+      onClick={onPreviewToggle}
+      style={HEADER_ACTION_STYLE}
+    >
+      <Tooltip tooltip={isPreviewing ? t`Edit` : t`Preview`}>
+        <span className="flex align-center">
+          <span className="flex" style={{ width: 18 }}>
+            {isPreviewing ? (
+              <Icon name="edit_document" size={HEADER_ICON_SIZE} />
+            ) : (
+              <Icon name="eye" size={18} />
+            )}
+          </span>
+        </span>
+      </Tooltip>
+    </a>
+  );
+};
+
 function getSeriesIconName(series) {
   try {
     const display = series[0].card.display;
@@ -380,7 +461,6 @@ const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
 const ClickBehaviorSidebarOverlay = ({
   dashcard,
   dashcardWidth,
-  dashboard,
   showClickBehaviorSidebar,
   isShowingThisClickBehaviorSidebar,
 }) => {

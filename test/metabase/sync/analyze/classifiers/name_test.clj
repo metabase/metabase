@@ -3,7 +3,18 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
             [metabase.sync.analyze.classifiers.name :as classify.names]
-            [toucan.util.test :as tt]))
+            [metabase.test :as mt]))
+
+(deftest semantic-type-for-name-and-base-type-test
+  (doseq [[input expected] {["id"      :type/Integer] :type/PK
+                            ;; other pattern matches based on type/regex (remember, base_type matters in matching!)
+                            ["rating"  :type/Integer] :type/Score
+                            ["rating"  :type/Boolean] nil
+                            ["country" :type/Text]    :type/Country
+                            ["country" :type/Integer] nil}]
+    (testing (pr-str (cons 'semantic-type-for-name-and-base-type input))
+      (is (= expected
+             (apply #'classify.names/semantic-type-for-name-and-base-type input))))))
 
 (deftest infer-entity-type-test
   (testing "name matches"
@@ -21,14 +32,14 @@
         (is (= :entity/GenericTable (classify "foo"))))))
   (testing "When using field info"
     (testing "doesn't infer on PK/FK semantic_types"
-      (tt/with-temp* [Table [{table-id :id}]
+      (mt/with-temp* [Table [{table-id :id}]
                       Field [{field-id :id} {:table_id      table-id
                                              :semantic_type :type/FK
                                              :name          "City"
                                              :base_type     :type/Text}]]
         (is (nil? (-> field-id Field (classify.names/infer-and-assoc-semantic-type nil) :semantic_type)))))
     (testing "but does infer on non-PK/FK fields"
-      (tt/with-temp* [Table [{table-id :id}]
+      (mt/with-temp* [Table [{table-id :id}]
                       Field [{field-id :id} {:table_id      table-id
                                              :semantic_type :type/Category
                                              :name          "City"

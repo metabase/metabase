@@ -409,6 +409,7 @@ export default class PivotTable extends Component {
                 >
                   {rowIndexes.map((rowIndex, index) => (
                     <Cell
+                      key={rowIndex}
                       value={this.getColumnTitle(rowIndex)}
                       style={{ width: LEFT_HEADER_CELL_WIDTH }}
                       icon={

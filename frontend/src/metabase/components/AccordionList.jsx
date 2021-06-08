@@ -1,5 +1,3 @@
-/* eslint "react/prop-types": "warn" */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -51,7 +49,9 @@ export default class AccordionList extends Component {
     className: PropTypes.string,
     id: PropTypes.string,
 
-    width: PropTypes.number,
+    // TODO: pass width to this component as solely number or string if possible
+    // currently prop is number on initialization, then string afterwards
+    width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     maxHeight: PropTypes.number,
 
     sections: PropTypes.array.isRequired,
@@ -348,8 +348,9 @@ export default class AccordionList extends Component {
             ...style,
           }}
         >
-          {rows.map(row => (
+          {rows.map((row, index) => (
             <AccordionListCell
+              key={index}
               {...this.props}
               row={row}
               sections={sections}
@@ -520,9 +521,10 @@ const AccordionListCell = ({
   } else if (type === "search") {
     content = (
       <ListSearchField
+        hasClearButton
         className="bg-white m1"
         onChange={onChangeSearchText}
-        searchText={searchText}
+        value={searchText}
         placeholder={searchPlaceholder}
         autoFocus
       />

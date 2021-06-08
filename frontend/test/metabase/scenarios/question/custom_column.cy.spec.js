@@ -2,6 +2,7 @@ import {
   restore,
   popover,
   openOrdersTable,
+  openProductsTable,
   openPeopleTable,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
@@ -176,7 +177,7 @@ describe("scenarios > question > custom columns", () => {
       .findByText("1");
   });
 
-  it.skip("should be able to use custom expression after aggregation (metabase#13857)", () => {
+  it("should be able to use custom expression after aggregation (metabase#13857)", () => {
     const CE_NAME = "13857_CE";
     const CC_NAME = "13857_CC";
 
@@ -190,7 +191,11 @@ describe("scenarios > question > custom columns", () => {
         },
         "source-query": {
           aggregation: [
-            ["aggregation-options", ["*", 1, 1], { "display-name": CE_NAME }],
+            [
+              "aggregation-options",
+              ["*", 1, 1],
+              { name: CE_NAME, "display-name": CE_NAME },
+            ],
           ],
           breakout: [
             ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
@@ -385,6 +390,87 @@ describe("scenarios > question > custom columns", () => {
     cy.contains("37.65");
   });
 
+  describe("data type", () => {
+    it("should understand string functions", () => {
+      openProductsTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .type("concat([Category], [Title])")
+          .blur();
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "CategoryTitle",
+        );
+        cy.button("Done").click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("CategoryTitle")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByPlaceholderText("Enter some text");
+    });
+
+    it("should relay the type of a date field", () => {
+      openPeopleTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        _typeUsingGet("[contenteditable='true']", "[Birth Date]", 400);
+        _typeUsingPlaceholder("Something nice and descriptive", "DoB");
+        cy.findByText("Done").click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("DoB")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Previous");
+      cy.findByText("Days");
+    });
+
+    it("should handle CASE", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .type("case([Discount] > 0, [Created At], [Product → Created At])")
+          .blur();
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "MiscDate",
+        );
+        cy.button("Done").click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("MiscDate")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Previous");
+      cy.findByText("Days");
+    });
+
+    it("should handle COALESCE", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Custom column").click();
+      popover().within(() => {
+        cy.get("[contenteditable='true']")
+          .type("COALESCE([Product → Created At], [Created At])")
+          .blur();
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "MiscDate",
+        );
+        cy.button("Done").click();
+      });
+      cy.findByText("Filter").click();
+      popover()
+        .findByText("MiscDate")
+        .click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Previous");
+      cy.findByText("Days");
+    });
+  });
+
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
     const CC_NAME = "CE with case";
 
@@ -509,7 +595,7 @@ describe("scenarios > question > custom columns", () => {
     });
   });
 
-  it.skip("should maintain data type (metabase#13122)", () => {
+  it("should maintain data type (metabase#13122)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({
@@ -524,7 +610,7 @@ describe("scenarios > question > custom columns", () => {
     cy.findByPlaceholderText("Enter a number").should("not.exist");
   });
 
-  it.skip("filter based on `concat` function should not offer numeric options (metabase#13217)", () => {
+  it("filter based on `concat` function should not offer numeric options (metabase#13217)", () => {
     openPeopleTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({
@@ -568,6 +654,36 @@ describe("scenarios > question > custom columns", () => {
     });
     cy.contains("37.65");
     cy.findByText("No discount");
+  });
+
+  it.skip("should work with relative date filter applied to a custom column (metabase#16273)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Custom column").click();
+    popover().within(() => {
+      cy.get("[contenteditable='true']")
+        .type("case([Discount] >0, [Created At], [Product → Created At])")
+        .blur();
+      cy.findByPlaceholderText("Something nice and descriptive").type(
+        "MiscDate",
+      );
+      cy.button("Done").click();
+    });
+    cy.findByText("Filter").click();
+    popover()
+      .contains("MiscDate")
+      .click();
+    // The popover shows up with the default value selected - previous 30 days.
+    // Since we don't have any orders in the Sample Dataset for that period, we have to change it to the previous 30 years.
+    cy.findByText("Days").click();
+    cy.findByText("Years").click();
+    cy.button("Add filter").click();
+    cy.button("Visualize").click();
+    cy.wait("@dataset").then(interception => {
+      expect(interception.response.body.error).not.to.exist;
+    });
+    cy.findByText("MiscDate");
   });
 });
 

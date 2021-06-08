@@ -18,6 +18,7 @@
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.models.query :as query :refer [Query]]
             [metabase.models.revision :as revision]
+            [metabase.models.revision.last-edit :as last-edit]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.util :as qp-util]
@@ -59,7 +60,14 @@
   *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
   [f]
   {f (s/maybe (s/enum "all" "mine" "archived"))}
-  (dashboards-list f))
+  (let [dashboards (dashboards-list f)
+        edit-infos (:dashboard (last-edit/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
+    (into []
+          (map (fn [{:keys [id] :as dashboard}]
+                 (if-let [edit-info (get edit-infos id)]
+                   (assoc dashboard :last-edit-info edit-info)
+                   dashboard)))
+          dashboards)))
 
 
 (api/defendpoint POST "/"
@@ -78,14 +86,15 @@
                         :creator_id          api/*current-user-id*
                         :collection_id       collection_id
                         :collection_position collection_position}]
-    (db/transaction
-      ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
-      ;; position, check that and fix up if needed
-      (api/maybe-reconcile-collection-position! dashboard-data)
-      ;; Ok, now save the Dashboard
-      (->> (db/insert! Dashboard dashboard-data)
-           ;; publish an event and return the newly created Dashboard
-           (events/publish-event! :dashboard-create)))))
+    (let [dash (db/transaction
+                ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
+                ;; position, check that and fix up if needed
+                (api/maybe-reconcile-collection-position! dashboard-data)
+                ;; Ok, now save the Dashboard
+                (db/insert! Dashboard dashboard-data))]
+      ;; publish event after the txn so that lookup can succeed
+      (events/publish-event! :dashboard-create dash)
+      (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
@@ -196,7 +205,7 @@
   [id]
   (-> (Dashboard id)
       api/check-404
-      (hydrate [:ordered_cards :card :series] :can_write :param_fields :param_values)
+      (hydrate [:ordered_cards :card :series] :collection_authority_level :can_write :param_fields :param_values)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -236,8 +245,9 @@
 (api/defendpoint GET "/:id"
   "Get Dashboard with ID."
   [id]
-  (u/prog1 (get-dashboard id)
-    (events/publish-event! :dashboard-read (assoc <> :actor_id api/*current-user-id*))))
+  (let [dashboard (get-dashboard id)]
+    (events/publish-event! :dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
+    (last-edit/with-last-edit-info dashboard :dashboard)))
 
 
 (defn- check-allowed-to-change-embedding
@@ -289,8 +299,9 @@
            :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                       :embedding_params :archived})))))
   ;; now publish an event and return the updated Dashboard
-  (u/prog1 (Dashboard id)
-    (events/publish-event! :dashboard-update (assoc <> :actor_id api/*current-user-id*))))
+  (let [dashboard (Dashboard id)]
+    (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
+    (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead

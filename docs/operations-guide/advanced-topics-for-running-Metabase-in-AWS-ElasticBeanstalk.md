@@ -107,3 +107,17 @@ Once your application is working properly over HTTPS, we recommend setting an ad
 - Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
 - Under `Environment Properties` add an entry for `NGINX_FORCE_SSL` with a value of `1`.
 - Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
+
+# RAM usage monitoring
+
+Metabase installs the CloudWatch agent into the Elastic Beanstalk deployment, which sends data about your deployment to CloudWatch, allowing you to track your Metabase's RAM usage and other metrics.
+
+To set up CloudWatch for your Elastic Beanstalk environment, follow the steps in the AWS documentation to [grant permissions to publish CloudWatch metrics](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/customize-containers-cw.html#customize-containers-cw-policy).
+
+# Automated security assessment
+
+Metabase installs the AWS Inspector into the Elastic Beanstalk deployment, so you can have real-time assessments about your instance's security that you can integrate into other AWS products. To start the automated checks on your instance, you only need to enable the Inspector in AWS's console.
+
+# About NGINX configs inside Elastic Beanstalk deployments
+
+In the near future we will be removing the custom NGINX configuration that was being bundled with Metabase in the previous configurations, so in the case that you were using configurations like NGINX_FORCE_SSL or custom certificates, you will need to move these configurations to AWS Application Load Balancers. To do this, check out the [enabling VPC](https://www.metabase.com/docs/latest/operations-guide/running-metabase-on-elastic-beanstalk.html#22-enabling-vpc) part of the Elastic Beanstalk guide where it's specified how to use an Application Load Balancer with your Elastic Beanstalk configuration, or otherwise start over the creation of your Elastic Beanstalk deployment [having made a backup first](backing-up-metabase-application-data.html) of your application database so you don't lose your Metabase configuration.

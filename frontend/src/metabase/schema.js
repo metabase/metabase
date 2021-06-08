@@ -1,6 +1,7 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
 
 export const QuestionSchema = new schema.Entity("questions");
 export const DashboardSchema = new schema.Entity("dashboards");
@@ -15,8 +16,10 @@ export const TableSchema = new schema.Entity(
   {
     // convert "schema" returned by API as a string value to an object that can be normalized
     processStrategy({ ...table }) {
-      // special case for "Saved Question" tables
-      const databaseId = typeof table.id === "string" ? -1337 : table.db_id;
+      const databaseId =
+        typeof table.id === "string"
+          ? SAVED_QUESTIONS_VIRTUAL_DB_ID
+          : table.db_id;
       if (typeof table.schema === "string" || table.schema === null) {
         table.schema_name = table.schema;
         table.schema = {

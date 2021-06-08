@@ -26,10 +26,12 @@ export default class ForgotPasswordApp extends Component {
     const { location } = this.props;
     const { sentNotification } = this.state;
     const emailConfigured = MetabaseSettings.isEmailConfigured();
+    const ldapEnabled = MetabaseSettings.ldapEnabled();
+    const canResetPassword = emailConfigured && !ldapEnabled;
 
     return (
       <AuthLayout>
-        {!emailConfigured ? (
+        {!canResetPassword ? (
           <div>
             <h3 className="my4">{t`Please contact an administrator to have them reset your password`}</h3>
             <BackToLogin />

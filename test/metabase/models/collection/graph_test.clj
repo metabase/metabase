@@ -5,7 +5,8 @@
             [metabase.api.common :refer [*current-user-id*]]
             [metabase.models :refer [User]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.collection-revision :as collection-revision :refer [CollectionRevision]]
+            [metabase.models.collection-permission-graph-revision :as c-perm-revision
+             :refer [CollectionPermissionGraphRevision]]
             [metabase.models.collection.graph :as graph]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
@@ -38,7 +39,7 @@
                                                                        collection-id))))))))
 
 (defn- clear-graph-revisions! []
-  (db/delete! CollectionRevision))
+  (db/delete! CollectionPermissionGraphRevision))
 
 (defn- only-groups
   "Remove entries for non-'magic' groups from a fetched perms `graph`."
@@ -291,7 +292,7 @@
 
         (testing "No revision should have been saved"
           (is (= 0
-                 (collection-revision/latest-id)))))))
+                 (c-perm-revision/latest-id)))))))
 
   (testing "Make sure you can't be sneaky and edit descendants of Personal Collections either."
     (mt/with-temp Collection [collection {:location (lucky-collection-children-location)}]
@@ -339,7 +340,7 @@
             (is (= {"Currency A" :read, "Currency A -> B" :read, :root :none}
                    (nice-graph (graph/graph :currency)))))
 
-          ;; bind a current user so CollectionRevisions get saved.
+          ;; bind a current user so CollectionPermissionGraphRevisions get saved.
           (mt/with-test-user :crowberto
             (testing "Should be able to update the graph for the default namespace.\n"
               (let [before (graph/graph)]
@@ -351,14 +352,14 @@
                   (is (= {"Currency A" :read, "Currency A -> B" :read, :root :none}
                          (nice-graph (graph/graph :currency)))))
 
-                (testing "A CollectionRevision recording the *changes* to the perms graph should be saved."
+                (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
                   (is (schema= {:id         su/IntGreaterThanZero
                                 :before     (s/eq (mt/obj->json->obj (assoc before :namespace nil)))
                                 :after      (s/eq {(keyword (str group-id)) {(keyword (str default-ab)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
                                 s/Keyword   s/Any}
-                               (db/select-one CollectionRevision {:order-by [[:id :desc]]}))))))
+                               (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
 
             (testing "Should be able to update the graph for a non-default namespace.\n"
               (let [before (graph/graph :currency)]
@@ -370,14 +371,14 @@
                   (is (= {"Default A" :read, "Default A -> B" :write, :root :none}
                          (nice-graph (graph/graph)))))
 
-                (testing "A CollectionRevision recording the *changes* to the perms graph should be saved."
+                (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
                   (is (schema= {:id         su/IntGreaterThanZero
                                 :before     (s/eq (mt/obj->json->obj (assoc before :namespace "currency")))
                                 :after      (s/eq {(keyword (str group-id)) {(keyword (str currency-a)) "write"}})
                                 :user_id    (s/eq (mt/user->id :crowberto))
                                 :created_at java.time.temporal.Temporal
                                 s/Keyword   s/Any}
-                               (db/select-one CollectionRevision {:order-by [[:id :desc]]}))))))
+                               (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))
 
             (testing "should be able to update permissions for the Root Collection in the default namespace via the graph"
               (graph/update-graph! (assoc (graph/graph) :groups {group-id {:root :read}}))
@@ -388,7 +389,7 @@
                 (is (= {:root :none, "Currency A" :write, "Currency A -> B" :read}
                        (nice-graph (graph/graph :currency)))))
 
-              (testing "A CollectionRevision recording the *changes* to the perms graph should be saved."
+              (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
                 (is (schema= {:before   {:namespace (s/eq nil)
                                          :groups    {(keyword (str group-id)) {:root     (s/eq "none")
                                                                                s/Keyword s/Any}
@@ -396,7 +397,7 @@
                                          s/Keyword  s/Any}
                               :after    {(keyword (str group-id)) {:root (s/eq "read")}}
                               s/Keyword s/Any}
-                             (db/select-one CollectionRevision {:order-by [[:id :desc]]})))))
+                             (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))
 
             (testing "should be able to update permissions for Root Collection in non-default namespace"
               (graph/update-graph! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
@@ -407,7 +408,7 @@
                 (is (= {:root :read, "Default A" :read, "Default A -> B" :write}
                        (nice-graph (graph/graph)))))
 
-              (testing "A CollectionRevision recording the *changes* to the perms graph should be saved."
+              (testing "A CollectionPermissionGraphRevision recording the *changes* to the perms graph should be saved."
                 (is (schema= {:before   {:namespace (s/eq "currency")
                                          :groups    {(keyword (str group-id)) {:root     (s/eq "none")
                                                                                s/Keyword s/Any}
@@ -415,7 +416,7 @@
                                          s/Keyword  s/Any}
                               :after    {(keyword (str group-id)) {:root (s/eq "write")}}
                               s/Keyword s/Any}
-                             (db/select-one CollectionRevision {:order-by [[:id :desc]]})))))))))))
+                             (db/select-one CollectionPermissionGraphRevision {:order-by [[:id :desc]]})))))))))))
 
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [User Collection]

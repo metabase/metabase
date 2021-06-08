@@ -411,7 +411,6 @@ const timeParameterValueDeserializers: Deserializer[] = [
   {
     testRegex: /^past([0-9]+)([a-z]+)s(~)?$/,
     deserialize: (matches, fieldRef) =>
-      // $FlowFixMe: not matching TimeIntervalFilter for some reason
       ["time-interval", fieldRef, -parseInt(matches[0]), matches[1]].concat(
         matches[2] ? [{ "include-current": true }] : [],
       ),
@@ -419,7 +418,6 @@ const timeParameterValueDeserializers: Deserializer[] = [
   {
     testRegex: /^next([0-9]+)([a-z]+)s(~)?$/,
     deserialize: (matches, fieldRef) =>
-      // $FlowFixMe: not matching TimeIntervalFilter for some reason
       ["time-interval", fieldRef, parseInt(matches[0]), matches[1]].concat(
         matches[2] ? [{ "include-current": true }] : [],
       ),
@@ -528,7 +526,6 @@ export function parameterToMBQLFilter(
     return null;
   }
 
-  // $FlowFixMe: doesn't understand parameter.target[1] is a field reference
   const fieldRef: LocalFieldReference | ForeignFieldReference =
     parameter.target[1];
 

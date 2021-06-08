@@ -225,11 +225,11 @@
 
       (testing "password"
         (testing "missing"
-          (is (= {:errors {:password "Insufficient password strength"}}
+          (is (= {:errors {:password "password is too common."}}
                  (setup! m/dissoc-in [:user :password]))))
 
         (testing "invalid"
-          (is (= {:errors {:password "Insufficient password strength"}}
+          (is (= {:errors {:password "password is too common."}}
                  (setup! assoc-in [:user :password] "anything"))))))))
 
 (deftest setup-with-empty-cache-test
@@ -257,7 +257,7 @@
                          :user     {:first_name (mt/random-name)
                                     :last_name  (mt/random-name)
                                     :email      user-email
-                                    :password   "p@ssw0rd"}}]
+                                    :password   "p@ssword1"}}]
         (do-with-setup*
          body
          (fn []

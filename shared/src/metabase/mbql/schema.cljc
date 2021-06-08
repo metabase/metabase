@@ -237,7 +237,7 @@
   ;; TODO -- these should use `lisp-case` like everything else in MBQL.
   {(s/optional-key :database_type) (s/maybe helpers/NonBlankString)
    (s/optional-key :base_type)     (s/maybe helpers/FieldType)
-   (s/optional-key :semantic_type) (s/maybe helpers/FieldType)
+   (s/optional-key :semantic_type) (s/maybe helpers/FieldSemanticOrRelationType)
    (s/optional-key :unit)          (s/maybe DateTimeUnit)
    (s/optional-key :name)          (s/maybe helpers/NonBlankString)
    s/Keyword                       s/Any})
@@ -440,7 +440,9 @@
    :else
    Field))
 
-(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp})
+(def arithmetic-expressions
+  "Set of valid arithmetic expression clause keywords."
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp})
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
@@ -884,7 +886,7 @@
    ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
    ;; able to remove this as a requirement
    :display_name                   helpers/NonBlankString
-   (s/optional-key :semantic_type) (s/maybe helpers/FieldType)
+   (s/optional-key :semantic_type) (s/maybe helpers/FieldSemanticOrRelationType)
    ;; you'll need to provide this in order to use BINNING
    (s/optional-key :fingerprint)   (s/maybe helpers/Map)
    s/Any                           s/Any})

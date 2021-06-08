@@ -19,6 +19,11 @@ executors:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: maildev/maildev
 
+  java-8:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:openjdk-8-lein-2.9.5-buster
+
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
   # what this means.
@@ -28,6 +33,11 @@ executors:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+
+  java-16:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:openjdk-16-lein-2.9.5-buster
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
@@ -130,7 +140,10 @@ executors:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: metabase/presto-mb-ci
         environment:
-          JAVA_TOOL_OPTIONS: "-Xmx1g"
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
+    # Run instance with 8GB or RAM instead of the default 4GB for medium instances. The Presto Docker image runs
+    # OOM sometimes with the default medium size.
+    resource_class: large
 
   sparksql:
     working_directory: /home/circleci/metabase/metabase/
@@ -158,6 +171,18 @@ executors:
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
 
+  druid:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/druid:0.20.2
+        environment:
+          CLUSTER_SIZE: nano-quickstart
+    # Run Docker images with 8GB or RAM instead of the default 4GB for medium instances. The Druid Docker image runs
+    # OOM all the time with the default medium size.
+    resource_class: large
+
+
   fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -175,6 +200,7 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: metabase/qa-databases:mysql-sample-8
+
 
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
@@ -886,31 +912,6 @@ jobs:
                   - store_test_results:
                       path: cypress/results
 
-  fe-tests-cypress-smoketest:
-    parameters:
-      e:
-        type: executor
-        default: clojure-and-node-and-browsers
-      cypress-group:
-        type: string
-      <<: *Params
-    executor: << parameters.e >>
-    environment:
-      CYPRESS_GROUP: << parameters.cypress-group >>
-      DISPLAY: ""
-    steps:
-      - run-yarn-command:
-          command-name: Run Cypress tests
-          command: run test-cypress-smoketest
-          before-steps:
-            - restore_cache:
-                name: Restore cached uberjar built in previous step
-                <<: *CacheKeyUberjar
-      - store_artifacts:
-          path: /home/circleci/metabase/metabase/cypress
-      - store_test_results:
-          path: cypress/results
-
 
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
@@ -940,6 +941,7 @@ workflows:
           name: be-tests-<< matrix.edition >>
           requires:
             - be-deps
+          e: java-8
           lein-command: with-profile +junit test
           skip-when-no-change: true
           <<: *Matrix
@@ -949,6 +951,15 @@ workflows:
           requires:
             - be-deps
           e: java-11
+          lein-command: with-profile +junit test
+          skip-when-no-change: true
+          <<: *Matrix
+
+      - lein:
+          name: be-tests-java-16-<< matrix.edition >>
+          requires:
+            - be-deps
+          e: java-16
           lein-command: with-profile +junit test
           skip-when-no-change: true
           <<: *Matrix
@@ -974,6 +985,7 @@ workflows:
           name: be-tests-druid-ee
           requires:
             - be-tests-ee
+          e: druid
           driver: druid
 
       - test-driver:
@@ -1272,41 +1284,3 @@ workflows:
             - wait-for-port:
                 port: 3306
           <<: *Matrix
-
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 9 * * *"
-          filters:
-            branches:
-              only:
-                - master
-                - /release-*/
-    jobs:
-      - checkout
-
-      - be-deps:
-          requires:
-            - checkout
-
-      - fe-deps:
-          requires:
-            - checkout
-
-      # Build the OSS version of the uberjar.
-      - build-uberjar-drivers:
-          requires:
-            - be-deps
-      - build-uberjar-frontend:
-          requires:
-            - fe-deps
-      - build-uberjar:
-          requires:
-            - build-uberjar-drivers
-            - build-uberjar-frontend
-
-      - fe-tests-cypress-smoketest:
-          name: e2e-tests-smoketest
-          requires:
-            - build-uberjar
-          cypress-group: "default"

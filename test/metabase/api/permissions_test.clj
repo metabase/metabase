@@ -50,6 +50,17 @@
                             :member_count (s/eq 0)}
                            (get id->group (:id group)))))))))))
 
+(deftest groups-list-limit-test
+  (testing "GET /api/permissions/group?limit=1&offset=1"
+    (testing "Limit and offset pagination have defaults"
+      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "0")
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1")))
+      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1" :limit 50)
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
+    (testing "Limit and offset pagination works for permissions list"
+      (is (= [{:id 1, :name "All Users", :member_count 3}]
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
+
 (deftest fetch-group-test
   (testing "GET /permissions/group/:id"
     (let [{:keys [members]} ((mt/user->client :crowberto) :get 200 (format "permissions/group/%d" (:id (group/all-users))))

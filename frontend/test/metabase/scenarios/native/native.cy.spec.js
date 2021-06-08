@@ -229,7 +229,6 @@ describe("scenarios > question > native", () => {
     cy.findByText("Simple question").click();
     popover().within(() => {
       cy.findByText("Saved Questions").click();
-      cy.findByText("Robert Tableton's Personal Collection").click();
       cy.findByText(QUESTION).click();
     });
 
@@ -722,6 +721,29 @@ describe("scenarios > question > native", () => {
         });
         cy.get(".Visualization").contains("23.54");
       });
+    });
+  });
+
+  it.skip("should link correctly from the variables sidebar (metabase#16212)", () => {
+    cy.createNativeQuestion({
+      name: "16212",
+      native: { query: 'select 1 as "a", 2 as "b"' },
+    }).then(({ body: { id: questionId } }) => {
+      cy.visit("/");
+      cy.icon("sql").click();
+      cy.get(".ace_content").type(`{{#${questionId}}}`, {
+        parseSpecialCharSequences: false,
+      });
+      cy.get(".NativeQueryEditor .Icon-play").click();
+      cy.get(".Visualization").within(() => {
+        cy.findByText("a");
+        cy.findByText("b");
+        cy.findByText("1");
+        cy.findByText("2");
+      });
+      cy.findByRole("link", { name: `Question #${questionId}` })
+        .should("have.attr", "href")
+        .and("eq", `/question/${questionId}`);
     });
   });
 });

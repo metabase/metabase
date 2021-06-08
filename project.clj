@@ -142,6 +142,8 @@
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.eclipse.jetty/jetty-server "9.4.32.v20200930"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
+   [org.graalvm.js/js "21.0.0.2"]                                     ; JavaScript engine
+   [org.graalvm.js/js-scriptengine "21.0.0.2"]
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.6.2"]                     ; MySQL/MariaDB driver
@@ -166,7 +168,7 @@
                                  honeysql]]
    [user-agent "0.1.0"]                                               ; User-Agent string parser, for Login History page & elsewhere
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
-   ]
+   [org.clojure/java.jmx "1.0.0"]]                                    ; JMX bean library, for exporting diagnostic info
 
   :main ^:skip-aot metabase.core
 
@@ -224,8 +226,8 @@
      [pjstadig/humane-test-output "0.10.0"]
      [reifyhealth/specmonstah "2.0.0"]                                ; Generate fixtures to test huge databases
      [ring/ring-mock "0.4.0"]
-     [talltale "0.5.4"]                                               ; Generate realistic data for fixtures
-     ]
+     [talltale "0.5.4"]]                                               ; Generate realistic data for fixtures
+
 
     :plugins
     [[lein-environ "1.1.0"] ; easy access to environment variables

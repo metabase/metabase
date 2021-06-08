@@ -26,7 +26,7 @@ import {
 const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
 // TODO - what's different about this from another sidebar component?
-const Sidebar = styled(Box)`
+const Sidebar = styled(Box.withComponent("aside"))`
   position: fixed;
   left: 0;
   bottom: 0;
@@ -58,7 +58,7 @@ class CollectionSidebar extends React.Component {
     const { collectionId, collections, loading } = this.props;
     const loaded = prevProps.loading && !loading;
     if (loaded) {
-      const ancestors = getParentPath(collections, Number(collectionId)) || [];
+      const ancestors = getParentPath(collections, collectionId) || [];
       this.setState({ openCollections: ancestors });
     }
   }
@@ -83,7 +83,7 @@ class CollectionSidebar extends React.Component {
     return (
       <React.Fragment>
         <CollectionLink
-          to={Urls.collection("root")}
+          to={Urls.collection({ id: "root" })}
           selected={isRoot}
           mb={1}
           mt={2}
@@ -118,7 +118,7 @@ class CollectionSidebar extends React.Component {
           {currentUser.is_superuser && (
             <Link
               my={2}
-              to={Urls.collection("users")}
+              to={Urls.collection({ id: "users" })}
               className="flex align-center text-bold text-light text-brand-hover"
             >
               <Icon name="group" mr={1} />
@@ -141,7 +141,7 @@ class CollectionSidebar extends React.Component {
     const { allFetched } = this.props;
 
     return (
-      <Sidebar w={340} pt={3} data-testid="sidebar" role="tree">
+      <Sidebar w={340} pt={3} role="tree">
         {allFetched ? (
           this.renderContent()
         ) : (

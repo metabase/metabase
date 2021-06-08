@@ -54,7 +54,6 @@ export function forceSortedGroup(
   group: CrossfilterGroup,
   indexMap: Map<Value, number>,
 ): void {
-  // $FlowFixMe
   const sorted = group
     .top(Infinity)
     .sort((a, b) => indexMap.get(a.key) - indexMap.get(b.key));
@@ -281,7 +280,7 @@ export function syntheticStackedBarsForWaterfallChart(
   if (showTotal) {
     const total = [xValueForWaterfallTotal({ settings, series }), totalValue];
     if (mainSeries[0]._origin) {
-      // $FlowFixMe cloning for the total bar
+      // cloning for the total bar
       total._origin = {
         seriesIndex: mainSeries[0]._origin.seriesIndex,
         rowIndex: mainSeries.length,

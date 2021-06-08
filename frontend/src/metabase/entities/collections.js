@@ -8,16 +8,36 @@ import { createSelector } from "reselect";
 
 import { GET } from "metabase/lib/api";
 
-import {
-  getUser,
-  getUserDefaultCollectionId,
-  getUserPersonalCollectionId,
-} from "metabase/selectors/user";
+import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import { t } from "ttag";
 
 const listCollectionsTree = GET("/api/collection/tree");
 const listCollections = GET("/api/collection");
+
+export const ROOT_COLLECTION = {
+  id: "root",
+  name: t`Our analytics`,
+  location: "",
+  path: [],
+};
+
+export const PERSONAL_COLLECTION = {
+  id: undefined, // to be filled in by getExpandedCollectionsById
+  name: t`My personal collection`,
+  location: "/",
+  path: [ROOT_COLLECTION.id],
+  can_write: true,
+};
+
+// fake collection for admins that contains all other user's collections
+export const PERSONAL_COLLECTIONS = {
+  id: "personal", // placeholder id
+  name: t`All personal collections`,
+  location: "/",
+  path: [ROOT_COLLECTION.id],
+  can_write: false,
+};
 
 const Collections = createEntity({
   name: "collections",
@@ -53,13 +73,12 @@ const Collections = createEntity({
       ),
 
     // NOTE: DELETE not currently implemented
-    // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
   },
 
   objectSelectors: {
     getName: collection => collection && collection.name,
-    getUrl: collection => Urls.collection(collection.id),
+    getUrl: collection => Urls.collection(collection),
     getIcon: collection => "folder",
   },
 
@@ -67,7 +86,10 @@ const Collections = createEntity({
     getExpandedCollectionsById: createSelector(
       [
         state => state.entities.collections,
-        state => state.entities.collections_list[null] || [],
+        state => {
+          const { list } = state.entities.collections_list[null] || {};
+          return list || [];
+        },
         getUser,
       ],
       (collections, collectionsIds, user) =>
@@ -78,16 +100,21 @@ const Collections = createEntity({
     ),
     getInitialCollectionId: createSelector(
       [
+        state => state.entities.collections,
         // these are listed in order of priority
         (state, { collectionId }) => collectionId,
         (state, { params }) => (params ? params.collectionId : undefined),
+        (state, { params }) =>
+          params ? Urls.extractCollectionId(params.slug) : undefined,
         (state, { location }) =>
           location && location.query ? location.query.collectionId : undefined,
-        getUserDefaultCollectionId,
+        () => ROOT_COLLECTION.id,
+        getUserPersonalCollectionId,
       ],
-      (...collectionIds) => {
+      (collections, ...collectionIds) => {
         for (const collectionId of collectionIds) {
-          if (collectionId !== undefined) {
+          const collection = collections[collectionId];
+          if (collection && collection.can_write) {
             return canonicalCollectionId(collectionId);
           }
         }
@@ -149,7 +176,6 @@ export const canonicalCollectionId = (
     ? null
     : parseInt(collectionId, 10);
 
-// $FlowFixMe
 export function normalizedCollection(collection) {
   if (canonicalCollectionId(collection.id) === null) {
     return ROOT_COLLECTION;
@@ -165,31 +191,6 @@ export const getCollectionType = (collectionId: string, state: {}) =>
     : collectionId !== undefined
     ? "other"
     : null;
-
-export const ROOT_COLLECTION = {
-  id: "root",
-  name: t`Our analytics`,
-  location: "",
-  path: [],
-};
-
-// the user's personal collection
-export const PERSONAL_COLLECTION = {
-  id: undefined, // to be filled in by getExpandedCollectionsById
-  name: t`My personal collection`,
-  location: "/",
-  path: ["root"],
-  can_write: true,
-};
-
-// fake collection for admins that contains all other user's collections
-export const PERSONAL_COLLECTIONS = {
-  id: "personal", // placeholder id
-  name: t`All personal collections`,
-  location: "/",
-  path: ["root"],
-  can_write: false,
-};
 
 type UserId = number;
 
@@ -282,7 +283,6 @@ export function getExpandedCollectionsById(
         parentId = ROOT_COLLECTION.id;
       }
 
-      // $FlowFixMe
       const parent = parentId == null ? null : collectionsById[parentId];
       c.parent = parent;
       // need to ensure the parent collection exists, it may have been filtered

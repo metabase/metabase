@@ -5,15 +5,13 @@ import { Box } from "grid-styled";
 import CollectionContent from "metabase/collections/containers/CollectionContent";
 import CollectionSidebar from "metabase/collections/containers/CollectionSidebar";
 
+import * as Urls from "metabase/lib/urls";
+
 import { PageWrapper } from "metabase/collections/components/Layout";
 
-const CollectionLanding = ({ params: { collectionId }, children }) => {
+const CollectionLanding = ({ params: { slug }, children }) => {
+  const collectionId = Urls.extractCollectionId(slug);
   const isRoot = collectionId === "root";
-
-  // This ref is passed to VirtualizedList inside CollectionContent
-  // List's scroll should not be attached to window (as by default)
-  // as it would break NavBar's and Sidebar's layout
-  const collectionContentContainerRef = React.useRef();
 
   return (
     <PageWrapper>
@@ -27,13 +25,8 @@ const CollectionLanding = ({ params: { collectionId }, children }) => {
         style={{ overflowY: "auto" }}
         ml={340}
         pb={4}
-        innerRef={collectionContentContainerRef}
       >
-        <CollectionContent
-          isRoot={isRoot}
-          collectionId={collectionId}
-          scrollElement={collectionContentContainerRef.current}
-        />
+        <CollectionContent isRoot={isRoot} collectionId={collectionId} />
       </Box>
       {
         // Need to have this here so the child modals will show up

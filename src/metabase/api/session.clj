@@ -218,7 +218,7 @@
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
   {token    su/NonBlankString
-   password su/ComplexPassword}
+   password su/ValidPassword}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (user/set-password! user-id password)
         ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.

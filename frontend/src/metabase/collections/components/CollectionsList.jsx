@@ -34,9 +34,8 @@ class CollectionsList extends React.Component {
                 {({ highlighted, hovered }) => {
                   return (
                     <CollectionLink
-                      to={Urls.collection(c.id)}
-                      // TODO - need to make sure the types match here
-                      selected={String(c.id) === currentCollection}
+                      to={Urls.collection(c)}
+                      selected={c.id === currentCollection}
                       depth={this.props.depth}
                       // when we click on a link, if there are children, expand to show sub collections
                       onClick={() => c.children && action(c.id)}

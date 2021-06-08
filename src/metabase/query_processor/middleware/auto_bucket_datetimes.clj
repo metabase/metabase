@@ -15,7 +15,7 @@
 
 (def ^:private FieldTypeInfo
   {:base-type                      (s/maybe su/FieldType)
-   (s/optional-key :semantic-type) (s/maybe su/FieldType)
+   (s/optional-key :semantic-type) (s/maybe su/FieldSemanticOrRelationType)
    s/Keyword                       s/Any})
 
 (def ^:private FieldIDOrName->TypeInfo

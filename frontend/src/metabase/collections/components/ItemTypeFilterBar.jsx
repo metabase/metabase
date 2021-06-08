@@ -32,25 +32,22 @@ export const FILTERS = [
   },
 ];
 
-const ItemTypeFilterBar = props => {
-  const { location, analyticsContext } = props;
+const ItemTypeFilterBar = ({
+  analyticsContext,
+  filters,
+  onFilterChange,
+  filter,
+}) => {
   return (
     <Flex align="center" className="border-bottom mt1">
-      {props.filters.map(f => {
-        let isActive = location && location.query.type === f.filter;
-
-        if (!location.query.type && !f.filter) {
-          isActive = true;
-        }
+      {filters.map(f => {
+        const isActive = filter === f.filter;
 
         const linkColor = isActive ? color("brand") : "inherit";
 
         return (
           <Link
-            to={{
-              pathname: location.pathname,
-              query: { ...location.query, type: f.filter },
-            }}
+            onClick={() => onFilterChange(f.filter)}
             color={linkColor}
             hover={{ color: color("brand") }}
             className="flex-full flex align-center justify-center sm-block text-brand-hover text-medium"
