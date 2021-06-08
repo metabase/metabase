@@ -95,7 +95,7 @@
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
   #{"all" "is_pinned" "is_not_pinned"})
 
-(def ^:private valid-sort-columns #{"name" "last_edited" "model"})
+(def ^:private valid-sort-columns #{"name" "last_edited_at" "last_edited_by" "model"})
 (def ^:private valid-sort-directions #{"asc" "desc"})
 (defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
 
@@ -349,26 +349,53 @@
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]
   (let [sql-order   (case sort-info
-                      nil                  [[:%lower.name :asc]]
-                      [:name :asc]         [[:%lower.name :asc]]
-                      [:name :desc]        [[:%lower.name :desc]]
-                      [:last-edited :asc]  [(if (= @mdb.env/db-type :mysql)
-                                              [(hsql/call :ISNULL :last_edit_timestamp)]
-                                              [:last_edit_timestamp :nulls-last])
-                                            [:last_edit_timestamp :asc]
-                                            [:%lower.name :asc]]
-                      [:last-edited :desc] (into
-                                            (case @mdb.env/db-type
-                                              :mysql
-                                              [[(hsql/call :ISNULL :last_edit_timestamp)]]
-                                              :postgres
-                                              [[(hsql/raw "last_edit_timestamp DESC NULLS LAST")]]
-                                              :h2
-                                              [])
-                                            [[:last_edit_timestamp :desc]
-                                             [:%lower.name :asc]])
-                      [:model :asc]        [[:model_ranking :asc]  [:%lower.name :asc]]
-                      [:model :desc]       [[:model_ranking :desc] [:%lower.name :asc]])
+                      nil                     [[:%lower.name :asc]]
+                      [:name :asc]            [[:%lower.name :asc]]
+                      [:name :desc]           [[:%lower.name :desc]]
+                      [:last-edited-at :asc]  [(if (= @mdb.env/db-type :mysql)
+                                                 [(hsql/call :ISNULL :last_edit_timestamp)]
+                                                 [:last_edit_timestamp :nulls-last])
+                                               [:last_edit_timestamp :asc]
+                                               [:%lower.name :asc]]
+                      [:last-edited-at :desc] (keep identity
+                                                    [(case @mdb.env/db-type
+                                                       :mysql
+                                                       [(hsql/call :ISNULL :last_edit_timestamp)]
+                                                       :postgres
+                                                       [(hsql/raw "last_edit_timestamp DESC NULLS LAST")]
+                                                       :h2
+                                                       nil)
+                                                     [:last_edit_timestamp :desc]
+                                                     [:%lower.name :asc]])
+                      [:last-edited-by :asc]  [(if (= @mdb.env/db-type :mysql)
+                                                 [(hsql/call :ISNULL :last_edit_last_name)]
+                                                 [:last_edit_last_name :nulls-last])
+                                               [:last_edit_last_name :asc]
+                                               (if (= @mdb.env/db-type :mysql)
+                                                 [(hsql/call :ISNULL :last_edit_first_name)]
+                                                 [:last_edit_first_name :nulls-last])
+                                               [:last_edit_first_name :asc]
+                                               [:%lower.name :asc]]
+                      [:last-edited-by :desc] (keep identity
+                                                    [(case @mdb.env/db-type
+                                                       :mysql
+                                                       [(hsql/call :ISNULL :last_edit_last_name)]
+                                                       :postgres
+                                                       [(hsql/raw "last_edit_last_name DESC NULLS LAST")]
+                                                       :h2
+                                                       nil)
+                                                     [:last_edit_last_name :desc]
+                                                     (case @mdb.env/db-type
+                                                       :mysql
+                                                       [(hsql/call :ISNULL :last_edit_first_name)]
+                                                       :postgres
+                                                       [(hsql/raw "last_edit_first_name DESC NULLS LAST")]
+                                                       :h2
+                                                       nil)
+                                                     [:last_edit_first_name :desc]
+                                                     [:%lower.name :asc]])
+                      [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
+                      [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]])
         models      (sort (map keyword models))
         queries     (for [model models]
                       (-> (collection-children-query model collection options)
