@@ -19,11 +19,12 @@
                              (not sync-admin-group?) (conj (u/the-id (group/admin))))
         user-id            (u/the-id user-or-id)
         ;; Get a set of mapped Group IDs the user currently belongs to
-        current-group-ids  (db/select-field :group_id PermissionsGroupMembership
-                                            :user_id  user-id
-                                            ;; Add nil to included group ids to ensure valid SQL if set is empty
-                                            :group_id [:in (conj included-group-ids nil)]
-                                            :group_id [:not-in excluded-group-ids])
+        current-group-ids  (when (seq included-group-ids)
+                             (db/select-field :group_id PermissionsGroupMembership
+                                              :user_id  user-id
+                                              ;; Add nil to included group ids to ensure valid SQL if set is empty
+                                              :group_id [:in included-group-ids]
+                                              :group_id [:not-in excluded-group-ids]))
         new-group-ids      (set/intersection (set (map u/the-id new-groups-or-ids))
                                              included-group-ids)
         ;; determine what's different between current mapped groups and new mapped groups
