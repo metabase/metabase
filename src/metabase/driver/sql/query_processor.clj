@@ -270,7 +270,7 @@
 
     [:type/Text             (:isa? :Coercion/String->Temporal)   _]
     (cast-temporal-string driver (:coercion_strategy field) field-identifier)
-    [(:isa? :type/*)        (:isa? :Coercion/Bytes->Temporal)]
+    [(:isa? :type/*)        (:isa? :Coercion/Bytes->Temporal)    _]
     (cast-temporal-byte driver (:coercion_strategy field) field-identifier)
 
     :else field-identifier))
