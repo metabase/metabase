@@ -75,7 +75,7 @@ export const TreeNode = React.memo(function TreeNode({
 
       {icon && (
         <IconContainer>
-          <Icon name="icon" />
+          <Icon name={icon} />
         </IconContainer>
       )}
       <NameContainer>{name}</NameContainer>
