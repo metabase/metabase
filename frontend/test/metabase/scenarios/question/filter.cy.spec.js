@@ -1134,6 +1134,73 @@ describe("scenarios > question > filter", () => {
       cy.button("Visualize");
     });
   });
+
+  describe.skip("should be able to filter on the boolean column (metabase#16386)", () => {
+    beforeEach(() => {
+      cy.createNativeQuestion({
+        name: "16386",
+        native: {
+          query:
+            'select 0::integer as "integer", true::boolean AS "boolean" union all \nselect 1::integer as "integer", false::boolean AS "boolean" union all \nselect null as "integer", true::boolean AS "boolean" union all \nselect -1::integer as "integer", null AS "boolean"',
+        },
+        visualization_settings: {
+          "table.pivot_column": "boolean",
+          "table.cell_column": "integer",
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.visit(`/question/${QUESTION_ID}`);
+        cy.findByText("Explore results").click();
+      });
+    });
+
+    it("from the column popover (metabase#16386-1)", () => {
+      cy.get(".cellData")
+        .contains("boolean")
+        .click();
+
+      popover()
+        .findByText("Filter by this column")
+        .click();
+
+      // Not sure exactly what this popover will look like when this issue is fixed but it should probably have an input field
+      popover().find("input");
+    });
+
+    it("from the simple question (metabase#16386-2)", () => {
+      cy.findAllByRole("button")
+        .contains("Filter")
+        .click();
+
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("boolean").click();
+
+        // This is really inconvenient way to ensure that the element is selected, but it's the only one currently
+        cy.button("True").should("have.class", "bg-purple");
+        cy.button("Add filter").click();
+
+        // Filter name
+        cy.findByText("boolean is true");
+        cy.findByText("0");
+      });
+    });
+
+    it("from the custom question (metabase#16386-3)", () => {
+      cy.icon("notebook").click();
+      cy.findByText("Filter").click();
+
+      popover()
+        .findByText("boolean")
+        .click();
+
+      // This is really inconvenient way to ensure that the element is selected, but it's the only one currently
+      cy.button("True").should("have.class", "bg-purple");
+      cy.button("Add filter").click();
+
+      // Filter name
+      cy.findByText("boolean is true");
+      cy.findByText("0");
+    });
+  });
 });
 
 function openExpressionEditorFromFreshlyLoadedPage() {
