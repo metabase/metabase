@@ -313,15 +313,27 @@
 (defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
 (defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
 
-(defn- simple-rvalue? [rvalue]
+(defn- rvalue-is-field? [rvalue]
   (and (string? rvalue)
        (str/starts-with? rvalue "$")))
+
+(defn- rvalue-can-be-compared-directly?
+  "Whether `rvalue` is something simple that can be compared directly e.g.
+
+    {$match {$field {$eq rvalue}}}
+
+  as opposed to
+
+    {$match {$expr {$eq [$field rvalue]}}}"
+  [rvalue]
+  (or (rvalue-is-field? rvalue)
+      (not (map? rvalue))))
 
 (defn- filter-expr [operator field value]
   (let [field-rvalue (->rvalue field)
         value-rvalue (->rvalue value)]
-    (if (and (simple-rvalue? field-rvalue)
-             (simple-rvalue? value-rvalue))
+    (if (and (rvalue-is-field? field-rvalue)
+             (rvalue-can-be-compared-directly? value-rvalue))
       ;; if we don't need to do anything fancy with field we can generate a clause like
       ;;
       ;;    {field {$eq 100}}
