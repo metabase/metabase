@@ -42,7 +42,7 @@ export function ModerationIssueThread({
 
   return (
     <div className={className}>
-      <ModerationIssuePill type={request.type} />
+      <ModerationIssuePill type={request.type} status={request.status} />
       <Comment
         className="pt1"
         title={request.title}
