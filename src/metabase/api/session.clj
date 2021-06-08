@@ -256,7 +256,7 @@
 ;; add more 3rd-party SSO options
 
 (defsetting google-auth-client-id
-  (deferred-tru "Client ID for Google Sign-In. If this is set, Google Auth is considered to be enabled.")
+  (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
   :visibility :public)
 
 (defsetting google-auth-auto-create-accounts-domain

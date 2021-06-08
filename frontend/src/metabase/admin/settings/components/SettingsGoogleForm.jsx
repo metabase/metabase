@@ -1,10 +1,8 @@
 /* eslint-disable react/prop-types */
-// TODO should I remove this eslint rule?
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
-// import { Box } from "grid-styled";
 
 import Form, {
   FormField,
@@ -13,9 +11,6 @@ import Form, {
 } from "metabase/containers/Form";
 
 import { updateSettings } from "metabase/admin/settings/settings";
-
-import SettingsBatchForm from "./SettingsBatchForm";
-
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/components/ExternalLink";
 
@@ -78,7 +73,6 @@ export default class SettingsGoogleForm extends Component {
         <FormField
           {...settingField("google-auth-auto-create-accounts-domain")}
           title={t`Domain`}
-          placeholder=""
         />
         <div>
           <FormMessage />
