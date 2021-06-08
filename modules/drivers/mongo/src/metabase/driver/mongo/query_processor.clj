@@ -320,7 +320,8 @@
 (defn- filter-expr [operator field value]
   (let [field-rvalue (->rvalue field)
         value-rvalue (->rvalue value)]
-    (if (simple-rvalue? field-rvalue)
+    (if (and (simple-rvalue? field-rvalue)
+             (simple-rvalue? value-rvalue))
       ;; if we don't need to do anything fancy with field we can generate a clause like
       ;;
       ;;    {field {$eq 100}}
