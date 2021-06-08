@@ -38,4 +38,17 @@ describe("Collections BaseItemsTable", () => {
     expect(getByText("John Doe")).toBeInTheDocument();
     expect(getByText(lastEditedAt)).toBeInTheDocument();
   });
+
+  it("displays last edit time on hover", () => {
+    const { getByText, getByRole } = render(<BaseItemsTable items={[ITEM]} />);
+    const lastEditedAt = moment(now).format("MMMM DD, YYYY");
+
+    userEvent.hover(getByText(lastEditedAt));
+
+    expect(getByRole("tooltip")).toHaveTextContent(
+      moment(now)
+        .local()
+        .format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
+    );
+  });
 });
