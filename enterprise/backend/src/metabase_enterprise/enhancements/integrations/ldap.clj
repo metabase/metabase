@@ -68,8 +68,12 @@
                    :login_attributes attributes}))]
     (u/prog1 user
       (when sync-groups?
-        (let [group-ids (default-impl/ldap-groups->mb-group-ids groups settings)]
-          (integrations.common/sync-group-memberships! user group-ids (ldap-sync-admin-group)))))))
+        (let [group-ids            (default-impl/ldap-groups->mb-group-ids groups settings)
+              all-mapped-group-ids (default-impl/all-mapped-group-ids settings)]
+          (integrations.common/sync-group-memberships! user
+                                                       group-ids
+                                                       all-mapped-group-ids
+                                                       (ldap-sync-admin-group)))))))
 
 (def ^:private impl
   (reify
