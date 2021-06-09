@@ -191,7 +191,7 @@
                      :left-join [[:revision :r2] [:and
                                                   [:= :r1.model_id :r2.model_id]
                                                   [:= :r1.model :r2.model]
-                                                  [:> :r1.id :r2.id]]]
+                                                  [:< :r1.id :r2.id]]]
                      :where [:and
                              [:= :r2.id nil]
                              [:= :r1.model (hx/literal "Card")]]} :r]
@@ -218,7 +218,7 @@
                      :left-join [[:revision :r2] [:and
                                                   [:= :r1.model_id :r2.model_id]
                                                   [:= :r1.model :r2.model]
-                                                  [:> :r1.id :r2.id]]]
+                                                  [:< :r1.id :r2.id]]]
                      :where [:and
                              [:= :r2.id nil]
                              [:= :r1.model (hx/literal "Dashboard")]]} :r]
