@@ -20,9 +20,6 @@ describe("scenarios > visualizations > scalar", () => {
     it(`should render human readable numbers on ${size} screen size (metabase#12629)`, () => {
       const [width, height] = viewport;
 
-      // Remove this when issue gets fixed for these screen sizes
-      cy.skipOn(size === "mobile" || size === "hd");
-
       cy.viewport(width, height);
       cy.createQuestion({
         name: "12629",
