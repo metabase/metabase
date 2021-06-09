@@ -209,7 +209,7 @@ export default class Scalar extends Component {
       fullScalarValue !== null &&
       fullScalarValue.length > COMPACT_MIN_LENGTH &&
       (width < COMPACT_MAX_WIDTH ||
-      width < (COMPACT_WIDTH_PER_DIGIT * fullScalarValue.length));
+        width < COMPACT_WIDTH_PER_DIGIT * fullScalarValue.length);
     const displayValue = displayCompact ? compactScalarValue : fullScalarValue;
 
     const clicked = {
