@@ -123,8 +123,22 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
   };
 
   return (
-    <Search.ListLoader query={pinnedQuery} wrapped>
-      {({ list: pinnedItems }) => {
+    <Search.ListLoader
+      query={pinnedQuery}
+      loadingAndErrorWrapper={false}
+      keepPreviousList
+      wrapped
+    >
+      {({
+        list: pinnedItemsList = [],
+        previousList: previousPinnedItemsList = [],
+      }) => {
+        // Prevents table UI flashing while performing a GET request
+        // (e.g. for sorting)
+        const pinnedItems =
+          pinnedItemsList.length > 0
+            ? pinnedItemsList
+            : previousPinnedItemsList;
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
@@ -150,8 +164,24 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 onCopy={handleCopy}
               />
 
-              <Search.ListLoader query={unpinnedQuery} wrapped>
-                {({ list: unpinnedItems, metadata }) => {
+              <Search.ListLoader
+                query={unpinnedQuery}
+                loadingAndErrorWrapper={false}
+                keepPreviousList
+                wrapped
+              >
+                {({
+                  list: unpinnedItemsList = [],
+                  previousList: previousUnpinnedItemsList = [],
+                  metadata = {},
+                }) => {
+                  // Prevents table UI flashing while performing a GET request
+                  // (e.g. for pagination or sorting)
+                  const unpinnedItems =
+                    unpinnedItemsList.length > 0
+                      ? unpinnedItemsList
+                      : previousUnpinnedItemsList;
+
                   const hasPagination = metadata.total > PAGE_SIZE;
 
                   const unselected = [...pinnedItems, ...unpinnedItems].filter(
