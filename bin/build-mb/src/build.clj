@@ -1,6 +1,9 @@
 (ns build
   (:require [build-drivers :as build-drivers]
+            [build.licenses :as license]
             [build.version-info :as version-info]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [environ.core :as env]
             [flatland.ordered.map :as ordered-map]
@@ -54,6 +57,30 @@
     (u/assert-file-exists uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
+(defn- build-backend-license-file! [edition version]
+  {:pre [(#{:oss :ee} edition)]}
+  (let [classpath-and-logs (u/sh {:dir    u/project-root-directory
+                                  :quiet? true}
+                                 "lein"
+                                 "with-profile" (str \- "dev" (str \, \+ (name edition)) \,"+include-all-drivers")
+                                 "classpath")
+        classpath (last classpath-and-logs)
+        output-file (u/temporary-file "backend-deps" "txt")
+        {:keys [with-license without-license]} (license/process {:classpath classpath
+                                                                 :backfill (edn/read-string (slurp (io/resource "overrides.edn")))
+                                                                 :output-filename (.getAbsolutePath output-file)
+                                                                 :exit? false})]
+    (when (seq without-license)
+      (run! (comp (partial u/error "Missing License: %s") first)
+            without-license))
+    (u/announce "License information generated at %s" (.getAbsolutePath output-file))
+    ;; todo?
+    #_(u/copy-file (.getAbsolutePath output-file) "some/location/to/be/in/the/jar")
+    ;; todo
+    #_(u/s3-copy! (.getAbsolutePath output-file)
+                  nocommit
+                  bucket/<version>/backend-dependencies-edition.txt)))
+
 (def all-steps
   (ordered-map/ordered-map
    :version      (fn [{:keys [edition version]}]
@@ -64,6 +91,8 @@
                    (build-frontend! edition))
    :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
+   :backend-license (fn [{:keys [edition version]}]
+                      (build-backend-license-file! edition version))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 
