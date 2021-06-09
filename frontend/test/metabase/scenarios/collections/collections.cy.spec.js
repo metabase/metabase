@@ -593,8 +593,6 @@ describe("scenarios > collection_defaults", () => {
       it("should be possible to apply bulk selection to items (metabase#14705)", () => {
         selectItemUsingCheckbox("Orders");
         cy.findByText("1 item selected").should("be.visible");
-        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
-        cy.findByText("2 items selected").should("be.visible");
 
         // Select all
         cy.icon("dash").click();
