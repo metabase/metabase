@@ -5,6 +5,7 @@ import {
   PLUGIN_MODERATION_COMPONENTS,
   PLUGIN_MODERATION_SERVICE,
 } from "metabase/plugins";
+import * as Urls from "metabase/lib/urls";
 
 import {
   ACTIONS,
@@ -135,12 +136,12 @@ export function isUserModerator(user) {
   return user.id === 1;
 }
 
-export function buildModerationRequestPath(request) {
-  const { moderated_item_type, moderated_item_id, id } = request;
+export function buildModerationRequestPath(request, item) {
+  const { moderated_item_type, id } = request;
 
   switch (moderated_item_type) {
     case "card":
-      return `/question/${moderated_item_id}?moderationRequest=${id}`;
+      return Urls.question(item, "", `?moderationRequest=${id}`);
     default:
       throw new Error("The given `moderated_item_type` has no associated path");
   }

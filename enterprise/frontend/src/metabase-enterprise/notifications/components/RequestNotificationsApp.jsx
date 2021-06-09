@@ -56,7 +56,7 @@ function RequestNotifications({ questions, users, router }) {
         request,
         userDisplayName,
         questionDisplayName,
-        url: buildModerationRequestPath(request),
+        url: buildModerationRequestPath(request, question),
       };
     });
 
