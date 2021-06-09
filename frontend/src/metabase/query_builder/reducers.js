@@ -59,6 +59,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingFilterSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
+  isShowingQuestionDetailsSidebar: false,
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle

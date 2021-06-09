@@ -5,6 +5,7 @@ import {
   PLUGIN_MODERATION_COMPONENTS,
   PLUGIN_MODERATION_SERVICE,
 } from "metabase/plugins";
+import * as Urls from "metabase/lib/urls";
 
 import {
   ACTIONS,
@@ -27,7 +28,6 @@ Object.assign(PLUGIN_MODERATION_COMPONENTS, {
 
 Object.assign(PLUGIN_MODERATION_SERVICE, {
   getStatusIconForReview,
-  getColorForReview,
   getOpenRequests,
   isRequestDismissal,
   getModerationEvents,
@@ -61,16 +61,16 @@ export function getStatusIconForReview(review) {
   return getModerationStatusIcon(review && review.status);
 }
 
-export function getColorForReview(review) {
-  return getColor(review && review.status);
-}
+export function getModerationStatusIcon(type, status) {
+  const icon = getIn(ACTIONS, [type, "icon"]);
+  const color = getIn(ACTIONS, [type, "color"]);
+  const isGrayscale = status && status !== REQUEST_STATUSES.open;
 
-export function getModerationStatusIcon(type) {
-  return getIn(ACTIONS, [type, "icon"]);
-}
-
-export function getColor(type) {
-  return getIn(ACTIONS, [type, "color"]);
+  return {
+    icon,
+    color,
+    filter: isGrayscale ? "grayscale(1)" : "",
+  };
 }
 
 export function getOpenRequests(question) {
@@ -78,8 +78,12 @@ export function getOpenRequests(question) {
   return moderationRequests.filter(isRequestOpen);
 }
 
-function isRequestOpen(request) {
+export function isRequestOpen(request) {
   return request.status === REQUEST_STATUSES.open;
+}
+
+export function getRequestStatuses() {
+  return Object.values(REQUEST_STATUSES);
 }
 
 export function getNumberOfOpenRequests(question) {
@@ -98,11 +102,12 @@ export function getModerationEvents(question, usersById) {
   const requests = question.getModerationRequests().map(request => {
     const user = usersById[request.requester_id];
     const userDisplayName = user ? user.common_name : t`Someone`;
+    const { icon } = getModerationStatusIcon(request.type);
 
     return {
       timestamp: new Date(request.created_at).valueOf(),
-      icon: getModerationStatusIcon(request.type),
-      title: `${userDisplayName} ${MODERATION_TEXT.user[request.type].creationEvent}`,
+      icon,
+      title: `${userDisplayName} ${MODERATION_TEXT[request.type].creationEvent}`,
       description: request.text,
       showFooter: true,
       requestStatusText: MODERATION_TEXT.requestStatuses[request.status],
@@ -113,10 +118,12 @@ export function getModerationEvents(question, usersById) {
   const reviews = question.getModerationReviews().map((review, index) => {
     const moderator = usersById[review.moderator_id];
     const moderatorDisplayName = moderator ? moderator.common_name : t`Someone`;
-    const text = MODERATION_TEXT.moderator[review.status].creationEvent;
+    const text = MODERATION_TEXT[review.status].creationEvent;
+    const { icon } = getModerationStatusIcon(review.status);
+
     return {
       timestamp: new Date(review.created_at).valueOf(),
-      icon: getModerationStatusIcon(review.status),
+      icon,
       title: `${moderatorDisplayName} ${text}`,
       description: review.text,
     };
@@ -127,4 +134,15 @@ export function getModerationEvents(question, usersById) {
 
 export function isUserModerator(user) {
   return user.id === 1;
+}
+
+export function buildModerationRequestPath(request, item) {
+  const { moderated_item_type, id } = request;
+
+  switch (moderated_item_type) {
+    case "card":
+      return Urls.question(item, "", `?moderationRequest=${id}`);
+    default:
+      throw new Error("The given `moderated_item_type` has no associated path");
+  }
 }
