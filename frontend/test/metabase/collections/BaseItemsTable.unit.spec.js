@@ -4,6 +4,9 @@ import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import moment from "moment";
 
+import HTML5Backend from "react-dnd-html5-backend";
+import { DragDropContextProvider } from "react-dnd";
+
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -28,8 +31,16 @@ describe("Collections BaseItemsTable", () => {
     getUrl: () => "/dashboard/1",
   };
 
+  function setup({ items = [ITEM], ...props } = {}) {
+    return render(
+      <DragDropContextProvider backend={HTML5Backend}>
+        <BaseItemsTable items={items} {...props} />
+      </DragDropContextProvider>,
+    );
+  }
+
   it("displays item data", () => {
-    const { getByText } = render(<BaseItemsTable items={[ITEM]} />);
+    const { getByText } = setup();
     const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
     expect(getByText(ITEM.name)).toBeInTheDocument();
@@ -38,7 +49,7 @@ describe("Collections BaseItemsTable", () => {
   });
 
   it("displays last edit time on hover", () => {
-    const { getByText, getByRole } = render(<BaseItemsTable items={[ITEM]} />);
+    const { getByText, getByRole } = setup();
     const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
     userEvent.hover(getByText(lastEditedAt));
