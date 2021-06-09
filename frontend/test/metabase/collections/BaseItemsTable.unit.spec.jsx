@@ -12,9 +12,7 @@ import {
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 
 describe("Collections BaseItemsTable", () => {
-  const now = moment()
-    .utc()
-    .valueOf();
+  const timestamp = "2021-06-03T19:46:52.128";
 
   const ITEM = {
     id: 1,
@@ -24,7 +22,7 @@ describe("Collections BaseItemsTable", () => {
       id: 1,
       first_name: "John",
       last_name: "Doe",
-      timestamp: now,
+      timestamp: timestamp,
     },
     getIcon: () => "dashboard",
     getUrl: () => "/dashboard/1",
@@ -32,7 +30,7 @@ describe("Collections BaseItemsTable", () => {
 
   it("displays item data", () => {
     const { getByText } = render(<BaseItemsTable items={[ITEM]} />);
-    const lastEditedAt = moment(now).format("MMMM DD, YYYY");
+    const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
     expect(getByText(ITEM.name)).toBeInTheDocument();
     expect(getByText("John Doe")).toBeInTheDocument();
@@ -41,14 +39,12 @@ describe("Collections BaseItemsTable", () => {
 
   it("displays last edit time on hover", () => {
     const { getByText, getByRole } = render(<BaseItemsTable items={[ITEM]} />);
-    const lastEditedAt = moment(now).format("MMMM DD, YYYY");
+    const lastEditedAt = moment(timestamp).format("MMMM DD, YYYY");
 
     userEvent.hover(getByText(lastEditedAt));
 
     expect(getByRole("tooltip")).toHaveTextContent(
-      moment(now)
-        .local()
-        .format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
+      moment(timestamp).format(`${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`),
     );
   });
 });
