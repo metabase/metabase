@@ -643,12 +643,12 @@ describe("scenarios > collection_defaults", () => {
           selectItemUsingCheckbox("Orders");
 
           cy.findByTestId("bulk-action-bar")
-            .findByRole("button", { name: "Move" })
+            .button("Move")
             .click();
 
           modal().within(() => {
             cy.findByText("First collection").click();
-            cy.findByRole("button", { name: "Move" }).click();
+            cy.button("Move").click();
           });
 
           cy.findByText("Orders").should("not.exist");
