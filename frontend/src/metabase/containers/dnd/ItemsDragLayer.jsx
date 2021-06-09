@@ -95,7 +95,7 @@ class DraggedItems extends React.Component {
           items={items}
           renderItem={this.renderItem}
           headless
-          style={{ width: "960px" }}
+          style={{ width: 960 }}
         />
       </div>
     );
