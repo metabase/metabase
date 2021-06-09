@@ -594,45 +594,33 @@ describe("scenarios > collection_defaults", () => {
     });
 
     describe("bulk actions", () => {
-      it("should be possible to apply bulk selection to items (metabase#14705)", () => {
-        cy.visit("/collection/root");
-        selectItemUsingCheckbox("Orders");
-        cy.findByText("1 item selected").should("be.visible");
-
-        // Select all
-        cy.icon("dash").click();
-        cy.icon("dash").should("not.exist");
-        cy.findByText("4 items selected");
-
-        // Deselect all
-        cy.findByTestId("bulk-action-bar").within(() => {
-          cy.icon("check").click();
+      describe("selection", () => {
+        it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
+          bulkSelectDeselectWorkflow();
         });
-        cy.icon("check").should("not.exist");
-        cy.findByTestId("bulk-action-bar").should("not.be.visible");
-      });
 
-      it("should be possible to select pinned items for bulk operations when all items are pinned (metabase#16497)", () => {
-        // Pinning one more item and moving them to another collection, so they are the only items there
-        openEllipsisMenuFor("Orders");
-        cy.findByText("Pin this item").click();
-        selectItemUsingCheckbox("Orders");
-        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
-        cy.findByTestId("bulk-action-bar")
-          .findByRole("button", { name: "Move" })
-          .click();
-        modal().within(() => {
-          cy.findByText("First collection").click();
-          cy.findByRole("button", { name: "Move" }).click();
+        it("should be possible to apply bulk selection when all items are pinned (metabase#16497)", () => {
+          pinAllRootItems();
+          bulkSelectDeselectWorkflow();
         });
-        sidebar()
-          .findByText("First collection")
-          .click();
 
-        selectItemUsingCheckbox("Orders");
-        cy.icon("dash").click();
-        cy.icon("dash").should("not.exist");
-        cy.findByText("2 items selected");
+        function bulkSelectDeselectWorkflow() {
+          cy.visit("/collection/root");
+          selectItemUsingCheckbox("Orders");
+          cy.findByText("1 item selected").should("be.visible");
+
+          // Select all
+          cy.icon("dash").click();
+          cy.icon("dash").should("not.exist");
+          cy.findByText("4 items selected");
+
+          // Deselect all
+          cy.findByTestId("bulk-action-bar").within(() => {
+            cy.icon("check").click();
+          });
+          cy.icon("check").should("not.exist");
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+        }
       });
     });
   });
