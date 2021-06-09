@@ -68,7 +68,9 @@ const Timeline = ({ className, items = [], renderFooter }) => {
               <div className="text-medium text-small pb1">
                 {formattedTimestamp}
               </div>
-              <div>{description}</div>
+              <div className={renderFooter && description && "mb1"}>
+                {description}
+              </div>
               {_.isFunction(renderFooter) && <div>{renderFooter(item)}</div>}
             </div>
           </TimelineItem>
