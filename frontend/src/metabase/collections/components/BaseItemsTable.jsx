@@ -59,10 +59,10 @@ function BaseItemsTable({
     <table className="ContentTable" {...props}>
       <colgroup>
         <col span="1" style={{ width: "5%" }} />
-        <col span="1" style={{ width: "55%" }} />
+        <col span="1" style={{ width: "64%" }} />
         <col span="1" style={{ width: "15%" }} />
-        <col span="1" style={{ width: "20%" }} />
-        <col span="1" style={{ width: "5%" }} />
+        <col span="1" style={{ width: "14%" }} />
+        <col span="1" style={{ width: "2%" }} />
       </colgroup>
       {!headless && (
         <thead>
