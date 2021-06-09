@@ -156,7 +156,8 @@
     "webpack-postcss-tools": "^1.1.2",
     "xhr-mock": "^2.4.1",
     "xlsx": "^0.16.8",
-    "yaml-lint": "^1.2.4"
+    "yaml-lint": "^1.2.4",
+    "husky": "^6.0.0"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
@@ -203,7 +204,8 @@
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-no-build --open",
     "test-cypress-no-build": "yarn && CONFIG_FILE=frontend/test/__support__/e2e/cypress.json babel-node ./frontend/test/__runner__/run_cypress_tests.js",
-    "test-cypress-smoketest": "yarn test-cypress-no-build --folder frontend/test/metabase-smoketest"
+    "test-cypress-smoketest": "yarn test-cypress-no-build --folder frontend/test/metabase-smoketest",
+    "prepare": "husky install"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,css}": [
