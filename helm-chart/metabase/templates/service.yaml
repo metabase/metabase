@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "metabase.fullname" . }}
+  labels:
+    {{- include "metabase.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.externalPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "metabase.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+data:
+  MB_DB_TYPE: {{ .Values.config.database.type | quote }}
+  MB_PASSWORD_COMPLEXITY: {{ .Values.config.security.passComplexity | quote }}
+  MB_PASSWORD_LENGTH: {{ .Values.config.security.passLenght | quote }}
+  MB_JETTY_HOST: {{ .Values.config.jetty.host | quote }}
+  MB_JETTY_PORT: {{ .Values.service.internalPort | quote }}
+  MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE: {{ .Values.config.dw.maxConnectionPoolSize | quote }}
+  MB_JETTY_MAXTHREADS: {{ .Values.config.jetty.maxThreads | quote }}
+  MB_JETTY_MINTHREADS: {{ .Values.config.jetty.minThreads | quote }}
+metadata:
+  name: {{ include "metabase.fullname" . }}-configs
+  labels:
+    {{- include "metabase.labels" . | nindent 4 }}

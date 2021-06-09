@@ -1,0 +1,160 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "metabase.fullname" . }}
+  labels:
+    {{- include "metabase.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "metabase.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "metabase.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "metabase.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.internalPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.service.internalPort }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.internalPort }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - name: {{ include "metabase.fullname" . }}-configs
+            mountPath: /etc/config
+          - name: {{ include "metabase.fullname" . }}-secrets
+            mountPath: /etc/secret
+            readOnly: true
+          env:
+          {{- if .Values.config.jetty.host }}
+          - name: MB_JETTY_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_HOST
+          {{- end }}
+          - name: MB_JETTY_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_PORT
+          {{- if and 
+            (ne .Values.config.database.type "h2") 
+            (.Values.secrets.database.host) 
+            (.Values.secrets.database.password) 
+            (.Values.secrets.database.username) 
+            (.Values.secrets.database.port) 
+            (.Values.secrets.database.dbname) 
+          }}
+          - name: MB_DB_TYPE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_DB_TYPE
+          - name: MB_DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_DB_HOST
+          - name: MB_DB_PASS
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_DB_PASS
+          - name: MB_DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_DB_USER
+          - name: MB_DB_DBNAME
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_DB_DBNAME
+          - name: MB_DB_PORT
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_DB_PORT
+          {{- end }}
+          {{- if .Values.secrets.database.connString }}
+          - name: MB_DB_CONNECTION_URI
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_DB_CONNECTION_URI
+          {{- end }}
+          {{- if .Values.secrets.config.encryptionKey }}
+          - name: MB_ENCRYPTION_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_ENCRYPTION_SECRET_KEY
+          {{- end }}
+          {{- if .Values.config.security.passComplexity }}
+          - name: MB_PASSWORD_COMPLEXITY
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_PASSWORD_COMPLEXITY
+          {{- end }}
+          {{- if .Values.config.security.passLenght }}
+          - name: MB_PASSWORD_LENGTH
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_PASSWORD_LENGTH
+          {{- end }}
+      volumes:
+        - name: {{ include "metabase.fullname" . }}-configs
+          configMap:
+            name: {{ include "metabase.fullname" . }}-configs
+        - name: {{ include "metabase.fullname" . }}-secrets
+          secret:
+            secretName: {{ include "metabase.fullname" . }}-secrets
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
