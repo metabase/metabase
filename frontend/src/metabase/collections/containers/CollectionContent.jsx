@@ -119,18 +119,16 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 collection={collection}
               />
 
-              {hasPinnedItems && (
-                <PinnedItemsTable
-                  items={sortedPinnedItems}
-                  collection={collection}
-                  selected={selected}
-                  getIsSelected={getIsSelected}
-                  onDrop={clear}
-                  onToggleSelected={toggleItem}
-                  onMove={handleMove}
-                  onCopy={handleCopy}
-                />
-              )}
+              <PinnedItemsTable
+                items={sortedPinnedItems}
+                collection={collection}
+                selectedItems={selected}
+                getIsSelected={getIsSelected}
+                onDrop={clear}
+                onToggleSelected={toggleItem}
+                onMove={handleMove}
+                onCopy={handleCopy}
+              />
 
               <Search.ListLoader query={unpinnedQuery} wrapped>
                 {({ list: unpinnedItems, metadata }) => {
@@ -157,7 +155,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                     <Box mt={hasPinnedItems ? 3 : 0}>
                       <ItemsTable
                         items={unpinnedItems}
-                        selected={selected}
+                        selectedItems={selected}
                         getIsSelected={getIsSelected}
                         collection={collection}
                         onToggleSelected={toggleItem}
@@ -196,7 +194,10 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 }}
               </Search.ListLoader>
             </Box>
-            <ItemsDragLayer selected={selected} />
+            <ItemsDragLayer
+              selectedItems={selected}
+              pinnedItems={pinnedItems}
+            />
           </Box>
         );
       }}
