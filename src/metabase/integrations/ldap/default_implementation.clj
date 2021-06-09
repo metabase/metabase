@@ -82,11 +82,19 @@
 ;;; --------------------------------------------- fetch-or-create-user! ----------------------------------------------
 
 (s/defn ldap-groups->mb-group-ids :- #{su/IntGreaterThanZero}
-  "Translate a set of DNs to a set of MB group IDs using the configured mappings."
+  "Translate a set of a user's group DNs to a set of MB group IDs using the configured mappings."
   [ldap-groups              :- (s/maybe [su/NonBlankString])
    {:keys [group-mappings]} :- (select-keys i/LDAPSettings [:group-mappings s/Keyword])]
   (-> group-mappings
       (select-keys (map #(DN. (str %)) ldap-groups))
+      vals
+      flatten
+      set))
+
+(s/defn all-mapped-group-ids :- #{su/IntGreaterThanZero}
+  "Returns the set of all MB group IDs that have configured mappings."
+  [{:keys [group-mappings]} :- (select-keys i/LDAPSettings [:group-mappings s/Keyword])]
+  (-> group-mappings
       vals
       flatten
       set))
@@ -101,9 +109,9 @@
                    :email      email}))]
     (u/prog1 user
       (when sync-groups?
-        (let [group-ids (ldap-groups->mb-group-ids groups settings)]
-          (integrations.common/sync-group-memberships! user group-ids false))))))
-
+        (let [group-ids   (ldap-groups->mb-group-ids groups settings)
+              all-mapped-group-ids (all-mapped-group-ids settings)]
+          (integrations.common/sync-group-memberships! user group-ids all-mapped-group-ids false))))))
 
 ;;; ------------------------------------------------------ impl ------------------------------------------------------
 
