@@ -72,21 +72,17 @@ export function BaseTableItem({
       : "";
 
     const testId = isPinned ? "pinned-collection-entry" : "collection-entry";
-    
+
     const trStyles = {
       height: 80,
       borderBottom: hasBottomBorder ? `1px solid ${color("border")}` : "",
-    }
-    
+    };
+
     // Table row can be wrapped with ItemDragSource,
     // that only accepts native DOM elements as its children
     // So styled-components can't be used here
     return (
-      <tr
-        key={item.id}
-        data-testid={testId}
-        style={trStyles}
-      >
+      <tr key={item.id} data-testid={testId} style={trStyles}>
         <td>
           <EntityIconCheckBox
             item={item}
