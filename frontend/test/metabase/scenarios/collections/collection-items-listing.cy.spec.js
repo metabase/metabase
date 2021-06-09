@@ -103,6 +103,10 @@ describe("scenarios > collection items listing", () => {
             collection_position: pinned ? i + 1 : null,
           });
 
+          // Signing in as a different users, so we have different names in "Last edited by"
+          // In that way we can test sorting by this column correctly
+          cy.signIn("normal");
+
           cy.createQuestion({
             name: `${letter} Question`,
             collection_position: pinned ? i + 1 : null,
@@ -162,6 +166,30 @@ describe("scenarios > collection items listing", () => {
             );
           },
         );
+
+        const lastEditedByColumnTestId = pinned
+          ? "pinned-collection-entry-last-edited-by"
+          : "collection-entry-last-edited-by";
+
+        toggleSortingFor(/Last edited by/i, { pinned });
+        cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
+          const actualNames = _.map(nodes, "innerText");
+          const sortedNames = _.sortBy(actualNames);
+          expect(
+            actualNames,
+            "sorted by last editor name alphabetically",
+          ).to.deep.equal(sortedNames);
+        });
+
+        toggleSortingFor(/Last edited by/i, { pinned });
+        cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
+          const actualNames = _.map(nodes, "innerText");
+          const sortedNames = _.sortBy(actualNames);
+          expect(
+            actualNames,
+            "sorted by last editor name alphabetically reversed",
+          ).to.deep.equal(sortedNames.reverse());
+        });
 
         toggleSortingFor(/Last edited at/i, { pinned });
         getAllCollectionItemNames({ pinned }).then(

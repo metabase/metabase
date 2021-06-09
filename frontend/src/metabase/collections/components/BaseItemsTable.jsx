@@ -142,7 +142,13 @@ function BaseItemsTable({
             >
               {t`Name`}
             </SortableColumnHeader>
-            <ColumnHeader>{t`Last edited by`}</ColumnHeader>
+            <SortableColumnHeader
+              name="last_edited_by"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+            >
+              {t`Last edited by`}
+            </SortableColumnHeader>
             <SortableColumnHeader
               name="last_edited_at"
               sortingOptions={sortingOptions}
