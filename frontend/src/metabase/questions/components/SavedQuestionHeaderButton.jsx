@@ -20,7 +20,7 @@ const StyledButton = styled(Button)`
 
 function SavedQuestionHeaderButton({ className, question, onClick, active }) {
   const latestModerationReview = question.getLatestModerationReview();
-  const icon = getStatusIconForReview(latestModerationReview);
+  const { icon } = getStatusIconForReview(latestModerationReview);
 
   return (
     <StyledButton

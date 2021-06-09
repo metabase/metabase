@@ -66,10 +66,17 @@ export const PLUGIN_MODERATION_COMPONENTS = {
 
 export const PLUGIN_MODERATION_SERVICE = {
   getStatusIconForReview: _.noop,
-  getColorForReview: _.noop,
   getOpenRequests: _.noop,
   isRequestDismissal: _.noop,
   isRequestOpen: _.noop,
   getModerationRequestActionTypes: _.noop,
   getModerationEvents: _.noop,
+};
+
+export const PLUGIN_NOTIFICATION_COMPONENTS = {
+  NotificationsLink: PluginPlaceholder,
+};
+
+export const PLUGIN_NOTIFICATION_SERVICE = {
+  getNotificationRoutes: _.noop,
 };

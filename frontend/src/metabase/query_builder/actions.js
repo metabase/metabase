@@ -333,6 +333,7 @@ export const initializeQB = (location, params) => {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
       queryBuilderMode: getQueryBuilderModeFromLocation(location),
+      isShowingQuestionDetailsSidebar: !!location.query.moderationRequest,
     };
 
     // load up or initialize the card we'll be working on

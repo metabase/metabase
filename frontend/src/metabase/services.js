@@ -315,6 +315,7 @@ export const ModerationReviewApi = {
 export const ModerationRequestApi = {
   create: POST("/api/moderation-request"),
   update: PUT("/api/moderation-request/:id"),
+  get: GET("/api/moderation-request"),
 };
 
 export const ModerationCommentApi = {

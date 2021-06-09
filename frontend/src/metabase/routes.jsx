@@ -1,6 +1,9 @@
 import React from "react";
 
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import {
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_NOTIFICATION_SERVICE,
+} from "metabase/plugins";
 
 import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
@@ -319,6 +322,9 @@ export const getRoutes = store => (
           <IndexRoute component={PulseEditApp} />
         </Route>
       </Route>
+
+      {/* NOTIFICATIONS */}
+      {PLUGIN_NOTIFICATION_SERVICE.getNotificationRoutes()}
 
       {/* USER */}
       <Route path="/user/edit_current" component={UserSettingsApp} />
