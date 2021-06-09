@@ -101,9 +101,14 @@ export default class EntityListLoader extends React.Component {
 
   static defaultProps = {
     loadingAndErrorWrapper: true,
+    keepPreviousList: false,
     reload: false,
     wrapped: false,
     debounced: false,
+  };
+
+  state = {
+    previousList: [],
   };
 
   _getWrappedList: ?(props: Props) => any;
@@ -159,20 +164,52 @@ export default class EntityListLoader extends React.Component {
     }
   }
 
+  componentDidUpdate(prevProps) {
+    const { keepPreviousList } = this.props;
+    const { previousList } = this.state;
+    if (!keepPreviousList) {
+      return;
+    }
+
+    if (
+      Array.isArray(prevProps.list) &&
+      !_.isEqual(previousList, prevProps.list)
+    ) {
+      this.setState({ previousList: prevProps.list });
+    }
+  }
+
   renderChildren = () => {
-    let { children, entityDef, wrapped, list, reload, ...props } = this.props; // eslint-disable-line no-unused-vars
+    let {
+      children,
+      entityDef,
+      wrapped,
+      list,
+      reload, // eslint-disable-line no-unused-vars
+      keepPreviousList,
+      ...props
+    } = this.props;
+    const { previousList } = this.state;
 
     if (wrapped) {
       list = this._getWrappedList(this.props);
     }
 
-    return children({
+    const childProps = {
       ..._.omit(props, ...CONSUMED_PROPS),
       list,
       // alias the entities name:
       [entityDef.nameMany]: list,
       reload: this.reload,
-    });
+    };
+
+    if (keepPreviousList) {
+      childProps.previousList = wrapped
+        ? this._getWrappedList({ ...this.props, list: previousList })
+        : previousList;
+    }
+
+    return children(childProps);
   };
 
   render() {
