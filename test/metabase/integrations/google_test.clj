@@ -7,8 +7,7 @@
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+            [toucan.db :as db]))
 
 ;;; tests for email->domain
 (deftest email->domain-test
@@ -143,9 +142,8 @@
   (testing "test that an existing user can log in with Google auth even if the auto-create accounts domain is different from"
     (mt/with-temp User [user {:email "cam@sf-toucannery.com"}]
       (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-        (testing "their account should return a Session"
-          (is (schema= {:id       UUID
-                        s/Keyword s/Any}
+        (testing "their account should return a UserInstance"
+          (is (schema= metabase.models.user.UserInstance
                        (#'google/google-auth-fetch-or-create-user!
                         "Cam" "Saul" "cam@sf-toucannery.com")))))))
 
@@ -162,8 +160,7 @@
       (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
                                          admin-email                             "rasta@toucans.com"]
         (try
-          (is (schema= {:id       UUID
-                        s/Keyword s/Any}
+          (is (schema= metabase.models.user.UserInstance
                        (#'google/google-auth-fetch-or-create-user!
                         "Rasta" "Toucan" "rasta@sf-toucannery.com")))
           (finally

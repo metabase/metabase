@@ -69,7 +69,7 @@
   ;; things hairy and only enforce those for non-Google Auth users
   (user/create-new-google-auth-user! new-user))
 
-(s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
+(s/defn ^:private google-auth-fetch-or-create-user! :- metabase.models.user.UserInstance
   [first-name last-name email]
   (or (db/select-one [User :id :last_login] :%lower.email (u/lower-case-en email))
                       (google-auth-create-new-user! {:first_name first-name
