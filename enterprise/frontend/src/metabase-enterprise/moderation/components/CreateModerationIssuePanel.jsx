@@ -1,20 +1,14 @@
 import React, { useState } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { t } from "ttag";
 
 import { useAsyncFunction } from "metabase/lib/hooks";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
-import {
-  getModerationStatusIcon,
-  getColor,
-  getUserTypeTextKey,
-} from "metabase-enterprise/moderation";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 
-import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
+import ModerationIssuePill from "metabase-enterprise/moderation/components/ModerationIssuePill";
 
 CreateModerationIssuePanel.propTypes = {
   issueType: PropTypes.string.isRequired,
@@ -36,10 +30,6 @@ function CreateModerationIssuePanel({
   moderationRequest,
 }) {
   const [description, setDescription] = useState("");
-  const icon = getModerationStatusIcon(issueType);
-  const color = getColor(issueType);
-  const textColorClass = `text-${color} text-${color}-hover`;
-  const userType = getUserTypeTextKey(isModerator);
 
   const [createModerationReview, isModerationReviewPending] = useAsyncFunction(
     _createModerationReview,
@@ -79,26 +69,17 @@ function CreateModerationIssuePanel({
       onSubmit={onCreateModerationIssue}
       className="p2 flex flex-column row-gap-2"
     >
-      <div className={cx(textColorClass, "flex align-center")}>
-        <Icon className="mr1" name={icon} size={18} />
-        <span className="text-bold">
-          {MODERATION_TEXT[userType][issueType].action}
-        </span>
-      </div>
-      <div>
-        {MODERATION_TEXT[userType][issueType].actionCreationDescription}
-      </div>
+      <ModerationIssuePill type={issueType} />
+      <div>{MODERATION_TEXT[issueType].actionCreationDescription}</div>
       <label className="text-bold">
-        {MODERATION_TEXT[userType][issueType].actionCreationLabel}
+        {MODERATION_TEXT[issueType].actionCreationLabel}
       </label>
       <textarea
         className="input full max-w-full min-w-full"
         rows={10}
         value={description}
         onChange={e => setDescription(e.target.value)}
-        placeholder={
-          MODERATION_TEXT[userType][issueType].actionCreationPlaceholder
-        }
+        placeholder={MODERATION_TEXT.actionCreationPlaceholder}
         name="text"
       />
       <div className="flex column-gap-1 justify-end">
@@ -106,7 +87,7 @@ function CreateModerationIssuePanel({
           {t`Cancel`}
         </Button>
         <Button disabled={isPending} type="submit" primary>
-          {MODERATION_TEXT[userType][issueType].actionCreationButton}
+          {MODERATION_TEXT[issueType].actionCreationButton}
         </Button>
       </div>
     </form>
