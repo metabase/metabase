@@ -1434,3 +1434,15 @@ export async function createModerationRequestComment({
   });
   return softReloadCard();
 }
+
+export async function updateModerationRequest({ id, ...rest }) {
+  if (id == null) {
+    throw new Error("Missing moderation request id");
+  }
+
+  await ModerationRequestApi.update({
+    id,
+    ...rest,
+  });
+  return softReloadCard();
+}

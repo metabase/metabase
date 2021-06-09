@@ -23,6 +23,7 @@ QuestionDetailsSidebar.propTypes = {
   createModerationReview: PropTypes.func.isRequired,
   createModerationRequest: PropTypes.func.isRequired,
   createModerationRequestComment: PropTypes.func.isRequired,
+  updateModerationRequest: PropTypes.func.isRequired,
   router: PropTypes.object.isRequired,
 };
 
@@ -32,6 +33,7 @@ function QuestionDetailsSidebar({
   createModerationReview,
   createModerationRequest,
   createModerationRequestComment,
+  updateModerationRequest,
   router,
 }) {
   const initialView = parseViewFromQueryParams(router.location.query, question);
@@ -77,19 +79,21 @@ function QuestionDetailsSidebar({
           returnText={t`Open issues`}
           requests={getOpenRequests(question)}
           comments={comments}
+          onReturn={onReturn}
           onModerate={onModerate}
           onComment={onComment}
-          onReturn={onReturn}
+          updateModerationRequest={updateModerationRequest}
         />
       );
     case SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL:
       return (
         <ModerationRequestsPanel
-          {...viewProps}
+          requests={findRequest(viewProps.requestId, question)}
           comments={comments}
           onReturn={onReturn}
           onModerate={onModerate}
           onComment={onComment}
+          updateModerationRequest={updateModerationRequest}
         />
       );
     case SIDEBAR_VIEWS.DETAILS:
@@ -106,23 +110,25 @@ function QuestionDetailsSidebar({
 
 export default withRouter(QuestionDetailsSidebar);
 
+function findRequest(requestId, question) {
+  const requests = question.getModerationRequests();
+  const request = _.findWhere(requests, {
+    id: requestId,
+  });
+
+  // `request` might not exist if the previous `question` stored in state hasn't yet been replaced
+  return request ? [request] : [];
+}
+
 function parseViewFromQueryParams(queryParams = {}, question) {
   if (queryParams.moderationRequest) {
-    const requests = question.getModerationRequests();
-    const request = _.findWhere(requests, {
-      id: Number(queryParams.moderationRequest),
-    });
-
-    // `request` might not exist if the previous `question` stored in state hasn't yet been replaced
-    if (request) {
-      return {
-        name: SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL,
-        props: {
-          requests: [request],
-        },
-        previousView: undefined,
-      };
-    }
+    return {
+      name: SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL,
+      props: {
+        requestId: Number(queryParams.moderationRequest),
+      },
+      previousView: undefined,
+    };
   }
 
   return {
