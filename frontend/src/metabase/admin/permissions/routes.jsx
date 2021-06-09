@@ -8,12 +8,17 @@ import DatabasesPermissionsApp from "./containers/DatabasesPermissionsApp";
 import SchemasPermissionsApp from "./containers/SchemasPermissionsApp";
 import TablesPermissionsApp from "./containers/TablesPermissionsApp";
 import CollectionPermissions from "./containers/CollectionsPermissionsApp";
+import NewDataPermissionsPage from "./containers/NewDataPermissionsPage";
 
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 
 const getRoutes = store => (
   <Route title={t`Permissions`} path="permissions">
     <IndexRedirect to="databases" />
+
+    <Route title="Revamped Permissions" path="new">
+      <Route path="databases" component={NewDataPermissionsPage}></Route>
+    </Route>
 
     {/* "DATABASES" a.k.a. "data" section */}
     <Route path="databases" component={DataPermissionsApp}>
