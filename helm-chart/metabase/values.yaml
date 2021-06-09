@@ -1,0 +1,84 @@
+replicaCount: 5
+
+image:
+  repository: metabase/metabase
+  pullPolicy: IfNotPresent
+  command: []
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  name: metabase
+  type: ClusterIP
+  externalPort: 80
+  internalPort: 3000
+
+livenessProbe:
+  initialDelaySeconds: 120
+  timeoutSeconds: 30
+  failureThreshold: 6
+
+readinessProbe:
+  initialDelaySeconds: 30
+  timeoutSeconds: 3
+  periodSeconds: 5
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: metabase.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+config:
+  database:
+    type: h2
+  jetty:
+    maxThreads: ""
+    minThreads: ""
+    host: ""
+  dw:
+    maxConnectionPoolSize: ""
+  security:
+    passComplexity: ""
+    passLenght: ""
+  
+secrets:
+  database:
+    username: ""
+    password: ""
+    connString: ""
+    host: ""
+    dbName: ""
+    port: ""
+  config:
+    encryptionKey: ""
+
+resources: {}
+
+autoscaling:
+  enabled: false
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

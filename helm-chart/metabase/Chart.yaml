@@ -1,0 +1,11 @@
+apiVersion: v2
+name: metabase
+description: The simplest, fastest way to get business intelligence and analytics to everyone in your company
+home: http://www.metabase.com/
+icon: http://www.metabase.com/images/logo.svg
+
+type: application
+
+version: 0.1.0
+
+appVersion: "latest"
