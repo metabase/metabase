@@ -5,16 +5,21 @@ This provides a single namespace `mb.licenses` to look through all jar dependenc
 ### Example usage:
 
 ```bash
-CLASSPATH=$(lein with-profile -dev classpath)
+CLASSPATH=$(lein with-profile -dev,+oss,+include-all-drivers classpath)
 
-BACKFILL=$(cat bin/license-overrides.edn)
+BACKFILL=$(cat overrides.edn)
 
-cd bin/backend-licenses
 clj -X mb.licenses/process \
     :classpath \"$CLASSPATH\" \
     :backfill "$BACKFILL" \
     :output-filename "\"../../backend-licenses.txt\""
 ```
+
+Or all on one line:
+
+`clj -X mb.licenses/process :classpath \"$(cd ../.. && lein with-profile -dev,+include-all-drivers classpath | tail -n1)\" :backfill "\"overrides.edn\"" :output-filename "\"backend-licenses-oss.txt\""`
+
+NOTE: (tail -n1) is necessary as startup gets pretty chatty
 
 The program will concatenate all licenses found, and write to std-err information about licenses it cannot find:
 
