@@ -75,6 +75,16 @@ describe("scenarios > question > new", () => {
     cy.get(".Visualization .bar").should("have.length", 6);
   });
 
+  it.skip("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
+    openOrdersTable();
+    cy.icon("download").realHover();
+    cy.findByText("Download full results");
+    cy.icon("bell").realHover();
+    cy.findByText("Get alerts");
+    cy.icon("share").realHover();
+    cy.findByText("Sharing");
+  });
+
   describe("browse data", () => {
     it("should load orders table and summarize", () => {
       cy.visit("/");

@@ -235,6 +235,13 @@
    (number? value) value
    ;; same goes for an instance of CommaSeperated values
    (instance? CommaSeparatedNumbers value) value
+
+   ;; newer operators use vectors as their arguments even if there's only one
+   (vector? value)
+   (let [values (map parse-number value)]
+     (if (next values)
+       (i/map->CommaSeparatedNumbers {:numbers values})
+       (first values)))
    ;; if the value is a string, then split it by commas in the string. Usually there should be none.
    ;; Parse each part as a number.
    (string? value)

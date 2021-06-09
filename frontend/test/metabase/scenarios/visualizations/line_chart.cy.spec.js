@@ -1,7 +1,7 @@
 import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 const Y_AXIS_RIGHT_SELECTOR = ".axis.yr";
 
@@ -68,7 +68,7 @@ describe("scenarios > visualizations > line chart", () => {
     cy.get(".value-labels").contains("30%");
   });
 
-  it.skip("should correctly display tooltip values when X-axis is numeric and style is 'Ordinal' (metabase#15998)", () => {
+  it("should correctly display tooltip values when X-axis is numeric and style is 'Ordinal' (metabase#15998)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,
@@ -104,6 +104,198 @@ describe("scenarios > visualizations > line chart", () => {
       testPairedTooltipValues("Average of Quantity", "4");
     });
   });
+
+  describe.skip("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
+    const RENAMED_FIRST_SERIES = "Foo";
+    const RENAMED_SECOND_SERIES = "Bar";
+
+    it("custom expression names (metabase#16249-1)", () => {
+      createOrdersQuestionWithAggregation({
+        name: "16249_Q1",
+        aggregation: [
+          [
+            "aggregation-options",
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            { "display-name": "CE" },
+          ],
+        ],
+      }).then(({ body: { id: question1Id } }) => {
+        createOrdersQuestionWithAggregation({
+          name: "16249_Q2",
+          aggregation: [
+            [
+              "aggregation-options",
+              ["avg", ["field", ORDERS.SUBTOTAL, null]],
+              { "display-name": "CE" },
+            ],
+          ],
+        }).then(({ body: { id: question2Id } }) => {
+          cy.createDashboard("16249D").then(({ body: { id: dashboardId } }) => {
+            addBothSeriesToDashboard({
+              dashboardId,
+              firstCardId: question1Id,
+              secondCardId: question2Id,
+            });
+            cy.visit(`/dashboard/${dashboardId}`);
+
+            // Rename both series
+            renameSeries([
+              ["16249_Q1", RENAMED_FIRST_SERIES],
+              ["16249_Q2", RENAMED_SECOND_SERIES],
+            ]);
+
+            assertOnLegendItemsValues();
+            assertOnYAxisValues();
+
+            showTooltipForFirstCircleInSeries(0);
+            popover().within(() => {
+              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
+            });
+
+            showTooltipForFirstCircleInSeries(1);
+            popover().within(() => {
+              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues(RENAMED_SECOND_SERIES, "54.44");
+            });
+          });
+        });
+      });
+    });
+
+    it("regular column names (metabase#16249-2)", () => {
+      createOrdersQuestionWithAggregation({
+        name: "16249_Q3",
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+      }).then(({ body: { id: question1Id } }) => {
+        cy.createQuestion({
+          name: "16249_Q4",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["sum", ["field", PRODUCTS.PRICE, null]]],
+            breakout: [
+              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+          display: "line",
+        }).then(({ body: { id: question2Id } }) => {
+          cy.createDashboard("16249D").then(({ body: { id: dashboardId } }) => {
+            addBothSeriesToDashboard({
+              dashboardId,
+              firstCardId: question1Id,
+              secondCardId: question2Id,
+            });
+
+            cy.visit(`/dashboard/${dashboardId}`);
+
+            renameSeries([
+              ["16249_Q3", RENAMED_FIRST_SERIES],
+              ["16249_Q4", RENAMED_SECOND_SERIES],
+            ]);
+
+            assertOnLegendItemsValues();
+            assertOnYAxisValues();
+
+            showTooltipForFirstCircleInSeries(0);
+            popover().within(() => {
+              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
+            });
+
+            showTooltipForFirstCircleInSeries(1);
+            popover().within(() => {
+              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues(RENAMED_SECOND_SERIES, "2,829.03");
+            });
+          });
+        });
+      });
+    });
+
+    /**
+     * Helper functions related to repros around 16249 only!
+     * Note:
+     *  - This might be too abstract and highly specific.
+     *  - That's true in general sense, but that's the reason we're not using them anywhere else than here.
+     *  - Without these abstractions, both tests would be MUCH longer and harder to review.
+     */
+
+    function addBothSeriesToDashboard({
+      dashboardId,
+      firstCardId,
+      secondCardId,
+    } = {}) {
+      // Add the first question to the dashboard
+      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+        cardId: firstCardId,
+      }).then(({ body: { id: dashCardId } }) => {
+        // Combine the second question with the first one as the second series
+        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
+          cards: [
+            {
+              id: dashCardId,
+              card_id: firstCardId,
+              row: 0,
+              col: 0,
+              sizeX: 18,
+              sizeY: 12,
+              series: [
+                {
+                  id: secondCardId,
+                },
+              ],
+              parameter_mappings: [],
+            },
+          ],
+        });
+      });
+    }
+
+    function createOrdersQuestionWithAggregation({ name, aggregation } = {}) {
+      return cy.createQuestion({
+        name,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation,
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        },
+        display: "line",
+      });
+    }
+
+    function renameSeries(series) {
+      cy.icon("pencil").click();
+      cy.get(".Card").realHover();
+      cy.icon("palette").click();
+      series.forEach(serie => {
+        const [old_name, new_name] = serie;
+
+        cy.findByDisplayValue(old_name)
+          .clear()
+          .type(new_name);
+      });
+
+      cy.get(".Modal")
+        .as("modal")
+        .within(() => {
+          cy.button("Done").click();
+        });
+      cy.button("Save").click();
+      cy.findByText("You're editing this dashboard.").should("not.exist");
+    }
+
+    function assertOnLegendItemsValues() {
+      cy.get(".LegendItem")
+        .should("contain", RENAMED_FIRST_SERIES)
+        .and("contain", RENAMED_SECOND_SERIES);
+    }
+
+    function assertOnYAxisValues() {
+      cy.get(".y-axis-label")
+        .should("contain", RENAMED_FIRST_SERIES)
+        .and("contain", RENAMED_SECOND_SERIES);
+    }
+  });
 });
 
 function testPairedTooltipValues(val1, val2) {
@@ -111,4 +303,12 @@ function testPairedTooltipValues(val1, val2) {
     .closest("td")
     .siblings("td")
     .findByText(val2);
+}
+
+function showTooltipForFirstCircleInSeries(series_index) {
+  cy.get(`.sub._${series_index}`)
+    .as("firstSeries")
+    .find("circle")
+    .first()
+    .realHover();
 }

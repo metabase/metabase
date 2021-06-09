@@ -102,28 +102,6 @@ export function typeAndBlurUsingLabel(label, value) {
     .blur();
 }
 
-// Unfortunately, cypress `.type()` is currently broken and requires an ugly "hack"
-// it is documented here: https://github.com/cypress-io/cypress/issues/5480
-// `_typeUsingGet()` and `_typeUsingPlacehodler()` are temporary solution
-// please refrain from using them, unless absolutely neccessary!
-export function _typeUsingGet(selector, value, delay = 100) {
-  cy.get(selector)
-    .click()
-    .type(value, { delay })
-    .clear()
-    .click()
-    .type(value, { delay });
-}
-
-export function _typeUsingPlaceholder(selector, value, delay = 100) {
-  cy.findByPlaceholderText(selector)
-    .click()
-    .type(value, { delay })
-    .clear()
-    .click()
-    .type(value, { delay });
-}
-
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
 export function withDatabase(databaseId, f) {
@@ -310,8 +288,8 @@ export function getIframeBody(selector = "iframe") {
     .then(cy.wrap);
 }
 
-export function mockSessionProperty(propertyOrObject, value) {
-  cy.intercept("GET", "/api/session/properties", req => {
+function mockProperty(propertyOrObject, value, url) {
+  cy.intercept("GET", url, req => {
     req.reply(res => {
       if (typeof propertyOrObject === "object") {
         Object.assign(res.body, propertyOrObject);
@@ -321,6 +299,14 @@ export function mockSessionProperty(propertyOrObject, value) {
       }
     });
   });
+}
+
+export function mockSessionProperty(propertyOrObject, value) {
+  mockProperty(propertyOrObject, value, "/api/session/properties");
+}
+
+export function mockCurrentUserProperty(propertyOrObject, value) {
+  mockProperty(propertyOrObject, value, "/api/user/current");
 }
 
 export function showDashboardCardActions(index = 0) {

@@ -946,7 +946,8 @@ Send email notifications to users in Admin group, when a new SSO users is create
 Type: boolean<br>
 Default: `null`
 
-When set to `true`, the user login session will expire, when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
+When set to `true`, the user login session will expire when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
+This overrides the "Remember me" checkbox when logging in.
 
 Also see the [Changing session expiration](changing-session-expiration.md) documentation page.
 

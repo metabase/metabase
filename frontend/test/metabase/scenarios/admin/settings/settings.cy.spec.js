@@ -343,10 +343,16 @@ describe("scenarios > admin > settings", () => {
         .type("localhost")
         .blur();
       cy.findByPlaceholderText("587")
-        .type("1234")
+        .type("25")
+        .blur();
+      cy.findByPlaceholderText("youlooknicetoday")
+        .type("admin")
+        .blur();
+      cy.findByPlaceholderText("Shhh...")
+        .type("admin")
         .blur();
       cy.findByPlaceholderText("metabase@yourcompany.com")
-        .type("admin@metabase.com")
+        .type("mailer@metabase.test")
         .blur();
       cy.findByText("Save changes").click();
 

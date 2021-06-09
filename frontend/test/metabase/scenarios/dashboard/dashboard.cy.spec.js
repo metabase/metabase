@@ -434,7 +434,7 @@ describe("scenarios > dashboard", () => {
     expectedRouteCalls({ route_alias: "fetchFieldValues", calls: 0 });
   });
 
-  it.skip("should cache filter results after the first DB call (metabase#13832)", () => {
+  it.skip("filter dropdown should not send request for values every time the widget is opened (metabase#16103)", () => {
     // In this test we're using already present dashboard ("Orders in a dashboard")
     const FILTER_ID = "d7988e02";
 

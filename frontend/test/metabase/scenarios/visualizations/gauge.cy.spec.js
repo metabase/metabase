@@ -10,7 +10,7 @@ describe("scenarios > visualizations > gauge chart", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it.skip("should not rerender on gauge arc hover (metabase#15980)", () => {
+  it("should not rerender on gauge arc hover (metabase#15980)", () => {
     cy.createQuestion({
       name: "15980",
       query: { "source-table": ORDERS_ID, aggregation: [["count"]] },

@@ -9,6 +9,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions-group :as group]
             [metabase.models.permissions-revision :as perms-revision :refer [PermissionsRevision]]
+            [metabase.models.permissions.delete-sandboxes :as delete-sandboxes]
             [metabase.models.permissions.parse :as perms-parse]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -714,7 +715,8 @@
        (db/transaction
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
-         (save-perms-revision! (:revision old-graph) old new)))))
+         (save-perms-revision! (:revision old-graph) old new)
+         (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any], new-value]
