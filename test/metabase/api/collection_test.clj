@@ -443,7 +443,49 @@
             (is (= [["card" "AA"] ["card" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"]]
                    (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=desc"))
                         :data
-                        (map (juxt :model :name)))))))))))
+                        (map (juxt :model :name)))))))))
+    (testing "Results have the lastest revision timestamp"
+      (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
+                      User       [{failuser-id :id} {:first_name "failure" :last_name "failure" :email "failure@example.com"}]
+                      User       [{passuser-id :id} {:first_name "pass" :last_name "pass" :email "pass@example.com"}]
+                      Card       [{card-id :id :as card}
+                                  {:name "card" :collection_id collection-id}]
+                      Dashboard  [{dashboard-id :id :as dashboard} {:name "dashboard" :collection_id collection-id}]
+                      Revision   [card-revision1
+                                  {:model    "Card"
+                                   :model_id card-id
+                                   :user_id  failuser-id
+                                   :object   (revision/serialize-instance card card-id card)}]
+                      Revision   [card-revision2
+                                  {:model    "Card"
+                                   :model_id card-id
+                                   :user_id  failuser-id
+                                   :object   (revision/serialize-instance card card-id card)}]
+                      Revision   [dash-revision1
+                                  {:model    "Dashboard"
+                                   :model_id dashboard-id
+                                   :user_id  failuser-id
+                                   :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]
+                      Revision   [dash-revision2
+                                  {:model    "Dashboard"
+                                   :model_id dashboard-id
+                                   :user_id  failuser-id
+                                   :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]]
+        (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
+          (db/execute! {:update :revision
+                        ;; in the past
+                        :set    {:timestamp (at-year 2015)}
+                        :where  [:in :id (map :id [card-revision1 dash-revision1])]})
+          ;; mark the later revisions with the user with name "pass". Note important that its the later revision by
+          ;; id. Query assumes increasing timestamps with ids
+          (db/execute! {:update :revision
+                        :set    {:timestamp (at-year 2021)
+                                 :user_id   passuser-id}
+                        :where  [:in :id (map :id [card-revision2 dash-revision2])]}))
+        (is (= ["pass" "pass"]
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card"))
+                    :data
+                    (map (comp :last_name :last-edit-info)))))))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
