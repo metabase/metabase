@@ -13,7 +13,9 @@
                    \"group\" {:resource \"filename-of-license\"}}
   }
 
-  "
+  At the moment assumes a leiningen classpath which is primarily jars and your own source paths, so only detects
+  license information from jars. In the future a strategy and heuristics could be determined for when source is
+  available from local roots and git dependencies."
   (:require [clojure.data.xml :as xml]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
