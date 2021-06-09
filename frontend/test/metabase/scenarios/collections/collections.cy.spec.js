@@ -583,6 +583,16 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("First Collection");
     });
 
+    it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
+      cy.visit("/collection/root");
+      openEllipsisMenuFor("Orders in a dashboard");
+      cy.findByText("Pin this item").click();
+
+      cy.findByText(/Pinned items/i);
+      selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
+      cy.findByText("1 item selected");
+    });
+
     describe("bulk actions", () => {
       it("should be possible to apply bulk selection to items (metabase#14705)", () => {
         cy.visit("/collection/root");
@@ -600,16 +610,6 @@ describe("scenarios > collection_defaults", () => {
         });
         cy.icon("check").should("not.exist");
         cy.findByTestId("bulk-action-bar").should("not.be.visible");
-      });
-
-      it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
-        cy.visit("/collection/root");
-        openEllipsisMenuFor("Orders in a dashboard");
-        cy.findByText("Pin this item").click();
-
-        cy.findByText(/Pinned items/i);
-        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
-        cy.findByText("1 item selected");
       });
 
       it("should be possible to select pinned items for bulk operations when all items are pinned (metabase#16497)", () => {
