@@ -38,6 +38,11 @@ export function ModerationIssueThread({
   const hasButtonBarActions = !!(onComment || onModerate);
   const showButtonBar = !isEditingText && hasButtonBarActions;
 
+  const closeAllForms = () => {
+    setShowRequestTextForm(false);
+    setShowCommentForm(false);
+  };
+
   const onCommentSubmit = async comment => {
     setIsCommentPending(true);
     try {
@@ -69,6 +74,7 @@ export function ModerationIssueThread({
         icon: "pencil",
         title: t`Edit Text`,
         action: () => {
+          closeAllForms();
           setShowRequestTextForm(true);
         },
       },
@@ -118,7 +124,10 @@ export function ModerationIssueThread({
         <CommentForm
           className="pt1"
           onSubmit={onCommentSubmit}
-          onCancel={() => setShowCommentForm(false)}
+          onCancel={() => {
+            closeAllForms();
+            setShowCommentForm(false);
+          }}
           isPending={isCommentPending}
         />
       )}
