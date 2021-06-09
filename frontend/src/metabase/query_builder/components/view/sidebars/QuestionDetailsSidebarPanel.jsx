@@ -63,7 +63,7 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
           onRequestClick={request => {
             setView({
               name: SIDEBAR_VIEWS.MODERATION_REQUEST_PANEL,
-              props: { requests: [request] },
+              props: { requestId: request.id },
             });
           }}
         />
