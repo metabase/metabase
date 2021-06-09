@@ -1,5 +1,5 @@
 import styled, { css } from "styled-components";
-import colors from "metabase/lib/colors";
+import colors, { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const TreeNodeRoot = styled.li`
@@ -16,7 +16,7 @@ export const TreeNodeRoot = styled.li`
 
   &:hover {
     background-color: ${props =>
-      props.isSelected ? colors["accent7"] : `#e7e6f1`};
+      props.isSelected ? colors["accent7"] : lighten(colors["accent7"], 0.65)};
   }
 `;
 
