@@ -24,9 +24,11 @@
   [jar-filename]
   (let [adjacent-pom (io/file (str/replace jar-filename #"jar$" "pom"))]
     (if (.exists adjacent-pom)
-      (xml/parse (io/input-stream adjacent-pom))
+      (xml/parse (io/input-stream adjacent-pom)
+                 :skip-whitespace true)
       (when-let [jar-pom (first (into [] pom-filter (jar-files jar-filename)))]
-        (xml/parse (.getInputStream (JarFile. ^String jar-filename) jar-pom))))))
+        (xml/parse (.getInputStream (JarFile. ^String jar-filename) jar-pom)
+                   :skip-whitespace true)))))
 
 (defn- get-entry [^JarFile jar ^String name]
   (.getEntry jar name))
@@ -55,13 +57,10 @@
   (let [licenses (some->> pom-xml
                           :content
                           (filter #(#{:licenses} (tag-name %)))
-                          (remove string?)
                           first
                           :content
-                          (remove string?)
                           first
                           :content
-                          (remove string?)
                           (map tag-content)
                           (into {}))]
     licenses))
@@ -131,6 +130,7 @@
     (when (seq with-license)
       (with-open [os (io/writer output-filename)]
         (run! #(write-license os %) with-license))
-      (println "License information written to " output-filename))
+      (println "License information for" (count with-license) "libraries written to "
+               output-filename))
     (when (seq without-license)
       (run! #(report-missing *err* %) without-license))))
