@@ -19,7 +19,7 @@ const settingsGoogleFormPropTypes = {
   elements: PropTypes.array,
   settingValues: PropTypes.object,
   updateSettings: PropTypes.func,
-}
+};
 
 @connect(
   null,
