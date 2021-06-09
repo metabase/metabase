@@ -689,3 +689,17 @@ function getSidebarCollectionChildrenFor(item) {
     .parent()
     .parent();
 }
+
+function pinAllRootItems() {
+  cy.request("GET", "/api/collection/root/items").then(resp => {
+    const ALL_ITEMS = resp.body.data;
+
+    ALL_ITEMS.forEach(({ model, id }, index) => {
+      if (model !== "collection") {
+        cy.request("PUT", `/api/${model}/${id}`, {
+          collection_position: index++,
+        });
+      }
+    });
+  });
+}
