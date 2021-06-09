@@ -584,13 +584,8 @@ describe("scenarios > collection_defaults", () => {
     });
 
     describe("bulk actions", () => {
-      beforeEach(() => {
-        cy.visit("/collection/root");
-        openEllipsisMenuFor("Orders in a dashboard");
-        cy.findByText("Pin this item").click();
-      });
-
       it("should be possible to apply bulk selection to items (metabase#14705)", () => {
+        cy.visit("/collection/root");
         selectItemUsingCheckbox("Orders");
         cy.findByText("1 item selected").should("be.visible");
 
@@ -608,6 +603,10 @@ describe("scenarios > collection_defaults", () => {
       });
 
       it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
+        cy.visit("/collection/root");
+        openEllipsisMenuFor("Orders in a dashboard");
+        cy.findByText("Pin this item").click();
+
         cy.findByText(/Pinned items/i);
         selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
         cy.findByText("1 item selected");
