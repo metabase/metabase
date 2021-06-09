@@ -75,7 +75,7 @@ export default class TimeseriesFilterWidget extends Component {
       if (filterIndex >= 0) {
         filter = currentFilter = filters[filterIndex];
       } else {
-        filter = ["time-interval", timeField, -30, "day"];
+        filter = ["time-interval", timeField.mbql(), -30, "day"];
       }
 
       // $FlowFixMe
