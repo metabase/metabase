@@ -13,6 +13,8 @@ ModerationIssueThread.propTypes = {
   comments: PropTypes.array,
   onComment: PropTypes.func,
   onModerate: PropTypes.func,
+  onUpdateRequestText: PropTypes.func,
+  onResolveOwnRequest: PropTypes.func,
 };
 
 const COMMMENT_VISIBLE_LINES = 3;
@@ -23,12 +25,20 @@ export function ModerationIssueThread({
   comments = [],
   onComment,
   onModerate,
+  onUpdateRequestText,
+  onResolveOwnRequest,
 }) {
+  const [showRequestTextForm, setShowRequestTextForm] = useState(false);
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [isCommentPending, setIsCommentPending] = useState(false);
-  const showButtonBar = !showCommentForm && !!(onComment || onModerate);
+  const [isRequestPending, setIsRequestPending] = useState(false);
 
-  const onSubmit = async comment => {
+  const hasRequestActions = !!(onUpdateRequestText || onResolveOwnRequest);
+  const isEditingText = showCommentForm || showRequestTextForm;
+  const hasButtonBarActions = !!(onComment || onModerate);
+  const showButtonBar = !isEditingText && hasButtonBarActions;
+
+  const onCommentSubmit = async comment => {
     setIsCommentPending(true);
     try {
       await onComment(comment, request);
@@ -40,16 +50,57 @@ export function ModerationIssueThread({
     }
   };
 
+  const onEditRequestSubmit = async text => {
+    setIsRequestPending(true);
+    try {
+      await onUpdateRequestText(text, request);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setShowRequestTextForm(false);
+      setIsRequestPending(false);
+    }
+  };
+
+  const requestActions =
+    hasRequestActions &&
+    [
+      onUpdateRequestText && {
+        icon: "pencil",
+        title: t`Edit Text`,
+        action: () => {
+          setShowRequestTextForm(true);
+        },
+      },
+      onResolveOwnRequest && {
+        icon: "close",
+        title: t`Close Request`,
+        action: () => {
+          onResolveOwnRequest(request);
+        },
+      },
+    ].filter(Boolean);
+
   return (
     <div className={className}>
       <ModerationIssuePill type={request.type} status={request.status} />
-      <Comment
-        className="pt1"
-        title={request.title}
-        text={request.text}
-        timestamp={request.timestamp}
-        visibleLines={COMMMENT_VISIBLE_LINES}
-      />
+      {showRequestTextForm ? (
+        <CommentForm
+          onSubmit={onEditRequestSubmit}
+          onCancel={() => setShowRequestTextForm(false)}
+          isPending={isRequestPending}
+          initialValue={request.text}
+        />
+      ) : (
+        <Comment
+          className="pt1"
+          title={request.title}
+          text={request.text}
+          timestamp={request.timestamp}
+          visibleLines={COMMMENT_VISIBLE_LINES}
+          actions={requestActions}
+        />
+      )}
       {comments.map(comment => {
         return (
           <Comment
@@ -66,7 +117,7 @@ export function ModerationIssueThread({
       {showCommentForm && (
         <CommentForm
           className="pt1"
-          onSubmit={onSubmit}
+          onSubmit={onCommentSubmit}
           onCancel={() => setShowCommentForm(false)}
           isPending={isCommentPending}
         />
@@ -94,13 +145,20 @@ export function ModerationIssueThread({
 
 CommentForm.propTypes = {
   className: PropTypes.string,
+  initialValue: PropTypes.string,
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   isPending: PropTypes.bool,
 };
 
-function CommentForm({ className, onSubmit, onCancel, isPending }) {
-  const [value, setValue] = useState("");
+function CommentForm({
+  className,
+  initialValue = "",
+  onSubmit,
+  onCancel,
+  isPending,
+}) {
+  const [value, setValue] = useState(initialValue);
   const isEmpty = value.trim().length === 0;
 
   return (
