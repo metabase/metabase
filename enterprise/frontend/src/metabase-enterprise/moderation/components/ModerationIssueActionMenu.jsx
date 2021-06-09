@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
 import { connect } from "react-redux";
 
 import EntityMenu from "metabase/components/EntityMenu";
@@ -14,20 +15,46 @@ import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 ModerationIssueActionMenu.propTypes = {
   className: PropTypes.string,
   triggerClassName: PropTypes.string,
-  isModerator: PropTypes.bool.isRequired,
   onAction: PropTypes.func.isRequired,
-  request: PropTypes.object,
+  targetIssueType: PropTypes.string,
+  userType: PropTypes.string.isRequired,
 };
 
 function ModerationIssueActionMenu({
   className,
   triggerClassName,
   onAction,
-  request,
-  isModerator,
+  targetIssueType,
+  userType,
 }) {
-  const userType = getUserTypeTextKey(isModerator);
-  const issueTypes = getModerationIssueActionTypes(isModerator, request);
+  const menuItems = useMemo(() => {
+    const issueActionTypes = getModerationIssueActionTypes(
+      userType,
+      targetIssueType,
+    );
+    return issueActionTypes
+      .map((typeGrouping, i) => {
+        const addBottomBorderToGrouping = i !== issueActionTypes.length - 1;
+
+        return typeGrouping.map((type, j) => {
+          const addBottomBorder =
+            addBottomBorderToGrouping && j === typeGrouping.length - 1;
+          const { icon, color } = getModerationStatusIcon(type);
+
+          return {
+            icon,
+            iconSize: 18,
+            className: cx(
+              `text-${color} text-${color}-hover`,
+              addBottomBorder && "border-bottom",
+            ),
+            action: () => onAction(type),
+            title: MODERATION_TEXT[type].action,
+          };
+        });
+      })
+      .flat();
+  }, [userType, targetIssueType, onAction]);
 
   return (
     <EntityMenu
@@ -37,22 +64,15 @@ function ModerationIssueActionMenu({
         className: triggerClassName,
       }}
       className={className}
-      items={issueTypes.map(issueType => {
-        const { icon, color } = getModerationStatusIcon(issueType);
-        return {
-          icon,
-          iconSize: 18,
-          className: `text-${color} text-${color}-hover`,
-          action: () => onAction(issueType),
-          title: MODERATION_TEXT[issueType].action,
-        };
-      })}
+      items={menuItems}
     />
   );
 }
 
-const mapStateToProps = (state, props) => ({
-  isModerator: getIsModerator(state, props),
-});
+const mapStateToProps = (state, props) => {
+  return {
+    userType: getUserTypeTextKey(getIsModerator(state, props)),
+  };
+};
 
 export default connect(mapStateToProps)(ModerationIssueActionMenu);
