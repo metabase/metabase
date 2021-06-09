@@ -627,14 +627,12 @@ describe("scenarios > collection_defaults", () => {
         it("should be possible to bulk archive items (metabase#16496)", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
-          selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
 
           cy.findByTestId("bulk-action-bar")
-            .findByRole("button", { name: "Archive" })
+            .button("Archive")
             .click();
 
           cy.findByText("Orders").should("not.exist");
-          cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
         });
       });
@@ -643,7 +641,6 @@ describe("scenarios > collection_defaults", () => {
         it("should be possible to bulk move items", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
-          selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
 
           cy.findByTestId("bulk-action-bar")
             .findByRole("button", { name: "Move" })
@@ -654,17 +651,14 @@ describe("scenarios > collection_defaults", () => {
             cy.findByRole("button", { name: "Move" }).click();
           });
 
-          // Check exited bulk actions mode
           cy.findByText("Orders").should("not.exist");
-          cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
 
-          // Check items are actually moved
+          // Check that items were actually moved
           sidebar()
             .findByText("First collection")
             .click();
           cy.findByText("Orders");
-          cy.findByText("Orders in a dashboard");
         });
       });
     });
