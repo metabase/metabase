@@ -178,11 +178,3 @@
            (str os)))))
 
 #_(run-tests)
-
-(comment
-  (def jar-filename "/Users/dan/.m2/repository/net/jcip/jcip-annotations/1.0/jcip-annotations-1.0.jar")
-  (let [pom (lic/jar->pom jar-filename)]
-    (lic/pom->coordinates pom))
-  (jar-filename-from-cp "org/clojure/clojure" classpath-urls)
-  (jar-filename-from-cp "commons/commons-math3" classpath-urls)
-  (jar-filename-from-cp "hiccup/hiccup" classpath-urls))
