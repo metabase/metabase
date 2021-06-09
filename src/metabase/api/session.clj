@@ -1,8 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require [cemerick.friend.credentials :as creds]
-            [cheshire.core :as json]
-            [clj-http.client :as http]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
             [metabase.api.common :as api]
@@ -259,8 +257,16 @@
   (if throttling-disabled?
     (google/do-google-auth token)
     (http-401-on-error
-      (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
-        (google/do-google-auth request)))))
+     (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
+       (let [user (google/do-google-auth request)
+             {session-uuid :id, :as session} (create-session! :sso user (request.u/device-info request))
+             response {:id (str session-uuid)}
+             user (db/select-one [User :id :is_active], :email email)]
+         (if (and user (:is_active user))
+           (mw.session/set-session-cookie request response session)
+           (throw (ex-info (str disabled-account-message)
+                           {:status-code 400
+                            :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
   (fn [request respond raise]

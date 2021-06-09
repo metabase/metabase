@@ -1,6 +1,17 @@
 (ns metabase.integrations.google
-  (:require [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]))
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
+            [clojure.tools.logging :as log]
+            [metabase.api.common :as api]
+            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.user :as user :refer [User]]
+            [metabase.server.middleware.session :as mw.session]
+            [metabase.server.request.util :as request.u]
+            [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import java.util.UUID))
 
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
@@ -59,12 +70,11 @@
   (user/create-new-google-auth-user! new-user))
 
 (s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
-  [first-name last-name email device-info :- request.u/DeviceInfo]
-  (when-let [user (or (db/select-one [User :id :last_login] :%lower.email (u/lower-case-en email))
+  [first-name last-name email]
+  (or (db/select-one [User :id :last_login] :%lower.email (u/lower-case-en email))
                       (google-auth-create-new-user! {:first_name first-name
                                                      :last_name  last-name
-                                                     :email      email}))]
-    (create-session! :sso user device-info)))
+                                                     :email      email})))
 
 (defn do-google-auth
   "Call to Google to perform an authentication"
@@ -72,13 +82,4 @@
   (let [token-info-response                    (http/post (format google-auth-token-info-url token))
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
     (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
-    (let [{session-uuid :id, :as session} (api/check-500
-                                           (google-auth-fetch-or-create-user!
-                                            given_name family_name email (request.u/device-info request)))
-          response                        {:id (str session-uuid)}
-          user                            (db/select-one [User :id :is_active], :email email)]
-      (if (and user (:is_active user))
-        (mw.session/set-session-cookie request response session)
-        (throw (ex-info (str disabled-account-message)
-                        {:status-code 400
-                         :errors      {:account disabled-account-snippet}}))))))
+    (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))))
