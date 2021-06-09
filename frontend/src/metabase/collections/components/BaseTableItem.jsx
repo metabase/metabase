@@ -63,7 +63,7 @@ export function BaseTableItem({
     const lastEditInfo = item["last-edit-info"];
 
     // We don't keep last edit info for pulses
-    // TODO Remove ternary when Pulses are gone
+    // TODO Remove ternary when Pulses are gone (metabase#16519-1)
     const lastEditedBy = lastEditInfo
       ? `${lastEditInfo.first_name} ${lastEditInfo.last_name}`
       : "";
