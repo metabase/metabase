@@ -583,36 +583,83 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("First Collection");
     });
 
+    it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
+      cy.visit("/collection/root");
+      openEllipsisMenuFor("Orders in a dashboard");
+      cy.findByText("Pin this item").click();
+
+      cy.findByText(/Pinned items/i);
+      selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
+      cy.findByText("1 item selected");
+    });
+
     describe("bulk actions", () => {
-      beforeEach(() => {
-        cy.visit("/collection/root");
-        openEllipsisMenuFor("Orders in a dashboard");
-        cy.findByText("Pin this item").click();
-      });
-
-      it("should be possible to apply bulk selection to items (metabase#14705)", () => {
-        selectItemUsingCheckbox("Orders");
-        cy.findByText("1 item selected").should("be.visible");
-        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
-        cy.findByText("2 items selected").should("be.visible");
-
-        // Select all
-        cy.icon("dash").click();
-        cy.icon("dash").should("not.exist");
-        cy.findByText("4 items selected");
-
-        // Deselect all
-        cy.findByTestId("bulk-action-bar").within(() => {
-          cy.icon("check").click();
+      describe("selection", () => {
+        it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
+          bulkSelectDeselectWorkflow();
         });
-        cy.icon("check").should("not.exist");
-        cy.findByTestId("bulk-action-bar").should("not.be.visible");
+
+        it("should be possible to apply bulk selection when all items are pinned (metabase#16497)", () => {
+          pinAllRootItems();
+          bulkSelectDeselectWorkflow();
+        });
+
+        function bulkSelectDeselectWorkflow() {
+          cy.visit("/collection/root");
+          selectItemUsingCheckbox("Orders");
+          cy.findByText("1 item selected").should("be.visible");
+
+          // Select all
+          cy.icon("dash").click();
+          cy.icon("dash").should("not.exist");
+          cy.findByText("4 items selected");
+
+          // Deselect all
+          cy.findByTestId("bulk-action-bar").within(() => {
+            cy.icon("check").click();
+          });
+          cy.icon("check").should("not.exist");
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+        }
       });
 
-      it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
-        cy.findByText(/Pinned items/i);
-        selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
-        cy.findByText("1 item selected");
+      describe("archive", () => {
+        it("should be possible to bulk archive items (metabase#16496)", () => {
+          cy.visit("/collection/root");
+          selectItemUsingCheckbox("Orders");
+
+          cy.findByTestId("bulk-action-bar")
+            .button("Archive")
+            .click();
+
+          cy.findByText("Orders").should("not.exist");
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+        });
+      });
+
+      describe("move", () => {
+        it("should be possible to bulk move items", () => {
+          cy.visit("/collection/root");
+          selectItemUsingCheckbox("Orders");
+
+          cy.findByTestId("bulk-action-bar")
+            .button("Move")
+            .click();
+
+          modal().within(() => {
+            cy.findByText("First collection").click();
+            cy.button("Move").click();
+          });
+
+          cy.findByText("Orders").should("not.exist");
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+
+          // Check that items were actually moved
+          sidebar()
+            .findByText("First collection")
+            .click();
+          cy.findByText("Orders");
+        });
       });
     });
   });
@@ -668,4 +715,18 @@ function getSidebarCollectionChildrenFor(item) {
     .closest("a")
     .parent()
     .parent();
+}
+
+function pinAllRootItems() {
+  cy.request("GET", "/api/collection/root/items").then(resp => {
+    const ALL_ITEMS = resp.body.data;
+
+    ALL_ITEMS.forEach(({ model, id }, index) => {
+      if (model !== "collection") {
+        cy.request("PUT", `/api/${model}/${id}`, {
+          collection_position: index++,
+        });
+      }
+    });
+  });
 }

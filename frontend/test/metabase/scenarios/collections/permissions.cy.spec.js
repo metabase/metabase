@@ -301,10 +301,15 @@ describe("collection permissions", () => {
                   cy.contains("37.65");
                 });
 
-                it("should be able to archive the question (metabase#11719-3)", () => {
+                it("should be able to archive the question (metabase#11719-3, metabase#16512)", () => {
+                  cy.intercept("GET", "/api/collection/root/items**").as(
+                    "getItems",
+                  );
                   cy.findByText("Archive").click();
                   clickButton("Archive");
                   assertOnRequest("updateQuestion");
+                  cy.wait("@getItems"); // pinned items
+                  cy.wait("@getItems"); // unpinned items
                   cy.location("pathname").should("eq", "/collection/root");
                   cy.findByText("Orders").should("not.exist");
                 });
