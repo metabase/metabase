@@ -568,8 +568,6 @@ describe("scenarios > collection_defaults", () => {
       cy.visit("/collection/root");
       openEllipsisMenuFor("Orders in a dashboard");
       cy.findByText("Pin this item").click();
-
-      cy.findByText(/Pinned items/i);
       selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
       cy.findByText("1 item selected");
     });
