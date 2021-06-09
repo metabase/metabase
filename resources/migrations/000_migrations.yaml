@@ -8384,6 +8384,22 @@ databaseChangeLog:
                   value: 'simple'
             where: "'key'='humanization-strategy' AND value='advanced'"
 
+  - changeSet:
+      id: 311
+      author: howonlee
+      comment: Added 0.40.0 Migrate friendly field names, not noop
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            sql: |
+                UPDATE setting SET value='simple' WHERE `key`='humanization-strategy'
+                AND value='advanced'
+        - sql:
+            dbms: postgresql,h2
+            sql: |
+                UPDATE setting SET value='simple' WHERE key='humanization-strategy'
+                AND value='advanced'
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
