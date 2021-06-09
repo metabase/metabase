@@ -20,15 +20,14 @@ describe("scenarios > visualizations > scalar", () => {
     it(`should render human readable numbers on ${size} screen size (metabase#12629)`, () => {
       const [width, height] = viewport;
 
-      // Remove this when issue gets fixed for these screen sizes
-      cy.skipOn(size === "mobile" || size === "hd");
+      cy.skipOn(size === "mobile");
 
       cy.viewport(width, height);
       cy.createQuestion({
         name: "12629",
         query: {
           "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          aggregation: [["*", 1000000, ["sum", ["field", ORDERS.TOTAL, null]]]],
         },
         display: "scalar",
       }).then(({ body: { id: questionId } }) => {
@@ -52,7 +51,7 @@ describe("scenarios > visualizations > scalar", () => {
             });
           });
           cy.visit(`/dashboard/${dashboardId}`);
-          cy.findByText("1.5M");
+          cy.findByText("1.5T");
         });
       });
     });
