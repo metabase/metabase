@@ -71,6 +71,7 @@ export const PLUGIN_MODERATION_SERVICE = {
   isRequestOpen: _.noop,
   getModerationRequestActionTypes: _.noop,
   getModerationEvents: _.noop,
+  getReviewType: _.noop,
 };
 
 export const PLUGIN_NOTIFICATION_COMPONENTS = {

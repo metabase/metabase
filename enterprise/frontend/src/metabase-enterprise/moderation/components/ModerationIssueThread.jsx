@@ -143,7 +143,7 @@ export function ModerationIssueThread({
             <ModerationIssueActionMenu
               triggerClassName="text-white text-white-hover bg-brand bg-brand-hover py1"
               onAction={actionType => onModerate(actionType, request)}
-              request={request}
+              targetIssueType={request.type}
             />
           )}
         </div>
