@@ -622,6 +622,45 @@ describe("scenarios > collection_defaults", () => {
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
         }
       });
+
+      describe("archive", () => {
+        it("should be possible to bulk archive items (metabase#16496)", () => {
+          cy.visit("/collection/root");
+          selectItemUsingCheckbox("Orders");
+
+          cy.findByTestId("bulk-action-bar")
+            .button("Archive")
+            .click();
+
+          cy.findByText("Orders").should("not.exist");
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+        });
+      });
+
+      describe("move", () => {
+        it("should be possible to bulk move items", () => {
+          cy.visit("/collection/root");
+          selectItemUsingCheckbox("Orders");
+
+          cy.findByTestId("bulk-action-bar")
+            .button("Move")
+            .click();
+
+          modal().within(() => {
+            cy.findByText("First collection").click();
+            cy.button("Move").click();
+          });
+
+          cy.findByText("Orders").should("not.exist");
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+
+          // Check that items were actually moved
+          sidebar()
+            .findByText("First collection")
+            .click();
+          cy.findByText("Orders");
+        });
+      });
     });
   });
 });

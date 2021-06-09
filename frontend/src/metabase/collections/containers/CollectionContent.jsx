@@ -66,11 +66,11 @@ function CollectionContent({
 
   const handleBulkArchive = useCallback(async () => {
     try {
-      await Promise.all(selectedItems.map(item => item.setArchived(true)));
+      await Promise.all(selected.map(item => item.setArchived(true)));
     } finally {
       clear();
     }
-  }, [selectedItems, clear]);
+  }, [selected, clear]);
 
   const handleBulkMoveStart = () => {
     setSelectedItems(selected);
