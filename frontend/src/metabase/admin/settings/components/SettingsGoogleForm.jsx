@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
@@ -14,6 +14,12 @@ import { updateSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/components/ExternalLink";
+
+const settingsGoogleFormPropTypes = {
+  elements: PropTypes.array,
+  settingValues: PropTypes.object,
+  updateSettings: PropTypes.func,
+}
 
 @connect(
   null,
@@ -79,3 +85,5 @@ export default class SettingsGoogleForm extends Component {
     );
   }
 }
+
+SettingsGoogleForm.propTypes = settingsGoogleFormPropTypes;
