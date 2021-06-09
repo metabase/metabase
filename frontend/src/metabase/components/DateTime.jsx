@@ -37,7 +37,9 @@ const propTypes = {
 
 function DateTime({ value, unit = "default", ...props }) {
   const options = MetabaseSettings.formattingOptions();
-  return <span {...props}>{formatDateTimeWithUnit(value, unit, options)}</span>;
+  const formattedTime = formatDateTimeWithUnit(value, unit, options);
+  
+  return <span {...props}>{formattedTime}</span>;
 }
 
 DateTime.propTypes = propTypes;
