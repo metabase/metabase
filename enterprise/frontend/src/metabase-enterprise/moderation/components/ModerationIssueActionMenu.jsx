@@ -28,41 +28,20 @@ function ModerationIssueActionMenu({
   userType,
 }) {
   const menuItems = useMemo(() => {
-    const issueActionTypes = getModerationIssueActionTypes(
-      userType,
-      targetIssueType,
-    );
-    return issueActionTypes
-      .map((typeGrouping, i) => {
-        const addBottomBorderToGrouping = i !== issueActionTypes.length - 1;
-
-        return typeGrouping.map((type, j) => {
-          const addBottomBorder =
-            addBottomBorderToGrouping && j === typeGrouping.length - 1;
-          const { icon, color } = getModerationStatusIcon(type);
-
-          return {
-            icon,
-            iconSize: 18,
-            className: cx(
-              `text-${color} text-${color}-hover`,
-              addBottomBorder && "border-bottom",
-            ),
-            action: () => onAction(type),
-            title: MODERATION_TEXT[type].action,
-          };
-        });
-      })
-      .flat();
+    return buildActionMenuItems(userType, targetIssueType, onAction);
   }, [userType, targetIssueType, onAction]);
+
+  const triggerProps = useMemo(() => {
+    return {
+      iconRight: "chevrondown",
+      className: triggerClassName,
+    };
+  }, [triggerClassName]);
 
   return (
     <EntityMenu
       triggerChildren={MODERATION_TEXT[userType].action}
-      triggerProps={{
-        iconRight: "chevrondown",
-        className: triggerClassName,
-      }}
+      triggerProps={triggerProps}
       className={className}
       items={menuItems}
     />
@@ -76,3 +55,34 @@ const mapStateToProps = (state, props) => {
 };
 
 export default connect(mapStateToProps)(ModerationIssueActionMenu);
+
+function buildActionMenuItems(userType, targetIssueType, onAction) {
+  const issueActionTypes = getModerationIssueActionTypes(
+    userType,
+    targetIssueType,
+  );
+
+  // the above function `getModerationIssueActionTypes` returns an array of arrays, but the `EntityMenu` expects a flat list of `items`
+  // so we flatten the groups and reflect the groupings via a border-bottom applied to the final entry in a grouping
+  return issueActionTypes
+    .map((typeGrouping, i) => {
+      const isNotLastGroupOfTypes = i !== issueActionTypes.length - 1;
+
+      return typeGrouping.map((type, j) => {
+        const isLastTypeInGroup = j === typeGrouping.length - 1;
+        const { icon, color } = getModerationStatusIcon(type);
+
+        return {
+          icon,
+          iconSize: 18,
+          className: cx(
+            `text-${color} text-${color}-hover`,
+            isNotLastGroupOfTypes && isLastTypeInGroup && "border-bottom",
+          ),
+          action: () => onAction(type),
+          title: MODERATION_TEXT[type].action,
+        };
+      });
+    })
+    .flat();
+}
