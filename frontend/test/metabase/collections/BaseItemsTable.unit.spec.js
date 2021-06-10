@@ -34,7 +34,12 @@ describe("Collections BaseItemsTable", () => {
   function setup({ items = [ITEM], ...props } = {}) {
     return render(
       <DragDropContextProvider backend={HTML5Backend}>
-        <BaseItemsTable items={items} {...props} />
+        <BaseItemsTable
+          items={items}
+          sortingOptions={{ sort_column: "name", sort_direction: "asc" }}
+          onSortingOptionsChange={jest.fn()}
+          {...props}
+        />
       </DragDropContextProvider>,
     );
   }
