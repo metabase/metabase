@@ -123,8 +123,13 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
   };
 
   return (
-    <Search.ListLoader query={pinnedQuery} wrapped>
-      {({ list: pinnedItems }) => {
+    <Search.ListLoader
+      query={pinnedQuery}
+      loadingAndErrorWrapper={false}
+      keepListWhileLoading
+      wrapped
+    >
+      {({ list: pinnedItems = [], loading: loadingPinnedItems }) => {
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
@@ -150,8 +155,17 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 onCopy={handleCopy}
               />
 
-              <Search.ListLoader query={unpinnedQuery} wrapped>
-                {({ list: unpinnedItems, metadata }) => {
+              <Search.ListLoader
+                query={unpinnedQuery}
+                loadingAndErrorWrapper={false}
+                keepListWhileLoading
+                wrapped
+              >
+                {({
+                  list: unpinnedItems = [],
+                  metadata = {},
+                  loading: loadingUnpinnedItems,
+                }) => {
                   const hasPagination = metadata.total > PAGE_SIZE;
 
                   const unselected = [...pinnedItems, ...unpinnedItems].filter(
@@ -163,7 +177,11 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                     toggleAll(unselected);
                   };
 
-                  if (!hasPinnedItems && unpinnedItems.length === 0) {
+                  const loading = loadingPinnedItems || loadingUnpinnedItems;
+                  const isEmpty =
+                    !loading && !hasPinnedItems && unpinnedItems.length === 0;
+
+                  if (isEmpty) {
                     return (
                       <Box mt="120px">
                         <CollectionEmptyState />
