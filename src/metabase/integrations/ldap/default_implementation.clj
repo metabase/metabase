@@ -18,12 +18,14 @@
 (def ^:private filter-placeholder
   "{login}")
 
+(def ^:private group-membership-filter
+  "(member={dn})")
+
 (s/defn search :- (s/maybe su/Map)
   "Search for a LDAP user with `username`."
-  [ldap-connection :- LDAPConnectionPool
-   username        :- su/NonBlankString
-   {:keys [user-base
-           user-filter]} :- i/LDAPSettings]
+  [ldap-connection                 :- LDAPConnectionPool
+   username                        :- su/NonBlankString
+   {:keys [user-base user-filter]} :- i/LDAPSettings]
   (some-> (first
            (ldap-client/search
             ldap-connection
@@ -33,28 +35,41 @@
              :size-limit 1}))
           u/lower-case-map-keys))
 
+(s/defn ^:private process-group-membership-filter :- su/NonBlankString
+  "Replace DN and UID placeholders with values returned by the LDAP server."
+  [group-membership-filter :- su/NonBlankString
+   dn                      :- su/NonBlankString
+   uid                     :- (s/maybe su/NonBlankString)]
+  (let [uid-string (or uid "")]
+    (-> group-membership-filter
+        (str/replace "{dn}" (Filter/encodeValue ^String dn))
+        (str/replace "{uid}" (Filter/encodeValue ^String uid-string)))))
+
 (s/defn ^:private user-groups :- (s/maybe [su/NonBlankString])
   "Retrieve groups for a supplied DN."
-  [ldap-connection :- LDAPConnectionPool
-   dn              :- su/NonBlankString
-   {:keys [group-base]} :- i/LDAPSettings]
+  [ldap-connection                              :- LDAPConnectionPool
+   dn                                           :- su/NonBlankString
+   uid                                          :- su/NonBlankString
+   {:keys [group-base]}                         :- i/LDAPSettings
+   group-membership-filter                      :- su/NonBlankString]
   (when group-base
     (let [results (ldap-client/search
                    ldap-connection
                    group-base
                    {:scope  :sub
-                    :filter (Filter/createEqualityFilter "member" ^String dn)})]
+                    :filter (process-group-membership-filter group-membership-filter dn uid)})]
       (map :dn results))))
 
 (s/defn ldap-search-result->user-info :- (s/maybe i/UserInfo)
   "Convert the result "
-  [ldap-connection          :- LDAPConnectionPool
-   {:keys [dn], :as result} :- su/Map
+  [ldap-connection               :- LDAPConnectionPool
+   {:keys [dn uid], :as result} :- su/Map
    {:keys [first-name-attribute
            last-name-attribute
            email-attribute
            sync-groups?]
-    :as   settings} :- i/LDAPSettings]
+    :as   settings}              :- i/LDAPSettings
+   group-membership-filter       :- su/NonBlankString]
   (let [{first-name (keyword first-name-attribute)
          last-name  (keyword last-name-attribute)
          email      (keyword email-attribute)} result]
@@ -68,7 +83,7 @@
                      ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
                      ;; groups. Otherwise we have to make the inverse query to get them.
                      (or (:memberof result)
-                         (user-groups ldap-connection dn settings)
+                         (user-groups ldap-connection dn uid settings group-membership-filter)
                          []))})))
 
 (s/defn ^:private find-user* :- (s/maybe i/UserInfo)
@@ -76,7 +91,7 @@
    username        :- su/NonBlankString
    settings        :- i/LDAPSettings]
   (when-let [result (search ldap-connection username settings)]
-    (ldap-search-result->user-info ldap-connection result settings)))
+    (ldap-search-result->user-info ldap-connection result settings group-membership-filter)))
 
 
 ;;; --------------------------------------------- fetch-or-create-user! ----------------------------------------------

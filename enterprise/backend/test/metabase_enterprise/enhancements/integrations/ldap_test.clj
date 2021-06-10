@@ -50,7 +50,34 @@
                              :givenname "Fred"
                              :sn        "Taylor"}
                 :groups     []}
-               (ldap/find-user "fred.taylor@metabase.com")))))))
+               (ldap/find-user "fred.taylor@metabase.com"))))
+
+      (mt/with-temporary-setting-values [ldap-group-membership-filter "memberUid={uid}"]
+        (testing "find by username with custom group membership filter"
+          (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
+                  :first-name "Sally"
+                  :last-name  "Brown"
+                  :email      "sally.brown@metabase.com"
+                  :attributes {:uid       "sbrown20"
+                               :mail      "sally.brown@metabase.com"
+                               :givenname "Sally"
+                               :sn        "Brown"
+                               :cn        "Sally Brown"}
+                  :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
+                 (ldap/find-user "sbrown20"))))
+
+        (testing "find by email with custom group membership filter"
+          (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
+                  :first-name "Sally"
+                  :last-name  "Brown"
+                  :email      "sally.brown@metabase.com"
+                  :attributes {:uid       "sbrown20"
+                               :mail      "sally.brown@metabase.com"
+                               :givenname "Sally"
+                               :sn        "Brown"
+                               :cn        "Sally Brown"}
+                  :groups     ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
+                 (ldap/find-user "sally.brown@metabase.com"))))))))
 
 (deftest attribute-sync-test
   (with-redefs [metastore/enable-enhancements? (constantly true)]
@@ -107,7 +134,7 @@
                                      "cn"        "John Smith"}
                   :common_name      "John Smith"}
                  (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
-                            :email "john.smith@metabase.com"))))
+                                         :email "john.smith@metabase.com"))))
           (finally
             (db/delete! User :%lower.email "john.smith@metabase.com"))))
 
@@ -121,7 +148,7 @@
                     :login_attributes nil
                     :common_name      "John Smith"}
                    (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
-                              :email "john.smith@metabase.com"))))
+                                           :email "john.smith@metabase.com"))))
             (finally
               (db/delete! User :%lower.email "john.smith@metabase.com"))))))))
 
@@ -149,7 +176,7 @@
                                        "cn"           "John Smith"
                                        "unladenspeed" 100}}
                    (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
-                              :email "john.smith@metabase.com")))))
+                                           :email "john.smith@metabase.com")))))
           (finally
             (db/delete! User :%lower.email "john.smith@metabase.com"))))
 
@@ -170,6 +197,6 @@
                       :email            "john.smith@metabase.com"
                       :login_attributes nil}
                      (into {} (db/select-one [User :first_name :last_name :email :login_attributes]
-                                :email "john.smith@metabase.com"))))))
+                                             :email "john.smith@metabase.com"))))))
           (finally
             (db/delete! User :%lower.email "john.smith@metabase.com")))))))

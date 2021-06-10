@@ -44,11 +44,11 @@
   (deferred-tru "Search base for users. (Will be searched recursively)"))
 
 (defsetting ldap-user-filter
-  (deferred-tru "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login.")
+  (deferred-tru "User lookup filter. The placeholder '{login}' will be replaced by the user supplied login.")
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
-  (deferred-tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
+  (deferred-tru "Attribute to use for the user''s email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default "mail"
   :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-email))))
 
@@ -68,7 +68,7 @@
   :default false)
 
 (defsetting ldap-group-base
-  (deferred-tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
+  (deferred-tru "Search base for groups. Not required for LDAP directories that provide a ''memberOf'' overlay, such as Active Directory. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
@@ -193,10 +193,10 @@
    :last-name-attribute  (ldap-attribute-lastname)
    :email-attribute      (ldap-attribute-email)
    :sync-groups?         (ldap-group-sync)
-   :group-base           (ldap-group-base)
-   :group-mappings       (ldap-group-mappings)
    :user-base            (ldap-user-base)
-   :user-filter          (ldap-user-filter)})
+   :user-filter          (ldap-user-filter)
+   :group-base           (ldap-group-base)
+   :group-mappings       (ldap-group-mappings)})
 
 (s/defn find-user :- (s/maybe i/UserInfo)
   "Get user information for the supplied username."
