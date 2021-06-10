@@ -21,6 +21,7 @@
             [metabase.api.moderation-request :as moderation-request]
             [metabase.api.moderation-review :as moderation-review]
             [metabase.api.native-query-snippet :as native-query-snippet]
+            [metabase.api.notification :as notification]
             [metabase.api.notify :as notify]
             [metabase.api.permissions :as permissions]
             [metabase.api.preview-embed :as preview-embed]
@@ -91,6 +92,7 @@
   (context "/moderation-request"   [] (+auth moderation-request/routes))
   (context "/moderation-review"    [] (+auth moderation-review/routes))
   (context "/native-query-snippet" [] (+auth native-query-snippet/routes))
+  (context "/notification"         [] (+auth notification/routes))
   (context "/notify"               [] (+apikey notify/routes))
   (context "/permissions"          [] (+auth permissions/routes))
   (context "/preview_embed"        [] (+auth preview-embed/routes))

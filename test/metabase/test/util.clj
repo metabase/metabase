@@ -13,8 +13,8 @@
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Comment Dashboard DashboardCardSeries Database Dimension Field
                                      FieldValues LoginHistory Metric ModerationRequest ModerationReview
-                                     NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard PulseChannel
-                                     Revision Segment Table TaskHistory User]]
+                                     NativeQuerySnippet Notification Permissions PermissionsGroup Pulse PulseCard
+                                     PulseChannel Revision Segment Table TaskHistory User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -192,6 +192,9 @@
    (fn [_] {:creator_id (user-id :crowberto)
             :name       (random-name)
             :content    "1 = 1"})
+
+   Notification
+   (fn [_] {:user_id (user-id :crowberto)})
 
    PermissionsGroup
    (fn [_] {:name (random-name)})
