@@ -196,12 +196,10 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                   };
 
                   const loading = loadingPinnedItems || loadingUnpinnedItems;
+                  const isEmpty =
+                    !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
-                  if (
-                    !loading &&
-                    !hasPinnedItems &&
-                    unpinnedItems.length === 0
-                  ) {
+                  if (isEmpty) {
                     return (
                       <Box mt="120px">
                         <CollectionEmptyState />
