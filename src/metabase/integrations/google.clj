@@ -1,10 +1,13 @@
 (ns metabase.integrations.google
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.api.common :as api]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.setting.multi-setting :refer [define-multi-setting define-multi-setting-impl]]
             [metabase.models.user :as user :refer [User]]
+            [metabase.public-settings.metastore :as metastore]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
             [schema.core :as s]
@@ -14,8 +17,21 @@
   (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
   :visibility :public)
 
-(defsetting google-auth-auto-create-accounts-domain
-  (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
+(define-multi-setting google-auth-auto-create-accounts-domain
+  (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain.")
+  (fn [] (if (metastore/enable-sso?) :ee :oss)))
+
+(define-multi-setting-impl google-auth-auto-create-accounts-domain :oss
+  :getter (fn [] (setting/get-string :google-auth-auto-create-accounts-domain))
+  :setter (fn [domain]
+              (when (str/includes? domain ",")
+                ;; Multiple comma-separated domains is EE-only feature
+                (throw (ex-info (tru "Invalid domain") {:status-code 400})))
+              (setting/set-string! :google-auth-auto-create-accounts-domain domain)))
+
+(define-multi-setting-impl google-auth-auto-create-accounts-domain :ee
+  :getter (fn [] (setting/get :google-auth-auto-create-accounts-domain))
+  :setter (fn [domain] (setting/set-string! :google-auth-auto-create-accounts-domain domain)))
 
 (def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
 
