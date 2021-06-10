@@ -7,6 +7,8 @@ import { color } from "metabase/lib/colors";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
 import EntityItem from "metabase/components/EntityItem";
+import DateTime from "metabase/components/DateTime";
+import Tooltip from "metabase/components/Tooltip";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
@@ -103,7 +105,11 @@ export function BaseTableItem({
           <TableItemSecondaryField>{lastEditedBy}</TableItemSecondaryField>
         </td>
         <td>
-          <TableItemSecondaryField>{lastEditedAt}</TableItemSecondaryField>
+          {lastEditInfo && (
+            <Tooltip tooltip={<DateTime value={lastEditInfo.timestamp} />}>
+              <TableItemSecondaryField>{lastEditedAt}</TableItemSecondaryField>
+            </Tooltip>
+          )}
         </td>
         <td>
           <EntityItem.Menu
