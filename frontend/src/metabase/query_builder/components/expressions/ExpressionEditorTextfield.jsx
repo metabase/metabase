@@ -239,7 +239,10 @@ export default class ExpressionEditorTextfield extends React.Component {
   onInputBlur = () => {
     this.clearSuggestions();
     const { compileError } = this.state;
-    this.setState({ displayCompileError: compileError });
+    this.setState({
+      displayCompileError: compileError,
+      helpText: null,
+    });
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (this.state.expression) {

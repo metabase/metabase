@@ -539,7 +539,7 @@ describe("scenarios > question > custom columns", () => {
     cy.findByPlaceholderText("Enter a number").should("not.exist");
   });
 
-  it.skip("custom expression helper shouldn't be visible when formula field is not in focus (metabase#15891)", () => {
+  it("custom expression helper shouldn't be visible when formula field is not in focus (metabase#15891)", () => {
     openPeopleTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     popover().within(() => {
