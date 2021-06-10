@@ -249,7 +249,7 @@ describe("scenarios > question > notebook", () => {
     // NOTE: - This repro is really tightly coupled to the `joinTwoSavedQuestions()` function.
     //       - Be extremely careful when changing any of the steps within that function.
     //       - The alternative approach would have been to write one longer repro instead of two separate ones.
-    it.skip("joined questions should create custom column (metabase#13649)", () => {
+    it("joined questions should create custom column (metabase#13649)", () => {
       // pass down a joined question alias
       joinTwoSavedQuestions("13649");
 
@@ -259,7 +259,7 @@ describe("scenarios > question > notebook", () => {
       popover().within(() => {
         cy.get("[contenteditable='true']").type(
           // reference joined question by previously set alias
-          "[13649 → Sum of Rating] / [Sum of Rating]",
+          "[13649 → sum] / [Sum of Rating]",
         );
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
@@ -310,7 +310,7 @@ describe("scenarios > question > notebook", () => {
       });
     });
 
-    it.skip("should join saved questions that themselves contain joins (metabase#12928)", () => {
+    it("should join saved questions that themselves contain joins (metabase#12928)", () => {
       // Save Question 1
       cy.createQuestion({
         name: "12928_Q1",
@@ -694,11 +694,11 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Add filters to narrow your answer")
         .as("filter")
         .click();
-      popover().isInViewport();
+      popover().isRenderedWithinViewport();
       // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
       cy.icon("gear").click();
       cy.get("@filter").click();
-      popover().isInViewport();
+      popover().isRenderedWithinViewport();
     });
 
     it("popover should not cover the button that invoked it (metabase#15502-2)", () => {

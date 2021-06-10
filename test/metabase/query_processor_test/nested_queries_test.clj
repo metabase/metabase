@@ -5,7 +5,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Dimension Field Segment Table]]
+            [metabase.models :refer [Dimension Field Metric Segment Table]]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as models]
@@ -479,16 +479,17 @@
 
 (deftest macroexpansion-test
   (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
-    (mt/with-temp* [Segment [segment (mt/$ids {:table_id   $$venues
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+      (mt/with-temp* [Segment [segment (mt/$ids {:table_id   $$venues
                                                  :definition {:filter [:= $venues.price 1]}})]
-                    Card    [card (mbql-card-def
-                                    :source-table (mt/id :venues)
-                                    :filter       [:and [:segment (u/the-id segment)]])]]
-      (is (= [[22]]
-             (mt/rows
-               (qp/process-query
-                (query-with-source-card card
-                  {:aggregation [:count]}))))))))
+                      Card    [card (mbql-card-def
+                                      :source-table (mt/id :venues)
+                                      :filter       [:and [:segment (u/the-id segment)]])]]
+        (is (= [[22]]
+               (mt/formatted-rows [int]
+                 (qp/process-query
+                  (query-with-source-card card
+                    {:aggregation [:count]})))))))))
 
 (deftest card-perms-test
   (testing "perms for a Card with a SQL source query\n"
@@ -1162,3 +1163,19 @@
                        (qp/query->native q2))))
               (is (= [[543]]
                      (mt/formatted-rows [int] (qp/process-query q2)))))))))))
+
+(deftest nested-query-with-metric-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (testing "A nested query with a Metric should work as expected (#12507)"
+      (mt/with-temp Metric [metric (mt/$ids checkins
+                                     {:table_id   $$checkins
+                                      :definition {:source-table $$checkins
+                                                   :aggregation  [[:count]]
+                                                   :filter       [:not-null $id]}})]
+        (is (= [[100]]
+               (mt/formatted-rows [int]
+                 (mt/run-mbql-query checkins
+                   {:source-query {:source-table $$checkins
+                                   :aggregation  [[:metric (u/the-id metric)]]
+                                   :breakout     [$venue_id]}
+                    :aggregation  [[:count]]}))))))))

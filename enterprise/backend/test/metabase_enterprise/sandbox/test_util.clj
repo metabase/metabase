@@ -109,7 +109,9 @@
     (mt/with-gtaps {:gtaps      {:checkins {:query      {:database (data/id), ...}
                                             :remappings {:user_category [\"variable\" ...]}}}
                     :attributes {\"user_category\" 1}}
-      (mt/run-mbql-query checkins {:limit 2}))"
+      (mt/run-mbql-query checkins {:limit 2}))
+
+  Introduces `&group` anaphor, bound to the PermissionsGroup associated with this GTAP."
   {:style/indent 1}
   [gtaps-and-attributes-map & body]
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))

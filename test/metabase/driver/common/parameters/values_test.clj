@@ -4,7 +4,6 @@
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.values :as values]
             [metabase.models :refer [Card Collection NativeQuerySnippet]]
-            [metabase.models.field :refer [map->FieldInstance]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.query-processor :as qp]
@@ -19,6 +18,15 @@
            (#'values/value-for-tag
             {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
             [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}]))))
+  (testing "Multiple values with new operators"
+    (is (= 20
+           (#'values/value-for-tag
+            {:name "number_filter", :display-name "ID", :type :number, :required true, :default "100"}
+            [{:type :number/=, :value ["20"], :target [:variable [:template-tag "number_filter"]]}])))
+    (is (= (i/map->CommaSeparatedNumbers {:numbers [20 40]})
+           (#'values/value-for-tag
+            {:name "number_filter", :display-name "ID", :type :number, :required true, :default "100"}
+            [{:type :number/=, :value ["20" "40"], :target [:variable [:template-tag "number_filter"]]}]))))
 
   (testing "Unspecified value"
     (is (= i/no-value
