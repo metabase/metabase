@@ -5,6 +5,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.moderation-request :refer [ModerationRequest]]
             [metabase.models.moderation-review :refer [ModerationReview]]
+            [metabase.models.notification :refer [Notification]]
             [metabase.test :as mt]
             [toucan.db :as db]))
 
@@ -14,8 +15,12 @@
 
 (deftest create-test
   (testing "POST /api/moderation-review"
-    (mt/with-temp* [Card [{card-id :id :as card} {:name "Test Card"}]]
-      (mt/with-model-cleanup [ModerationReview]
+    (mt/with-temp* [Card [{card-id :id :as card} {:name "Test Card"}]
+                    ModerationRequest [_         {:moderated_item_id   card-id
+                                                  :moderated_item_type "card"
+                                                  :requester_id        (mt/user->id :crowberto)}]
+                    ]
+      (mt/with-model-cleanup [ModerationReview Notification]
         (is (= {:text                "Looks good to me"
                 :moderated_item_id   card-id
                 :moderated_item_type "card"
@@ -25,16 +30,23 @@
                 (mt/user-http-request :rasta :post 200 "moderation-review" {:text                "Looks good to me"
                                                                             :moderated_item_id   card-id
                                                                             :moderated_item_type "card"}))))
-        (is (= {:text                "Looks good to me"
-                :moderated_item_id   card-id
-                :moderated_item_type "card"
-                :moderator_id        (mt/user->id :rasta)
-                :status              "verified"}
-               (normalized-response
-                (mt/user-http-request :rasta :post 200 "moderation-review" {:text                "Looks good to me"
-                                                                            :moderated_item_id   card-id
-                                                                            :moderated_item_type "card"
-                                                                            :status              "verified"}))))))))
+        (let [raw-response (mt/user-http-request :rasta :post 200 "moderation-review" {:text                "Looks good to me"
+                                                                                       :moderated_item_id   card-id
+                                                                                       :moderated_item_type "card"
+                                                                                       :status              "verified"})]
+          (is (= {:text                "Looks good to me"
+                  :moderated_item_id   card-id
+                  :moderated_item_type "card"
+                  :moderator_id        (mt/user->id :rasta)
+                  :status              "verified"}
+                 (normalized-response raw-response)))
+          (is (= {:notifier_id (:id raw-response)
+                  :notifier_type "moderation_review"
+                  :user_id (mt/user->id :crowberto)
+                  :read false}
+                 (select-keys
+                  (db/select-one Notification {:order-by [[:id :desc]]})
+                  [:notifier_id :notifier_type :user_id :read]))))))))
 
 (defn- update!
   [id params]
