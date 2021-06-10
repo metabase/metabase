@@ -323,7 +323,7 @@ export const ModerationCommentApi = {
 };
 
 export const NotificationsApi = {
-  get: GET("/api/notifications"),
+  get: GET("/api/notification"),
 };
 
 export const PulseApi = {

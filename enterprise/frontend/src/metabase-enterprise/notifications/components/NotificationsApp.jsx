@@ -61,7 +61,7 @@ function RequestNotifications({ questions, users, router }) {
     NotificationsApi.get().then(notifications => {
       setNotifications(notifications);
     });
-  });
+  }, []);
 
   const notificationsWithMetadata = notifications;
 
