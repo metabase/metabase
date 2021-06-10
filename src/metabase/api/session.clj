@@ -11,7 +11,7 @@
             [metabase.integrations.ldap :as ldap]
             [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
-            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.setting :as setting]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]

@@ -5,13 +5,10 @@
             [metabase.api.common :as api]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :as user :refer [User]]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.UUID))
+            [toucan.db :as db]))
 
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
