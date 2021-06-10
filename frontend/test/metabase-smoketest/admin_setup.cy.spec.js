@@ -10,7 +10,7 @@ const { admin, normal, nocollection, nodata } = USERS;
 const new_user = {
   first_name: "Barb",
   last_name: "Tabley",
-  email: "new@metabase.com",
+  email: "new@metabase.test",
 };
 
 describe("smoketest > admin_setup", () => {
@@ -85,7 +85,6 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Slack").click();
 
       cy.findByText("Answers sent right to your Slack #channels");
-      cy.findByText("metabase@metabase.com").should("not.exist");
 
       cy.findByText("Create a Slack Bot User for MetaBot");
       cy.contains(

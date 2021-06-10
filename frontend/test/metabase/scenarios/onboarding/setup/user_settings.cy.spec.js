@@ -4,7 +4,7 @@ import { USERS } from "__support__/e2e/cypress_data";
 const { first_name, last_name, email } = USERS.normal;
 
 const CURRENT_USER = {
-  email: "normal@metabase.com",
+  email: "normal@metabase.test",
   ldap_auth: false,
   first_name: "Robert",
   locale: null,

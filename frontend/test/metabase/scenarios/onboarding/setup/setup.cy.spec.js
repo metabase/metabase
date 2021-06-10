@@ -44,7 +44,7 @@ describe("scenarios > setup", () => {
 
       cy.findByLabelText("First name").type("Testy");
       cy.findByLabelText("Last name").type("McTestface");
-      cy.findByLabelText("Email").type("testy@metabase.com");
+      cy.findByLabelText("Email").type("testy@metabase.test");
       cy.findByLabelText("Your company or team name").type("Epic Team");
 
       // test first with a weak password
@@ -92,7 +92,7 @@ describe("scenarios > setup", () => {
 
       // test that you can return to user settings if you want
       cy.findByText("Hi, Testy. Nice to meet you!").click();
-      cy.findByLabelText("Email").should("have.value", "testy@metabase.com");
+      cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
 
       // now back to database setting
       cy.findByText("Next").click();

@@ -29,7 +29,7 @@ describe("scenarios > admin > settings > email settings", () => {
   it("should show an error if test email fails", () => {
     // Reuse Email setup without relying on the previous test
     cy.request("PUT", "/api/setting", {
-      "email-from-address": "admin@metabase.com",
+      "email-from-address": "admin@metabase.test",
       "email-smtp-host": "localhost",
       "email-smtp-password": null,
       "email-smtp-port": "1234",
