@@ -4,6 +4,13 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
+import {
+  TextInputRoot,
+  ClearButton,
+  IconWrapper,
+  Input,
+} from "./TextInput.styled";
+
 TextInput.propTypes = {
   onChange: PropTypes.func.isRequired,
   placeholder: PropTypes.string,
@@ -17,13 +24,6 @@ TextInput.propTypes = {
   borderRadius: PropTypes.oneOf(["sm", "md"]),
   variant: PropTypes.oneOf(["main", "admin"]),
 };
-
-import {
-  TextInputRoot,
-  ClearButton,
-  IconWrapper,
-  Input,
-} from "./TextInput.styled";
 
 function TextInput({
   value = "",
