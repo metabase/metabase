@@ -26,5 +26,49 @@ describe("scenarios > collection items metadata", () => {
       cy.visit("/question/1");
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
     });
+
+    it("should change last editor when another user changes item", () => {
+      const { first_name, last_name } = USERS.normal;
+      const fullName = `${first_name} ${last_name}`;
+
+      cy.signIn("normal");
+      cy.visit("/collection/root");
+      // Ensure nothing is edited by current user,
+      // Otherwise, the test is irrelevant
+      cy.findByText(fullName).should("not.exist");
+
+      cy.findByText("Orders").click();
+      changeQuestion();
+
+      cy.visit("/collection/root");
+      cy.findByText("Orders in a dashboard").click();
+      changeDashboard();
+
+      cy.visit("/collection/root");
+      getTableRowFor("Orders").findByText(fullName);
+      getTableRowFor("Orders in a dashboard").findByText(fullName);
+    });
   });
 });
+
+function changeDashboard() {
+  cy.icon("ellipsis").click();
+  cy.findByText("Change title and description").click();
+  cy.findByLabelText("Description")
+    .click()
+    .type("This dashboard is just beautiful");
+  cy.button("Update").click();
+}
+
+function changeQuestion() {
+  cy.icon("pencil").click();
+  cy.findByText("Edit this question").click();
+  cy.findByLabelText("Description")
+    .click()
+    .type("Very insightful");
+  cy.button("Save").click();
+}
+
+function getTableRowFor(name) {
+  return cy.findByText(name).closest("tr");
+}
