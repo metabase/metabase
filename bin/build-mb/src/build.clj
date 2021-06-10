@@ -57,7 +57,7 @@
     (u/assert-file-exists uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
-(defn- build-backend-license-file! [edition version]
+(defn- build-backend-licenses-file! [edition]
   {:pre [(#{:oss :ee} edition)]}
   (let [classpath-and-logs (u/sh {:dir    u/project-root-directory
                                   :quiet? true}
@@ -74,12 +74,17 @@
       (run! (comp (partial u/error "Missing License: %s") first)
             without-license))
     (u/announce "License information generated at %s" (.getAbsolutePath output-file))
-    ;; todo?
-    #_(u/copy-file (.getAbsolutePath output-file) "some/location/to/be/in/the/jar")
-    ;; todo
-    #_(u/s3-copy! (.getAbsolutePath output-file)
-                  nocommit
-                  bucket/<version>/backend-dependencies-edition.txt)))
+    (u/copy-file! (.getAbsolutePath output-file)
+                  ;; leining grabs files that begin with readme or license to put in META-INF
+                  (u/filename u/project-root-directory "license-backend-third-party"))))
+
+(defn- build-frontend-licenses-file!
+  []
+  (let [license-text (apply str
+                            (u/sh {:dir    u/project-root-directory
+                                   :quiet? true}
+                                  "yarn" "licenses" "generate-disclaimer"))]
+    (spit (u/filename u/project-root-directory "license-frontend-third-party") license-text)))
 
 (def all-steps
   (ordered-map/ordered-map
@@ -91,8 +96,10 @@
                    (build-frontend! edition))
    :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
-   :backend-license (fn [{:keys [edition version]}]
-                      (build-backend-license-file! edition version))
+   :backend-licenses (fn [{:keys [edition]}]
+                       (build-backend-licenses-file! edition))
+   :frontend-licenses (fn [{:keys []}]
+                        (build-frontend-licenses-file!))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 
