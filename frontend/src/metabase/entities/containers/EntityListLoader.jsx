@@ -16,7 +16,7 @@ const propTypes = {
   wrapped: PropTypes.bool,
   debounced: PropTypes.bool,
   loadingAndErrorWrapper: PropTypes.bool,
-  keepPreviousList: PropTypes.bool,
+  keepListWhileLoading: PropTypes.bool,
   selectorName: PropTypes.string,
   children: PropTypes.func,
 
@@ -39,7 +39,7 @@ const propTypes = {
 
 const defaultProps = {
   loadingAndErrorWrapper: true,
-  keepPreviousList: false,
+  keepListWhileLoading: false,
   reload: false,
   wrapped: false,
   debounced: false,
@@ -170,11 +170,11 @@ class EntityListLoader extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { keepPreviousList } = this.props;
+    const { keepListWhileLoading } = this.props;
     const { previousList } = this.state;
 
     const shouldUpdatePrevList =
-      keepPreviousList &&
+      keepListWhileLoading &&
       Array.isArray(prevProps.list) &&
       !_.isEqual(previousList, prevProps.list);
 
@@ -190,7 +190,7 @@ class EntityListLoader extends React.Component {
       wrapped,
       list,
       reload, // eslint-disable-line no-unused-vars
-      keepPreviousList,
+      keepListWhileLoading,
       ...props
     } = this.props;
     const { previousList } = this.state;
@@ -207,7 +207,7 @@ class EntityListLoader extends React.Component {
       reload: this.reload,
     };
 
-    if (keepPreviousList) {
+    if (keepListWhileLoading) {
       childProps.previousList = wrapped
         ? this._getWrappedList({ ...this.props, list: previousList })
         : previousList;

@@ -126,7 +126,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
     <Search.ListLoader
       query={pinnedQuery}
       loadingAndErrorWrapper={false}
-      keepPreviousList
+      keepListWhileLoading
       wrapped
     >
       {({
@@ -168,7 +168,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
               <Search.ListLoader
                 query={unpinnedQuery}
                 loadingAndErrorWrapper={false}
-                keepPreviousList
+                keepListWhileLoading
                 wrapped
               >
                 {({
