@@ -176,7 +176,7 @@ class EntityListLoader extends React.Component {
     const shouldUpdatePrevList =
       keepListWhileLoading &&
       Array.isArray(prevProps.list) &&
-      !_.isEqual(previousList, prevProps.list);
+      previousList !== prevProps.list;
 
     if (shouldUpdatePrevList) {
       this.setState({ previousList: prevProps.list });
