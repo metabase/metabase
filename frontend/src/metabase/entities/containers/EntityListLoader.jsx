@@ -238,11 +238,9 @@ EntityListLoader.defaultProps = defaultProps;
 
 export default EntityListLoader;
 
-export const entityListLoader = ellProps =>
-  // eslint-disable-line react/display-name
-  ComposedComponent =>
-    // eslint-disable-next-line react/display-name
-    props => (
+export const entityListLoader = ellProps => ComposedComponent => {
+  function WrappedComponent(props) {
+    return (
       <EntityListLoader {...props} {...ellProps}>
         {childProps => (
           <ComposedComponent
@@ -252,3 +250,7 @@ export const entityListLoader = ellProps =>
         )}
       </EntityListLoader>
     );
+  }
+  WrappedComponent.displayName = ComposedComponent.displayName;
+  return WrappedComponent;
+};
