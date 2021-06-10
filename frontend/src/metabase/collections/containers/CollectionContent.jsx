@@ -132,6 +132,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
       {({
         list: pinnedItemsList = [],
         previousList: previousPinnedItemsList = [],
+        loading: loadingPinnedItems,
       }) => {
         // Prevents table UI flashing while performing a GET request
         // (e.g. for sorting)
@@ -174,6 +175,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                   list: unpinnedItemsList = [],
                   previousList: previousUnpinnedItemsList = [],
                   metadata = {},
+                  loading: loadingUnpinnedItems,
                 }) => {
                   // Prevents table UI flashing while performing a GET request
                   // (e.g. for pagination or sorting)
@@ -193,7 +195,13 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                     toggleAll(unselected);
                   };
 
-                  if (!hasPinnedItems && unpinnedItems.length === 0) {
+                  const loading = loadingPinnedItems || loadingUnpinnedItems;
+
+                  if (
+                    !loading &&
+                    !hasPinnedItems &&
+                    unpinnedItems.length === 0
+                  ) {
                     return (
                       <Box mt="120px">
                         <CollectionEmptyState />
