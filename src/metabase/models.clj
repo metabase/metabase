@@ -20,6 +20,7 @@
             [metabase.models.moderation-request :as moderation-request]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.native-query-snippet :as native-query-snippet]
+            [metabase.models.notification :as notification]
             [metabase.models.permissions :as permissions]
             [metabase.models.permissions-group :as permissions-group]
             [metabase.models.permissions-group-membership :as permissions-group-membership]
@@ -61,6 +62,7 @@
          metric-important-field/keep-me
          moderation-request/keep-me
          moderation-review/keep-me
+         notification/keep-me
          native-query-snippet/keep-me
          permissions/keep-me
          permissions-group/keep-me
@@ -103,6 +105,7 @@
  [moderation-request ModerationRequest]
  [moderation-review ModerationReview]
  [native-query-snippet NativeQuerySnippet]
+ [notification Notification]
  [permissions Permissions]
  [permissions-group PermissionsGroup]
  [permissions-group-membership PermissionsGroupMembership]
