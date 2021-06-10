@@ -19,8 +19,8 @@
             [metabase.util.i18n :refer [trs]])
   (:import com.facebook.presto.jdbc.PrestoConnection
            com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql Connection ResultSet Time PreparedStatement]
-           [java.time OffsetDateTime ZonedDateTime OffsetTime]))
+           [java.sql Connection PreparedStatement ResultSet]
+           [java.time OffsetDateTime OffsetTime ZonedDateTime]))
 
 (driver/register! :presto-jdbc, :parent #{:presto-common :sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
