@@ -16,10 +16,12 @@ NotificationsLink.propTypes = {
 };
 
 function NotificationsLink({ className, hover, isModerator }) {
-  return isModerator ? (
+  const to = isModerator ? "/requests?status=open" : "/notifications";
+
+  return (
     <IconWrapper className={className} hover={hover}>
       <Link
-        to="/requests?status=open"
+        to={to}
         className="flex align-center"
         data-metabase-event={`NavBar;Notifications`}
       >
@@ -31,7 +33,7 @@ function NotificationsLink({ className, hover, isModerator }) {
         />
       </Link>
     </IconWrapper>
-  ) : null;
+  );
 }
 
 const mapStateToProps = (state, props) => {

@@ -322,6 +322,10 @@ export const ModerationCommentApi = {
   create: POST("/api/comment"),
 };
 
+export const NotificationsApi = {
+  get: GET("/api/notifications"),
+};
+
 export const PulseApi = {
   list: GET("/api/pulse"),
   create: POST("/api/pulse"),
