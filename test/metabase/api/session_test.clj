@@ -355,6 +355,32 @@
                    :engines :h2 :details-fields first :display-name)))))))
 
 
+;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
+
+(deftest google-auth-test
+  (testing "POST /google_auth"
+    (mt/with-temporary-setting-values [google-auth-client-id "PRETEND-GOOD-GOOGLE-CLIENT-ID"]
+      (testing "Google auth works with an active account"
+        (mt/with-temp User [user {:email "test@metabase.com" :is_active true}]
+          (with-redefs [http/post (fn [url] {:status 200
+                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                                                          "\"email_verified\":\"true\","
+                                                          "\"first_name\":\"test\","
+                                                          "\"last_name\":\"user\","
+                                                          "\"email\":\"test@metabase.com\"}")})]
+            (is (schema= SessionResponse
+                         (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
+      (testing "Google auth throws exception for a disabled account"
+      (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
+        (with-redefs [http/post (fn [url] {:status 200
+                                           :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                                                        "\"email_verified\":\"true\","
+                                                        "\"first_name\":\"test\","
+                                                        "\"last_name\":\"user\","
+                                                        "\"email\":\"test@metabase.com\"}")})]
+          (is (= {:errors {:account "Your account is disabled."}}
+                         (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
+
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 
 (deftest ldap-login-test

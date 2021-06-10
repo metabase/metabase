@@ -110,32 +110,6 @@
                                      token-2)}
                     token-1)))))))
 
-(deftest google-auth-tests
-  (mt/with-temporary-setting-values [google-auth-client-id "PRETEND-GOOD-GOOGLE-CLIENT-ID"]
-    (testing "with an active account"
-      (mt/with-temp User [user {:email "test@metabase.com" :is_active true}]
-        (with-redefs [http/post (fn [url] {:status 200
-                                           :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
-                                                        "\"email_verified\":\"true\","
-                                                        "\"first_name\":\"test\","
-                                                        "\"last_name\":\"user\","
-                                                        "\"email\":\"test@metabase.com\"}")})]
-
-          (let [result (google/do-google-auth {:body {:token "foo"}})]
-            (is (= 200 (:status result)))))))
-    (testing "with a disabled account"
-      (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
-        (with-redefs [http/post (fn [url] {:status 200
-                                           :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
-                                                        "\"email_verified\":\"true\","
-                                                        "\"first_name\":\"test\","
-                                                        "\"last_name\":\"user\","
-                                                        "\"email\":\"test@metabase.com\"}")})]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Your account is disabled. Please contact your administrator."
-               (google/do-google-auth {:body {:token "foo"}}))))))))
-
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 
 (deftest google-auth-fetch-or-create-user!-test
