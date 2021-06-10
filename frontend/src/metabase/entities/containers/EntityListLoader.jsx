@@ -184,36 +184,33 @@ class EntityListLoader extends React.Component {
   }
 
   renderChildren = () => {
-    let {
+    const {
       children,
       entityDef,
       wrapped,
-      list,
+      list: currentList,
+      loading,
       reload, // eslint-disable-line no-unused-vars
       keepListWhileLoading,
       ...props
     } = this.props;
     const { previousList } = this.state;
 
-    if (wrapped) {
-      list = this._getWrappedList(this.props);
-    }
+    const finalList =
+      keepListWhileLoading && loading ? previousList : currentList;
 
-    const childProps = {
+    const list = wrapped
+      ? this._getWrappedList({ ...this.props, list: finalList })
+      : finalList;
+
+    return children({
       ..._.omit(props, ...CONSUMED_PROPS),
       list,
+      loading,
       // alias the entities name:
       [entityDef.nameMany]: list,
       reload: this.reload,
-    };
-
-    if (keepListWhileLoading) {
-      childProps.previousList = wrapped
-        ? this._getWrappedList({ ...this.props, list: previousList })
-        : previousList;
-    }
-
-    return children(childProps);
+    });
   };
 
   render() {

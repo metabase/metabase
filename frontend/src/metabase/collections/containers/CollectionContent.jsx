@@ -129,17 +129,7 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
       keepListWhileLoading
       wrapped
     >
-      {({
-        list: pinnedItemsList = [],
-        previousList: previousPinnedItemsList = [],
-        loading: loadingPinnedItems,
-      }) => {
-        // Prevents table UI flashing while performing a GET request
-        // (e.g. for sorting)
-        const pinnedItems =
-          pinnedItemsList.length > 0
-            ? pinnedItemsList
-            : previousPinnedItemsList;
+      {({ list: pinnedItems = [], loading: loadingPinnedItems }) => {
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
@@ -172,18 +162,10 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 wrapped
               >
                 {({
-                  list: unpinnedItemsList = [],
-                  previousList: previousUnpinnedItemsList = [],
+                  list: unpinnedItems = [],
                   metadata = {},
                   loading: loadingUnpinnedItems,
                 }) => {
-                  // Prevents table UI flashing while performing a GET request
-                  // (e.g. for pagination or sorting)
-                  const unpinnedItems =
-                    unpinnedItemsList.length > 0
-                      ? unpinnedItemsList
-                      : previousUnpinnedItemsList;
-
                   const hasPagination = metadata.total > PAGE_SIZE;
 
                   const unselected = [...pinnedItems, ...unpinnedItems].filter(
