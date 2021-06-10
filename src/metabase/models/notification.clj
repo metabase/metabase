@@ -2,6 +2,7 @@
   (:require [metabase.models.permissions :as perms]
             [metabase.moderation :as moderation]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -46,3 +47,10 @@
   [user-id]
   (db/select Notification :user_id user-id, :read false,
              {:order-by [[:created_at :desc]]}))
+
+(s/defn create-notifications!
+  [row-maps :-
+   [{:notifier_id   su/IntGreaterThanZero
+     :notifier_type notifier-types
+     :user_id       su/IntGreaterThanZero}]]
+  (db/insert-many! Notification row-maps))
