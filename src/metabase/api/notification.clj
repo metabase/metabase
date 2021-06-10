@@ -1,9 +1,7 @@
 (ns metabase.api.notification
-  (:require [compojure.core :refer [POST]]
+  (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.models.notification :as notification]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
             [toucan.hydrate :as hydrate]))
 
 (api/defendpoint GET "/"

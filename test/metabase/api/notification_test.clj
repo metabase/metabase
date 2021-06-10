@@ -41,9 +41,8 @@
       (let [notifications (mt/user-http-request :rasta :get 200 "notification")
             review        (-> notifications first :notifier)
             comment       (-> notifications second :notifier)]
-        (def zzn notifications)
         (is (= [c-id b-id a-id]
-               (map :id notifications)))
+               (map :id (take 3 notifications))))
         (is (>= (map :created_at notifications)))
         (is (= "Looks good"     (-> review :text)))
         (is (= "The Card"       (-> review :moderated_item :name)))
