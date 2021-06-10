@@ -39,10 +39,12 @@ describe("scenarios > collection items metadata", () => {
       changeDashboard();
       cy.findByText(/Edited a few seconds ago/i);
 
+      cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
       testCases.forEach(testCase => {
         const { date, expected } = testCase;
         cy.clock(date.valueOf());
         cy.reload();
+        cy.wait("@getDashboard");
         cy.findByText(expected);
         cy.clock().invoke("restore");
       });
@@ -53,10 +55,12 @@ describe("scenarios > collection items metadata", () => {
       changeQuestion();
       cy.findByText(/Edited a few seconds ago/i);
 
+      cy.intercept("GET", "/api/card/1").as("getQuestion");
       testCases.forEach(testCase => {
         const { date, expected } = testCase;
         cy.clock(date.valueOf());
         cy.reload();
+        cy.wait("@getQuestion");
         cy.findByText(expected);
         cy.clock().invoke("restore");
       });
