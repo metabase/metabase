@@ -20,13 +20,13 @@ export const USERS = {
   admin: {
     first_name: "Bobby",
     last_name: "Tables",
-    email: "admin@metabase.com",
+    email: "admin@metabase.test",
     password: "12341234",
   },
   normal: {
     first_name: "Robert",
     last_name: "Tableton",
-    email: "normal@metabase.com",
+    email: "normal@metabase.test",
     password: "12341234",
     group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP],
   },
@@ -34,7 +34,7 @@ export const USERS = {
   nodata: {
     first_name: "No Data",
     last_name: "Tableton",
-    email: "nodata@metabase.com",
+    email: "nodata@metabase.test",
     password: "12341234",
     group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
   },
@@ -52,7 +52,7 @@ export const USERS = {
   readonly: {
     first_name: "Read Only",
     last_name: "Tableton",
-    email: "readonly@metabase.com",
+    email: "readonly@metabase.test",
     password: "12341234",
     group_ids: [ALL_USERS_GROUP, READONLY_GROUP],
   },
@@ -60,14 +60,14 @@ export const USERS = {
   nocollection: {
     first_name: "No Collection",
     last_name: "Tableton",
-    email: "nocollection@metabase.com",
+    email: "nocollection@metabase.test",
     password: "12341234",
     group_ids: [ALL_USERS_GROUP, DATA_GROUP],
   },
   nosql: {
     first_name: "No SQL",
     last_name: "Tableton",
-    email: "nosql@metabase.com",
+    email: "nosql@metabase.test",
     password: "12341234",
     group_ids: [ALL_USERS_GROUP, NOSQL_GROUP],
   },
@@ -75,7 +75,7 @@ export const USERS = {
   none: {
     first_name: "None",
     last_name: "Tableton",
-    email: "none@metabase.com",
+    email: "none@metabase.test",
     password: "12341234",
     group_ids: [ALL_USERS_GROUP],
   },
