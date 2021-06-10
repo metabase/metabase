@@ -3,6 +3,58 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import BaseTableItem from "./BaseTableItem";
+import {
+  ColumnHeader,
+  SortingIcon,
+  SortingControlContainer,
+} from "./BaseItemsTable.styled";
+
+const sortingOptsShape = PropTypes.shape({
+  sort_column: PropTypes.string.isRequired,
+  sort_direction: PropTypes.oneOf(["asc", "desc"]).isRequired,
+});
+
+SortableColumnHeader.propTypes = {
+  name: PropTypes.string.isRequired,
+  sortingOptions: sortingOptsShape.isRequired,
+  onSortingOptionsChange: PropTypes.func.isRequired,
+  children: PropTypes.node,
+};
+
+function SortableColumnHeader({
+  name,
+  sortingOptions,
+  onSortingOptionsChange,
+  children,
+  ...props
+}) {
+  const isSortingThisColumn = sortingOptions.sort_column === name;
+  const direction = isSortingThisColumn
+    ? sortingOptions.sort_direction
+    : "desc";
+
+  const onSortingControlClick = () => {
+    const nextDirection = direction === "asc" ? "desc" : "asc";
+    onSortingOptionsChange({
+      sort_column: name,
+      sort_direction: nextDirection,
+    });
+  };
+
+  return (
+    <ColumnHeader>
+      <SortingControlContainer
+        {...props}
+        isActive={isSortingThisColumn}
+        onClick={onSortingControlClick}
+        role="button"
+      >
+        {children}
+        <SortingIcon name={direction === "asc" ? "chevronup" : "chevrondown"} />
+      </SortingControlContainer>
+    </ColumnHeader>
+  );
+}
 
 BaseItemsTable.Item = BaseTableItem;
 
@@ -12,6 +64,8 @@ BaseItemsTable.propTypes = {
   selectedItems: PropTypes.arrayOf(PropTypes.object),
   isPinned: PropTypes.bool,
   renderItem: PropTypes.func,
+  sortingOptions: sortingOptsShape,
+  onSortingOptionsChange: PropTypes.func,
   onToggleSelected: PropTypes.func,
   onCopy: PropTypes.func,
   onMove: PropTypes.func,
@@ -37,6 +91,8 @@ function BaseItemsTable({
   onCopy,
   onMove,
   onDrop,
+  sortingOptions,
+  onSortingOptionsChange,
   onToggleSelected,
   getIsSelected = () => false,
   headless = false,
@@ -65,12 +121,41 @@ function BaseItemsTable({
         <col span="1" style={{ width: "2%" }} />
       </colgroup>
       {!headless && (
-        <thead>
+        <thead
+          data-testid={
+            isPinned ? "pinned-items-table-head" : "items-table-head"
+          }
+        >
           <tr>
-            <th className="text-centered">{t`Type`}</th>
-            <th>{t`Name`}</th>
-            <th>{t`Last edited by`}</th>
-            <th>{t`Last edited at`}</th>
+            <SortableColumnHeader
+              name="model"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+              style={{ marginLeft: 6 }}
+            >
+              {t`Type`}
+            </SortableColumnHeader>
+            <SortableColumnHeader
+              name="name"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+            >
+              {t`Name`}
+            </SortableColumnHeader>
+            <SortableColumnHeader
+              name="last_edited_by"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+            >
+              {t`Last edited by`}
+            </SortableColumnHeader>
+            <SortableColumnHeader
+              name="last_edited_at"
+              sortingOptions={sortingOptions}
+              onSortingOptionsChange={onSortingOptionsChange}
+            >
+              {t`Last edited at`}
+            </SortableColumnHeader>
             <th></th>
           </tr>
         </thead>
