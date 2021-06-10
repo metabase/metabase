@@ -39,7 +39,10 @@
 (defn- capitalize-word [word]
   (if (contains? acronyms (str/lower-case word))
     (str/upper-case word)
-    (str/capitalize word)))
+    ;; We are assuming that ALL_UPPER_CASE means we should be Title Casing
+    (if (= word (str/upper-case word))
+      (str/capitalize word)
+      (str (str/capitalize (subs word 0 1)) (subs word 1)))))
 
 ;; simple replaces hyphens and underscores with spaces and capitalizes
 (defmethod name->human-readable-name :simple
