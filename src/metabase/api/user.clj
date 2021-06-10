@@ -4,8 +4,8 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
-            [metabase.api.session :as session-api]
             [metabase.email.messages :as email]
+            [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.permissions-group :as group]
@@ -247,7 +247,7 @@
     ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
                                  ;; if google-auth-client-id is set it means Google Auth is enabled
-                                 (session-api/google-auth-client-id)))
+                                 (google/google-auth-client-id)))
     :ldap_auth     (boolean (and (:ldap_auth existing-user)
                                  (ldap/ldap-configured?))))
   ;; now return the existing user whether they were originally active or not
