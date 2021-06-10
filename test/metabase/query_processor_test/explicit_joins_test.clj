@@ -518,3 +518,63 @@
                                  :alias        "CategoriesStats"
                                  :fields       :all}]
                   :limit       3})))))))
+
+(deftest join-source-queries-with-joins-test
+  (testing "Should be able to join against source queries that themselves contain joins (#12928)"
+    ;; sample-dataset doesn't work on Redshift yet -- see #14784
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :left-join :foreign-keys) :redshift)
+      (mt/dataset sample-dataset
+        (testing "(#12928)"
+          (let [query (mt/mbql-query orders
+                        {:source-query {:source-table $$orders
+                                        :joins        [{:fields       :all
+                                                        :source-table $$products
+                                                        :condition    [:= $orders.product_id &P1.products.id]
+                                                        :alias        "P1"}
+                                                       {:fields       :all
+                                                        :source-table $$people
+                                                        :condition    [:= $orders.user_id &People.people.id]
+                                                        :alias        "People"}]
+                                        :aggregation  [[:count]]
+                                        :breakout     [&P1.products.category
+                                                       [:field %people.source {:join-alias "People"}]]}
+                         :joins        [{:fields       :all
+                                         :condition    [:= $products.category &Q2.products.category]
+                                         :alias        "Q2"
+                                         :source-query {:source-table $$reviews
+                                                        :joins        [{:fields       :all
+                                                                        :source-table $$products
+                                                                        :condition    [:=
+                                                                                       $reviews.product_id
+                                                                                       &P2.products.id]
+                                                                        :alias        "P2"}]
+                                                        :aggregation  [[:avg $reviews.rating]]
+                                                        :breakout     [&P2.products.category]}}]
+                         :limit        2})]
+            (is (= [["Doohickey" "Affiliate" 783 "Doohickey" 3]
+                    ["Doohickey" "Facebook" 816 "Doohickey" 3]]
+                   (mt/formatted-rows [str str int str int]
+                     (qp/process-query query))))))
+
+        (testing "and custom expressions (#13649)"
+          (let [query (mt/mbql-query orders
+                        {:source-query {:source-table $$orders
+                                        :aggregation  [[:count]]
+                                        :breakout     [$product_id]
+                                        :filter       [:= $product_id 4]}
+                         :joins        [{:fields       :all
+                                         :source-query {:source-table $$orders
+                                                        :aggregation  [[:count]]
+                                                        :breakout     [$product_id]
+                                                        :filter       [:and
+                                                                       [:= $product_id 4]
+                                                                       [:> $quantity 3]]}
+                                         :condition    [:= $product_id &Q2.orders.product_id]
+                                         :alias        "Q2"}]
+                         :expressions {:expr [:/
+                                              [:field "count" {:base-type :type/BigInteger, :join-alias "Q2"}]
+                                              [:field "count" {:base-type :type/BigInteger}]]}
+                         :limit        2})]
+            (is (= [[4 41 0.46 41]]
+                   (mt/formatted-rows [int int 2.0 int]
+                     (qp/process-query query))))))))))

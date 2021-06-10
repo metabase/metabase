@@ -128,7 +128,7 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
-      - image: metabase/presto-mb-ci
+      - image: metabase/presto-mb-ci:0.186
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx1g"
 

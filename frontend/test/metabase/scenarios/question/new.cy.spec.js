@@ -230,7 +230,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("Hour of Day");
     });
 
-    it.skip("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
+    it("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
       cy.createQuestion({
         name: "11183",
         query: {

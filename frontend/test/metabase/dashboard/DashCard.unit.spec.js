@@ -3,7 +3,6 @@
 jest.unmock("metabase/components/ExplicitSize");
 
 import React from "react";
-import renderer from "react-test-renderer";
 import { render } from "@testing-library/react";
 import { assocIn } from "icepick";
 
@@ -35,12 +34,6 @@ const DEFAULT_PROPS = {
 // It's testing logic in DashCard.render which should be extracted to a more testable place.
 // I skipped it once DashCard required a connected redux store.
 describe.skip("DashCard", () => {
-  it("should render with no special classNames", () => {
-    expect(
-      renderer.create(<DashCard {...DEFAULT_PROPS} />).toJSON(),
-    ).toMatchSnapshot();
-  });
-
   // `.Card--slow` gives slow loading cards yellow border
   // This is not tested in Cypress only because the delay in card rendering would prolong the total test time.
   it("should render slow card with Card--slow className", () => {

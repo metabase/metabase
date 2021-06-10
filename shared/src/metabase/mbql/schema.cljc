@@ -988,7 +988,7 @@
     (every-pred
      (some-fn :source-table :source-query)
      (complement (every-pred :source-table :source-query)))
-    "Joins can must have either a `source-table` or `source-query`, but not both.")))
+    "Joins must have either a `source-table` or `source-query`, but not both.")))
 
 (def Joins
   "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique."
