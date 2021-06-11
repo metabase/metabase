@@ -253,13 +253,21 @@ export const DimensionPicker = ({
   dimensions,
   onChangeDimension,
 }) => {
+  let current = dimensions.findIndex(d => d.isEqual(dimension));
+  if (dimension && current < 0) {
+    // In some cases (e.g. from native SQL), the subdimension contains
+    // additional options (usually "base-type") which fail the above exact
+    // match. Thus, try it again with a typeless comparison.
+    const subdim = dimension.withoutOptions(["base-type"]);
+    current = dimensions.findIndex(d => d.isEqual(subdim));
+  }
   return (
     <ul className={cx(className, "px2 py1")} style={style}>
       {dimensions.map((d, index) => (
         <li
           key={index}
           className={cx("List-item", {
-            "List-item--selected": d.isEqual(dimension),
+            "List-item--selected": index === current,
           })}
         >
           <a
