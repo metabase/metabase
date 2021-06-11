@@ -178,7 +178,8 @@
            (lic/write-license os ["jar" {:coords  {:group "a" :artifact "a"}
                                          :license "license text"}])
            (str os)))))
-
+(require 'clojure.pprint)
+(add-tap clojure.pprint/pprint)
 (deftest all-deps-have-licenses
   (testing "All deps on the classpath have licenses"
     (doseq [edition [:oss :ee]]
@@ -191,6 +192,8 @@
                                   "classpath"))
             classpath-entries (->> (str/split classpath (re-pattern lic/classpath-separator))
                                    (filter lic/jar-file?))]
+        (tap> classpath)
+        (tap> classpath-entries)
         (is (nil? (:without-license
                    (lic/process* {:classpath-entries classpath-entries
                                   :backfill  (edn/read-string
@@ -198,6 +201,6 @@
         (is (some? (:without-license
                     (lic/process* {:classpath-entries classpath-entries
                                    :backfill  {}}))))))))
-
+(remove-tap clojure.pprint/pprint)
 (comment
   (run-tests))
