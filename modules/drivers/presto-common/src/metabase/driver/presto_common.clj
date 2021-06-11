@@ -23,25 +23,28 @@
 (def presto-type->base-type
   "Function that returns a `base-type` for the given `presto-type` (can be a keyword or string)."
   (sql-jdbc.sync/pattern-based-database-type->base-type
-    [[#"(?i)boolean"     :type/Boolean]
-     [#"(?i)tinyint"     :type/Integer]
-     [#"(?i)smallint"    :type/Integer]
-     [#"(?i)integer"     :type/Integer]
-     [#"(?i)bigint"      :type/BigInteger]
-     [#"(?i)real"        :type/Float]
-     [#"(?i)double"      :type/Float]
-     [#"(?i)decimal.*"   :type/Decimal]
-     [#"(?i)varchar.*"   :type/Text]
-     [#"(?i)char.*"      :type/Text]
-     [#"(?i)varbinary.*" :type/*]
-     [#"(?i)json"        :type/Text]       ; TODO - this should probably be Dictionary or something
-     [#"(?i)date"        :type/Date]
-     [#"(?i)time"        :type/Time]
-     [#"(?i)time.+"      :type/DateTime]
-     [#"(?i)array"       :type/Array]
-     [#"(?i)map"         :type/Dictionary]
-     [#"(?i)row.*"       :type/*]          ; TODO - again, but this time we supposedly have a schema
-     [#".*"              :type/*]]))
+    [[#"(?i)boolean"                    :type/Boolean]
+     [#"(?i)tinyint"                    :type/Integer]
+     [#"(?i)smallint"                   :type/Integer]
+     [#"(?i)integer"                    :type/Integer]
+     [#"(?i)bigint"                     :type/BigInteger]
+     [#"(?i)real"                       :type/Float]
+     [#"(?i)double"                     :type/Float]
+     [#"(?i)decimal.*"                  :type/Decimal]
+     [#"(?i)varchar.*"                  :type/Text]
+     [#"(?i)char.*"                     :type/Text]
+     [#"(?i)varbinary.*"                :type/*]
+     [#"(?i)json"                       :type/Text] ; TODO - this should probably be Dictionary or something
+     [#"(?i)date"                       :type/Date]
+     [#"(?i)^timestamp$"                :type/Time]
+     [#"(?i)^timestamp with time zone$" :type/DateTimeWithTZ]
+     [#"(?i)^time$"                     :type/Time]
+     [#"(?i)^time with time zone$"      :type/TimeWithTZ]
+     #_[#"(?i)time.+"                     :type/DateTime] ; TODO - get rid of this one?
+     [#"(?i)array"                      :type/Array]
+     [#"(?i)map"                        :type/Dictionary]
+     [#"(?i)row.*"                      :type/*] ; TODO - again, but this time we supposedly have a schema
+     [#".*"                             :type/*]]))
 
 (defmethod sql.qp/add-interval-honeysql-form :presto-common
   [_ hsql-form amount unit]

@@ -107,7 +107,7 @@
   {:query (mt/native-query
             {:query
              (format-honeysql
-              {:select   [(identifier :venues :name)]
+              {:select   [(identifier :venues :id) (identifier :venues :name)]
                :from     [(identifier :venues)]
                :order-by [(identifier :venues :id)]})})})
 
@@ -271,10 +271,11 @@
                (run-venues-count-query)))))
 
     (testing "Make sure that you can still use a SQL-based GTAP without needing to have SQL read perms for the Database"
-      (is (= [["Red Medicine"] ["Stout Burgers & Beers"]]
+      (is (= [[1 "Red Medicine"]
+              [2 "Stout Burgers & Beers"]]
              (mt/rows
                (mt/with-gtaps {:gtaps {:venues (venue-names-native-gtap-def)}}
-                 (mt/run-mbql-query venues {:limit 2}))))))
+                 (mt/run-mbql-query venues {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))))
 
     (testing (str "When no card_id is included in the GTAP, should default to a query against the table, with the GTAP "
                   "criteria applied")
@@ -330,7 +331,8 @@
   not normally have FK tests ran for it."
   []
   (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (@tx.env/test-drivers :bigquery) (conj :bigquery)))
+    (@tx.env/test-drivers :bigquery) (conj :bigquery)
+    :always                          (dissoc :presto-jdbc)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -915,7 +917,10 @@
 
 (deftest pivot-query-test
   ;; sample-dataset doesn't work on Redshift yet -- see #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
+  (mt/test-drivers (disj
+                     (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
+                     :redshift
+                     :presto-jdbc)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset sample-dataset
         (mt/with-gtaps {:gtaps      (mt/$ids
