@@ -1,5 +1,6 @@
 (ns metabase.integrations.google.interface
-  (:require [metabase.models.setting.multi-setting :refer [define-multi-setting]]
+  (:require [metabase.config :as config]
+            [metabase.models.setting.multi-setting :refer [define-multi-setting]]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util.i18n :refer [deferred-tru]]))
 
