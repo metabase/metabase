@@ -67,14 +67,14 @@ export const MODERATION_TEXT = {
   requestStatuses: {
     open: t`Open`,
     resolved: t`Resolved`,
-    dismissed: t`Dismissed`,
+    dismissed: t`Resolved`,
   },
   user: {
-    action: t`Get help`,
+    action: t`Request review`,
     actionHelp: t`How can a moderator help you?`,
   },
   moderator: {
-    action: t`Moderate`,
+    action: t`Review this`,
   },
   verification_request: {
     action: t`Request verification`,
@@ -127,9 +127,9 @@ export const MODERATION_TEXT = {
   confusing: {
     action: t`This is confusing`,
     actionCreationDescription: t`Add a warning badge to this question and notify its editors that something’s off here.`,
-    actionCreationLabel: t`Explain what’s wrong or misleading`,
+    actionCreationLabel: t`Explain what’s confusing about this`,
     actionCreationPlaceholder: t`Try to be specific`,
-    actionCreationButton: t`Flag as misleading`,
+    actionCreationButton: t`Flag as confusing`,
     creationEvent: t`marked this as confusing`,
     creationNotification: t`Flagged as misleading`,
   },
@@ -143,11 +143,11 @@ export const MODERATION_TEXT = {
     actionCreationButton: t`actionCreationButton`,
   },
   dismiss: {
-    action: t`Dismiss`,
-    actionCreationDescription: t`You can let the requester know why you're dismissing their request.`,
+    action: t`Resolve`,
+    actionCreationDescription: t`You can let the requester know why you're closing their request.`,
     actionCreationLabel: t`Add a note if you'd like`,
-    actionCreationPlaceholder: t`Explain why you’re dismissing the request`,
-    actionCreationButton: t`Dismiss request`,
+    actionCreationPlaceholder: t`Explain why you’re closing the request`,
+    actionCreationButton: t`Resolve request`,
   },
 };
 
