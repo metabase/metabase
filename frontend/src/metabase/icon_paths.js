@@ -365,6 +365,10 @@ export const ICON_PATHS = {
       style: { strokeWidth: 2, stroke: "currentcolor", strokeLinecap: "round" },
     },
   },
+  speech_bubble: {
+    svg:
+      '<path transform="scale(2)" fill-rule="evenodd" clip-rule="evenodd" d="M4 0C1.79086 0 0 1.79086 0 4V8C0 10.2091 1.79086 12 4 12V16L8 12H12C14.2091 12 16 10.2091 16 8V4C16 1.79086 14.2091 0 12 0H4Z" />',
+  },
   star: "M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11",
   star_outline:
     "M16 21.935l5.967 3.14-1.14-6.653 4.828-4.712-6.671-.97L16 6.685l-2.984 6.053-6.67.971 4.827 4.712-1.14 6.654L16 21.935zm-9.892 8.547l1.89-11.029L0 11.647l11.053-1.609L16 0l4.947 10.038L32 11.647l-7.997 7.806 1.889 11.03L16 25.274l-9.892 5.207z",
