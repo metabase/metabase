@@ -1,9 +1,11 @@
 (ns build.licenses-test
-  (:require [clojure.data.xml :as xml]
+  (:require [build.licenses :as lic]
+            [clojure.data.xml :as xml]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is run-tests testing]]
-            [build.licenses :as lic])
+            [metabuild-common.core :as u])
   (:import (java.io StringReader StringWriter)
            java.util.jar.JarFile))
 
@@ -177,4 +179,25 @@
                                          :license "license text"}])
            (str os)))))
 
-#_(run-tests)
+(deftest all-deps-have-licenses
+  (testing "All deps on the classpath have licenses"
+    (doseq [edition [:oss :ee]]
+      (let [classpath (last (u/sh {:dir    u/project-root-directory
+                                   :quiet? true}
+                                  "lein"
+                                  "with-profile" (str \- "dev"
+                                                      (str \, \+ (name edition))
+                                                      \,"+include-all-drivers")
+                                  "classpath"))
+            classpath-entries (->> (str/split classpath (re-pattern lic/classpath-separator))
+                                   (filter lic/jar-file?))]
+        (is (nil? (:without-license
+                   (lic/process* {:classpath-entries classpath-entries
+                                  :backfill  (edn/read-string
+                                              (slurp (io/resource "overrides.edn")))}))))
+        (is (some? (:without-license
+                    (lic/process* {:classpath-entries classpath-entries
+                                   :backfill  {}}))))))))
+
+(comment
+  (run-tests))
