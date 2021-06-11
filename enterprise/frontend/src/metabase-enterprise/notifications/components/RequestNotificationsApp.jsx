@@ -4,6 +4,7 @@ import { withRouter } from "react-router";
 import _ from "underscore";
 import { t } from "ttag";
 
+import { useAsyncFunction } from "metabase/lib/hooks";
 import Questions from "metabase/entities/questions";
 import User from "metabase/entities/users";
 
@@ -29,11 +30,13 @@ function RequestNotifications({ questions, users, router }) {
   const usersById = _.indexBy(users, "id");
   const questionsById = _.indexBy(questions, question => question.id);
 
+  const [fetchModerationRequests] = useAsyncFunction(ModerationRequestApi.get);
+
   useEffect(() => {
-    ModerationRequestApi.get().then(requests => {
+    fetchModerationRequests().then(requests => {
       setRequests(requests || []);
     });
-  }, []);
+  }, [fetchModerationRequests]);
 
   const requestsWithMetadata = requests
     .filter(request => {
