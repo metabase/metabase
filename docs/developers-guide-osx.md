@@ -50,14 +50,6 @@ The following steps need to be done before building the Mac App:
     Have Cam or Sameer ZIP up their `/path/to/metabase/repo/OSX/Metabase/jre` folder and send it to you. Don't try Option 1 until we know the issues are fixed
     </details>
 
-1. Copy Metabase uberjar to OSX resources dir
-
-    ```bash
-    cp /path/to/metabase.jar OSX/Resources/metabase.jar
-    ```
-
-    Every time you want to build a new version of the Mac App, you can simply update the bundled uberjar the same way. I usually download the new JAR from `downloads.metabase.com` after it's up and copy that one into place.
-
 At this point, you should try opening up the Xcode project and building the Mac App in Xcode by clicking the run button. The app should build and launch at this point. If it doesn't, ask Cam for help!
 
 ### Releasing
