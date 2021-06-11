@@ -7,11 +7,15 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.setting.multi-setting :refer [define-multi-setting define-multi-setting-impl]]
             [metabase.models.user :as user :refer [User]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
             [schema.core :as s]
             [toucan.db :as db]))
+
+;; Load enterprise implementation if available
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.enhancements.integrations.google))
 
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
@@ -28,10 +32,6 @@
                 ;; Multiple comma-separated domains is EE-only feature
                 (throw (ex-info (tru "Invalid domain") {:status-code 400})))
               (setting/set-string! :google-auth-auto-create-accounts-domain domain)))
-
-(define-multi-setting-impl google-auth-auto-create-accounts-domain :ee
-  :getter (fn [] (setting/get :google-auth-auto-create-accounts-domain))
-  :setter (fn [domain] (setting/set-string! :google-auth-auto-create-accounts-domain domain)))
 
 (def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
 
@@ -61,8 +61,11 @@
   (= (email->domain email) domain))
 
 (defn- autocreate-user-allowed-for-email? [email]
-  (when-let [domain (google-auth-auto-create-accounts-domain)]
-    (email-in-domain? email domain)))
+  (boolean
+   (when-let [domains (google-auth-auto-create-accounts-domain)]
+     (some
+      (partial email-in-domain? email)
+      (str/split domains #"\s*,\s*")))))
 
 (defn- check-autocreate-user-allowed-for-email
   "Throws if an admin needs to intervene in the account creation."
