@@ -92,7 +92,7 @@
     (is (= {:name   "test_data_venues"
             :schema "default"
             :fields #{{:name          "name",
-                       :database-type "varchar(255)"
+                       :database-type "varchar"
                        :base-type     :type/Text
                        :database-position 1}
                       {:name          "latitude"
