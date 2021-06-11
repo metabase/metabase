@@ -16,22 +16,27 @@ describe("LastEditInfoLabel", () => {
 
   const NOW_REAL = moment().toISOString();
 
-  const store = getStore({ currentUser: () => ({ id: 1 }) });
-
-  const FAKE_EDITOR = {
+  const TEST_USER = {
     id: 2,
     first_name: "John",
     last_name: "Doe",
     email: "john@metabase.test",
   };
 
-  function setup() {
+  function setup({ isLastEditedByCurrentUser = false } = {}) {
     const testItem = {
       "last-edit-info": {
-        ...FAKE_EDITOR,
+        ...TEST_USER,
         timestamp: NOW_REAL,
       },
     };
+
+    function userReducer() {
+      return isLastEditedByCurrentUser ? TEST_USER : { id: TEST_USER.id + 1 };
+    }
+
+    const store = getStore({ currentUser: userReducer });
+
     return render(
       <Provider store={store}>
         <LastEditInfoLabel item={testItem} data-testid="label" />
@@ -74,5 +79,23 @@ describe("LastEditInfoLabel", () => {
         new RegExp(`Edited ${expectedTimestamp} by .*`, "i"),
       );
     });
+  });
+
+  it("should display last editor's name", () => {
+    const { first_name, last_name } = TEST_USER;
+    // Example: John Doe —> John D.
+    const expectedName = `${first_name} ${last_name.charAt(0)}.`;
+
+    const { getByTestId } = setup();
+    expect(getByTestId("label")).toHaveTextContent(
+      new RegExp(`Edited .* by ${expectedName}`),
+    );
+  });
+
+  it("should display if user is the last editor", () => {
+    const { getByTestId } = setup({ isLastEditedByCurrentUser: true });
+    expect(getByTestId("label")).toHaveTextContent(
+      new RegExp(`Edited .* by you`),
+    );
   });
 });
