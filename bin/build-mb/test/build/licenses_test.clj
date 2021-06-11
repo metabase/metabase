@@ -195,10 +195,12 @@
         (println classpath)
         (clojure.pprint/pprint classpath-entries)
         (println edition)
-        (is (nil? (:without-license
-                   (lic/process* {:classpath-entries classpath-entries
-                                  :backfill  (edn/read-string
-                                              (slurp (io/resource "overrides.edn")))}))))
+        (let [results (lic/process* {:classpath-entries classpath-entries
+                                     :backfill  (edn/read-string
+                                                 (slurp (io/resource "overrides.edn")))})]
+          (is (nil? (:without-license results)) "Some deps don't have identifiable licenses")
+          (is (= (set classpath-entries)
+                 (into #{} (->> results :with-license (map first))))))
         (is (some? (:without-license
                     (lic/process* {:classpath-entries classpath-entries
                                    :backfill  {}}))))))))
