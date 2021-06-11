@@ -1,11 +1,14 @@
 import React, { useState } from "react";
-import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { useAsyncFunction } from "metabase/lib/hooks";
 import { MODERATION_TEXT } from "metabase-enterprise/moderation/constants";
-import { getIsModerator } from "metabase-enterprise/moderation/selectors";
+import {
+  isRequestType,
+  isReviewType,
+  isRequestDismissal,
+} from "metabase-enterprise/moderation";
 
 import Button from "metabase/components/Button";
 import ModerationIssuePill from "metabase-enterprise/moderation/components/ModerationIssuePill";
@@ -15,6 +18,7 @@ CreateModerationIssuePanel.propTypes = {
   onReturn: PropTypes.func.isRequired,
   createModerationReview: PropTypes.func.isRequired,
   createModerationRequest: PropTypes.func.isRequired,
+  dismissModerationRequest: PropTypes.func.isRequired,
   itemId: PropTypes.number.isRequired,
   isModerator: PropTypes.bool.isRequired,
   moderationRequest: PropTypes.object,
@@ -25,6 +29,7 @@ function CreateModerationIssuePanel({
   onReturn,
   createModerationReview: _createModerationReview,
   createModerationRequest: _createModerationRequest,
+  dismissModerationRequest: _dismissModerationRequest,
   itemId,
   isModerator,
   moderationRequest,
@@ -38,13 +43,25 @@ function CreateModerationIssuePanel({
     createModerationRequest,
     isModerationRequestPending,
   ] = useAsyncFunction(_createModerationRequest);
+  const [
+    dismissModerationRequest,
+    isRequestDismissalPending,
+  ] = useAsyncFunction(_dismissModerationRequest);
 
-  const isPending = isModerationRequestPending || isModerationReviewPending;
+  const isPending =
+    isModerationRequestPending ||
+    isModerationReviewPending ||
+    isRequestDismissalPending;
 
   const onCreateModerationIssue = async e => {
     e.preventDefault();
-
-    if (isModerator) {
+    if (isRequestType(issueType)) {
+      await createModerationRequest({
+        type: issueType,
+        cardId: itemId,
+        description,
+      });
+    } else if (isReviewType(issueType)) {
       await createModerationReview({
         moderationReview: {
           type: issueType,
@@ -53,11 +70,10 @@ function CreateModerationIssuePanel({
         },
         moderationRequest,
       });
-    } else {
-      await createModerationRequest({
-        type: issueType,
-        cardId: itemId,
+    } else if (isRequestDismissal(issueType)) {
+      await dismissModerationRequest({
         description,
+        moderationRequest,
       });
     }
 
@@ -94,10 +110,4 @@ function CreateModerationIssuePanel({
   );
 }
 
-const mapStateToProps = (state, props) => {
-  return {
-    isModerator: getIsModerator(state, props),
-  };
-};
-
-export default connect(mapStateToProps)(CreateModerationIssuePanel);
+export default CreateModerationIssuePanel;

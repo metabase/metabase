@@ -108,6 +108,7 @@ export default class View extends React.Component {
       onOpenModal,
       createModerationReview,
       createModerationRequest,
+      dismissModerationRequest,
       createModerationRequestComment,
       updateModerationRequest,
     } = this.props;
@@ -170,6 +171,7 @@ export default class View extends React.Component {
         onOpenModal={onOpenModal}
         createModerationReview={createModerationReview}
         createModerationRequest={createModerationRequest}
+        dismissModerationRequest={dismissModerationRequest}
         createModerationRequestComment={createModerationRequestComment}
         updateModerationRequest={updateModerationRequest}
       />
