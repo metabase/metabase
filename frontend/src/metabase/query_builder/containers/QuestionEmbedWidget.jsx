@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
+import { t } from "ttag";
+
 import Icon from "metabase/components/Icon";
 
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
@@ -85,6 +87,7 @@ export function QuestionEmbedWidgetTrigger({
   return (
     <Icon
       name="share"
+      tooltip={t`Sharing`}
       className="mx1 hide sm-show text-brand-hover cursor-pointer"
       onClick={() => {
         MetabaseAnalytics.trackEvent(
