@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase.email-test :as et]
             [metabase.integrations.google :as google]
+            [metabase.integrations.google.interface :as google.i]
             [metabase.models.user :refer [User]]
             [metabase.public-settings.metastore :as metastore]
             [metabase.test :as mt]
@@ -39,7 +40,7 @@
     (with-redefs [metastore/enable-sso? (constantly false)]
       (is (thrown?
            clojure.lang.ExceptionInfo
-           (google/google-auth-auto-create-accounts-domain "metabase.com, example.com"))))))
+           (google.i/google-auth-auto-create-accounts-domain "metabase.com, example.com"))))))
 
 (deftest google-auth-create-new-user!-test
   (with-redefs [metastore/enable-sso? (constantly false)]

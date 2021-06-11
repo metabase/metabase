@@ -63,7 +63,7 @@
 
   See `define-multi-setting` for more details."
   [setting-symbol dispatch-value & {:keys [getter setter]}]
-  (let [setting-key    (keyword setting-symbol)
+  (let [setting-key    (keyword (name setting-symbol))
         dispatch-value (keyword dispatch-value)]
     `(do
        ~(when getter
