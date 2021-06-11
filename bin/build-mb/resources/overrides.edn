@@ -20,7 +20,7 @@
  "com.jolbox"                 {"bonecp" {:resource "apache2_0.txt"}}
  "org.eclipse.jetty"          {"jetty-webapp" {:resource "EPL.txt"}}
  "org.fusesource.leveldbjni"  {"leveldbjni-all" {:resource "BSD.txt"}}
- "com.sun.jersey"             {"jersey-server"  {:resource "Apache2_0.txt"}
+ "com.sun.jersey"             {"jersey-server"  {:resource "apache2_0.txt"}
                                "jersey-core"    {:resource "GPL1_1.txt"}
                                "jersey-json"    {:resource "GPL1_1.txt"}
                                "jersey-client"  {:resource "apache2_0.txt"}
