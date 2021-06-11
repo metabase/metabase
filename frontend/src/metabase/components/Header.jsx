@@ -25,7 +25,7 @@ const propTypes = {
   isEditingInfo: PropTypes.bool,
   item: PropTypes.object.isRequired,
   objectType: PropTypes.string.isRequired,
-  showBadge: PropTypes.bool,
+  hasBadge: PropTypes.bool,
   children: PropTypes.node,
   setItemAttributeFn: PropTypes.func,
   onHeaderModalDone: PropTypes.func,
@@ -108,7 +108,7 @@ class Header extends Component {
   }
 
   render() {
-    const { item, showBadge } = this.props;
+    const { item, hasBadge } = this.props;
     const hasLastEditInfo = !!item["last-edit-info"];
 
     let titleAndDescription;
@@ -171,13 +171,13 @@ class Header extends Component {
             <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
             <Flex direction="row" align="center">
-              {showBadge && (
+              {hasBadge && (
                 <CollectionBadge
                   collectionId={item.collection_id}
                   analyticsContext={this.props.analyticsContext}
                 />
               )}
-              {showBadge && hasLastEditInfo && (
+              {hasBadge && hasLastEditInfo && (
                 <span className="mx1 text-light text-smaller">•</span>
               )}
               {hasLastEditInfo && <LastEditInfoLabel item={item} />}
