@@ -45,7 +45,7 @@
              clojure.lang.ExceptionInfo
              (#'google/google-auth-create-new-user! {:first_name "Rasta"
                                                      :last_name  "Toucan"
-                                                     :email      "rasta@metabase.com"}))))
+                                                     :email      "rasta@metabase.com"})))))
 
       (testing "should totally work if the email domains match up"
         (et/with-fake-inbox
@@ -58,7 +58,7 @@
                 (is (= {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
                        (select-keys user [:first_name :last_name :email]))))
               (finally
-                (db/delete! User :email "rasta@sf-toucannery.com")))))))))
+                (db/delete! User :email "rasta@sf-toucannery.com"))))))))
 
 
 ;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
