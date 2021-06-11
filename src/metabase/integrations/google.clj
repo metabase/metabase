@@ -4,28 +4,24 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.api.common :as api]
+            [metabase.integrations.google.interface :as google.i]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.models.setting.multi-setting :refer [define-multi-setting define-multi-setting-impl]]
+            [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.metastore :as metastore]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
             [schema.core :as s]
             [toucan.db :as db]))
 
-;; Load enterprise implementation if available
+;; Load EE implementation if available
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.enhancements.integrations.google))
 
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
   :visibility :public)
 
-(define-multi-setting google-auth-auto-create-accounts-domain
-  (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain.")
-  (fn [] (if (metastore/enable-sso?) :ee :oss)))
-
-(define-multi-setting-impl google-auth-auto-create-accounts-domain :oss
+(define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
   :getter (fn [] (setting/get-string :google-auth-auto-create-accounts-domain))
   :setter (fn [domain]
               (when (and domain (str/includes? domain ","))
@@ -62,7 +58,7 @@
 
 (defn- autocreate-user-allowed-for-email? [email]
   (boolean
-   (when-let [domains (google-auth-auto-create-accounts-domain)]
+   (when-let [domains (google.i/google-auth-auto-create-accounts-domain)]
      (some
       (partial email-in-domain? email)
       (str/split domains #"\s*,\s*")))))
