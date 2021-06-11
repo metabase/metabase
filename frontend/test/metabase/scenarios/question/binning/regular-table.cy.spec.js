@@ -92,6 +92,66 @@ describe("scenarios > binning > regular table", () => {
       cy.get(".TableInteractive");
     });
   });
+
+  describe("should work for timestamp", () => {
+    it("via column popover", () => {
+      openOrdersTable();
+      cy.findByText("Created At").click();
+      cy.findByText("Distribution").click();
+
+      getTitle("Count by Created At: Month");
+      cy.get("circle");
+
+      // Check all binning options from the footer
+      cy.get(".AdminSelect-content")
+        .contains("Month")
+        .click();
+      popover().within(() => {
+        cy.findByText("Minute");
+        cy.findByText("Hour");
+        cy.findByText("Day");
+        cy.findByText("Week");
+        cy.findByText("Month")
+          .closest("li")
+          .should("have.class", "List-item--selected");
+        cy.findByText("Quarter");
+        cy.findByText("Year");
+      });
+    });
+
+    it("via simple question", () => {
+      openOrdersTable();
+      cy.findByText("Summarize").click();
+
+      cy.findByTestId("sidebar-right").within(() => {
+        // There is really no better way to scope this to "Orders".
+        cy.findAllByText("Created At")
+          .first() // We have to rely on the order of tables until this UI gets updated.
+          .click();
+      });
+
+      getTitle("Count by Created At: Month");
+      cy.get("circle");
+
+      openPopoverFromSelectedBinningOption("Created At", "by month");
+      popover();
+    });
+
+    it("via custom question", () => {
+      openOrdersTable({ mode: "notebook" });
+      cy.findByText("Summarize").click();
+
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText("Created At").click();
+
+      cy.button("Visualize").click();
+      cy.get("circle");
+
+      getTitle("Count by Created At: Month");
+    });
+  });
+
 });
 
 function openPopoverFromSelectedBinningOption(table, binning) {
