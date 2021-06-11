@@ -452,7 +452,7 @@
 
 (def ^:const result-limit
   "How many results to return when chain filtering"
-  100)
+  1000)
 
 (def ^:private ParamMapping
   {:parameter_id su/NonBlankString
@@ -583,7 +583,7 @@
     ;; to 100
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
-  Currently limited to first 100 results"
+  Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
     (chain-filter dashboard param-key query-params query)))
