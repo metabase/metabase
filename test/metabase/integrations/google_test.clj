@@ -9,7 +9,6 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-;;; tests for email->domain
 (deftest email->domain-test
   (are [domain email] (is (= domain
                              (#'google/email->domain email))
@@ -18,7 +17,6 @@
     "metabase.co.uk" "cam@metabase.co.uk"
     "metabase.com"   "cam.saul+1@metabase.com"))
 
-;;; tests for email-in-domain?
 (deftest email-in-domain-test
   (are [in-domain? email domain] (is (= in-domain?
                                         (#'google/email-in-domain? email domain))
@@ -27,7 +25,6 @@
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
-;;; tests for autocreate-user-allowed-for-email?
 (deftest allow-autocreation-test
   (with-redefs [metastore/enable-sso? (constantly false)]
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
@@ -36,6 +33,13 @@
                                 (format "Can we autocreate an account for email '%s'?" email))
         true  "cam@metabase.com"
         false "cam@expa.com"))))
+
+(deftest google-auth-auto-create-accounts-domain-test
+  (testing "multiple domains cannot be set if EE SSO is not enabled"
+    (with-redefs [metastore/enable-sso? (constantly false)]
+      (is (thrown?
+           clojure.lang.ExceptionInfo
+           (google/google-auth-auto-create-accounts-domain "metabase.com, example.com"))))))
 
 (deftest google-auth-create-new-user!-test
   (with-redefs [metastore/enable-sso? (constantly false)]
