@@ -36,7 +36,7 @@
      [#"(?i)varbinary.*"                :type/*]
      [#"(?i)json"                       :type/Text] ; TODO - this should probably be Dictionary or something
      [#"(?i)date"                       :type/Date]
-     [#"(?i)^timestamp$"                :type/Time]
+     [#"(?i)^timestamp$"                :type/DateTime]
      [#"(?i)^timestamp with time zone$" :type/DateTimeWithTZ]
      [#"(?i)^time$"                     :type/Time]
      [#"(?i)^time with time zone$"      :type/TimeWithTZ]

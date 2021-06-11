@@ -122,7 +122,6 @@
 (defmethod sql.tx/drop-db-if-exists-sql :presto-jdbc [_ _] nil)
 (defmethod sql.tx/create-db-sql         :presto-jdbc [_ _] nil)
 
-
 (defmethod sql.tx/qualified-name-components :presto-jdbc
   ;; use the default schema from the in-memory connector
   ([_ db-name]                       [(dash->underscore db-name) "default"])
@@ -138,6 +137,9 @@
   ;; strip out the PRIMARY KEY stuff from the CREATE TABLE statement
   (let [sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
     (str/replace sql #", PRIMARY KEY \([^)]+\)" "")))
+
+(defmethod tx/format-name :presto-jdbc [_ table-or-field-name]
+  (dash->underscore table-or-field-name))
 
 ;; Presto doesn't support FKs, at least not adding them via DDL
 (defmethod sql.tx/add-fk-sql :presto-jdbc
