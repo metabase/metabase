@@ -59,8 +59,8 @@
                [[1 "Plato Yeshua" "08:30:00"]
                 [4 "Simcha Yan" "08:30:00"]]
 
-               ;; TIMEZONE FIXME — Wack answer
-               (= :presto driver/*driver*)
+               ;; TIMEZONE FIXME — Wack answer (still wack as of June 2021)
+               (contains? #{:presto :presto-jdbc} driver/*driver*)
                [[3 "Kaneonuskatew Eiran" "08:15:00-08:00"]]
 
                ;; Databases like PostgreSQL ignore timezone information when

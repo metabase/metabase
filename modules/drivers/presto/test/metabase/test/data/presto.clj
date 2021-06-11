@@ -11,6 +11,7 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.test.data.interface :as tx]
+            [metabase.test.data.presto-common]
             [metabase.test.data.sql :as sql.tx]))
 
 (sql.tx/add-test-extensions! :presto)
@@ -131,15 +132,16 @@
   [_ s]
   (str/lower-case s))
 
-(defmethod tx/aggregate-column-info :presto
-  ([driver ag-type]
-   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+#_(defmethod tx/aggregate-column-info :presto
+    ([driver ag-type]
+     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
 
-  ([driver ag-type field]
-   (merge
-    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
-    (when (= ag-type :sum)
-      {:base_type :type/BigInteger}))))
+    ([driver ag-type field]
+     (merge
+      ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+      (when (= ag-type :sum)
+        {:base_type :type/BigInteger}))))
 
 ;; FIXME Presto actually has very good timezone support
 (defmethod tx/has-questionable-timezone-support? :presto [_] true)
+
