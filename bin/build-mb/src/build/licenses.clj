@@ -106,7 +106,12 @@
                           [:override/group group]])]
     (if (string? license)
       license
-      (slurp (io/resource (:resource license))))))
+      (if-let [resource (io/resource (:resource license))]
+        (slurp resource)
+        (throw (ex-info (str "Missing license for " artifact)
+                        {:group    group
+                         :artifact artifact
+                         :backfill license}))))))
 
 (defn discern-license-and-coords [^String jar-filename backfill]
   (try
