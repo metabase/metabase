@@ -12,6 +12,14 @@ import {
 } from "metabase-enterprise/moderation";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 
+const mapStateToProps = (state, props) => {
+  return {
+    userType: getUserTypeTextKey(getIsModerator(state, props)),
+  };
+};
+
+export default connect(mapStateToProps)(ModerationIssueActionMenu);
+
 ModerationIssueActionMenu.propTypes = {
   className: PropTypes.string,
   triggerClassName: PropTypes.string,
@@ -47,14 +55,6 @@ function ModerationIssueActionMenu({
     />
   );
 }
-
-const mapStateToProps = (state, props) => {
-  return {
-    userType: getUserTypeTextKey(getIsModerator(state, props)),
-  };
-};
-
-export default connect(mapStateToProps)(ModerationIssueActionMenu);
 
 function buildActionMenuItems(userType, targetIssueType, onAction) {
   const issueActionTypes = getModerationIssueActionTypes(

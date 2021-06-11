@@ -68,7 +68,9 @@ export function getModerationIssueActionTypes(userType, targetIssueType) {
 function getDismissalAction(targetIssueType) {
   if (isReviewType(targetIssueType)) {
     return [ACTIONS.pending.type];
-  } else if (isRequestType(targetIssueType)) {
+  }
+
+  if (isRequestType(targetIssueType)) {
     return [ACTIONS.dismiss.type];
   }
 }
