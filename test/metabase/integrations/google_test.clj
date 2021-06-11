@@ -125,7 +125,7 @@
                           "Cam" "Saul" "cam@sf-toucannery.com")))))))
 
     (testing "test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception"
-      (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"
+      (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
                                          admin-email                             "rasta@toucans.com"]
         (is (thrown?
              clojure.lang.ExceptionInfo

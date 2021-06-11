@@ -28,7 +28,7 @@
 (define-multi-setting-impl google-auth-auto-create-accounts-domain :oss
   :getter (fn [] (setting/get-string :google-auth-auto-create-accounts-domain))
   :setter (fn [domain]
-              (when (str/includes? domain ",")
+              (when (and domain (str/includes? domain ","))
                 ;; Multiple comma-separated domains is EE-only feature
                 (throw (ex-info (tru "Invalid domain") {:status-code 400})))
               (setting/set-string! :google-auth-auto-create-accounts-domain domain)))
