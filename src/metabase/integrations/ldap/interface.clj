@@ -9,8 +9,8 @@
 (def UserInfo
   "Schema for LDAP User info as returned by `user-info` and used as input to `fetch-or-create-user!`."
   {:dn         su/NonBlankString
-   :first-name su/NonBlankString
-   :last-name  su/NonBlankString
+   :first-name (s/maybe su/NonBlankString)
+   :last-name  (s/maybe su/NonBlankString)
    :email      su/Email
    :groups     [su/NonBlankString]
    s/Keyword   s/Any})

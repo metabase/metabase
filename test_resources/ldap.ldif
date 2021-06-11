@@ -46,6 +46,17 @@ uid: ftaylor300
 mAiL: fred.taylor@metabase.com
 userpassword: pa$$word
 
+dn: cn=Jane Miller,ou=People,dc=metabase,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Jane Miller
+sn: Miller
+uid: jmiller
+mail: jane.miller@metabase.com
+userPassword: n0peeking
+
 dn: ou=Birds,dc=metabase,dc=com
 objectClass: top
 objectClass: organizationalUnit
