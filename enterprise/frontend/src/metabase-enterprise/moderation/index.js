@@ -73,11 +73,11 @@ function getDismissalAction(targetIssueType) {
   }
 }
 
-function isReviewType(type) {
+export function isReviewType(type) {
   return !!REVIEW_STATUSES[type];
 }
 
-function isRequestType(type) {
+export function isRequestType(type) {
   return !!REQUEST_TYPES[type];
 }
 

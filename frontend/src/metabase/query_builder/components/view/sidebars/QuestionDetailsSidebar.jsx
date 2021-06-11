@@ -22,6 +22,7 @@ QuestionDetailsSidebar.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   createModerationReview: PropTypes.func.isRequired,
   createModerationRequest: PropTypes.func.isRequired,
+  dismissModerationRequest: PropTypes.func.isRequired,
   createModerationRequestComment: PropTypes.func.isRequired,
   updateModerationRequest: PropTypes.func.isRequired,
   router: PropTypes.object.isRequired,
@@ -32,6 +33,7 @@ function QuestionDetailsSidebar({
   onOpenModal,
   createModerationReview,
   createModerationRequest,
+  dismissModerationRequest,
   createModerationRequestComment,
   updateModerationRequest,
   router,
@@ -70,6 +72,7 @@ function QuestionDetailsSidebar({
           onReturn={onReturn}
           createModerationReview={createModerationReview}
           createModerationRequest={createModerationRequest}
+          dismissModerationRequest={dismissModerationRequest}
           itemId={id}
         />
       );
