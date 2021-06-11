@@ -154,7 +154,7 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "embedding")))))
+  :getter     (fn [] (boolean ((token-features) "embedding"))))
 
 (defsetting enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
