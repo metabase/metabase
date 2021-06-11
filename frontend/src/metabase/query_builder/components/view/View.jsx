@@ -109,6 +109,7 @@ export default class View extends React.Component {
       createModerationReview,
       createModerationRequest,
       createModerationRequestComment,
+      updateModerationRequest,
     } = this.props;
     const {
       aggregationIndex,
@@ -170,6 +171,7 @@ export default class View extends React.Component {
         createModerationReview={createModerationReview}
         createModerationRequest={createModerationRequest}
         createModerationRequestComment={createModerationRequestComment}
+        updateModerationRequest={updateModerationRequest}
       />
     ) : null;
 

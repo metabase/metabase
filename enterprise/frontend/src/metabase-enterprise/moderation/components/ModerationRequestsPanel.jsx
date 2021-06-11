@@ -10,7 +10,7 @@ import { getUser } from "metabase/selectors/user";
 import Button from "metabase/components/Button";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { ModerationIssueThread } from "metabase-enterprise/moderation/components/ModerationIssueThread";
-import { isUserModerator } from "metabase-enterprise/moderation";
+import { isUserModerator, isRequestOpen } from "metabase-enterprise/moderation";
 
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 
@@ -20,6 +20,7 @@ ModerationRequestsPanel.propTypes = {
   requests: PropTypes.array.isRequired,
   comments: PropTypes.array.isRequired,
   onReturn: PropTypes.func.isRequired,
+  updateModerationRequest: PropTypes.func.isRequired,
   users: PropTypes.array,
   isModerator: PropTypes.bool.isRequired,
   currentUser: PropTypes.object,
@@ -32,6 +33,7 @@ function ModerationRequestsPanel({
   requests,
   comments,
   onReturn,
+  updateModerationRequest,
   users,
   isModerator,
   currentUser,
@@ -52,6 +54,7 @@ function ModerationRequestsPanel({
   const commentsWithMetadata = comments.map(comment => {
     const user = usersById[comment.author_id];
     const authorDisplayName = user && user.common_name;
+
     return {
       ...comment,
       title: authorDisplayName,
@@ -64,6 +67,21 @@ function ModerationRequestsPanel({
     commentsWithMetadata,
     "commented_item_id",
   );
+
+  const onUpdateRequestText = (text, request) => {
+    return updateModerationRequest({
+      id: request.id,
+      text,
+    });
+  };
+
+  const onResolveOwnRequest = request => {
+    return updateModerationRequest({
+      id: request.id,
+      status: "resolved",
+      closed_by_id: currentUser.id,
+    });
+  };
 
   return (
     <SidebarContent className="full-height px1">
@@ -80,17 +98,30 @@ function ModerationRequestsPanel({
       <div className="px2">
         {requestsWithMetadata.length > 0 ? (
           requestsWithMetadata.map(request => {
-            const canComment =
-              isModerator || request.requester_id === currentUser.id;
+            const isOpenRequest = isRequestOpen(request);
+            const isOwnRequest = request.requester_id === currentUser.id;
+
+            const canComment = isOpenRequest && (isModerator || isOwnRequest);
+            const canModerate = isOpenRequest && isModerator;
+            const canUpdateRequestText = isOpenRequest && isOwnRequest;
+            const canResolveOwnRequest = isOpenRequest && isOwnRequest;
+
             const comments = commentsByRequestId[request.id];
+
             return (
               <ModerationIssueThread
                 key={request.id}
                 className="py2 border-row-divider"
                 request={request}
                 comments={comments}
-                onModerate={isModerator && onModerate}
+                onModerate={canModerate && onModerate}
                 onComment={canComment && onComment}
+                onUpdateRequestText={
+                  canUpdateRequestText && onUpdateRequestText
+                }
+                onResolveOwnRequest={
+                  canResolveOwnRequest && onResolveOwnRequest
+                }
               />
             );
           })
