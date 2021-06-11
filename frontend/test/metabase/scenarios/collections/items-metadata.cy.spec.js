@@ -1,4 +1,3 @@
-import moment from "moment";
 import { restore } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -12,58 +11,16 @@ describe("scenarios > collection items metadata", () => {
       cy.signInAsAdmin();
     });
 
-    const IN_15_MIN = moment().add(15, "minutes");
-    const IN_HOUR = moment().add(1, "hours");
-    const IN_4_HOURS = moment().add(4, "hours");
-    const TOMORROW = moment().add(1, "days");
-    const IN_THREE_DAYS = moment().add(3, "days");
-    const NEXT_WEEK = moment().add(1, "week");
-    const NEXT_MONTH = moment().add(1, "month");
-    const IN_4_MONTHS = moment().add(4, "month");
-    const NEXT_YEAR = moment().add(1, "year");
-
-    const testCases = [
-      { date: IN_15_MIN, expected: /Edited 15 minutes ago/i },
-      { date: IN_HOUR, expected: /Edited an hour ago/i },
-      { date: IN_4_HOURS, expected: /Edited 4 hours ago/i },
-      { date: TOMORROW, expected: /Edited a day ago/i },
-      { date: IN_THREE_DAYS, expected: /Edited 3 days ago/i },
-      { date: NEXT_WEEK, expected: /Edited 7 days ago/i },
-      { date: NEXT_MONTH, expected: /Edited a month ago/i },
-      { date: IN_4_MONTHS, expected: /Edited 4 months ago/i },
-      { date: NEXT_YEAR, expected: /Edited a year ago/i },
-    ];
-
     it("should display last edit moment for dashboards", () => {
       cy.visit("/dashboard/1");
       changeDashboard();
       cy.findByText(/Edited a few seconds ago/i);
-
-      cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
-      testCases.forEach(testCase => {
-        const { date, expected } = testCase;
-        cy.clock(date.valueOf());
-        cy.reload();
-        cy.wait("@getDashboard");
-        cy.findByText(expected);
-        cy.clock().invoke("restore");
-      });
     });
 
     it("should display last edit moment for questions", () => {
       cy.visit("/question/1");
       changeQuestion();
       cy.findByText(/Edited a few seconds ago/i);
-
-      cy.intercept("GET", "/api/card/1").as("getQuestion");
-      testCases.forEach(testCase => {
-        const { date, expected } = testCase;
-        cy.clock(date.valueOf());
-        cy.reload();
-        cy.wait("@getQuestion");
-        cy.findByText(expected);
-        cy.clock().invoke("restore");
-      });
     });
   });
 
