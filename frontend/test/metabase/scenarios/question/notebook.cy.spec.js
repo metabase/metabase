@@ -514,7 +514,7 @@ describe("scenarios > question > notebook", () => {
                 condition: [
                   "=",
                   ["field", REVIEWS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
                 ],
                 alias: "Products",
               },
