@@ -98,26 +98,75 @@ export function getUserTypeTextKey(isModerator) {
   return isModerator ? "moderator" : "user";
 }
 
-export function getModerationEvents(question, usersById) {
-  const requests = question.getModerationRequests().map(request => {
-    const user = usersById[request.requester_id];
-    const userDisplayName = user ? user.common_name : t`Someone`;
-    const { icon } = getModerationStatusIcon(request.type);
+export function getModerationEvents(
+  moderationRequests,
+  moderationReviews,
+  usersById,
+) {
+  const requests = getModerationRequestEvents(moderationRequests, usersById);
+  const reviews = getModerationReviewEvents(moderationReviews, usersById);
 
-    return {
-      timestamp: new Date(request.created_at).valueOf(),
-      icon,
-      title: `${userDisplayName} ${MODERATION_TEXT[request.type].creationEvent}`,
-      description: request.text,
-      showFooter: true,
-      requestStatusText: MODERATION_TEXT.requestStatuses[request.status],
-      request,
-    };
-  });
+  return [...requests, ...reviews];
+}
 
-  const reviews = question.getModerationReviews().map((review, index) => {
+function getModerationRequestEvents(requests, usersById) {
+  return requests
+    .map(request => {
+      const requester = usersById[request.requester_id];
+      const requesterDisplayName = getUserDisplayName(requester);
+      const closer = usersById[request.closed_by_id];
+      const { icon } = getModerationStatusIcon(request.type);
+
+      const requestEvent = {
+        timestamp: getTimestamp(request.created_at),
+        icon,
+        title: `${requesterDisplayName} ${MODERATION_TEXT[request.type].creationEvent}`,
+        description: request.text,
+        showFooter: true,
+        footerText: MODERATION_TEXT.requestStatuses[request.status],
+        request,
+      };
+
+      return isRequestOpen(request)
+        ? requestEvent
+        : [
+            requestEvent,
+            {
+              timestamp: getTimestamp(request.updated_at),
+              icon,
+              title: getRequestResolutionText(request, requester, closer),
+              showFooter: true,
+              footerText: t`View request`,
+              request,
+            },
+          ];
+    })
+    .flat();
+}
+
+function getRequestResolutionText(request, requester, closer) {
+  const requesterDisplayName = getUserDisplayName(requester);
+  const closerDisplayName = getUserDisplayName(closer);
+  const isOwnRequest = closer && requester.id === closer.id;
+
+  switch (request.status) {
+    case REQUEST_STATUSES.resolved:
+      return isOwnRequest
+        ? t`${requesterDisplayName} resolved their own request`
+        : t`${requesterDisplayName}'s request was resolved by ${closerDisplayName}`;
+    case REQUEST_STATUSES.dismissed:
+      return isOwnRequest
+        ? t`${requesterDisplayName} dismissed their own request`
+        : t`${requesterDisplayName}'s request was dismissed by ${closerDisplayName}`;
+    default:
+      return t`${requesterDisplayName}'s request was set to ${request.status} by ${closerDisplayName}`;
+  }
+}
+
+function getModerationReviewEvents(reviews, usersById) {
+  return reviews.map((review, index) => {
     const moderator = usersById[review.moderator_id];
-    const moderatorDisplayName = moderator ? moderator.common_name : t`Someone`;
+    const moderatorDisplayName = getUserDisplayName(moderator);
     const text = MODERATION_TEXT[review.status].creationEvent;
     const { icon } = getModerationStatusIcon(review.status);
 
@@ -128,8 +177,14 @@ export function getModerationEvents(question, usersById) {
       description: review.text,
     };
   });
+}
 
-  return [...requests, ...reviews];
+function getUserDisplayName(user) {
+  return user ? user.common_name : t`Someone`;
+}
+
+function getTimestamp(dateString) {
+  return new Date(dateString).valueOf();
 }
 
 export function isUserModerator(user) {

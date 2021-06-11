@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
-import cx from "classnames";
 
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getRevisionEvents } from "metabase/lib/revisions";
@@ -11,8 +10,11 @@ import User from "metabase/entities/users";
 import Revision from "metabase/entities/revisions";
 import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
 import Timeline from "metabase/components/Timeline";
-import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/components/Button";
+import {
+  SidebarSectionHeader,
+  RequestButton,
+  RevertButton,
+} from "./QuestionActivityTimeline.styled";
 
 const { getModerationEvents, isRequestOpen } = PLUGIN_MODERATION_SERVICE;
 
@@ -35,23 +37,28 @@ function QuestionActivityTimeline({
 }) {
   const usersById = _.indexBy(users, "id");
   const canWrite = question.canWrite();
-  const events = [
-    ...(getModerationEvents(question, usersById) || []),
-    ...(getRevisionEvents(revisions, canWrite) || []),
-  ];
+
+  const moderationEvents =
+    getModerationEvents(
+      question.getModerationRequests(),
+      question.getModerationReviews(),
+      usersById,
+    ) || [];
+  const revisionEvents = getRevisionEvents(revisions, canWrite) || [];
+  const events = [...moderationEvents, ...revisionEvents];
 
   return (
     <div className={className}>
-      <div className="text-medium text-bold pb2">{t`Activity`}</div>
+      <SidebarSectionHeader>{t`Activity`}</SidebarSectionHeader>
       <Timeline
         items={events}
         renderFooter={item => {
-          const { showFooter, request, requestStatusText, revision } = item;
+          const { showFooter, request, footerText, revision } = item;
           if (request && showFooter) {
             return (
               <ModerationRequestEventFooter
                 request={request}
-                statusText={requestStatusText}
+                statusText={footerText}
                 onRequestClick={onRequestClick}
               />
             );
@@ -94,18 +101,13 @@ ModerationRequestEventFooter.propTypes = {
 
 function ModerationRequestEventFooter({ request, statusText, onRequestClick }) {
   return (
-    <div className="py1">
-      <Button
-        className={cx(
-          "p0 borderless text-underline-hover bg-transparent-hover",
-          isRequestOpen(request)
-            ? "text-dark text-dark-hover"
-            : "text-light text-light-hover",
-        )}
+    <div>
+      <RequestButton
+        color={isRequestOpen(request) ? "text-dark" : "text-light"}
         onClick={() => onRequestClick(request)}
       >
         {statusText}
-      </Button>
+      </RequestButton>
     </div>
   );
 }
@@ -117,12 +119,9 @@ RevisionEventFooter.propTypes = {
 
 function RevisionEventFooter({ revision, onRevisionClick }) {
   return (
-    <div className="py1">
-      <ActionButton
+    <div>
+      <RevertButton
         actionFn={() => onRevisionClick(revision)}
-        className="p0 borderless text-accent3 text-accent3-hover text-underline-hover bg-transparent-hover"
-        successClassName=""
-        failedClassName=""
         normalText={t`Revert back`}
         activeText={t`Reverting…`}
         failedText={t`Revert failed`}
