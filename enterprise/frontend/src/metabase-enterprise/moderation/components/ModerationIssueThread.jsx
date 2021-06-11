@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { useAsyncFunction } from "metabase/lib/hooks";
+
 import Button from "metabase/components/Button";
 import Comment from "metabase/components/Comment";
 import ModerationIssueActionMenu from "metabase-enterprise/moderation/components/ModerationIssueActionMenu";
@@ -30,8 +32,11 @@ export function ModerationIssueThread({
 }) {
   const [showRequestTextForm, setShowRequestTextForm] = useState(false);
   const [showCommentForm, setShowCommentForm] = useState(false);
-  const [isCommentPending, setIsCommentPending] = useState(false);
-  const [isRequestPending, setIsRequestPending] = useState(false);
+
+  const [safeOnComment, isCommentPending] = useAsyncFunction(onComment);
+  const [safeOnUpdateRequestText, isRequestPending] = useAsyncFunction(
+    onUpdateRequestText,
+  );
 
   const hasRequestActions = !!(onUpdateRequestText || onResolveOwnRequest);
   const isEditingText = showCommentForm || showRequestTextForm;
@@ -44,26 +49,22 @@ export function ModerationIssueThread({
   };
 
   const onCommentSubmit = async comment => {
-    setIsCommentPending(true);
     try {
-      await onComment(comment, request);
+      await safeOnComment(comment, request);
     } catch (error) {
       console.error(error);
     } finally {
       setShowCommentForm(false);
-      setIsCommentPending(false);
     }
   };
 
   const onEditRequestSubmit = async text => {
-    setIsRequestPending(true);
     try {
-      await onUpdateRequestText(text, request);
+      await safeOnUpdateRequestText(text, request);
     } catch (error) {
       console.error(error);
     } finally {
       setShowRequestTextForm(false);
-      setIsRequestPending(false);
     }
   };
 
