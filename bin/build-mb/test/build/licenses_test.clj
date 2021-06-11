@@ -183,14 +183,14 @@
 (deftest all-deps-have-licenses
   (testing "All deps on the classpath have licenses"
     (doseq [edition [:oss :ee]]
-      (let [classpath (last (u/sh {:dir    u/project-root-directory
-                                   :quiet? true}
-                                  "lein"
-                                  "with-profile" (str \- "dev"
-                                                      (str \, \+ (name edition))
-                                                      \,"+include-all-drivers")
-                                  "classpath"))
-            classpath-entries (->> (str/split classpath (re-pattern lic/classpath-separator))
+      (let [classpath (u/sh {:dir    u/project-root-directory
+                             :quiet? true}
+                            "lein"
+                            "with-profile" (str \- "dev"
+                                                (str \, \+ (name edition))
+                                                \,"+include-all-drivers")
+                            "classpath")
+            classpath-entries (->> (str/split (last classpath) (re-pattern lic/classpath-separator))
                                    (filter lic/jar-file?))]
         (println classpath)
         (clojure.pprint/pprint classpath-entries)
@@ -202,6 +202,6 @@
         (is (some? (:without-license
                     (lic/process* {:classpath-entries classpath-entries
                                    :backfill  {}}))))))))
-(remove-tap clojure.pprint/pprint)
 (comment
-  (run-tests))
+  (run-tests)
+  (binding [clojure.test/*test-out* *out*] (run-tests)))
