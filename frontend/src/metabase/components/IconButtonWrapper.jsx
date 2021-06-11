@@ -7,7 +7,7 @@ const IconButtonWrapper = styled.button.attrs({ type: "button" })`
   align-items: center;
   justify-content: center;
   background-color: ${color("bg-medium")};
-  border-radius: ${props => (props.circle ? "99px" : "6px")};
+  border-radius: ${props => (props.circle ? "50%" : "6px")};
 `;
 
 export default IconButtonWrapper;
