@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
 import { connect } from "react-redux";
 
 import EntityMenu from "metabase/components/EntityMenu";
@@ -11,48 +12,77 @@ import {
 } from "metabase-enterprise/moderation";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 
+const mapStateToProps = (state, props) => {
+  return {
+    userType: getUserTypeTextKey(getIsModerator(state, props)),
+  };
+};
+
+export default connect(mapStateToProps)(ModerationIssueActionMenu);
+
 ModerationIssueActionMenu.propTypes = {
   className: PropTypes.string,
   triggerClassName: PropTypes.string,
-  isModerator: PropTypes.bool.isRequired,
   onAction: PropTypes.func.isRequired,
-  request: PropTypes.object,
+  targetIssueType: PropTypes.string,
+  userType: PropTypes.string.isRequired,
 };
 
 function ModerationIssueActionMenu({
   className,
   triggerClassName,
   onAction,
-  request,
-  isModerator,
+  targetIssueType,
+  userType,
 }) {
-  const userType = getUserTypeTextKey(isModerator);
-  const issueTypes = getModerationIssueActionTypes(isModerator, request);
+  const menuItems = useMemo(() => {
+    return buildActionMenuItems(userType, targetIssueType, onAction);
+  }, [userType, targetIssueType, onAction]);
+
+  const triggerProps = useMemo(() => {
+    return {
+      iconRight: "chevrondown",
+      className: triggerClassName,
+    };
+  }, [triggerClassName]);
 
   return (
     <EntityMenu
       triggerChildren={MODERATION_TEXT[userType].action}
-      triggerProps={{
-        iconRight: "chevrondown",
-        className: triggerClassName,
-      }}
+      triggerProps={triggerProps}
       className={className}
-      items={issueTypes.map(issueType => {
-        const { icon, color } = getModerationStatusIcon(issueType);
-        return {
-          icon,
-          iconSize: 18,
-          className: `text-${color} text-${color}-hover`,
-          action: () => onAction(issueType),
-          title: MODERATION_TEXT[issueType].action,
-        };
-      })}
+      items={menuItems}
     />
   );
 }
 
-const mapStateToProps = (state, props) => ({
-  isModerator: getIsModerator(state, props),
-});
+function buildActionMenuItems(userType, targetIssueType, onAction) {
+  const issueActionTypes = getModerationIssueActionTypes(
+    userType,
+    targetIssueType,
+  );
 
-export default connect(mapStateToProps)(ModerationIssueActionMenu);
+  // the above function `getModerationIssueActionTypes` returns an array of arrays, but the `EntityMenu` expects a flat list of `items`
+  // so we flatten the groups and reflect the groupings via a border-bottom applied to the final entry in a grouping
+  return issueActionTypes
+    .map((typeGrouping, i) => {
+      const isNotLastGroupOfTypes = i !== issueActionTypes.length - 1;
+
+      return typeGrouping.map((type, j) => {
+        const isLastTypeInGroup = j === typeGrouping.length - 1;
+        const { icon, color } = getModerationStatusIcon(type);
+
+        return {
+          icon,
+          iconSize: 18,
+          className: cx(
+            `text-${color} text-${color}-hover`,
+            isNotLastGroupOfTypes && isLastTypeInGroup && "border-bottom",
+          ),
+          action: () => onAction(type),
+          title: MODERATION_TEXT[type].action,
+        };
+      });
+    })
+    .flat();
+}
