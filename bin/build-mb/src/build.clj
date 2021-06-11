@@ -82,10 +82,10 @@
 
 (defn- build-frontend-licenses-file!
   []
-  (let [license-text (apply str
-                            (u/sh {:dir    u/project-root-directory
-                                   :quiet? true}
-                                  "yarn" "licenses" "generate-disclaimer"))]
+  (let [license-text (str/join \newline
+                               (u/sh {:dir    u/project-root-directory
+                                      :quiet? true}
+                                     "yarn" "licenses" "generate-disclaimer"))]
     (spit (u/filename u/project-root-directory "license-frontend-third-party") license-text)))
 
 (def all-steps
