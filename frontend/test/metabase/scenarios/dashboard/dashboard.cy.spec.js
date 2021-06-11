@@ -834,7 +834,7 @@ describe("scenarios > dashboard", () => {
       .contains("CA");
   });
 
-  it.skip("dashboard filters should not limit the number of search results (metabase#15695)", () => {
+  it("dashboard filters should not limit the number of search results (metabase#15695)", () => {
     // Change filtering on this field to "a list of all values"
     cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
       has_field_values: "list",
