@@ -13,6 +13,14 @@
                    \"group\" {:resource \"filename-of-license\"}}
   }
 
+  or from clojure code like:
+  ```
+  (license/process {:classpath classpath
+                    :backfill (edn/read-string (slurp (io/resource \"overrides.edn\")))
+                    :output-filename (.getAbsolutePath output-file)
+                    :report? false})
+  ```
+
   At the moment assumes a leiningen classpath which is primarily jars and your own source paths, so only detects
   license information from jars. In the future a strategy and heuristics could be determined for when source is
   available from local roots and git dependencies."
@@ -139,8 +147,30 @@
     {:with-license    (categorized true)
      :without-license (categorized false)}))
 
-(defn process
-  [{:keys [classpath backfill output-filename exit?] :or {exit? true}}]
+(defn generate
+  "Process a classpath, creating a file of all license information, writing to `:output-filename`. Backfill is a clojure
+  data structure or a filename of an edn file of a clojure datastructure providing for backfilling license information
+  if it is not discernable from the jar. Should be of the form (note keys are strings not symbols)
+
+  {\"group\" {\"artifact\" \"license text\"}
+   \"group\" {\"artifact\" {:resource \"filename-of-license\"}}
+
+  :override/group {\"group\" \"license\"
+                   \"group\" {:resource \"filename-of-license\"}}
+  }
+
+  Algorithm is:
+    - check jar for license file at a few different standard paths. If present keep this text.
+    - look in provided backfill information for license text or a resource containing the license text
+    - Look in pom file next to jar or in jar for license information. If found this information is used, it is not
+      expanded into a full license text.
+
+  Reports if `:report?` is true (the default). Writes missing license information to *err* and summary of identified licenses to *out*.
+
+  Returns a map
+  {:with-license [ [jar-filename {:coords {:group :artifact :version} :license <text>}] ...]
+   :without-license [ [jar-filename {:coords {:group :artifact :version} :error <text>}] ... ]}"
+  [{:keys [classpath backfill output-filename report?] :or {report? true}}]
   (let [backfill (if (string? backfill)
                    (edn/read-string (slurp backfill))
                    (or backfill {}))
@@ -152,10 +182,15 @@
       (when (seq with-license)
         (with-open [os (io/writer output-filename)]
           (run! #(write-license os %) with-license)))
-      (when (seq without-license)
-        (run! #(report-missing *err* %) without-license))
-      (when exit?
-        (println "License information for" (count with-license) "libraries written to "
-                 output-filename)
-        (System/exit (if (seq without-license) 1 0)))
+      (when report?
+        (when (seq without-license)
+          (run! #(report-missing *err* %) without-license))
+        (when (seq with-license)
+          (println "License information for" (count with-license) "libraries written to "
+                   output-filename)
+          ;; we call this from the build script. if we switch to the shell we can reenable this and figure out the
+          ;; best defaults. Want to make sure we never kill our build script
+          #_(System/exit (if (seq without-license) 1 0))))
       license-info)))
+
+;; clj -X build.licenses/generate :classpath \"$(cd ../.. && lein with-profile -dev,+ee,+include-all-drivers classpath | tail -n1)\" :backfill "\"overrides.edn\"" :output-filename "\"backend-licenses-ee.txt\""

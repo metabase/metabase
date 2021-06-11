@@ -59,24 +59,26 @@
 
 (defn- build-backend-licenses-file! [edition]
   {:pre [(#{:oss :ee} edition)]}
-  (let [classpath-and-logs (u/sh {:dir    u/project-root-directory
-                                  :quiet? true}
-                                 "lein"
-                                 "with-profile" (str \- "dev" (str \, \+ (name edition)) \,"+include-all-drivers")
-                                 "classpath")
-        classpath (last classpath-and-logs)
-        output-file (u/temporary-file "backend-deps" "txt")
-        {:keys [with-license without-license]} (license/process {:classpath classpath
-                                                                 :backfill (edn/read-string (slurp (io/resource "overrides.edn")))
-                                                                 :output-filename (.getAbsolutePath output-file)
-                                                                 :exit? false})]
+  (let [classpath-and-logs        (u/sh {:dir    u/project-root-directory
+                                         :quiet? true}
+                                        "lein"
+                                        "with-profile" (str \- "dev"
+                                                            (str \, \+ (name edition))
+                                                            \,"+include-all-drivers")
+                                        "classpath")
+        classpath                 (last
+                                   classpath-and-logs)
+        output-filename           (u/filename u/project-root-directory "license-backend-third-party")
+        {:keys [with-license
+                without-license]} (license/generate {:classpath       classpath
+                                                     :backfill        (edn/read-string
+                                                                       (slurp (io/resource "overrides.edn")))
+                                                     :output-filename output-filename
+                                                     :report?         false})]
     (when (seq without-license)
       (run! (comp (partial u/error "Missing License: %s") first)
             without-license))
-    (u/announce "License information generated at %s" (.getAbsolutePath output-file))
-    (u/copy-file! (.getAbsolutePath output-file)
-                  ;; leining grabs files that begin with readme or license to put in META-INF
-                  (u/filename u/project-root-directory "license-backend-third-party"))))
+    (u/announce "License information generated at %s" output-filename)))
 
 (defn- build-frontend-licenses-file!
   []
