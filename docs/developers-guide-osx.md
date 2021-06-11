@@ -49,6 +49,14 @@ The following steps need to be done before building the Mac App:
 
     Have Cam ZIP up their `/path/to/metabase/repo/OSX/Metabase/jre` folder and send it to you. Don't try Option 1 until we know the issues are fixed
     </details>
+   
+1. Copy Metabase uberjar to OSX resources dir (only needed for testing build in Xcode)
+   
+    Normally the release script does this for you automatically, but for purposes of making sure things are working at this point independently of the release script you should do this yourself just this once. Download a Metabase uberjar from `https://downloads.metabase.com` and copy it to the `Resources` directory:
+
+    ```bash
+    cp /path/to/metabase.jar OSX/Resources/metabase.jar
+    ```
 
 At this point, you should try opening up the Xcode project and building the Mac App in Xcode by clicking the run button. The app should build and launch at this point. If it doesn't, ask Cam for help!
 
