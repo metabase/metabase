@@ -1354,49 +1354,60 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
 
+export const DISMISS_MODERATION_REQUEST =
+  "metabase/qb/DISMISS_MODERATION_REQUEST";
+export const dismissModerationRequest = createThunkAction(
+  DISMISS_MODERATION_REQUEST,
+  ({ description, moderationRequest }) => async (dispatch, getState) => {
+    const currentUser = getUser(getState());
+    const { id: moderatorId } = currentUser;
+
+    if (!moderationRequest) {
+      throw new Error("Missing moderation request -- unable to dismiss.");
+    }
+
+    const commentPromise =
+      description &&
+      ModerationCommentApi.create({
+        text: description,
+        commented_item_id: moderationRequest.id,
+        commented_item_type: "moderation_request",
+      });
+    const requestPromise = ModerationRequestApi.update({
+      id: moderationRequest.id,
+      status: "dismissed",
+      closed_by_id: moderatorId,
+    });
+
+    await Promise.all([commentPromise, requestPromise]);
+
+    return dispatch(softReloadCard());
+  },
+);
+
 export const CREATE_MODERATION_REVIEW = "metabase/qb/CREATE_MODERATION_REVIEW";
 export const createModerationReview = createThunkAction(
   CREATE_MODERATION_REVIEW,
   ({ moderationReview, moderationRequest }) => async (dispatch, getState) => {
     const currentUser = getUser(getState());
-    const moderatorId = currentUser.id;
+    const { id: moderatorId } = currentUser;
     const { type, cardId, description } = moderationReview;
-    if (type === "dismiss") {
-      if (!moderationRequest) {
-        throw new Error("Missing moderation request -- unable to dismiss.");
-      }
 
-      const commentPromise =
-        description &&
-        ModerationCommentApi.create({
-          text: description,
-          commented_item_id: moderationRequest.id,
-          commented_item_type: "moderation_request",
-        });
-      const requestPromise = ModerationRequestApi.update({
+    const reviewPromise = ModerationReviewApi.create({
+      status: type,
+      moderated_item_id: cardId,
+      moderated_item_type: "card",
+      text: description,
+    });
+    const requestPromise =
+      moderationRequest &&
+      ModerationRequestApi.update({
         id: moderationRequest.id,
-        status: "dismissed",
+        status: "resolved",
         closed_by_id: moderatorId,
       });
 
-      await Promise.all([commentPromise, requestPromise]);
-    } else {
-      const reviewPromise = ModerationReviewApi.create({
-        status: type,
-        moderated_item_id: cardId,
-        moderated_item_type: "card",
-        text: description,
-      });
-      const requestPromise =
-        moderationRequest &&
-        ModerationRequestApi.update({
-          id: moderationRequest.id,
-          status: "resolved",
-          closed_by_id: moderatorId,
-        });
-
-      await Promise.all([reviewPromise, requestPromise]);
-    }
+    await Promise.all([reviewPromise, requestPromise]);
 
     return dispatch(softReloadCard());
   },
