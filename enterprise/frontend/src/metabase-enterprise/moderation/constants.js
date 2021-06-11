@@ -27,7 +27,7 @@ export const ACTIONS = {
     color: "brand",
   },
   verification_request: {
-    type: "verified",
+    type: "verification_request",
     icon: "verified",
     color: "brand",
   },
@@ -37,7 +37,7 @@ export const ACTIONS = {
     color: "accent5",
   },
   something_wrong: {
-    type: "misleading",
+    type: "something_wrong",
     icon: "warning_colorized",
     color: "accent5",
   },
@@ -47,18 +47,18 @@ export const ACTIONS = {
     color: "accent2",
   },
   confused: {
-    type: "confusing",
+    type: "confused",
     icon: "clarification",
     color: "accent2",
-  },
-  dismiss: {
-    type: "dismiss",
-    icon: "close",
-    color: "medium",
   },
   pending: {
     type: "pending",
     icon: "arrow_left",
+    color: "medium",
+  },
+  dismiss: {
+    type: "dismiss",
+    icon: "close",
     color: "medium",
   },
 };
@@ -136,6 +136,11 @@ export const MODERATION_TEXT = {
   not_misleading: {},
   pending: {
     creationEvent: t`removed the previous review`,
+    action: t`Remove Review`,
+    actionCreationDescription: t`actionCreationDescription`,
+    actionCreationLabel: t`actionCreationLabel`,
+    actionCreationPlaceholder: t`actionCreationPlaceholder`,
+    actionCreationButton: t`actionCreationButton`,
   },
   dismiss: {
     action: t`Dismiss`,
@@ -144,4 +149,9 @@ export const MODERATION_TEXT = {
     actionCreationPlaceholder: t`Explain why you’re dismissing the request`,
     actionCreationButton: t`Dismiss request`,
   },
+};
+
+export const USER_TYPES = {
+  user: "user",
+  moderator: "moderator",
 };

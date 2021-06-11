@@ -9,10 +9,11 @@ import * as Urls from "metabase/lib/urls";
 
 import {
   ACTIONS,
-  REQUEST_TYPES,
   REQUEST_STATUSES,
-  REVIEW_STATUSES,
   MODERATION_TEXT,
+  USER_TYPES,
+  REQUEST_TYPES,
+  REVIEW_STATUSES,
 } from "metabase-enterprise/moderation/constants";
 import ModerationIssueActionMenu from "metabase-enterprise/moderation/components/ModerationIssueActionMenu";
 import CreateModerationIssuePanel from "metabase-enterprise/moderation/components/CreateModerationIssuePanel";
@@ -32,33 +33,62 @@ Object.assign(PLUGIN_MODERATION_SERVICE, {
   isRequestDismissal,
   getModerationEvents,
   isRequestOpen,
+  getReviewType,
 });
 
-export function getModerationIssueActionTypes(isModerator, moderationRequest) {
-  return isModerator
-    ? getModerationReviewActionTypes(moderationRequest)
-    : getModerationRequestActionTypes();
+export function getModerationIssueActionTypes(userType, targetIssueType) {
+  switch (userType) {
+    case USER_TYPES.user:
+      return [
+        [
+          ACTIONS.verification_request.type,
+          ACTIONS.something_wrong.type,
+          ACTIONS.confused.type,
+        ],
+      ];
+    case USER_TYPES.moderator:
+      return [
+        [
+          ACTIONS.verified.type,
+          ACTIONS.misleading.type,
+          ACTIONS.confusing.type,
+        ],
+        !isRequestType(targetIssueType) && [
+          ACTIONS.verification_request.type,
+          ACTIONS.something_wrong.type,
+          ACTIONS.confused.type,
+        ],
+        getDismissalAction(targetIssueType),
+      ].filter(Boolean);
+    default:
+      return [];
+  }
 }
 
-function getModerationReviewActionTypes(moderationRequest) {
-  return [
-    REVIEW_STATUSES.verified,
-    REVIEW_STATUSES.misleading,
-    REVIEW_STATUSES.confusing,
-    ...(moderationRequest ? ["dismiss"] : []),
-  ];
+function getDismissalAction(targetIssueType) {
+  if (isReviewType(targetIssueType)) {
+    return [ACTIONS.pending.type];
+  }
+
+  if (isRequestType(targetIssueType)) {
+    return [ACTIONS.dismiss.type];
+  }
 }
 
-function getModerationRequestActionTypes() {
-  return [
-    REQUEST_TYPES.verification_request,
-    REQUEST_TYPES.something_wrong,
-    REQUEST_TYPES.confused,
-  ];
+export function isReviewType(type) {
+  return !!REVIEW_STATUSES[type];
+}
+
+export function isRequestType(type) {
+  return !!REQUEST_TYPES[type];
 }
 
 export function getStatusIconForReview(review) {
-  return getModerationStatusIcon(review && review.status);
+  const type = review && review.status;
+
+  return type === REVIEW_STATUSES.pending
+    ? {}
+    : getModerationStatusIcon(review && review.status);
 }
 
 export function getModerationStatusIcon(type, status) {
@@ -71,6 +101,10 @@ export function getModerationStatusIcon(type, status) {
     color,
     filter: isGrayscale ? "grayscale(1)" : "",
   };
+}
+
+export function getReviewType(question) {
+  return (question.getLatestModerationReview() || {}).status;
 }
 
 export function getOpenRequests(question) {
@@ -91,11 +125,11 @@ export function getNumberOfOpenRequests(question) {
 }
 
 export function isRequestDismissal(type) {
-  return type === "dismiss";
+  return type === ACTIONS.dismiss.type;
 }
 
 export function getUserTypeTextKey(isModerator) {
-  return isModerator ? "moderator" : "user";
+  return isModerator ? USER_TYPES.moderator : USER_TYPES.user;
 }
 
 export function getModerationEvents(
