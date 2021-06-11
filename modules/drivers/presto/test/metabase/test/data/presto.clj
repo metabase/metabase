@@ -144,4 +144,3 @@
 
 ;; FIXME Presto actually has very good timezone support
 (defmethod tx/has-questionable-timezone-support? :presto [_] true)
-

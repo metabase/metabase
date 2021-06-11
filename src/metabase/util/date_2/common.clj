@@ -43,4 +43,4 @@
   "Standard (non-DST) offset for a time zone, for cases when we don't have date information.  Gets the offset for the
   given `zone-id` at January 1 of the current year (since that is the best we can do in this situation)."
   ^ZoneOffset [^ZoneId zone-id]
-  (.. zone-id getRules (getStandardOffset (t/instant (t/offset-date-time (-> t/zoned-date-time t/year t/value))) 1 1)))
+  (.. zone-id getRules (getStandardOffset (t/instant (t/offset-date-time (-> (t/zoned-date-time) t/year t/value) 1 1)))))
