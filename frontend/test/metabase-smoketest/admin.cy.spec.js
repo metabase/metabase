@@ -6,7 +6,7 @@ const { admin } = USERS;
 const new_user = {
   first_name: "Barb",
   last_name: "Tabley",
-  email: "new@metabase.com",
+  email: "new@metabase.test",
 };
 
 describe("metabase-smoketest > admin", () => {
