@@ -332,7 +332,7 @@
   []
   (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (@tx.env/test-drivers :bigquery) (conj :bigquery)
-    :always                          (dissoc :presto-jdbc)))
+    :always                          (disj :presto-jdbc)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
