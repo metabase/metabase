@@ -514,14 +514,12 @@ describe("scenarios > question > notebook", () => {
                 condition: [
                   "=",
                   ["field", REVIEWS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                  ["field", PRODUCTS.ID, null],
                 ],
                 alias: "Products",
               },
             ],
-            aggregation: [
-              ["sum", ["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
-            ],
+            aggregation: [["sum", ["field", PRODUCTS.PRICE, null]]],
             breakout: [
               ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
             ],
