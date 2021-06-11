@@ -9,6 +9,7 @@ const propTypes = {
   onSelect: PropTypes.func.isRequired,
   variant: PropTypes.oneOf(["default", "admin"]),
   selectedId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  emptyState: PropTypes.node,
 };
 
 export function Tree({
@@ -17,6 +18,7 @@ export function Tree({
   onSelect,
   selectedId,
   variant = "default",
+  emptyState = null,
 }) {
   const [expandedIds, setExpandedIds] = useState(new Set());
 
@@ -30,6 +32,10 @@ export function Tree({
     },
     [expandedIds],
   );
+
+  if (data.length === 0) {
+    return <React.Fragment>{emptyState}</React.Fragment>;
+  }
 
   return (
     <TreeNodeList

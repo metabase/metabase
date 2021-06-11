@@ -6,8 +6,9 @@ import { t } from "ttag";
 import Radio from "metabase/components/Radio";
 
 const PermissionsTabs = ({ tab, onChangeTab }) => (
-  <div className="px3 mt2 ml2">
+  <div className="px3 mt1">
     <Radio
+      // variant="admin"
       value={tab}
       options={[
         { name: t`Data permissions`, value: `databases` },
