@@ -271,11 +271,11 @@
                (run-venues-count-query)))))
 
     (testing "Make sure that you can still use a SQL-based GTAP without needing to have SQL read perms for the Database"
-      (let [exp (if (= driver/*driver* :oracle
-                      [[1M "Red Medicine"]
-                       [2M "Stout Burgers & Beers"]] ;; Oracle returns the IDs as BigDecimal for some reason
-                      [[1 "Red Medicine"]
-                       [2 "Stout Burgers & Beers"]]))]
+      (let [exp (if (= driver/*driver* :oracle)
+                    [[1M "Red Medicine"]
+                     [2M "Stout Burgers & Beers"]] ;; Oracle returns the IDs as BigDecimal for some reason
+                    [[1 "Red Medicine"]
+                     [2 "Stout Burgers & Beers"]])]
         (is (= exp
                (mt/rows
                  (mt/with-gtaps {:gtaps {:venues (venue-names-native-gtap-def)}}
