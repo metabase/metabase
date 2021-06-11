@@ -1054,6 +1054,10 @@
        (get-in question [:dataset_query :query :breakout])))
 
 (defn- decompose-question
+  ;;;;; this is the one thats fucked up, I think? some shit w the types?
+  ;;;;; this is the one thats fucked up, I think? some shit w the types?
+  ;;;;; this is the one thats fucked up, I think? some shit w the types?
+  ;;;;; this is the one thats fucked up, I think? some shit w the types?
   [root question opts]
   (map #(automagic-analysis % (assoc opts
                                 :source       (:source root)
