@@ -18,7 +18,8 @@
             [metabase.sync.sync-metadata.tables :as sync-tables]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [trs]]
+            [schema.core :as s]))
 
 (defn- sync-fields-summary [{:keys [total-fields updated-fields] :as step-info}]
   (trs "Total number of fields sync''d {0}, number of fields updated {1}"
