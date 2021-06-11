@@ -1,4 +1,9 @@
-import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openOrdersTable,
+  openPeopleTable,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > binning > regular table", () => {
   beforeEach(() => {
@@ -152,6 +157,64 @@ describe("scenarios > binning > regular table", () => {
     });
   });
 
+  describe("should work for longitude/latitude", () => {
+    it("via column popover", () => {
+      openPeopleTable();
+
+      cy.findByText("Longitude").click();
+      cy.findByText("Distribution").click();
+
+      getTitle("Count by Longitude: Auto binned");
+      cy.get(".bar");
+    });
+
+    it("via simple question", () => {
+      openPeopleTable();
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Longitude").click();
+
+      getTitle("Count by Longitude: Auto binned");
+      cy.get(".bar");
+
+      openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
+
+      popover().within(() => {
+        cy.findByText("Auto bin"); // Selected option is not highlghted in simple mode
+        cy.findByText("Don't bin");
+        cy.findByText("Bin every 0.1 degrees");
+        cy.findByText("Bin every 1 degree");
+        cy.findByText("Bin every 10 degrees");
+        cy.findByText("Bin every 20 degrees").click();
+      });
+
+      getTitle("Count by Longitude: 20°");
+      cy.get(".bar");
+
+      openPopoverFromSelectedBinningOption("Longitude", "20°");
+
+      popover().within(() => {
+        cy.findByText("Don't bin").click();
+      });
+
+      getTitle("Count by Longitude");
+      cy.get(".cellData");
+    });
+
+    it("via custom question", () => {
+      openPeopleTable({ mode: "notebook" });
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText("Longitude").click();
+
+      cy.button("Visualize").click();
+      cy.get(".bar");
+
+      getTitle("Count by Longitude: Auto binned");
+    });
+  });
 });
 
 function openPopoverFromSelectedBinningOption(table, binning) {
