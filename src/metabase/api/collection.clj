@@ -82,8 +82,9 @@
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
 (def ^:private valid-model-param-values
-  "Valid values for the `?model=` param accepted by endpoints in this namespace."
-  #{"card" "collection" "dashboard" "pulse" "snippet"})
+  "Valid values for the `?model=` param accepted by endpoints in this namespace.
+  `dummy` is for nilling out the set because a nil model set is actually the total model set"
+  #{"card" "collection" "dashboard" "pulse" "snippet" "dummy"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
@@ -399,7 +400,13 @@
                            :when    (or (= model-kw :collection)
                                         (contains? allowed-namespaces (keyword collection-namespace)))]
                        model-kw)]
-    (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))))
+    (if (seq valid-models)
+      (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))
+      {:total  0
+       :data   []
+       :limit  offset-paging/*limit*
+       :offset offset-paging/*offset*
+       :models valid-models})))
 
 (s/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
@@ -473,7 +480,7 @@
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-kwds      (if (mi/can-read? root-collection)
                           (set (map keyword (u/one-or-many models)))
-                          #{:collection})]
+                          #{:dummy})]
     (collection-children
       root-collection
       {:models       model-kwds
