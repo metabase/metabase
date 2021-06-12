@@ -62,7 +62,7 @@
        {:classname                     "com.facebook.presto.jdbc.PrestoDriver"
         :subprotocol                   "presto"
         :subname                       (db.spec/make-subname host port (db-name catalog schema))}
-       (dissoc opts :host :port :db :catalog))
+       (dissoc opts :host :port :db :catalog :schema))
       sql-jdbc.common/handle-additional-options))
 
 (defmethod sql-jdbc.conn/connection-details->spec :presto-jdbc
