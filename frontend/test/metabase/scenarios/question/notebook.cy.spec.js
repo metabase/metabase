@@ -519,7 +519,9 @@ describe("scenarios > question > notebook", () => {
                 alias: "Products",
               },
             ],
-            aggregation: [["sum", ["field", PRODUCTS.PRICE, null]]],
+            aggregation: [
+              ["sum", ["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
+            ],
             breakout: [
               ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
             ],
