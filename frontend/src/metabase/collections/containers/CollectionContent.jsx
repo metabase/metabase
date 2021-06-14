@@ -2,6 +2,7 @@
 import React, { useState, useCallback } from "react";
 import { Box } from "grid-styled";
 import _ from "underscore";
+import { withRouter } from "react-router";
 import { connect } from "react-redux";
 
 import Collection from "metabase/entities/collections";
@@ -10,10 +11,9 @@ import Search from "metabase/entities/search";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import BulkActions from "metabase/collections/components/BulkActions";
-import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import Header from "metabase/collections/components/Header";
-import ItemsTable from "metabase/collections/components/ItemsTable";
-import PinnedItemsTable from "metabase/collections/components/PinnedItemsTable";
+import ItemList from "metabase/collections/components/ItemList";
+import PinnedItems from "metabase/collections/components/PinnedItems";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -23,7 +23,17 @@ import { useListSelect } from "metabase/hooks/use-list-select";
 
 const PAGE_SIZE = 25;
 
+const MIN_ITEMS_TO_SHOW_FILTERS = 5;
+
 const ALL_MODELS = ["dashboard", "card", "snippet", "pulse"];
+
+const getModelsByFilter = filter => {
+  if (!filter) {
+    return ALL_MODELS;
+  }
+
+  return [filter];
+};
 
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
@@ -33,18 +43,19 @@ function mapStateToProps(state) {
   };
 }
 
-function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
+function CollectionContent({
+  collection,
+  collectionId,
+
+  isAdmin,
+  isRoot,
+  location,
+  router,
+}) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
-  const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
-    sort_column: "name",
-    sort_direction: "asc",
-  });
-  const [pinnedItemsSorting, setPinnedItemsSorting] = useState({
-    sort_column: "name",
-    sort_direction: "asc",
-  });
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
+  const [filter, setFilter] = useState(location.query.type || null);
   const {
     selected,
     toggleItem,
@@ -80,18 +91,6 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
     [selectedItems, clear],
   );
 
-  const handleUnpinnedItemsSortingChange = useCallback(
-    sortingOpts => {
-      setUnpinnedItemsSorting(sortingOpts);
-      setPage(0);
-    },
-    [setPage],
-  );
-
-  const handlePinnedItemsSortingChange = useCallback(sortingOpts => {
-    setPinnedItemsSorting(sortingOpts);
-  }, []);
-
   const handleCloseModal = () => {
     setSelectedItems(null);
     setSelectedAction(null);
@@ -107,34 +106,42 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
     setSelectedAction("copy");
   };
 
+  const handleFilterChange = useCallback(
+    type => {
+      router.push({
+        pathname: location.pathname,
+        search: type ? "?" + new URLSearchParams({ type }).toString() : null,
+      });
+
+      setFilter(type);
+      setPage(0);
+    },
+    [location.pathname, router, setPage],
+  );
+
   const unpinnedQuery = {
     collection: collectionId,
-    models: ALL_MODELS,
+    models: getModelsByFilter(filter),
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     pinned_state: "is_not_pinned",
-    ...unpinnedItemsSorting,
   };
 
   const pinnedQuery = {
     collection: collectionId,
     pinned_state: "is_pinned",
-    ...pinnedItemsSorting,
   };
 
   return (
-    <Search.ListLoader
-      query={pinnedQuery}
-      loadingAndErrorWrapper={false}
-      keepListWhileLoading
-      wrapped
-    >
-      {({ list: pinnedItems = [], loading: loadingPinnedItems }) => {
-        const hasPinnedItems = pinnedItems.length > 0;
+    <Search.ListLoader query={pinnedQuery} wrapped>
+      {({ list: pinnedItems }) => {
+        const sortedPinnedItems = pinnedItems.sort(
+          (a, b) => a.collection_position - b.collection_position,
+        );
 
         return (
           <Box pt={2}>
-            <Box w="90%" ml="auto" mr="auto">
+            <Box w={"80%"} ml="auto" mr="auto">
               <Header
                 isRoot={isRoot}
                 isAdmin={isAdmin}
@@ -142,31 +149,22 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 collection={collection}
               />
 
-              <PinnedItemsTable
-                items={pinnedItems}
+              <PinnedItems
+                items={sortedPinnedItems}
                 collection={collection}
-                sortingOptions={pinnedItemsSorting}
-                onSortingOptionsChange={handlePinnedItemsSortingChange}
-                selectedItems={selected}
+                selected={selected}
                 getIsSelected={getIsSelected}
-                onToggleSelected={toggleItem}
                 onDrop={clear}
+                onToggleSelected={toggleItem}
                 onMove={handleMove}
                 onCopy={handleCopy}
               />
 
-              <Search.ListLoader
-                query={unpinnedQuery}
-                loadingAndErrorWrapper={false}
-                keepListWhileLoading
-                wrapped
-              >
-                {({
-                  list: unpinnedItems = [],
-                  metadata = {},
-                  loading: loadingUnpinnedItems,
-                }) => {
+              <Search.ListLoader query={unpinnedQuery} wrapped>
+                {({ list: unpinnedItems, metadata }) => {
                   const hasPagination = metadata.total > PAGE_SIZE;
+                  const showFilters =
+                    filter || unpinnedItems.length >= MIN_ITEMS_TO_SHOW_FILTERS;
 
                   const unselected = [...pinnedItems, ...unpinnedItems].filter(
                     item => !getIsSelected(item),
@@ -177,31 +175,20 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                     toggleAll(unselected);
                   };
 
-                  const loading = loadingPinnedItems || loadingUnpinnedItems;
-                  const isEmpty =
-                    !loading && !hasPinnedItems && unpinnedItems.length === 0;
-
-                  if (isEmpty) {
-                    return (
-                      <Box mt="120px">
-                        <CollectionEmptyState />
-                      </Box>
-                    );
-                  }
-
                   return (
-                    <Box mt={hasPinnedItems ? 3 : 0}>
-                      <ItemsTable
+                    <React.Fragment>
+                      <ItemList
+                        filter={filter}
                         items={unpinnedItems}
-                        collection={collection}
-                        sortingOptions={unpinnedItemsSorting}
-                        onSortingOptionsChange={
-                          handleUnpinnedItemsSortingChange
-                        }
-                        selectedItems={selected}
+                        empty={unpinnedItems.length === 0}
+                        showFilters={showFilters}
+                        selected={selected}
                         getIsSelected={getIsSelected}
+                        collection={collection}
                         onToggleSelected={toggleItem}
                         onDrop={clear}
+                        collectionHasPins={pinnedItems.length > 0}
+                        onFilterChange={handleFilterChange}
                         onMove={handleMove}
                         onCopy={handleCopy}
                       />
@@ -231,15 +218,12 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
                       />
-                    </Box>
+                    </React.Fragment>
                   );
                 }}
               </Search.ListLoader>
             </Box>
-            <ItemsDragLayer
-              selectedItems={selected}
-              pinnedItems={pinnedItems}
-            />
+            <ItemsDragLayer selected={selected} />
           </Box>
         );
       }}
@@ -253,4 +237,5 @@ export default _.compose(
     reload: true,
   }),
   connect(mapStateToProps),
+  withRouter,
 )(CollectionContent);

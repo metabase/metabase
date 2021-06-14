@@ -121,11 +121,6 @@ class Settings {
     return this.get("anon-tracking-enabled") || false;
   }
 
-  formattingOptions() {
-    const opts = this.get("custom-formatting");
-    return opts && opts["type/Temporal"] ? opts["type/Temporal"] : {};
-  }
-
   versionInfoLastChecked() {
     const ts = this.get("version-info-last-checked");
     if (ts) {

@@ -53,16 +53,20 @@ describe("collection permissions", () => {
                 it("pinning should work properly for both questions and dashboards", () => {
                   cy.visit("/collection/root");
                   // Assert that we're starting from a scenario with no pins
-                  cy.findByTestId("pinned-items").should("not.exist");
+                  cy.findByText("Pinned items").should("not.exist");
 
                   pinItem("Orders in a dashboard"); // dashboard
                   pinItem("Orders, Count"); // question
 
                   // Should see "pinned items" and items should be in that section
-                  cy.findByTestId("pinned-items").within(() => {
-                    cy.findByText("Orders in a dashboard");
-                    cy.findByText("Orders, Count");
-                  });
+                  cy.findByText("Pinned items")
+                    .parent()
+                    .within(() => {
+                      cy.findByText("Orders in a dashboard");
+                      cy.findByText("Orders, Count");
+                    });
+                  // Consequently, "Everything else" should now also be visible
+                  cy.findByText("Everything else");
                   // Only pinned dashboards should show up on the home page...
                   cy.visit("/");
                   cy.findByText("Orders in a dashboard");
@@ -681,7 +685,7 @@ function openEllipsisMenuFor(item, index = 0) {
   return cy
     .findAllByText(item)
     .eq(index)
-    .closest("tr")
+    .closest("a")
     .find(".Icon-ellipsis")
     .click({ force: true });
 }

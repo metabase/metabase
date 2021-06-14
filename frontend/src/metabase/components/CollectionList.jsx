@@ -45,15 +45,13 @@ class CollectionList extends React.Component {
                       item={collection}
                       collection={currentCollection}
                     >
-                      <div>
-                        <CollectionItem
-                          collection={collection}
-                          highlighted={highlighted}
-                          hovered={hovered}
-                          event={`${analyticsContext};Collection List;Collection click`}
-                          asCard={asCards}
-                        />
-                      </div>
+                      <CollectionItem
+                        collection={collection}
+                        highlighted={highlighted}
+                        hovered={hovered}
+                        event={`${analyticsContext};Collection List;Collection click`}
+                        asCard={asCards}
+                      />
                     </ItemDragSource>
                   )}
                 </CollectionDropTarget>

@@ -62,7 +62,6 @@ export default class Popover extends Component {
     dismissOnEscape: PropTypes.func,
     target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
     targetEvent: PropTypes.object,
-    role: PropTypes.string,
   };
 
   static defaultProps = {
@@ -144,7 +143,6 @@ export default class Popover extends Component {
           // TODO kdoh 10/16/2017 we should eventually remove this
           this.props.className,
         )}
-        role={this.props.role}
         style={this.props.style}
       >
         {typeof this.props.children === "function"

@@ -70,7 +70,7 @@ export default class ItemDragSource extends React.Component {
       // must be a native DOM element or use innerRef which appears to be broken
       // https://github.com/react-dnd/react-dnd/issues/1021
       // https://github.com/jxnblk/styled-system/pull/188
-      typeof children === "function" ? children(props) : children,
+      <div>{typeof children === "function" ? children(props) : children}</div>,
     );
   }
 }
