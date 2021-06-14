@@ -146,7 +146,7 @@ describe("scenarios > dashboard", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 
-  it.skip("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
+  it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
     cy.createQuestion({
       name: "13597",
       query: {

@@ -88,6 +88,11 @@ export default class LeafletMarkerPinMap extends LeafletMap {
         } = this.props;
         const pkIndex = _.findIndex(cols, isPK);
         if (pkIndex >= 0) {
+          const data = cols.map((col, index) => ({
+            col,
+            value: rows[rowIndex][index],
+          }));
+
           // if there's a PK just use that for now
           onVisualizationClick({
             value: rows[rowIndex][pkIndex],
@@ -95,6 +100,7 @@ export default class LeafletMarkerPinMap extends LeafletMap {
             element: marker._icon,
             origin: { row: rows[rowIndex], cols },
             settings,
+            data,
           });
         }
       });
