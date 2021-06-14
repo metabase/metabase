@@ -28,6 +28,19 @@
   [driver [_ field]]
   (hsql/call :log10 (sql.qp/->honeysql driver field)))
 
+(defmethod sql.qp/->honeysql [:presto-jdbc :count-where]
+  [driver [_ pred]]
+  ;; Presto will use the precision given here in the final expression, which chops off digits
+  ;; need to explicitly provide two digits after the decimal
+  (sql.qp/->honeysql driver [:sum-where 1.00M pred]))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc :absolute-datetime]
+  [driver [_ dt binning]]
+  ;; When setting a datetime param in the statement, we have to use the from_iso8601_timestamp Presto function
+  ;; to properly capture its zone offset, when reporting timezone (i.e. connection/session level time zone)
+  ;; is set
+  (hsql/call :from_iso8601_timestamp (t/format (t/offset-date-time dt))))
+
 (defmethod sql.qp/current-datetime-base-type :presto-jdbc
   [_]
   ;; in Presto, `now()` returns the current instant as `timestamp with time zone`
@@ -205,5 +218,21 @@
   ;; necessary because PrestoPreparedStatement does not implement the setTime overload with the last param being
   ;; a Calendar instance
   (.setTime ps i (t/sql-time t)))
+
+;; TODO: need this?
+(defmethod sql.qp/cast-temporal-string [:presto-jdbc :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (hsql/call :from_iso8601_timestamp expr))
+
+#_(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/DATE]
+    [_ ^ResultSet rs _ ^Integer i]
+    (fn []
+      (when-let [s (.getString rs i)]
+        (let [t (u.date/parse s)]
+          t))))
+
+#_(defmethod sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/TIMESTAMP]
+    [_ ^ResultSet rs _ i]
+    #(.getTimestamp rs i))
 
 (prefer-method driver/supports? [:presto-common :set-timezone] [:sql-jdbc :set-timezone])

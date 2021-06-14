@@ -1,6 +1,7 @@
 (ns metabase.driver.presto-jdbc-test
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -114,80 +115,26 @@
                                           {:page {:page  2
                                                   :items 5}})))))
 
-#_(deftest test-connect-via-tunnel
-    (testing "connection fails as expected"
-      (mt/test-driver
-       :presto-jdbc
-       (is (thrown?
-            java.net.ConnectException
-            (try
-              (let [engine :presto-jdbc
-                    details {:ssl            false
-                             :password       "changeme"
-                             :tunnel-host    "localhost"
-                             :tunnel-pass    "BOGUS-BOGUS"
-                             :catalog        "BOGUS"
-                             :host           "localhost"
-                             :port           9999
-                             :tunnel-enabled true
-                             ;; we want to use a bogus port here on purpose -
-                             ;; so that locally, it gets a ConnectionRefused,
-                             ;; and in CI it does too. Apache's SSHD library
-                             ;; doesn't wrap every exception in an SshdException
-                             :tunnel-port    21212
-                             :tunnel-user    "bogus"}]
-                (tu.log/suppress-output
-                 (driver.u/can-connect-with-details? engine details :throw-exceptions)))
-              (catch Throwable e
-                (loop [^Throwable e e]
-                  (or (when (instance? java.net.ConnectException e)
-                        (throw e))
-                      (some-> (.getCause e) recur))))))))))
-
 (deftest db-default-timezone-test
   (mt/test-driver :presto-jdbc
     (is (= "UTC"
            (tu/db-timezone-id)))))
 
-;; we no longer can cancel queries, so this can probably be skipped
-#_(deftest query-cancelation-test
-    (mt/test-driver :presto-jdbc
-      (let [query (mt/mbql-query venues)]
-        (mt/with-open-channels [running-chan (a/promise-chan)
-                                cancel-chan  (a/promise-chan)]
-          (with-redefs [http/delete            (fn [& _]
-                                                 (a/>!! cancel-chan ::cancel))
-                        presto/fetch-next-page (fn [& _]
-                                                 (a/>!! running-chan ::running)
-                                                 (Thread/sleep 5000)
-                                                 (throw (Exception. "Don't actually run!")))]
-            (let [out-chan (qp/process-query-async query)]
-              ;; wait for query to start running, then close `out-chan`
-              (a/go
-                (a/<! running-chan)
-                (a/close! out-chan)))
-            (is (= ::cancel
-                   (mt/wait-for-result cancel-chan 2000))))))))
-
-;; TODO: figure out what's up with timezones
-;; failing with java.sql.SQLException: Cannot convert instance of java.time.OffsetDateTime to timestamp with time zone
 (deftest template-tag-timezone-test
   (mt/test-driver :presto-jdbc
     (testing "Make sure date params work correctly when report timezones are set (#10487)"
       (mt/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
-        ;; TODO: figure out this failure
-        ;; the 2nd item in the vec is identical to the first
-        ;; looks like Presto is supposed to chop off the time portion if it is DATE at midnight in the session TZ
-        (is (= [["2014-08-02T00:00:00+08:00" "2014-08-02"]]
+        (is (= [[(t/local-date-time 2014 8 2 0 0) (t/local-date 2014 8 2)]]
                (mt/rows
                  (qp/process-query
-                   {:database   (mt/id)
-                    :type       :native
-                    :native     {:query         "SELECT {{date}}, cast({{date}} AS date)"
-                                 :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
-                    :parameters [{:type   "date/single"
-                                  :target ["variable" ["template-tag" "date"]]
-                                  :value  "2014-08-02"}]}))))))))
+                   {:database     (mt/id)
+                    :type         :native
+                    :middleware   {:format-rows? false} ; turn off formatting so we can check the raw local date objs
+                    :native       {:query         "SELECT {{date}}, cast({{date}} AS date)"
+                                   :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
+                    :parameters   [{:type   "date/single"
+                                    :target ["variable" ["template-tag" "date"]]
+                                    :value  "2014-08-02"}]}))))))))
 
 (deftest splice-strings-test
   (mt/test-driver :presto-jdbc
