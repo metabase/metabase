@@ -179,16 +179,18 @@
                                          :license "license text"}])
            (str os)))))
 
-(defn- loop-until-success [f max]
+(defn- loop-until-success [f max step-name]
   (loop [n 0]
-    (let [failed? (try
-                    (do (f) false)
-                    (catch Exception _ true))]
-      (when (and failed? (< n max)) (recur (inc n))))))
+    (let [success? (try
+                    (do (f) true)
+                    (catch Exception _ false))]
+      (cond success? ::done
+            (and (not success?) (< n max)) (recur (inc n))
+            :else (throw (ex-info (str "Could not succeed " step-name) {:max-attempts max}))))))
 
 (deftest all-deps-have-licenses
   (testing "All deps on the classpath have licenses"
-    (loop-until-success #(u/sh {:dir u/project-root-directory} "lein" "deps") 3)
+    (loop-until-success #(u/sh {:dir u/project-root-directory} "lein" "deps") 3 "download deps")
     (doseq [edition [:oss :ee]]
       (let [classpath (u/sh {:dir    u/project-root-directory
                              :quiet? true}
