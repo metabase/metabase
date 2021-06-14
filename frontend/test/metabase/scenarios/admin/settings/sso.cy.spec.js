@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, describeWithToken } from "__support__/e2e/cypress";
 
 describe("scenarios > admin > settings > SSO", () => {
   beforeEach(() => {
@@ -63,6 +63,45 @@ describe("scenarios > admin > settings > SSO", () => {
         expect(interception.response.statusCode).to.eq(200);
       });
       cy.button("Changes saved!");
+    });
+
+    it.skip("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+      cy.findByPlaceholderText("ldap.yourdomain.org").type("foobar");
+      cy.findByPlaceholderText("389").type("baz");
+      cy.button("Save changes").click();
+
+      cy.findByText('For input string: "baz"'); // The error message
+      cy.findByDisplayValue("foobar");
+    });
+  });
+
+  describeWithToken("JWT", () => {
+    beforeEach(() => {
+      cy.visit("/admin/settings/authentication/jwt");
+    });
+
+    it("should save JWT without an error (metabase#16378)", () => {
+      cy.intercept("PUT", "/api/**").as("update");
+
+      cy.findByText("JWT Authentication")
+        .closest("li")
+        .within(() => {
+          cy.findByText("Disabled")
+            .siblings("a")
+            .click();
+        });
+      cy.findByText("Enabled");
+
+      cy.findByPlaceholderText("https://jwt.yourdomain.org")
+        .type("localhost")
+        .blur();
+      cy.button("Save changes").click();
+
+      cy.wait("@update");
+      cy.button("Changes saved!");
+
+      cy.reload();
+      cy.findByText("Enabled");
     });
   });
 });
