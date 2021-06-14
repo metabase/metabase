@@ -480,7 +480,9 @@
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-kwds      (if (mi/can-read? root-collection)
                           (set (map keyword (u/one-or-many models)))
-                          #{:dummy})]
+                          (if (empty? models)
+                            #{:collection}
+                            #{:dummy}))]
     (collection-children
       root-collection
       {:models       model-kwds

@@ -678,7 +678,7 @@
                    (:total (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))))))
 
       (testing "...but we don't let you see stuff you wouldn't otherwise be allowed to see"
-        (is (= ()
+        (is (= [(collection-item "Rasta Toucan's Personal Collection")]
                ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
                (with-some-children-of-collection nil
                  (mt/boolean-ids-and-timestamps (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))))))
@@ -736,6 +736,72 @@
                  :model               "card"}]
                (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
                  (dissoc item :id))))))))
+
+
+;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
+
+(defn- api-get-root-collection-ancestors
+  "Call the API with Rasta to fetch the 'Root' Collection and put the `:effective_` results in a nice format for the
+  tests below."
+  [& additional-get-params]
+  (format-ancestors (mt/user-http-request :rasta :get 200 "collection/root")))
+
+(defn- api-get-root-collection-children
+  [& additional-get-params]
+  (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta :get 200 "collection/root/items" additional-get-params))) )
+(deftest fetch-root-collection-items-test
+  (testing "GET /api/collection/root/items"
+    (testing "Do top-level collections show up as children of the Root Collection?"
+      (with-collection-hierarchy [a b c d e f g]
+        (testing "ancestors"
+          (is (= {:effective_ancestors []
+                  :effective_location  nil}
+                 (api-get-root-collection-ancestors))))
+        (testing "children"
+          (is (= (map collection-item ["A" "Rasta Toucan's Personal Collection"])
+                 (api-get-root-collection-children))))))
+
+    (testing "...and collapsing children should work for the Root Collection as well"
+      (with-collection-hierarchy [b d e f g]
+        (testing "ancestors"
+          (is (= {:effective_ancestors []
+                  :effective_location  nil}
+                 (api-get-root-collection-ancestors))))
+        (testing "children"
+          (is (= (map collection-item ["B" "D" "F" "Rasta Toucan's Personal Collection"])
+                 (api-get-root-collection-children))))))
+
+    (testing "does `archived` work on Collections as well?"
+      (with-collection-hierarchy [a b d e f g]
+        (db/update! Collection (u/the-id a) :archived true)
+        (testing "ancestors"
+          (is (= {:effective_ancestors []
+                  :effective_location  nil}
+                 (api-get-root-collection-ancestors :archived true))))
+        (testing "children"
+          (is (= [(collection-item "A")]
+                 (api-get-root-collection-children :archived true))))))
+
+    (testing "\n?namespace= parameter"
+      (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
+                      Collection [{coins-id :id}  {:name "Coin Collection", :namespace "currency"}]]
+        (perms/grant-collection-read-permissions! (group/all-users) coins-id)
+        (letfn [(collection-names [items]
+                  (->> (:data items)
+                       (filter #(and (= (:model %) "collection")
+                                     (#{normal-id coins-id} (:id %))))
+                       (map :name)))]
+          (testing "should only show Collections in the 'default' namespace by default"
+            (is (= ["Normal Collection"]
+                   (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items")))))
+
+          (testing "By passing `:namespace` we should be able to see Collections in that `:namespace`"
+            (testing "?namespace=currency"
+              (is (= ["Coin Collection"]
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=currency")))))
+            (testing "?namespace=stamps"
+              (is (= []
+                     (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=stamps")))))))))))
 
 (deftest root-collection-snippets-test
   (testing "GET /api/collection/root/items?namespace=snippets"
