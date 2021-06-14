@@ -182,6 +182,7 @@
 (require 'clojure.pprint)
 (deftest all-deps-have-licenses
   (testing "All deps on the classpath have licenses"
+    (u/sh {:dir u/project-root-directory} "lein" "deps")
     (doseq [edition [:oss :ee]]
       (let [classpath (u/sh {:dir    u/project-root-directory
                              :quiet? true}
