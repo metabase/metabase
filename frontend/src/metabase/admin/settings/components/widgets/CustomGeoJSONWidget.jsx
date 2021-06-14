@@ -62,6 +62,7 @@ export default class CustomGeoJSONWidget extends Component {
       await this.props.reloadSettings();
     } catch (e) {
       console.warn("Save failed: ", e);
+      throw e;
     }
   };
 
