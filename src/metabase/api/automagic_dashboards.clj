@@ -128,7 +128,7 @@
    cell-query Base64EncodedJSON}
   (-> entity-id-or-query
       ((->entity entity))
-      (automagic-analysis {:show       :all
+      (automagic-analysis {:show       (keyword show)
                            :cell-query (decode-base64-json cell-query)})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule"

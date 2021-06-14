@@ -382,7 +382,7 @@
 (defmethod ->honeysql [:sql :field]
   [driver [_ field-id-or-name options :as field-clause]]
   (binding [*field-options* options]
-    (if (:join-alias options)
+    (if (and (:join-alias options) (not (contains? options :function-field)))
       (compile-field-with-join-aliases driver field-clause)
       (let [honeysql-form (cond
                             ;; selects from an inner select should not
@@ -404,6 +404,10 @@
   (if field
     (hsql/call :count (->honeysql driver field))
     :%count.*))
+
+;; ":function-field true"
+
+(defn- ->function-field [field-or-clause])
 
 (defmethod ->honeysql [:sql :avg]        [driver [_ field]]   (hsql/call :avg             (->honeysql driver field)))
 (defmethod ->honeysql [:sql :median]     [driver [_ field]]   (hsql/call :median          (->honeysql driver field)))
