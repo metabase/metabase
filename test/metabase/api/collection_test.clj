@@ -398,7 +398,7 @@
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (db/execute! {:update :revision
                     ;; in the past
-                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 2)}
+                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
                     :where [:= :id (:id _revision1)]})
       (testing "Results include last edited information from the `Revision` table"
         (is (= [{:name "AA"}
