@@ -190,7 +190,7 @@
 
 (deftest all-deps-have-licenses
   (testing "All deps on the classpath have licenses"
-    (loop-until-success #(u/sh {:dir u/project-root-directory} "lein" "deps") 3 "download deps")
+    (loop-until-success #(u/sh {:dir u/project-root-directory} "lein" "with-profile" "+include-all-drivers,+oss,+ee" "deps") 3 "download deps")
     (doseq [edition [:oss :ee]]
       (let [classpath (u/sh {:dir    u/project-root-directory
                              :quiet? true}
