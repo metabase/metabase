@@ -1,5 +1,5 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { createSelector } from "reselect";
@@ -9,44 +9,27 @@ import entityType from "./EntityType";
 import paginationState from "metabase/hoc/PaginationState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-const propTypes = {
-  entityType: PropTypes.string,
-  entityQuery: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
-  reload: PropTypes.bool,
-  wrapped: PropTypes.bool,
-  debounced: PropTypes.bool,
-  loadingAndErrorWrapper: PropTypes.bool,
-  keepListWhileLoading: PropTypes.bool,
-  selectorName: PropTypes.string,
-  children: PropTypes.func,
-
-  // via entityType HOC
-  entityDef: PropTypes.object,
-
-  // via react-redux connect
-  list: PropTypes.arrayOf(PropTypes.object),
-  metadata: PropTypes.object,
-  loading: PropTypes.bool,
-  loaded: PropTypes.bool,
-  fetched: PropTypes.bool,
-  error: PropTypes.any,
-  allLoading: PropTypes.bool,
-  allLoaded: PropTypes.bool,
-  allFetched: PropTypes.bool,
-  allError: PropTypes.bool,
-  dispatch: PropTypes.func,
+export type Props = {
+  entityType?: string,
+  entityQuery?: ?{ [key: string]: any },
+  reload?: boolean,
+  wrapped?: boolean,
+  debounced?: boolean,
+  loadingAndErrorWrapper: boolean,
+  selectorName?: string,
+  children: (props: RenderProps) => ?React.Element,
 };
 
-const defaultProps = {
-  loadingAndErrorWrapper: true,
-  keepListWhileLoading: false,
-  reload: false,
-  wrapped: false,
-  debounced: false,
+export type RenderProps = {
+  list: ?(any[]),
+  fetched: boolean,
+  loading: boolean,
+  error: ?any,
+  reload: () => void,
 };
 
 // props that shouldn't be passed to children in order to properly stack
-const CONSUMED_PROPS = [
+const CONSUMED_PROPS: string[] = [
   "entityType",
   "entityQuery",
   // "reload", // Masked by `reload` function. Should we rename that?
@@ -113,12 +96,19 @@ const getMemoizedEntityQuery = createMemoizedSelector(
     allError: error || (allError == null ? null : allError),
   };
 })
-class EntityListLoader extends React.Component {
-  state = {
-    previousList: [],
+export default class EntityListLoader extends React.Component {
+  props: Props;
+
+  static defaultProps = {
+    loadingAndErrorWrapper: true,
+    reload: false,
+    wrapped: false,
+    debounced: false,
   };
 
-  constructor(props) {
+  _getWrappedList: ?(props: Props) => any;
+
+  constructor(props: Props) {
     super(props);
 
     this._getWrappedList = createSelector(
@@ -128,7 +118,7 @@ class EntityListLoader extends React.Component {
     );
   }
 
-  maybeDebounce(f, ...args) {
+  maybeDebounce(f: any, ...args: any) {
     if (this.props.debounced) {
       return _.debounce(f, ...args);
     } else {
@@ -139,7 +129,7 @@ class EntityListLoader extends React.Component {
   fetchList = this.maybeDebounce(
     async (
       { fetchList, entityQuery, pageSize, onChangeHasMorePages },
-      options,
+      options?: any,
     ) => {
       const result = await fetchList(entityQuery, options);
 
@@ -157,7 +147,7 @@ class EntityListLoader extends React.Component {
     this.fetchList(this.props, { reload: this.props.reload });
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (!_.isEqual(nextProps.entityQuery, this.props.entityQuery)) {
       // entityQuery changed, reload
       this.fetchList(nextProps, { reload: nextProps.reload });
@@ -169,44 +159,16 @@ class EntityListLoader extends React.Component {
     }
   }
 
-  componentDidUpdate(prevProps) {
-    const { keepListWhileLoading } = this.props;
-    const { previousList } = this.state;
-
-    const shouldUpdatePrevList =
-      keepListWhileLoading &&
-      Array.isArray(prevProps.list) &&
-      previousList !== prevProps.list;
-
-    if (shouldUpdatePrevList) {
-      this.setState({ previousList: prevProps.list });
-    }
-  }
-
   renderChildren = () => {
-    const {
-      children,
-      entityDef,
-      wrapped,
-      list: currentList,
-      loading,
-      reload, // eslint-disable-line no-unused-vars
-      keepListWhileLoading,
-      ...props
-    } = this.props;
-    const { previousList } = this.state;
+    let { children, entityDef, wrapped, list, reload, ...props } = this.props; // eslint-disable-line no-unused-vars
 
-    const finalList =
-      keepListWhileLoading && loading ? previousList : currentList;
-
-    const list = wrapped
-      ? this._getWrappedList({ ...this.props, list: finalList })
-      : finalList;
+    if (wrapped) {
+      list = this._getWrappedList(this.props);
+    }
 
     return children({
       ..._.omit(props, ...CONSUMED_PROPS),
       list,
-      loading,
       // alias the entities name:
       [entityDef.nameMany]: list,
       reload: this.reload,
@@ -230,14 +192,11 @@ class EntityListLoader extends React.Component {
   };
 }
 
-EntityListLoader.propTypes = propTypes;
-EntityListLoader.defaultProps = defaultProps;
-
-export default EntityListLoader;
-
-export const entityListLoader = ellProps => ComposedComponent => {
-  function WrappedComponent(props) {
-    return (
+export const entityListLoader = (ellProps: Props) =>
+  // eslint-disable-line react/display-name
+  (ComposedComponent: any) =>
+    // eslint-disable-next-line react/display-name
+    (props: Props) => (
       <EntityListLoader {...props} {...ellProps}>
         {childProps => (
           <ComposedComponent
@@ -247,7 +206,3 @@ export const entityListLoader = ellProps => ComposedComponent => {
         )}
       </EntityListLoader>
     );
-  }
-  WrappedComponent.displayName = ComposedComponent.displayName;
-  return WrappedComponent;
-};

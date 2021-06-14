@@ -43,16 +43,10 @@ Cypress.Commands.add("button", button_name => {
   cy.findByRole("button", { name: button_name });
 });
 
-Cypress.Commands.add(
-  "createDashboard",
-  (name, { collection_position = null } = {}) => {
-    cy.log(`Create a dashboard: ${name}`);
-    cy.request("POST", "/api/dashboard", {
-      name,
-      collection_position,
-    });
-  },
-);
+Cypress.Commands.add("createDashboard", name => {
+  cy.log(`Create a dashboard: ${name}`);
+  cy.request("POST", "/api/dashboard", { name });
+});
 
 Cypress.Commands.add(
   "createQuestion",
@@ -62,7 +56,6 @@ Cypress.Commands.add(
     display = "table",
     database = 1,
     visualization_settings = {},
-    collection_position = null,
   } = {}) => {
     cy.log(`Create a question: ${name}`);
     cy.request("POST", "/api/card", {
@@ -74,7 +67,6 @@ Cypress.Commands.add(
       },
       display,
       visualization_settings,
-      collection_position,
     });
   },
 );

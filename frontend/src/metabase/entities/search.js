@@ -30,8 +30,6 @@ export default createEntity({
           pinned_state,
           limit,
           offset,
-          sort_column,
-          sort_direction,
           ...unsupported
         } = query;
         if (Object.keys(unsupported).length > 0) {
@@ -49,8 +47,6 @@ export default createEntity({
           pinned_state,
           limit,
           offset,
-          sort_column,
-          sort_direction,
         });
 
         return {
