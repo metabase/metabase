@@ -71,12 +71,15 @@
                              {:name     \"F\"
                               :children [{:name \"G\"}]}]}]}
      {:name \"H\"}]"
-  []
+  [namespace]
+  {namespace (s/maybe su/NonBlankString)}
   (collection/collections->tree
    (db/select Collection
-     {:where (collection/visible-collection-ids->honeysql-filter-clause
-              :id
-              (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))})))
+     {:where [:and
+              [:= :namespace namespace]
+              (collection/visible-collection-ids->honeysql-filter-clause
+               :id
+               (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -343,8 +346,8 @@
   (into []
         (comp cat (map select-name) (distinct))
         (for [model [:card :dashboard :snippet :pulse :collection]]
-          (:select (collection-children-query model {:id 1 :location "/"} nil))))
-  )
+          (:select (collection-children-query model {:id 1 :location "/"} nil)))))
+
 
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]
