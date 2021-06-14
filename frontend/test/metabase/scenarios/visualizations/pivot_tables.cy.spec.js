@@ -751,7 +751,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
   });
 
-  it.skip("should show stand-alone row values in grouping when rows are collapsed (metabase#15211)", () => {
+  it("should show stand-alone row values in grouping when rows are collapsed (metabase#15211)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
