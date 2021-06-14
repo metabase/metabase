@@ -31,7 +31,7 @@
       (let [field-names (for [field-definition field-definitions]
                           (keyword (:field-name field-definition)))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)
-        (doseq [[i row] (map-indexed (partial vector) rows)]
+        (doseq [[i row] (map-indexed vector rows)]
           (try
             ;; Insert each row
             (mc/insert mongo-db (name table-name) (into {:_id (inc i)}

@@ -226,19 +226,19 @@ describe("formatting", () => {
     it("should return a component for email addresses in jsx + rich mode", () => {
       expect(
         isElementOfType(
-          formatValue("tom@metabase.com", { jsx: true, rich: true }),
+          formatValue("tom@metabase.test", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(true);
     });
     it("should not add mailto prefix if there's a different semantic type", () => {
       expect(
-        formatValue("foobar@example.com", {
+        formatValue("foobar@example.test", {
           jsx: true,
           rich: true,
           column: { semantic_type: "type/PK" },
         }),
-      ).toEqual("foobar@example.com");
+      ).toEqual("foobar@example.test");
     });
     it("should display hour-of-day with 12 hour clock", () => {
       expect(
@@ -287,7 +287,7 @@ describe("formatting", () => {
       ).toEqual(true);
       expect(
         isElementOfType(
-          formatUrl("mailto:tom@metabase.com", { jsx: true, rich: true }),
+          formatUrl("mailto:tom@metabase.test", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(true);

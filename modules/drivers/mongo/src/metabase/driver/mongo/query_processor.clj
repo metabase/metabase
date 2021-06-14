@@ -300,11 +300,6 @@
   {:arglists '([clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(def ^:private ^:dynamic *top-level-filter?*
-  "Whether we are compiling a top-level filter clause. This means we can generate somewhat simpler `$match` clauses that
-  don't need to use `$expr` (see below)."
-  true)
-
 (defmethod compile-filter :between
   [[_ field min-val max-val]]
   (compile-filter [:and
@@ -323,23 +318,39 @@
 (defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
 (defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
 
-(defn- simple-rvalue? [rvalue]
+(defn- rvalue-is-field? [rvalue]
   (and (string? rvalue)
        (str/starts-with? rvalue "$")))
+
+(defn- rvalue-can-be-compared-directly?
+  "Whether `rvalue` is something simple that can be compared directly e.g.
+
+    {$match {$field {$eq rvalue}}}
+
+  as opposed to
+
+    {$match {$expr {$eq [$field rvalue]}}}"
+  [rvalue]
+  (or (rvalue-is-field? rvalue)
+      (and (not (map? rvalue))
+           (not (instance? java.util.regex.Pattern rvalue)))))
 
 (defn- filter-expr [operator field value]
   (let [field-rvalue (->rvalue field)
         value-rvalue (->rvalue value)]
-    (if (and (simple-rvalue? field-rvalue) *top-level-filter?*)
+    (if (and (rvalue-is-field? field-rvalue)
+             (rvalue-can-be-compared-directly? value-rvalue))
       ;; if we don't need to do anything fancy with field we can generate a clause like
       ;;
-      ;;    {field {$eq 100}}
-      ;;
-      ;; this only works at the top level. Doesn't work inside compound expressions
-      {(str/replace-first field-rvalue #"^\$" "") {operator value-rvalue}}
+      ;;    {field {$lte 100}}
+      {(str/replace-first field-rvalue #"^\$" "")
+       ;; for the $eq operator we actually don't need to do {field {$eq 100}}, we can just do {field 100}
+       (if (= (name operator) "$eq")
+         value-rvalue
+         {operator value-rvalue})}
       ;; if we need to do something fancy then we have to use `$expr` e.g.
       ;;
-      ;;    {$expr {$eq [{$add [$field 1]} 100]}}
+      ;;    {$expr {$lte [{$add [$field 1]} 100]}}
       {:$expr {operator [field-rvalue value-rvalue]}})))
 
 (defmethod compile-filter :=  [[_ field value]] (filter-expr $eq field value))
@@ -351,13 +362,11 @@
 
 (defmethod compile-filter :and
   [[_ & args]]
-  (binding [*top-level-filter?* false]
-    {$and (mapv compile-filter args)}))
+  {$and (mapv compile-filter args)})
 
 (defmethod compile-filter :or
   [[_ & args]]
-  (binding [*top-level-filter?* false]
-    {$or (mapv compile-filter args)}))
+  {$or (mapv compile-filter args)})
 
 
 ;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
@@ -410,9 +419,9 @@
 (defmethod compile-cond :ends-with
   [[_ field value opts]]
   (let [strcmp (fn [a b]
-                 (if (get opts :case-sensitive true)
-                   {$eq [a b]}
-                   {$eq [{$strcasecmp [a b]} 0]}))]
+                 {$eq (if (get opts :case-sensitive true)
+                        [a b]
+                        [{$strcasecmp [a b]} 0])})]
     (strcmp {:$substrCP [(->rvalue field)
                          {$subtract [{:$strLenCP (->rvalue field)}
                                      {:$strLenCP (->rvalue value)}]}

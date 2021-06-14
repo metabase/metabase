@@ -20,7 +20,7 @@ describe("scenarios > admin > people", () => {
   const TEST_USER = {
     first_name: "Testy",
     last_name: "McTestface",
-    email: `testy${Math.round(Math.random() * 100000)}@metabase.com`,
+    email: `testy${Math.round(Math.random() * 100000)}@metabase.test`,
     password: "12341234",
   };
 

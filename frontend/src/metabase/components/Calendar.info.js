@@ -7,9 +7,6 @@ export const category = "pickers";
 
 export const description = `For when gregorian time is your need, a calendar is your friend indeed`;
 
-// disable snapshot testing due to snapshot changing every day
-export const noSnapshotTest = true;
-
 const onChange = () => ({});
 
 export const examples = {
