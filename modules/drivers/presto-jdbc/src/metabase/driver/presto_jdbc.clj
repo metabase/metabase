@@ -220,9 +220,9 @@
   (.setTime ps i (t/sql-time t)))
 
 ;; TODO: need this?
-(defmethod sql.qp/cast-temporal-string [:presto-jdbc :Coercion/ISO8601->DateTime]
-  [_driver _semantic_type expr]
-  (hsql/call :from_iso8601_timestamp expr))
+#_(defmethod sql.qp/cast-temporal-string [:presto-jdbc :Coercion/ISO8601->DateTime]
+    [_driver _semantic_type expr]
+    (hsql/call :from_iso8601_timestamp expr))
 
 #_(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/DATE]
     [_ ^ResultSet rs _ ^Integer i]

@@ -1030,11 +1030,10 @@
     (mt/dataset office-checkins
       (is (= [[1]]
              (mt/formatted-rows [int]
-               (mt/with-log-level :trace
-                 (mt/run-mbql-query checkins
-                   {:aggregation [[:count]]
-                    ;; TODO: somehow this is getting turned into timestamp '2019-01-16 00:00 UTC'
-                    :filter      [:= [:field $timestamp nil] "2019-01-16"]})))))
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  ;; TODO: somehow this is getting turned into timestamp '2019-01-16 00:00 UTC'
+                  :filter      [:= [:field $timestamp nil] "2019-01-16"]}))))
 
       (testing "Check that automatic bucketing still happens when using compound filter clauses (#9127)"
         (is (= [[1]]
