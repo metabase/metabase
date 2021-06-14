@@ -931,9 +931,9 @@ export default class Question {
   }
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
-    const [a, b] = [this, originalQuestion].map(q =>
-      new Question(q.card(), this.metadata()).setParameters([]),
-    );
+    const [a, b] = [this, originalQuestion].map(q => {
+      return q && new Question(q.card(), this.metadata()).setParameters([]);
+    });
     return a.isDirtyComparedTo(b);
   }
 
