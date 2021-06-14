@@ -382,11 +382,11 @@ function addSubtotal(
   const node = {
     ...item,
     hasSubtotal,
-    children: item.children.flatMap(item =>
+    children: item.children.flatMap(child =>
       // add subtotals until the last level
-      item.children.length > 0
-        ? addSubtotal(item, formatters, showSubtotalsByColumn)
-        : item,
+      child.children.length > 0
+        ? addSubtotal(child, formatters, showSubtotalsByColumn)
+        : child,
     ),
   };
 
