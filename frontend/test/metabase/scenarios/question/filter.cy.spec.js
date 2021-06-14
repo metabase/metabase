@@ -1134,6 +1134,94 @@ describe("scenarios > question > filter", () => {
       cy.button("Visualize");
     });
   });
+
+  ["true", "false"].forEach(condition => {
+    const regexCondition = new RegExp(`${condition}`, "i");
+    // We must use and return strings instead of boolean and numbers
+    const integerAssociatedWithCondition = condition === "true" ? "0" : "1";
+
+    describe.skip(`should be able to filter on the boolean column ${condition.toUpperCase()} (metabase#16386)`, () => {
+      beforeEach(() => {
+        cy.createNativeQuestion({
+          name: "16386",
+          native: {
+            query:
+              'select 0::integer as "integer", true::boolean AS "boolean" union all \nselect 1::integer as "integer", false::boolean AS "boolean" union all \nselect null as "integer", true::boolean AS "boolean" union all \nselect -1::integer as "integer", null AS "boolean"',
+          },
+          visualization_settings: {
+            "table.pivot_column": "boolean",
+            "table.cell_column": "integer",
+          },
+        }).then(({ body: { id: QUESTION_ID } }) => {
+          cy.visit(`/question/${QUESTION_ID}`);
+          cy.findByText("Explore results").click();
+        });
+      });
+
+      it("from the column popover (metabase#16386-1)", () => {
+        cy.get(".cellData")
+          .contains("boolean")
+          .click();
+
+        popover()
+          .findByText("Filter by this column")
+          .click();
+
+        popover().within(() => {
+          // Not sure exactly what this popover will look like when this issue is fixed.
+          // In one of the previous versions it said "Update filter" instead of "Add filter".
+          // If that's the case after the fix, this part of the test might need to be updated accordingly.
+          cy.button(regexCondition)
+            .click()
+            .should("have.class", "bg-purple");
+          cy.button("Update filter").click();
+        });
+
+        assertOnTheResult();
+      });
+
+      it("from the simple question (metabase#16386-2)", () => {
+        cy.findAllByRole("button")
+          .contains("Filter")
+          .click();
+
+        cy.findByTestId("sidebar-right").within(() => {
+          cy.findByText("boolean").click();
+          addBooleanFilter();
+        });
+
+        assertOnTheResult();
+      });
+
+      it("from the custom question (metabase#16386-3)", () => {
+        cy.icon("notebook").click();
+        cy.findByText("Filter").click();
+
+        popover().within(() => {
+          cy.findByText("boolean").click();
+          addBooleanFilter();
+        });
+
+        cy.button("Visualize").click();
+
+        assertOnTheResult();
+      });
+
+      function addBooleanFilter() {
+        // This is really inconvenient way to ensure that the element is selected, but it's the only one currently
+        cy.button(regexCondition)
+          .click()
+          .should("have.class", "bg-purple");
+        cy.button("Add filter").click();
+      }
+
+      function assertOnTheResult() {
+        // Filter name
+        cy.findByText(`boolean is ${condition}`);
+        cy.findByText(integerAssociatedWithCondition);
+      }
+    });
+  });
 });
 
 function openExpressionEditorFromFreshlyLoadedPage() {

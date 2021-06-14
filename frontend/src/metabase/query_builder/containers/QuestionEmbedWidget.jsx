@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import Icon from "metabase/components/Icon";
@@ -17,6 +17,19 @@ import {
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../actions";
+
+const QuestionEmbedWidgetPropTypes = {
+  className: PropTypes.string,
+  card: PropTypes.object,
+  createPublicLink: PropTypes.func,
+  deletePublicLink: PropTypes.func,
+  updateEnableEmbedding: PropTypes.func,
+  updateEmbeddingParams: PropTypes.func,
+};
+
+const QuestionEmbedWidgetTriggerPropTypes = {
+  onClick: PropTypes.func,
+};
 
 const mapDispatchToProps = {
   createPublicLink,
@@ -77,11 +90,7 @@ export default class QuestionEmbedWidget extends Component {
   }
 }
 
-export function QuestionEmbedWidgetTrigger({
-  onClick,
-}: {
-  onClick: () => void,
-}) {
+export function QuestionEmbedWidgetTrigger({ onClick }) {
   return (
     <Icon
       name="share"
@@ -97,3 +106,6 @@ export function QuestionEmbedWidgetTrigger({
     />
   );
 }
+
+QuestionEmbedWidgetTrigger.propTypes = QuestionEmbedWidgetTriggerPropTypes;
+QuestionEmbedWidget.propTypes = QuestionEmbedWidgetPropTypes;
