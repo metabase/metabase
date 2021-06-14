@@ -454,6 +454,18 @@
   {namespace (s/maybe su/NonBlankString)}
   (dissoc (root-collection namespace) ::collection.root/is-root?))
 
+(defn- visible-model-kwds
+  "If you pass in explicitly keywords that you can't see, you can't see them.
+  But there is an exception for the collections,
+  because you might not be able to see the top-level collections
+  but be able to see, children of those invisible top-level collections."
+  [root-collection model-set]
+  (if (mi/can-read? root-collection)
+    model-set
+    (if (or (empty? model-set) (contains? model-set :collection))
+      #{:collection}
+      #{:dummy})))
+
 (api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
@@ -478,11 +490,8 @@
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
-        model-kwds      (if (mi/can-read? root-collection)
-                          (set (map keyword (u/one-or-many models)))
-                          (if (empty? models)
-                            #{:collection}
-                            #{:dummy}))]
+        model-set       (set (map keyword (u/one-or-many models)))
+        model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
       root-collection
       {:models       model-kwds
