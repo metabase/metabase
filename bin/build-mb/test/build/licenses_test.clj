@@ -179,10 +179,16 @@
                                          :license "license text"}])
            (str os)))))
 
-(require 'clojure.pprint)
+(defn- loop-until-success [f max]
+  (loop [n 0]
+    (let [failed? (try
+                    (do (f) false)
+                    (catch Exception _ true))]
+      (when (and failed? (< n max)) (recur (inc n))))))
+
 (deftest all-deps-have-licenses
   (testing "All deps on the classpath have licenses"
-    (u/sh {:dir u/project-root-directory} "lein" "deps")
+    (loop-until-success #(u/sh {:dir u/project-root-directory} "lein" "deps") 3)
     (doseq [edition [:oss :ee]]
       (let [classpath (u/sh {:dir    u/project-root-directory
                              :quiet? true}
@@ -193,9 +199,6 @@
                             "classpath")
             classpath-entries (->> (str/split (last classpath) (re-pattern lic/classpath-separator))
                                    (filter lic/jar-file?))]
-        (println classpath)
-        (clojure.pprint/pprint classpath-entries)
-        (println edition)
         (let [results (lic/process* {:classpath-entries classpath-entries
                                      :backfill  (edn/read-string
                                                  (slurp (io/resource "overrides.edn")))})]
