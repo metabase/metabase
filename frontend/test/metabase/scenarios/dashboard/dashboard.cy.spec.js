@@ -162,6 +162,7 @@ describe("scenarios > dashboard", () => {
             {
               id: "92eb69ea",
               name: "ID",
+              sectionId: "id",
               slug: "id",
               type: "id",
             },
@@ -194,11 +195,13 @@ describe("scenarios > dashboard", () => {
                   click_behavior: {
                     type: "crossfilter",
                     parameterMapping: {
-                      id: "92eb69ea",
-                      source: { id: "ID", name: "ID", type: "column" },
-                      target: {
+                      "92eb69ea": {
                         id: "92eb69ea",
-                        type: "parameter",
+                        source: { id: "ID", name: "ID", type: "column" },
+                        target: {
+                          id: "92eb69ea",
+                          type: "parameter",
+                        },
                       },
                     },
                   },
