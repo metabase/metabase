@@ -4,6 +4,14 @@
 
   clj -X mb.license/process :classpath a-classpath :output-filename a-filename
 
+  or from clojure code like:
+  ```
+  (license/process {:classpath classpath
+                    :backfill (edn/read-string (slurp (io/resource \"overrides.edn\")))
+                    :output-filename (.getAbsolutePath output-file)
+                    :report? false})
+  ```
+
   Allows for optional backfill, either edn or a filename that is edn. Backfill should be of the form
 
   {\"group\" {\"artifact\" \"license text\"}
@@ -12,14 +20,6 @@
   :override/group {\"group\" \"license\"
                    \"group\" {:resource \"filename-of-license\"}}
   }
-
-  or from clojure code like:
-  ```
-  (license/process {:classpath classpath
-                    :backfill (edn/read-string (slurp (io/resource \"overrides.edn\")))
-                    :output-filename (.getAbsolutePath output-file)
-                    :report? false})
-  ```
 
   At the moment assumes a leiningen classpath which is primarily jars and your own source paths, so only detects
   license information from jars. In the future a strategy and heuristics could be determined for when source is
