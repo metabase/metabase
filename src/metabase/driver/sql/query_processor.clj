@@ -310,13 +310,17 @@
       (prefix-field-alias driver join-alias field-alias)
       field-alias)))
 
+(defn- field->clause
+  [{field-name :name, table-id :table_id, database-type :database_type, :as field}]
+  (if *table-alias*
+    [*table-alias* (unambiguous-field-alias driver [:field (:id field) nil])]
+    (let [{schema :schema, table-name :name} (qp.store/table table-id)]
+      [schema table-name field-name])))
+
 (defmethod ->honeysql [:sql (class Field)]
-  [driver {field-name :name, table-id :table_id, database-type :database_type, :as field}]
+  [driver field]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
-  (as-> (if *table-alias*
-          [*table-alias* (unambiguous-field-alias driver [:field (:id field) nil])]
-          (let [{schema :schema, table-name :name} (qp.store/table table-id)]
-            [schema table-name field-name])) expr
+  (as-> (field->clause field) expr
     (apply hx/identifier :field expr)
     (->honeysql driver expr)
     (cast-field-if-needed driver field expr)
@@ -407,7 +411,10 @@
 
 ;; ":function-field true"
 
-(defn- ->function-field [field-or-clause])
+(defn- ->function-field [field-or-clause]
+  (let [clause (if (class dealio) (field->clause field-or-clause) field-or-clause)]
+    ;;; splice this shit in here
+  ))
 
 (defmethod ->honeysql [:sql :avg]        [driver [_ field]]   (hsql/call :avg             (->honeysql driver field)))
 (defmethod ->honeysql [:sql :median]     [driver [_ field]]   (hsql/call :median          (->honeysql driver field)))
