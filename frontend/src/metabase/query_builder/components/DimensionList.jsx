@@ -260,6 +260,12 @@ export const DimensionPicker = ({
     // match. Thus, try it again with a typeless comparison.
     const subdim = dimension.withoutOptions(["base-type"]);
     current = dimensions.findIndex(d => d.isEqual(subdim));
+    if (current < 0) {
+      // The other way around, comparing with typeless subdimensions.
+      current = dimensions.findIndex(d =>
+        d.withoutOptions(["base-type"]).isEqual(subdim),
+      );
+    }
   }
   return (
     <ul className={cx(className, "px2 py1")} style={style}>
