@@ -359,4 +359,4 @@
                     (str " failed " (pr-str entity)))))
             fingerprint))))
     (finally
-      #_(delete-directory! dump-dir))))
+      (delete-directory! dump-dir))))

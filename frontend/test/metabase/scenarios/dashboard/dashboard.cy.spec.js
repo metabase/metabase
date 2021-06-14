@@ -602,7 +602,7 @@ describe("scenarios > dashboard", () => {
     cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
   });
 
-  it.skip("user without data permissions should be able to use dashboard filter (metabase#15119)", () => {
+  it("user without data permissions should be able to use dashboard filter (metabase#15119)", () => {
     cy.createQuestion({
       name: "15119",
       query: { "source-table": 1 },
@@ -652,13 +652,9 @@ describe("scenarios > dashboard", () => {
         cy.get("fieldset")
           .contains("Category")
           .click();
+        cy.findByPlaceholderText("Search the list").type("Gizmo");
+        cy.button("Add filter").click();
 
-        cy.findByPlaceholderText("Enter some text")
-          .click()
-          .type("Gizmo", { delay: 10 });
-        cy.button("Add filter")
-          .should("not.be.disabled")
-          .click();
         cy.contains("Rustic Paper Wallet");
       });
     });
