@@ -363,6 +363,15 @@ describe("scenarios > visualizations > line chart", () => {
     it("should not drop the chart legend (metabase#4995)", () => {
       cy.get(".LegendItem").should("contain", "Doohickey");
     });
+
+    it("should display correct axis labels (metabase#12782)", () => {
+      cy.get(".x-axis-label")
+        .invoke("text")
+        .should("eq", "Created At");
+      cy.get(".y-axis-label")
+        .invoke("text")
+        .should("eq", "Average of price");
+    });
   });
 });
 
