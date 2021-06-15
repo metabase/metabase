@@ -4,7 +4,6 @@ import {
   openPeopleTable,
   openReviewsTable,
   popover,
-  modal,
   restore,
   remapDisplayValueToFK,
 } from "__support__/e2e/cypress";
@@ -529,7 +528,7 @@ describeWithToken("formatting > sandboxes", () => {
             },
           }).then(({ body: { id: CARD_ID } }) => {
             test === "workaround"
-              ? runAndSaveQuestion({ question: CARD_ID, sandboxValue: "1" })
+              ? visitQuestion({ question: CARD_ID, sandboxValue: "1" })
               : null;
 
             cy.sandboxTable({
@@ -557,7 +556,7 @@ describeWithToken("formatting > sandboxes", () => {
             },
           }).then(({ body: { id: CARD_ID } }) => {
             test === "workaround"
-              ? runAndSaveQuestion({
+              ? visitQuestion({
                   question: CARD_ID,
                   sandboxValue: "Widget",
                 })
@@ -596,18 +595,11 @@ describeWithToken("formatting > sandboxes", () => {
           /**
            * Helper function related to this test only!
            */
-          function runAndSaveQuestion({ question, sandboxValue } = {}) {
-            // Run the question
+          function visitQuestion({ question, sandboxValue } = {}) {
+            // Visit & run the question
             cy.visit(`/question/${question}?sandbox=${sandboxValue}`);
             // Wait for results
             cy.wait("@cardQuery");
-            // Save the question
-            cy.findByText("Save").click();
-            modal().within(() => {
-              cy.button("Save").click();
-            });
-            // Wait for an update so the other queries don't accidentally cancel it
-            cy.wait("@questionUpdate");
           }
         });
       });
