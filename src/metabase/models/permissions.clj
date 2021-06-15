@@ -78,26 +78,27 @@
                     (or
                      ;; /collection/:id/ -> readwrite perms for a specific Collection
                      (and #"\d+/"
-                          ;; /collection/:id/read/     -> read perms for a specific Collection
-                          ;; /collection/:id/moderate/ -> moderate perms for a specific Collection
+                          ;; /collection/:id/read/ -> read perms for a specific Collection
+                          ;; /collection/:id/edit/ -> edit perms for a specific Collection
                           (opt
                            (or
-                            "moderate/"
+                            "edit/"
                             "read/")))
                      ;; /collection/root/ -> readwrite perms for the Root Collection
                      (and "root/"
-                          ;; /collection/root/read/     -> read perms for the Root Collection
-                          ;; /collection/root/moderate/ -> moderate perms for the Root Collection
+                          ;; /collection/root/read/ -> read perms for the Root Collection
+                          ;; /collection/root/edit/ -> edit perms for the Root Collection
                           (opt
-                           (or "moderate/"
+                           (or "edit/"
                                "read/")))
                      ;; /collection/namespace/:namespace/root/ -> readwrite perms for 'Root' Collection in non-default
                      ;; namespace (only really used for EE)
                      (and "namespace/" path-char "+/root/"
+                          ;; /collection/namespace/:namespace/root/edit/ -> edit perms for 'Root' Collection in
                           ;; /collection/namespace/:namespace/root/read/ -> read perms for 'Root' Collection in
                           ;; non-default namespace
                           (opt
-                           (or "moderate/"
+                           (or "edit/"
                                "read/"))))))
               "$"))
 
@@ -199,8 +200,8 @@
   [database-or-id :- MapOrID]
   (str (object-path database-or-id) "schema/"))
 
-(s/defn collection-readwrite-path :- ObjectPath
-  "Return the permissions path for *readwrite* access for a `collection-or-id`."
+(s/defn collection-full-path :- ObjectPath
+  "Return the permissions path for full access for a `collection-or-id` (currently moderate+edit+read)"
   [collection-or-id :- MapOrID]
   (if-not (get collection-or-id :metabase.models.collection.root/is-root?)
     (format "/collection/%d/" (u/the-id collection-or-id))
@@ -211,12 +212,17 @@
 (s/defn collection-moderate-path :- ObjectPath
   "Return the permissions path for *moderate* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
-  (str (collection-readwrite-path collection-or-id) "moderate/"))
+  (collection-full-path collection-or-id))
+
+(s/defn collection-readwrite-path :- ObjectPath
+  "Return the permissions path for *edit* (readwrite) access for a `collection-or-id`."
+  [collection-or-id :- MapOrID]
+  (str (collection-full-path collection-or-id) "edit/"))
 
 (s/defn collection-read-path :- ObjectPath
   "Return the permissions path for *read* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
-  (str (collection-readwrite-path collection-or-id) "read/"))
+  (str (collection-full-path collection-or-id) "read/"))
 
 (s/defn table-read-path :- ObjectPath
   "Return the permissions path required to fetch the Metadata for a Table."
@@ -249,31 +255,26 @@
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
-(defn- moderate?
-  [path]
-  (str/ends-with? path "/moderate/"))
-
-(defn- path-without-access-level
-  [path]
-  (str/replace path #"(read|moderate)/$" ""))
 
 (defn is-permissions-for-object?
   "Does `permissions-path` grant *full* access for `object-path`?"
   [permissions-path object-path]
-  (if (= "/" permissions-path)
-    true
-    (if (moderate? permissions-path)
-      ;; Moderate permission has access to everything in that path
-      (str/starts-with? object-path (path-without-access-level permissions-path))
-      (and (not (moderate? object-path)) ;; We don't have moderate permission
-           ;; Hack since /collection/1 permission grants access to both /collection/1 and /collection/1/read
-           (str/starts-with? object-path permissions-path)))))
+  ;; Examples:
+  ;;     object-path     |   permissions-path  | result
+  ;; --------------------+---------------------+-------
+  ;; /collection/1/      | /collection/1/      | yes
+  ;; /collection/1/      | /collection/1/edit/ | no
+  ;; /collection/1/      | /collection/1/read/ | no
+  ;; /collection/1/edit/ | /collection/1/      | yes
+  ;; /collection/1/edit/ | /collection/1/edit/ | yes
+  ;; /collection/1/edit/ | /collection/1/read/ | no
+  ;; (anything)          | /                   | yes
+  ;; testing for read access happens with `is-partial-permissions-for-object?`, c.f. `can-read?`
+  (str/starts-with? object-path permissions-path))
 
 (defn is-partial-permissions-for-object?
   "Does `permissions-path` grant access full access for `object-path` *or* for a descendant of `object-path`?"
   [permissions-path object-path]
-  ;; This "doesn't work" for moderate permissions, but collection paths won't have descendants and only collections
-  ;; can be moderated so in practice this is fine.
   (or (is-permissions-for-object? permissions-path object-path)
       (str/starts-with? permissions-path object-path)))
 
@@ -337,7 +338,7 @@
          ;; TODO - we use these same partial implementations of `can-read?` and `can-write?` all over the place for
          ;; different models. Consider making them a mixin of some sort. (I was going to do this but I couldn't come
          ;; up with a good name for the Mixin. - Cam)
-         {:can-read?         (partial i/current-user-has-full-permissions? :read)
+         {:can-read?         (partial i/current-user-has-partial-permissions? :read)
           :can-write?        (partial i/current-user-has-full-permissions? :write)
           :can-moderate?     (partial i/current-user-has-full-permissions? :moderate)
           :perms-objects-set perms-objects-set-for-parent-collection}))
@@ -595,7 +596,7 @@
   "Revoke all access for `group-or-id` to a Collection."
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-not-personal-collection-or-descendant collection-or-id)
-  (delete-related-permissions! group-or-id (collection-readwrite-path collection-or-id)))
+  (delete-related-permissions! group-or-id (collection-full-path collection-or-id)))
 
 (s/defn grant-collection-moderate-permissions!
   "Grant moderate access to a Collection, which means a user can verify or flag items in the collection, view all

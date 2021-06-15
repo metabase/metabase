@@ -1,6 +1,7 @@
 (ns metabase.models.collection-test
   (:refer-clojure :exclude [ancestors descendants])
   (:require [clojure.math.combinatorics :as math.combo]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.api.common :refer [*current-user-permissions-set*]]
@@ -254,9 +255,9 @@
               "/db/4/schema/"
               "/db/5/schema/PUBLIC/"
               "/db/6/schema/PUBLIC/table/7/"
-              "/collection/8/"
+              "/collection/8/edit/"
               "/collection/9/read/"
-              "/collection/10/moderate/"}))))
+              "/collection/10/"}))))
 
   (testing "If the current user has root permissions then make sure the function returns `:all`, which signifies that they are able to see all Collections"
     (is (= :all
@@ -677,38 +678,38 @@
 (deftest perms-for-archiving-test
   (with-collection-hierarchy [{:keys [a b c d], :as collections}]
     (testing "To Archive A, you should need *write* perms for A and all of its descendants, and also the Root Collection..."
-      (is (= #{"/collection/root/"
-               "/collection/A/"
-               "/collection/B/"
-               "/collection/C/"
-               "/collection/D/"
-               "/collection/E/"
-               "/collection/F/"
-               "/collection/G/"}
+      (is (= #{"/collection/root/edit/"
+               "/collection/A/edit/"
+               "/collection/B/edit/"
+               "/collection/C/edit/"
+               "/collection/D/edit/"
+               "/collection/E/edit/"
+               "/collection/F/edit/"
+               "/collection/G/edit/"}
              (->> (collection/perms-for-archiving a)
                   (perms-path-ids->names collections)))))
 
     (testing (str "Now let's move down a level. To archive B, you should need permissions for A and B, since B doesn't "
                   "have any descendants")
-      (is (= #{"/collection/A/"
-               "/collection/B/"}
+      (is (= #{"/collection/A/edit/"
+               "/collection/B/edit/"}
              (->> (collection/perms-for-archiving b)
                   (perms-path-ids->names collections)))))
 
     (testing "but for C, you should need perms for A (parent); C; and D, E, F, and G (descendants)"
-      (is (= #{"/collection/A/"
-               "/collection/C/"
-               "/collection/D/"
-               "/collection/E/"
-               "/collection/F/"
-               "/collection/G/"}
+      (is (= #{"/collection/A/edit/"
+               "/collection/C/edit/"
+               "/collection/D/edit/"
+               "/collection/E/edit/"
+               "/collection/F/edit/"
+               "/collection/G/edit/"}
              (->> (collection/perms-for-archiving c)
                   (perms-path-ids->names collections)))))
 
     (testing "For D you should need C (parent), D, and E (descendant)"
-      (is (= #{"/collection/C/"
-               "/collection/D/"
-               "/collection/E/"}
+      (is (= #{"/collection/C/edit/"
+               "/collection/D/edit/"
+               "/collection/E/edit/"}
              (->> (collection/perms-for-archiving d)
                   (perms-path-ids->names collections)))))))
 
@@ -747,9 +748,9 @@
       ;;           |                           |
       ;;           +-> F -> G                  +-> F -> G
 
-      (is (= #{"/collection/A/"
-               "/collection/B/"
-               "/collection/C/"}
+      (is (= #{"/collection/A/edit/"
+               "/collection/B/edit/"
+               "/collection/C/edit/"}
              (->> (collection/perms-for-moving b c)
                   (perms-path-ids->names collections)))))
 
@@ -762,13 +763,13 @@
       ;; A -+-> C -+-> D -> E  ===>  A* -> B* -> C* -+-> D* -> E*
       ;;           |                                 |
       ;;           +-> F -> G                        +-> F* -> G*
-      (is (= #{"/collection/A/"
-               "/collection/B/"
-               "/collection/C/"
-               "/collection/D/"
-               "/collection/E/"
-               "/collection/F/"
-               "/collection/G/"}
+      (is (= #{"/collection/A/edit/"
+               "/collection/B/edit/"
+               "/collection/C/edit/"
+               "/collection/D/edit/"
+               "/collection/E/edit/"
+               "/collection/F/edit/"
+               "/collection/G/edit/"}
              (->> (collection/perms-for-moving c b)
                   (perms-path-ids->names collections)))))
 
@@ -778,9 +779,9 @@
       ;; A -+-> C -+-> D -> E  ===>  A* -> C -+-> D -> E
       ;;           |                          |
       ;;           +-> F -> G                 +-> F -> G
-      (is (= #{"/collection/root/"
-               "/collection/A/"
-               "/collection/B/"}
+      (is (= #{"/collection/root/edit/"
+               "/collection/A/edit/"
+               "/collection/B/edit/"}
              (->> (collection/perms-for-moving b collection/root-collection)
                   (perms-path-ids->names collections)))))
 
@@ -790,13 +791,13 @@
       ;; A -+-> C -+-> D -> E  ===>  C* -+-> D* -> E* [and Root*]
       ;;           |                     |
       ;;           +-> F -> G            +-> F* -> G*
-      (is (= #{"/collection/root/"
-               "/collection/A/"
-               "/collection/C/"
-               "/collection/D/"
-               "/collection/E/"
-               "/collection/F/"
-               "/collection/G/"}
+      (is (= #{"/collection/root/edit/"
+               "/collection/A/edit/"
+               "/collection/C/edit/"
+               "/collection/D/edit/"
+               "/collection/E/edit/"
+               "/collection/F/edit/"
+               "/collection/G/edit/"}
              (->> (collection/perms-for-moving c collection/root-collection)
                   (perms-path-ids->names collections)))))))
 
@@ -1089,7 +1090,7 @@
                 "the Root Collection\n")
     (doseq [collection-namespace [nil "currency"]
             :let                 [root-collection       (assoc collection/root-collection :namespace collection-namespace)
-                                  other-namespace      (if collection-namespace nil "currency")
+                                  other-namespace       (if collection-namespace nil "currency")
                                   other-root-collection (assoc collection/root-collection :namespace other-namespace)]]
       (testing (format "Collection namespace = %s\n" (pr-str collection-namespace))
         (mt/with-temp PermissionsGroup [group]
@@ -1117,7 +1118,7 @@
 
           (testing "copy readwrite perms"
             (mt/with-temp Collection [collection {:name "{new}", :namespace collection-namespace}]
-              (is (= #{"/collection/{new}/"
+              (is (= #{"/collection/{new}/edit/"
                        (perms/collection-readwrite-path root-collection)}
                      (group->perms [collection] group)))))
 
@@ -1125,26 +1126,44 @@
                            (pr-str collection-namespace) (pr-str other-namespace))
             (mt/with-temp Collection [collection {:name "{new}", :namespace other-namespace}]
               (is (= #{(perms/collection-readwrite-path root-collection)}
-                     (group->perms [collection] group))))))))))
+                     (group->perms [collection] group)))))
+
+          (testing "copy moderate perms"
+            (perms/grant-collection-moderate-permissions! group root-collection)
+            (mt/with-temp Collection [collection {:name "{new}", :namespace collection-namespace}]
+              (is (set/subset? #{"/collection/{new}/"
+                                 (perms/collection-moderate-path root-collection)}
+                               (group->perms [collection] group))))))))))
 
 (deftest copy-parent-permissions-test
   (testing "Make sure that when creating a new child Collection, we copy the group permissions for its parent"
     (mt/with-temp PermissionsGroup [group]
       (testing "parent has readwrite permissions"
-        (mt/with-temp Collection [parent {:name "{parent}"}]
-          (perms/grant-collection-readwrite-permissions! group parent)
-          (mt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
-            (is (= #{"/collection/{parent}/"
-                     "/collection/{child}/"}
-                   (group->perms [parent child] group))))))
+        (mt/with-model-cleanup [Permissions]
+          (mt/with-temp Collection [parent {:name "{parent}"}]
+            (perms/grant-collection-readwrite-permissions! group parent)
+            (mt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
+              (is (= #{"/collection/{parent}/edit/"
+                       "/collection/{child}/edit/"}
+                     (group->perms [parent child] group)))))))
 
-      (testing "parent has read permissions"
-        (mt/with-temp Collection [parent {:name "{parent}"}]
-          (perms/grant-collection-read-permissions! group parent)
-          (mt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
-            (is (= #{"/collection/{parent}/read/"
-                     "/collection/{child}/read/"}
-                   (group->perms [parent child] group))))))
+      (mt/with-model-cleanup [Permissions]
+        (testing "parent has read permissions"
+          (mt/with-temp Collection [parent {:name "{parent}"}]
+            (perms/grant-collection-read-permissions! group parent)
+            (mt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
+              (is (= #{"/collection/{parent}/read/"
+                       "/collection/{child}/read/"}
+                     (group->perms [parent child] group)))))))
+
+      (mt/with-model-cleanup [Permissions]
+        (testing "parent has moderate permissions"
+          (mt/with-temp Collection [parent {:name "{parent}"}]
+            (perms/grant-collection-moderate-permissions! group parent)
+            (mt/with-temp Collection [child {:name "{child}", :location (collection/children-location parent)}]
+              (is (= #{"/collection/{parent}/"
+                       "/collection/{child}/"}
+                     (group->perms [parent child] group)))))))
 
       (testing "parent has no permissions"
         (mt/with-temp* [Collection [parent {:name "{parent}"}]
@@ -1283,8 +1302,8 @@
         (with-personal-and-impersonal-collections [group {[a b] :personal}]
           (perms/grant-collection-readwrite-permissions! group collection/root-collection)
           (db/update! Collection (u/the-id b) :location (collection/children-location collection/root-collection))
-          (is (= #{"/collection/root/"
-                   "/collection/B/"}
+          (is (= #{"/collection/root/edit/"
+                   "/collection/B/edit/"}
                  (group->perms [a b] group)))))
 
       (testing (str "to a non-personal Collection, we should create perms entries that match the Root Collection's "
@@ -1295,8 +1314,8 @@
         (with-personal-and-impersonal-collections [group {[a b] :personal, [c] :root}]
           (perms/grant-collection-readwrite-permissions! group c)
           (db/update! Collection (u/the-id b) :location (collection/children-location c))
-          (is (= #{"/collection/B/"
-                   "/collection/C/"}
+          (is (= #{"/collection/B/edit/"
+                   "/collection/C/edit/"}
                  (group->perms [a b c] group)))))))
 
   (testing "Perms should apply recursively as well..."
@@ -1306,9 +1325,9 @@
     (with-personal-and-impersonal-collections [group {[a b] :personal, [c] :root}]
       (perms/grant-collection-readwrite-permissions! group c)
       (db/update! Collection (u/the-id a) :location (collection/children-location c))
-      (is (= #{"/collection/A/"
-               "/collection/B/"
-               "/collection/C/"}
+      (is (= #{"/collection/A/edit/"
+               "/collection/B/edit/"
+               "/collection/C/edit/"}
              (group->perms [a b c] group))))))
 
 
@@ -1345,7 +1364,7 @@
           (perms/grant-collection-readwrite-permissions! group a)
           (perms/grant-collection-readwrite-permissions! group b)
           (db/update! Collection (u/the-id b) :location (lucky-collection-children-location))
-          (is (= #{"/collection/A/"}
+          (is (= #{"/collection/A/edit/"}
                  (group->perms [a b] group)))))
 
       (testing "to a descendant of a Personal Collection, we should *delete* perms entries for it"
@@ -1356,7 +1375,7 @@
           (perms/grant-collection-readwrite-permissions! group b)
           (perms/grant-collection-readwrite-permissions! group c)
           (db/update! Collection (u/the-id c) :location (collection/children-location a))
-          (is (= #{"/collection/B/"}
+          (is (= #{"/collection/B/edit/"}
                  (group->perms [a b c] group)))))))
 
   (testing "Deleting perms should apply recursively as well..."

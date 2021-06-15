@@ -19,7 +19,7 @@
   table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
   table-perm  = ('read'|'query'|'query/segmented')
 
-  collection  = <'/collection/'> #'[^/]*' <'/'> (('read'|'moderate') <'/'>)?")
+  collection  = <'/collection/'> #'[^/]*' <'/'> (('read'|'edit') <'/'>)?")
 
 (def ^:private parser
   "Function that parses permission strings"
@@ -52,9 +52,9 @@
                                    "query/segmented" [:query :segmented])
     [:native]                    [:native :write]
 
-    [:collection id]             [:collection (collection-id id) :write]
+    [:collection id]             [:collection (collection-id id) :moderate]
     [:collection id "read"]      [:collection (collection-id id) :read]
-    [:collection id "moderate"]  [:collection (collection-id id) :moderate]))
+    [:collection id "edit"]      [:collection (collection-id id) :write]))
 
 (defn- graph
   "Given a set of permission paths, return a graph that expresses the most permissions possible for the set
@@ -71,7 +71,7 @@
   [paths]
   (->> paths
        (reduce (fn [paths path]
-                 (if (every? vector? path) ;; handle case wher /db/x/ returns two vectors
+                 (if (every? vector? path) ;; handle case where /db/x/ returns two vectors
                    (into paths path)
                    (conj paths path)))
                [])

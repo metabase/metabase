@@ -243,24 +243,24 @@
                                :moderate  'collection-moderate-path}
           :let                [f (ns-resolve 'metabase.models.permissions f-symb)]]
     (doseq [[input expected]
-            {1                                                        {:moderate  "/collection/1/moderate/"
+            {1                                                        {:moderate  "/collection/1/"
                                                                        :read      "/collection/1/read/"
-                                                                       :readwrite "/collection/1/"}
-             {:id 1}                                                  {:moderate  "/collection/1/moderate/"
+                                                                       :readwrite "/collection/1/edit/"}
+             {:id 1}                                                  {:moderate  "/collection/1/"
                                                                        :read      "/collection/1/read/"
-                                                                       :readwrite "/collection/1/"}
-             collection/root-collection                               {:moderate  "/collection/root/moderate/"
+                                                                       :readwrite "/collection/1/edit/"}
+             collection/root-collection                               {:moderate  "/collection/root/"
                                                                        :read      "/collection/root/read/"
-                                                                       :readwrite "/collection/root/"}
-             (assoc collection/root-collection :namespace "snippets") {:moderate  "/collection/namespace/snippets/root/moderate/"
+                                                                       :readwrite "/collection/root/edit/"}
+             (assoc collection/root-collection :namespace "snippets") {:moderate  "/collection/namespace/snippets/root/"
                                                                        :read      "/collection/namespace/snippets/root/read/"
-                                                                       :readwrite "/collection/namespace/snippets/root/"}
-             (assoc collection/root-collection :namespace "a/b")      {:moderate  "/collection/namespace/a\\/b/root/moderate/"
+                                                                       :readwrite "/collection/namespace/snippets/root/edit/"}
+             (assoc collection/root-collection :namespace "a/b")      {:moderate  "/collection/namespace/a\\/b/root/"
                                                                        :read      "/collection/namespace/a\\/b/root/read/"
-                                                                       :readwrite "/collection/namespace/a\\/b/root/"}
-             (assoc collection/root-collection :namespace :a/b)       {:moderate  "/collection/namespace/a\\/b/root/moderate/"
+                                                                       :readwrite "/collection/namespace/a\\/b/root/edit/"}
+             (assoc collection/root-collection :namespace :a/b)       {:moderate  "/collection/namespace/a\\/b/root/"
                                                                        :read      "/collection/namespace/a\\/b/root/read/"
-                                                                       :readwrite "/collection/namespace/a\\/b/root/"}}
+                                                                       :readwrite "/collection/namespace/a\\/b/root/edit/"}}
             :let [expected (get expected perms-type)]]
       (testing (pr-str (list f-symb input))
         (is (= expected
@@ -298,16 +298,17 @@
              (perms/is-permissions-for-object? perms-path "/db/1/schema/PUBLIC/table/1/")))))
   (doseq [[expected perm obj]
           [[true  "/collection/1/read/" "/collection/1/read/"]
+           [false "/collection/1/read/" "/collection/1/edit/"]
            [false "/collection/1/read/" "/collection/1/"]
-           [false "/collection/1/read/" "/collection/1/moderate/"]
+
+           ;;[true "/collection/1/edit/" "/collection/1/read/"]
+           ;; ^ this is handled by is-partial-permissions-for-object?
+           [true "/collection/1/edit/" "/collection/1/edit/"]
+           [false "/collection/1/edit/" "/collection/1/"]
 
            [true  "/collection/1/" "/collection/1/read/"]
-           [true  "/collection/1/" "/collection/1/"]
-           [false "/collection/1/" "/collection/1/moderate/"]
-
-           [true "/collection/1/moderate/" "/collection/1/read/"]
-           [true "/collection/1/moderate/" "/collection/1/"]
-           [true "/collection/1/moderate/" "/collection/1/moderate/"]]]
+           [true  "/collection/1/" "/collection/1/edit/"]
+           [true "/collection/1/" "/collection/1/"]]]
     (testing (pr-str (list 'is-permissions-for-object? perm obj))
       (is (= expected
              (perms/is-permissions-for-object? perm obj))))))
@@ -525,12 +526,12 @@
 ;;; ------------------------------------ perms-objects-set-for-parent-collection -------------------------------------
 
 (deftest perms-objects-set-for-parent-collection-test
-  (doseq [[input expected] {[{:collection_id 1337} :moderate] #{"/collection/1337/moderate/"}
+  (doseq [[input expected] {[{:collection_id 1337} :moderate] #{"/collection/1337/"}
                             [{:collection_id 1337} :read]     #{"/collection/1337/read/"}
-                            [{:collection_id 1337} :write]    #{"/collection/1337/"}
-                            [{:collection_id nil} :moderate]  #{"/collection/root/moderate/"}
+                            [{:collection_id 1337} :write]    #{"/collection/1337/edit/"}
+                            [{:collection_id nil} :moderate]  #{"/collection/root/"}
                             [{:collection_id nil} :read]      #{"/collection/root/read/"}
-                            [{:collection_id nil} :write]     #{"/collection/root/"}}]
+                            [{:collection_id nil} :write]     #{"/collection/root/edit/"}}]
     (testing (pr-str (cons 'perms-objects-set-for-parent-collection input))
       (is (= expected
              (apply perms/perms-objects-set-for-parent-collection input)))))
@@ -692,13 +693,13 @@
                (perms))))
       (testing "Should be able to grant Root Collection readwrite perms"
         (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)
-        (is (= #{"/collection/root/" "/collection/namespace/currency/root/read/"}
+        (is (= #{"/collection/root/edit/" "/collection/namespace/currency/root/read/"}
                (perms))))
       (testing "Should be able to grant non-default namespace Root Collection readwrite perms"
         (perms/grant-collection-readwrite-permissions! group-id (assoc collection/root-collection :namespace "currency"))
-        (is (= #{"/collection/root/" "/collection/namespace/currency/root/read/" "/collection/namespace/currency/root/"}
+        (is (= #{"/collection/root/edit/" "/collection/namespace/currency/root/read/" "/collection/namespace/currency/root/edit/"}
                (perms))))
       (testing "Should be able to revoke non-default namespace Root Collection perms (shouldn't affect default namespace)"
         (perms/revoke-collection-permissions! group-id (assoc collection/root-collection :namespace "currency"))
-        (is (= #{"/collection/root/"}
+        (is (= #{"/collection/root/edit/"}
                (perms)))))))
