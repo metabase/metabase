@@ -37,7 +37,8 @@ export const getDashboardActions = (
 
   const buttons = [];
 
-  const canShareDashboard = dashboard.ordered_cards.length > 0;
+  const isLoaded = !!dashboard;
+  const canShareDashboard = isLoaded && dashboard.ordered_cards.length > 0;
 
   if (!isEditing && !isEmpty && !isPublic) {
     const extraButtonClassNames =
