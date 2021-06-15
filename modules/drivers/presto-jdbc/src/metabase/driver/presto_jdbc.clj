@@ -1,5 +1,5 @@
 (ns metabase.driver.presto-jdbc
-    "Presto JDBC driver. See https://prestodb.io/docs/current/ for complete dox."
+  "Presto JDBC driver. See https://prestodb.io/docs/current/ for complete dox."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -19,8 +19,10 @@
             [metabase.util.i18n :refer [trs]])
   (:import com.facebook.presto.jdbc.PrestoConnection
            com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql Connection PreparedStatement ResultSet]
-           [java.time OffsetDateTime OffsetTime ZonedDateTime]))
+           [java.sql Connection PreparedStatement ResultSet Time Types]
+           [java.time OffsetDateTime OffsetTime ZonedDateTime LocalTime]
+           [java.time.temporal ChronoField Temporal]
+           [java.util Calendar TimeZone]))
 
 (driver/register! :presto-jdbc, :parent #{:presto-common :sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
@@ -206,18 +208,36 @@
 (defmethod sql-jdbc.execute/set-parameter [:presto-jdbc OffsetDateTime]
   [_ prepared-statement i ^OffsetDateTime t]
   ;; necessary because PrestoPreparedStatement does not support OffsetDateTime in its setObject method
-  (jdbc/set-parameter (t/sql-timestamp t) prepared-statement i))
+  (jdbc/set-parameter (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0))) prepared-statement i))
 
 (defmethod sql-jdbc.execute/set-parameter [:presto-jdbc ZonedDateTime]
   [_ prepared-statement i ^OffsetDateTime t]
   ;; necessary because PrestoPreparedStatement does not support ZonedDateTime in its setObject method
-  (jdbc/set-parameter (t/sql-timestamp t) prepared-statement i))
+  (jdbc/set-parameter (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC"))) prepared-statement i))
+
+(defn- set-time-param
+  "Converts the given instance of `java.time.temporal`, assumed to be a time (either `LocalTime` or `OffsetTime`)
+  into a `java.sql.Time`, including milliseconds, and sets the result as a parameter of the `PreparedStatement` `ps`
+  at index `i`."
+  [^PreparedStatement ps ^Integer i ^Temporal t]
+  ;; for some reason, `java-time` can't handle passing millis to java.sql.Time, so this is the most straightforward way
+  ;; I could find to do it
+  ;; reported as https://github.com/dm3/clojure.java-time/issues/74
+  (let [millis-of-day (.get t ChronoField/MILLI_OF_DAY)]
+    (.setTime ps i (Time. millis-of-day))))
 
 (defmethod sql-jdbc.execute/set-parameter [:presto-jdbc OffsetTime]
   [_ ^PreparedStatement ps ^Integer i t]
   ;; necessary because PrestoPreparedStatement does not implement the setTime overload with the last param being
   ;; a Calendar instance
-  (.setTime ps i (t/sql-time t)))
+  (let [adjusted-tz   (t/with-offset-same-instant t (t/zone-offset 0))]
+    (set-time-param ps i adjusted-tz)))
+
+(defmethod sql-jdbc.execute/set-parameter [:presto-jdbc LocalTime]
+  [_ ^PreparedStatement ps ^Integer i t]
+  ;; necessary because PrestoPreparedStatement does not implement the setTime overload with the last param being
+  ;; a Calendar instance
+  (set-time-param ps i t))
 
 ;; TODO: need this?
 #_(defmethod sql.qp/cast-temporal-string [:presto-jdbc :Coercion/ISO8601->DateTime]
@@ -231,8 +251,33 @@
         (let [t (u.date/parse s)]
           t))))
 
-#_(defmethod sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/TIMESTAMP]
+#_(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
     [_ ^ResultSet rs _ i]
     #(.getTimestamp rs i))
+
+(defn- get-rs-utc-sql-time
+  "Gets a `java.sql.Time` instance from the given `rs` at the given index `i`, always in UTC (even if the
+  connection has a different session timezone set)."
+  [^ResultSet rs ^Integer i]
+  (.getTime rs i (Calendar/getInstance (TimeZone/getTimeZone (t/zone-id "UTC")))))
+
+(defn- sql-time->local-time
+  "Converts the given instance of `java.sql.Time` into a `java.time.LocalTime`, including milliseconds. Needed for
+  similar reasons as `set-time-param` above."
+  [sql-time]
+  ;; Similar to above, `java-time` can't get the millis from the `java.sql.Time` directly, so this appears to be
+  ;; the most straightforward way to do it
+  (LocalTime/ofNanoOfDay (* 1000000 (.getTime sql-time))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIME_WITH_TIMEZONE]
+  [_ ^ResultSet rs _ i]
+  #(-> (get-rs-utc-sql-time rs i)
+       sql-time->local-time
+       (t/with-offset-same-instant (t/zone-offset 0))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIME]
+  [_ ^ResultSet rs _ ^Integer i]
+  #(-> (get-rs-utc-sql-time rs i)
+       sql-time->local-time))
 
 (prefer-method driver/supports? [:presto-common :set-timezone] [:sql-jdbc :set-timezone])
