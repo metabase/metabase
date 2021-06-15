@@ -12,6 +12,8 @@ import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
 
+import { updateSettings as defaultUpdateSettings } from "../settings";
+
 const VALIDATIONS = {
   email: {
     validate: value => MetabaseUtils.validEmail(value),
@@ -33,7 +35,7 @@ const SAVE_SETTINGS_BUTTONS_STATES = {
   null,
   (dispatch, { updateSettings }) => ({
     updateSettings:
-      updateSettings || (settings => dispatch(updateSettings(settings))),
+      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
   }),
   null,
   { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/

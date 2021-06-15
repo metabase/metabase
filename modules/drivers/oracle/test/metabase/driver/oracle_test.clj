@@ -217,22 +217,23 @@
                   :where  [:<= (hsql/raw "rownum") 100]})
                (#'sql.qp/mbql->honeysql
                 :oracle
-                (mt/mbql-query venues
-                  {:source-table $$venues
-                   :order-by     [[:asc $id]]
-                   :filter       [:=
-                                  &test_data_categories__via__cat.categories.name
-                                  [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
-                   :fields       [$id $name $category_id $latitude $longitude $price]
-                   :limit        100
-                   :joins        [{:source-table $$categories
-                                   :alias        "test_data_categories__via__cat",
-                                   :strategy     :left-join
-                                   :condition    [:=
-                                                  $category_id
-                                                  &test_data_categories__via__cat.categories.id]
-                                   :fk-field-id  (mt/id :venues :category_id)
-                                   :fields       :none}]}))))))))
+                (qp/query->preprocessed
+                 (mt/mbql-query venues
+                   {:source-table $$venues
+                    :order-by     [[:asc $id]]
+                    :filter       [:=
+                                   &test_data_categories__via__cat.categories.name
+                                   [:value "BBQ" {:base_type :type/Text, :semantic_type :type/Name, :database_type "VARCHAR"}]]
+                    :fields       [$id $name $category_id $latitude $longitude $price]
+                    :limit        100
+                    :joins        [{:source-table $$categories
+                                    :alias        "test_data_categories__via__cat",
+                                    :strategy     :left-join
+                                    :condition    [:=
+                                                   $category_id
+                                                   &test_data_categories__via__cat.categories.id]
+                                    :fk-field-id  (mt/id :venues :category_id)
+                                    :fields       :none}]})))))))))
 
 (deftest oracle-connect-with-ssl-test
   (mt/test-driver :oracle

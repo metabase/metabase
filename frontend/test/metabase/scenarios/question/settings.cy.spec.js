@@ -3,6 +3,7 @@ import {
   restore,
   openOrdersTable,
   visitQuestionAdhoc,
+  popover,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -144,6 +145,26 @@ describe("scenarios > question > settings", () => {
           .eq(index)
           .contains(column_name);
       }
+    });
+
+    it("should change to column formatting when sidebar is already open (metabase#16043)", () => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: { "source-table": ORDERS_ID },
+          database: 1,
+        },
+      });
+
+      cy.findByText("Settings").click(); // open settings sidebar
+      cy.findByText("Table options"); // confirm it's open
+      cy.get(".TableInteractive")
+        .findByText("Subtotal")
+        .click(); // open subtotal column header actions
+      popover().within(() => cy.icon("gear").click()); // open subtotal column settings
+
+      cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
+      cy.findByText("Column title"); // shows subtotal column settings
     });
   });
 
