@@ -533,7 +533,14 @@
             [(hsql/call :ISNULL :last_edit_first_name)]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
-           (api-coll/children-sort-clause [:last-edited-by :asc] :mysql)))))
+           (api-coll/children-sort-clause [:last-edited-by :asc] :mysql))))
+  (testing "Sortinb by model"
+    (is (= [[:model_ranking :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:model :asc] :postgres)))
+    (is (= [[:model_ranking :desc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:model :desc] :mysql)))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
