@@ -183,6 +183,24 @@
                  (collection-tree-names-only (map :id [parent-collection child-collection])
                                              (mt/user-http-request :rasta :get 200 "collection/tree")))))))
 
+    (testing "Namespace parameter"
+      (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
+                      Collection [{coins-id :id} {:name "Coin Collection", :namespace "currency"}]]
+        (let [ids [normal-id coins-id]]
+          (testing "shouldn't show Collections of a different `:namespace` by default"
+            (is (= [{:name "Normal Collection", :children []}]
+                   (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree")))))
+
+          (perms/grant-collection-read-permissions! (group/all-users) coins-id)
+          (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
+            (testing "?namespace=currency"
+              (is (= [{:name "Coin Collection", :children []}]
+                     (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=currency")))))
+
+            (testing "?namespace=stamps"
+              (is (= []
+                     (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=stamps")))))))))
+
     (testing "Tree should elide Collections for which we have no permissions (#14280)"
       ;; Create hierarchy like
       ;;
