@@ -507,6 +507,9 @@ describeWithToken("formatting > sandboxes", () => {
        * Related issues: metabase#10474, metabase#14629
        */
 
+      // skipping the workaround test because the function `runAndSaveQuestion`
+      // relies on the existence of a save button on a saved question that is not dirty
+      // which is a bug fixed in ssue metabase#14302
       ["normal" /* , "workaround" */].forEach(test => {
         it(`${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`, () => {
           cy.server();
