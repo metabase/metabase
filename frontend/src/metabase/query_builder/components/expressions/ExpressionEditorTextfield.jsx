@@ -265,7 +265,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         displayError.push(compileError);
       }
     }
-    this.setState({ displayError });
+    this.setState({ displayError, helpText: null });
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (this.state.expression) {
