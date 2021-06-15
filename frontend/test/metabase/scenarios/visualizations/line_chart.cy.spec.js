@@ -370,7 +370,7 @@ describe("scenarios > visualizations > line chart", () => {
         .should("eq", "Created At");
       cy.get(".y-axis-label")
         .invoke("text")
-        .should("eq", "Average of price");
+        .should("eq", "Average of Price");
     });
   });
 });
