@@ -14,6 +14,7 @@ import ExternalLink from "metabase/components/ExternalLink";
 import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
+  getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
@@ -116,6 +117,7 @@ export default class TableSimple extends Component {
       settings,
       getColumnTitle,
       card,
+      series,
     } = this.props;
     const { rows, cols } = data;
     const limit = getIn(card, ["dataset_query", "query", "limit"]) || undefined;
@@ -203,6 +205,10 @@ export default class TableSimple extends Component {
                     data-testid="table-row"
                   >
                     {rows[rowIndex].map((value, columnIndex) => {
+                      const clickedRowData = getTableClickedObjectRowData(
+                        series,
+                        rowIndex,
+                      );
                       const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(
                         data,
@@ -210,6 +216,7 @@ export default class TableSimple extends Component {
                         rowIndex,
                         columnIndex,
                         isPivoted,
+                        clickedRowData,
                       );
                       const columnSettings = settings.column(column);
 
