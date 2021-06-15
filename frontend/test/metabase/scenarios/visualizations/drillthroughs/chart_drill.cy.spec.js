@@ -70,7 +70,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it.skip("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
+  it("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
     cy.createQuestion({
       name: "13457_Q1",
       query: {
