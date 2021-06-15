@@ -224,6 +224,6 @@
     (mt/dataset attempted-murders
       (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
         (mt/with-temporary-setting-values [report-timezone timezone]
-          (let [expected (expected-attempts)]
-            (is (= expected
-                   (select-keys (attempts) (keys expected))))))))))
+          (let [expected (expected-attempts)
+                actual   (select-keys (attempts) (keys expected))]
+            (is (= expected actual))))))))

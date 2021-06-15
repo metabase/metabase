@@ -16,12 +16,14 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.i18n :refer [trs]])
   (:import com.facebook.presto.jdbc.PrestoConnection
            com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types]
            [java.time Instant LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [java.time.temporal ChronoField Temporal]))
+           [java.time.temporal ChronoField Temporal]
+           [java.util Calendar TimeZone]))
 
 (driver/register! :presto-jdbc, :parent #{:presto-common :sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
@@ -285,23 +287,43 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData rs-meta ^Integer i]
-  #(let [timestamp (.getTimestamp rs i)
-         local-dt  (t/local-date-time timestamp)
-         type-name (.getColumnTypeName rs-meta i)
-         base-type (presto-common/presto-type->base-type type-name)]
+  #(let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+         ts-utc      (.getTimestamp rs i (Calendar/getInstance (TimeZone/getTimeZone "UTC")))
+         ts-rep      (when-not (str/blank? report-zone)
+                       (.getTimestamp rs i (Calendar/getInstance (TimeZone/getTimeZone report-zone))))
+         ts-raw      (.getTimestamp rs i) ; in practice, this is the same as ts-rep, since it uses the session TZ to
+                                          ; build the calendar param (which we set to the report zone)
+         ;; set impl1? true to make `metabase.query-processor-test.timezones-test/time-timezone-handling-test` pass
+         ;; but most things under `metabase.query-processor-test.date-bucketing-test` fail
+         ;; set to false to do the opposite
+         impl1?      true
+         timestamp   (if impl1? ts-raw ts-utc)
+         local-dt    (t/local-date-time timestamp)
+         type-name   (.getColumnTypeName rs-meta i)
+         base-type   (presto-common/presto-type->base-type type-name)]
      ;; for both `timestamp` and `timestamp with time zone`, the JDBC type reported by the driver is
      ;; `Types/TIMESTAMP`, hence we also need to check the column type name to differentiate between them here
      (if (isa? base-type :type/DateTimeWithTZ)
        ;; this also shouldn't really be so difficult
-       (t/offset-date-time
-         (.get local-dt ChronoField/YEAR)
-         (.get local-dt ChronoField/MONTH_OF_YEAR)
-         (.get local-dt ChronoField/DAY_OF_MONTH)
-         (.get local-dt ChronoField/HOUR_OF_DAY)
-         (.get local-dt ChronoField/MINUTE_OF_HOUR)
-         (.get local-dt ChronoField/SECOND_OF_MINUTE)
-         (.get local-dt ChronoField/NANO_OF_SECOND)
-         (t/zone-offset 0))
+       (if impl1? (t/offset-date-time
+                   (.get local-dt ChronoField/YEAR)
+                   (.get local-dt ChronoField/MONTH_OF_YEAR)
+                   (.get local-dt ChronoField/DAY_OF_MONTH)
+                   (.get local-dt ChronoField/HOUR_OF_DAY)
+                   (.get local-dt ChronoField/MINUTE_OF_HOUR)
+                   (.get local-dt ChronoField/SECOND_OF_MINUTE)
+                   (.get local-dt ChronoField/NANO_OF_SECOND)
+                   (t/zone-offset 0))
+
+                  (t/zoned-date-time
+                    (.get local-dt ChronoField/YEAR)
+                    (.get local-dt ChronoField/MONTH_OF_YEAR)
+                    (.get local-dt ChronoField/DAY_OF_MONTH)
+                    (.get local-dt ChronoField/HOUR_OF_DAY)
+                    (.get local-dt ChronoField/MINUTE_OF_HOUR)
+                    (.get local-dt ChronoField/SECOND_OF_MINUTE)
+                    (.get local-dt ChronoField/NANO_OF_SECOND)
+                    (t/zone-id (or report-zone "UTC"))))
        local-dt))) ; else a local date time (no zone), so just return that
 
 (prefer-method driver/supports? [:presto-common :set-timezone] [:sql-jdbc :set-timezone])
