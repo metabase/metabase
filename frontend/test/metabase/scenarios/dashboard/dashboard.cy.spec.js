@@ -146,7 +146,7 @@ describe("scenarios > dashboard", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 
-  it.skip("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
+  it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
     cy.createQuestion({
       name: "13597",
       query: {
@@ -162,6 +162,7 @@ describe("scenarios > dashboard", () => {
             {
               id: "92eb69ea",
               name: "ID",
+              sectionId: "id",
               slug: "id",
               type: "id",
             },
@@ -194,11 +195,13 @@ describe("scenarios > dashboard", () => {
                   click_behavior: {
                     type: "crossfilter",
                     parameterMapping: {
-                      id: "92eb69ea",
-                      source: { id: "ID", name: "ID", type: "column" },
-                      target: {
+                      "92eb69ea": {
                         id: "92eb69ea",
-                        type: "parameter",
+                        source: { id: "ID", name: "ID", type: "column" },
+                        target: {
+                          id: "92eb69ea",
+                          type: "parameter",
+                        },
                       },
                     },
                   },
