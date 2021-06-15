@@ -299,7 +299,7 @@
      :repl-options
      {:init    (do (require 'metabase.core)
                    (metabase.core/-main))
-      :timeout 180000}}]
+      :timeout 240000}}]
 
    ;; DISABLED FOR NOW SINCE IT'S BROKEN -- SEE #12181
    ;; start the dev HTTP server with 'lein ring server'
