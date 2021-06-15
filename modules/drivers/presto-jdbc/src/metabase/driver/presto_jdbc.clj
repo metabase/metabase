@@ -19,8 +19,8 @@
             [metabase.util.i18n :refer [trs]])
   (:import com.facebook.presto.jdbc.PrestoConnection
            com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql Connection PreparedStatement ResultSet Time Types ResultSetMetaData]
-           [java.time Instant OffsetDateTime OffsetTime ZonedDateTime LocalTime]
+           [java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types]
+           [java.time Instant LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [java.time.temporal ChronoField Temporal]))
 
 (driver/register! :presto-jdbc, :parent #{:presto-common :sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
@@ -257,10 +257,10 @@
     [_ ^ResultSet rs _ i]
     #(.getTimestamp rs i))
 
-(defn- sql-time->local-time
+(defn- ^LocalTime sql-time->local-time
   "Converts the given instance of `java.sql.Time` into a `java.time.LocalTime`, including milliseconds. Needed for
   similar reasons as `set-time-param` above."
-  [sql-time]
+  [^Time sql-time]
   ;; Similar to above, `java-time` can't get the millis from the `java.sql.Time` directly, so this appears to be
   ;; the most straightforward way to do it
   (LocalTime/ofInstant (Instant/ofEpochMilli (.getTime sql-time)) (t/zone-id "UTC")))
