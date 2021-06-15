@@ -107,7 +107,7 @@
   implementation."
   [driver conn catalog schema]
   (let [sql (presto-common/describe-schema-sql driver catalog schema)]
-    (log/trace (trs "Running statement in describe-schema: {0}" sql))
+    (log/info (trs "Running statement in describe-schema: {0}" sql))
     (into #{} (comp (filter (fn [{table-name :table}]
                                 (have-select-privilege? driver conn schema table-name)))
                     (map (fn [{table-name :table}]
@@ -120,7 +120,7 @@
   implementation."
   [driver conn catalog]
   (let [sql (presto-common/describe-catalog-sql driver catalog)]
-    (log/trace (trs "Running statement in all-schemas: {0}" sql))
+    (log/info (trs "Running statement in all-schemas: {0}" sql))
     (into []
           (map (fn [{:keys [schema] :as full}]
                  (when-not (contains? presto-common/excluded-schemas schema)
@@ -139,7 +139,7 @@
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
                      jdbc/get-connection)]
     (let [sql (presto-common/describe-table-sql driver catalog schema table-name)]
-      (log/trace (trs "Running statement in describe-table: {0}" sql))
+      (log/info (trs "Running statement in describe-table: {0}" sql))
       {:schema schema
        :name   table-name
        :fields (into
