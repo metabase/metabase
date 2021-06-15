@@ -37,7 +37,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       .should("have.class", "cursor-default");
   });
 
-  it.skip("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
+  it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
     cy.createDashboard("15077D").then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
@@ -50,7 +50,6 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
     cy.icon("share")
       .closest("a")
-      .should("have.class", "cursor-pointer")
       .click();
     cy.findByText("Dashboard subscriptions").click();
   });

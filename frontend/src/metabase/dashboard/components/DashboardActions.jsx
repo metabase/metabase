@@ -30,8 +30,6 @@ export const getDashboardActions = (
     setRefreshElapsedHook,
     onRefreshPeriodChange,
     onSharingClick,
-    onEmbeddingClick,
-    dashcardData,
   },
 ) => {
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
@@ -39,10 +37,7 @@ export const getDashboardActions = (
 
   const buttons = [];
 
-  /* we consider the dashboard to be shareable if there is at least one card with data in it on the dashboard
-    markdown cards don't appear in dashcardData so we check to see if there is at least one value
-  */
-  const canShareDashboard = Object.keys(dashcardData).length > 0;
+  const canShareDashboard = dashboard.ordered_cards.length > 0;
 
   if (!isEditing && !isEmpty && !isPublic) {
     const extraButtonClassNames =
