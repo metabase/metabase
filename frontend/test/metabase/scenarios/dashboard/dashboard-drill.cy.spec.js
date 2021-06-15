@@ -523,7 +523,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.location("pathname").should("eq", "/it/worked");
   });
 
-  it.skip("should not remove click behavior on 'reset to defaults' (metabase#14919)", () => {
+  it("should not remove click behavior on 'reset to defaults' (metabase#14919)", () => {
     const LINK_NAME = "Home";
 
     cy.createQuestion({
