@@ -2,6 +2,8 @@
   "Tests for /api/collection endpoints."
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [honeysql.core :as hsql]
+            [metabase.api.collection :as api-coll]
             [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
                                      PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
                                      Revision User]]
@@ -504,6 +506,34 @@
                (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card"))
                     :data
                     (map (comp :last_name :last-edit-info)))))))))
+
+(deftest children-sort-clause-test
+  (testing "Default sort"
+    (doseq [app-db [:mysql :h2 :postgres]]
+      (is (= [[:%lower.name :asc]]
+             (api-coll/children-sort-clause nil app-db)))))
+  (testing "Sorting by last-edited-at"
+    (is (= [[(hsql/call :ISNULL :last_edit_timestamp)]
+            [:last_edit_timestamp :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-at :asc] :mysql)))
+    (is (= [[:last_edit_timestamp :nulls-last]
+            [:last_edit_timestamp :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-at :asc] :postgres))))
+  (testing "Sorting by last-edited-by"
+    (is (= [[:last_edit_last_name :nulls-last]
+            [:last_edit_last_name :asc]
+            [:last_edit_first_name :nulls-last]
+            [:last_edit_first_name :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-by :asc] :postgres)))
+    (is (= [[(hsql/call :ISNULL :last_edit_last_name)]
+            [:last_edit_last_name :asc]
+            [(hsql/call :ISNULL :last_edit_first_name)]
+            [:last_edit_first_name :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-by :asc] :mysql)))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
