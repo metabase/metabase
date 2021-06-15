@@ -507,7 +507,7 @@ describeWithToken("formatting > sandboxes", () => {
        * Related issues: metabase#10474, metabase#14629
        */
 
-      ["normal", "workaround"].forEach(test => {
+      ["normal" /* , "workaround" */].forEach(test => {
         it(`${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`, () => {
           cy.server();
           cy.route("POST", "/api/card/*/query").as("cardQuery");
