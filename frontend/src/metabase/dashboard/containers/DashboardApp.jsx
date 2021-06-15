@@ -1,10 +1,14 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 import { push } from "react-router-redux";
+import { withRouter } from "react-router";
 import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import Modal from "metabase/components/Modal";
+import ConfirmContent from "metabase/components/ConfirmContent";
 
 import Dashboard from "metabase/dashboard/components/Dashboard";
 
@@ -66,12 +70,16 @@ const mapDispatchToProps = {
   fetchDatabaseMetadata,
   setErrorPage,
   onChangeLocation: push,
+  push,
 };
 
 type DashboardAppState = {
   addCardOnLoad: number | null,
+  nextLocation: Boolean,
+  confirmed: Boolean,
 };
 
+@withRouter
 @connect(
   mapStateToProps,
   mapDispatchToProps,
@@ -83,21 +91,49 @@ type DashboardAppState = {
 export default class DashboardApp extends Component {
   state: DashboardAppState = {
     addCardOnLoad: null,
+    nextLocation: false,
+    confirmed: false,
   };
 
   UNSAFE_componentWillMount() {
+    this.props.router.setRouteLeaveHook(this.props.route, this.routerWillLeave);
+
     const options = parseHashOptions(window.location.hash);
     if (options.add) {
       this.setState({ addCardOnLoad: parseInt(options.add) });
     }
   }
 
+  routerWillLeave = nextLocation => {
+    if (this.props.isDirty && !this.state.confirmed) {
+      this.setState({ nextLocation: nextLocation, confirmed: false });
+      return false;
+    }
+  };
+
   render() {
+    const { nextLocation } = this.state;
+    const { push } = this.props;
+
     return (
       <div className="shrink-below-content-size full-height">
         <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />
         {/* For rendering modal urls */}
         {this.props.children}
+        <Modal isOpen={nextLocation}>
+          <ConfirmContent
+            title={t`You have unsaved changes`}
+            message={t`Do you want to leave this page and discard your changes?`}
+            onClose={() => {
+              this.setState({ nextLocation: false });
+            }}
+            onAction={() => {
+              this.setState({ nextLocation: false, confirmed: true }, () => {
+                push(nextLocation.pathname, nextLocation.state);
+              });
+            }}
+          />
+        </Modal>
       </div>
     );
   }
