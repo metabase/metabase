@@ -17,8 +17,8 @@ docker build \
 docker run \
        --network host \
        -v /var/run/docker.sock:/var/run/docker.sock \
-       --mount type=bind,source="$(readlink -f ~/.aws)",target=/root/.aws,readonly \
-       --mount type=bind,source="$(readlink -f ~/.ssh)",target=/root/.ssh,readonly \
+       --mount type=bind,source="$(greadlink -f ~/.aws)",target=/root/.aws,readonly \
+       --mount type=bind,source="$(greadlink -f ~/.ssh)",target=/root/.ssh,readonly \
        --env DOCKERHUB_EMAIL="$DOCKERHUB_EMAIL" \
        --env DOCKERHUB_USERNAME="$DOCKERHUB_USERNAME" \
        --env DOCKERHUB_PASSWORD="$DOCKERHUB_PASSWORD" \
