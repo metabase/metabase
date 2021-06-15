@@ -70,7 +70,7 @@
   (try
     (s/validate CustomGeoJSON geojson)
     (catch Throwable e
-      (throw (ex-info (tru "Invalid custom GeoJSON.") {:status-code 400} e))))
+      (throw (ex-info (tru "Invalid custom GeoJSON") {:status-code 400} e))))
   (or (valid-geojson-url? geojson)
       (throw (ex-info (invalid-location-msg) {:status-code 400}))))
 
@@ -98,7 +98,7 @@
         (respond (-> (rr/response is)
                      (rr/content-type "application/json"))))
       (catch Throwable e
-        (raise (ex-info (tru "Invalid custom GeoJSON.") {:status-code 400}))))
+        (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
     (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" key) {:status-code 400}))))
 
 (api/defendpoint-async GET "/"
@@ -113,6 +113,6 @@
       (respond (-> (rr/response is)
                    (rr/content-type "application/json"))))
     (catch Throwable e
-      (raise (ex-info (tru "Invalid custom GeoJSON.") {:status-code 400})))))
+      (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
 
 (api/define-routes)
