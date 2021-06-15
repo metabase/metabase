@@ -297,7 +297,7 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it.skip("should correctly display a revision state after a restore (metabase#12581)", () => {
+  it("should correctly display a revision state after a restore (metabase#12581)", () => {
     const ORIGINAL_QUERY = "SELECT * FROM ORDERS WHERE {{filter}} LIMIT 2";
 
     // Start with the original version of the question made with API
@@ -342,7 +342,7 @@ describe("scenarios > question > native", () => {
     cy.findByText(/Open Editor/i).click();
 
     cy.log("Reported failing on v0.35.3");
-    cy.findByText(ORIGINAL_QUERY);
+    cy.get(".ace_content").contains(ORIGINAL_QUERY);
     // Filter dropdown field
     cy.get("fieldset").contains("Filter");
   });
