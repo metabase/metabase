@@ -287,3 +287,26 @@ export function mergeSettings(first: Settings = {}, second: Settings = {}) {
   }
   return merged;
 }
+
+export function getClickBehaviorSettings(settings) {
+  const newSettings = {};
+
+  if (settings.click_behavior) {
+    newSettings.click_behavior = settings.click_behavior;
+  }
+
+  if (settings.column_settings) {
+    Object.entries(settings.column_settings).forEach(([key, fieldSettings]) => {
+      if (fieldSettings.click_behavior == null) {
+        return;
+      }
+
+      newSettings.column_settings = newSettings.column_settings || {};
+      newSettings.column_settings[key] = {
+        click_behavior: fieldSettings.click_behavior,
+      };
+    });
+  }
+
+  return newSettings;
+}
