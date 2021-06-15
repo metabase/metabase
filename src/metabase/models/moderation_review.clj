@@ -1,5 +1,6 @@
 (ns metabase.models.moderation-review
   (:require [metabase.models.interface :as i]
+            [metabase.models.notification :as notification]
             [metabase.models.permissions :as perms]
             [metabase.moderation :as moderation]
             [metabase.util :as u]
@@ -39,27 +40,43 @@
                                         :status              "open"}
     :status "resolved"))
 
-(defn- pre-insert-or-update
+(defn- handle-request-resolution!
   [maybe-old-review new-review]
+  (when (newly-reviewed? (:status maybe-old-review) (:status new-review))
+    (resolve-requests! (merge maybe-old-review new-review))))
+
+(defn- create-notifications!
+  [{:keys [moderated_item_id moderated_item_type moderator_id id]}]
+  (as-> (db/select-field :requester_id 'ModerationRequest
+          :moderated_item_id   moderated_item_id
+          :moderated_item_type (name moderated_item_type)) <>
+    (set <>)
+    (disj <> moderator_id)
+    (map (fn [requester_id]
+           {:notifier_id   id
+            :notifier_type "moderation_review"
+            :user_id       requester_id})
+         <>)
+    (notification/create-notifications! <>)))
+
+(defn- post-insert
+  [new-review]
   (u/prog1 new-review
-    (when (newly-reviewed? (:status maybe-old-review) (:status new-review))
-      (resolve-requests! (merge maybe-old-review new-review)))))
+    (handle-request-resolution! nil new-review)
+    (create-notifications! new-review)))
 
-(defn- pre-insert
+(defn- post-update
   [new-review]
-  (pre-insert-or-update nil new-review))
-
-(defn- pre-update
-  [new-review]
-  (pre-insert-or-update (ModerationReview (u/the-id new-review)) new-review))
+  (u/prog1 new-review
+    (handle-request-resolution! (ModerationReview (u/the-id new-review)) new-review)))
 
 (u/strict-extend (class ModerationReview)
   models/IModel
   (merge models/IModelDefaults
          {:properties (constantly {:timestamped? true})
           :types      (constantly {:moderated_item_type :keyword})
-          :pre-insert pre-insert
-          :pre-update pre-update})
+          :post-insert post-insert
+          :post-update post-update})
 
   ;; Todo: this is wrong, but what should it be?
   i/IObjectPermissions
