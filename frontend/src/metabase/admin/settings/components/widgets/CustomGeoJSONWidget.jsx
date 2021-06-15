@@ -339,7 +339,7 @@ const EditMap = ({
           </SettingContainer>
         </div>
       </div>
-      <div className="flex-full ml4 relative bordered rounded flex my4">
+      <div className="flex-auto ml4 relative bordered rounded flex my4">
         {geoJson || geoJsonLoading || geoJsonError ? (
           <LoadingAndErrorWrapper loading={geoJsonLoading} error={geoJsonError}>
             {() => (
