@@ -92,10 +92,17 @@
                     {:value resource-geojson})
                    ((mt/user->client :crowberto) :get 200 "setting/custom-geojson")))))))))
 
-(deftest proxy-endpoint-test
+(deftest url-proxy-endpoint-test
+  (testing "GET /api/geojson"
+    (testing "test the endpoint that fetches JSON files given a URL"
+      (is (= {:type        "Point"
+                :coordinates [37.77986 -122.429]}
+               ((mt/user->client :rasta) :get 200 {:url test-geojson-url}))))))
+
+(deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"
     (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
-      (testing "test the endpoint that acts as a proxy for JSON files"
+      (testing "test the endpoint fetches JSON files given a GeoJSON key"
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
                ((mt/user->client :rasta) :get 200 "geojson/middle-earth"))))
