@@ -24,6 +24,15 @@ init(reducers, getRoutes, store => {
     if (url.indexOf("/api/user/current") >= 0) {
       return;
     }
+
+    // If SSO is enabled, url for login with email and password
+    // is `/auth/login/password` instead of `/auth/login`.
+    // So if call to api when signing in fails, let’s stay in this url.
+    // Otherwise it will redirect us to the Google auth interaction.
+    if (url === "/api/session") {
+      return;
+    }
+
     store.dispatch(clearCurrentUser());
     store.dispatch(push("/auth/login"));
   });

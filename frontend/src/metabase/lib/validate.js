@@ -14,7 +14,6 @@ export const validators = {
 
 function makeValidate(steps = []) {
   function validate(...args) {
-    console.log("🚀", { args, steps });
     return steps.reduce((error, step) => error || step(...args), false);
   }
   function all(...args) {
