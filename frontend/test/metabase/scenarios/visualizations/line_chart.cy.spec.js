@@ -338,6 +338,41 @@ describe("scenarios > visualizations > line chart", () => {
         .and("contain", RENAMED_SECOND_SERIES);
     }
   });
+
+  describe.skip("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],
+            breakout: [
+              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
+              ["field", PRODUCTS.CATEGORY, null],
+            ],
+            filter: ["=", ["field", PRODUCTS.CATEGORY, null], "Doohickey"],
+          },
+          type: "query",
+        },
+        display: "line",
+      });
+      cy.findByText("Category is Doohickey");
+    });
+
+    it("should not drop the chart legend (metabase#4995)", () => {
+      cy.get(".LegendItem").should("contain", "Doohickey");
+    });
+
+    it("should display correct axis labels (metabase#12782)", () => {
+      cy.get(".x-axis-label")
+        .invoke("text")
+        .should("eq", "Created At");
+      cy.get(".y-axis-label")
+        .invoke("text")
+        .should("eq", "Average of Price");
+    });
+  });
 });
 
 function testPairedTooltipValues(val1, val2) {
