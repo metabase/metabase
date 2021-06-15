@@ -108,7 +108,7 @@
 (deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"
     (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
-      (testing "test the endpoint fetches JSON files given a GeoJSON key"
+      (testing "test the endpoint that fetches JSON files given a GeoJSON key"
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
                ((mt/user->client :rasta) :get 200 "geojson/middle-earth"))))
