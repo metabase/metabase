@@ -6,6 +6,7 @@ Cypress.Commands.add(
     display = "table",
     database = 1,
     visualization_settings = {},
+    collection_position = null,
   } = {}) => {
     cy.log(`Create a question: ${name}`);
     cy.request("POST", "/api/card", {
@@ -17,6 +18,7 @@ Cypress.Commands.add(
       },
       display,
       visualization_settings,
+      collection_position,
     });
   },
 );

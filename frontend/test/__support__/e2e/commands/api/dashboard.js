@@ -1,4 +1,10 @@
-Cypress.Commands.add("createDashboard", name => {
-  cy.log(`Create a dashboard: ${name}`);
-  cy.request("POST", "/api/dashboard", { name });
-});
+Cypress.Commands.add(
+  "createDashboard",
+  (name, { collection_position = null } = {}) => {
+    cy.log(`Create a dashboard: ${name}`);
+    cy.request("POST", "/api/dashboard", {
+      name,
+      collection_position,
+    });
+  },
+);

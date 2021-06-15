@@ -1,24 +1,46 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { Box } from "grid-styled";
+import PropTypes from "prop-types";
+import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
 
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import HeaderModal from "metabase/components/HeaderModal";
-import TitleAndDescription from "metabase/components/TitleAndDescription";
-import EditBar from "metabase/components/EditBar";
-import EditWarning from "metabase/components/EditWarning";
 import { getScrollY } from "metabase/lib/dom";
 
-export default class Header extends Component {
-  static defaultProps = {
-    headerButtons: [],
-    editingTitle: "",
-    editingSubtitle: "",
-    editingButtons: [],
-    headerClassName: "py1 lg-py2 xl-py3 wrapper",
-  };
+import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import EditBar from "metabase/components/EditBar";
+import EditWarning from "metabase/components/EditWarning";
+import HeaderModal from "metabase/components/HeaderModal";
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
 
+const propTypes = {
+  analyticsContext: PropTypes.string,
+  editingTitle: PropTypes.string,
+  editingSubtitle: PropTypes.string,
+  editingButtons: PropTypes.arrayOf(PropTypes.node),
+  editWarning: PropTypes.string,
+  headerButtons: PropTypes.arrayOf(PropTypes.node),
+  headerClassName: PropTypes.string,
+  headerModalMessage: PropTypes.string,
+  isEditing: PropTypes.bool,
+  isEditingInfo: PropTypes.bool,
+  item: PropTypes.object.isRequired,
+  objectType: PropTypes.string.isRequired,
+  hasBadge: PropTypes.bool,
+  children: PropTypes.node,
+  setItemAttributeFn: PropTypes.func,
+  onHeaderModalDone: PropTypes.func,
+  onHeaderModalCancel: PropTypes.func,
+};
+
+const defaultProps = {
+  headerButtons: [],
+  editingTitle: "",
+  editingSubtitle: "",
+  editingButtons: [],
+  headerClassName: "py1 lg-py2 xl-py3 wrapper",
+};
+
+class Header extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -86,7 +108,9 @@ export default class Header extends Component {
   }
 
   render() {
-    const { item } = this.props;
+    const { item, hasBadge } = this.props;
+    const hasLastEditInfo = !!item["last-edit-info"];
+
     let titleAndDescription;
     if (this.props.item && this.props.item.id != null) {
       titleAndDescription = (
@@ -146,12 +170,18 @@ export default class Header extends Component {
           <Box py={2}>
             <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
-            {this.props.showBadge && (
-              <CollectionBadge
-                collectionId={item.collection_id}
-                analyticsContext={this.props.analyticsContext}
-              />
-            )}
+            <Flex direction="row" align="center">
+              {hasBadge && (
+                <CollectionBadge
+                  collectionId={item.collection_id}
+                  analyticsContext={this.props.analyticsContext}
+                />
+              )}
+              {hasBadge && hasLastEditInfo && (
+                <span className="mx1 text-light text-smaller">•</span>
+              )}
+              {hasLastEditInfo && <LastEditInfoLabel item={item} />}
+            </Flex>
           </Box>
 
           <div
@@ -166,3 +196,8 @@ export default class Header extends Component {
     );
   }
 }
+
+Header.propTypes = propTypes;
+Header.defaultProps = defaultProps;
+
+export default Header;
