@@ -19,10 +19,9 @@
             [metabase.util.i18n :refer [trs]])
   (:import com.facebook.presto.jdbc.PrestoConnection
            com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql Connection PreparedStatement ResultSet Time Types]
-           [java.time OffsetDateTime OffsetTime ZonedDateTime LocalTime]
-           [java.time.temporal ChronoField Temporal]
-           [java.util Calendar TimeZone]))
+           [java.sql Connection PreparedStatement ResultSet Time Types ResultSetMetaData]
+           [java.time Instant OffsetDateTime OffsetTime ZonedDateTime LocalTime]
+           [java.time.temporal ChronoField Temporal]))
 
 (driver/register! :presto-jdbc, :parent #{:presto-common :sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
@@ -258,29 +257,51 @@
     [_ ^ResultSet rs _ i]
     #(.getTimestamp rs i))
 
-(defn- get-rs-utc-sql-time
-  "Gets a `java.sql.Time` instance from the given `rs` at the given index `i`, always in UTC (even if the
-  connection has a different session timezone set)."
-  [^ResultSet rs ^Integer i]
-  (.getTime rs i (Calendar/getInstance (TimeZone/getTimeZone (t/zone-id "UTC")))))
-
 (defn- sql-time->local-time
   "Converts the given instance of `java.sql.Time` into a `java.time.LocalTime`, including milliseconds. Needed for
   similar reasons as `set-time-param` above."
   [sql-time]
   ;; Similar to above, `java-time` can't get the millis from the `java.sql.Time` directly, so this appears to be
   ;; the most straightforward way to do it
-  (LocalTime/ofNanoOfDay (* 1000000 (.getTime sql-time))))
-
-(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIME_WITH_TIMEZONE]
-  [_ ^ResultSet rs _ i]
-  #(-> (get-rs-utc-sql-time rs i)
-       sql-time->local-time
-       (t/with-offset-same-instant (t/zone-offset 0))))
+  (LocalTime/ofInstant (Instant/ofEpochMilli (.getTime sql-time)) (t/zone-id "UTC")))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIME]
-  [_ ^ResultSet rs _ ^Integer i]
-  #(-> (get-rs-utc-sql-time rs i)
-       sql-time->local-time))
+  [_ ^ResultSet rs ^ResultSetMetaData rs-meta ^Integer i]
+  #(let [local-time (-> (.getTime rs i)
+                        sql-time->local-time)
+         type-name  (.getColumnTypeName rs-meta i)
+         base-type  (presto-common/presto-type->base-type type-name)]
+     ;; for both `time` and `time with time zone`, the JDBC type reported by the driver is `Types/TIME`, hence
+     ;; we also need to check the column type name to differentiate between them here
+     (if (isa? base-type :type/TimeWithTZ)
+       ;; this shouldn't really be so difficult
+       (t/offset-time
+         (.get local-time ChronoField/HOUR_OF_DAY)
+         (.get local-time ChronoField/MINUTE_OF_HOUR)
+         (.get local-time ChronoField/SECOND_OF_MINUTE)
+         (.get local-time ChronoField/NANO_OF_SECOND)
+         (t/zone-offset 0))
+       local-time))) ; else a local time (no zone), so just return that
+
+(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
+  [_ ^ResultSet rs ^ResultSetMetaData rs-meta ^Integer i]
+  #(let [timestamp (.getTimestamp rs i)
+         local-dt  (t/local-date-time timestamp)
+         type-name (.getColumnTypeName rs-meta i)
+         base-type (presto-common/presto-type->base-type type-name)]
+     ;; for both `timestamp` and `timestamp with time zone`, the JDBC type reported by the driver is
+     ;; `Types/TIMESTAMP`, hence we also need to check the column type name to differentiate between them here
+     (if (isa? base-type :type/DateTimeWithTZ)
+       ;; this also shouldn't really be so difficult
+       (t/offset-date-time
+         (.get local-dt ChronoField/YEAR)
+         (.get local-dt ChronoField/MONTH_OF_YEAR)
+         (.get local-dt ChronoField/DAY_OF_MONTH)
+         (.get local-dt ChronoField/HOUR_OF_DAY)
+         (.get local-dt ChronoField/MINUTE_OF_HOUR)
+         (.get local-dt ChronoField/SECOND_OF_MINUTE)
+         (.get local-dt ChronoField/NANO_OF_SECOND)
+         (t/zone-offset 0))
+       local-dt))) ; else a local date time (no zone), so just return that
 
 (prefer-method driver/supports? [:presto-common :set-timezone] [:sql-jdbc :set-timezone])
