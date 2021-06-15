@@ -1,5 +1,6 @@
 import {
   describeWithToken,
+  modal,
   openOrdersTable,
   openPeopleTable,
   openReviewsTable,
@@ -494,77 +495,121 @@ describeWithToken("formatting > sandboxes", () => {
         cy.findByText("McClure-Lockman");
       });
 
-      it("advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)", () => {
-        cy.server();
-        cy.route("POST", "/api/card/*/query").as("cardQuery");
-        cy.route("PUT", "/api/card/*").as("questionUpdate");
+      /**
+       * This issue (metabase-enterprise#520) has a peculiar quirk:
+       *  - It works ONLY if SQL question is first run (`result_metadata` builds), and then the question is saved.
+       *  - In a real-world scenario it is quite possible for an admin to save that SQL question without running it first. This fails!
+       *  (more info: https://github.com/metabase/metabase-enterprise/issues/520#issuecomment-772528159)
+       *
+       * That's why this test has 2 versions that reflect both scenarios. We'll call them "normal" and "workaround".
+       * Until the underlying issue is fixed, "normal" scenario will be skipped.
+       *
+       * Related issues: metabase#10474, metabase#14629
+       */
 
-        cy.createNativeQuestion({
-          name: "EE_520_Q1",
-          native: {
-            query:
-              "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL > 10",
-            "template-tags": {
-              sandbox: {
-                "display-name": "Sandbox",
-                id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
-                name: "sandbox",
-                type: "number",
+      ["normal", "workaround"].forEach(test => {
+        it(`${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`, () => {
+          cy.server();
+          cy.route("POST", "/api/card/*/query").as("cardQuery");
+          cy.route("PUT", "/api/card/*").as("questionUpdate");
+
+          cy.createNativeQuestion({
+            name: "EE_520_Q1",
+            native: {
+              query:
+                "SELECT * FROM ORDERS WHERE USER_ID={{sandbox}} AND TOTAL > 10",
+              "template-tags": {
+                sandbox: {
+                  "display-name": "Sandbox",
+                  id: "1115dc4f-6b9d-812e-7f72-b87ab885c88a",
+                  name: "sandbox",
+                  type: "number",
+                },
               },
             },
-          },
-        }).then(({ body: { id: CARD_ID } }) => {
-          cy.sandboxTable({
-            table_id: ORDERS_ID,
-            card_id: CARD_ID,
-            attribute_remappings: {
-              attr_uid: ["variable", ["template-tag", "sandbox"]],
-            },
-          });
-        });
+          }).then(({ body: { id: CARD_ID } }) => {
+            test === "workaround"
+              ? runAndSaveQuestion({ question: CARD_ID, sandboxValue: "1" })
+              : null;
 
-        cy.createNativeQuestion({
-          name: "EE_520_Q2",
-          native: {
-            query:
-              "SELECT * FROM PRODUCTS WHERE CATEGORY={{sandbox}} AND PRICE > 10",
-            "template-tags": {
-              sandbox: {
-                "display-name": "Sandbox",
-                id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
-                name: "sandbox",
-                type: "text",
+            cy.sandboxTable({
+              table_id: ORDERS_ID,
+              card_id: CARD_ID,
+              attribute_remappings: {
+                attr_uid: ["variable", ["template-tag", "sandbox"]],
+              },
+            });
+          });
+
+          cy.createNativeQuestion({
+            name: "EE_520_Q2",
+            native: {
+              query:
+                "SELECT * FROM PRODUCTS WHERE CATEGORY={{sandbox}} AND PRICE > 10",
+              "template-tags": {
+                sandbox: {
+                  "display-name": "Sandbox",
+                  id: "3d69ba99-7076-2252-30bd-0bb8810ba895",
+                  name: "sandbox",
+                  type: "text",
+                },
               },
             },
-          },
-        }).then(({ body: { id: CARD_ID } }) => {
-          cy.sandboxTable({
-            table_id: PRODUCTS_ID,
-            card_id: CARD_ID,
-            attribute_remappings: {
-              attr_cat: ["variable", ["template-tag", "sandbox"]],
-            },
+          }).then(({ body: { id: CARD_ID } }) => {
+            test === "workaround"
+              ? runAndSaveQuestion({
+                  question: CARD_ID,
+                  sandboxValue: "Widget",
+                })
+              : null;
+
+            cy.sandboxTable({
+              table_id: PRODUCTS_ID,
+              card_id: CARD_ID,
+              attribute_remappings: {
+                attr_cat: ["variable", ["template-tag", "sandbox"]],
+              },
+            });
           });
+
+          cy.signOut();
+          cy.signInAsSandboxedUser();
+
+          openOrdersTable();
+
+          cy.log("Reported failing on v1.36.x");
+
+          cy.log(
+            "It should show remapped Display Values instead of Product ID",
+          );
+          cy.get(".cellData")
+            .contains("Awesome Concrete Shoes")
+            .click();
+          cy.findByText(/View details/i).click();
+
+          cy.log(
+            "It should show object details instead of filtering by this Product ID",
+          );
+          // The name of this Vendor is visible in "details" only
+          cy.findByText("McClure-Lockman");
+
+          /**
+           * Helper function related to this test only!
+           */
+          function runAndSaveQuestion({ question, sandboxValue } = {}) {
+            // Run the question
+            cy.visit(`/question/${question}?sandbox=${sandboxValue}`);
+            // Wait for results
+            cy.wait("@cardQuery");
+            // Save the question
+            cy.findByText("Save").click();
+            modal().within(() => {
+              cy.button("Save").click();
+            });
+            // Wait for an update so the other queries don't accidentally cancel it
+            cy.wait("@questionUpdate");
+          }
         });
-
-        cy.signOut();
-        cy.signInAsSandboxedUser();
-
-        openOrdersTable();
-
-        cy.log("Reported failing on v1.36.x");
-
-        cy.log("It should show remapped Display Values instead of Product ID");
-        cy.get(".cellData")
-          .contains("Awesome Concrete Shoes")
-          .click();
-        cy.findByText(/View details/i).click();
-
-        cy.log(
-          "It should show object details instead of filtering by this Product ID",
-        );
-        // The name of this Vendor is visible in "details" only
-        cy.findByText("McClure-Lockman");
       });
 
       it("simple sandboxing should work (metabase#14629)", () => {
