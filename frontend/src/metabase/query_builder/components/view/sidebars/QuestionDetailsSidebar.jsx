@@ -79,7 +79,7 @@ function QuestionDetailsSidebar({
     case SIDEBAR_VIEWS.OPEN_ISSUES_PANEL:
       return (
         <ModerationRequestsPanel
-          returnText={t`Open issues`}
+          returnText={t`Open requests`}
           requests={getOpenRequests(question)}
           comments={comments}
           onReturn={onReturn}
