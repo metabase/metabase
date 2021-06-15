@@ -21,6 +21,6 @@ replacing the filename with the file you generated in previous step
 Looking for the official repository? Add the repo metabase.com/helm by doing
 
 ```bash
-$ helm repo add metabase https://www.metabase.com/helm/
+$ helm repo add metabase https://www.metabase.com/helm
 $ helm repo update
 ```
