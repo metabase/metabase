@@ -29,10 +29,12 @@ Cypress.Commands.add(
     display = "table",
     database = 1,
     visualization_settings = {},
+    collection_id = null,
   } = {}) => {
     cy.log(`Create a native question: ${name}`);
     cy.request("POST", "/api/card", {
       name,
+      collection_id,
       dataset_query: {
         type: "native",
         native,
