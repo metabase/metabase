@@ -1,6 +1,6 @@
 # Metabase Helm Chart
 
-This is the official source of Metabase Helm Chart. If you are looking about the documentation to deploy this into your K8S cluster, check out our documentation in [Metabase Operations Guide](https://metabase.com/docs/v0.28.1/operations-guide/running-metabase-on-kubernetes.html)
+This is the official source of Metabase Helm Chart. If you are looking about the documentation to deploy this into your K8S cluster, check out our documentation in [Metabase Operations Guide](https://metabase.com/docs/latest/operations-guide/running-metabase-on-kubernetes.html)
 
 If you want to package this chart, just do:
 
