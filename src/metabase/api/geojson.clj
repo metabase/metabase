@@ -107,6 +107,9 @@
   [{{:keys [url]} :body} respond raise]
   {url su/NonBlankString}
   (try
+    (or
+     (io/resource url)
+     (valid-url? url))
     (with-open [reader (io/reader (or (io/resource url)
                                       url))
                 is     (ReaderInputStream. reader)]
