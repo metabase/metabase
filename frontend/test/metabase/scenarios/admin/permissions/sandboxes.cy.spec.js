@@ -527,9 +527,12 @@ describeWithToken("formatting > sandboxes", () => {
               },
             },
           }).then(({ body: { id: CARD_ID } }) => {
-            test === "workaround"
-              ? visitQuestion({ question: CARD_ID, sandboxValue: "1" })
-              : null;
+            if (test === "workaround") {
+              visitQuestion({
+                question: CARD_ID,
+                sandboxValue: "1",
+              });
+            }
 
             cy.sandboxTable({
               table_id: ORDERS_ID,
@@ -555,12 +558,12 @@ describeWithToken("formatting > sandboxes", () => {
               },
             },
           }).then(({ body: { id: CARD_ID } }) => {
-            test === "workaround"
-              ? visitQuestion({
-                  question: CARD_ID,
-                  sandboxValue: "Widget",
-                })
-              : null;
+            if (test === "workaround") {
+              visitQuestion({
+                question: CARD_ID,
+                sandboxValue: "Widget",
+              });
+            }
 
             cy.sandboxTable({
               table_id: PRODUCTS_ID,
