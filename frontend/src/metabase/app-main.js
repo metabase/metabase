@@ -25,10 +25,10 @@ init(reducers, getRoutes, store => {
       return;
     }
 
-    // If SSO is enabled, url for login with email and password
+    // If SSO is enabled, page url for login with email and password
     // is `/auth/login/password` instead of `/auth/login`.
-    // So if call to api when signing in fails, let’s stay in this url.
-    // Otherwise it will redirect us to the Google auth interaction.
+    // So if call to api when signing in fails, let’s stay in the current page.
+    // Otherwise it will always redirect us to the Google auth interaction.
     if (url === "/api/session") {
       return;
     }
