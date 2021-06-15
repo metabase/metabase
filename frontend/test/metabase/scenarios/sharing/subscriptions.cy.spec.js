@@ -26,6 +26,17 @@ describe("scenarios > dashboard > subscriptions", () => {
       .should("have.class", "cursor-default");
   });
 
+  it("should not allow sharing if there are no dashboard cards", () => {
+    cy.createDashboard("15077D").then(({ body: { id: DASHBOARD_ID } }) => {
+      cy.visit(`/dashboard/${DASHBOARD_ID}`);
+    });
+    cy.findByText("This dashboard is looking empty.");
+
+    cy.icon("share")
+      .closest("a")
+      .should("have.class", "cursor-default");
+  });
+
   it.skip("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
     cy.createDashboard("15077D").then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
