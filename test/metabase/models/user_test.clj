@@ -56,8 +56,8 @@
                                                            :location (collection/children-location child-collection)}]]
           (is (set/subset?
                #{(perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))
-                 "/collection/child/"
-                 "/collection/grandchild/"}
+                 "/collection/child/edit/"
+                 "/collection/grandchild/edit/"}
                (->> (user/permissions-set (mt/user->id :lucky))
                     remove-non-collection-perms
                     (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))))))

@@ -729,8 +729,10 @@
   (initialize/initialize-if-needed! :db)
   (let [read-path                   (perms/collection-read-path collection-or-id)
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
+        moderate-path               (perms/collection-moderate-path collection-or-id)
         groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
-        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+        groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)
+        groups-with-moderate-perms  (db/select-field :group_id Permissions :object moderate-path)]
     (try
       (f)
       (finally
@@ -738,7 +740,9 @@
         (doseq [group-id groups-with-read-perms]
           (perms/grant-collection-read-permissions! group-id collection-or-id))
         (doseq [group-id groups-with-readwrite-perms]
-          (perms/grant-collection-readwrite-permissions! group-id collection-or-id))))))
+          (perms/grant-collection-readwrite-permissions! group-id collection-or-id))
+        (doseq [group-id groups-with-moderate-perms]
+          (perms/grant-collection-moderate-permissions! group-id collection-or-id))))))
 
 (defmacro with-discarded-collections-perms-changes
   "Execute `body`; then, in a `finally` block, restore permissions to `collection-or-id` to what they were originally."
@@ -751,7 +755,9 @@
      collection
      (fn []
        (db/delete! Permissions
-         :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
+         :object [:in #{(perms/collection-read-path collection)
+                        (perms/collection-readwrite-path collection)
+                        (perms/collection-moderate-path collection)}]
          :group_id [:not= (u/the-id (group/admin))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get

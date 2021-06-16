@@ -357,7 +357,7 @@
       (testing "Database details *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
                                 (disj :details))]
-          (doseq [db (:data ((mt/user->client :rasta) :get 200 "database"))]
+          (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
                      (set (keys db)))))))))
@@ -369,7 +369,7 @@
           [Database [{db-id :id1, db-name :name1} {:engine (u/qualified-name ::test-driver)}]
            Database [{db-id :id2, db-name :name2} {:engine (u/qualified-name ::test-driver)}]]
 
-          (let [db (:data ((mt/user->client :rasta) :get 200 (str "database" query-param)))]
+          (let [db (:data (mt/user-http-request :rasta :get 200 (str "database" query-param)))]
             (is (= 2 (count db)))))))
 
     ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
@@ -377,7 +377,7 @@
                          "?include=tables"]]
       (testing query-param
         (mt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
-          (doseq [db (:data ((mt/user->client :rasta) :get 200 (str "database" query-param)))]
+          (doseq [db (:data (mt/user-http-request :rasta :get 200 (str "database" query-param)))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= (expected-tables db)
                      (:tables db))))))))))

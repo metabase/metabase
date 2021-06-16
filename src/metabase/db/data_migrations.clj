@@ -253,7 +253,7 @@
     ;; 1. Grant Root Collection readwrite perms to all Groups. Except for admin since they already have root (`/`)
     ;; perms, and we don't want to put extra entries in there that confuse things
     (doseq [group-id non-admin-group-ids]
-      (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
+      (perms/grant-collection-moderate-permissions! group-id collection/root-collection))
     ;; 2. Create the new collections.
     (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
                                          Pulse     (trs "Migrated Pulses")
