@@ -450,9 +450,10 @@
     (hsql/call :count (->honeysql driver field))
     :%count.*))
 
-(defn- field->fn-field [field]
+(defn- field->fn-field
   "There's a lot of fancy join alias stuff that can't happen inside the fields for the params of SQL functions.
   This adds an option in the fields to say this clearly."
+  [field]
   (if
     (and (vector? field) (= :field (first field)))
     (let [[_ id-or-name options] field]
