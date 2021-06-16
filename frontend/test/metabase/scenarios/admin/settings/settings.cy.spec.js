@@ -187,7 +187,7 @@ describe("scenarios > admin > settings", () => {
     cy.contains(/^February 11, 2019, 9:40 PM$/);
   });
 
-  it.only("should correctly apply the globalized date formats (metabase#11394)", () => {
+  it("should correctly apply the globalized date formats (metabase#11394)", () => {
     cy.server();
     cy.route("PUT", "**/custom-formatting").as("saveFormatting");
 
