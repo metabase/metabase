@@ -293,9 +293,13 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Child");
         cy.findByText("Parent").should("not.exist");
         cy.findByText("Browse all items").click();
-        cy.findByText("Child");
-        cy.findByText("No Collection Tableton").should("not.exist");
-        cy.findByText("Parent").should("not.exist");
+
+        sidebar().within(() => {
+          cy.findByText("Our analytics");
+          cy.findByText("Child");
+          cy.findByText("Parent").should("not.exist");
+          cy.findByText("Your personal collection");
+        });
       });
 
       it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
