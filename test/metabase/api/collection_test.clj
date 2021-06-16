@@ -2,6 +2,8 @@
   "Tests for /api/collection endpoints."
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [honeysql.core :as hsql]
+            [metabase.api.collection :as api-coll]
             [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
                                      PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
                                      Revision User]]
@@ -182,6 +184,24 @@
           (is (= [{:name "Child", :children []}]
                  (collection-tree-names-only (map :id [parent-collection child-collection])
                                              (mt/user-http-request :rasta :get 200 "collection/tree")))))))
+
+    (testing "Namespace parameter"
+      (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
+                      Collection [{coins-id :id} {:name "Coin Collection", :namespace "currency"}]]
+        (let [ids [normal-id coins-id]]
+          (testing "shouldn't show Collections of a different `:namespace` by default"
+            (is (= [{:name "Normal Collection", :children []}]
+                   (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree")))))
+
+          (perms/grant-collection-read-permissions! (group/all-users) coins-id)
+          (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
+            (testing "?namespace=currency"
+              (is (= [{:name "Coin Collection", :children []}]
+                     (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=currency")))))
+
+            (testing "?namespace=stamps"
+              (is (= []
+                     (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree?namespace=stamps")))))))))
 
     (testing "Tree should elide Collections for which we have no permissions (#14280)"
       ;; Create hierarchy like
@@ -364,7 +384,8 @@
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
     (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
-                    User       [{user-id :id} {:first_name "Test" :last_name "User" :email "testuser@example.com"}]
+                    User       [{user1-id :id} {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}]
+                    User       [{user2-id :id} {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}]
                     Card       [{card1-id :id :as card1}
                                 {:name "Card with history 1" :collection_id collection-id}]
                     Card       [{card2-id :id :as card2}
@@ -373,47 +394,59 @@
                     Card       [_ {:name "AA" :collection_id collection-id}]
                     Revision   [_revision1 {:model    "Card"
                                             :model_id card1-id
-                                            :user_id  user-id
+                                            :user_id  user2-id
                                             :object   (revision/serialize-instance card1 card1-id card1)}]
                     Revision   [_revision2 {:model    "Card"
                                             :model_id card2-id
-                                            :user_id  user-id
+                                            :user_id  user1-id
                                             :object   (revision/serialize-instance card2 card2-id card2)}]]
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (db/execute! {:update :revision
                     ;; in the past
-                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 2)}
+                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
                     :where [:= :id (:id _revision1)]})
       (testing "Results include last edited information from the `Revision` table"
         (is (= [{:name "AA"}
                 {:name "Card with history 1",
                  :last-edit-info
                  {:id         true,
-                  :email      "testuser@example.com",
+                  :email      "zzzz@example.com",
                   :first_name "Test",
-                  :last_name  "User",
-                  ;; timestamp collapsed to true, ordinarily a OffsetDateTime
+                  :last_name  "ZZZZ",
                   :timestamp  true}}
                 {:name "Card with history 2",
                  :last-edit-info
                  {:id         true,
-                  :email      "testuser@example.com",
+                  :email      "aaaa@example.com",
                   :first_name "Test",
-                  :last_name  "User",
+                  :last_name  "AAAA",
+                  ;; timestamp collapsed to true, ordinarily a OffsetDateTime
                   :timestamp  true}}
                 {:name "ZZ"}]
                (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
                     mt/boolean-ids-and-timestamps
                     (map #(select-keys % [:name :last-edit-info]))))))
-      (testing "Results can be ordered by last-edited"
+      (testing "Results can be ordered by last-edited-at"
         (testing "ascending"
           (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited&sort_direction=asc"))
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=asc"))
                       :data
                       (map :name)))))
         (testing "descending"
           (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited&sort_direction=desc"))
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
+                      :data
+                      (map :name))))))
+      (testing "Results can be ordered by last-edited-by"
+        (testing "ascending"
+          ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
+          (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
+                      :data
+                      (map :name)))))
+        (testing "descending"
+          (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
+                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
                       :data
                       (map :name))))))
       (testing "Results can be ordered by model"
@@ -433,7 +466,84 @@
             (is (= [["card" "AA"] ["card" "ZZ"] ["pulse" "AA"] ["pulse" "ZZ"] ["dashboard" "AA"] ["dashboard" "ZZ"]]
                    (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=model&sort_direction=desc"))
                         :data
-                        (map (juxt :model :name)))))))))))
+                        (map (juxt :model :name)))))))))
+    (testing "Results have the lastest revision timestamp"
+      (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
+                      User       [{failuser-id :id} {:first_name "failure" :last_name "failure" :email "failure@example.com"}]
+                      User       [{passuser-id :id} {:first_name "pass" :last_name "pass" :email "pass@example.com"}]
+                      Card       [{card-id :id :as card}
+                                  {:name "card" :collection_id collection-id}]
+                      Dashboard  [{dashboard-id :id :as dashboard} {:name "dashboard" :collection_id collection-id}]
+                      Revision   [card-revision1
+                                  {:model    "Card"
+                                   :model_id card-id
+                                   :user_id  failuser-id
+                                   :object   (revision/serialize-instance card card-id card)}]
+                      Revision   [card-revision2
+                                  {:model    "Card"
+                                   :model_id card-id
+                                   :user_id  failuser-id
+                                   :object   (revision/serialize-instance card card-id card)}]
+                      Revision   [dash-revision1
+                                  {:model    "Dashboard"
+                                   :model_id dashboard-id
+                                   :user_id  failuser-id
+                                   :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]
+                      Revision   [dash-revision2
+                                  {:model    "Dashboard"
+                                   :model_id dashboard-id
+                                   :user_id  failuser-id
+                                   :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]]
+        (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
+          (db/execute! {:update :revision
+                        ;; in the past
+                        :set    {:timestamp (at-year 2015)}
+                        :where  [:in :id (map :id [card-revision1 dash-revision1])]})
+          ;; mark the later revisions with the user with name "pass". Note important that its the later revision by
+          ;; id. Query assumes increasing timestamps with ids
+          (db/execute! {:update :revision
+                        :set    {:timestamp (at-year 2021)
+                                 :user_id   passuser-id}
+                        :where  [:in :id (map :id [card-revision2 dash-revision2])]}))
+        (is (= ["pass" "pass"]
+               (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card"))
+                    :data
+                    (map (comp :last_name :last-edit-info)))))))))
+
+(deftest children-sort-clause-test
+  (testing "Default sort"
+    (doseq [app-db [:mysql :h2 :postgres]]
+      (is (= [[:%lower.name :asc]]
+             (api-coll/children-sort-clause nil app-db)))))
+  (testing "Sorting by last-edited-at"
+    (is (= [[(hsql/call :ISNULL :last_edit_timestamp)]
+            [:last_edit_timestamp :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-at :asc] :mysql)))
+    (is (= [[:last_edit_timestamp :nulls-last]
+            [:last_edit_timestamp :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-at :asc] :postgres))))
+  (testing "Sorting by last-edited-by"
+    (is (= [[:last_edit_last_name :nulls-last]
+            [:last_edit_last_name :asc]
+            [:last_edit_first_name :nulls-last]
+            [:last_edit_first_name :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-by :asc] :postgres)))
+    (is (= [[(hsql/call :ISNULL :last_edit_last_name)]
+            [:last_edit_last_name :asc]
+            [(hsql/call :ISNULL :last_edit_first_name)]
+            [:last_edit_first_name :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-by :asc] :mysql))))
+  (testing "Sortinb by model"
+    (is (= [[:model_ranking :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:model :asc] :postgres)))
+    (is (= [[:model_ranking :desc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:model :desc] :mysql)))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"

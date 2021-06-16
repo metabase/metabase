@@ -1233,6 +1233,16 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
+          name: e2e-tests-binning-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "binning-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/binning
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
           name: e2e-tests-sharing-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>

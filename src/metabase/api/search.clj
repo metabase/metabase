@@ -163,7 +163,7 @@
 ;; Databases can't be archived
 (defmethod archived-where-clause (class Database)
   [model archived?]
-  [:= 1 1])
+  [:= 1 (if archived? 2 1)])
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause (class Table)

@@ -21,14 +21,6 @@
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
 
-;; this existed long before 0.39.0, but that's when it was made public
-(def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
-  (try
-    (classloader/require 'metabase-enterprise.core)
-    true
-    (catch Throwable _
-      false)))
-
 ;; don't i18n this, it's legalese
 (log/info
  (format "\nMetabase %s" config/mb-version-string)
@@ -36,7 +28,7 @@
  (format "\n\nCopyright © %d Metabase, Inc." (.getYear (java.time.LocalDate/now)))
 
  (str "\n\n"
-      (if ee-available?
+      (if config/ee-available?
         (str (deferred-trs "Metabase Enterprise Edition extensions are PRESENT.")
              "\n\n"
              (deferred-trs "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License.")

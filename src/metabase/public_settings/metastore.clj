@@ -161,28 +161,28 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "whitelabel"))))
+  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "whitelabel")))))
 
 (defsetting enable-audit-app?
   "Should we allow use of the audit app?"
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "audit-app"))))
+  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "audit-app")))))
 
 (defsetting enable-sandboxes?
   "Should we enable data sandboxes (row and column-level permissions?"
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "sandboxes"))))
+  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "sandboxes")))))
 
 (defsetting enable-sso?
   "Should we enable SAML/JWT sign-in?"
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "sso"))))
+  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "sso")))))
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
@@ -195,4 +195,4 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean (seq (token-features)))))
+  :getter     (fn [] (and config/ee-available? (boolean (seq (token-features))))))

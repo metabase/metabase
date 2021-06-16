@@ -71,12 +71,15 @@
                              {:name     \"F\"
                               :children [{:name \"G\"}]}]}]}
      {:name \"H\"}]"
-  []
+  [namespace]
+  {namespace (s/maybe su/NonBlankString)}
   (collection/collections->tree
    (db/select Collection
-     {:where (collection/visible-collection-ids->honeysql-filter-clause
-              :id
-              (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))})))
+     {:where [:and
+              [:= :namespace namespace]
+              (collection/visible-collection-ids->honeysql-filter-clause
+               :id
+               (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -96,7 +99,7 @@
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
   #{"all" "is_pinned" "is_not_pinned"})
 
-(def ^:private valid-sort-columns #{"name" "last_edited" "model"})
+(def ^:private valid-sort-columns #{"name" "last_edited_at" "last_edited_by" "model"})
 (def ^:private valid-sort-directions #{"asc" "desc"})
 (defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
 
@@ -192,7 +195,7 @@
                      :left-join [[:revision :r2] [:and
                                                   [:= :r1.model_id :r2.model_id]
                                                   [:= :r1.model :r2.model]
-                                                  [:> :r1.id :r2.id]]]
+                                                  [:< :r1.id :r2.id]]]
                      :where [:and
                              [:= :r2.id nil]
                              [:= :r1.model (hx/literal "Card")]]} :r]
@@ -219,7 +222,7 @@
                      :left-join [[:revision :r2] [:and
                                                   [:= :r1.model_id :r2.model_id]
                                                   [:= :r1.model :r2.model]
-                                                  [:> :r1.id :r2.id]]]
+                                                  [:< :r1.id :r2.id]]]
                      :where [:and
                              [:= :r2.id nil]
                              [:= :r1.model (hx/literal "Dashboard")]]} :r]
@@ -344,32 +347,56 @@
   (into []
         (comp cat (map select-name) (distinct))
         (for [model [:card :dashboard :snippet :pulse :collection]]
-          (:select (collection-children-query model {:id 1 :location "/"} nil))))
-  )
+          (:select (collection-children-query model {:id 1 :location "/"} nil)))))
+
+
+(defn children-sort-clause
+  "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
+  treatment of nulls in the different app db types."
+  [sort-info db-type]
+  (case sort-info
+    nil                     [[:%lower.name :asc]]
+    [:name :asc]            [[:%lower.name :asc]]
+    [:name :desc]           [[:%lower.name :desc]]
+    [:last-edited-at :asc]  [(if (= db-type :mysql)
+                               [(hsql/call :ISNULL :last_edit_timestamp)]
+                               [:last_edit_timestamp :nulls-last])
+                             [:last_edit_timestamp :asc]
+                             [:%lower.name :asc]]
+    [:last-edited-at :desc] (remove nil?
+                                    [(case db-type
+                                       :mysql    [(hsql/call :ISNULL :last_edit_timestamp)]
+                                       :postgres [:last_edit_timestamp :desc :nulls-last]
+                                       :h2       nil)
+                                     [:last_edit_timestamp :desc]
+                                     [:%lower.name :asc]])
+    [:last-edited-by :asc]  [(if (= db-type :mysql)
+                               [(hsql/call :ISNULL :last_edit_last_name)]
+                               [:last_edit_last_name :nulls-last])
+                             [:last_edit_last_name :asc]
+                             (if (= db-type :mysql)
+                               [(hsql/call :ISNULL :last_edit_first_name)]
+                               [:last_edit_first_name :nulls-last])
+                             [:last_edit_first_name :asc]
+                             [:%lower.name :asc]]
+    [:last-edited-by :desc] (remove nil?
+                                    [(case db-type
+                                       :mysql    [(hsql/call :ISNULL :last_edit_last_name)]
+                                       :postgres [:last_edit_last_name :desc :nulls-last]
+                                       :h2       nil)
+                                     [:last_edit_last_name :desc]
+                                     (case db-type
+                                       :mysql    [(hsql/call :ISNULL :last_edit_first_name)]
+                                       :postgres [:last_edit_last_name :desc :nulls-last]
+                                       :h2       nil)
+                                     [:last_edit_first_name :desc]
+                                     [:%lower.name :asc]])
+    [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
+    [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
 
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]
-  (let [sql-order   (case sort-info
-                      nil                  [[:%lower.name :asc]]
-                      [:name :asc]         [[:%lower.name :asc]]
-                      [:name :desc]        [[:%lower.name :desc]]
-                      [:last-edited :asc]  [(if (= @mdb.env/db-type :mysql)
-                                              [(hsql/call :ISNULL :last_edit_timestamp)]
-                                              [:last_edit_timestamp :nulls-last])
-                                            [:last_edit_timestamp :asc]
-                                            [:%lower.name :asc]]
-                      [:last-edited :desc] (into
-                                            (case @mdb.env/db-type
-                                              :mysql
-                                              [[(hsql/call :ISNULL :last_edit_timestamp)]]
-                                              :postgres
-                                              [[(hsql/raw "last_edit_timestamp DESC NULLS LAST")]]
-                                              :h2
-                                              [])
-                                            [[:last_edit_timestamp :desc]
-                                             [:%lower.name :asc]])
-                      [:model :asc]        [[:model_ranking :asc]  [:%lower.name :asc]]
-                      [:model :desc]       [[:model_ranking :desc] [:%lower.name :asc]])
+  (let [sql-order   (children-sort-clause sort-info @mdb.env/db-type)
         models      (sort (map keyword models))
         queries     (for [model models]
                       (-> (collection-children-query model collection options)

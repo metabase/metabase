@@ -281,7 +281,7 @@
                                {:score (:score text-score), :weight 10 :name "text score"})
                          (filter :score))]
      {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
-                 (reduce + (map :weight (filter (comp pos? :score) scores))))
+                 (reduce + (map :weight scores)))
       :result (serialize result text-score scores)})))
 
 (defn top-results

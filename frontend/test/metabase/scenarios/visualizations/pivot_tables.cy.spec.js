@@ -751,7 +751,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
   });
 
-  it.skip("should show stand-alone row values in grouping when rows are collapsed (metabase#15211)", () => {
+  it("should show stand-alone row values in grouping when rows are collapsed (metabase#15211)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -809,6 +809,50 @@ describe("scenarios > visualizations > pivot tables", () => {
         .find(".Icon-dash")
         .click();
     }
+  });
+
+  it("should not show subtotals for flat tables", () => {
+    cy.intercept("POST", "api/dataset/pivot").as("createPivotedDataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+          ],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+        },
+        database: 1,
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+          ],
+          columns: [
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+          values: [["aggregation", 0]],
+        },
+        "pivot_table.collapsed_rows": {
+          value: [],
+          rows: [
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+          ],
+        },
+      },
+    });
+
+    cy.wait("@createPivotedDataset");
+    cy.findAllByText(/Totals for .*/i).should("have.length", 0);
   });
 });
 

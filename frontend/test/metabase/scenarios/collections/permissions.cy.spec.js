@@ -53,20 +53,16 @@ describe("collection permissions", () => {
                 it("pinning should work properly for both questions and dashboards", () => {
                   cy.visit("/collection/root");
                   // Assert that we're starting from a scenario with no pins
-                  cy.findByText("Pinned items").should("not.exist");
+                  cy.findByTestId("pinned-items").should("not.exist");
 
                   pinItem("Orders in a dashboard"); // dashboard
                   pinItem("Orders, Count"); // question
 
                   // Should see "pinned items" and items should be in that section
-                  cy.findByText("Pinned items")
-                    .parent()
-                    .within(() => {
-                      cy.findByText("Orders in a dashboard");
-                      cy.findByText("Orders, Count");
-                    });
-                  // Consequently, "Everything else" should now also be visible
-                  cy.findByText("Everything else");
+                  cy.findByTestId("pinned-items").within(() => {
+                    cy.findByText("Orders in a dashboard");
+                    cy.findByText("Orders, Count");
+                  });
                   // Only pinned dashboards should show up on the home page...
                   cy.visit("/");
                   cy.findByText("Orders in a dashboard");
@@ -147,6 +143,21 @@ describe("collection permissions", () => {
 
                 it("should be able to archive/unarchive dashboard", () => {
                   archiveUnarchive("Orders in a dashboard");
+                });
+
+                describe("archive page", () => {
+                  it("should show archived items (metabase#15080, metabase#16617)", () => {
+                    cy.skipOn(user === "nodata");
+                    cy.visit("collection/root");
+                    openEllipsisMenuFor("Orders");
+                    cy.findByText("Archive this item").click();
+                    cy.findByText("Archived question")
+                      .siblings(".Icon-close")
+                      .click();
+                    cy.findByText("View archive").click();
+                    cy.location("pathname").should("eq", "/archive");
+                    cy.findByText("Orders");
+                  });
                 });
 
                 describe("collections", () => {
@@ -685,7 +696,7 @@ function openEllipsisMenuFor(item, index = 0) {
   return cy
     .findAllByText(item)
     .eq(index)
-    .closest("a")
+    .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
 }

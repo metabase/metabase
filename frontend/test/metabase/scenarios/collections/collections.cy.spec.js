@@ -1,4 +1,3 @@
-import _ from "underscore";
 import {
   restore,
   setupLocalHostEmail,
@@ -7,10 +6,8 @@ import {
   openOrdersTable,
   sidebar,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
@@ -165,20 +162,6 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    describe("archive", () => {
-      it("should show archived items (metabase#15080)", () => {
-        cy.visit("collection/root");
-        openEllipsisMenuFor("Orders");
-        cy.findByText("Archive this item").click();
-        cy.findByText("Archived question")
-          .siblings(".Icon-close")
-          .click();
-        cy.findByText("View archive").click();
-        cy.location("pathname").should("eq", "/archive");
-        cy.findByText("Orders");
-      });
-    });
-
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
       it("should be in the root collection", () => {
@@ -248,80 +231,6 @@ describe("scenarios > collection_defaults", () => {
     });
   });
 
-  describe("pagination and filtering", () => {
-    const PAGE_SIZE = 25;
-    const ADDED_QUESTIONS = 13;
-    const ADDED_DASHBOARDS = 12;
-    const PRE_EXISTED_ITEMS = 4;
-
-    const TOTAL_ITEMS = ADDED_DASHBOARDS + ADDED_QUESTIONS + PRE_EXISTED_ITEMS;
-
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-
-      _.times(12, i => cy.createDashboard(`dashboard ${i}`));
-      _.times(13, i =>
-        cy.createQuestion({
-          name: `generated question ${i}`,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-            ],
-          },
-        }),
-      );
-    });
-
-    it("should allow to navigate back and forth", () => {
-      cy.visit("/collection/root");
-
-      // First page
-      cy.findByText(`1 - ${PAGE_SIZE}`);
-      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-
-      cy.findByTestId("next-page-btn").click();
-
-      // Second page
-      cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
-      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should(
-        "have.length",
-        TOTAL_ITEMS - PAGE_SIZE,
-      );
-      cy.findByTestId("next-page-btn").should("be.disabled");
-
-      cy.findByTestId("previous-page-btn").click();
-
-      // First page
-      cy.findByText(`1 - ${PAGE_SIZE}`);
-      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-    });
-
-    it("should allow to filter by item type", () => {
-      cy.visit("/collection/root");
-
-      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-
-      cy.findByText("Dashboards").click();
-      cy.findAllByTestId("collection-entry").should("have.length", 13);
-
-      cy.findByText("Questions").click();
-      cy.findAllByTestId("collection-entry").should("have.length", 16);
-
-      cy.findByText("Pulses").click();
-      cy.findAllByTestId("collection-entry").should("have.length", 0);
-
-      cy.findByText("Everything").click();
-      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
-    });
-  });
-
   describe("Collection related issues reproductions", () => {
     beforeEach(() => {
       restore();
@@ -329,6 +238,9 @@ describe("scenarios > collection_defaults", () => {
     });
 
     describe("nested collections with revoked parent access", () => {
+      const { first_name, last_name } = nocollection;
+      const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
+
       beforeEach(() => {
         // Create Parent collection within `Our analytics`
         cy.request("POST", "/api/collection", {
@@ -365,25 +277,31 @@ describe("scenarios > collection_defaults", () => {
         cy.signIn("nocollection");
       });
 
+      it.skip("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
+        cy.visit("/collection/root");
+        // Since this user doesn't have access rights to the root collection, it should render empty
+        cy.findByText("Nothing to see yet.");
+      });
+
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
         cy.visit("/");
         cy.findByText("Child");
         cy.findByText("Parent").should("not.exist");
         cy.findByText("Browse all items").click();
-        cy.findByText("Child");
-        cy.findByText("No Collection Tableton").should("not.exist");
-        cy.findByText("Parent").should("not.exist");
+
+        sidebar().within(() => {
+          cy.findByText("Our analytics");
+          cy.findByText("Child");
+          cy.findByText("Parent").should("not.exist");
+          cy.findByText("Your personal collection");
+        });
       });
 
       it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
-        const { first_name, last_name } = nocollection;
-
         openOrdersTable();
         cy.findByText("Save").click();
         // Click to choose which collection should this question be saved to
-        cy.findByText(
-          `${first_name} ${last_name}'s Personal Collection`,
-        ).click();
+        cy.findByText(revokedUsersPersonalCollectionName).click();
         popover().within(() => {
           cy.findByText(/Our analytics/i);
           cy.findByText(/My personal collection/i);
@@ -587,8 +505,6 @@ describe("scenarios > collection_defaults", () => {
       cy.visit("/collection/root");
       openEllipsisMenuFor("Orders in a dashboard");
       cy.findByText("Pin this item").click();
-
-      cy.findByText(/Pinned items/i);
       selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
       cy.findByText("1 item selected");
     });
@@ -693,14 +609,14 @@ function openDropdownFor(collectionName) {
 
 function openEllipsisMenuFor(item) {
   cy.findByText(item)
-    .closest("a")
+    .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
 }
 
 function selectItemUsingCheckbox(item, icon = "table") {
   cy.findByText(item)
-    .closest("a")
+    .closest("tr")
     .within(() => {
       cy.icon(icon).trigger("mouseover");
       cy.findByRole("checkbox")

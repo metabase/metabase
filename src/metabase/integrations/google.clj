@@ -1,21 +1,33 @@
 (ns metabase.integrations.google
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.api.common :as api]
+            [metabase.integrations.google.interface :as google.i]
             [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
             [metabase.models.user :as user :refer [User]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
             [schema.core :as s]
             [toucan.db :as db]))
 
+;; Load EE implementation if available
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.enhancements.integrations.google))
+
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
   :visibility :public)
 
-(defsetting google-auth-auto-create-accounts-domain
-  (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
+(define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
+  :getter (fn [] (setting/get-string :google-auth-auto-create-accounts-domain))
+  :setter (fn [domain]
+              (when (and domain (str/includes? domain ","))
+                ;; Multiple comma-separated domains is EE-only feature
+                (throw (ex-info (tru "Invalid domain") {:status-code 400})))
+              (setting/set-string! :google-auth-auto-create-accounts-domain domain)))
 
 (def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
 
@@ -45,8 +57,11 @@
   (= (email->domain email) domain))
 
 (defn- autocreate-user-allowed-for-email? [email]
-  (when-let [domain (google-auth-auto-create-accounts-domain)]
-    (email-in-domain? email domain)))
+  (boolean
+   (when-let [domains (google.i/google-auth-auto-create-accounts-domain)]
+     (some
+      (partial email-in-domain? email)
+      (str/split domains #"\s*,\s*")))))
 
 (defn- check-autocreate-user-allowed-for-email
   "Throws if an admin needs to intervene in the account creation."

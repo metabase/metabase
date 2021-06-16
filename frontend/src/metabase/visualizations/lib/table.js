@@ -1,21 +1,29 @@
 import type { DatasetData, Column } from "metabase-types/types/Dataset";
 import type { ClickObject } from "metabase-types/types/Visualization";
-import type { VisualizationSettings } from "metabase-types/types/Card";
 import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
+export function getTableClickedObjectRowData([series], rowIndex) {
+  const { rows, cols } = series.data;
+
+  return rows[rowIndex].map((value, index) => ({
+    value,
+    col: cols[index],
+  }));
+}
+
 export function getTableCellClickedObject(
-  data: DatasetData,
-  settings: VisualizationSettings,
-  rowIndex: number,
-  columnIndex: number,
-  isPivoted: boolean,
-): ClickObject {
+  data,
+  settings,
+  rowIndex,
+  columnIndex,
+  isPivoted,
+  clickedRowData,
+) {
   const { rows, cols } = data;
 
   const column = cols[columnIndex];
   const row = rows[rowIndex];
   const value = row[columnIndex];
-  const dataForClick = row.map((value, index) => ({ value, col: cols[index] }));
 
   if (isPivoted) {
     // if it's a pivot table, the first column is
@@ -27,7 +35,7 @@ export function getTableCellClickedObject(
         column,
         settings,
         dimensions: [row._dimension, column._dimension],
-        data: dataForClick,
+        data: clickedRowData,
       };
     }
   } else if (column.source === "aggregation") {
@@ -39,7 +47,7 @@ export function getTableCellClickedObject(
         .map((column, index) => ({ value: row[index], column }))
         .filter(dimension => dimension.column.source === "breakout"),
       origin: { rowIndex, row, cols },
-      data: dataForClick,
+      data: clickedRowData,
     };
   } else {
     return {
@@ -47,7 +55,7 @@ export function getTableCellClickedObject(
       column,
       settings,
       origin: { rowIndex, row, cols },
-      data: dataForClick,
+      data: clickedRowData,
     };
   }
 }

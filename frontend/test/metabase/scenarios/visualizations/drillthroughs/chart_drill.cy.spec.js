@@ -414,7 +414,36 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("Showing 85 rows");
   });
 
-  it.skip("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
+  it("should drill through on a bin of null values (#11345)", () => {
+    visitQuestionAdhoc({
+      name: "11345",
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.DISCOUNT, { binning: { strategy: "default" } }],
+          ],
+        },
+        type: "query",
+      },
+      display: "table",
+    });
+
+    // click on the Count column cell showing the count of null rows
+    cy.findByText("16,845").click();
+    cy.findByText("View these Orders").click();
+
+    // count number of distinct values in the Discount column
+    cy.findByText("Discount ($)").click();
+    cy.findByText("Distincts").click();
+
+    // there should be 0 distinct values since they are all null
+    cy.get(".TableInteractive-cellWrapper").contains("0");
+  });
+
+  it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
     cy.createQuestion({
       name: "15250",
       query: {
@@ -456,7 +485,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       });
     });
 
-    cy.get("[class*=PieChart__Donut]")
+    cy.findByTestId("pie-chart")
       .find("path")
       .first()
       .as("doohickeyChart")
