@@ -63,7 +63,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.location("pathname").should("eq", "/foo/111/param-value");
   });
 
-  it.skip("should insert values from hidden column on custom destination URL click through (metabase#13927)", () => {
+  it("should insert values from hidden column on custom destination URL click through (metabase#13927)", () => {
     cy.log("Create a question");
 
     createNativeQuestion(
