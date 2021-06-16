@@ -20,7 +20,11 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import Databases from "metabase/entities/databases";
 
-import { getEditingDatabase, getDatabaseCreationStep } from "../selectors";
+import {
+  getEditingDatabase,
+  getDatabaseCreationStep,
+  getInitializeError,
+} from "../selectors";
 
 import {
   reset,
@@ -51,6 +55,7 @@ const mapStateToProps = (state, props) => {
     selectedEngine: formValues ? formValues.engine : undefined,
     letUserControlSchedulingSaved: getLetUserControlScheduling(database),
     letUserControlSchedulingForm: getLetUserControlScheduling(formValues),
+    initializeError: getInitializeError(state),
   };
 };
 
@@ -136,6 +141,7 @@ export default class DatabaseEditApp extends Component {
       selectedEngine,
       letUserControlSchedulingSaved,
       letUserControlSchedulingForm,
+      initializeError,
     } = this.props;
     const { currentTab } = this.state;
     const editingExistingDatabase = database && database.id != null;
@@ -167,7 +173,10 @@ export default class DatabaseEditApp extends Component {
               )}
               <Flex>
                 <Box w={620}>
-                  <LoadingAndErrorWrapper loading={!database} error={null}>
+                  <LoadingAndErrorWrapper
+                    loading={!database}
+                    error={initializeError}
+                  >
                     {() => (
                       <Databases.Form
                         database={database}
