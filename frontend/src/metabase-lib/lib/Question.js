@@ -23,6 +23,7 @@ import {
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
+import { isStandard } from "metabase/lib/query/filter";
 
 import { memoize, sortObject } from "metabase-lib/lib/utils";
 
@@ -653,7 +654,9 @@ export default class Question {
     const query = this.query();
     if (this.isObjectDetail() && query instanceof StructuredQuery) {
       const filters = query.filters();
-      return filters[0] && filters[0][2];
+      if (filters[0] && isStandard(filters[0])) {
+        return filters[0][2];
+      }
     }
   }
 
