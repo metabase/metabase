@@ -100,10 +100,10 @@
     (testing "test the endpoint that fetches JSON files given a URL"
       (is (= {:type        "Point"
               :coordinates [37.77986 -122.429]}
-             ((mt/user->client :rasta) :get 200 "geojson" {:url test-geojson-url}))))
+             ((mt/user->client :rasta) :get 200 "geojson" :url test-geojson-url))))
     (testing "error is returned if URL connection fails"
       (is (= "GeoJSON URL failed to load"
-             ((mt/user->client :rasta) :get 400 "geojson" {:url test-broken-geojson-url}))))))
+             ((mt/user->client :rasta) :get 400 "geojson" :url test-broken-geojson-url))))))
 
 (deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"

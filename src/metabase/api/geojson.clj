@@ -5,6 +5,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
+            [ring.util.codec :as rc]
             [ring.util.response :as rr]
             [schema.core :as s])
   (:import java.net.URL
@@ -102,19 +103,19 @@
     (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" key) {:status-code 400}))))
 
 (api/defendpoint-async GET "/"
-  "Load a custom GeoJSON file based on a URL or file path provided in the request body.
+  "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
-  [{{:keys [url]} :body} respond raise]
+  [{{:keys [url]} :params} respond raise]
   {url su/NonBlankString}
   (try
-    (or
-     (io/resource url)
-     (valid-url? url))
-    (with-open [reader (io/reader (or (io/resource url)
-                                      url))
-                is     (ReaderInputStream. reader)]
-      (respond (-> (rr/response is)
-                   (rr/content-type "application/json"))))
+    (let [decoded-url (rc/url-decode url)]
+      (or (io/resource decoded-url)
+          (valid-url? decoded-url))
+      (with-open [reader (io/reader (or (io/resource decoded-url)
+                                        decoded-url))
+                  is     (ReaderInputStream. reader)]
+        (respond (-> (rr/response is)
+                     (rr/content-type "application/json")))))
     (catch Throwable e
       (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
 
