@@ -79,17 +79,22 @@ describe("scenarios > dashboard > text-box", () => {
       cy.findByText("Dashboard testing text");
     });
 
-    it.skip("should have a scroll bar for long text (metabase#8333)", () => {
+    it("should have a scroll bar for long text (metabase#8333)", () => {
+      cy.intercept("PUT", "/api/dashboard/2").as("dashboardUpdated");
+
       cy.visit(`/dashboard/2`);
 
-      // Add text box to dash
       addTextBox(
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
       );
       cy.findByText("Save").click();
-      cy.get(".CardVisualization").scrollTo("bottom");
-      cy.findByText("ex ea commodo consequat.");
-      cy.findByText("Lorem ipsum dolor sit amet").should("not.exist");
+
+      cy.wait("@dashboardUpdated");
+
+      // The test fails if there is no scroll bar
+      cy.get(".text-card-markdown")
+        .should("have.css", "overflow", "auto")
+        .scrollTo("bottom");
     });
   });
 });

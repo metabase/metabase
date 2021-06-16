@@ -9,7 +9,7 @@
             [metabase.integrations.common :as integrations.common]
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [ring.util.response :as resp])
   (:import java.net.URLEncoder))
 
@@ -78,8 +78,8 @@
                                          e))))
         login-attrs  (jwt-data->login-attributes jwt-data)
         email        (get jwt-data (jwt-attribute-email))
-        first-name   (get jwt-data (jwt-attribute-firstname) "Unknown")
-        last-name    (get jwt-data (jwt-attribute-lastname) "Unknown")
+        first-name   (get jwt-data (jwt-attribute-firstname) (trs "Unknown"))
+        last-name    (get jwt-data (jwt-attribute-lastname) (trs "Unknown"))
         user         (fetch-or-create-user! first-name last-name email login-attrs)
         session      (session/create-session! :sso user (request.u/device-info request))
         redirect-url (or redirect (URLEncoder/encode "/"))]

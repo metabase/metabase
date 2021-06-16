@@ -96,18 +96,13 @@ describe("scenarios > admin > settings", () => {
       .type("abc", { delay: 50 })
       .clear()
       .click()
-      .type("other.email@metabase.com")
+      .type("other.email@metabase.test")
       .blur();
     cy.wait("@saveSettings");
 
     cy.visit("/admin/settings/general");
     // after we refreshed, the field should still be "other.email"
-    emailInput().should("have.value", "other.email@metabase.com");
-
-    // reset the email
-    cy.request("PUT", "/api/setting/admin-email", {
-      value: "bob@metabase.com",
-    });
+    emailInput().should("have.value", "other.email@metabase.test");
   });
 
   it("should check for working https before enabling a redirect", () => {
