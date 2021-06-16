@@ -1,4 +1,5 @@
 import { push } from "react-router-redux";
+import _ from "underscore";
 
 import { init } from "metabase/app";
 import { getRoutes } from "metabase/routes";
@@ -29,7 +30,7 @@ init(reducers, getRoutes, store => {
     // is `/auth/login/password` instead of `/auth/login`.
     // So if call to api when signing in fails, let’s stay in the current page.
     // Otherwise it will always redirect us to the Google auth interaction.
-    if (url === "/api/session") {
+    if (_.contains(["/api/session", "/api/session/"], url)) {
       return;
     }
 
