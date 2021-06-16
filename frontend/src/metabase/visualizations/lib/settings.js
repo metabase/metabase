@@ -295,18 +295,27 @@ export function getClickBehaviorSettings(settings) {
     newSettings.click_behavior = settings.click_behavior;
   }
 
-  if (settings.column_settings) {
-    Object.entries(settings.column_settings).forEach(([key, fieldSettings]) => {
-      if (fieldSettings.click_behavior == null) {
-        return;
-      }
-
-      newSettings.column_settings = newSettings.column_settings || {};
-      newSettings.column_settings[key] = {
-        click_behavior: fieldSettings.click_behavior,
-      };
-    });
+  const columnSettings = getColumnClickBehavior(settings.column_settings);
+  if (columnSettings) {
+    newSettings.column_settings = columnSettings;
   }
 
   return newSettings;
+}
+
+function getColumnClickBehavior(columnSettings) {
+  if (columnSettings == null) {
+    return null;
+  }
+
+  return Object.entries(columnSettings)
+    .filter(([_, fieldSettings]) => fieldSettings.click_behavior != null)
+    .reduce((acc, [key, fieldSettings]) => {
+      return {
+        ...acc,
+        [key]: {
+          click_behavior: fieldSettings.click_behavior,
+        },
+      };
+    }, null);
 }
