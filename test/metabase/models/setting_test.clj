@@ -198,7 +198,7 @@
     (is (= {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
            (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" nil))))
 
-  (testing "user-facing info w/ db value, env var value, no default value -- the DB value should take precedence over the env var"
+  (testing "user-facing info w/ db value, env var value, no default value -- the env var should take precedence over the db value"
     (is (= {:value "WOW", :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using value of env var $MB_TEST_SETTING_1"}
            (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" "ENV VAR"))))
 
