@@ -272,7 +272,7 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it.skip("should not make the question dirty when there are no changes (metabase#14302)", () => {
+  it("should not make the question dirty when there are no changes (metabase#14302)", () => {
     cy.createNativeQuestion({
       name: "14302",
       native: {
