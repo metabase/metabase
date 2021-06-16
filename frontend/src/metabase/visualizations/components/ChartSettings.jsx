@@ -18,7 +18,10 @@ import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-import { updateSettings } from "metabase/visualizations/lib/settings";
+import {
+  updateSettings,
+  getClickBehaviorSettings,
+} from "metabase/visualizations/lib/settings";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
@@ -90,7 +93,9 @@ class ChartSettings extends Component {
 
   handleResetSettings = () => {
     MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
-    this.props.onChange({});
+
+    const settings = getClickBehaviorSettings(this._getSettings());
+    this.props.onChange(settings);
   };
 
   handleChangeSettings = changedSettings => {
