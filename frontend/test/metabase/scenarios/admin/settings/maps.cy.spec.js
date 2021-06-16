@@ -50,4 +50,17 @@ describe("scenarios > admin > settings > map settings", () => {
       expect(interception.response.statusCode).to.eq(200);
     });
   });
+
+  it("should show an informative error when adding an invalid URL", () => {
+    cy.visit("/admin/settings/maps");
+    cy.findByText("Add a map").click();
+    cy.findByPlaceholderText(
+      "Like https://my-mb-server.com/maps/my-map.json",
+    ).type("bad-url");
+    cy.findByText("Load").click();
+    cy.findByText(
+      "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath. " +
+        "URLs referring to hosts that supply internal hosting metadata are prohibited.",
+    );
+  });
 });
