@@ -195,8 +195,8 @@
 
    If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
   ^String [setting-definition-or-name]
-  (let [v (or (db-or-cache-value setting-definition-or-name)
-              (env-var-value setting-definition-or-name)
+  (let [v (or (env-var-value setting-definition-or-name)
+              (db-or-cache-value setting-definition-or-name)
               (str (:default (resolve-setting setting-definition-or-name))))]
     (when (seq v)
       v)))
