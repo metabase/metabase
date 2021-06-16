@@ -82,7 +82,7 @@
        :groups     (when sync-groups?
                      ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
                      ;; groups. Otherwise we have to make the inverse query to get them.
-                     (or (:memberof result)
+                     (or (u/one-or-many (:memberof result))
                          (user-groups ldap-connection dn uid settings group-membership-filter)
                          []))})))
 
