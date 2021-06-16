@@ -252,6 +252,9 @@ describe("scenarios > collection_defaults", () => {
     });
 
     describe("nested collections with revoked parent access", () => {
+      const { first_name, last_name } = nocollection;
+      const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
+
       beforeEach(() => {
         // Create Parent collection within `Our analytics`
         cy.request("POST", "/api/collection", {
@@ -289,15 +292,10 @@ describe("scenarios > collection_defaults", () => {
       });
 
       it.skip("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
-        const { first_name, last_name } = nocollection;
-
         cy.visit("/collection/root");
         cy.get(".ContentTable")
           .should("not.contain", "Child")
-          .and(
-            "not.contain",
-            `${first_name} ${last_name}'s Personal Collection`,
-          );
+          .and("not.contain", revokedUsersPersonalCollectionName);
       });
 
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
@@ -315,14 +313,10 @@ describe("scenarios > collection_defaults", () => {
       });
 
       it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
-        const { first_name, last_name } = nocollection;
-
         openOrdersTable();
         cy.findByText("Save").click();
         // Click to choose which collection should this question be saved to
-        cy.findByText(
-          `${first_name} ${last_name}'s Personal Collection`,
-        ).click();
+        cy.findByText(revokedUsersPersonalCollectionName).click();
         popover().within(() => {
           cy.findByText(/Our analytics/i);
           cy.findByText(/My personal collection/i);
