@@ -2,6 +2,8 @@
   "Tests for /api/collection endpoints."
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [honeysql.core :as hsql]
+            [metabase.api.collection :as api-coll]
             [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
                                      PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
                                      Revision User]]
@@ -398,7 +400,7 @@
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (db/execute! {:update :revision
                     ;; in the past
-                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 2)}
+                    :set {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
                     :where [:= :id (:id _revision1)]})
       (testing "Results include last edited information from the `Revision` table"
         (is (= [{:name "AA"}
@@ -504,6 +506,41 @@
                (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card"))
                     :data
                     (map (comp :last_name :last-edit-info)))))))))
+
+(deftest children-sort-clause-test
+  (testing "Default sort"
+    (doseq [app-db [:mysql :h2 :postgres]]
+      (is (= [[:%lower.name :asc]]
+             (api-coll/children-sort-clause nil app-db)))))
+  (testing "Sorting by last-edited-at"
+    (is (= [[(hsql/call :ISNULL :last_edit_timestamp)]
+            [:last_edit_timestamp :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-at :asc] :mysql)))
+    (is (= [[:last_edit_timestamp :nulls-last]
+            [:last_edit_timestamp :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-at :asc] :postgres))))
+  (testing "Sorting by last-edited-by"
+    (is (= [[:last_edit_last_name :nulls-last]
+            [:last_edit_last_name :asc]
+            [:last_edit_first_name :nulls-last]
+            [:last_edit_first_name :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-by :asc] :postgres)))
+    (is (= [[(hsql/call :ISNULL :last_edit_last_name)]
+            [:last_edit_last_name :asc]
+            [(hsql/call :ISNULL :last_edit_first_name)]
+            [:last_edit_first_name :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:last-edited-by :asc] :mysql))))
+  (testing "Sortinb by model"
+    (is (= [[:model_ranking :asc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:model :asc] :postgres)))
+    (is (= [[:model_ranking :desc]
+            [:%lower.name :asc]]
+           (api-coll/children-sort-clause [:model :desc] :mysql)))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
