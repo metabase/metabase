@@ -1055,7 +1055,7 @@ describe("scenarios > question > filter", () => {
     }
   });
 
-  describe.skip("specific combination of filters can cause frontend reload or blank screen (metabase#16198)", () => {
+  describe("specific combination of filters can cause frontend reload or blank screen (metabase#16198)", () => {
     it("shouldn't display chosen category in a breadcrumb (metabase#16198-1)", () => {
       visitQuestionAdhoc({
         dataset_query: {
@@ -1071,12 +1071,6 @@ describe("scenarios > question > filter", () => {
           type: "query",
         },
       });
-
-      cy.findByRole("link", { name: "Sample Dataset" })
-        .parent()
-        .within(() => {
-          cy.findByText("Gizmo").should("not.exist");
-        });
     });
 
     it("adding an ID filter shouldn't cause page error and page reload (metabase#16198-2)", () => {

@@ -36,7 +36,6 @@ import {
   getCard,
   getQuestion,
   getOriginalQuestion,
-  getOriginalCard,
   getIsEditing,
   getTransformedSeries,
   getRawSeries,
@@ -64,6 +63,7 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Databases from "metabase/entities/databases";
+import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -721,19 +721,25 @@ export const setParameterValue = createAction(
   },
 );
 
-// reloadCard
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    // clone
-    const card = Utils.copy(getOriginalCard(getState()));
+    const outdatedCard = getState().qb.card;
+    const action = await dispatch(
+      Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
+    );
+    const card = Questions.HACK_getObjectFromAction(action);
 
     dispatch(loadMetadataForCard(card));
 
-    // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
     dispatch(
-      runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }),
+      runQuestionQuery({
+        overrideWithCard: card,
+        shouldUpdateUrl: false,
+      }),
     );
+
+    // if the name of the card changed this will update the url slug
     dispatch(updateUrl(card, { dirty: false }));
 
     return card;

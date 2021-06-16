@@ -162,20 +162,6 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    describe("archive", () => {
-      it("should show archived items (metabase#15080)", () => {
-        cy.visit("collection/root");
-        openEllipsisMenuFor("Orders");
-        cy.findByText("Archive this item").click();
-        cy.findByText("Archived question")
-          .siblings(".Icon-close")
-          .click();
-        cy.findByText("View archive").click();
-        cy.location("pathname").should("eq", "/archive");
-        cy.findByText("Orders");
-      });
-    });
-
     // [quarantine]: cannot run tests that rely on email setup in CI (yet)
     describe.skip("a new pulse", () => {
       it("should be in the root collection", () => {
@@ -252,6 +238,9 @@ describe("scenarios > collection_defaults", () => {
     });
 
     describe("nested collections with revoked parent access", () => {
+      const { first_name, last_name } = nocollection;
+      const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
+
       beforeEach(() => {
         // Create Parent collection within `Our analytics`
         cy.request("POST", "/api/collection", {
@@ -288,25 +277,31 @@ describe("scenarios > collection_defaults", () => {
         cy.signIn("nocollection");
       });
 
+      it.skip("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
+        cy.visit("/collection/root");
+        // Since this user doesn't have access rights to the root collection, it should render empty
+        cy.findByText("Nothing to see yet.");
+      });
+
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
         cy.visit("/");
         cy.findByText("Child");
         cy.findByText("Parent").should("not.exist");
         cy.findByText("Browse all items").click();
-        cy.findByText("Child");
-        cy.findByText("No Collection Tableton").should("not.exist");
-        cy.findByText("Parent").should("not.exist");
+
+        sidebar().within(() => {
+          cy.findByText("Our analytics");
+          cy.findByText("Child");
+          cy.findByText("Parent").should("not.exist");
+          cy.findByText("Your personal collection");
+        });
       });
 
       it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
-        const { first_name, last_name } = nocollection;
-
         openOrdersTable();
         cy.findByText("Save").click();
         // Click to choose which collection should this question be saved to
-        cy.findByText(
-          `${first_name} ${last_name}'s Personal Collection`,
-        ).click();
+        cy.findByText(revokedUsersPersonalCollectionName).click();
         popover().within(() => {
           cy.findByText(/Our analytics/i);
           cy.findByText(/My personal collection/i);

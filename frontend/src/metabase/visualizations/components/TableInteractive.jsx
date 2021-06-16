@@ -14,6 +14,7 @@ import { memoize } from "metabase-lib/lib/utils";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
+  getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
@@ -339,6 +340,7 @@ export default class TableInteractive extends Component {
         rowIndex,
         columnIndex,
         this.props.isPivoted,
+        this.props.series,
       );
     } catch (e) {
       console.error(e);
@@ -347,18 +349,21 @@ export default class TableInteractive extends Component {
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
   _getCellClickedObjectCached(
-    data: DatasetData,
-    settings: VisualizationSettings,
-    rowIndex: number,
-    columnIndex: number,
-    isPivoted: boolean,
+    data,
+    settings,
+    rowIndex,
+    columnIndex,
+    isPivoted,
+    series,
   ) {
+    const clickedRowData = getTableClickedObjectRowData(series, rowIndex);
     return getTableCellClickedObject(
       data,
       settings,
       rowIndex,
       columnIndex,
       isPivoted,
+      clickedRowData,
     );
   }
 

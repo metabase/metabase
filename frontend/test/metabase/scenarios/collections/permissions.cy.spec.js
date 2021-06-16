@@ -145,6 +145,21 @@ describe("collection permissions", () => {
                   archiveUnarchive("Orders in a dashboard");
                 });
 
+                describe("archive page", () => {
+                  it("should show archived items (metabase#15080, metabase#16617)", () => {
+                    cy.skipOn(user === "nodata");
+                    cy.visit("collection/root");
+                    openEllipsisMenuFor("Orders");
+                    cy.findByText("Archive this item").click();
+                    cy.findByText("Archived question")
+                      .siblings(".Icon-close")
+                      .click();
+                    cy.findByText("View archive").click();
+                    cy.location("pathname").should("eq", "/archive");
+                    cy.findByText("Orders");
+                  });
+                });
+
                 describe("collections", () => {
                   it("shouldn't be able to archive/edit root or personal collection", () => {
                     cy.visit("/collection/root");

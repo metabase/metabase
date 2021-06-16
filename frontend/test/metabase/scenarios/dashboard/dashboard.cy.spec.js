@@ -715,99 +715,99 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
   });
 
-  ["normal", "corrupted"].forEach(test => {
-    it(`${test.toUpperCase()} version:\n filters should work even if one of them is corrupted (metabase #15279)`, () => {
-      cy.skipOn(test === "corrupted"); // Remove this line when the issue is fixed
-      cy.createQuestion({
-        name: "15279",
-        query: { "source-table": PEOPLE_ID },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard("15279D").then(({ body: { id: DASHBOARD_ID } }) => {
-          const parameters = [
-            {
-              name: "List",
-              slug: "list",
-              id: "6fe14171",
-              type: "category",
-            },
-            {
-              name: "Search",
-              slug: "search",
-              id: "4db4913a",
-              type: "category",
-            },
-          ];
+  it("filters should work even if one of them is corrupted (metabase #15279)", () => {
+    const parameters = [
+      {
+        name: "List",
+        slug: "list",
+        id: "6fe14171",
+        type: "category",
+      },
+      {
+        name: "Search",
+        slug: "search",
+        id: "4db4913a",
+        type: "category",
+      },
+      // This filter is corrupted because it's missing `name` and the `slug`
+      {
+        name: "",
+        slug: "",
+        id: "af72ce9c",
+        type: "category",
+      },
+    ];
 
-          if (test === "corrupted") {
-            // This filter is corrupted because it's missing `name` and the `slug`
-            parameters.push({
-              name: "",
-              slug: "",
-              id: "af72ce9c",
-              type: "category",
-            });
-          }
-          // Add filters to the dashboard
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-            parameters,
-          });
-
-          // Add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            // Connect filters to that question
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
-                {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 18,
-                  sizeY: 8,
-                  series: [],
-                  visualization_settings: {},
-                  parameter_mappings: [
-                    {
-                      parameter_id: "6fe14171",
-                      card_id: QUESTION_ID,
-                      target: ["dimension", ["field-id", PEOPLE.SOURCE]],
-                    },
-                    {
-                      parameter_id: "4db4913a",
-                      card_id: QUESTION_ID,
-                      target: ["dimension", ["field-id", PEOPLE.NAME]],
-                    },
-                  ],
-                },
-              ],
-            });
-          });
-
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+    cy.createQuestion({
+      name: "15279",
+      query: { "source-table": PEOPLE_ID },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("15279D").then(({ body: { id: DASHBOARD_ID } }) => {
+        // Add filters to the dashboard
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters,
         });
-      });
-      // Check that dropdown list works
-      cy.get("fieldset")
-        .contains("List")
-        .click();
-      popover()
-        .findByText("Organic")
-        .click();
-      cy.button("Add filter").click();
-      // Check that the search works
-      cy.get("fieldset")
-        .contains("Search")
-        .click();
-      cy.findByPlaceholderText("Search by Name")
-        .click()
-        .type("Lor", { delay: 50 });
-      popover().within(() => {
-        cy.get(".LoadingSpinner").should("not.exist");
-        cy.findByText("Lora Cronin");
+
+        // Add previously created question to the dashboard
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          // Connect filters to that question
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 18,
+                sizeY: 8,
+                series: [],
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: "6fe14171",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PEOPLE.SOURCE]],
+                  },
+                  {
+                    parameter_id: "4db4913a",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PEOPLE.NAME]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
       });
     });
+
+    // Check that list filter works
+    cy.get("fieldset")
+      .contains("List")
+      .click();
+
+    cy.findByPlaceholderText("Enter some text")
+      .type("Organic")
+      .blur();
+    cy.button("Add filter").click();
+
+    // Check that the search filter works
+    cy.get("fieldset")
+      .contains("Search")
+      .click();
+    cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+    cy.button("Add filter").click();
+
+    cy.findByText("Gold Beach");
+    cy.findByText("Arcadia").should("not.exist");
+
+    // The corrupted filter is now present in the UI, but it doesn't work (as expected)
+    // People can now easily remove it
+    cy.findByPlaceholderText("Enter a value...");
   });
 
   it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
