@@ -10,13 +10,13 @@
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.driver.presto-common :as presto-common]
-            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
@@ -28,8 +28,7 @@
            [java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types]
            [java.time Instant LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.time.format.DateTimeFormatter
-           [java.time.temporal ChronoField ChronoUnit Temporal]
-           [java.util Calendar TimeZone]))
+           [java.time.temporal ChronoField ChronoUnit Temporal]))
 
 (driver/register! :presto-jdbc, :parent #{:presto-common :sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
@@ -56,23 +55,23 @@
   (hx/cast "time with time zone" (u.date/format-sql (t/offset-time (t/local-time t) 0))))
 
 (defn- date-time->ts-str [dt tz]
-  ;; Presto only allows precision up to milliseconds, so reduce to that
-  (str (u.date/format-sql (.truncatedTo dt ChronoUnit/MILLIS))
+  ;; Presto only allows precision up to milliseconds, so instances have been truncated to that precision
+  (str (u.date/format-sql dt)
        ;; append tz to the final string only if passed (i.e. when a report tz is added on to a `LocalDateTime`
        (when-not (str/blank? tz) (str " " tz))))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ZonedDateTime]
-  [_ t]
+  [_ ^ZonedDateTime t]
   ;; use the Presto `timestamp` function to interpret in the correct TZ, regardless of connection zone
   ;; pass nil for the zone override since it's already part of `ZonedDateTime` (and will be output by the format call)
-  (hsql/call (u/qualified-name ::timestamp) (date-time->ts-str t nil)))
+  (hsql/call (u/qualified-name ::timestamp) (date-time->ts-str (.truncatedTo t ChronoUnit/MILLIS) nil)))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc LocalDateTime]
-  [_ t]
+  [_ ^LocalDateTime t]
   ;; use the Presto `timestamp` function to interpret in the correct TZ, regardless of connection zone
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
     ;; pass the report tz as the tz param, so it is appended to the local portion of the string
-    (hsql/call (u/qualified-name ::timestamp) (date-time->ts-str t report-zone))))
+    (hsql/call (u/qualified-name ::timestamp) (date-time->ts-str (.truncatedTo t ChronoUnit/MILLIS) report-zone))))
 
 (defrecord AtTimeZone [expr zone]
   hformat/ToSql
@@ -192,8 +191,8 @@
 
 ;; The Presto `timestamp` function does not use parentheses for its invocation
 (defmethod hformat/fn-handler (u/qualified-name ::timestamp)
-  [_ ts]
-  (format "timestamp %s" (sql.qp/->honeysql ts)))
+  [driver ts]
+  (format "timestamp %s" (sql.qp/->honeysql driver ts)))
 
 ;;; Presto API helpers
 
@@ -489,7 +488,7 @@
                       (t/zone-id (or report-zone "UTC"))))
          local-dt))) ; else a local date time (no zone), so just return that
 
-(defn- rs->presto-conn [^ResultSet rs]
+(defn- ^PrestoConnection rs->presto-conn [^ResultSet rs]
   (-> (.. rs getStatement getConnection)
       pooled-conn->presto-conn))
 
