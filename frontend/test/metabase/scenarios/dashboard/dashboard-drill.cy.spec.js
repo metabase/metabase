@@ -582,7 +582,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
-  it.skip('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
+  it('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
