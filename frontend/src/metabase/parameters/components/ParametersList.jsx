@@ -100,7 +100,10 @@ function ParametersList({
     }
   };
 
-  const hiddenParameters = new Set((hideParameters || "").split(","));
+  const hiddenParameters =
+    typeof hideParameters === "string"
+      ? new Set(hideParameters.split(","))
+      : new Set();
   const collatedParameters = collateParametersWithValues(
     parameters,
     parameterValues,
