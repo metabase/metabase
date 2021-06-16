@@ -549,56 +549,6 @@ describe("scenarios > question > notebook", () => {
       cy.get(".DashCard");
     });
 
-    it("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
-      cy.createQuestion({
-        name: "15446",
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                ["field", ORDERS.PRODUCT_ID, null],
-                [
-                  "field",
-                  PRODUCTS.ID,
-                  {
-                    "join-alias": "Products",
-                  },
-                ],
-              ],
-              alias: "Products",
-            },
-          ],
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.visit(`/question/${QUESTION_ID}/notebook`);
-      });
-      cy.findByText("Pick a column to group by").click();
-      // In the first popover we'll choose the breakout method
-      popover().within(() => {
-        cy.findByText("User").click();
-        cy.findByPlaceholderText("Find...").type("cr");
-        cy.findByText("Created At")
-          .closest(".List-item")
-          .findByText("by month")
-          .click({ force: true });
-      });
-      // The second popover shows up and offers binning options
-      popover()
-        .last()
-        .within(() => {
-          cy.findByText("Hour of day").scrollIntoView();
-          // This is an implicit assertion - test fails when there is more than one string when using `findByText` instead of `findAllByText`
-          cy.findByText("Minute").click();
-        });
-      // Given that the previous step passes, we should now see this in the UI
-      cy.findByText("User → Created At: Minute");
-    });
-
     it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
       visitQuestionAdhoc({
         dataset_query: {
@@ -668,18 +618,6 @@ describe("scenarios > question > notebook", () => {
       cy.button("Add filter")
         .should("not.be.disabled")
         .click();
-    });
-
-    it("should not render duplicated values in date binning popover (metabase#15574)", () => {
-      openOrdersTable({ mode: "notebook" });
-      cy.findByText("Summarize").click();
-      cy.findByText("Pick a column to group by").click();
-      popover()
-        .findByText("Created At")
-        .closest(".List-item")
-        .findByText("by month")
-        .click({ force: true });
-      cy.findByText("Minute");
     });
   });
 
