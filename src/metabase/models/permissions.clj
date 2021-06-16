@@ -535,7 +535,7 @@
        ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
        ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
        ;; to pass when they shouldn't. Don't allow this during tests
-       (when config/is-test?
+       #_(when config/is-test?
          (throw e))))))
 
 (defn revoke-native-permissions!
