@@ -664,28 +664,6 @@ describe("scenarios > question > native", () => {
     cy.get("@sidebar").contains(/added/i);
   });
 
-  it.skip("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
-    cy.createNativeQuestion({
-      name: "16327",
-      native: { query: "select * from products limit 5" },
-    });
-
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("16327").click();
-
-    cy.findByText("Pick the metric you want to see").click();
-    cy.findByText("Count of rows").click();
-
-    cy.findByText("Pick a column to group by").click();
-    cy.findByText(/CREATED_AT/i).realHover();
-    cy.findByText("by minute").click({ force: true });
-
-    // Implicit assertion - it fails if there is more than one instance of the string, which is exactly what we need for this repro
-    cy.findByText("Month");
-  });
-
   ["off", "on"].forEach(testCase => {
     const isFeatureFlagTurnedOn = testCase === "off" ? false : true;
 
