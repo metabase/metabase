@@ -223,6 +223,17 @@ export default class AccordionList extends Component {
     this.setState({ searchText });
   };
 
+  getInItem = (item, searchProp) => {
+    const props = searchProp.split(".");
+    let res = null;
+    let currItem = item;
+    for (const prop of props) {
+      res = currItem[prop];
+      currItem = currItem[prop];
+    }
+    return String(res || "");
+  };
+
   render() {
     const {
       id,
@@ -251,7 +262,9 @@ export default class AccordionList extends Component {
     let searchFilter = () => true;
     if (searchText) {
       searchFilter = item => {
-        let itemText = String(item[searchProp] || "");
+        let itemText = searchProp.includes(".")
+          ? this.getInItem(item, searchProp)
+          : String(item[searchProp] || "");
         if (searchCaseInsensitive) {
           itemText = itemText.toLowerCase();
           searchText = searchText.toLowerCase();

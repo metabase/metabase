@@ -257,7 +257,7 @@ export class SemanticTypeAndTargetPicker extends Component {
               className,
             )}
             placeholder={t`Select a target`}
-            searchProp="name"
+            searchProp="table.name"
             value={field.fk_target_field_id}
             onChange={this.handleChangeTarget}
             options={idfields}
