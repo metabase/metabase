@@ -93,4 +93,65 @@ describe("binning related reproductions", () => {
     // Implicit assertion - it fails if there is more than one instance of the string, which is exactly what we need for this repro
     cy.findByText("Month");
   });
+
+  describe.skip("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
+    beforeEach(() => {
+      cy.createQuestion({
+        name: "16379",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["avg", ["field", ORDERS.SUBTOTAL, null]]],
+          breakout: [["field", ORDERS.USER_ID, null]],
+        },
+      });
+    });
+
+    it("should work for simple question", () => {
+      openSummarizeOptions("Simple question");
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Average of Subtotal")
+          .closest(".List-item")
+          .findByText("Auto binned")
+          .click({ force: true });
+      });
+
+      popover().within(() => {
+        cy.findByText("50 bins").click();
+      });
+
+      cy.get(".bar");
+    });
+
+    it("should work for custom question", () => {
+      openSummarizeOptions("Custom question");
+
+      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+
+      popover().within(() => {
+        cy.findByText("Average of Subtotal")
+          .closest(".List-item")
+          .findByText("Auto binned")
+          .click({ force: true });
+      });
+
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("50 bins").click();
+        });
+
+      cy.button("Visualize").click();
+      cy.get(".bar");
+    });
+  });
 });
+
+function openSummarizeOptions(questionType) {
+  cy.visit("/question/new");
+  cy.findByText(questionType).click();
+  cy.findByText("Saved Questions").click();
+  cy.findByText("16379").click();
+  cy.findByText("Summarize").click();
+}
