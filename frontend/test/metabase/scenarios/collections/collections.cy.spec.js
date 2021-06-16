@@ -277,7 +277,7 @@ describe("scenarios > collection_defaults", () => {
         cy.signIn("nocollection");
       });
 
-      it.skip("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
+      it.only("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
         cy.visit("/collection/root");
         // Since this user doesn't have access rights to the root collection, it should render empty
         cy.findByText("Nothing to see yet.");
