@@ -149,7 +149,7 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
-      - image: metabase/presto-mb-ci:bump-version-increase-header-size # version 0.254
+      - image: metabase/presto-mb-ci:latest # version 0.254
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx1g"
 
