@@ -3,6 +3,7 @@
   mechanism for actually connecting to Presto."
   (:require [buddy.core.codecs :as codecs]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [honeysql.helpers :as h]
             [java-time :as t]
             [metabase.driver :as driver]
@@ -11,6 +12,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.Time
@@ -108,6 +110,11 @@
 (defmethod sql.qp/->honeysql [:presto-common :percentile]
   [driver [_ arg p]]
   (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
+
+;; Presto mod is a function like mod(x, y) rather than an operator like x mod y
+(defmethod hformat/fn-handler (u/qualified-name ::mod)
+  [_ x y]
+  (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
 
 (def ^:dynamic *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.

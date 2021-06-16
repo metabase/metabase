@@ -5,10 +5,12 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.driver.presto-common :as presto-common]
+            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -17,12 +19,16 @@
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
   (:import com.facebook.presto.jdbc.PrestoConnection
            com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types]
-           [java.time Instant LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [java.time.temporal ChronoField Temporal]
+           [java.time Instant LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           java.time.format.DateTimeFormatter
+           [java.time.temporal ChronoField ChronoUnit Temporal]
            [java.util Calendar TimeZone]))
 
 (driver/register! :presto-jdbc, :parent #{:presto-common :sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
@@ -37,17 +43,157 @@
   ;; need to explicitly provide two digits after the decimal
   (sql.qp/->honeysql driver [:sum-where 1.00M pred]))
 
-(defmethod sql.qp/->honeysql [:presto-jdbc :absolute-datetime]
-  [driver [_ dt binning]]
-  ;; When setting a datetime param in the statement, we have to use the from_iso8601_timestamp Presto function
-  ;; to properly capture its zone offset, when reporting timezone (i.e. connection/session level time zone)
-  ;; is set
-  (hsql/call :from_iso8601_timestamp (t/format (t/offset-date-time dt))))
+#_(defmethod sql.qp/->honeysql [:presto-jdbc :absolute-datetime]
+    [driver [_ dt binning]]
+    ;; When setting a datetime param in the statement, we have to use the `from_iso8601_timestamp` Presto function
+    ;; to properly capture its zone offset, when reporting timezone (i.e. connection/session level time zone)
+    ;; is set.
+    (hsql/call :from_iso8601_timestamp (t/format (t/offset-date-time dt))))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc :time]
+  [_ [_ t]]
+  ;; make time in UTC to avoid any interpretation by Presto in the connection (i.e. report) time zone
+  (hx/cast "time with time zone" (u.date/format-sql (t/offset-time (t/local-time t) 0))))
+
+(defn- date-time->ts-str [dt tz]
+  ;; Presto only allows precision up to milliseconds, so reduce to that
+  (str (u.date/format-sql (.truncatedTo dt ChronoUnit/MILLIS))
+       ;; append tz to the final string only if passed (i.e. when a report tz is added on to a `LocalDateTime`
+       (when-not (str/blank? tz) (str " " tz))))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc ZonedDateTime]
+  [_ t]
+  ;; use the Presto `timestamp` function to interpret in the correct TZ, regardless of connection zone
+  ;; pass nil for the zone override since it's already part of `ZonedDateTime` (and will be output by the format call)
+  (hsql/call (u/qualified-name ::timestamp) (date-time->ts-str t nil)))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc LocalDateTime]
+  [_ t]
+  ;; use the Presto `timestamp` function to interpret in the correct TZ, regardless of connection zone
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
+    ;; pass the report tz as the tz param, so it is appended to the local portion of the string
+    (hsql/call (u/qualified-name ::timestamp) (date-time->ts-str t report-zone))))
+
+(defrecord AtTimeZone [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (format "%s AT TIME ZONE %s"
+      (hformat/to-sql expr)
+      (hformat/to-sql (hx/literal zone)))))
+
+(defn- in-report-zone
+  "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
+  \"AT TIME ZONE\" operator. See https://prestodb.io/docs/current/functions/datetime.html"
+  [expr]
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
+    (if (and (not (hx/is-of-type? expr "timestamp"))
+          (not (::in-report-zone? (meta expr)))
+          report-zone)
+      (-> (hx/with-database-type-info (->AtTimeZone expr report-zone) "timestamp with time zone")
+        (vary-meta assoc ::in-report-zone? true))
+      expr)))
+
+;; all date and date truncation functions need to account for report timezone
+
+(defmethod sql.qp/date [:presto-jdbc :default]
+  [_ _ expr]
+  (do
+    (print "default case")
+    expr))
+
+(defmethod sql.qp/date [:presto-jdbc :minute]
+  [_ _ expr]
+  (hsql/call :date_trunc (hx/literal :minute) (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :minute-of-hour]
+  [_ _ expr]
+  (hsql/call :minute (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :hour]
+  [_ _ expr]
+  (hsql/call :date_trunc (hx/literal :hour) (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :hour-of-day]
+  [_ _ expr]
+  (hsql/call :hour (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :day]
+  [_ _ expr]
+  (hsql/call :date_trunc (hx/literal :day) (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :day-of-month]
+  [_ _ expr]
+  (hsql/call :day (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :day-of-year]
+  [_ _ expr]
+  (hsql/call :day_of_year (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :month]
+  [_ _ expr]
+  (hsql/call :date_trunc (hx/literal :month) (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :month-of-year]
+  [_ _ expr]
+  (hsql/call :month (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :quarter]
+  [_ _ expr]
+  (hsql/call :date_trunc (hx/literal :quarter) (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :quarter-of-year]
+  [_ _ expr]
+  (hsql/call :quarter (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :year]
+  [_ _ expr]
+  (hsql/call :date_trunc (hx/literal :year) (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :day-of-month]
+  [_ _ expr]
+  (hsql/call :day (in-report-zone expr)))
+
+(defmethod sql.qp/date [:presto-jdbc :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :presto-jdbc (hsql/call :day_of_week (in-report-zone expr))))
+
+(defmethod sql.qp/date [:presto-jdbc :week]
+  [_ _ expr]
+  (sql.qp/adjust-start-of-week :presto-jdbc (partial hsql/call :date_trunc (hx/literal :week)) (in-report-zone expr)))
+
+;; on the other hand, ensure that unix timestamps are always returned in UTC regardless of report zone
+(defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
+  [_ _ expr]
+  (hsql/call :from_unixtime expr (hx/literal "UTC")))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :milliseconds]
+  [_ _ expr]
+  ;; from_unixtime doesn't support milliseconds, but we can add them back in
+  (let [millis (hsql/call (u/qualified-name ::mod) expr 1000)]
+    (hsql/call :date_add
+               (hx/literal "millisecond")
+               millis
+               (hsql/call :from_unixtime (hsql/call :/ expr 1000) (hx/literal "UTC")))))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :microseconds]
+  [_ _ expr]
+  ;; but Presto can't even represent microseconds, so convert to millis and call that version
+  (sql.qp/unix-timestamp->honeysql :presto-jdbc :milliseconds (hsql/call :/ expr 1000)))
 
 (defmethod sql.qp/current-datetime-base-type :presto-jdbc
   [_]
   ;; in Presto, `now()` returns the current instant as `timestamp with time zone`
   :type/DateTimeWithTZ)
+
+;; Presto mod is a function like mod(x, y) rather than an operator like x mod y
+(defmethod hformat/fn-handler (u/qualified-name ::mod)
+  [_ x y]
+  (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
+
+;; The Presto `timestamp` function does not use parentheses for its invocation
+(defmethod hformat/fn-handler (u/qualified-name ::timestamp)
+  [_ ts]
+  (format "timestamp %s" (sql.qp/->honeysql ts)))
 
 ;;; Presto API helpers
 
@@ -192,10 +338,13 @@
   [driver details]
   (sql-jdbc.conn/can-connect? driver details))
 
+(defn- ^PrestoConnection pooled-conn->presto-conn [^C3P0ProxyConnection pooled-conn]
+  (.unwrap pooled-conn PrestoConnection))
+
 (defmethod sql-jdbc.execute/connection-with-timezone :presto-jdbc
   [driver database ^String timezone-id]
-  (let [^C3P0ProxyConnection conn         (.getConnection (sql-jdbc.execute/datasource database))
-        ^PrestoConnection underlying-conn (.unwrap conn PrestoConnection)]
+  (let [conn            (.getConnection (sql-jdbc.execute/datasource database))
+        underlying-conn (pooled-conn->presto-conn conn)]
     (try
       (sql-jdbc.execute/set-best-transaction-level! driver conn)
       (when-not (str/blank? timezone-id) (.setTimeZoneId underlying-conn timezone-id))
@@ -218,6 +367,20 @@
   [_ prepared-statement i ^OffsetDateTime t]
   ;; necessary because PrestoPreparedStatement does not support ZonedDateTime in its setObject method
   (jdbc/set-parameter (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC"))) prepared-statement i))
+
+(defn- date-time->substitution [ts-str]
+  ;; for whatever reason, `.format` is NOT part of a base class for both `ZonedDateTime` and `LocalDateTime`
+  ;; so, to avoid reflection, we need both
+  (sql.params.substitution/make-stmt-subs "from_iso8601_timestamp(?)" [ts-str]))
+
+(defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc ZonedDateTime]
+  [_ ^ZonedDateTime t]
+  (date-time->substitution (.format t DateTimeFormatter/ISO_INSTANT)))
+
+(defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc LocalDateTime]
+  [_ ^LocalDateTime t]
+  ;; TODO: figure out if report time zone has been accounted for here
+  (date-time->substitution (.format t DateTimeFormatter/ISO_INSTANT)))
 
 (defn- set-time-param
   "Converts the given instance of `java.time.temporal`, assumed to be a time (either `LocalTime` or `OffsetTime`)
@@ -285,45 +448,69 @@
          (t/zone-offset 0))
        local-time))) ; else a local time (no zone), so just return that
 
-(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
-  [_ ^ResultSet rs ^ResultSetMetaData rs-meta ^Integer i]
-  #(let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
-         ts-utc      (.getTimestamp rs i (Calendar/getInstance (TimeZone/getTimeZone "UTC")))
-         ts-rep      (when-not (str/blank? report-zone)
-                       (.getTimestamp rs i (Calendar/getInstance (TimeZone/getTimeZone report-zone))))
-         ts-raw      (.getTimestamp rs i) ; in practice, this is the same as ts-rep, since it uses the session TZ to
-                                          ; build the calendar param (which we set to the report zone)
-         ;; set impl1? true to make `metabase.query-processor-test.timezones-test/time-timezone-handling-test` pass
-         ;; but most things under `metabase.query-processor-test.date-bucketing-test` fail
-         ;; set to false to do the opposite
-         impl1?      true
-         timestamp   (if impl1? ts-raw ts-utc)
-         local-dt    (t/local-date-time timestamp)
-         type-name   (.getColumnTypeName rs-meta i)
-         base-type   (presto-common/presto-type->base-type type-name)]
-     ;; for both `timestamp` and `timestamp with time zone`, the JDBC type reported by the driver is
-     ;; `Types/TIMESTAMP`, hence we also need to check the column type name to differentiate between them here
-     (if (isa? base-type :type/DateTimeWithTZ)
-       ;; this also shouldn't really be so difficult
-       (if impl1? (t/offset-date-time
-                   (.get local-dt ChronoField/YEAR)
-                   (.get local-dt ChronoField/MONTH_OF_YEAR)
-                   (.get local-dt ChronoField/DAY_OF_MONTH)
-                   (.get local-dt ChronoField/HOUR_OF_DAY)
-                   (.get local-dt ChronoField/MINUTE_OF_HOUR)
-                   (.get local-dt ChronoField/SECOND_OF_MINUTE)
-                   (.get local-dt ChronoField/NANO_OF_SECOND)
-                   (t/zone-offset 0))
+#_(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
+    [_ ^ResultSet rs ^ResultSetMetaData rs-meta ^Integer i]
+    #(let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+           ts-utc      (.getTimestamp rs i (Calendar/getInstance (TimeZone/getTimeZone "UTC")))
+           ts-rep      (when-not (str/blank? report-zone)
+                         (.getTimestamp rs i (Calendar/getInstance (TimeZone/getTimeZone report-zone))))
+           ts-raw      (.getTimestamp rs i) ; in practice, this is the same as ts-rep, since it uses the session TZ to
+                                            ; build the calendar param (which we set to the report zone)
+           ;; set impl1? true to make `metabase.query-processor-test.timezones-test/time-timezone-handling-test` pass
+           ;; but most things under `metabase.query-processor-test.date-bucketing-test` fail
+           ;; set to false to do the opposite
+           impl1?      true
+           timestamp   (if impl1? ts-raw ts-utc)
+           local-dt    (t/local-date-time timestamp)
+           type-name   (.getColumnTypeName rs-meta i)
+           base-type   (presto-common/presto-type->base-type type-name)]
+       ;; for both `timestamp` and `timestamp with time zone`, the JDBC type reported by the driver is
+       ;; `Types/TIMESTAMP`, hence we also need to check the column type name to differentiate between them here
+       (if (isa? base-type :type/DateTimeWithTZ)
+         ;; this also shouldn't really be so difficult
+         (if impl1? (t/offset-date-time
+                     (.get local-dt ChronoField/YEAR)
+                     (.get local-dt ChronoField/MONTH_OF_YEAR)
+                     (.get local-dt ChronoField/DAY_OF_MONTH)
+                     (.get local-dt ChronoField/HOUR_OF_DAY)
+                     (.get local-dt ChronoField/MINUTE_OF_HOUR)
+                     (.get local-dt ChronoField/SECOND_OF_MINUTE)
+                     (.get local-dt ChronoField/NANO_OF_SECOND)
+                     (t/zone-offset 0))
 
-                  (t/zoned-date-time
-                    (.get local-dt ChronoField/YEAR)
-                    (.get local-dt ChronoField/MONTH_OF_YEAR)
-                    (.get local-dt ChronoField/DAY_OF_MONTH)
-                    (.get local-dt ChronoField/HOUR_OF_DAY)
-                    (.get local-dt ChronoField/MINUTE_OF_HOUR)
-                    (.get local-dt ChronoField/SECOND_OF_MINUTE)
-                    (.get local-dt ChronoField/NANO_OF_SECOND)
-                    (t/zone-id (or report-zone "UTC"))))
-       local-dt))) ; else a local date time (no zone), so just return that
+                    (t/zoned-date-time
+                      (.get local-dt ChronoField/YEAR)
+                      (.get local-dt ChronoField/MONTH_OF_YEAR)
+                      (.get local-dt ChronoField/DAY_OF_MONTH)
+                      (.get local-dt ChronoField/HOUR_OF_DAY)
+                      (.get local-dt ChronoField/MINUTE_OF_HOUR)
+                      (.get local-dt ChronoField/SECOND_OF_MINUTE)
+                      (.get local-dt ChronoField/NANO_OF_SECOND)
+                      (t/zone-id (or report-zone "UTC"))))
+         local-dt))) ; else a local date time (no zone), so just return that
+
+(defn- rs->presto-conn [^ResultSet rs]
+  (-> (.. rs getStatement getConnection)
+      pooled-conn->presto-conn))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
+  [_ ^ResultSet rset ^ResultSetMetaData rsmeta ^Integer i]
+  (let [zone (.getTimeZoneId (rs->presto-conn rset))]
+    (fn []
+      (when-let [s (.getString rset i)]
+        (when-let [t (u.date/parse s)]
+          (cond
+            (or (instance? OffsetDateTime t)
+              (instance? ZonedDateTime t))
+            (t/offset-date-time t)
+            ;; presto "helpfully" returns local results already adjusted to session time zone offset for us, e.g.
+            ;; '2021-06-15T00:00:00' becomes '2021-06-15T07:00:00' if the session timezone is US/Pacific. Undo the
+            ;; madness
+            zone
+            (-> (t/zoned-date-time t zone)
+              (u.date/with-time-zone-same-instant "UTC")
+              t/local-date-time)
+            :else
+            t))))))
 
 (prefer-method driver/supports? [:presto-common :set-timezone] [:sql-jdbc :set-timezone])
