@@ -265,9 +265,7 @@ describe("smoketest > admin_setup", () => {
       cy.get("h1").contains("Our analytics");
       cy.findByText("A look at your").should("not.exist");
 
-      cy.get(".hover-parent")
-        .eq("2")
-        .findByText("Orders, Count");
+      cy.findByText("Orders, Count");
       cy.findByText("Orders, Count, Grouped by Created At (year)");
       cy.findByText("Test Q Name Change").should("not.exist");
     });
