@@ -146,6 +146,14 @@ describe("scenarios > question > new", () => {
         cy.findByText("Orders");
       });
     });
+
+    it("should ignore an empty search string", () => {
+      cy.intercept("/api/search", req => {
+        expect("Unexpected call to /api/search").to.be.false;
+      });
+      cy.findByText("Custom question").click();
+      cy.findByPlaceholderText("Search for a table...").type("  ");
+    });
   });
 
   describe("ask a (simple) question", () => {
