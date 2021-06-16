@@ -888,6 +888,7 @@
   (merge i/IObjectPermissionsDefaults
          {:can-read?         (partial i/current-user-has-full-permissions? :read)
           :can-write?        (partial i/current-user-has-full-permissions? :write)
+          :can-moderate?     (partial i/current-user-has-full-permissions? :moderate)
           :perms-objects-set perms-objects-set}))
 
 

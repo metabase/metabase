@@ -7,6 +7,7 @@
             [metabase.api.common :refer [*current-user-permissions-set*]]
             [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
             [metabase.models.collection :as collection]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -20,6 +21,38 @@
 
 (defn- lucky-collection-children-location []
   (collection/children-location (collection/user->personal-collection (mt/user->id :lucky))))
+
+(deftest perms-test
+  (testing "can-read?"
+    (mt/with-temp Collection [{collection-id :id :as collection} {:name "The Library"}]
+      (binding [*current-user-permissions-set* (delay #{})]
+        (is (= false
+               (mi/can-read? Collection collection-id)))
+        (is (= false
+               (mi/can-write? Collection collection-id)))
+        (is (= false
+               (mi/can-moderate? Collection collection-id))))
+      (binding [*current-user-permissions-set* (delay #{(perms/collection-read-path collection-id)})]
+        (is (= true
+               (mi/can-read? Collection collection-id)))
+        (is (= false
+               (mi/can-write? Collection collection-id)))
+        (is (= false
+               (mi/can-moderate? Collection collection-id))))
+      (binding [*current-user-permissions-set* (delay #{(perms/collection-readwrite-path collection-id)})]
+        (is (= true
+               (mi/can-read? Collection collection-id)))
+        (is (= true
+               (mi/can-write? Collection collection-id)))
+        (is (= false
+               (mi/can-moderate? Collection collection-id))))
+      (binding [*current-user-permissions-set* (delay #{(perms/collection-moderate-path collection-id)})]
+        (is (= true
+               (mi/can-read? Collection collection-id)))
+        (is (= true
+               (mi/can-write? Collection collection-id)))
+        (is (= true
+               (mi/can-moderate? Collection collection-id)))))))
 
 (deftest create-collection-test
   (testing "test that we can create a new Collection with valid inputs"

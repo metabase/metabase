@@ -255,22 +255,17 @@
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
+(defn- path-location
+  [path]
+  (str/replace path #"(edit|read)/$" ""))
 
 (defn is-permissions-for-object?
   "Does `permissions-path` grant *full* access for `object-path`?"
   [permissions-path object-path]
-  ;; Examples:
-  ;;     object-path     |   permissions-path  | result
-  ;; --------------------+---------------------+-------
-  ;; /collection/1/      | /collection/1/      | yes
-  ;; /collection/1/      | /collection/1/edit/ | no
-  ;; /collection/1/      | /collection/1/read/ | no
-  ;; /collection/1/edit/ | /collection/1/      | yes
-  ;; /collection/1/edit/ | /collection/1/edit/ | yes
-  ;; /collection/1/edit/ | /collection/1/read/ | no
-  ;; (anything)          | /                   | yes
-  ;; testing for read access happens with `is-partial-permissions-for-object?`, c.f. `can-read?`
-  (str/starts-with? object-path permissions-path))
+  (if (str/ends-with? object-path "/read/")
+    ;; any related permission gives read access
+    (str/starts-with? object-path (path-location permissions-path))
+    (str/starts-with? object-path permissions-path)))
 
 (defn is-partial-permissions-for-object?
   "Does `permissions-path` grant access full access for `object-path` *or* for a descendant of `object-path`?"
