@@ -267,12 +267,14 @@ export function onRenderValueLabels(
         // only create labels for the correct class(es) given the type of label
         .filter(d => !(d.rotated ^ (klass === "value-label-white")))
         .attr("class", klass)
-        .text(({ y, seriesIndex }) =>
-          formatYValue(y, {
+        .text(({ y, seriesIndex }) => {
+          let res = formatYValue(y, {
             negativeInParentheses: displays[seriesIndex] === "waterfall",
             compact: compact === null ? compactForSeries[seriesIndex] : compact,
-          }),
-        ),
+          });
+          console.log(res);
+          return res;
+        }),
     );
   };
 
