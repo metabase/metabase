@@ -49,8 +49,9 @@ export default class FunnelNormal extends Component {
     const cols = series[0].data.cols;
     const rows: number[][] = series.map(s => s.data.rows[0]);
 
-    const funnelSmallSize =
-      gridSize && (gridSize.width < 7 || gridSize.height <= 5);
+    const isNarrow = gridSize && gridSize.width < 7;
+    const isShort = gridSize && gridSize.height <= 5;
+    const isSmall = isShort || isNarrow;
 
     const formatDimension = (dimension, jsx = true) =>
       formatValue(dimension, {
@@ -137,9 +138,9 @@ export default class FunnelNormal extends Component {
     return (
       <div
         className={cx(className, styles.Funnel, "flex", {
-          [styles.Small]: funnelSmallSize,
-          p1: funnelSmallSize,
-          p2: !funnelSmallSize,
+          [styles["Funnel--narrow"]]: isNarrow,
+          p1: isSmall,
+          p2: !isSmall,
         })}
       >
         <div
@@ -180,12 +181,12 @@ export default class FunnelNormal extends Component {
               onVisualizationClick={isClickable ? onVisualizationClick : null}
             />
             <div className={styles.Infos}>
-              <div className={styles.Title}>
+              <Ellipsified className={styles.Title}>
                 {formatPercent(info.value / initial.value)}
-              </div>
-              <div className={styles.Subtitle}>
+              </Ellipsified>
+              <Ellipsified className={styles.Subtitle}>
                 {formatMetric(rows[index + 1][metricIndex])}
-              </div>
+              </Ellipsified>
             </div>
           </div>
         ))}
