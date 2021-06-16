@@ -83,8 +83,8 @@
 
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
-  `dummy` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "collection" "dashboard" "pulse" "snippet" "dummy"})
+  `no-models` is for nilling out the set because a nil model set is actually the total model set"
+  #{"card" "collection" "dashboard" "pulse" "snippet" "no-models"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
@@ -464,7 +464,7 @@
     model-set
     (if (or (empty? model-set) (contains? model-set :collection))
       #{:collection}
-      #{:dummy})))
+      #{:no-models})))
 
 (api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
