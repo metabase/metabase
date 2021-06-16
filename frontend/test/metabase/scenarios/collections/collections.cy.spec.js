@@ -288,6 +288,18 @@ describe("scenarios > collection_defaults", () => {
         cy.signIn("nocollection");
       });
 
+      it.skip("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
+        const { first_name, last_name } = nocollection;
+
+        cy.visit("/collection/root");
+        cy.get(".ContentTable")
+          .should("not.contain", "Child")
+          .and(
+            "not.contain",
+            `${first_name} ${last_name}'s Personal Collection`,
+          );
+      });
+
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
         cy.visit("/");
         cy.findByText("Child");
