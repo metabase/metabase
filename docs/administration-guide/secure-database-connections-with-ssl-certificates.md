@@ -4,14 +4,14 @@ If you'd like to connect your Metabase Cloud or self-hosted instance to a databa
 
 Why you'd want to do this:
 
-- You're using Metabase Cloud and want to create a secure connection to a data warehouse that accepts a JDBC connection (e.g., PostgreSQL).
-- You're self-hosting Metabase and want to create a secure connection to an application database hosted by an external provider (this situation is rare).
+- You're using Metabase Cloud and want to ensure the identity of the data warehouse you're connecting to (e.g., PostgreSQL, MySQL).
+- You're self-hosting Metabase and want to ensure the identity of a data warehouse hosted by an external provider. You can also use this method to ensure you're using the strictest connection parameters when connecting to your application database.
 
 If you're using Metabase Cloud, the application database is handled for you, so you'd only need to secure connections to data warehouses that you add to your Metabase.
 
 ### Prerequisites
 
-A database that allows a JDBC connection, as you'll need to use a connection string to secure the connection.
+A database that allows a JDBC connection, as you'll need to use a connection string to specify the certificate you want to use.
 
 ### Step 1: Download the root certificate from your provider
 
