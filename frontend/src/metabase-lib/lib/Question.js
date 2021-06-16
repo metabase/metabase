@@ -689,6 +689,10 @@ export default class Question {
     return this._card && this._card.description;
   }
 
+  lastEditInfo() {
+    return this._card && this._card["last-edit-info"];
+  }
+
   isSaved(): boolean {
     return !!this.id();
   }
@@ -931,9 +935,9 @@ export default class Question {
   }
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
-    const [a, b] = [this, originalQuestion].map(q =>
-      new Question(q.card(), this.metadata()).setParameters([]),
-    );
+    const [a, b] = [this, originalQuestion].map(q => {
+      return q && new Question(q.card(), this.metadata()).setParameters([]);
+    });
     return a.isDirtyComparedTo(b);
   }
 

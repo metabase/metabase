@@ -235,7 +235,7 @@ export const getIsObjectDetail = createSelector(
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
   (question, originalQuestion) =>
-    question && question.isDirtyComparedTo(originalQuestion),
+    question && question.isDirtyComparedToWithoutParameters(originalQuestion),
 );
 
 export const getQuery = createSelector(

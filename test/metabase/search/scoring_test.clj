@@ -263,3 +263,11 @@
                 reverse
                 (map :result)
                 (map :name))))))
+
+(deftest score-and-result-test
+  (testing "If all scores are 0, does not divide by zero"
+    (let [scorer (reify search/ResultScore
+                   (score-result [_ search-result]
+                     [{:weight 100 :score 0 :name "Some score type"}
+                      {:weight 100 :score 0 :name "Some other score type"}]))]
+      (is (= 0 (:score (search/score-and-result scorer "" {:name "racing yo" :model "card"})))))))

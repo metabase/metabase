@@ -402,7 +402,6 @@ export const GRAPH_AXIS_SETTINGS = {
     section: t`Axes`,
     title: t`X-axis scale`,
     widget: "select",
-    default: "ordinal",
     readDependencies: [
       "graph.x_axis._is_timeseries",
       "graph.x_axis._is_numeric",

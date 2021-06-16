@@ -105,6 +105,48 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
+  it.skip("should be possible to update/change label for an empty row value (metabase#12128)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "SELECT '2020-03-01'::date as date, 'cat1' as category, 23 as value\nUNION ALL\nSELECT '2020-03-01'::date, '', 44\nUNION ALL\nSELECT  '2020-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2020-03-02'::date as date, 'cat1' as category, 20 as value\nUNION ALL\nSELECT '2020-03-02'::date, '', 50\nUNION ALL\nSELECT  '2020-03-02'::date, 'cat3', 58",
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["DATE", "CATEGORY"],
+        "graph.metrics": ["VALUE"],
+      },
+    });
+
+    cy.findByText("Settings").click();
+
+    cy.findByTestId("sidebar-left").within(() => {
+      // Make sure we can update input with some existing value
+      cy.findByDisplayValue("cat1")
+        .type(" new")
+        .blur();
+      cy.findByDisplayValue("cat1 new");
+
+      // Now do the same for the input with no value
+      cy.findByDisplayValue("")
+        .type("cat2")
+        .blur();
+      cy.findByDisplayValue("cat2");
+
+      cy.button("Done").click();
+    });
+
+    cy.get(".LegendItem")
+      .should("contain", "cat1 new")
+      .and("contain", "cat2")
+      .and("contain", "cat3");
+  });
+
   describe.skip("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
     const RENAMED_FIRST_SERIES = "Foo";
     const RENAMED_SECOND_SERIES = "Bar";
@@ -295,6 +337,41 @@ describe("scenarios > visualizations > line chart", () => {
         .should("contain", RENAMED_FIRST_SERIES)
         .and("contain", RENAMED_SECOND_SERIES);
     }
+  });
+
+  describe.skip("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],
+            breakout: [
+              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
+              ["field", PRODUCTS.CATEGORY, null],
+            ],
+            filter: ["=", ["field", PRODUCTS.CATEGORY, null], "Doohickey"],
+          },
+          type: "query",
+        },
+        display: "line",
+      });
+      cy.findByText("Category is Doohickey");
+    });
+
+    it("should not drop the chart legend (metabase#4995)", () => {
+      cy.get(".LegendItem").should("contain", "Doohickey");
+    });
+
+    it("should display correct axis labels (metabase#12782)", () => {
+      cy.get(".x-axis-label")
+        .invoke("text")
+        .should("eq", "Created At");
+      cy.get(".y-axis-label")
+        .invoke("text")
+        .should("eq", "Average of Price");
+    });
   });
 });
 
