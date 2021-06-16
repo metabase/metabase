@@ -107,16 +107,16 @@
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [{{:keys [url]} :params} respond raise]
   {url su/NonBlankString}
-  (try
-    (let [decoded-url (rc/url-decode url)]
-      (or (io/resource decoded-url)
-          (valid-url? decoded-url))
+  (let [decoded-url (rc/url-decode url)]
+    (or (io/resource decoded-url)
+        (valid-url? decoded-url))
+    (try
       (with-open [reader (io/reader (or (io/resource decoded-url)
                                         decoded-url))
                   is     (ReaderInputStream. reader)]
         (respond (-> (rr/response is)
-                     (rr/content-type "application/json")))))
-    (catch Throwable e
-      (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
+                     (rr/content-type "application/json"))))
+      (catch Throwable e
+        (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))))
 
 (api/define-routes)
