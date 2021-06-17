@@ -87,8 +87,9 @@
   ;; the JDBC driver statements fail with a cryptic status 500 error if there are too many
   ;; parameters being set in a single statement; these numbers were arrived at empirically
   (let [chunk-size (case (:table-name tabledef)
-                     "people" 50
-                     "orders" 60
+                     "people" 30
+                     "reviews" 40
+                     "orders" 40
                      "venues" 50
                      "products" 50
                      "cities" 50
