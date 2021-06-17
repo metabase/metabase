@@ -1134,7 +1134,7 @@ describe("scenarios > question > filter", () => {
     // We must use and return strings instead of boolean and numbers
     const integerAssociatedWithCondition = condition === "true" ? "0" : "1";
 
-    describe.skip(`should be able to filter on the boolean column ${condition.toUpperCase()} (metabase#16386)`, () => {
+    describe(`should be able to filter on the boolean column ${condition.toUpperCase()} (metabase#16386)`, () => {
       beforeEach(() => {
         cy.createNativeQuestion({
           name: "16386",
