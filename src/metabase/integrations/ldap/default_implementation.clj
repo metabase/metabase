@@ -147,7 +147,7 @@
       (when sync-groups?
         (let [group-ids   (ldap-groups->mb-group-ids groups settings)
               all-mapped-group-ids (all-mapped-group-ids settings)]
-          (integrations.common/sync-group-memberships! user group-ids all-mapped-group-ids false))))))
+          (integrations.common/sync-group-memberships! new-user group-ids all-mapped-group-ids false))))))
 
 ;;; ------------------------------------------------------ impl ------------------------------------------------------
 

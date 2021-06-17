@@ -34,7 +34,9 @@
 (defn get-default-schema
   "Get the default schema for the directory server."
   []
-  (Schema/getDefaultStandardSchema))
+  (Schema/mergeSchemas
+   (into-array Schema [(Schema/getDefaultStandardSchema)
+                       (Schema/getSchema [(io/file "test_resources/posixGroup.schema.ldif")])])))
 
 (defn do-with-ldap-server
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `f`."
