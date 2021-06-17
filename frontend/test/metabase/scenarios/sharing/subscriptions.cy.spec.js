@@ -14,18 +14,6 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not allow creation if there are no dashboard cards", () => {
-    cy.createDashboard("Empty Dashboard").then(
-      ({ body: { id: DASHBOARD_ID } }) => {
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-      },
-    );
-    // It would be great if we can use either aria-attributes or better class naming to suggest when icons are disabled
-    cy.icon("share")
-      .closest("a")
-      .should("have.class", "cursor-default");
-  });
-
   it("should not allow sharing if there are no dashboard cards", () => {
     cy.createDashboard("15077D").then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
