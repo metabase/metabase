@@ -1155,6 +1155,7 @@ workflows:
             MB_PRESTO_JDBC_TEST_SSL=true
             MB_PRESTO_JDBC_TEST_USER=metabase
             MB_PRESTO_JDBC_TEST_PASSWORD=metabase
+            MB_ENABLE_PRESTO_JDBC_DRIVER=true
             MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS="SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit"
 
       - test-driver:

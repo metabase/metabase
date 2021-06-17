@@ -64,14 +64,18 @@
   [_ ^ZonedDateTime t]
   ;; use the Presto `timestamp` function to interpret in the correct TZ, regardless of connection zone
   ;; pass nil for the zone override since it's already part of `ZonedDateTime` (and will be output by the format call)
-  (hsql/call (u/qualified-name ::timestamp) (date-time->ts-str (.truncatedTo t ChronoUnit/MILLIS) nil)))
+  (hsql/call "from_iso8601_timestamp" (.format t DateTimeFormatter/ISO_INSTANT))
+  #_(hsql/call (u/qualified-name ::timestamp) (date-time->ts-str (.truncatedTo t ChronoUnit/MILLIS) nil)))
 
-(defmethod sql.qp/->honeysql [:presto-jdbc LocalDateTime]
-  [_ ^LocalDateTime t]
-  ;; use the Presto `timestamp` function to interpret in the correct TZ, regardless of connection zone
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
-    ;; pass the report tz as the tz param, so it is appended to the local portion of the string
-    (hsql/call (u/qualified-name ::timestamp) (date-time->ts-str (.truncatedTo t ChronoUnit/MILLIS) report-zone))))
+;; it seems we don't need, or want, to override this for LocalDateTime
+#_(defmethod sql.qp/->honeysql [:presto-jdbc LocalDateTime]
+    [_ ^LocalDateTime ^LocalDateTime t]
+    ;; use the Presto `timestamp` function to interpret in the correct TZ, regardless of connection zone
+    (hsql/call (u/qualified-name ::timestamp) (t/format "yyyy-MM-dd HH:mm:ss.SSS" t))
+    #_(let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
+        ;; pass the report tz as the tz param, so it is appended to the local portion of the string
+        (hsql/call "from_iso8601_timestamp" (.format (t/zoned-date-time t (t/zone-id (or report-zone "UTC")))
+                                                     DateTimeFormatter/ISO_INSTANT))))
 
 (defrecord AtTimeZone [expr zone]
   hformat/ToSql
@@ -190,9 +194,13 @@
   (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
 
 ;; The Presto `timestamp` function does not use parentheses for its invocation
-(defmethod hformat/fn-handler (u/qualified-name ::timestamp)
-  [driver ts]
-  (format "timestamp %s" (sql.qp/->honeysql driver ts)))
+;; in any case, it seems we may not need this at all
+#_(defmethod hformat/fn-handler (u/qualified-name ::timestamp)
+    [_ ts]
+    ;; the Presto JDBC driver doesn't allow prepared statement params at this position (after `timestamp`), possibly
+    ;; because it is invoked with no parens, however there is no other paren-having function that can construct a
+    ;; timestamp (without time zone)
+    (format "timestamp %s" (hformat/to-sql ts)))
 
 ;;; Presto API helpers
 
