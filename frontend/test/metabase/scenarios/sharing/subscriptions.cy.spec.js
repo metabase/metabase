@@ -22,7 +22,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     cy.icon("share")
       .closest("a")
-      .should("have.class", "cursor-default");
+      .should("have.attr", "aria-disabled", "true");
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
