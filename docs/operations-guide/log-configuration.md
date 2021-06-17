@@ -36,7 +36,7 @@ Check out [How to read the logs][read-logs].
 
 ## Jetty logs
 
-Metabase web server can be configured to provide all the logging you need, but be careful, as Jetty logs have a very high level of verbosity and might be difficult to spot the data you are looking for.
+You can configure Metabase's web server to provide more detail in the logs by setting the log level to `DEBUG`. Just keep in mind that Jetty's debug logs can be really chatty, which can make it difficult to find the data you're looking for.
 
 To get Jetty logs, add the following lines to the Log4J2 XML file in the <Loggers> node
 
