@@ -32,6 +32,7 @@ import {
 } from "metabase/meta/Dashboard";
 import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import { getParametersBySlug } from "metabase/meta/Parameter";
+import * as Urls from "metabase/lib/urls";
 
 import type {
   DashboardWithCards,
@@ -977,7 +978,9 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       previousCard,
     );
 
-    const cardWithVizSettings = new Question(cardAfterClick)
+    const question = new Question(cardAfterClick, metadata);
+
+    const cardWithVizSettings = question
       .setDisplay(cardAfterClick.display || previousCard.display)
       .setSettings(
         cardAfterClick.visualization_settings ||
@@ -986,14 +989,18 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       .lockDisplay()
       .card();
 
-    const url = questionUrlWithParameters(
-      cardWithVizSettings,
-      metadata,
-      dashboard.parameters,
-      parameterValues,
-      dashcard && dashcard.parameter_mappings,
-      cardIsDirty,
-    );
+    // when the query is for a specific object it does not make sense to apply parameter filters
+    // because we'll be navigating to the details view of a specific row on a table
+    const url = question.isObjectDetail()
+      ? Urls.serializedQuestion(cardWithVizSettings)
+      : questionUrlWithParameters(
+          cardWithVizSettings,
+          metadata,
+          dashboard.parameters,
+          parameterValues,
+          dashcard && dashcard.parameter_mappings,
+          cardIsDirty,
+        );
 
     open(url, {
       blankOnMetaKey: true,
