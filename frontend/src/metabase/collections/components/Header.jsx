@@ -11,7 +11,13 @@ import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 
-export default function Header({ collection, isAdmin, isRoot, collectionId }) {
+export default function Header({
+  collection,
+  isAdmin,
+  isRoot,
+  isPersonalCollectionChild,
+  collectionId,
+}) {
   return (
     <Flex align="center" py={3}>
       <Flex align="center">
@@ -30,15 +36,17 @@ export default function Header({ collection, isAdmin, isRoot, collectionId }) {
       </Flex>
 
       <Flex ml="auto">
-        {isAdmin && !collection.personal_owner_id && (
-          <Tooltip tooltip={t`Edit the permissions for this collection`}>
-            <Link to={`${Urls.collection(collection)}/permissions`}>
-              <IconWrapper>
-                <Icon name="lock" />
-              </IconWrapper>
-            </Link>
-          </Tooltip>
-        )}
+        {isAdmin &&
+          !collection.personal_owner_id &&
+          !isPersonalCollectionChild && (
+            <Tooltip tooltip={t`Edit the permissions for this collection`}>
+              <Link to={`${Urls.collection(collection)}/permissions`}>
+                <IconWrapper>
+                  <Icon name="lock" />
+                </IconWrapper>
+              </Link>
+            </Tooltip>
+          )}
         {collection &&
           collection.can_write &&
           !collection.personal_owner_id && (

@@ -14,6 +14,7 @@ import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import Header from "metabase/collections/components/Header";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemsTable from "metabase/collections/components/PinnedItemsTable";
+import { isPersonalCollectionChild } from "metabase/collections/utils";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -33,7 +34,13 @@ function mapStateToProps(state) {
   };
 }
 
-function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
+function CollectionContent({
+  collection,
+  collections: collectionList = [],
+  collectionId,
+  isAdmin,
+  isRoot,
+}) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
@@ -140,6 +147,10 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
                 isAdmin={isAdmin}
                 collectionId={collectionId}
                 collection={collection}
+                isPersonalCollectionChild={isPersonalCollectionChild(
+                  collection,
+                  collectionList,
+                )}
               />
 
               <PinnedItemsTable
@@ -248,6 +259,10 @@ function CollectionContent({ collection, collectionId, isAdmin, isRoot }) {
 }
 
 export default _.compose(
+  Collection.loadList({
+    query: () => ({ tree: true }),
+    loadingAndErrorWrapper: false,
+  }),
   Collection.load({
     id: (_, props) => props.collectionId,
     reload: true,
