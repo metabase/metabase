@@ -275,9 +275,9 @@ export function onRenderValueLabels(
     );
   };
   const addLabels = (datas, formatYValues, compact = null) => {
-    // make sure we don't add .value-lables multiple times
+    // make sure we don't add .value-labels multiple times
     parent.select(".value-labels").remove();
-    for (let [idx, data] of datas.entries()) {
+    for (const [idx, data] of datas.entries()) {
       addOneLabelSeries(data, formatYValues[idx], compact);
     }
   };
@@ -352,6 +352,9 @@ export function onRenderValueLabels(
       }
     });
 
+  datas = datas.map(data =>
+    data.filter((d, i) => i % nthForSeries[d.seriesIndex] === 0 && !d.hidden),
+  );
   addLabels(datas, formatYValues);
 
   moveToFront(
