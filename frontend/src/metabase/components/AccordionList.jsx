@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import cx from "classnames";
 import _ from "underscore";
+import { getIn } from "icepick";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
@@ -223,17 +224,6 @@ export default class AccordionList extends Component {
     this.setState({ searchText });
   };
 
-  getInItem = (item, searchProp) => {
-    const props = searchProp.split(".");
-    let res = null;
-    let currItem = item;
-    for (const prop of props) {
-      res = currItem[prop];
-      currItem = currItem[prop];
-    }
-    return String(res || "");
-  };
-
   render() {
     const {
       id,
@@ -263,7 +253,7 @@ export default class AccordionList extends Component {
     if (searchText) {
       searchFilter = item => {
         let itemText = searchProp.includes(".")
-          ? this.getInItem(item, searchProp)
+          ? String(getIn(item, searchProp.split(".")) || "")
           : String(item[searchProp] || "");
         if (searchCaseInsensitive) {
           itemText = itemText.toLowerCase();
