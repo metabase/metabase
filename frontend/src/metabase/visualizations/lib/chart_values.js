@@ -234,50 +234,51 @@ export function onRenderValueLabels(
   };
 
   const MIN_ROTATED_HEIGHT = 50;
+  const addOneLabelSeries = (data, formatYValue, compact) => {
+    data = data
+      .map(d => ({ ...d, ...xyPos(d) }))
+      // remove rotated labels when the bar is too short
+      .filter(d => !(d.rotated && d.yHeight < MIN_ROTATED_HEIGHT));
+
+    const labelGroups = parent
+      .append("svg:g")
+      .classed("value-labels", true)
+      .selectAll("g")
+      .data(data)
+      .enter()
+      .append("g")
+      .attr("text-anchor", d => (d.rotated ? "end" : "middle"))
+      .attr("transform", d => {
+        const transforms = [`translate(${d.xPos}, ${d.yPos})`];
+        if (d.rotated) {
+          transforms.push("rotate(-90)", `translate(-15, 4)`);
+        }
+        return transforms.join(" ");
+      });
+
+    // Labels are either white inside the bar or black with white outline.
+    // For outlined labels, Safari had an issue with rendering paint-order: stroke.
+    // To work around that, we create two text labels: one for the the black text
+    // and another for the white outline behind it.
+    ["value-label-outline", "value-label", "value-label-white"].forEach(klass =>
+      labelGroups
+        .append("text")
+        // only create labels for the correct class(es) given the type of label
+        .filter(d => !(d.rotated ^ (klass === "value-label-white")))
+        .attr("class", klass)
+        .text(({ y, seriesIndex }) => {
+          return formatYValue(y, {
+            negativeInParentheses: displays[seriesIndex] === "waterfall",
+            compact: compact === null ? compactForSeries[seriesIndex] : compact,
+          });
+        }),
+    );
+  };
   const addLabels = (datas, formatYValues, compact = null) => {
     // make sure we don't add .value-lables multiple times
     parent.select(".value-labels").remove();
     for (let [idx, data] of datas.entries()) {
-      data = data
-        .map(d => ({ ...d, ...xyPos(d) }))
-        // remove rotated labels when the bar is too short
-        .filter(d => !(d.rotated && d.yHeight < MIN_ROTATED_HEIGHT));
-
-      const labelGroups = parent
-        .append("svg:g")
-        .classed("value-labels", true)
-        .selectAll("g")
-        .data(data)
-        .enter()
-        .append("g")
-        .attr("text-anchor", d => (d.rotated ? "end" : "middle"))
-        .attr("transform", d => {
-          const transforms = [`translate(${d.xPos}, ${d.yPos})`];
-          if (d.rotated) {
-            transforms.push("rotate(-90)", `translate(-15, 4)`);
-          }
-          return transforms.join(" ");
-        });
-
-      // Labels are either white inside the bar or black with white outline.
-      // For outlined labels, Safari had an issue with rendering paint-order: stroke.
-      // To work around that, we create two text labels: one for the the black text
-      // and another for the white outline behind it.
-      ["value-label-outline", "value-label", "value-label-white"].forEach(
-        klass =>
-          labelGroups
-            .append("text")
-            // only create labels for the correct class(es) given the type of label
-            .filter(d => !(d.rotated ^ (klass === "value-label-white")))
-            .attr("class", klass)
-            .text(({ y, seriesIndex }) => {
-              return formatYValues[idx](y, {
-                negativeInParentheses: displays[seriesIndex] === "waterfall",
-                compact:
-                  compact === null ? compactForSeries[seriesIndex] : compact,
-              });
-            }),
-      );
+      addOneLabelSeries(data, formatYValues[idx], compact);
     }
   };
 
@@ -293,7 +294,7 @@ export function onRenderValueLabels(
     const MAX_SAMPLE_SIZE = 30;
     const sampleStep = Math.ceil(maxSeriesLength / MAX_SAMPLE_SIZE);
     const sample = data.filter((d, i) => i % sampleStep === 0);
-    // addLabels(sample, formatYValues[index], compactForSeries[index]);
+    addOneLabelSeries(sample, formatYValues[index], compactForSeries[index]);
     const totalWidth = chart
       .svg()
       .selectAll(".value-label-outline")
