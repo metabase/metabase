@@ -299,18 +299,6 @@
                            :strategy     :left-join
                            :condition    [:= $category_id &c.categories.id]
                            :alias        "c"}]})))))
-
-    (testing "when there is a function"
-      (is (= "SELECT sum(c.ID) AS id_sum FROM VENUES LEFT JOIN CATEGORIES c ON VENUES.CATEGORY_ID = c.ID"
-             (mbql->native
-               (mt/mbql-query venues
-                              {:aggregation [[:aggregation-options [:sum &c.categories.id] {:name "id_sum"}]]
-                               :joins       [{:fields       [&c.categories.name]
-                                              :source-table $$categories
-                                              :strategy     :left-join
-                                              :condition    [:= $category_id &c.categories.id]
-                                              :alias        "c"}]})))))
-
     (testing "when the join is NOT at the same level"
       (is (= (str "SELECT source.c__NAME AS c__NAME "
                   "FROM ("
