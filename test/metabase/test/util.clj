@@ -299,6 +299,7 @@
             (f))
           (f)))
       (finally
+        ;; Use set-string! to bypass custom setters, since they might reject the raw string read from the DB
         (setting/set-string! setting-k original-db-or-cache-value)))))
 
 (defmacro with-temporary-setting-values
