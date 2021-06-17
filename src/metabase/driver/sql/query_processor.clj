@@ -343,7 +343,6 @@
       field-alias)))
 
 (defmethod ->honeysql [:sql (class Field)]
-  ;; This one is assumed not to be a function field (eg., within a SQL function param.
   [driver {field-name :name, table-id :table_id, database-type :database_type, :as field}]
   ;; `identifer` will automatically unnest nested calls to `identifier`
   (as-> (if *table-alias*
@@ -419,16 +418,11 @@
         ;; infinite recursion.
         (->honeysql driver [:field field-id-or-name options]))
 
-      (and (:join-alias options) (not (contains? options :function-field)))
+      (:join-alias options)
       (compile-field-with-join-aliases driver field-clause)
 
       :else
-      (let [field-alias   (if (integer? field-id-or-name)
-                            (field->alias driver (qp.store/field field-id-or-name))
-                            field-id-or-name)
-            honeysql-form (cond
-                            (and (:join-alias options) (contains? options :function-field))
-                            (->honeysql driver (hx/identifier :field (:join-alias options) field-alias))
+      (let [honeysql-form (cond
                             ;; selects from an inner select should not
                             (and (integer? field-id-or-name) (contains? options ::outer-select))
                             (->honeysql driver (assoc (qp.store/field field-id-or-name) ::outer-select true))
@@ -450,36 +444,26 @@
     (hsql/call :count (->honeysql driver field))
     :%count.*))
 
-(defn- field->fn-field
-  "There's a lot of fancy join alias stuff that can't happen inside the fields for the params of SQL functions.
-  This adds an option in the fields to say this clearly."
-  [field]
-  (if
-    (and (vector? field) (= :field (first field)))
-    (let [[_ id-or-name options] field]
-      [:field id-or-name (assoc options :function-field true)])
-    field))
+(defmethod ->honeysql [:sql :avg]        [driver [_ field]]   (hsql/call :avg             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :median]     [driver [_ field]]   (hsql/call :median          (->honeysql driver field)))
+(defmethod ->honeysql [:sql :percentile] [driver [_ field p]] (hsql/call :percentile-cont (->honeysql driver field) (->honeysql driver p)))
+(defmethod ->honeysql [:sql :distinct]   [driver [_ field]]   (hsql/call :distinct-count  (->honeysql driver field)))
+(defmethod ->honeysql [:sql :stddev]     [driver [_ field]]   (hsql/call :stddev_pop      (->honeysql driver field)))
+(defmethod ->honeysql [:sql :var]        [driver [_ field]]   (hsql/call :var_pop         (->honeysql driver field)))
+(defmethod ->honeysql [:sql :sum]        [driver [_ field]]   (hsql/call :sum             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :min]        [driver [_ field]]   (hsql/call :min             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :max]        [driver [_ field]]   (hsql/call :max             (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :avg]        [driver [_ field]]   (hsql/call :avg             (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :median]     [driver [_ field]]   (hsql/call :median          (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :percentile] [driver [_ field p]] (hsql/call :percentile-cont (->honeysql driver (field->fn-field field)) (->honeysql driver p)))
-(defmethod ->honeysql [:sql :distinct]   [driver [_ field]]   (hsql/call :distinct-count  (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :stddev]     [driver [_ field]]   (hsql/call :stddev_pop      (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :var]        [driver [_ field]]   (hsql/call :var_pop         (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :sum]        [driver [_ field]]   (hsql/call :sum             (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :min]        [driver [_ field]]   (hsql/call :min             (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :max]        [driver [_ field]]   (hsql/call :max             (->honeysql driver (field->fn-field field))))
+(defmethod ->honeysql [:sql :floor] [driver [_ field]] (hsql/call :floor (->honeysql driver field)))
+(defmethod ->honeysql [:sql :ceil]  [driver [_ field]] (hsql/call :ceil  (->honeysql driver field)))
+(defmethod ->honeysql [:sql :round] [driver [_ field]] (hsql/call :round (->honeysql driver field)))
+(defmethod ->honeysql [:sql :abs]   [driver [_ field]] (hsql/call :abs (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :floor] [driver [_ field]] (hsql/call :floor (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :ceil]  [driver [_ field]] (hsql/call :ceil  (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :round] [driver [_ field]] (hsql/call :round (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :abs]   [driver [_ field]] (hsql/call :abs   (->honeysql driver (field->fn-field field))))
-
-(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hsql/call :log 10 (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :exp]   [driver [_ field]] (hsql/call :exp    (->honeysql driver (field->fn-field field))))
-(defmethod ->honeysql [:sql :sqrt]  [driver [_ field]] (hsql/call :sqrt   (->honeysql driver (field->fn-field field))))
+(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hsql/call :log 10 (->honeysql driver field)))
+(defmethod ->honeysql [:sql :exp]   [driver [_ field]] (hsql/call :exp (->honeysql driver field)))
+(defmethod ->honeysql [:sql :sqrt]  [driver [_ field]] (hsql/call :sqrt (->honeysql driver field)))
 (defmethod ->honeysql [:sql :power] [driver [_ field power]]
-  (hsql/call :power (->honeysql driver (field->fn-field field)) (->honeysql driver power)))
+  (hsql/call :power (->honeysql driver field) (->honeysql driver power)))
 
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
