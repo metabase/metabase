@@ -29,6 +29,7 @@ import { loadMemberships } from "../people";
 })
 @User.loadList({
   reload: true,
+  keepListWhileLoading: true,
   query: (_, { query }) => ({
     query: query.searchText,
     status: query.status,

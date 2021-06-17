@@ -93,7 +93,7 @@ export default function SearchApp({ location }) {
         </Flex>
       )}
       <Box>
-        <Search.ListLoader query={query} wrapped>
+        <Search.ListLoader keepListWhileLoading query={query} wrapped>
           {({ list, metadata }) => {
             if (list.length === 0) {
               return (
