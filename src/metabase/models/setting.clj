@@ -45,7 +45,7 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models])
-  (:import [clojure.lang Keyword Symbol]
+  (:import [clojure.lang Symbol]
            java.io.StringWriter))
 
 (models/defmodel Setting

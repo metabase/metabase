@@ -1,5 +1,6 @@
 (ns metabase.models.setting-test
   (:require [clojure.test :refer :all]
+            [environ.core :as env]
             [medley.core :as m]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
@@ -60,7 +61,9 @@
   [setting-name]
   (db/select-one-field :value Setting, :key (name setting-name)))
 
-(defn setting-exists-in-db? [setting-name]
+(defn setting-exists-in-db?
+  "Returns a boolean indicating whether a setting has a value stored in the application DB."
+  [setting-name]
   (boolean (Setting :key (name setting-name))))
 
 (deftest string-tag-test
@@ -169,7 +172,7 @@
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
   (do-with-temporary-setting-value setting db-value
     (fn []
-      (with-redefs [environ.core/env {(keyword (str "mb-" (name setting))) env-var-value}]
+      (with-redefs [env/env {(keyword (str "mb-" (name setting))) env-var-value}]
         (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
                 :key :description)))))
 
@@ -448,10 +451,14 @@
 
 ;;; ----------------------------------------------- Uncached Settings ------------------------------------------------
 
-(defn clear-settings-last-updated-value-in-db! []
+(defn clear-settings-last-updated-value-in-db!
+  "Deletes the timestamp for the last updated setting from the DB."
+  []
   (db/simple-delete! Setting {:key cache/settings-last-updated-key}))
 
-(defn settings-last-updated-value-in-db []
+(defn settings-last-updated-value-in-db
+  "Fetches the timestamp of the last updated setting."
+  []
   (db/select-one-field :value Setting :key cache/settings-last-updated-key))
 
 (defsetting ^:private uncached-setting
@@ -552,7 +559,7 @@
   (testing "Only valid characters used for environment lookup"
     (is (nil? (test-setting-with-question-mark?)))
     ;; note now question mark on the environmental setting
-    (with-redefs [environ.core/env {:mb-test-setting-with-question-mark "resolved"}]
+    (with-redefs [env/env {:mb-test-setting-with-question-mark "resolved"}]
       (binding [setting/*disable-cache* false]
         (is (= "resolved" (test-setting-with-question-mark?))))))
   (testing "Setting a setting that would munge the same throws an error"
