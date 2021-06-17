@@ -72,6 +72,59 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get(".bar");
     });
   });
+
+  context.skip("via custom question", () => {
+    beforeEach(() => {
+      cy.visit("/question/new");
+      cy.findByText("Custom question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("SQL Binning").click();
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+    });
+
+    it("should work for time series", () => {
+      popover().within(() => {
+        openPopoverFromDefaultBucketSize("CREATED_AT", "by minute");
+      });
+      cy.findByText("Year").click();
+
+      cy.findByText("Count by CREATED_AT: Year");
+      cy.button("Visualize").click();
+
+      waitAndAssertOnRequest("@dataset");
+      cy.get(".bar");
+    });
+
+    it("should work for number", () => {
+      popover().within(() => {
+        openPopoverFromDefaultBucketSize("TOTAL", "Auto binned");
+      });
+      cy.findByText("100 bins").click();
+
+      cy.findByText("Count by TOTAL: 100 bins");
+      cy.button("Visualize").click();
+
+      waitAndAssertOnRequest("@dataset");
+      cy.get(".bar");
+    });
+
+    it("should work for longitude", () => {
+      popover().within(() => {
+        openPopoverFromDefaultBucketSize("LONGITUDE", "Auto binned");
+      });
+      cy.findByText("Bin every 10 degrees").click();
+
+      cy.findByText("Count by LONGITUDE: 10°");
+      cy.button("Visualize").click();
+
+      waitAndAssertOnRequest("@dataset");
+      cy.get(".bar");
+    });
+  });
 });
 
 function openPopoverFromDefaultBucketSize(column, bucket) {
