@@ -64,7 +64,9 @@
   [_ ^ZonedDateTime t]
   ;; use the Presto `timestamp` function to interpret in the correct TZ, regardless of connection zone
   ;; pass nil for the zone override since it's already part of `ZonedDateTime` (and will be output by the format call)
-  (hsql/call "from_iso8601_timestamp" (.format t DateTimeFormatter/ISO_INSTANT))
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+        ts          (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
+    (hsql/call "from_iso8601_timestamp" (.format ts DateTimeFormatter/ISO_INSTANT)))
   #_(hsql/call (u/qualified-name ::timestamp) (date-time->ts-str (.truncatedTo t ChronoUnit/MILLIS) nil)))
 
 ;; it seems we don't need, or want, to override this for LocalDateTime
@@ -88,10 +90,12 @@
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
   \"AT TIME ZONE\" operator. See https://prestodb.io/docs/current/functions/datetime.html"
   [expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
-    (if (and (not (hx/is-of-type? expr "timestamp"))
-          (not (::in-report-zone? (meta expr)))
-          report-zone)
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+        type-info   (or (hx/type-info expr) sql.qp/*parent-expr-type-info*)
+        db-type     (hx/type-info->db-type type-info)]
+    (if (and (not (contains? #{"date" "timestamp" "time"} db-type))
+             (not (::in-report-zone? (meta expr)))
+             report-zone)
       (-> (hx/with-database-type-info (->AtTimeZone expr report-zone) "timestamp with time zone")
         (vary-meta assoc ::in-report-zone? true))
       expr)))
@@ -101,7 +105,6 @@
 (defmethod sql.qp/date [:presto-jdbc :default]
   [_ _ expr]
   (do
-    (print "default case")
     expr))
 
 (defmethod sql.qp/date [:presto-jdbc :minute]
@@ -382,12 +385,14 @@
 
 (defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc ZonedDateTime]
   [_ ^ZonedDateTime t]
-  (date-time->substitution (.format t DateTimeFormatter/ISO_INSTANT)))
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+        ts          (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
+    (date-time->substitution (.format ts DateTimeFormatter/ISO_OFFSET_DATE_TIME))))
 
 (defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc LocalDateTime]
   [_ ^LocalDateTime t]
   ;; TODO: figure out if report time zone has been accounted for here
-  (date-time->substitution (.format t DateTimeFormatter/ISO_INSTANT)))
+  (date-time->substitution (.format t DateTimeFormatter/ISO_OFFSET_DATE_TIME)))
 
 (defn- set-time-param
   "Converts the given instance of `java.time.temporal`, assumed to be a time (either `LocalTime` or `OffsetTime`)
@@ -502,7 +507,8 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
   [_ ^ResultSet rset ^ResultSetMetaData rsmeta ^Integer i]
-  (let [zone (.getTimeZoneId (rs->presto-conn rset))]
+  (let [zone     (.getTimeZoneId (rs->presto-conn rset))
+        col-type (.getColumnTypeName rsmeta i)]
     (fn []
       (when-let [s (.getString rset i)]
         (when-let [t (u.date/parse s)]
@@ -510,6 +516,12 @@
             (or (instance? OffsetDateTime t)
               (instance? ZonedDateTime t))
             (t/offset-date-time t)
+            #_(condp (partial = (str/lower-case col-type))
+                "timestamp with time zone"
+                (t/offset-date-time t)
+                "timestamp"
+                (t/local-date-time t))
+
             ;; presto "helpfully" returns local results already adjusted to session time zone offset for us, e.g.
             ;; '2021-06-15T00:00:00' becomes '2021-06-15T07:00:00' if the session timezone is US/Pacific. Undo the
             ;; madness
