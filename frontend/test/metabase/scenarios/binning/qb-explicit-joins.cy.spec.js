@@ -184,6 +184,62 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.get(".bar");
     });
   });
+
+  context("via custom question", () => {
+    beforeEach(() => {
+      cy.visit("/question/new");
+      cy.findByText("Custom question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("QB Binning").click();
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+    });
+
+    it("should work for time series", () => {
+      popover().within(() => {
+        openPopoverFromDefaultBucketSize("Created At", "by month");
+      });
+      cy.findByText("Year").click();
+
+      cy.findByText("Count by Created At: Year");
+      cy.button("Visualize").click();
+
+      waitAndAssertOnRequest("@dataset");
+      cy.get("circle");
+    });
+
+    it("should work for number", () => {
+      popover().within(() => {
+        openPopoverFromDefaultBucketSize("Total", "Auto bin");
+      });
+      cy.findByText("100 bins").click();
+
+      cy.findByText("Count by Total: 100 bins");
+      cy.button("Visualize").click();
+
+      waitAndAssertOnRequest("@dataset");
+      cy.get(".bar");
+    });
+
+    it("should work for longitude", () => {
+      popover().within(() => {
+        openPopoverFromDefaultBucketSize(
+          "People - User → Longitude",
+          "Auto bin",
+        );
+      });
+      cy.findByText("Bin every 10 degrees").click();
+
+      cy.findByText("Count by People - User → Longitude: 10°");
+      cy.button("Visualize").click();
+
+      waitAndAssertOnRequest("@dataset");
+      cy.get(".bar");
+    });
+  });
 });
 
 function openPopoverFromDefaultBucketSize(column, bucket) {
