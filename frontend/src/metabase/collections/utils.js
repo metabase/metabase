@@ -41,3 +41,13 @@ export function getParentPath(collections, targetId) {
   }
   return null; // didn't find it under any collection
 }
+
+export function isPersonalCollectionChild(collection, collectionList) {
+  // eslint-disable-next-line no-unused-vars
+  const [root, nonRootParent] = collection.effective_ancestors;
+  if (!nonRootParent) {
+    return false;
+  }
+  const parentCollection = collectionList.find(c => c.id === nonRootParent.id);
+  return parentCollection && !!parentCollection.personal_owner_id;
+}
