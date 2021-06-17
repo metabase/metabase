@@ -82,7 +82,6 @@ export default class CustomGeoJSONWidget extends Component {
     await this._saveMap(map.id, null);
   };
 
-  // This is a bit of a hack, but the /api/geojson endpoint only works if the map is saved in the custom-geojson setting
   _loadGeoJson = async () => {
     try {
       const { map } = this.state;
@@ -91,8 +90,9 @@ export default class CustomGeoJSONWidget extends Component {
         geoJsonLoading: true,
         geoJsonError: null,
       });
-      await this._saveMap(map.id, map);
-      const geoJson = await GeoJSONApi.get({ id: map.id });
+      const geoJson = await GeoJSONApi.load({
+        url: encodeURIComponent(map.url),
+      });
       this.setState({
         geoJson: geoJson,
         geoJsonLoading: false,
