@@ -164,6 +164,10 @@ export class QuestionResultLoader extends React.Component {
   }
 }
 
+QuestionResultLoader.defaultProps = {
+  keepPreviousWhileLoading: false,
+};
+
 QuestionResultLoader.propTypes = propTypes;
 
 export default QuestionResultLoader;
