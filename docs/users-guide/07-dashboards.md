@@ -62,8 +62,8 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 
 ![Editing dashboard](images/dashboards/DashboardEdit.png)
 
-- **To move a card**, just click and drag the card.
-- **To resize a card**, click the handle at the bottom right corner of the card, and drag to resize.
+- **To move a card**, just click and drag the card. Other cards will move out of the way.
+- **To resize a card**, click the handle at the bottom right corner of the card, and drag to resize. Nearby cards will move away to accommodate the new size.
 - **To remove a card**, hover over the card, and click the X icon in the top right corner.
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
