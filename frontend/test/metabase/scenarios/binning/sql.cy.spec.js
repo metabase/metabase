@@ -96,7 +96,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.button("Visualize").click();
 
       waitAndAssertOnRequest("@dataset");
-      cy.get(".bar");
+      cy.get("circle");
     });
 
     it("should work for number", () => {
