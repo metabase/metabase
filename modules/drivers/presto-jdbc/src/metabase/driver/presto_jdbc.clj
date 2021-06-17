@@ -54,11 +54,11 @@
   ;; make time in UTC to avoid any interpretation by Presto in the connection (i.e. report) time zone
   (hx/cast "time with time zone" (u.date/format-sql (t/offset-time (t/local-time t) 0))))
 
-(defn- date-time->ts-str [dt tz]
-  ;; Presto only allows precision up to milliseconds, so instances have been truncated to that precision
-  (str (u.date/format-sql dt)
-       ;; append tz to the final string only if passed (i.e. when a report tz is added on to a `LocalDateTime`
-       (when-not (str/blank? tz) (str " " tz))))
+#_(defn- date-time->ts-str [dt tz]
+    ;; Presto only allows precision up to milliseconds, so instances have been truncated to that precision
+    (str (u.date/format-sql dt)
+         ;; append tz to the final string only if passed (i.e. when a report tz is added on to a `LocalDateTime`
+         (when-not (str/blank? tz) (str " " tz))))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ZonedDateTime]
   [_ ^ZonedDateTime t]
