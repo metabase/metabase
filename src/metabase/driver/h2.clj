@@ -140,10 +140,10 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :milliseconds] [_ _ expr]
   (add-to-1970 expr "millisecond"))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :microseconds] [_ _ expr]
   (add-to-1970 expr "microsecond"))
 
 (defmethod sql.qp/cast-temporal-string [:h2 :Coercion/YYYYMMDDHHMMSSString->Temporal]
