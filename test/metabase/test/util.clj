@@ -282,21 +282,24 @@
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as `binding`.
 
-   Prefer the macro `with-temporary-setting-values` over using this function directly."
+  Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (initialize/initialize-if-needed! :db :plugins)
-  (let [setting        (#'setting/resolve-setting setting-k)
-        original-value (when (or (#'setting/db-or-cache-value setting)
-                                 (#'setting/env-var-value setting))
-                         (setting/get setting-k))]
+  (let [setting                    (#'setting/resolve-setting setting-k)
+        env-var-value              (#'setting/env-var-value setting)
+        original-db-or-cache-value (#'setting/db-or-cache-value setting)]
     (try
       (setting/set! setting-k value)
       (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-        (f))
+        (if env-var-value
+          (testing (colorize/red (format "NOTE: %s is set to %s by an env var, which takes precedence\n"
+                                         (keyword setting-k) (pr-str env-var-value)))
+            (f))
+          (f)))
       (finally
-        (setting/set! setting-k original-value)))))
+        (setting/set! setting-k original-db-or-cache-value)))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
