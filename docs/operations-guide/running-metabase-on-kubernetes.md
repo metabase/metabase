@@ -8,7 +8,7 @@ This guide will help you install Metabase on Kubernetes using [Metabase Helm cha
 
 * [Helm](https://github.com/helm/helm) installed
 
-### How to add Metabase official Helm repo
+### How to add the official Metabase Helm repo
 
 ```bash
 $ helm repo add metabase https://www.metabase.com/helm
@@ -19,18 +19,18 @@ $ helm repo update
 ```bash
 $ helm install metabase/metabase --generate-name
 ```
-or, in the case you want to set a custom name:
+or, in the case you want to set a custom name (like "meta-helm-chart"):
 ```bash
 $ helm install meta-helm-chart metabase/metabase
 ```
 
 ### Introduction
 
-This chart bootstraps a [Metabase](https://github.com/metabase/metabase) deployment on a [Kubernetes](http://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager. It separates concerns about configs in ConfigMaps and Secrets and also sets up liveliness and readiness probes.
+This chart bootstraps a [Metabase](https://github.com/metabase/metabase) deployment on a [Kubernetes](http://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager. The chart sets up liveliness and readiness probes, and separates configuration details between ConfigMaps and Secrets.
 
 This helm is highly configurable as it can be connected to any application database, tune Jetty or maximum data warehouse connections by passing configuration parameters (be aware that the default deployment will run with the H2 database which is [strongly discouraged](https://www.metabase.com/docs/latest/operations-guide/migrating-from-h2.html)).
 
-This helm pulls the `latest` docker tag of the `metabase/metabase` image, but it can be easily configured to pull Metabase Enterprise if needed as well as pinning down the version.
+This helm chart pulls the `latest` docker tag of the `metabase/metabase` image, but you can configure the chart to pull Metabase Enterprise, or a specific version.
 
 ### Uninstalling the Chart
 To uninstall/delete the `meta-helm-chart` deployment:
