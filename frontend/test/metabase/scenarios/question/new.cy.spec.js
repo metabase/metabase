@@ -397,7 +397,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("Hour of day").click();
     });
 
-    it("trend visualization should work regardless of column order (metabase#13710)", () => {
+    it.skip("trend visualization should work regardless of column order (metabase#13710)", () => {
       cy.server();
       cy.createQuestion({
         name: "13710",
