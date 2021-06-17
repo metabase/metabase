@@ -10,7 +10,7 @@ import SelectButton from "metabase/components/SelectButton";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Questions from "metabase/entities/questions";
-import { question as questionUrl } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -78,7 +78,9 @@ export default class CardTagEditor extends Component {
           {cardId == null ? (
             t`Question #…`
           ) : (
-            <Link to={questionUrl(cardId)}>{t`Question #${cardId}`}</Link>
+            <Link
+              to={Urls.question(question ? question : { id: cardId })}
+            >{t`Question #${cardId}`}</Link>
           )}
         </h3>
         {loading ? (

@@ -724,9 +724,9 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it.skip("should link correctly from the variables sidebar (metabase#16212)", () => {
+  it("should link correctly from the variables sidebar (metabase#16212)", () => {
     cy.createNativeQuestion({
-      name: "16212",
+      name: "test-question",
       native: { query: 'select 1 as "a", 2 as "b"' },
     }).then(({ body: { id: questionId } }) => {
       cy.visit("/");
@@ -743,7 +743,7 @@ describe("scenarios > question > native", () => {
       });
       cy.findByRole("link", { name: `Question #${questionId}` })
         .should("have.attr", "href")
-        .and("eq", `/question/${questionId}`);
+        .and("eq", `/question/${questionId}-test-question`);
     });
   });
 });
