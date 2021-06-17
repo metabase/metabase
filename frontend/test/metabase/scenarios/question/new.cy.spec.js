@@ -75,7 +75,7 @@ describe("scenarios > question > new", () => {
     cy.get(".Visualization .bar").should("have.length", 6);
   });
 
-  it.skip("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
+  it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
     openOrdersTable();
     cy.icon("download").realHover();
     cy.findByText("Download full results");
@@ -291,7 +291,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("Hour of Day");
     });
 
-    it.skip("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
+    it("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
       cy.createQuestion({
         name: "11183",
         query: {
