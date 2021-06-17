@@ -8,7 +8,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       name: "SQL Binning",
       native: {
         query:
-          "SELECT ORDERS.CREATED_AT, ORDERS.TOTAL, PEOPLE.BIRTH_DATE, PEOPLE.LONGITUDE FROM ORDERS JOIN PEOPLE ON orders.user_id = people.id",
+          "SELECT ORDERS.CREATED_AT, ORDERS.TOTAL, PEOPLE.LONGITUDE FROM ORDERS JOIN PEOPLE ON orders.user_id = people.id",
       },
     });
 
