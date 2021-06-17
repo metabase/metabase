@@ -899,8 +899,8 @@ export default function lineAreaBar(
     });
   });
 
-  const formatYValues = yAxisProps.yExtents.map(extent =>
-    getYValueFormatter(parent, series, extent),
+  const formatYValues = yAxisProps.yExtents.map((extent, idx) =>
+    getYValueFormatter(parent, series, extent, series[idx].data.cols[1]),
   );
 
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)

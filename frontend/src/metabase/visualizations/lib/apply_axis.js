@@ -381,7 +381,11 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
   }
 
   if (axis.setting("axis_enabled")) {
-    axis.axis().tickFormat(getYValueFormatter(chart, series, yExtent));
+    axis
+      .axis()
+      .tickFormat(
+        getYValueFormatter(chart, series, yExtent, series[0].data.cols[1]),
+      );
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
   } else {
@@ -469,14 +473,13 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
   }
 }
 
-export function getYValueFormatter(chart, series, yExtent) {
+export function getYValueFormatter(chart, series, yExtent, metricColumn) {
   // special case for normalized stacked charts
   // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
   // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
   if (chart.settings["stackable.stack_type"] === "normalized") {
     return value => Math.round(value * 100) + "%";
   }
-  const metricColumn = series[0].data.cols[1];
   const columnSettings = chart.settings.column(metricColumn);
   return (value, options) => {
     const roundedValue = maybeRoundValueToZero(value, yExtent);
