@@ -1188,7 +1188,8 @@
 
 (defmethod automagic-analysis (type Query)
   [query {:keys [cell-query] :as opts}]
-  (let [root     (->root query)
+  (let [query    (walk/postwalk #(if (map? %) (dissoc % :join-alias) %) query)
+        root     (->root query)
         cell-url (format "%sadhoc/%s/cell/%s" public-endpoint
                          (encode-base64-json (:dataset_query query))
                          (encode-base64-json cell-query))]
