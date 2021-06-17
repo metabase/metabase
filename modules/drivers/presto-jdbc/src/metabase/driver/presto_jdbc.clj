@@ -28,7 +28,7 @@
            [java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types]
            [java.time Instant LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.time.format.DateTimeFormatter
-           [java.time.temporal ChronoField ChronoUnit Temporal]))
+           [java.time.temporal ChronoField Temporal]))
 
 (driver/register! :presto-jdbc, :parent #{:presto-common :sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
@@ -64,8 +64,8 @@
   [_ ^ZonedDateTime t]
   ;; use the Presto `timestamp` function to interpret in the correct TZ, regardless of connection zone
   ;; pass nil for the zone override since it's already part of `ZonedDateTime` (and will be output by the format call)
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
-        ts          (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
+  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+        ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
     (hsql/call "from_iso8601_timestamp" (.format ts DateTimeFormatter/ISO_INSTANT)))
   #_(hsql/call (u/qualified-name ::timestamp) (date-time->ts-str (.truncatedTo t ChronoUnit/MILLIS) nil)))
 
@@ -385,8 +385,8 @@
 
 (defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc ZonedDateTime]
   [_ ^ZonedDateTime t]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
-        ts          (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
+  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+        ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
     (date-time->substitution (.format ts DateTimeFormatter/ISO_OFFSET_DATE_TIME))))
 
 (defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc LocalDateTime]

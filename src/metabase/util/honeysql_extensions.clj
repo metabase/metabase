@@ -204,8 +204,9 @@
   (unwrap-typed-honeysql-form [this]
     (:form this)))
 
-(defn type-info->db-type [type-info]
+(defn type-info->db-type
   "For a given type-info, returns the `database-type`."
+  [type-info]
   {:added "0.39.0"}
   (::database-type type-info))
 
