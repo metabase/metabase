@@ -41,7 +41,7 @@ describe("personal collections", () => {
       cy.icon("pencil").should("not.exist");
     });
 
-    it.skip("shouldn't be able to change permission levels for sub-collections in personal collections (metabase#8406)", () => {
+    it("shouldn't be able to change permission levels for sub-collections in personal collections (metabase#8406)", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection").click();
       // Create new collection inside admin's personal collection and navigate to it
