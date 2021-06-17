@@ -71,26 +71,87 @@ describe("binning related reproductions", () => {
     // Given that the previous step passes, we should now see this in the UI
     cy.findByText("User → Created At: Minute");
   });
-});
 
-it.skip("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
-  cy.createNativeQuestion({
-    name: "16327",
-    native: { query: "select * from products limit 5" },
+  it.skip("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
+    cy.createNativeQuestion({
+      name: "16327",
+      native: { query: "select * from products limit 5" },
+    });
+
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("16327").click();
+
+    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Count of rows").click();
+
+    cy.findByText("Pick a column to group by").click();
+    cy.findByText(/CREATED_AT/i).realHover();
+    cy.findByText("by minute").click({ force: true });
+
+    // Implicit assertion - it fails if there is more than one instance of the string, which is exactly what we need for this repro
+    cy.findByText("Month");
   });
 
-  cy.visit("/question/new");
-  cy.findByText("Custom question").click();
-  cy.findByText("Saved Questions").click();
-  cy.findByText("16327").click();
+  describe.skip("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
+    beforeEach(() => {
+      cy.createQuestion({
+        name: "16379",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["avg", ["field", ORDERS.SUBTOTAL, null]]],
+          breakout: [["field", ORDERS.USER_ID, null]],
+        },
+      });
+    });
 
-  cy.findByText("Pick the metric you want to see").click();
-  cy.findByText("Count of rows").click();
+    it("should work for simple question", () => {
+      openSummarizeOptions("Simple question");
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Average of Subtotal")
+          .closest(".List-item")
+          .findByText("Auto binned")
+          .click({ force: true });
+      });
 
-  cy.findByText("Pick a column to group by").click();
-  cy.findByText(/CREATED_AT/i).realHover();
-  cy.findByText("by minute").click({ force: true });
+      popover().within(() => {
+        cy.findByText("50 bins").click();
+      });
 
-  // Implicit assertion - it fails if there is more than one instance of the string, which is exactly what we need for this repro
-  cy.findByText("Month");
+      cy.get(".bar");
+    });
+
+    it("should work for custom question", () => {
+      openSummarizeOptions("Custom question");
+
+      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Count of rows").click();
+      cy.findByText("Pick a column to group by").click();
+
+      popover().within(() => {
+        cy.findByText("Average of Subtotal")
+          .closest(".List-item")
+          .findByText("Auto binned")
+          .click({ force: true });
+      });
+
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("50 bins").click();
+        });
+
+      cy.button("Visualize").click();
+      cy.get(".bar");
+    });
+  });
 });
+
+function openSummarizeOptions(questionType) {
+  cy.visit("/question/new");
+  cy.findByText(questionType).click();
+  cy.findByText("Saved Questions").click();
+  cy.findByText("16379").click();
+  cy.findByText("Summarize").click();
+}

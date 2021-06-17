@@ -152,7 +152,7 @@ describeWithToken("formatting > whitelabel", () => {
         `rgb(${colors.primary.rgb.join(", ")})`,
       );
 
-      cy.findByLabelText("Email address").type("some@email.com");
+      cy.findByLabelText("Email address").type("some@email.test");
       cy.findByLabelText("Password").type("1234");
       cy.get(".Button--primary").should(
         "have.css",

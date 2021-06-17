@@ -55,6 +55,7 @@ function AuditTable({
   return (
     <div>
       <QuestionLoadAndDisplay
+        keepPreviousWhileLoading
         className="mt3"
         question={question}
         metadata={metadata}

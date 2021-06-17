@@ -9,6 +9,9 @@ import AuthLayout from "metabase/auth/components/AuthLayout";
 
 import { getAuthProviders } from "../selectors";
 
+const buildLinkURL = ({ Panel, name }) =>
+  Panel && `/auth/login/${name}${location.search}`;
+
 const mapStateToProps = (state, props) => ({
   providers: getAuthProviders(state, props),
 });
@@ -33,7 +36,7 @@ export default class LoginApp extends Component {
             {visibleProviders.map(provider => (
               <Link
                 key={provider.name}
-                to={provider.Panel ? `/auth/login/${provider.name}` : null}
+                to={buildLinkURL(provider)}
                 className="mt2 block"
               >
                 <provider.Button {...this.props} />

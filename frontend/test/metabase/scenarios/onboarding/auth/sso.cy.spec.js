@@ -3,6 +3,9 @@ import {
   restore,
   mockCurrentUserProperty,
 } from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { admin } = USERS;
 
 describe("scenarios > auth > signin > SSO", () => {
   beforeEach(() => {
@@ -41,12 +44,22 @@ describe("scenarios > auth > signin > SSO", () => {
       cy.findByText("Sign in with Google").should("not.exist");
     });
 
-    it.skip("should surface login errors with Google sign in enabled (metabase#16122)", () => {
+    it("should surface login errors with Google sign in enabled (metabase#16122)", () => {
       cy.findByText("Sign in with email").click();
       cy.findByLabelText("Email address").type("foo@bar.test");
       cy.findByLabelText("Password").type("123");
       cy.button("Sign in").click();
       cy.contains("Password: did not match stored password");
+    });
+
+    it("should pass `redirect` search params from Google button screen to email/password screen (metabase#16216)", () => {
+      const loginProtectedURL = "/admin/permissions/databases";
+
+      cy.visit(loginProtectedURL);
+      cy.findByText("Sign in with email").click();
+      fillInAuthForm();
+
+      cy.url().should("include", loginProtectedURL);
     });
   });
 
@@ -66,3 +79,9 @@ describe("scenarios > auth > signin > SSO", () => {
     });
   });
 });
+
+const fillInAuthForm = () => {
+  cy.findByLabelText("Email address").type(admin.email);
+  cy.findByLabelText("Password").type(admin.password);
+  cy.findByText("Sign in").click();
+};

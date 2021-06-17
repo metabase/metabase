@@ -68,6 +68,7 @@ export default class AuditTableVisualization extends React.Component {
       visualizationIsClickable,
       onVisualizationClick,
       settings,
+      isSortable,
     } = this.props;
 
     const columnIndexes = settings["table.columns"]
@@ -99,6 +100,7 @@ export default class AuditTableVisualization extends React.Component {
                   className={cx("text-nowrap", {
                     "text-right": isColumnRightAligned(column),
                     "text-brand": isSortedByColumn,
+                    "cursor-pointer text-brand-hover": isSortable,
                   })}
                 >
                   {formatColumn(cols[colIndex])}

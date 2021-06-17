@@ -334,7 +334,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
-  it.skip("should drill-through on a foreign key (metabase#8055)", () => {
+  it("should drill-through on a foreign key (metabase#8055)", () => {
     // In this test we're using already present dashboard ("Orders in a dashboard")
     const FILTER_ID = "7c9ege62";
 
@@ -582,7 +582,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
-  it.skip('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
+  it('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 

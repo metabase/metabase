@@ -33,11 +33,11 @@ describeWithToken("audit > auditing > questions", () => {
 
       assertRowsOrder(QUERY_RUNS_DESC_ORDER);
 
-      cy.findByText("Query Runs").click();
+      cy.findByText("Query Runs (ms)").click();
 
       assertRowsOrder(QUERY_RUNS_ASC_ORDER);
 
-      cy.findByText("Query Runs").click();
+      cy.findByText("Query Runs (ms)").click();
 
       assertRowsOrder(QUERY_RUNS_DESC_ORDER);
     });
