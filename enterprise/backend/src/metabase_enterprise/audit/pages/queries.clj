@@ -95,9 +95,9 @@
                [:user_name       {:display_name "Created By",      :base_type :type/Text,    :remapped_from :user_id}]
                [:public_link     {:display_name "Public Link",     :base_type :type/URL}]
                [:cache_ttl       {:display_name "Cache Duration",  :base_type :type/Number}]
-               [:avg_exec_time   {:display_name "Average Runtime", :base_type :type/Integer}]
-               [:total_runtime   {:display_name "Total Runtime",   :base_type :type/Number}]
-               [:query_runs      {:display_name "Query Runs",      :base_type :type/Integer}]
+               [:avg_exec_time   {:display_name "Average Runtime (ms)", :base_type :type/Integer}]
+               [:total_runtime   {:display_name "Total Runtime (ms)",   :base_type :type/Number}]
+               [:query_runs      {:display_name "Query Runs (ms)",      :base_type :type/Integer}]
                ]
     :results  (common/reducible-query
                 (->
