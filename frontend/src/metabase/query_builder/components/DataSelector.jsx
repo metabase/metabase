@@ -709,7 +709,7 @@ export class UnconnectedDataSelector extends Component {
     const { canChangeDatabase, selectedDatabaseId } = this.props;
     const searchDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
-    const isSearchActive = searchText.length >= MIN_SEARCH_LENGTH;
+    const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
 
     return (
       <PopoverWithTrigger
@@ -737,7 +737,7 @@ export class UnconnectedDataSelector extends Component {
         )}
         {isSearchActive && (
           <SearchResults
-            searchQuery={searchText}
+            searchQuery={searchText.trim()}
             databaseId={searchDatabaseId}
             onSelect={this.handleSearchItemSelect}
           />
