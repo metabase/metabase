@@ -252,9 +252,8 @@ export default class AccordionList extends Component {
     let searchFilter = () => true;
     if (searchText) {
       searchFilter = item => {
-        let itemText = searchProp.includes(".")
-          ? String(getIn(item, searchProp.split(".")) || "")
-          : String(item[searchProp] || "");
+        const path = searchProp.split(".");
+        let itemText = String(getIn(item, path) || "");
         if (searchCaseInsensitive) {
           itemText = itemText.toLowerCase();
           searchText = searchText.toLowerCase();
