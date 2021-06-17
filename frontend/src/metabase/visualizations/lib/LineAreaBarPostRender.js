@@ -377,7 +377,7 @@ function onRender(
     xInterval,
     yAxisSplit,
     isStacked,
-    formatYValue,
+    formatYValues,
     datas,
   },
 ) {
@@ -389,7 +389,7 @@ function onRender(
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
   onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
-  onRenderValueLabels(chart, { formatYValue, xInterval, yAxisSplit, datas });
+  onRenderValueLabels(chart, { formatYValues, xInterval, yAxisSplit, datas });
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);

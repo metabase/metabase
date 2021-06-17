@@ -16,7 +16,7 @@ To do this it has to match the behavior in dc.js and our own hacks on top of tha
 
 export function onRenderValueLabels(
   chart,
-  { formatYValue, xInterval, yAxisSplit, datas },
+  { formatYValues, xInterval, yAxisSplit, datas },
 ) {
   const seriesSettings = datas.map((_, seriesIndex) =>
     chart.settings.series(chart.series[seriesIndex]),
@@ -130,7 +130,7 @@ export function onRenderValueLabels(
   const maxSeriesLength = Math.max(...datas.map(d => d.length));
 
   const formattingSetting = chart.settings["graph.label_value_formatting"];
-  const compactForSeries = datas.map(data => {
+  const compactForSeries = datas.map((data, seriesIndex) => {
     if (formattingSetting === "compact") {
       return true;
     }
@@ -149,7 +149,9 @@ export function onRenderValueLabels(
         // _numberFormatter would take precedence.
         _numberFormatter: undefined,
       };
-      const lengths = data.map(d => formatYValue(d.y, options).length);
+      const lengths = data.map(
+        d => formatYValues[seriesIndex](d.y, options).length,
+      );
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
     };
     return getAvgLength(true) < getAvgLength(false) - 3;
@@ -232,7 +234,7 @@ export function onRenderValueLabels(
   };
 
   const MIN_ROTATED_HEIGHT = 50;
-  const addLabels = (data, compact = null) => {
+  const addLabels = (data, formatYValue, compact = null) => {
     // make sure we don't add .value-lables multiple times
     parent.select(".value-labels").remove();
 
@@ -290,7 +292,7 @@ export function onRenderValueLabels(
     const MAX_SAMPLE_SIZE = 30;
     const sampleStep = Math.ceil(maxSeriesLength / MAX_SAMPLE_SIZE);
     const sample = data.filter((d, i) => i % sampleStep === 0);
-    addLabels(sample, compactForSeries[index]);
+    addLabels(sample, formatYValues[index], compactForSeries[index]);
     const totalWidth = chart
       .svg()
       .selectAll(".value-label-outline")
@@ -348,11 +350,7 @@ export function onRenderValueLabels(
       }
     });
 
-  addLabels(
-    datas.flatMap(data =>
-      data.filter((d, i) => i % nthForSeries[d.seriesIndex] === 0 && !d.hidden),
-    ),
-  );
+  datas.map((data, idx) => addLabels(data, formatYValues[idx]));
 
   moveToFront(
     chart

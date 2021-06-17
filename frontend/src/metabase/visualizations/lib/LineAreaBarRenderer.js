@@ -898,6 +898,7 @@ export default function lineAreaBar(
       }
     });
   });
+  console.log(yAxisProps);
 
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
   lineAndBarOnRender(parent, {
@@ -906,7 +907,9 @@ export default function lineAreaBar(
     yAxisSplit: yAxisProps.yAxisSplit,
     xInterval: xAxisProps.xInterval,
     isStacked: isStacked(parent.settings, datas),
-    formatYValue: getYValueFormatter(parent, series, yAxisProps.yExtent),
+    formatYValues: yAxisProps.yExtents.map(extent =>
+      getYValueFormatter(parent, series, extent),
+    ),
     datas,
   });
 
