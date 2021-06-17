@@ -244,7 +244,7 @@
     :env
     {:mb-run-mode       "dev"
      :mb-field-filter-operators-enabled "true"
-     :mb-test-setting-1 "ABCDEFG"}
+     :mb-test-env-setting "ABCDEFG"}
 
     :jvm-opts
     ["-Dlogfile.path=target/log"]

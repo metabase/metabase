@@ -189,8 +189,8 @@
   "Get string value of `setting-definition-or-name`. This is the default getter for `String` settings; value is fetched
   as follows:
 
-   1.  From the database (i.e., set via the admin panel), if a value is present;
-   2.  From corresponding env var, if any;
+   1.  From corresponding env var, if any;
+   2.  From the database (i.e., set via the admin panel), if a value is present;
    3.  The default value, if one was specified.
 
    If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
