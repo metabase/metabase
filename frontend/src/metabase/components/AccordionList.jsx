@@ -80,7 +80,7 @@ export default class AccordionList extends Component {
     showItemArrows: PropTypes.bool,
 
     searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
-    searchProp: PropTypes.string,
+    searchProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),
     searchCaseInsensitive: PropTypes.bool,
     searchFuzzy: PropTypes.bool,
     searchPlaceholder: PropTypes.string,
@@ -224,6 +224,26 @@ export default class AccordionList extends Component {
     this.setState({ searchText });
   };
 
+  searchPred = (
+    item,
+    searchText,
+    searchProp,
+    searchCaseInsensitive,
+    searchFuzzy,
+  ) => {
+    const path = searchProp.split(".");
+    let itemText = String(getIn(item, path) || "");
+    if (searchCaseInsensitive) {
+      itemText = itemText.toLowerCase();
+      searchText = searchText.toLowerCase();
+    }
+    if (searchFuzzy) {
+      return itemText.indexOf(searchText) >= 0;
+    } else {
+      return itemText.startsWith(searchText);
+    }
+  };
+
   render() {
     const {
       id,
@@ -248,20 +268,29 @@ export default class AccordionList extends Component {
     const sectionIsTogglable = sectionIndex =>
       alwaysTogglable || sections.length > 1;
 
-    let { searchText } = this.state;
+    const { searchText } = this.state;
     let searchFilter = () => true;
     if (searchText) {
       searchFilter = item => {
-        const path = searchProp.split(".");
-        let itemText = String(getIn(item, path) || "");
-        if (searchCaseInsensitive) {
-          itemText = itemText.toLowerCase();
-          searchText = searchText.toLowerCase();
-        }
-        if (searchFuzzy) {
-          return itemText.indexOf(searchText) >= 0;
-        } else {
-          return itemText.startsWith(searchText);
+        if (typeof searchProp === "string") {
+          return this.searchPred(
+            item,
+            searchText,
+            searchProp,
+            searchCaseInsensitive,
+            searchFuzzy,
+          );
+        } else if (searchProp.constructor === Array) {
+          const searchResults = searchProp.map(member =>
+            this.searchPred(
+              item,
+              searchText,
+              member,
+              searchCaseInsensitive,
+              searchFuzzy,
+            ),
+          );
+          return searchResults.reduce((acc, curr) => acc || curr);
         }
       };
     }
