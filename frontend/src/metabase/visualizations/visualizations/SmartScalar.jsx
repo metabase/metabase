@@ -94,8 +94,8 @@ export default class Smart extends React.Component {
       rawSeries,
     } = this.props;
 
-    const metricIndex = _.findIndex(cols, col => !isDate(col));
-    const dimensionIndex = _.findIndex(cols, isDate);
+    const metricIndex = cols.findIndex(col => !isDate(col));
+    const dimensionIndex = cols.findIndex(col => isDate(col));
 
     const lastRow = rows[rows.length - 1];
     const value = lastRow && lastRow[metricIndex];
