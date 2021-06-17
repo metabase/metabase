@@ -125,6 +125,53 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get(".bar");
     });
   });
+
+  context("via column popover", () => {
+    beforeEach(() => {
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("SQL Binning").click();
+    });
+
+    it("should work for time series", () => {
+      cy.findByText("CREATED_AT").click();
+      cy.findByText("Distribution").click();
+
+      assertOnXYAxisLabels({ xLabel: "CREATED_AT", yLabel: "Count" });
+      cy.findByText("Count by CREATED_AT: Month");
+      cy.get("circle");
+
+      // Open a popover with bucket options from the time series footer
+      cy.get(".AdminSelect-content")
+        .contains("Month")
+        .click();
+      cy.findByText("Quarter").click();
+
+      cy.findByText("Count by CREATED_AT: Quarter");
+      cy.findByText("Q1 - 2017");
+    });
+
+    it("should work for number", () => {
+      cy.findByText("TOTAL").click();
+      cy.findByText("Distribution").click();
+
+      assertOnXYAxisLabels({ xLabel: "TOTAL", yLabel: "Count" });
+      cy.findByText("Count by TOTAL: Auto binned");
+      // Auto bin is much more granular than it is for QB questions
+      cy.get(".bar");
+    });
+
+    it.skip("should work for longitude", () => {
+      cy.findByText("LONGITUDE").click();
+      cy.findByText("Distribution").click();
+
+      assertOnXYAxisLabels({ xLabel: "LONGITUDE", yLabel: "Count" });
+      cy.findByText("Count by LONGITUDE: Auto binned");
+      // Auto bin is much more granular than it is for QB questions
+      cy.get(".bar");
+    });
+  });
 });
 
 function openPopoverFromDefaultBucketSize(column, bucket) {
@@ -138,6 +185,16 @@ function openPopoverFromDefaultBucketSize(column, bucket) {
     .as("listItemSelectedBinning")
     .should("contain", bucket)
     .click();
+}
+
+function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
+  cy.get(".x-axis-label")
+    .invoke("text")
+    .should("eq", xLabel);
+
+  cy.get(".y-axis-label")
+    .invoke("text")
+    .should("eq", yLabel);
 }
 
 function waitAndAssertOnRequest(requestAlias) {
