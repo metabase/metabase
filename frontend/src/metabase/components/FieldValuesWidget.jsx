@@ -185,6 +185,40 @@ export class FieldValuesWidget extends Component {
     }
   }
 
+  getTokenFieldPlaceholder() {
+    let { fields, placeholder } = this.props;
+
+    if (!placeholder) {
+      const [field] = fields;
+      if (this.hasList()) {
+        placeholder = t`Search the list`;
+      } else if (this.isSearchable()) {
+        const names = new Set(
+          fields.map(field => stripId(this.searchField(field).display_name)),
+        );
+        if (names.size > 1) {
+          placeholder = t`Search`;
+        } else {
+          const [name] = names;
+          placeholder = t`Search by ${name}`;
+          if (field.isID() && field !== this.searchField(field)) {
+            placeholder += t` or enter an ID`;
+          }
+        }
+      } else {
+        if (field.isID()) {
+          placeholder = t`Enter an ID`;
+        } else if (field.isNumeric()) {
+          placeholder = t`Enter a number`;
+        } else {
+          placeholder = t`Enter some text`;
+        }
+      }
+    }
+
+    return placeholder;
+  }
+
   shouldList() {
     return (
       !this.props.disableSearch &&
@@ -399,34 +433,7 @@ export class FieldValuesWidget extends Component {
     } = this.props;
     const { loadingState } = this.state;
 
-    let { placeholder } = this.props;
-    if (!placeholder) {
-      const [field] = fields;
-      if (this.hasList()) {
-        placeholder = t`Search the list`;
-      } else if (this.isSearchable()) {
-        const names = new Set(
-          fields.map(field => stripId(this.searchField(field).display_name)),
-        );
-        if (names.size > 1) {
-          placeholder = t`Search`;
-        } else {
-          const [name] = names;
-          placeholder = t`Search by ${name}`;
-          if (field.isID() && field !== this.searchField(field)) {
-            placeholder += t` or enter an ID`;
-          }
-        }
-      } else {
-        if (field.isID()) {
-          placeholder = t`Enter an ID`;
-        } else if (field.isNumeric()) {
-          placeholder = t`Enter a number`;
-        } else {
-          placeholder = t`Enter some text`;
-        }
-      }
-    }
+    const placeholder = this.getTokenFieldPlaceholder();
 
     let options = [];
     if (this.hasList() && !this.useChainFilterEndpoints()) {
