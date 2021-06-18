@@ -224,13 +224,9 @@ export default class AccordionList extends Component {
     this.setState({ searchText });
   };
 
-  searchPred = (
-    item,
-    searchText,
-    searchProp,
-    searchCaseInsensitive,
-    searchFuzzy,
-  ) => {
+  searchPredicate = item => {
+    const { searchProp, searchCaseInsensitive, searchFuzzy } = this.props;
+    const { searchText } = this.state;
     const path = searchProp.split(".");
     let itemText = String(getIn(item, path) || "");
     if (searchCaseInsensitive) {
@@ -273,22 +269,10 @@ export default class AccordionList extends Component {
     if (searchText) {
       searchFilter = item => {
         if (typeof searchProp === "string") {
-          return this.searchPred(
-            item,
-            searchText,
-            searchProp,
-            searchCaseInsensitive,
-            searchFuzzy,
-          );
-        } else if (searchProp.constructor === Array) {
+          return this.searchPredicate(item);
+        } else if (Array.isArray(searchProp)) {
           const searchResults = searchProp.map(member =>
-            this.searchPred(
-              item,
-              searchText,
-              member,
-              searchCaseInsensitive,
-              searchFuzzy,
-            ),
+            this.searchPredicate(item),
           );
           return searchResults.reduce((acc, curr) => acc || curr);
         }
