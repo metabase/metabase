@@ -3,8 +3,11 @@ import { isLatitude, isLongitude, isDate } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
 
-import { FieldDimension } from "metabase-lib/lib/Dimension";
-
+import {
+  FieldDimension,
+  ExpressionDimension,
+} from "metabase-lib/lib/Dimension";
+import { isLocalField, isExpressionField } from "metabase/lib/query/field_ref";
 // Drill-down progressions are defined as a series of steps, where each step has one or more dimension <-> breakout
 // transforms.
 //
@@ -387,9 +390,9 @@ function matchingProgression(dimensions) {
 }
 
 function nextBreakouts(dimensionMaps, metadata) {
-  const dimensions = dimensionMaps.map(d =>
-    columnToFieldDimension(d.column, metadata),
-  );
+  const dimensions = dimensionMaps
+    .map(d => columnToFieldDimension(d.column, metadata))
+    .filter(Boolean);
 
   const [progression, currentStepNumber] = matchingProgression(
     dimensions,
@@ -438,27 +441,29 @@ export function drillDownForDimensions(dimensions: any, metadata: any) {
 }
 
 function columnToFieldDimension(column, metadata) {
-  const dimension = new FieldDimension(column.id, null, metadata);
+  if (isLocalField(column.field_ref)) {
+    const dimension = new FieldDimension(column.id, null, metadata);
 
-  if (column.unit) {
-    return dimension.withTemporalUnit(column.unit);
-  }
-
-  if (column.binning_info) {
-    const binningStrategy = column.binning_info.binning_strategy;
-    switch (binningStrategy) {
-      case "bin-width":
-        return dimension.withBinningOptions({
-          strategy: "bin-width",
-          "bin-width": column.binning_info.bin_width,
-        });
-      case "num-bins":
-        return dimension.withBinningOptions({
-          strategy: "num-bins",
-          "num-bins": column.binning_info.num_bins,
-        });
+    if (column.unit) {
+      return dimension.withTemporalUnit(column.unit);
     }
-  }
 
-  return dimension;
+    if (column.binning_info) {
+      const binningStrategy = column.binning_info.binning_strategy;
+      switch (binningStrategy) {
+        case "bin-width":
+          return dimension.withBinningOptions({
+            strategy: "bin-width",
+            "bin-width": column.binning_info.bin_width,
+          });
+        case "num-bins":
+          return dimension.withBinningOptions({
+            strategy: "num-bins",
+            "num-bins": column.binning_info.num_bins,
+          });
+      }
+    }
+
+    return dimension;
+  }
 }
