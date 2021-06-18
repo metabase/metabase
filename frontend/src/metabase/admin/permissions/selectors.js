@@ -321,18 +321,17 @@ export const getTablesPermissionsGrid = createSelector(
     schemaName: SchemaName,
   ) => {
     const database = metadata.database(databaseId);
-    const isLoading =
-      !groups ||
-      !permissions ||
-      !database ||
-      _.isEmpty(metadata.schemas) ||
-      _.isEmpty(metadata.tables);
-
-    if (isLoading) {
+    if (!groups || !permissions || !database) {
       return null;
     }
 
-    const tables = database.schema(schemaName).tables;
+    const schema = database.schema(schemaName);
+    const tables = schema && schema.tables;
+
+    if (_.isEmpty(tables)) {
+      return null;
+    }
+
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
