@@ -27,8 +27,12 @@ describe("scenarios > binning > from a saved sql question", () => {
 
     it("should work for time series", () => {
       cy.findByTestId("sidebar-right").within(() => {
-        // This basic/default bucket seems wrong.
-        // For every other scenario, the default bucker for time is "by month"
+        /*
+         * This basic/default bucket size seems wrong.
+         * For every other scenario, the default bucket for time series is "by month".
+         *
+         * TODO: update to "by month" once (metabase#16671) gets fixed.
+         */
         openPopoverFromDefaultBucketSize("CREATED_AT", "by minute");
       });
 
@@ -152,24 +156,30 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Q1 - 2017");
     });
 
-    it("should work for number", () => {
+    it("should work for number (metabase##16670)", () => {
       cy.findByText("TOTAL").click();
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "TOTAL", yLabel: "Count" });
       cy.findByText("Count by TOTAL: Auto binned");
-      // Auto bin is much more granular than it is for QB questions
+      /*
+       * Auto binning result is much more granular than it is for QB Questions.
+       * Please, see https://github.com/metabase/metabase/issues/16670
+       *
+       * However, this is not the scope of this particular test.
+       * The explicit repro will be added later in the separate file.
+       */
       cy.get(".bar");
     });
 
-    it.skip("should work for longitude", () => {
+    it.skip("should work for longitude (metabase#16672)", () => {
       cy.findByText("LONGITUDE").click();
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "LONGITUDE", yLabel: "Count" });
       cy.findByText("Count by LONGITUDE: Auto binned");
-      // Auto bin is much more granular than it is for QB questions
       cy.get(".bar");
+      cy.findByText("170° W");
     });
   });
 });
