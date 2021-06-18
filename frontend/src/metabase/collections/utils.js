@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { canonicalCollectionId } from "metabase/entities/collections";
 
 export function nonPersonalCollection(collection) {
   // @TODO - should this be an API thing?
@@ -40,4 +41,24 @@ export function getParentPath(collections, targetId) {
     }
   }
   return null; // didn't find it under any collection
+}
+
+function getNonRootParentId(collection) {
+  if (Array.isArray(collection.effective_ancestors)) {
+    // eslint-disable-next-line no-unused-vars
+    const [root, nonRootParent] = collection.effective_ancestors;
+    return nonRootParent ? nonRootParent.id : undefined;
+  }
+  // location is a string like "/1/4" where numbers are parent collection IDs
+  const [nonRootParentId] = collection.location.split("/");
+  return canonicalCollectionId(nonRootParentId);
+}
+
+export function isPersonalCollectionChild(collection, collectionList) {
+  const nonRootParentId = getNonRootParentId(collection);
+  if (!nonRootParentId) {
+    return false;
+  }
+  const parentCollection = collectionList.find(c => c.id === nonRootParentId);
+  return parentCollection && !!parentCollection.personal_owner_id;
 }
