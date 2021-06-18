@@ -286,13 +286,6 @@
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
       (check-data-permissions-for-query (:dataset_query card-updates)))))
 
-(defn- check-allowed-to-unarchive
-  "When unarchiving a Card, make sure we have data permissions for the Card query before doing so."
-  [card-before-updates card-updates]
-  (when (and (api/column-will-change? :archived card-before-updates card-updates)
-             (:archived card-before-updates))
-    (check-data-permissions-for-query (:dataset_query card-before-updates))))
-
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
   enabled."
@@ -458,7 +451,6 @@
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
     (check-allowed-to-modify-query                 card-before-update card-updates)
-    (check-allowed-to-unarchive                    card-before-update card-updates)
     (check-allowed-to-change-embedding             card-before-update card-updates)
     ;; make sure we have the correct `result_metadata`
     (let [result-metadata-chan (result-metadata-for-updating-async

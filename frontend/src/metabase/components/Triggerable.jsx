@@ -149,6 +149,7 @@ export default ComposedComponent =>
               "cursor-default": this.props.disabled,
             },
           )}
+          aria-disabled={this.props.disabled}
           style={triggerStyle}
         >
           {triggerElement}
