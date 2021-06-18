@@ -52,6 +52,24 @@ describe("personal collections", () => {
       cy.icon("new_folder");
       cy.icon("pencil");
       cy.icon("lock").should("not.exist");
+
+      // Check can't open permissions modal via URL for personal collection
+      cy.findByText("Your personal collection").click();
+      cy.location().then(location => {
+        cy.visit(`${location}/permissions`);
+        cy.get(".Modal").should("not.exist");
+        cy.url().should("eq", String(location));
+
+        // Check can't open permissions modal via URL for personal collection child
+        cy.get("[class*=CollectionSidebar]")
+          .findByText("Foo")
+          .click();
+        cy.location().then(location => {
+          cy.visit(`${location}/permissions`);
+          cy.get(".Modal").should("not.exist");
+          cy.url().should("eq", String(location));
+        });
+      });
     });
 
     it.skip("should be able view other users' personal sub-collections (metabase#15339)", () => {
