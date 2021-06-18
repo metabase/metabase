@@ -45,7 +45,7 @@
 
 (defn- attribute-synced-user
   [{:keys [attributes first-name last-name email]}]
-  (when-let [user (db/select-one [User :id :last_login :first_name :last_name :login_attributes]
+  (when-let [user (db/select-one [User :id :last_login :first_name :last_name :login_attributes :is_active]
                                  :%lower.email (u/lower-case-en email))]
             (let [syncable-attributes (syncable-user-attributes attributes)
                   old-first-name (:first_name user)
@@ -62,7 +62,7 @@
               (if (seq user-changes)
                 (do
                   (db/update! User (:id user) user-changes)
-                  (db/select-one [User :id :last_login] :id (:id user))) ; Reload updated user
+                  (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                 user))))
 
 (s/defn ^:private find-user* :- (s/maybe EEUserInfo)

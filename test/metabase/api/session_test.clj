@@ -95,7 +95,7 @@
 
     (testing "Test for inactive user (user shouldn't be able to login if :is_active = false)"
       ;; Return same error as incorrect password to avoid leaking existence of user
-      (is (= {:errors {:password "did not match stored password"}}
+      (is (= {:errors {:_error "Your account is disabled."}}
              (mt/client :post 401 "session" (mt/user->credentials :trashbird)))))
 
     (testing "Test for password checking"
