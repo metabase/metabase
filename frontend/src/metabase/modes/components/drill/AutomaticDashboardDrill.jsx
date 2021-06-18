@@ -4,6 +4,7 @@ import type {
   ClickAction,
   ClickActionProps,
 } from "metabase-types/types/Visualization";
+import { isExpressionField } from "metabase/lib/query/field_ref";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -15,10 +16,17 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
 
   // questions with a breakout
   const dimensions = (clicked && clicked.dimensions) || [];
+
+  // these don't seem to work
+  const includesExpressionDimensions = dimensions.some(dimension => {
+    return isExpressionField(dimension.column.field_ref);
+  });
+
   if (
     !clicked ||
     dimensions.length === 0 ||
-    !MetabaseSettings.get("enable-xrays")
+    !MetabaseSettings.get("enable-xrays") ||
+    includesExpressionDimensions
   ) {
     return [];
   }
