@@ -185,38 +185,52 @@ export class FieldValuesWidget extends Component {
     }
   }
 
-  getTokenFieldPlaceholder() {
-    let { fields, placeholder } = this.props;
+  getSearchableTokenFieldPlaceholder(fields, firstField) {
+    let placeholder;
 
-    if (!placeholder) {
-      const [field] = fields;
-      if (this.hasList()) {
-        placeholder = t`Search the list`;
-      } else if (this.isSearchable()) {
-        const names = new Set(
-          fields.map(field => stripId(this.searchField(field).display_name)),
-        );
-        if (names.size > 1) {
-          placeholder = t`Search`;
-        } else {
-          const [name] = names;
-          placeholder = t`Search by ${name}`;
-          if (field.isID() && field !== this.searchField(field)) {
-            placeholder += t` or enter an ID`;
-          }
-        }
-      } else {
-        if (field.isID()) {
-          placeholder = t`Enter an ID`;
-        } else if (field.isNumeric()) {
-          placeholder = t`Enter a number`;
-        } else {
-          placeholder = t`Enter some text`;
-        }
+    const names = new Set(
+      fields.map(field => stripId(this.searchField(field).display_name)),
+    );
+
+    if (names.size > 1) {
+      placeholder = t`Search`;
+    } else {
+      const [name] = names;
+
+      placeholder = t`Search by ${name}`;
+      if (firstField.isID() && firstField !== this.searchField(firstField)) {
+        placeholder += t` or enter an ID`;
       }
     }
-
     return placeholder;
+  }
+
+  getNonSearchableTokenFieldPlaceholder(firstField) {
+    if (firstField.isID()) {
+      return t`Enter an ID`;
+    } else if (firstField.isNumeric()) {
+      return t`Enter a number`;
+    } else {
+      return t`Enter some text`;
+    }
+  }
+
+  getTokenFieldPlaceholder() {
+    const { fields, placeholder } = this.props;
+
+    if (placeholder) {
+      return placeholder;
+    }
+
+    const [firstField] = fields;
+
+    if (this.hasList()) {
+      return t`Search the list`;
+    } else if (this.isSearchable()) {
+      return this.getSearchableTokenFieldPlaceholder(fields, firstField);
+    } else {
+      return this.getNonSearchableTokenFieldPlaceholder(firstField);
+    }
   }
 
   shouldList() {
