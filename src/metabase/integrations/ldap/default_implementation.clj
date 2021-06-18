@@ -139,9 +139,9 @@
                          (db/update! User (:id user) user-changes)
                          (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                        user))
-                   (-> (user/create-new-ldap-auth-user!  {:first_name (or first-name (trs "Unknown"))
-                                                          :last_name  (or last-name (trs "Unknown"))
-                                                          :email      email})
+                   (-> (user/create-new-ldap-auth-user! {:first_name (or first-name (trs "Unknown"))
+                                                         :last_name  (or last-name (trs "Unknown"))
+                                                         :email      email})
                        (assoc :is_active true)))]
     (u/prog1 new-user
       (when sync-groups?
