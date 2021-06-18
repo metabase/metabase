@@ -635,13 +635,21 @@
         (is (= false
                (set-archived! false)))))))
 
-(deftest we-shouldn-t-be-able-to-update-archived-status-if-we-don-t-have-collection--write--perms
+(deftest we-shouldn-t-be-able-to-archive-cards-if-we-don-t-have-collection--write--perms
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [collection]
                     Card       [card {:collection_id (u/the-id collection)}]]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived true}))))))
+
+(deftest we-shouldn-t-be-able-to-unarchive-cards-if-we-don-t-have-collection--write--perms
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp* [Collection [collection]
+                    Card       [card {:collection_id (u/the-id collection) :archived true}]]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+      (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived false}))))))
 
 (deftest clear-description-test
   (testing "Can we clear the description of a Card? (#4738)"

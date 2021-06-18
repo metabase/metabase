@@ -137,7 +137,6 @@ describe("collection permissions", () => {
 
               describe("archive", () => {
                 it("should be able to archive/unarchive question (metabase#15253)", () => {
-                  cy.skipOn(user === "nodata");
                   archiveUnarchive("Orders");
                 });
 
