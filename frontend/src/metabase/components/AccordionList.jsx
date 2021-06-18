@@ -267,7 +267,7 @@ export default class AccordionList extends Component {
     if (searchText) {
       searchFilter = item => {
         if (typeof searchProp === "string") {
-          return this.searchPredicate(item);
+          return this.searchPredicate(item, searchProp);
         } else if (Array.isArray(searchProp)) {
           const searchResults = searchProp.map(member =>
             this.searchPredicate(item, member),
