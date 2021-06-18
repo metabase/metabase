@@ -79,10 +79,15 @@
   :getter  (fn []
              (json/parse-string (setting/get-string :ldap-group-mappings) #(DN. (str %))))
   :setter  (fn [new-value]
-             (doseq [k (keys new-value)]
-               (when-not (DN/isValidDN (name k))
-                 (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
-             (setting/set-json! :ldap-group-mappings new-value)))
+             (cond
+               (string? new-value)
+               (recur (json/parse-string new-value))
+
+               (map? new-value)
+               (do (doseq [k (keys new-value)]
+                     (when-not (DN/isValidDN (name k))
+                       (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
+                   (setting/set-json! :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
