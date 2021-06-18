@@ -99,7 +99,7 @@ export function onRenderValueLabels(
           !showAll && barCount > 1 && isBarLike(display) && barWidth < 20;
         return { x, y, showLabelBelow, seriesIndex, rotated, hidden };
       })
-      .filter(d => !(isBarLike(display) && d.y === 0));
+      .filter(d => !(display === "bar" && d.y === 0));
 
     if (display === "waterfall" && data.length > 0) {
       let total = 0;

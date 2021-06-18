@@ -893,7 +893,7 @@ export default function lineAreaBar(
 
   datas.map(data => {
     data.map(d => {
-      if (d._waterfallValue) {
+      if (typeof d._waterfallValue === "number") {
         d[1] = d._waterfallValue;
       }
     });

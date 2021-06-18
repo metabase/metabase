@@ -152,7 +152,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.get(".Visualization .bar");
   });
 
-  it.skip("should display correct values when one of them is 0 (metabase#16246)", () => {
+  it("should display correct values when one of them is 0 (metabase#16246)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",
