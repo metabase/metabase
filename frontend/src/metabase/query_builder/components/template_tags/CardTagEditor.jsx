@@ -27,6 +27,11 @@ export default class CardTagEditor extends Component {
     this._popover && this._popover.close();
   };
 
+  getQuestionUrl() {
+    const { tag, question } = this.props;
+    return Urls.question(question || { id: tag["card-id"] });
+  }
+
   errorMessage() {
     const { error, question, query } = this.props;
 
@@ -78,9 +83,7 @@ export default class CardTagEditor extends Component {
           {cardId == null ? (
             t`Question #…`
           ) : (
-            <Link
-              to={Urls.question(question ? question : { id: cardId })}
-            >{t`Question #${cardId}`}</Link>
+            <Link to={this.getQuestionUrl()}>{t`Question #${cardId}`}</Link>
           )}
         </h3>
         {loading ? (
