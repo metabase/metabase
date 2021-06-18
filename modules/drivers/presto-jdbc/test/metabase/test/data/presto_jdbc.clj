@@ -89,7 +89,7 @@
   (let [chunk-size (case (:table-name tabledef)
                      "people" 30
                      "reviews" 40
-                     "orders" 40
+                     "orders" 30
                      "venues" 50
                      "products" 50
                      "cities" 50
