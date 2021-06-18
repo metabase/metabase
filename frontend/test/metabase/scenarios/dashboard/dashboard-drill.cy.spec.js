@@ -394,7 +394,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("Fantastic Wool Shirt");
   });
 
-  it.skip("should apply correct date range on a graph drill-through (metabase#13785)", () => {
+  it("should apply correct date range on a graph drill-through (metabase#13785)", () => {
     cy.log("Create a question");
 
     cy.createQuestion({

@@ -404,6 +404,45 @@ describe("metabase/lib/click-behavior", () => {
       expect(value).toEqual("foo");
     });
 
+    describe("should format date/all-options parameters", () => {
+      // TODO: use it.each after jest upgrade
+      const assertFormattedDateByUnit = (unit, expected) => {
+        const source = { type: "column", id: "SOME_DATE" };
+        const target = { type: "parameter", id: "param123" };
+        const data = {
+          column: {
+            some_date: {
+              value: "2020-01-01T00:00:00+05:00",
+              column: { base_type: "type/DateTime", unit },
+            },
+          },
+        };
+        const extraData = {
+          dashboard: {
+            parameters: [{ id: "param123", type: "date/all-options" }],
+          },
+        };
+        const clickBehavior = { type: "crossfilter" };
+        const value = formatSourceForTarget(source, target, {
+          data,
+          extraData,
+          clickBehavior,
+        });
+        expect(value).toEqual(expected);
+      };
+
+      it("should format datetimes for date parameters", () => {
+        assertFormattedDateByUnit("year", "2020-01-01~2020-12-31");
+        assertFormattedDateByUnit("quarter", "Q1-2020");
+        assertFormattedDateByUnit("month", "2020-01");
+        assertFormattedDateByUnit("week", "2019-12-29~2020-01-04");
+        assertFormattedDateByUnit("day", "2020-01-01");
+        assertFormattedDateByUnit("hour", "2020-01-01");
+        assertFormattedDateByUnit("minute", "2020-01-01");
+        assertFormattedDateByUnit("quarter-of-year", "2020-01-01");
+      });
+    });
+
     it("should format datetimes for date parameters", () => {
       const source = { type: "column", id: "SOME_DATE" };
       const target = { type: "parameter", id: "param123" };
