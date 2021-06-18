@@ -17,7 +17,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   // questions with a breakout
   const dimensions = (clicked && clicked.dimensions) || [];
 
-  // these don't seem to work
+  // ExpressionDimensions don't work right now (see metabase#16680)
   const includesExpressionDimensions = dimensions.some(dimension => {
     return isExpressionField(dimension.column.field_ref);
   });
