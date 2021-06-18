@@ -51,7 +51,7 @@ describe("scenarios > binning > binning options", () => {
   });
 
   // Tests are currently failing because the selected option is not highlighted in the popover
-  context.skip("via simple question", () => {
+  context("via simple question", () => {
     it("should render number binning options correctly", () => {
       chooseInitialBinningOption({ table: ORDERS_ID, column: "Total" });
       getTitle("Count by Total: Auto binned");
