@@ -212,33 +212,37 @@ const GraphSection = ({
   onHoverChange: (hovered: ?HoverObject) => void,
 }) => {
   return (
-    <svg
-      className={cx(className, styles.Graph)}
-      onMouseMove={e => {
-        if (onHoverChange && info.hovered) {
-          onHoverChange({
-            ...info.hovered,
-            event: e.nativeEvent,
-          });
-        }
-      }}
-      onMouseLeave={() => onHoverChange && onHoverChange(null)}
-      onClick={e => {
-        if (onVisualizationClick && info.clicked) {
-          onVisualizationClick({
-            ...info.clicked,
-            event: e.nativeEvent,
-          });
-        }
-      }}
-      viewBox="0 0 1 1"
-      preserveAspectRatio="none"
-    >
-      <polygon
-        opacity={1 - index * (0.9 / (infos.length + 1))}
-        fill={DEFAULT_COLORS[0]}
-        points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
-      />
-    </svg>
+    <div className="relative full-height">
+      <svg
+        height="100%"
+        width="100%"
+        className={cx(className, "absolute")}
+        onMouseMove={e => {
+          if (onHoverChange && info.hovered) {
+            onHoverChange({
+              ...info.hovered,
+              event: e.nativeEvent,
+            });
+          }
+        }}
+        onMouseLeave={() => onHoverChange && onHoverChange(null)}
+        onClick={e => {
+          if (onVisualizationClick && info.clicked) {
+            onVisualizationClick({
+              ...info.clicked,
+              event: e.nativeEvent,
+            });
+          }
+        }}
+        viewBox="0 0 1 1"
+        preserveAspectRatio="none"
+      >
+        <polygon
+          opacity={1 - index * (0.9 / (infos.length + 1))}
+          fill={DEFAULT_COLORS[0]}
+          points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
+        />
+      </svg>
+    </div>
   );
 };

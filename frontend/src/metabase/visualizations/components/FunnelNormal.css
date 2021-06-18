@@ -9,7 +9,8 @@
 }
 
 :local .FunnelStep.Initial {
-  min-width: auto;
+  min-width: unset;
+  width: unset;
 }
 
 /* Display information for the initial blox */
