@@ -1,4 +1,4 @@
-import { restore, popover, modal } from "__support__/e2e/cypress";
+import { restore, popover, modal, sidebar } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 describe("personal collections", () => {
@@ -46,7 +46,7 @@ describe("personal collections", () => {
       cy.findByText("Your personal collection").click();
       // Create new collection inside admin's personal collection and navigate to it
       addNewCollection("Foo");
-      cy.get("[class*=CollectionSidebar]")
+      sidebar()
         .findByText("Foo")
         .click();
       cy.icon("new_folder");
@@ -61,7 +61,7 @@ describe("personal collections", () => {
         cy.url().should("eq", String(location));
 
         // Check can't open permissions modal via URL for personal collection child
-        cy.get("[class*=CollectionSidebar]")
+        sidebar()
           .findByText("Foo")
           .click();
         cy.location().then(location => {
@@ -78,7 +78,7 @@ describe("personal collections", () => {
       cy.findByLabelText("Name").type("Foo");
       cy.findByText("Create").click();
       // This repro could possibly change depending on the design decision for this feature implementation
-      cy.get("[class*=CollectionSidebar]").findByText("Foo");
+      sidebar().findByText("Foo");
     });
   });
 
@@ -91,7 +91,7 @@ describe("personal collections", () => {
           cy.findByText("Your personal collection").click();
           // Create initial collection inside the personal collection and navigate inside it
           addNewCollection("Foo");
-          cy.get("[class*=CollectionSidebar]")
+          sidebar()
             .as("sidebar")
             .findByText("Foo")
             .click();
