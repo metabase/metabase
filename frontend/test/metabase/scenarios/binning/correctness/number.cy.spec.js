@@ -1,6 +1,17 @@
 import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
 
-const foo = {
+/**
+ * We're going to use Orders `Total` column for this test.
+ *
+ * Values for this column range from:
+ *  MIN: `-45.47` to
+ *  MAX: `159.35`
+ *
+ * This is important info for determining the minimum and the maximum values for x-axis.
+ * That, of course, depends on the chosen bucket size.
+ */
+
+const NUMBER_OPTIONS = {
   "Auto bin": {
     selected: "Auto binned",
     representativeValues: ["-60", "0", "20", "40", "100", "160"],
@@ -28,10 +39,11 @@ describe("scenarios > binning > correctness > number", () => {
     openPopoverFromSelectedBinningOption("Total", "Auto bin");
   });
 
-  Object.entries(foo).forEach(
+  Object.entries(NUMBER_OPTIONS).forEach(
     ([bucketSize, { selected, representativeValues }]) => {
       it(`should return correct values for ${bucketSize}`, () => {
-        // Wrong values are returned for everything except "auto bin", and even that is questionable how it should work
+        // Wrong values are returned for everything except "Auto bin", and even that is questionable how it should work.
+        // Delete the following conditional logic when the related issue gets fixed.
         cy.onlyOn(bucketSize === "Auto bin");
 
         popover().within(() => {
