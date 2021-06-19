@@ -49,8 +49,7 @@ export default class GoogleButton extends Component {
               );
 
               if (
-                result.payload["status"] &&
-                result.payload["status"] === 400 &&
+                result.payload &&
                 result.payload.data &&
                 result.payload.data.errors
               ) {
