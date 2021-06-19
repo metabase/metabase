@@ -405,7 +405,7 @@ describe("scenarios > question > new", () => {
       cy.findByText("Hour of day").click();
     });
 
-    it.skip("trend visualization should work regardless of column order (metabase#13710)", () => {
+    it("trend visualization should work regardless of column order (metabase#13710)", () => {
       cy.server();
       cy.createQuestion({
         name: "13710",
@@ -426,7 +426,7 @@ describe("scenarios > question > new", () => {
         cy.wait("@cardQuery");
         cy.log("Reported failing on v0.35 - v0.37.0.2");
         cy.log("Bug: showing blank visualization");
-        cy.get(".ScalarValue").contains("33");
+        cy.get(".ScalarValue").contains("100");
       });
     });
 
