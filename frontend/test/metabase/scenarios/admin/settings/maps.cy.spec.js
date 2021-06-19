@@ -76,11 +76,11 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.findByText("Invalid custom GeoJSON: does not contain features");
 
     // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
-    cy.findByPlaceholderText(
-      "Like https://my-mb-server.com/maps/my-map.json",
-    ).type(
-      "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson",
-    );
+    cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
+      .clear()
+      .type(
+        "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson",
+      );
     cy.findByText("Load").click();
     cy.findByText("Invalid custom GeoJSON: does not contain features");
   });
