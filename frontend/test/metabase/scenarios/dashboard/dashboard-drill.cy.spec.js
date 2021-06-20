@@ -394,7 +394,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByText("Fantastic Wool Shirt");
   });
 
-  it.skip("should apply correct date range on a graph drill-through (metabase#13785)", () => {
+  it("should apply correct date range on a graph drill-through (metabase#13785)", () => {
     cy.log("Create a question");
 
     cy.createQuestion({
@@ -478,8 +478,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
           .eq(14) // August 2017 (Total of 12 reviews, 9 unique days)
           .click({ force: true });
 
-        cy.wait("@cardQuery.2");
-        cy.url().should("include", "2017-08-01~2017-08-31");
+        cy.wait("@cardQuery");
+        cy.url().should("include", "2017-08");
         cy.get(".bar").should("have.length", 1);
         // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
         // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
