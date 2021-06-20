@@ -498,6 +498,9 @@ jobs:
     steps:
       - checkout
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
+      - run:
+          name: Symlink dirs for caches
+          command: ln -s /home/circleci/.m2 /root/.m2 && ln -s /home/circleci/.yarn /root/.yarn && ln -s /home/circleci/.yarn-cache /root/.yarn-cache && ln -s /home/circleci/.cache /root/.cache
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
           find-args: ". -type f -name '*.clj' -or -name '*.cljc' -or -name '*.java' -or -name '*.edn' -or -name '*.yaml' -or -name sample-dataset.db.mv.db"
