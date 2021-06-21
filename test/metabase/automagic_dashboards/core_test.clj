@@ -10,7 +10,7 @@
             [metabase.models.field :as field]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
-            [metabase.models.query :as query]
+            [metabase.models.query :as query :refer [Query]]
             [metabase.query-processor.async :as qp.async]
             [metabase.test :as mt]
             [metabase.test.automagic-dashboards :as automagic-dashboards.test]
@@ -65,9 +65,11 @@
    ;; that size limiting works.
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show :all}))
      (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all}) card-count))
-   (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
-     ;; 1 for the actual card returned + 1 for the visual display card = 2
-     (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show 1}) 2))))
+   (when (or (nil? (#{(type Query) (type Card)} (type entity)))
+             (#'magic/table-like? entity))
+     (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
+       ;; 1 for the actual card returned + 1 for the visual display card = 2
+       (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show 1}) 2)))))
 
 ;; These test names were named by staring at them for a while, so they may be misleading
 
