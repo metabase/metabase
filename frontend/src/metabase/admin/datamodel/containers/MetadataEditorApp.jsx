@@ -53,13 +53,14 @@ const mapDispatchToProps = {
     Metrics.actions.setArchived({ id }, true, rest),
 };
 
-@Databases.load({
-  id: (state, props) => props.databaseId,
-})
 @connect(
   mapStateToProps,
   mapDispatchToProps,
 )
+@Databases.load({
+  id: (state, props) => props.databaseId,
+  loadingAndErrorWrapper: false,
+})
 class MetadataEditor extends Component {
   constructor(props, context) {
     super(props, context);
