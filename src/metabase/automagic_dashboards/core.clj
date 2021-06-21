@@ -7,6 +7,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [clojure.zip :as zip]
             [java-time :as t]
             [kixi.stats.core :as stats]
             [kixi.stats.math :as math]
@@ -1163,7 +1164,20 @@
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))
 
-(defn- splice-in [join-statement card-member] some shit here)
+(defn- key-in?
+  "Recursively finds key in coll, returns true or nil"
+  [coll k]
+  (let [coll-zip (zip/zipper coll? #(if (map? %) (vals %) %) nil coll)]
+    (loop [x coll-zip]
+      (when-not (zip/end? x)
+        (if-let [v (k (zip/node x))] true (recur (zip/next x)))))))
+
+(defn- splice-in
+  [join-statement card-member]
+  (let [query (get-in card-member [:card :dataset_query :query])]
+    (if (key-in? query :join-alias)
+      (assoc query :join-alias join-statement)
+      query)))
 
 (defn- maybe-enrich-joins
   "Hack to shove back in joins when they get automagically stripped out by the question decomposition into metrics"
