@@ -195,7 +195,19 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
      * Please see: https://github.com/metabase/metabase/issues/16693.
      *
      *  1. Todo: unskip the titles in this block once #16693 gets fixed.
+     *  2. Unskip the repro for metabase#16693 which was conviniently created in this same file.
+     *
+     * Note: after #16693 gets fixed, it might even make sense to completly remove the related repro,
+     * since all other tests within this `context` will already cover that implicitly and will guard against a regression.
      */
+
+    it.skip("should render the correct title (metabase#16693)", () => {
+      cy.findByText("People → Birth Date").click();
+      cy.findByText("Distribution").click();
+
+      cy.findByText("Count by People → Birth Date: Month");
+    });
+
     it("should work for time series", () => {
       cy.findByText("People → Birth Date").click();
       cy.findByText("Distribution").click();
