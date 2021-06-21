@@ -68,6 +68,8 @@
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
      (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show 1})))))
 
+;; These test names were named by staring at them for a while, so they may be misleading
+
 (deftest automagic-analysis-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
@@ -81,17 +83,14 @@
                   (filter :card)
                   count))))))
 
-(deftest wierd-characters-in-names-test
+(deftest weird-characters-in-names-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (-> (Table (mt/id :venues))
           (assoc :display_name "%Venues")
           test-automagic-analysis))))
 
-;; TODO -- Not sure what most of the tests below are for, so they just have numbers for names right now. Give them
-;; better names if you can figure out what they test.
-
-(deftest test-1
+(deftest visibility-type-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (doseq [field (db/select Field
@@ -106,21 +105,21 @@
       (automagic-dashboards.test/with-dashboard-cleanup
         (test-automagic-analysis metric)))))
 
-(deftest test-2
+(deftest complicated-card-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (mt/id :venues)
                                          :collection_id collection-id
-                                         :dataset_query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
-                                                                 :source-table (mt/id :venues)}
-                                                         :type :query
+                                         :dataset_query {:query    {:filter [:> [:field (mt/id :venues :price) nil] 10]
+                                                                    :source-table (mt/id :venues)}
+                                                         :type     :query
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (Card card-id)))))))
 
-(deftest test-3
+(deftest query-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (mt/id :venues)
@@ -134,7 +133,7 @@
         (automagic-dashboards.test/with-dashboard-cleanup
           (test-automagic-analysis (Card card-id)))))))
 
-(deftest test-4
+(deftest native-query-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      nil
@@ -153,7 +152,7 @@
     [(qp.async/result-metadata-for-query-async query)
      (a/timeout 1000)])))
 
-(deftest test-6
+(deftest explicit-filter-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [source-query {:query    {:source-table (mt/id :venues)}
                         :type     :query
@@ -174,21 +173,7 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (Card card-id))))))))
 
-(deftest test-7
-  (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      (mt/id :venues)
-                                         :collection_id collection-id
-                                         :dataset_query {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
-                                                                    :source-table (mt/id :venues)}
-                                                         :type     :query
-                                                         :database (mt/id)}}]]
-      (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id)))))))
-
-(deftest test-8
+(deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [source-query {:native   {:query "select * from venues"}
                         :type     :native
@@ -209,7 +194,7 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (Card card-id))))))))
 
-(deftest test-9
+(deftest card-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (mt/id :venues)
@@ -224,7 +209,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (Card card-id)))))))
 
-(deftest test-10
+(deftest figure-out-table-id-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      nil
@@ -237,20 +222,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (Card card-id)))))))
 
-(deftest test-11
-  (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp* [Collection [{collection-id :id}]
-                    Card [{card-id :id} {:table_id      nil
-                                         :collection_id collection-id
-                                         :dataset_query {:native   {:query "select * from users"}
-                                                         :type     :native
-                                                         :database (mt/id)}}]]
-      (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id)))))))
-
-(deftest test-12
+(deftest card-cell-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (mt/id :venues)
@@ -267,7 +239,7 @@
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2])))))))
 
 
-(deftest test-13
+(deftest complicated-card-cell-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
                     Card [{card-id :id} {:table_id      (mt/id :venues)
@@ -284,7 +256,7 @@
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2])))))))
 
 
-(deftest test-14
+(deftest adhoc-filter-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
@@ -293,7 +265,7 @@
                                   :database (mt/id)})]
         (test-automagic-analysis q)))))
 
-(deftest test-15
+(deftest adhoc-count-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
@@ -303,7 +275,7 @@
                                   :database (mt/id)})]
         (test-automagic-analysis q)))))
 
-(deftest test-16
+(deftest adhoc-fk-breakout-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
@@ -313,7 +285,7 @@
                                   :database (mt/id)})]
         (test-automagic-analysis q)))))
 
-(deftest test-17
+(deftest adhoc-filter-cell-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
