@@ -25,6 +25,7 @@ export default ComposedComponent =>
       "]";
 
     UNSAFE_componentWillMount() {
+      console.log("🚀", "in UNSAFE_componentWillMount", this.props);
       if (this.props.column) {
         this.props.fetchRemapping(this.props.value, this.props.column.id);
       }

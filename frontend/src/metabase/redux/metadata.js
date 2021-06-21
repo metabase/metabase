@@ -245,6 +245,7 @@ export const fetchRemapping = createThunkAction(
     const metadata = getMetadata(getState());
     const field = metadata.field(fieldId);
     const remappedField = field && field.remappedField();
+    console.log("🚀", { metadata, field, remappedField });
     if (field && remappedField && !field.hasRemappedValue(value)) {
       const fieldId = (field.target || field).id;
       const remappedFieldId = remappedField.id;
@@ -263,6 +264,7 @@ export const fetchRemapping = createThunkAction(
             fieldId,
             remappedFieldId,
           });
+          console.log("🚀", "inside getData");
           if (remapping) {
             // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
             dispatch(addRemappings(field.id, [remapping]));
