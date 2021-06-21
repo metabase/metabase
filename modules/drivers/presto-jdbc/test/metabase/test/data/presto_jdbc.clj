@@ -39,43 +39,18 @@
 
 (def ^:private test-schema-name "default")
 
-(def ^:private connection-details
-  (delay
-    {:host                 (tx/db-test-env-var-or-throw :presto-jdbc :host "localhost")
-     :port                 "8080"
-     :user                 (tx/db-test-env-var-or-throw :presto-jdbc :user "metabase")
-     #_:additional-options #_ (tx/db-test-env-var-or-throw
-                                :presto-jdbc
-                                :additional-options
-                                "SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit")
-     :ssl                  false
-     :catalog              test-catalog-name}))
-
 (defn- dash->underscore [nm]
   (str/replace nm #"-" "_"))
 
-(def ^:private jdbc-url
-  (delay
-    (format "jdbc:presto://%s:%d/%s/%s"
-      (tx/db-test-env-var-or-throw :presto-jdbc :host "localhost")
-      ;; hardcode port 8080 for now; in a subsequent patch this will need to be changed to accomodate for
-      ;; ssl settings, but that requires some additional code not yet in this commit
-      8080
-      test-catalog-name
-      test-schema-name)))
-
 (defmethod tx/dbdef->connection-details :presto-jdbc
   [_ _ {:keys [database-name]}]
-  ;; copy all the test connection details, but swap out the catalog for the dataset's dbname
-  (assoc @connection-details :catalog (dash->underscore database-name)))
-
-(defn- connection ^java.sql.Connection []
-  (DriverManager/getConnection
-    ^String @jdbc-url
-    (connection-pool/map->properties
-       (merge
-        {:SSL                false ; hardcode SSL=false for now (see above)
-         :user               (tx/db-test-env-var-or-throw :presto-jdbc :user "metabase")}))))
+  {:host               (tx/db-test-env-var-or-throw :presto-jdbc :host "localhost")
+   :port               (tx/db-test-env-var :presto-jdbc :port "8080")
+   :user               (tx/db-test-env-var-or-throw :presto-jdbc :user "metabase")
+   :additional-options (tx/db-test-env-var :presto-jdbc :additional-options nil)
+   :ssl                (tx/db-test-env-var :presto-jdbc :ssl "false")
+   :catalog            (dash->underscore database-name)
+   :schema             (tx/db-test-env-var :presto-jdbc :schema nil)})
 
 (defmethod execute/execute-sql! :presto-jdbc
   [& args]
@@ -105,10 +80,18 @@
   [_ dbdef tabledef]
   (load-data dbdef tabledef))
 
+(defn- jdbc-spec->connection
+  "This is to work around some weird interplay between clojure.java.jdbc caching behavior of connections based on URL,
+  combined with the fact that the Presto driver apparently closes the connection when it closes a prepare statement.
+  Therefore, create a fresh connection from the DriverManager."
+  [jdbc-spec]
+  (DriverManager/getConnection (format "jdbc:%s:%s" (:subprotocol jdbc-spec) (:subname jdbc-spec))
+    (connection-pool/map->properties (select-keys jdbc-spec [:user :SSL]))))
+
 (defmethod load-data/do-insert! :presto-jdbc
   [driver spec table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
-    (with-open [conn (connection)]
+    (with-open [conn (jdbc-spec->connection spec)]
       (doseq [[^String sql & params] statements]
         (try
           (with-open [stmt (.prepareStatement conn sql)]
