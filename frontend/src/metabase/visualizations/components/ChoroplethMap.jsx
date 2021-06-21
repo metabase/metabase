@@ -1,4 +1,3 @@
-/* eslint-disable no-color-literals */
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
@@ -104,8 +103,8 @@ export default class ChoroplethMap extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible({ cols, rows }) {
-    return cols.length > 1 && isString(cols[0]);
+  static isSensible({ cols }) {
+    return cols.length > 1;
   }
 
   static checkRenderable([
