@@ -76,7 +76,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         values: ["1960", "1965", "2000"],
       });
 
-      // Make sure time series chooseBucketAndAssertter works as well
+      // Make sure time series footer works as well
       cy.get(".AdminSelect-content")
         .contains("Year")
         .click();
@@ -141,7 +141,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         values: ["1960", "1965", "2000"],
       });
 
-      // Make sure time series chooseBucketAndAssertter works as well
+      // Make sure time series footer works as well
       cy.get(".AdminSelect-content")
         .contains("Year")
         .click();
