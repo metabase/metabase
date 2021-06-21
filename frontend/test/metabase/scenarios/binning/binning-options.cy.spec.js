@@ -50,7 +50,6 @@ describe("scenarios > binning > binning options", () => {
     cy.signInAsAdmin();
   });
 
-  // Tests are currently failing because the selected option is not highlighted in the popover
   context("via simple question", () => {
     it("should render number binning options correctly", () => {
       chooseInitialBinningOption({ table: ORDERS_ID, column: "Total" });
@@ -137,6 +136,38 @@ describe("scenarios > binning > binning options", () => {
         .contains("Month")
         .click();
       getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+    });
+  });
+
+  context.skip("implicit joins (metabase#16674)", () => {
+    it("should work for time series", () => {
+      chooseInitialBinningOption({
+        table: ORDERS_ID,
+        column: "Birth Date",
+      });
+
+      openPopoverFromSelectedBinningOption("Birth Date", "by month");
+      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+    });
+
+    it("should work for number", () => {
+      chooseInitialBinningOption({
+        table: ORDERS_ID,
+        column: "Price",
+      });
+
+      openPopoverFromSelectedBinningOption("Price", "Auto binned");
+      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
+    });
+
+    it("should work for longitude", () => {
+      chooseInitialBinningOption({
+        table: ORDERS_ID,
+        column: "Longitude",
+      });
+
+      openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
+      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
     });
   });
 });
