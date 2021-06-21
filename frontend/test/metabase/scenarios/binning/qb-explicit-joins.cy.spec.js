@@ -1,4 +1,14 @@
 import { restore, popover } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+
+const {
+  ORDERS_ID,
+  ORDERS,
+  PEOPLE_ID,
+  PEOPLE,
+  PRODUCTS_ID,
+  PRODUCTS,
+} = SAMPLE_DATASET;
 
 describe("scenarios > binning > from a saved QB question with explicit joins", () => {
   beforeEach(() => {
@@ -7,118 +17,38 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     cy.createQuestion({
       name: "QB Binning",
       query: {
-        "source-table": 2,
+        "source-table": ORDERS_ID,
         joins: [
           {
-            fields: [["field", 20, { "join-alias": "People - User" }]],
-            "source-table": 3,
+            fields: [
+              ["field", PEOPLE.LONGITUDE, { "join-alias": "People" }],
+              [
+                "field",
+                PEOPLE.BIRTH_DATE,
+                { "temporal-unit": "default", "join-alias": "People" },
+              ],
+            ],
+            "source-table": PEOPLE_ID,
             condition: [
               "=",
-              ["field", 11, null],
-              ["field", 30, { "join-alias": "People - User" }],
+              ["field", ORDERS.USER_ID, null],
+              ["field", PEOPLE.ID, { "join-alias": "People" }],
             ],
-            alias: "People - User",
+            alias: "People",
+          },
+          {
+            fields: [["field", PRODUCTS.PRICE, { "join-alias": "Products" }]],
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
           },
         ],
-        fields: [
-          ["field", 15, null],
-          ["field", 12, { "temporal-unit": "default" }],
-        ],
+        fields: [["field", ORDERS.ID, null]],
       },
-      visualization_settings: {
-        "table.columns": [
-          { name: "ID", fieldRef: ["field", 17, null], enabled: false },
-          { name: "USER_ID", fieldRef: ["field", 11, null], enabled: false },
-          { name: "PRODUCT_ID", fieldRef: ["field", 13, null], enabled: false },
-          { name: "SUBTOTAL", fieldRef: ["field", 14, null], enabled: false },
-          { name: "TAX", fieldRef: ["field", 16, null], enabled: false },
-          { name: "TOTAL", fieldRef: ["field", 15, null], enabled: true },
-          { name: "DISCOUNT", fieldRef: ["field", 9, null], enabled: false },
-          {
-            name: "CREATED_AT",
-            fieldRef: ["field", 12, { "temporal-unit": "default" }],
-            enabled: true,
-          },
-          { name: "QUANTITY", fieldRef: ["field", 10, null], enabled: false },
-          {
-            name: "ID_2",
-            fieldRef: ["field", 30, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "ADDRESS",
-            fieldRef: ["field", 21, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "EMAIL",
-            fieldRef: ["field", 23, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "PASSWORD",
-            fieldRef: ["field", 19, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "NAME",
-            fieldRef: ["field", 22, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "CITY",
-            fieldRef: ["field", 29, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "LONGITUDE",
-            fieldRef: ["field", 20, { "join-alias": "People - User" }],
-            enabled: true,
-          },
-          {
-            name: "STATE",
-            fieldRef: ["field", 25, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "SOURCE",
-            fieldRef: ["field", 26, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "BIRTH_DATE",
-            fieldRef: [
-              "field",
-              24,
-              { "temporal-unit": "default", "join-alias": "People - User" },
-            ],
-            enabled: false,
-          },
-          {
-            name: "ZIP",
-            fieldRef: ["field", 28, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "LATITUDE",
-            fieldRef: ["field", 27, { "join-alias": "People - User" }],
-            enabled: false,
-          },
-          {
-            name: "CREATED_AT_2",
-            fieldRef: [
-              "field",
-              18,
-              { "temporal-unit": "default", "join-alias": "People - User" },
-            ],
-            enabled: false,
-          },
-        ],
-        "table.pivot_column": "LONGITUDE",
-        "table.cell_column": "TOTAL",
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
     });
 
     cy.intercept("POST", "/api/dataset").as("dataset");
