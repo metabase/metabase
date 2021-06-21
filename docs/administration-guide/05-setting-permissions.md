@@ -76,6 +76,8 @@ Lastly, data access levels for tables are almost exactly the same as well:
 
 _Note: you’ll notice that tables don’t have the option for limited access. If you need to set column-level or row-level data permissions, check out the [data sandboxing](https://www.metabase.com/docs/latest/enterprise-guide/data-sandboxes.html) feature of the [Enterprise Edition](https://www.metabase.com/enterprise/)._
 
+For more, check out our [Guide to data permissions](https://www.metabase.com/learn/organization/organization/data-permissions.html).
+
 ### A note about Pulses
 
 Pulses act a bit differently with regard to permissions. When a user creates a new Pulse, they will only have the option to include saved questions that they have permission to view. Note, however, that they are not prevented from emailing that Pulse to anyone, or posting that Pulse to a Slack channel (if you have Slack integration set up), regardless of the recipients’ permissions. Unlike dashboards, where individual cards are blocked based on a user’s permissions, a Pulse will always render all of its cards.
