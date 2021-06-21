@@ -234,7 +234,7 @@ export class UnconnectedDataSelector extends Component {
       if (!schemas && database) {
         schemas = database.schemas;
       }
-      if (!tables && schemas.length === 1) {
+      if (!tables && Array.isArray(schemas) && schemas.length === 1) {
         tables = schemas[0].tables;
       }
     }
