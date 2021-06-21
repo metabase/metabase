@@ -22,12 +22,13 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     return isExpressionField(dimension.column.field_ref);
   });
 
-  if (
+  const isUnsupportedDrill =
     !clicked ||
     dimensions.length === 0 ||
     !MetabaseSettings.get("enable-xrays") ||
-    includesExpressionDimensions
-  ) {
+    includesExpressionDimensions;
+
+  if (isUnsupportedDrill) {
     return [];
   }
 
