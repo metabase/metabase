@@ -82,7 +82,8 @@
        (rf))
 
       ([acc]
-       (save-successful-query-execution! (:cached acc) execution-info @row-count)
+       (when-not (:cached acc)
+         (save-successful-query-execution! (:cached acc) execution-info @row-count))
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
