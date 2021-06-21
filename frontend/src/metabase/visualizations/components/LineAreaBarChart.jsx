@@ -270,23 +270,7 @@ export default class LineAreaBarChart extends Component {
     } = this.props;
 
     const settings = this.getSettings();
-
-    const hasMultiSeriesHeaderSeries = !!(
-      series.length > 1 ||
-      onAddSeries ||
-      onEditSeries ||
-      onRemoveSeries
-    );
-
     const hasTitle = showTitle && settings["card.title"];
-
-    const defaultSeries = [
-      {
-        card: {
-          name: " ",
-        },
-      },
-    ];
 
     return (
       <div
@@ -304,22 +288,20 @@ export default class LineAreaBarChart extends Component {
             actionButtons={actionButtons}
           />
         )}
-        {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
-          <LegendHeader
-            className="flex-no-shrink"
-            series={hasMultiSeriesHeaderSeries ? series : defaultSeries}
-            settings={settings}
-            hovered={hovered}
-            onHoverChange={this.props.onHoverChange}
-            actionButtons={!hasTitle ? actionButtons : null}
-            onChangeCardAndRun={onChangeCardAndRun}
-            onVisualizationClick={onVisualizationClick}
-            visualizationIsClickable={visualizationIsClickable}
-            onAddSeries={onAddSeries}
-            onEditSeries={onEditSeries}
-            onRemoveSeries={onRemoveSeries}
-          />
-        ) : null}
+        <LegendHeader
+          className="flex-no-shrink"
+          series={series}
+          settings={settings}
+          hovered={hovered}
+          onHoverChange={this.props.onHoverChange}
+          actionButtons={!hasTitle ? actionButtons : null}
+          onChangeCardAndRun={onChangeCardAndRun}
+          onVisualizationClick={onVisualizationClick}
+          visualizationIsClickable={visualizationIsClickable}
+          onAddSeries={onAddSeries}
+          onEditSeries={onEditSeries}
+          onRemoveSeries={onRemoveSeries}
+        />
         <CardRenderer
           {...this.props}
           series={series}
