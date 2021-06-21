@@ -1,7 +1,61 @@
-import { restore, popover, openTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openTable,
+  visitQuestionAdhoc,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATASET;
+const {
+  ORDERS_ID,
+  ORDERS,
+  PEOPLE_ID,
+  PEOPLE,
+  PRODUCTS_ID,
+  PRODUCTS,
+} = SAMPLE_DATASET;
+
+const ordersJoinPeopleQuery = {
+  type: "query",
+  query: {
+    "source-table": ORDERS_ID,
+    joins: [
+      {
+        fields: "all",
+        "source-table": PEOPLE_ID,
+        condition: [
+          "=",
+          ["field", ORDERS.USER_ID, null],
+          ["field", PEOPLE.ID, { "join-alias": "People" }],
+        ],
+        alias: "People",
+      },
+    ],
+    fields: [["field", ORDERS.ID, null]],
+  },
+  database: 1,
+};
+
+const ordersJoinProductsQuery = {
+  type: "query",
+  query: {
+    "source-table": ORDERS_ID,
+    joins: [
+      {
+        fields: "all",
+        "source-table": PRODUCTS_ID,
+        condition: [
+          "=",
+          ["field", ORDERS.PRODUCT_ID, null],
+          ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+        ],
+        alias: "Products",
+      },
+    ],
+    fields: [["field", ORDERS.ID, null]],
+  },
+  database: 1,
+};
 
 const NUMBER_BUCKETS = [
   "Auto bin",
@@ -170,6 +224,42 @@ describe("scenarios > binning > binning options", () => {
       getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
     });
   });
+
+  context.skip("explicit joins (metabase#16675)", () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+    });
+
+    it("should work for time series", () => {
+      chooseInitialBinningOptionForExplicitJoin({
+        baseTableQuery: ordersJoinPeopleQuery,
+        column: "Birth Date",
+      });
+
+      openPopoverFromSelectedBinningOption("Birth Date", "by month");
+      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+    });
+
+    it("should work for number", () => {
+      chooseInitialBinningOptionForExplicitJoin({
+        baseTableQuery: ordersJoinProductsQuery,
+        column: "Price",
+      });
+
+      openPopoverFromSelectedBinningOption("Price", "Auto binned");
+      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
+    });
+
+    it("should work for longitude", () => {
+      chooseInitialBinningOptionForExplicitJoin({
+        baseTableQuery: ordersJoinPeopleQuery,
+        column: "Longitude",
+      });
+
+      openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
+      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
+    });
+  });
 });
 
 function chooseInitialBinningOption({ table, column, mode = null } = {}) {
@@ -186,6 +276,23 @@ function chooseInitialBinningOption({ table, column, mode = null } = {}) {
       .first()
       .click();
   }
+}
+
+function chooseInitialBinningOptionForExplicitJoin({
+  baseTableQuery,
+  column,
+} = {}) {
+  visitQuestionAdhoc({ dataset_query: baseTableQuery });
+
+  cy.wait("@dataset");
+  cy.findByText("Summarize")
+    .should("be.visible")
+    .click();
+
+  cy.findByTestId("sidebar-right").within(() => {
+    cy.findByText("Count"); // Test fails without this because of some weird race condition
+    cy.findByText(column).click();
+  });
 }
 
 function openPopoverFromSelectedBinningOption(column, binning) {
