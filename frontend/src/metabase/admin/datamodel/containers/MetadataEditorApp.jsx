@@ -41,6 +41,9 @@ const mapDispatchToProps = {
     Metrics.actions.setArchived({ id }, true, rest),
 };
 
+@Databases.load({
+  id: (state, props) => props.databaseId,
+})
 @connect(
   mapStateToProps,
   mapDispatchToProps,
@@ -57,6 +60,8 @@ export default class MetadataEditor extends Component {
 
   static propTypes = {
     databaseId: PropTypes.number,
+    database: PropTypes.object,
+    loading: PropTypes.bool,
     tableId: PropTypes.number,
     selectDatabase: PropTypes.func.isRequired,
     selectTable: PropTypes.func.isRequired,
@@ -75,7 +80,8 @@ export default class MetadataEditor extends Component {
   }
 
   render() {
-    const { databaseId, tableId } = this.props;
+    const { databaseId, tableId, database, loading } = this.props;
+    const hasLoadedDatabase = !loading && database;
     return (
       <div className="p4">
         <MetadataHeader
@@ -88,7 +94,7 @@ export default class MetadataEditor extends Component {
           style={{ minHeight: "60vh" }}
           className="flex flex-row flex-full mt2 full-height"
         >
-          {databaseId && (
+          {hasLoadedDatabase && (
             <MetadataTablePicker
               tableId={tableId}
               databaseId={databaseId}
@@ -109,9 +115,15 @@ export default class MetadataEditor extends Component {
             )
           ) : (
             <div style={{ paddingTop: "10rem" }} className="full text-centered">
-              <AdminEmptyText
-                message={t`Select any table to see its schema and add or edit metadata.`}
-              />
+              {!loading && (
+                <AdminEmptyText
+                  message={
+                    hasLoadedDatabase
+                      ? t`Select any table to see its schema and add or edit metadata.`
+                      : t`The page you asked for couldn't be found.`
+                  }
+                />
+              )}
             </div>
           )}
         </div>
