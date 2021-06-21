@@ -130,44 +130,55 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
     it("should work for time series", () => {
       popover().within(() => {
-        openPopoverFromDefaultBucketSize("Created At", "by month");
+        openPopoverFromDefaultBucketSize("People → Birth Date", "by month");
       });
-      cy.findByText("Year").click();
 
-      cy.findByText("Count by Created At: Year");
-      cy.button("Visualize").click();
+      chooseBucketAndAssert({
+        bucketSize: "Year",
+        columnType: "time",
+        mode: "notebook",
+        title: "Count by People → Birth Date: Year",
+        values: ["1960", "1965", "2000"],
+      });
 
-      waitAndAssertOnRequest("@dataset");
-      cy.get("circle");
+      // Make sure time series chooseBucketAndAssertter works as well
+      cy.get(".AdminSelect-content")
+        .contains("Year")
+        .click();
+      cy.findByText("Quarter").click();
+
+      cy.wait("@dataset");
+      cy.get(".axis.x").within(() => {
+        cy.findByText("Q1 - 1960");
+        cy.findByText("Q1 - 1965");
+        cy.findByText("Q1 - 2000");
+      });
     });
 
     it("should work for number", () => {
       popover().within(() => {
-        openPopoverFromDefaultBucketSize("Total", "Auto bin");
+        openPopoverFromDefaultBucketSize("Products → Price", "Auto bin");
       });
-      cy.findByText("100 bins").click();
 
-      cy.findByText("Count by Total: 100 bins");
-      cy.button("Visualize").click();
-
-      waitAndAssertOnRequest("@dataset");
-      cy.get(".bar");
+      chooseBucketAndAssert({
+        bucketSize: "50 bins",
+        mode: "notebook",
+        title: "Count by Products → Price: 50 bins",
+        values: ["14", "18", "20", "100"],
+      });
     });
 
     it("should work for longitude", () => {
       popover().within(() => {
-        openPopoverFromDefaultBucketSize(
-          "People - User → Longitude",
-          "Auto bin",
-        );
+        openPopoverFromDefaultBucketSize("People → Longitude", "Auto bin");
       });
-      cy.findByText("Bin every 10 degrees").click();
 
-      cy.findByText("Count by People - User → Longitude: 10°");
-      cy.button("Visualize").click();
-
-      waitAndAssertOnRequest("@dataset");
-      cy.get(".bar");
+      chooseBucketAndAssert({
+        bucketSize: "Bin every 20 degrees",
+        mode: "notebook",
+        title: "Count by People → Longitude: 20°",
+        values: ["180° W", "160° W", "60° W"],
+      });
     });
   });
 
