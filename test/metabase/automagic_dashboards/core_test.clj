@@ -59,22 +59,25 @@
 ;;; ------------------- `automagic-anaysis` -------------------
 
 (defn- test-automagic-analysis
-  ([entity] (test-automagic-analysis entity nil))
-  ([entity cell-query]
+  ([entity card-count] (test-automagic-analysis entity nil card-count))
+  ([entity cell-query card-count]
    ;; We want to both generate as many cards as we can to catch all aberrations, but also make sure
    ;; that size limiting works.
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show :all}))
-     (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all})))
+     (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all}) card-count))
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
-     (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show 1})))))
+     ;; 1 for the actual card returned + 1 for the visual display card = 2
+     (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show 1}) 2))))
 
 ;; These test names were named by staring at them for a while, so they may be misleading
 
 (deftest automagic-analysis-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
-      (doseq [table (db/select Table :db_id (mt/id))]
-        (test-automagic-analysis table)))
+      (doseq [[table cardinality] (map vector
+                                       (db/select Table :db_id (mt/id) {:order-by [[:id]]})
+                                       [7 5 8 2])]
+        (test-automagic-analysis table cardinality)))
 
     (automagic-dashboards.test/with-dashboard-cleanup
       (is (= 1
@@ -88,22 +91,25 @@
     (automagic-dashboards.test/with-dashboard-cleanup
       (-> (Table (mt/id :venues))
           (assoc :display_name "%Venues")
-          test-automagic-analysis))))
+          (test-automagic-analysis 7)))))
 
-(deftest visibility-type-test
+(deftest mass-field-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
-      (doseq [field (db/select Field
-                      :table_id [:in (db/select-field :id Table :db_id (mt/id))]
-                      :visibility_type "normal")]
-        (test-automagic-analysis field)))))
+      (doseq [[field cardinality] (map vector
+                                       (db/select Field
+                                                  :table_id [:in (db/select-field :id Table :db_id (mt/id))]
+                                                  :visibility_type "normal"
+                                                  {:order-by [[:id]]})
+                                       [8 7 6 8 7 7 10])]
+        (test-automagic-analysis field cardinality)))))
 
 (deftest metric-test
   (mt/with-temp Metric [metric {:table_id (mt/id :venues)
                                 :definition {:aggregation [[:count]]}}]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
-        (test-automagic-analysis metric)))))
+        (test-automagic-analysis metric 8)))))
 
 (deftest complicated-card-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -117,7 +123,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id)))))))
+          (test-automagic-analysis (Card card-id) 7))))))
 
 (deftest query-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -131,7 +137,7 @@
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
-          (test-automagic-analysis (Card card-id)))))))
+          (test-automagic-analysis (Card card-id) 17))))))
 
 (deftest native-query-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -144,7 +150,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id)))))))
+          (test-automagic-analysis (Card card-id) 2))))))
 
 (defn- result-metadata-for-query [query]
   (first
@@ -171,7 +177,7 @@
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (Card card-id))))))))
+            (test-automagic-analysis (Card card-id) 7)))))))
 
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -192,7 +198,7 @@
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (Card card-id))))))))
+            (test-automagic-analysis (Card card-id) 8)))))))
 
 (deftest card-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -207,7 +213,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id)))))))
+          (test-automagic-analysis (Card card-id) 17))))))
 
 (deftest figure-out-table-id-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -220,7 +226,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id)))))))
+          (test-automagic-analysis (Card card-id) 2))))))
 
 (deftest card-cell-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -236,7 +242,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id
               Card
-              (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2])))))))
+              (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
 
 (deftest complicated-card-cell-test
@@ -253,7 +259,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id
               Card
-              (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2])))))))
+              (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
 
 (deftest adhoc-filter-test
@@ -263,7 +269,7 @@
                                           :source-table (mt/id :venues)}
                                   :type :query
                                   :database (mt/id)})]
-        (test-automagic-analysis q)))))
+        (test-automagic-analysis q 7)))))
 
 (deftest adhoc-count-test
   (mt/with-test-user :rasta
@@ -273,7 +279,7 @@
                                           :source-table (mt/id :venues)}
                                   :type :query
                                   :database (mt/id)})]
-        (test-automagic-analysis q)))))
+        (test-automagic-analysis q 17)))))
 
 (deftest adhoc-fk-breakout-test
   (mt/with-test-user :rasta
@@ -283,7 +289,7 @@
                                           :source-table (mt/id :checkins)}
                                   :type :query
                                   :database (mt/id)})]
-        (test-automagic-analysis q)))))
+        (test-automagic-analysis q 17)))))
 
 (deftest adhoc-filter-cell-test
   (mt/with-test-user :rasta
@@ -292,7 +298,7 @@
                                           :source-table (mt/id :venues)}
                                   :type :query
                                   :database (mt/id)})]
-        (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2])))))
+        (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))
 
 
 ;;; ------------------- /candidates -------------------
