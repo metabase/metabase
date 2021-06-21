@@ -58,7 +58,6 @@ export default class LegendHeader extends Component {
       : this.props;
 
     const isNarrow = width < MIN_WIDTH_PER_SERIES * series.length;
-    const showTitles = !isNarrow;
 
     const seriesSettings =
       settings.series && series.map(single => settings.series(single));
@@ -85,7 +84,7 @@ export default class LegendHeader extends Component {
             color={colors[index % colors.length]}
             className={cx({ "text-brand-hover": !isBreakoutSeries })}
             showDot
-            showTitle={showTitles}
+            showTitle={!isNarrow}
             isMuted={
               hovered && hovered.index != null && index !== hovered.index
             }
