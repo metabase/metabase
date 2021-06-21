@@ -133,7 +133,9 @@
                result*        (-> (if normal-format?
                                     (merge-with merge @final-metadata (unreduced result))
                                     (unreduced result))
-                                  (assoc :cached true, :updated_at last-ran))]
+                                  (assoc :cached true
+                                         :updated_at last-ran
+                                         :metrics/ignore-execution-time true))]
            (rf (cond-> result*
                  (reduced? result) reduced))))
 
