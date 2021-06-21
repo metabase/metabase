@@ -190,44 +190,77 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("QB Binning").click();
     });
 
+    /**
+     * Generated title seems to be incorrect.
+     * Please see: https://github.com/metabase/metabase/issues/16693.
+     *
+     *  1. Todo: unskip the titles in this block once #16693 gets fixed.
+     */
     it("should work for time series", () => {
-      cy.findByText("Created At").click();
+      cy.findByText("People → Birth Date").click();
       cy.findByText("Distribution").click();
 
-      assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
-      cy.findByText("Count by Created At: Month");
+      /**
+       * Please see the comment no. 1 above.
+       */
+      // cy.findByText("Count by People → Birth Date: Month");
+
+      assertOnXYAxisLabels({ xLabel: "People → Birth Date", yLabel: "Count" });
+
+      cy.findByText("January, 1960");
+      cy.findByText("January, 1965");
+
       cy.get("circle");
 
-      // Open a popover with bucket options from the time series footer
+      // Make sure time series footer works as well
       cy.get(".AdminSelect-content")
         .contains("Month")
         .click();
       cy.findByText("Quarter").click();
 
-      cy.findByText("Count by Created At: Quarter");
-      cy.findByText("Q1 - 2017");
+      /**
+       * Please see the comment no. 1 above.
+       */
+      // cy.findByText("Count by People → Birth Date: Quarter");
+
+      cy.findByText("Q1 - 1960");
+      cy.findByText("Q1 - 1965");
     });
 
     it("should work for number", () => {
-      cy.findByText("Total").click();
+      cy.findByText("Products → Price").click();
       cy.findByText("Distribution").click();
 
-      assertOnXYAxisLabels({ xLabel: "Total", yLabel: "Count" });
-      cy.findByText("Count by Total: Auto binned");
-      // Auto bin is much more granular than it is for QB questions
+      /**
+       * Please see the comment no. 1 above.
+       */
+      // cy.findByText("Count by Products → Price: Auto binned");
+
+      assertOnXYAxisLabels({ xLabel: "Products → Price", yLabel: "Count" });
+
+      cy.findByText("12.5");
+      cy.findByText("25");
+
       cy.get(".bar");
     });
 
-    it.skip("should work for longitude", () => {
-      cy.findByText("People - User → Longitude").click();
+    it("should work for longitude", () => {
+      cy.findByText("People → Longitude").click();
       cy.findByText("Distribution").click();
 
+      /**
+       * Please see the comment no. 1 above.
+       */
+      // cy.findByText("Count by People → Longitude: Auto binned");
+
       assertOnXYAxisLabels({
-        xLabel: "People - User → Longitude",
+        xLabel: "People → Longitude",
         yLabel: "Count",
       });
-      cy.findByText("Count by People - User → Longitude: Auto binned");
-      // Auto bin is much more granular than it is for QB questions
+
+      cy.findByText("170° W");
+      cy.findByText("160° W");
+
       cy.get(".bar");
     });
   });
