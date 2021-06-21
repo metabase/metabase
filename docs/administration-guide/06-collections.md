@@ -1,5 +1,4 @@
 ## Creating Collections for Your Saved Questions
----
 
 ![Collection detail](images/collections/collection-detail.png)
 
