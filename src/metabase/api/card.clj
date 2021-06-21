@@ -25,7 +25,6 @@
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
