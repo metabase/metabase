@@ -178,8 +178,7 @@ For more, check out [How to create a pivot table to summarize your data](https:/
 
 ### Line, bar, and area charts
 
-**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values.
-For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html).
+**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html).
 
 Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year).
 
