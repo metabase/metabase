@@ -339,7 +339,7 @@ describe("scenarios > visualizations > line chart", () => {
     }
   });
 
-  describe.skip("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
+  describe("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
     beforeEach(() => {
       visitQuestionAdhoc({
         dataset_query: {
