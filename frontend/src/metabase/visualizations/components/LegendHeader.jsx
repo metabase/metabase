@@ -83,7 +83,6 @@ export default class LegendHeader extends Component {
             description={description}
             color={colors[index % colors.length]}
             className={cx({ "text-brand-hover": !isBreakoutSeries })}
-            showDot
             showTitle={!isNarrow}
             isMuted={
               hovered && hovered.index != null && index !== hovered.index
