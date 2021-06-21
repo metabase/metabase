@@ -22,7 +22,6 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       chooseBucketAndAssert({
         bucketSize: "Year",
         title: "Count by User → Birth Date: Year",
-
         values: ["1958", "313"],
       });
 
