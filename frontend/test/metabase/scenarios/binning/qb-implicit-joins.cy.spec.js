@@ -19,17 +19,22 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
         openPopoverFromDefaultBucketSize("Birth Date", "by month");
       });
 
-      popover().within(() => {
-        cy.findByText("Year").click();
+      chooseBucketAndAssert({
+        bucketSize: "Year",
+        title: "Count by User → Birth Date: Year",
+
+        values: ["1958", "313"],
       });
 
-      waitAndAssertOnRequest("@dataset");
+      // Make sure time series chooseBucketAndAssertter works as well
+      cy.get(".AdminSelect-content")
+        .contains("Year")
+        .click();
+      cy.findByText("Month").click();
 
-      cy.findByText("Count by User → Birth Date: Year");
-
-      // The default chosen "visualization" is table
-      cy.findByText("1958");
-      cy.findByText("313");
+      cy.get(".cellData")
+        .should("contain", "April, 1958")
+        .and("contain", "37");
     });
 
     it("should work for number", () => {
@@ -37,32 +42,25 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
         openPopoverFromDefaultBucketSize("Price", "Auto bin");
       });
 
-      popover().within(() => {
-        cy.findByText("10 bins").click();
+      chooseBucketAndAssert({
+        bucketSize: "50 bins",
+        title: "Count by Product → Price: 50 bins",
+        values: ["14  –  16", "96"],
       });
-
-      waitAndAssertOnRequest("@dataset");
-
-      cy.findByText("Count by Product → Price: 10 bins");
-      cy.findByText("196");
     });
 
-    it.skip("should work for longitude", () => {
+    it("should work for longitude", () => {
       cy.findByTestId("sidebar-right").within(() => {
         openPopoverFromDefaultBucketSize("Longitude", "Auto bin");
       });
 
-      popover().within(() => {
-        // Test fails at this point (UI inconsistency).
-        // It simply gives `10°` as the option, which is different than in any other longitude binning scenario.
-        cy.findByText("Bin every 10 degrees").click();
+      chooseBucketAndAssert({
+        // Test is currently incorrect in that it displays wrong binning options (please see: https://github.com/metabase/metabase/issues/16674)
+        // Once #16674 gets fixed, update the following line to say: `bucketSize: "Bin every 20 degrees"`
+        bucketSize: "20°",
+        title: "Count by User → Longitude: 20°",
+        values: ["180° W  –  160° W", "75"],
       });
-
-      waitAndAssertOnRequest("@dataset");
-
-      cy.findByText("Count by User → Longitude: 10°");
-      cy.findByText("170° W  –  160° W");
-      cy.findByText("75");
     });
   });
 });
@@ -83,4 +81,29 @@ function waitAndAssertOnRequest(requestAlias) {
   cy.wait(requestAlias).then(xhr => {
     expect(xhr.response.body.error).to.not.exist;
   });
+}
+
+function chooseBucketAndAssert({
+  bucketSize,
+  title,
+  mode = null,
+  values,
+} = {}) {
+  const [firstValue, lastValue] = values;
+
+  popover()
+    .last()
+    .within(() => {
+      cy.findByText(bucketSize).click();
+    });
+
+  if (mode === "notebook") {
+    cy.button("Visualize").click();
+  }
+  waitAndAssertOnRequest("@dataset");
+
+  cy.findByText(title);
+  cy.get(".cellData")
+    .should("contain", firstValue)
+    .and("contain", lastValue);
 }
