@@ -17,6 +17,18 @@ import {
   fields as Fields,
 } from "metabase/entities";
 
+const propTypes = {
+  databaseId: PropTypes.number,
+  database: PropTypes.object,
+  loading: PropTypes.bool,
+  tableId: PropTypes.number,
+  selectDatabase: PropTypes.func.isRequired,
+  selectTable: PropTypes.func.isRequired,
+  idfields: PropTypes.array,
+  updateField: PropTypes.func.isRequired,
+  onRetireMetric: PropTypes.func.isRequired,
+};
+
 const mapStateToProps = (state, { params }) => {
   const databaseId = params.databaseId
     ? parseInt(params.databaseId)
@@ -48,7 +60,7 @@ const mapDispatchToProps = {
   mapStateToProps,
   mapDispatchToProps,
 )
-export default class MetadataEditor extends Component {
+class MetadataEditor extends Component {
   constructor(props, context) {
     super(props, context);
     this.toggleShowSchema = this.toggleShowSchema.bind(this);
@@ -57,18 +69,6 @@ export default class MetadataEditor extends Component {
       isShowingSchema: false,
     };
   }
-
-  static propTypes = {
-    databaseId: PropTypes.number,
-    database: PropTypes.object,
-    loading: PropTypes.bool,
-    tableId: PropTypes.number,
-    selectDatabase: PropTypes.func.isRequired,
-    selectTable: PropTypes.func.isRequired,
-    idfields: PropTypes.array,
-    updateField: PropTypes.func.isRequired,
-    onRetireMetric: PropTypes.func.isRequired,
-  };
 
   toggleShowSchema() {
     this.setState({ isShowingSchema: !this.state.isShowingSchema });
@@ -131,3 +131,7 @@ export default class MetadataEditor extends Component {
     );
   }
 }
+
+MetadataEditor.propTypes = propTypes;
+
+export default MetadataEditor;
