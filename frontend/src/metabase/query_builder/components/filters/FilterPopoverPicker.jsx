@@ -36,6 +36,7 @@ export default class FilterPopoverPicker extends React.Component {
     };
 
     const setValues = (values: any[]) => {
+      console.log("🚀", "in setValues", { filter, values });
       onFilterChange(filter.setArguments(values));
     };
 
