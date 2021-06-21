@@ -265,7 +265,7 @@
          (if (and user (:is_active user))
            (mw.session/set-session-cookie request response session)
            (throw (ex-info (str disabled-account-message)
-                           {:status-code 400
+                           {:status-code 401
                             :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
