@@ -1163,13 +1163,22 @@
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))
 
+(defn- splice-in [join-statement card-member] some shit here)
+
+(defn- maybe-enrich-joins
+  "Hack to shove back in joins when they get automagically stripped out by the question decomposition into metrics"
+  [entity dashboard]
+  (if-let [join-statement (get-in entity [:entity :dataset_query :query :joins])]
+    (update dashboard :ordered_cards #(map (partial splice-in join-statement) %))
+    dashboard))
+
 (defmethod automagic-analysis (type Card)
   [card {:keys [cell-query] :as opts}]
   (let [root     (->root card)
         cell-url (format "%squestion/%s/cell/%s" public-endpoint
                          (u/the-id card)
                          (encode-base64-json cell-query))]
-    (if (table-like? card)
+    (maybe-enrich-joins card (if (table-like? card)
       (automagic-dashboard
        (merge (cond-> root
                 cell-query (merge {:url          cell-url
@@ -1184,7 +1193,7 @@
                         (decompose-question root card opts))
           cell-query (merge (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
                               {:transient_name  title
-                               :name            title})))))))
+                               :name            title}))))))))
 
 (defmethod automagic-analysis (type Query)
   [query {:keys [cell-query] :as opts}]
@@ -1192,7 +1201,7 @@
         cell-url (format "%sadhoc/%s/cell/%s" public-endpoint
                          (encode-base64-json (:dataset_query query))
                          (encode-base64-json cell-query))]
-    (if (table-like? query)
+    (maybe-enrich-joins query (if (table-like? query)
       (automagic-dashboard
        (merge (cond-> root
                 cell-query (merge {:url          cell-url
@@ -1207,7 +1216,7 @@
                        (decompose-question root query opts))
           cell-query (merge (let [title (tru "A closer look at the {0}" (cell-title root cell-query))]
                               {:transient_name  title
-                               :name            title})))))))
+                               :name            title}))))))))
 
 (defmethod automagic-analysis (type Field)
   [field opts]
