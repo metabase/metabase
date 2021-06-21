@@ -66,52 +66,52 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
     it("should work for time series", () => {
       cy.findByTestId("sidebar-right").within(() => {
-        // This basic/default bucket seems wrong.
-        // For every other scenario, the default bucker for time is "by month"
-        openPopoverFromDefaultBucketSize("Created At", "by month");
+        openPopoverFromDefaultBucketSize("People → Birth Date", "by month");
       });
 
-      popover().within(() => {
-        cy.findByText("Year").click();
+      chooseBucketAndAssert({
+        bucketSize: "Year",
+        columnType: "time",
+        title: "Count by People → Birth Date: Year",
+        values: ["1960", "1965", "2000"],
       });
 
-      waitAndAssertOnRequest("@dataset");
+      // Make sure time series chooseBucketAndAssertter works as well
+      cy.get(".AdminSelect-content")
+        .contains("Year")
+        .click();
+      cy.findByText("Quarter").click();
 
-      cy.findByText("Count by Created At: Year");
-      cy.get("circle");
+      cy.wait("@dataset");
+      cy.get(".axis.x").within(() => {
+        cy.findByText("Q1 - 1960");
+        cy.findByText("Q1 - 1965");
+        cy.findByText("Q1 - 2000");
+      });
     });
 
     it("should work for number", () => {
       cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("Total", "Auto bin");
+        openPopoverFromDefaultBucketSize("Products → Price", "Auto bin");
       });
 
-      popover().within(() => {
-        cy.findByText("100 bins").click();
+      chooseBucketAndAssert({
+        bucketSize: "50 bins",
+        title: "Count by Products → Price: 50 bins",
+        values: ["14", "18", "20", "100"],
       });
-
-      waitAndAssertOnRequest("@dataset");
-
-      cy.findByText("Count by Total: 100 bins");
-      cy.get(".bar");
     });
 
     it("should work for longitude", () => {
       cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize(
-          "People - User → Longitude",
-          "Auto bin",
-        );
+        openPopoverFromDefaultBucketSize("People → Longitude", "Auto bin");
       });
 
-      popover().within(() => {
-        cy.findByText("Bin every 10 degrees").click();
+      chooseBucketAndAssert({
+        bucketSize: "Bin every 20 degrees",
+        title: "Count by People → Longitude: 20°",
+        values: ["180° W", "160° W", "60° W"],
       });
-
-      waitAndAssertOnRequest("@dataset");
-
-      cy.findByText("Count by People - User → Longitude: 10°");
-      cy.get(".bar");
     });
   });
 
@@ -249,4 +249,36 @@ function waitAndAssertOnRequest(requestAlias) {
   cy.wait(requestAlias).then(xhr => {
     expect(xhr.response.body.error).to.not.exist;
   });
+}
+
+function chooseBucketAndAssert({
+  bucketSize,
+  columnType,
+  title,
+  mode = null,
+  values,
+} = {}) {
+  popover()
+    .last()
+    .within(() => {
+      cy.findByText(bucketSize).click();
+    });
+
+  if (mode === "notebook") {
+    cy.button("Visualize").click();
+  }
+
+  waitAndAssertOnRequest("@dataset");
+
+  const visualizaitonSelector = columnType === "time" ? "circle" : ".bar";
+  cy.get(visualizaitonSelector);
+
+  cy.findByText(title);
+
+  values &&
+    cy.get(".axis.x").within(() => {
+      values.forEach(value => {
+        cy.findByText(value);
+      });
+    });
 }
