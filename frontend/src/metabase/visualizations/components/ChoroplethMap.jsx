@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { isString } from "metabase/lib/schema_metadata";
+import { isMetric } from "metabase/lib/schema_metadata";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -104,7 +104,7 @@ export default class ChoroplethMap extends Component {
   static minSize = { width: 4, height: 4 };
 
   static isSensible({ cols }) {
-    return cols.length > 1;
+    return cols.length > 1 && cols.filter(isMetric).length > 0;
   }
 
   static checkRenderable([
