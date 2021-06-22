@@ -95,16 +95,32 @@
           (assoc :display_name "%Venues")
           (test-automagic-analysis 7)))))
 
+;; There's weird stuff with regards to drivers up in fields, so these tests on different drivers have different cardinalities
 (deftest mass-field-test
-  (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup
-      (doseq [[field cardinality] (map vector
-                                       (db/select Field
-                                                  :table_id [:in (db/select-field :id Table :db_id (mt/id))]
-                                                  :visibility_type "normal"
-                                                  {:order-by [[:id :asc]]})
-                                       [8 7 6 8 7 7 10])]
-        (test-automagic-analysis field cardinality)))))
+  (mt/test-drivers
+    #{:h2 :sqlite :sqlserver :oracle}
+    (mt/with-test-user :rasta
+      (automagic-dashboards.test/with-dashboard-cleanup
+        (doseq [[field cardinality] (map vector
+                                         (db/select Field
+                                                    :table_id [:in (db/select-field :id Table :db_id (mt/id))]
+                                                    :visibility_type "normal"
+                                                    {:order-by [[:id :asc]]})
+                                         [8 7 6 8 7 7 10])]
+          (test-automagic-analysis field cardinality))))))
+
+(deftest mass-field-test-different-drivers
+  (mt/test-drivers
+    #{:h2 :sqlite :sqlserver :oracle}
+    (mt/with-test-user :rasta
+      (automagic-dashboards.test/with-dashboard-cleanup
+        (doseq [[field cardinality] (map vector
+                                         (db/select Field
+                                                    :table_id [:in (db/select-field :id Table :db_id (mt/id))]
+                                                    :visibility_type "normal"
+                                                    {:order-by [[:id :asc]]})
+                                         [5 5 7 7 7 7 10])]
+          (test-automagic-analysis field cardinality))))))
 
 (deftest metric-test
   (mt/with-temp Metric [metric {:table_id (mt/id :venues)
