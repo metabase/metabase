@@ -1183,7 +1183,12 @@
 (deftest nested-query-with-expressions-test
   (testing "Nested queries with expressions should work in top-level native queries (#12236)"
     ;; sample-dataset doesn't work on Redshift yet -- see #14784
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :expression-aggregations) :redshift)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature
+                            :nested-queries
+                            :basic-aggregations
+                            :expression-aggregations
+                            :foreign-keys)
+                           :redshift)
       (mt/dataset sample-dataset
         (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
                                                    {:filter      [:between $total 30 60]

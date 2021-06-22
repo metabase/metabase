@@ -328,7 +328,7 @@
   (try
     (parse-value-for-type (:type tag) (parse-tag tag params))
     (catch Throwable e
-      (throw (ex-info (tru "Error determining value for parameter")
+      (throw (ex-info (tru "Error determining value for parameter: {0}" (ex-message e))
                       {:tag  tag
                        :type (or (:type (ex-data e)) qp.error-type/invalid-parameter)}
                       e)))))
@@ -351,7 +351,7 @@
                  (log/tracef "Value for tag %s %s -> %s" (pr-str k) (pr-str tag) (pr-str v))
                  {k v})))
     (catch Throwable e
-      (throw (ex-info (tru "Error building query parameter map")
+      (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
                       {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
                        :tags   tags
                        :params params}
