@@ -406,12 +406,12 @@
     (is (= {:database 1, :type :query, :query {:source-query {:source-query {:native "wow"}}}}
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
 
-(defn do-with-bigquery-fks [f]
-  (if-not (= driver/*driver* :bigquery)
+(defn do-with-bigquery-fks [d f]
+  (if-not (= driver/*driver* d)
     (f)
     (let [supports? driver/supports?]
       (with-redefs [driver/supports? (fn [driver feature]
-                                       (if (= [driver feature] [:bigquery :foreign-keys])
+                                       (if (= [driver feature] [d :foreign-keys])
                                          true
                                          (supports? driver feature)))]
         (let [thunk (reduce
@@ -428,8 +428,8 @@
 
 (defmacro with-bigquery-fks
   "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` marked as foreign
-  keys and with `:foreign-keys` a supported feature when testing against BigQuery. BigQuery does not support Foreign
-  Key constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody
-  has manually marked FK relationships for BigQuery."
-  [& body]
-  `(do-with-bigquery-fks (fn [] ~@body)))
+  keys and with `:foreign-keys` a supported feature when testing against BigQuery, for the BigQuery based driver `d`.
+  BigQuery does not support Foreign Key constraints, but we still let people mark them manually. The macro helps
+  replicate the situation where somebody has manually marked FK relationships for BigQuery."
+  [d & body]
+  `(do-with-bigquery-fks ~d (fn [] ~@body)))
