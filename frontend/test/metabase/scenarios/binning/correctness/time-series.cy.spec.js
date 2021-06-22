@@ -129,14 +129,7 @@ describe("scenarios > binning > correctness > time series", () => {
         assertOnXYAxisLabels();
         assertOnXAxisTicks(representativeValues);
 
-        cy.get(".AdminSelect-content")
-          .first()
-          .invoke("text")
-          .should("eq", "All Time");
-        cy.get(".AdminSelect-content")
-          .last()
-          .invoke("text")
-          .should("match", bucketRegex);
+        assertOnTimeSeriesFooter(bucketRegex);
       });
     },
   );
@@ -188,3 +181,13 @@ function assertOnXAxisTicks(values) {
   }
 }
 
+function assertOnTimeSeriesFooter(regex) {
+  cy.get(".AdminSelect-content")
+    .first()
+    .invoke("text")
+    .should("eq", "All Time");
+  cy.get(".AdminSelect-content")
+    .last()
+    .invoke("text")
+    .should("match", regex);
+}
