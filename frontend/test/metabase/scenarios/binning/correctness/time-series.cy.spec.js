@@ -123,6 +123,13 @@ describe("scenarios > binning > correctness > time series", () => {
           cy.findByText(bucketSize).click();
         });
 
+        cy.get(".List-item--selected")
+          .should("contain", "Created At")
+          .and("contain", selected);
+
+        cy.findByText("Done").click();
+        cy.findByTestId("sidebar-right").should("not.be.visible");
+
         getTitle(titleRegex);
         getVisualization(type);
 
