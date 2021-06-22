@@ -127,12 +127,7 @@ describe("scenarios > binning > correctness > time series", () => {
         getVisualization(type);
 
         assertOnXYAxisLabels();
-
-        cy.get(".axis.x").within(() => {
-          representativeValues.forEach(value => {
-            cy.findByText(value);
-          });
-        });
+        assertOnXAxisTicks(representativeValues);
 
         cy.get(".AdminSelect-content")
           .first()
@@ -180,3 +175,16 @@ function assertOnXYAxisLabels() {
     .invoke("text")
     .should("eq", "Created At");
 }
+
+function assertOnXAxisTicks(values) {
+  if (values) {
+    cy.get(".axis.x").within(() => {
+      values.forEach(value => {
+        cy.findByText(value);
+      });
+    });
+  } else {
+    cy.get(".axis.x").should("not.exist");
+  }
+}
+
