@@ -43,16 +43,17 @@
 (def pom-filter (filter (fn [^JarFile$JarFileEntry jar-entry]
                           (str/ends-with? (.getName jar-entry) "pom.xml"))))
 
-(defn jar->pom
-  "Given a jar filename, look for an adjacent pom file otherwise look for a pom file in the jar. Return the parsed xml."
-  [jar-filename]
-  (let [adjacent-pom (io/file (str/replace jar-filename #"jar$" "pom"))]
+(defn apply-to-pom
+  "Given a jar filename, look for an adjacent pom file otherwise look for a pom file in the jar. Calls `f` on the parsed pom."
+  [jar-filename f]
+  (let [adjacent-pom (io/file (str/replace jar-filename #"jar$" "pom"))
+        parse (fn [is] (xml/parse is :skip-whitespace true))]
     (if (.exists adjacent-pom)
-      (xml/parse (io/input-stream adjacent-pom)
-                 :skip-whitespace true)
+      (with-open [is (io/input-stream adjacent-pom)]
+        (f (parse is)))
       (when-let [jar-pom (first (into [] pom-filter (jar-files jar-filename)))]
-        (xml/parse (.getInputStream (JarFile. ^String jar-filename) jar-pom)
-                   :skip-whitespace true)))))
+        (with-open [is (.getInputStream (JarFile. ^String jar-filename) jar-pom)]
+          (f (parse is)))))))
 
 (defn get-entry [^JarFile jar ^String name]
   (.getEntry jar name))
@@ -115,12 +116,12 @@
 
 (defn discern-license-and-coords [^String jar-filename backfill]
   (try
-    (let [pom-xml (jar->pom jar-filename)
-          coords  (pom->coordinates pom-xml)
-          license (or (license-from-jar (JarFile. jar-filename))
-                      (license-from-backfill coords backfill)
-                      (when-let [{:keys [name url]} (pom->licenses pom-xml)]
-                        (str name ": " url)))]
+    (let [[coords pom-license] (apply-to-pom jar-filename (juxt pom->coordinates pom->licenses))
+          license              (or (license-from-jar (JarFile. jar-filename))
+                                   (license-from-backfill coords backfill)
+                                   (let [{:keys [name url]} pom-license]
+                                     (when name
+                                       (str name ": " url))))]
       [jar-filename (cond-> {:coords coords :license license}
                       (not (and license coords))
                       (assoc :error "Error determining license or coords"))])
