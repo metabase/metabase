@@ -302,6 +302,23 @@
                                   :database (mt/id)})]
         (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))
 
+(deftest join-splicing-test
+  (mt/with-test-user :rasta
+    (automagic-dashboards.test/with-dashboard-cleanup
+      (let [join-vec    [{:source-table (mt/id :categories)
+                          :condition    [:= [:field (mt/id :categories :id) nil] 1]
+                          :strategy     :left-join
+                          :alias        "Dealios" }]
+            q           (query/adhoc-query {:query {:source-table (mt/id :venues)
+                                                    :joins join-vec
+                                                    :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
+                                            :type :query
+                                            :database (mt/id)})
+            res         (magic/automagic-analysis q {})
+            cards       (vec (:ordered_cards res))
+            join-member (get-in cards [2 :card :dataset_query :query :joins])]
+        (is (= join-vec join-member))))))
+
 
 ;;; ------------------- /candidates -------------------
 
@@ -353,7 +370,7 @@
         (is (= []
                (magic/candidate-tables db)))))))
 
-(deftest test-19
+(deftest enhance-table-stats-test
   (mt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [_ {:table_id table-id :semantic_type :type/PK}]
@@ -367,7 +384,7 @@
                    first
                    :stats)))))))
 
-(deftest test-20
+(deftest enhance-table-stats-fk-test
   (mt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [_ {:table_id table-id :semantic_type :type/PK}]
@@ -385,7 +402,7 @@
 
 ;;; ------------------- Definition overloading -------------------
 
-(deftest test-21
+(deftest most-specific-definition-test
   (testing "Identity"
     (is (= :d1
            (-> [{:d1 {:field_type [:type/Category] :score 100}}]
@@ -393,7 +410,7 @@
                first
                key)))))
 
-(deftest test-22
+(deftest ancestors-definition-test
   (testing "Base case: more ancestors"
     (is (= :d2
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -402,7 +419,7 @@
                first
                key)))))
 
-(deftest test-23
+(deftest definition-tiebreak-test
   (testing "Break ties based on the number of additional filters"
     (is (= :d3
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -414,7 +431,7 @@
                first
                key)))))
 
-(deftest test-24
+(deftest definition-tiebreak-score-test
   (testing "Break ties on score"
     (is (= :d2
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -424,7 +441,7 @@
                first
                key)))))
 
-(deftest test-25
+(deftest definition-tiebreak-precedence-test
   (testing "Number of additional filters has precedence over score"
     (is (= :d3
            (-> [{:d1 {:field_type [:type/Category] :score 100}}

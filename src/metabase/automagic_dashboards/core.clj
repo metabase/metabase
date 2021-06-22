@@ -1177,13 +1177,13 @@
   (let [query (get-in card-member [:card :dataset_query :query])]
     (if (key-in? query :join-alias)
       ;; Always in the top level even if the join-alias is found deep in there
-      (assoc query :joins join-statement)
-      query)))
+      (assoc-in card-member [:card :dataset_query :query :joins] join-statement)
+      card-member)))
 
 (defn- maybe-enrich-joins
   "Hack to shove back in joins when they get automagically stripped out by the question decomposition into metrics"
   [entity dashboard]
-  (if-let [join-statement (get-in entity [:entity :dataset_query :query :joins])]
+  (if-let [join-statement (get-in entity [:dataset_query :query :joins])]
     (update dashboard :ordered_cards #(map (partial splice-in join-statement) %))
     dashboard))
 
