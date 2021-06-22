@@ -133,16 +133,13 @@
                result*        (-> (if normal-format?
                                     (merge-with merge @final-metadata (unreduced result))
                                     (unreduced result))
-                                  (assoc :cached true
-                                         :updated_at last-ran
-                                         :metrics/ignore-execution-time true))]
+                                  (assoc :cached true, :updated_at last-ran))]
            (rf (cond-> result*
                  (reduced? result) reduced))))
 
         ([acc row]
          (if (map? row)
-           (do (vreset! final-metadata row)
-               (rf acc))
+           (vreset! final-metadata row)
            (rf acc row)))))))
 
 (defn- maybe-reduce-cached-results

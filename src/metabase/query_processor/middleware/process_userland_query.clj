@@ -82,7 +82,7 @@
        (rf))
 
       ([acc]
-       (when-not (:metrics/ignore-execution-time acc)
+       (when-not (:cached acc)
          (save-successful-query-execution! (:cached acc) execution-info @row-count))
        (rf (if (map? acc)
              (success-response execution-info acc)
