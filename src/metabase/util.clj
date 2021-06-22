@@ -99,7 +99,7 @@
   {:style/indent 1, :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
-             assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
+             assoc :tag (format "[L%s;" (.getTypeName ^Class (ns-resolve *ns* klass)))))
 
 (defn email?
   "Is `s` a valid email address string?"
