@@ -1179,3 +1179,28 @@
                                    :aggregation  [[:metric (u/the-id metric)]]
                                    :breakout     [$venue_id]}
                     :aggregation  [[:count]]}))))))))
+
+(deftest nested-query-with-expressions-test
+  (testing "Nested queries with expressions should work in top-level native queries (#12236)"
+    ;; sample-dataset doesn't work on Redshift yet -- see #14784
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :expression-aggregations) :redshift)
+      (mt/dataset sample-dataset
+        (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
+                                                   {:filter      [:between $total 30 60]
+                                                    :aggregation [[:aggregation-options
+                                                                   [:count-where [:starts-with $product_id->products.category "G"]]
+                                                                   {:name "G Monies", :display-name "G Monies"}]]
+                                                    :breakout    [!month.created_at]})}]
+          (let [card-tag (str "#" (u/the-id card))
+                query    (mt/native-query
+                           {:query         (format "SELECT * FROM {{%s}} LIMIT 2" card-tag)
+                            :template-tags {card-tag
+                                            {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
+                                             :name         card-tag
+                                             :display-name card-tag
+                                             :type         :card
+                                             :card-id      (u/the-id card)}}})]
+            (is (= [["2016-04-01T00:00:00Z" 1]
+                    ["2016-05-01T00:00:00Z" 5]]
+                   (mt/formatted-rows [str int]
+                     (qp/process-query query))))))))))
