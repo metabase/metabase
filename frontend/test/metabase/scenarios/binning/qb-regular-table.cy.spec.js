@@ -100,6 +100,40 @@ describe("scenarios > binning > binning options", () => {
     });
   });
 
+  context("via column popover", () => {
+    it("should work for number", () => {
+      openTable({ table: ORDERS_ID });
+      cy.findByText("Total").click();
+      cy.findByText("Distribution").click();
+
+      getTitle("Count by Total: Auto binned");
+
+      cy.get(".bar");
+      cy.findByText("60");
+    });
+
+    it("should work for time series", () => {
+      openTable({ table: ORDERS_ID });
+      cy.findByText("Created At").click();
+      cy.findByText("Distribution").click();
+
+      getTitle("Count by Created At: Month");
+
+      cy.get("circle");
+      cy.findByText("January, 2017");
+    });
+
+    it("should work for longitude/latitude", () => {
+      openTable({ table: PEOPLE_ID });
+      cy.findByText("Longitude").click();
+      cy.findByText("Distribution").click();
+
+      getTitle("Count by Longitude: Auto binned");
+
+      cy.get(".bar");
+      cy.findByText("170° W");
+    });
+  });
 });
 
 function chooseInitialBinningOption({
