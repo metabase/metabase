@@ -111,7 +111,7 @@
 
 (deftest mass-field-test-different-drivers
   (mt/test-drivers
-    #{:h2 :sqlite :sqlserver :oracle}
+    #{:postgres :mysql}
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup
         (doseq [[field cardinality] (map vector
