@@ -125,7 +125,7 @@
 (s/defn ^:private fetch-or-create-user!* :- (class User)
   [{:keys [first-name last-name email groups]} :- i/UserInfo
    {:keys [sync-groups?], :as settings}        :- i/LDAPSettings]
-  (let [user (db/select-one [User :id :last_login :first_name :last_name] :%lower.email (u/lower-case-en email))
+  (let [user (db/select-one [User :id :last_login :first_name :last_name :is_active] :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
                          old-last-name (:last_name user)
@@ -137,12 +137,12 @@
                      (if (seq user-changes)
                        (do
                          (db/update! User (:id user) user-changes)
-                         (db/select-one [User :id :last_login] :id (:id user))) ; Reload updated user
+                         (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                        user))
-                   (user/create-new-ldap-auth-user!
-                    {:first_name (or first-name (trs "Unknown"))
-                     :last_name  (or last-name (trs "Unknown"))
-                     :email      email}))]
+                   (-> (user/create-new-ldap-auth-user! {:first_name (or first-name (trs "Unknown"))
+                                                         :last_name  (or last-name (trs "Unknown"))
+                                                         :email      email})
+                       (assoc :is_active true)))]
     (u/prog1 new-user
       (when sync-groups?
         (let [group-ids   (ldap-groups->mb-group-ids groups settings)

@@ -45,7 +45,7 @@
 
 (defn- attribute-synced-user
   [{:keys [attributes first-name last-name email]}]
-  (when-let [user (db/select-one [User :id :last_login :first_name :last_name :login_attributes]
+  (when-let [user (db/select-one [User :id :last_login :first_name :last_name :login_attributes :is_active]
                                  :%lower.email (u/lower-case-en email))]
             (let [syncable-attributes (syncable-user-attributes attributes)
                   old-first-name (:first_name user)
@@ -62,7 +62,7 @@
               (if (seq user-changes)
                 (do
                   (db/update! User (:id user) user-changes)
-                  (db/select-one [User :id :last_login] :id (:id user))) ; Reload updated user
+                  (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                 user))))
 
 (s/defn ^:private find-user* :- (s/maybe EEUserInfo)
@@ -81,11 +81,11 @@
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
    {:keys [sync-groups?], :as settings}                                  :- i/LDAPSettings]
   (let [user (or (attribute-synced-user user-info)
-                 (user/create-new-ldap-auth-user!
-                  {:first_name       (or first-name (trs "Unknown"))
-                   :last_name        (or last-name (trs "Unknown"))
-                   :email            email
-                   :login_attributes attributes}))]
+                 (-> (user/create-new-ldap-auth-user! {:first_name       (or first-name (trs "Unknown"))
+                                                       :last_name        (or last-name (trs "Unknown"))
+                                                       :email            email
+                                                       :login_attributes attributes})
+                     (assoc :is_active true)))]
     (u/prog1 user
       (when sync-groups?
         (let [group-ids            (default-impl/ldap-groups->mb-group-ids groups settings)
