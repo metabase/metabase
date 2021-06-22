@@ -462,6 +462,11 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "=", verboseName: t`Is` },
     { name: "!=", verboseName: t`Is not` },
     { name: "inside", verboseName: t`Inside` },
+    { name: ">", verboseName: t`Greater than` },
+    { name: "<", verboseName: t`Less than` },
+    { name: "between", verboseName: t`Between` },
+    { name: ">=", verboseName: t`Greater than or equal to` },
+    { name: "<=", verboseName: t`Less than or equal to` },
   ],
   [BOOLEAN]: [
     { name: "=", verboseName: t`Is`, multi: false },
