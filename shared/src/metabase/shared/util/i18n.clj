@@ -9,7 +9,9 @@
   [format-string & args]
   (macros/case
     :clj
-    `(metabase.util.i18n/tru ~format-string ~@args)
+    (do
+      (require 'metabase.util.i18n)
+      `(metabase.util.i18n/tru ~format-string ~@args))
 
     :cljs
     `(js-i18n ~format-string ~@args)))

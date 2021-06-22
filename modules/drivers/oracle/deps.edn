@@ -1,0 +1,17 @@
+{:paths
+ ["src" "resources"]
+
+ :profiles
+ {:test
+  {:extra-paths ["test"]}
+
+  :build
+  {:extra-deps
+   {metabase/metabase-core {:local/root "../../.."}}}
+
+  :ee
+  {:extra-deps
+   {com.oracle.ojdbc/ojdbc8 {:mvn/version "19.3.0.0"}}
+
+   :replace-paths
+   ["src" "resources-ee"]}}}
