@@ -22,13 +22,14 @@ const LONGITUDE_OPTIONS = {
     representativeValues: ["180° W", "160° W", "100° W", "80° W", "60° W"],
   },
 };
+
 describe("scenarios > binning > correctness > longitude", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     openPeopleTable();
     cy.findByText("Summarize").click();
-    openPopoverFromSelectedBinningOption("Longitude", "Auto bin");
+    openPopoverFromDefaultBucketSize("Longitude", "Auto bin");
   });
 
   Object.entries(LONGITUDE_OPTIONS).forEach(
@@ -66,7 +67,7 @@ describe("scenarios > binning > correctness > longitude", () => {
   });
 });
 
-function openPopoverFromSelectedBinningOption(column, binning) {
+function openPopoverFromDefaultBucketSize(column, bucket) {
   cy.findByTestId("sidebar-right")
     .contains(column)
     .first()
@@ -77,7 +78,7 @@ function openPopoverFromSelectedBinningOption(column, binning) {
   cy.get("@targetListItem")
     .find(".Field-extra")
     .as("listItemSelectedBinning")
-    .should("contain", binning)
+    .should("contain", bucket)
     .click();
 }
 
