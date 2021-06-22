@@ -107,7 +107,7 @@ describe("scenarios > binning > correctness > time series", () => {
 
     openOrdersTable();
     cy.findByText("Summarize").click();
-    openPopoverFromSelectedBinningOption("Created At", "by month");
+    openPopoverFromDefaultBucketSize("Created At", "by month");
   });
 
   Object.entries(TIME_OPTIONS).forEach(
@@ -147,7 +147,7 @@ describe("scenarios > binning > correctness > time series", () => {
   );
 });
 
-function openPopoverFromSelectedBinningOption(column, binning) {
+function openPopoverFromDefaultBucketSize(column, bucket) {
   cy.findByTestId("sidebar-right")
     .contains(column)
     .first()
@@ -158,7 +158,7 @@ function openPopoverFromSelectedBinningOption(column, binning) {
   cy.get("@targetListItem")
     .find(".Field-extra")
     .as("listItemSelectedBinning")
-    .should("contain", binning)
+    .should("contain", bucket)
     .click();
 }
 
