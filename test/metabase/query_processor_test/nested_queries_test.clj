@@ -1198,7 +1198,7 @@
                                                     :breakout    [!month.created_at]})}]
           (let [card-tag (str "#" (u/the-id card))
                 query    (mt/native-query
-                           {:query         (format "SELECT * FROM {{%s}} LIMIT 2" card-tag)
+                           {:query         (format "SELECT * FROM {{%s}} x LIMIT 2" card-tag)
                             :template-tags {card-tag
                                             {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
                                              :name         card-tag
