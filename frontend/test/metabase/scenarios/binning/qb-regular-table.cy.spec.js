@@ -52,6 +52,54 @@ describe("scenarios > binning > binning options", () => {
       cy.findByText("180° W");
     });
   });
+
+  context("via custom question", () => {
+    it("should work for number", () => {
+      chooseInitialBinningOption({
+        table: ORDERS_ID,
+        column: "Total",
+        defaultBucket: "Auto bin",
+        bucketSize: "50 bins",
+        mode: "notebook",
+      });
+
+      getTitle("Count by Total: 50 bins");
+
+      cy.get(".bar");
+      cy.findByText("70");
+    });
+
+    it("should work for time series", () => {
+      chooseInitialBinningOption({
+        table: ORDERS_ID,
+        column: "Created At",
+        defaultBucket: "by month",
+        bucketSize: "Quarter",
+        mode: "notebook",
+      });
+
+      getTitle("Count by Created At: Quarter");
+
+      cy.get("circle");
+      cy.findByText("Q1 - 2017");
+    });
+
+    it("should work for longitude/latitude", () => {
+      chooseInitialBinningOption({
+        table: PEOPLE_ID,
+        column: "Longitude",
+        defaultBucket: "Auto bin",
+        bucketSize: "Bin every 20 degrees",
+        mode: "notebook",
+      });
+
+      getTitle("Count by Longitude: 20°");
+
+      cy.get(".bar");
+      cy.findByText("180° W");
+    });
+  });
+
 });
 
 function chooseInitialBinningOption({
@@ -67,7 +115,19 @@ function chooseInitialBinningOption({
   if (mode === "notebook") {
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.findByText(column).click();
+    cy.findByText(column)
+      .first()
+      .closest(".List-item")
+      .as("targetListItem");
+
+    cy.get("@targetListItem")
+      .find(".Field-extra")
+      .as("listItemSelectedBinning")
+      .should("contain", defaultBucket)
+      .click();
+
+    cy.findByText(bucketSize).click();
+    cy.button("Visualize").click();
   } else {
     cy.findByTestId("sidebar-right")
       .contains(column)
