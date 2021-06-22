@@ -223,24 +223,20 @@
                (run-query)))))))
 
 (deftest ignore-cached-results-test
-  (testing "check that *ignore-cached-results* is respected when returning results..."
+  (testing "check that :ignore-cached-results? in middleware is respected when returning results..."
     (with-mock-cache [save-chan]
-      (run-query)
+      (run-query :middleware {:ignore-cached-results? false})
       (mt/wait-for-result save-chan)
-      (binding [cache/*ignore-cached-results* true]
-        (is (= :not-cached
-               (run-query)))))))
+      (is (= :not-cached
+             (run-query :middleware {:ignore-cached-results? true}))))))
 
 (deftest ignore-cached-results-should-still-save-test
   (testing "...but if it's set those results should still be cached for next time."
     (with-mock-cache [save-chan]
-      (binding [cache/*ignore-cached-results* true]
-        (is (= true
-               (cacheable?)))
-        (run-query)
-        (mt/wait-for-result save-chan))
-      (is (= :cached
-             (run-query))))))
+      (is (= true (cacheable?)))
+      (run-query :middleware {:ignore-cached-results? true})
+      (mt/wait-for-result save-chan)
+      (is (= :cached (run-query))))))
 
 (deftest min-ttl-test
   (testing "if the cache takes less than the min TTL to execute, it shouldn't be cached"
