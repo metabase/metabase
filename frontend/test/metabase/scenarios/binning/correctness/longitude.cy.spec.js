@@ -43,16 +43,7 @@ describe("scenarios > binning > correctness > longitude", () => {
         cy.get(".bar");
 
         assertOnXYAxisLabels();
-
-        if (representativeValues) {
-          cy.get(".axis.x").within(() => {
-            representativeValues.forEach(value => {
-              cy.findByText(value);
-            });
-          });
-        } else {
-          cy.get(".axis.x").should("not.exist");
-        }
+        assertOnXAxisTicks(representativeValues);
       });
     },
   );
@@ -93,4 +84,16 @@ function assertOnXYAxisLabels() {
   cy.get(".x-axis-label")
     .invoke("text")
     .should("eq", "Longitude");
+}
+
+function assertOnXAxisTicks(values) {
+  if (values) {
+    cy.get(".axis.x").within(() => {
+      values.forEach(value => {
+        cy.findByText(value);
+      });
+    });
+  } else {
+    cy.get(".axis.x").should("not.exist");
+  }
 }
