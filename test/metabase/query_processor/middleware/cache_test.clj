@@ -352,8 +352,7 @@
             (is (:cached (qp/process-userland-query query (context.default/default-context))))
             (mt/wait-for-result save-chan)
             (is (= 1 @call-count) "Saving execution times of a cache lookup")
-            (is (= avg-execution-time (query/average-execution-time-ms q-hash)))
-            ))))))
+            (is (= avg-execution-time (query/average-execution-time-ms q-hash)))))))))
 
 (deftest insights-from-cache-test
   (testing "Insights should work on cahced results (#12556)"
