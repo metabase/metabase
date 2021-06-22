@@ -63,4 +63,25 @@ describe("scenarios > admin > settings > map settings", () => {
         "URLs referring to hosts that supply internal hosting metadata are prohibited.",
     );
   });
+
+  it("should show an informative error when adding a valid URL that does not contain GeoJSON, or is missing required fields", () => {
+    cy.visit("/admin/settings/maps");
+    cy.findByText("Add a map").click();
+
+    // Not GeoJSON
+    cy.findByPlaceholderText(
+      "Like https://my-mb-server.com/maps/my-map.json",
+    ).type("https://metabase.com");
+    cy.findByText("Load").click();
+    cy.findByText("Invalid custom GeoJSON: does not contain features");
+
+    // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
+    cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
+      .clear()
+      .type(
+        "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson",
+      );
+    cy.findByText("Load").click();
+    cy.findByText("Invalid custom GeoJSON: does not contain features");
+  });
 });
