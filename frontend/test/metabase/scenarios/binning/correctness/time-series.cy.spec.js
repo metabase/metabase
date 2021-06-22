@@ -54,7 +54,7 @@ const TIME_OPTIONS = {
     type: "basic",
   },
   Year: {
-    selected: "by quarter",
+    selected: "by year",
     representativeValues: ["2016", "2017", "2018", "2019", "2020"],
     type: "basic",
   },
