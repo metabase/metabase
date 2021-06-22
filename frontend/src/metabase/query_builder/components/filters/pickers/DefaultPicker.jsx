@@ -99,15 +99,7 @@ export default function DefaultPicker({
           <FieldValuesWidget
             className="input"
             value={(values: Array<string>)}
-            onChange={e => {
-              console.log(
-                "🚀",
-                "we will change",
-                "operator.multi?: ",
-                operator.multi,
-              );
-              onValuesChange(e);
-            }}
+            onChange={onValuesChange}
             multi={operator.multi}
             placeholder={placeholder}
             fields={underlyingField ? [underlyingField] : []}
