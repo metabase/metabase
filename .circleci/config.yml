@@ -788,6 +788,7 @@ jobs:
                 <<: *CacheKeyDrivers
                 paths:
                   - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
+                  - /home/circleci/metabase/metabase/modules/drivers/bigquery-cloud-sdk/target
                   - /home/circleci/metabase/metabase/modules/drivers/druid/target
                   - /home/circleci/metabase/metabase/modules/drivers/google/target
                   - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
@@ -980,6 +981,12 @@ workflows:
           requires:
             - be-tests-ee
           driver: bigquery
+
+      - test-driver:
+          name: be-tests-bigquery-cloud-sdk-ee
+          requires:
+            - be-tests-ee
+          driver: bigquery-cloud-sdk
 
       - test-driver:
           name: be-tests-druid-ee

@@ -1,0 +1,18 @@
+info:
+  name: Metabase BigQuery Cloud SDK Driver
+  version: 1.0.0-SNAPSHOT-1.131.1
+  description: Allows Metabase to connect to Google BigQuery databases using the Google Cloud SDK.
+driver:
+  name: bigquery-cloud-sdk
+  display-name: BigQuery (Cloud SDK)
+  lazy-load: true
+  parent:
+    - sql
+  connection-properties:
+    - name: project-id
+      display-name: Project ID
+      required: false
+      placeholder: 1w08oDRKPrOqBt06yxY8uiCz2sSvOp3u
+init:
+  - step: load-namespace
+    namespace: metabase.driver.bigquery-cloud-sdk
