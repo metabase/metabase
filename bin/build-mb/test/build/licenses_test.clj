@@ -89,11 +89,11 @@
                 :url          "http://opensource.org/licenses/eclipse-1.0.php"
                 :distribution "repo"}
                (lic/pom->licenses xml))))
-      (let [xml (lic/jar->pom (jar-filename-from-cp "org/clojure/clojure" classpath-urls))]
+      (let [jar-filename (jar-filename-from-cp "org/clojure/clojure" classpath-urls)]
         (is (= {:name         "Eclipse Public License 1.0"
                 :url          "http://opensource.org/licenses/eclipse-1.0.php"
                 :distribution "repo"}
-               (lic/pom->licenses xml)))))
+               (lic/apply-to-pom jar-filename lic/pom->licenses)))))
     (testing "Returning nil if not present"
       (let [xml (parse (StringReader. clojure-jdbc-xml))]
         (is (nil? (lic/pom->licenses xml)))))))
