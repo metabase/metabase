@@ -339,7 +339,7 @@ describe("scenarios > visualizations > line chart", () => {
     }
   });
 
-  describe.skip("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
+  describe("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
     beforeEach(() => {
       visitQuestionAdhoc({
         dataset_query: {
@@ -360,7 +360,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("Category is Doohickey");
     });
 
-    it("should not drop the chart legend (metabase#4995)", () => {
+    it.skip("should not drop the chart legend (metabase#4995)", () => {
       cy.get(".LegendItem").should("contain", "Doohickey");
     });
 
