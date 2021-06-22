@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -42,16 +43,13 @@
   :sunday)
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
-  [_ {:keys [account regionid], :as opts}]
-  (let [host (if regionid
-               (str account "." regionid)
-               account)
-        upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
+  [_ {:keys [account], :as opts}]
+  (let [upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
     (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
                 :subprotocol                                "snowflake"
-                :subname                                    (str "//" host ".snowflakecomputing.com/")
+                :subname                                    (str "//" account ".snowflakecomputing.com/")
                 :client_metadata_request_use_connection_ctx true
                 :ssl                                        true
                 ;; keep open connections open indefinitely instead of closing them. See #9674 and
@@ -305,6 +303,13 @@
              sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
          (jdbc/query spec sql)
          true)))
+
+(defmethod driver/normalize-db-details :snowflake
+  [_ database]
+  (if-not (str/blank? (-> database :details :regionid))
+    (-> (update-in database [:details :account] #(str/join "." [% (-> database :details :regionid)]))
+      (m/dissoc-in [:details :regionid]))
+    database))
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
