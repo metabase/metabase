@@ -39,6 +39,13 @@ describe("scenarios > binning > correctness > longitude", () => {
           cy.findByText(bucketSize).click();
         });
 
+        cy.get(".List-item--selected")
+          .should("contain", "Longitude")
+          .and("contain", selected);
+
+        cy.findByText("Done").click();
+        cy.findByTestId("sidebar-right").should("not.be.visible");
+
         getTitle(`Count by Longitude: ${selected}`);
         cy.get(".bar");
 
@@ -48,13 +55,24 @@ describe("scenarios > binning > correctness > longitude", () => {
     },
   );
 
-  it.only("Don't bin", () => {
+  it("Don't bin", () => {
     popover().within(() => {
       cy.findByText("Don't bin").click();
     });
-    getTitle("Count by Longitude");
 
-    cy.get(".cellData");
+    cy.get(".List-item--selected")
+      .should("contain", "Longitude")
+      .and("contain", "Unbinned");
+
+    cy.findByText("Done").click();
+    cy.findByTestId("sidebar-right").should("not.be.visible");
+
+    getTitle("Count by Longitude");
+    cy.get(".cellData")
+      .should("contain", "Longitude")
+      .should("contain", "Count")
+      .and("contain", "166.54257260° W")
+      .and("contain", "1");
   });
 });
 
