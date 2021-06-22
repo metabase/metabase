@@ -184,7 +184,7 @@
 (deftest substitute-referenced-card-query-test
   (testing "Referenced card query substitution"
     (let [query ["SELECT * FROM " (param "#123")]]
-      (is (= ["SELECT * FROM (SELECT 1 `x`)" nil]
+      (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
              (substitute query {"#123" (i/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
 
 

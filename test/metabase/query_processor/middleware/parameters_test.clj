@@ -163,7 +163,7 @@
       (let [card-1-id  (:id card-1)
             card-2-id  (:id card-2)]
         (is (= (mt/native-query
-                {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2" :params nil})
+                {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
                (substitute-params
                 (mt/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-1-id "}} AS c1, {{#" card-2-id "}} AS c2")
@@ -175,7 +175,7 @@
       (let [card-1-id  (:id card-1)
             card-2-id  (:id card-2)]
         (is (= (mt/native-query
-                {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2" :params nil})
+                {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params []})
                (substitute-params
                 (mt/native-query
                  {:query         (str "WITH c1 AS {{#" card-1-id "}}, "
@@ -190,7 +190,7 @@
       (let [card-1-id  (:id card-1)
             card-2-id  (:id card-2)]
         (is (= (mt/native-query
-                {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2" :params nil})
+                {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
                (substitute-params
                 (mt/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
@@ -213,7 +213,7 @@
                                  "FROM \"PUBLIC\".\"VENUES\" "
                                  "LIMIT 1048575")]
         (is (= (mt/native-query
-                {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params nil})
+                {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
                (substitute-params
                 (mt/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
@@ -227,7 +227,7 @@
                                                                      {:id "x", :name "x", :display-name "Number x",
                                                                       :type :number, :default "1", :required true}}})}]
       (is (= (mt/native-query
-              {:query "SELECT * FROM (SELECT 1) AS x" :params nil})
+              {:query "SELECT * FROM (SELECT 1) AS x", :params []})
              (substitute-params
               (mt/native-query
                {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
@@ -278,7 +278,7 @@
 
     (testing "multiple snippets are expanded from saved sub-query"
       (is (= (mt/native-query
-               {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params nil})
+               {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params []})
              (substitute-params
               (mt/native-query
                 {:query         (str "SELECT * FROM {{#" (:id card) "}} AS x")
