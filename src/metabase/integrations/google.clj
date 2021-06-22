@@ -17,6 +17,9 @@
 ;; Load EE implementation if available
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.enhancements.integrations.google))
 
+(def ^:private non-existant-account-message
+  (deferred-tru "You'll need an administrator to create a Metabase account before you can use Google to log in."))
+
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
   :visibility :public)
@@ -67,11 +70,10 @@
   "Throws if an admin needs to intervene in the account creation."
   [email]
   (when-not (autocreate-user-allowed-for-email? email)
-    ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific
-    ;; to this situation
     (throw
-     (ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
-       {:status-code 428}))))
+     (ex-info (str non-existant-account-message)
+              {:status-code 401
+               :errors  {:_error  non-existant-account-message}}))))
 
 (s/defn ^:private google-auth-create-new-user!
   [{:keys [email] :as new-user} :- user/NewUser]
