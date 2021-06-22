@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
 import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
@@ -220,19 +221,19 @@ export default class ChartClickActions extends Component {
                 )}
               >
                 {SECTIONS[key].icon === "sum" && (
-                  <p className="mt0 text-medium text-small">Summarize</p>
+                  <p className="mt0 text-medium text-small">{t`Summarize`}</p>
                 )}
                 {SECTIONS[key].icon === "breakout" && (
-                  <p className="my1 text-medium text-small">Break out by a…</p>
+                  <p className="my1 text-medium text-small">{t`Break out by a…`}</p>
                 )}
                 {SECTIONS[key].icon === "bolt" && (
                   <p className="mt2 text-medium text-small">
-                    Automatic explorations
+                    {t`Automatic explorations`}
                   </p>
                 )}
                 {SECTIONS[key].icon === "funnel_outline" && (
                   <p className="mt0 text-dark text-small">
-                    Filter by this value
+                    {t`Filter by this value`}
                   </p>
                 )}
 
