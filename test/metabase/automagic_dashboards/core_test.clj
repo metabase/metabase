@@ -77,7 +77,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (doseq [[table cardinality] (map vector
-                                       (db/select Table :db_id (mt/id) {:order-by [[:id]]})
+                                       (db/select Table :db_id (mt/id) {:order-by [[:id :asc]]})
                                        [7 5 8 2])]
         (test-automagic-analysis table cardinality)))
 
@@ -102,7 +102,7 @@
                                        (db/select Field
                                                   :table_id [:in (db/select-field :id Table :db_id (mt/id))]
                                                   :visibility_type "normal"
-                                                  {:order-by [[:id]]})
+                                                  {:order-by [[:id :asc]]})
                                        [8 7 6 8 7 7 10])]
         (test-automagic-analysis field cardinality)))))
 
