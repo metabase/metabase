@@ -755,6 +755,13 @@ export class FieldDimension extends Dimension {
       dimensions = [...dimensions, ...temporalDimensions];
     }
 
+    const baseType = this.getOption("base-type");
+    if (baseType) {
+      dimensions = dimensions.map(dimension =>
+        dimension.withOption("base-type", baseType),
+      );
+    }
+
     return dimensions;
   }
 

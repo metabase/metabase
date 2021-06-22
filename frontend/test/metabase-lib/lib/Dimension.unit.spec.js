@@ -298,7 +298,10 @@ describe("Dimension", () => {
           expect(dimension.dimensions()[1].mbql()).toEqual([
             "field",
             ORDERS.TOTAL.id,
-            { binning: { strategy: "num-bins", "num-bins": 10 } },
+            {
+              "base-type": "type/Float",
+              binning: { strategy: "num-bins", "num-bins": 10 },
+            },
           ]);
         });
       });

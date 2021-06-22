@@ -15,7 +15,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  context.skip("via simple question", () => {
+  context("via simple question", () => {
     beforeEach(() => {
       cy.visit("/question/new");
       cy.findByText("Simple question").click();
@@ -25,7 +25,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.wait("@dataset");
     });
 
-    it("should work for time series", () => {
+    it.skip("should work for time series", () => {
       cy.findByTestId("sidebar-right").within(() => {
         /*
          * This basic/default bucket size seems wrong.
@@ -61,7 +61,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get(".bar");
     });
 
-    it("should work for longitude", () => {
+    it.skip("should work for longitude", () => {
       cy.findByTestId("sidebar-right").within(() => {
         openPopoverFromDefaultBucketSize("LONGITUDE", "Auto binned");
       });
