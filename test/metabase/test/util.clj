@@ -278,25 +278,105 @@
   [obj]
   (json/parse-string (json/generate-string obj) keyword))
 
+(defn- ->lisp-case-keyword [s]
+  (-> (name s)
+      (str/replace #"_" "-")
+      str/lower-case
+      keyword))
+
+(defn do-with-temp-env-var-value
+  "Impl for `with-temp-env-var-value` macro."
+  [env-var-keyword value thunk]
+  (let [value (str value)]
+    (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
+      (try
+        ;; temporarily override the underlying environment variable value
+        (with-redefs [env/env (assoc env/env env-var-keyword value)]
+          ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
+          (setting.cache/restore-cache!)
+          (thunk))
+        (finally
+          ;; flush the cache again so the original value of any env var Settings get restored
+          (setting.cache/restore-cache!))))))
+
+(defmacro with-temp-env-var-value
+  "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
+  any env var Settings will see the updated value, and resets the cache again at the conclusion of `body` so the
+  original values are restored.
+
+    (with-temp-env-var-value [mb-send-email-on-first-login-from-new-device \"FALSE\"]
+      ...)"
+  [[env-var value & more :as bindings] & body]
+  {:pre [(vector? bindings) (even? (count bindings))]}
+  `(do-with-temp-env-var-value
+    ~(->lisp-case-keyword env-var)
+    ~value
+    (fn [] ~@(if (seq more)
+               [`(with-temp-env-var-value ~(vec more) ~@body)]
+               body))))
+
+(setting/defsetting with-temp-env-var-value-test-setting
+  "Setting for the `with-temp-env-var-value-test` test."
+  :visibility :internal
+  :setter     :none
+  :default    "abc")
+
+(deftest with-temp-env-var-value-test
+  (is (= "abc"
+         (with-temp-env-var-value-test-setting)))
+  (with-temp-env-var-value [mb-with-temp-env-var-value-test-setting "def"]
+    (testing "env var value"
+      (is (= "def"
+             (env/env :mb-with-temp-env-var-value-test-setting))))
+    (testing "Setting value"
+      (is (= "def"
+             (with-temp-env-var-value-test-setting)))))
+  (testing "original value should be restored"
+    (testing "env var value"
+      (is (= nil
+             (env/env :mb-with-temp-env-var-value-test-setting))))
+    (testing "Setting value"
+      (is (= "abc"
+             (with-temp-env-var-value-test-setting)))))
+
+  (testing "override multiple env vars"
+    (with-temp-env-var-value [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
+      (testing "Should convert values to strings"
+        (is (= "123"
+               (:some-fake-env-var env/env))))
+      (testing "should handle CAPITALS/SNAKE_CASE"
+        (is (= "def"
+               (:another-fake-env-var env/env))))))
+
+  (testing "validation"
+    (are [form] (thrown?
+                 clojure.lang.Compiler$CompilerException
+                 (macroexpand form))
+      (list `with-temp-env-var-value '[a])
+      (list `with-temp-env-var-value '[a b c]))))
+
 (defn do-with-temporary-setting-value
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as `binding`.
 
-   Prefer the macro `with-temporary-setting-values` over using this function directly."
+  If an env var value is set for the setting, this acts as a wrapper around `do-with-temp-env-var-value`.
+
+  Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (initialize/initialize-if-needed! :db :plugins)
-  (let [setting        (#'setting/resolve-setting setting-k)
-        original-value (when (or (#'setting/db-or-cache-value setting)
-                                 (#'setting/env-var-value setting))
-                         (setting/get setting-k))]
-    (try
-      (setting/set! setting-k value)
-      (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-        (f))
-      (finally
-        (setting/set! setting-k original-value)))))
+  (let [setting                    (#'setting/resolve-setting setting-k)
+        env-var-value              (#'setting/env-var-value setting)
+        original-db-or-cache-value (#'setting/db-or-cache-value setting)]
+    (if env-var-value
+      (do-with-temp-env-var-value setting env-var-value f)
+      (try
+        (setting/set! setting-k value)
+        (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+            (f))
+        (finally
+          (setting/set! setting-k original-db-or-cache-value))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
@@ -305,7 +385,8 @@
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
-  To temporarily override the value of *read-only* env-var based Settings, use `with-temp-env-var-value`."
+  If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
+  To temporarily override the value of *read-only* env vars, use `with-temp-env-var-value`."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
@@ -913,80 +994,3 @@
                  (macroexpand form))
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
-
-(defn- ->lisp-case-keyword [s]
-  (-> (name s)
-      (str/replace #"_" "-")
-      str/lower-case
-      keyword))
-
-(defn do-with-temp-env-var-value
-  "Impl for `with-temp-env-var-value` macro."
-  [env-var-keyword value thunk]
-  (let [value (str value)]
-    (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
-      (try
-        ;; temporarily override the underlying environment variable value
-        (with-redefs [env/env (assoc env/env env-var-keyword value)]
-          ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
-          (setting.cache/restore-cache!)
-          (thunk))
-        (finally
-          ;; flush the cache again so the original value of any env var Settings get restored
-          (setting.cache/restore-cache!))))))
-
-(defmacro with-temp-env-var-value
-  "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
-  any env var Settings will see the updated value, and resets the cache again at the conclusion of `body` so the
-  original values are restored.
-
-    (with-temp-env-var-value [mb-send-email-on-first-login-from-new-device \"FALSE\"]
-      ...)"
-  [[env-var value & more :as bindings] & body]
-  {:pre [(vector? bindings) (even? (count bindings))]}
-  `(do-with-temp-env-var-value
-    ~(->lisp-case-keyword env-var)
-    ~value
-    (fn [] ~@(if (seq more)
-               [`(with-temp-env-var-value ~(vec more) ~@body)]
-               body))))
-
-(setting/defsetting with-temp-env-var-value-test-setting
-  "Setting for the `with-temp-env-var-value-test` test."
-  :visibility :internal
-  :setter     :none
-  :default    "abc")
-
-(deftest with-temp-env-var-value-test
-  (is (= "abc"
-         (with-temp-env-var-value-test-setting)))
-  (with-temp-env-var-value [mb-with-temp-env-var-value-test-setting "def"]
-    (testing "env var value"
-      (is (= "def"
-             (env/env :mb-with-temp-env-var-value-test-setting))))
-    (testing "Setting value"
-      (is (= "def"
-             (with-temp-env-var-value-test-setting)))))
-  (testing "original value should be restored"
-    (testing "env var value"
-      (is (= nil
-             (env/env :mb-with-temp-env-var-value-test-setting))))
-    (testing "Setting value"
-      (is (= "abc"
-             (with-temp-env-var-value-test-setting)))))
-
-  (testing "override multiple env vars"
-    (with-temp-env-var-value [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
-      (testing "Should convert values to strings"
-        (is (= "123"
-               (:some-fake-env-var env/env))))
-      (testing "should handle CAPITALS/SNAKE_CASE"
-        (is (= "def"
-               (:another-fake-env-var env/env))))))
-
-  (testing "validation"
-    (are [form] (thrown?
-                 clojure.lang.Compiler$CompilerException
-                 (macroexpand form))
-      (list `with-temp-env-var-value '[a])
-      (list `with-temp-env-var-value '[a b c]))))

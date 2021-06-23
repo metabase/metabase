@@ -73,7 +73,7 @@
     (throw
      (ex-info (str non-existant-account-message)
               {:status-code 401
-               :errors  {:_error  non-existant-account-message}}))))
+               :errors  {:_error non-existant-account-message}}))))
 
 (s/defn ^:private google-auth-create-new-user!
   [{:keys [email] :as new-user} :- user/NewUser]
