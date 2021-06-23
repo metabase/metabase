@@ -166,8 +166,8 @@ export default function rowRenderer(
   chart.cap(cap);
 
   if (barHeight > ROW_MAX_HEIGHT) {
-    const reasolableMaxGap = boundsHeight / 3;
-    chart.gap(Math.min(barHeight / 2, reasolableMaxGap));
+    const reasonableMaxGap = boundsHeight / 3;
+    chart.gap(Math.min(barHeight / 2, reasonableMaxGap));
   }
 
   chart.render();
