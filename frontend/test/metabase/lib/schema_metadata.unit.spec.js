@@ -139,6 +139,15 @@ describe("schema_metadata", () => {
       });
     });
 
+    it("should have 'between' filter operator for the coordinate type", () => {
+      expect(getOperatorByTypeAndName(COORDINATE, "between")).toEqual({
+        name: "between",
+        numFields: 2,
+        validArgumentsFilters: [expect.any(Function), expect.any(Function)],
+        verboseName: "Between",
+      });
+    });
+
     it("should return a metadata object for primary key", () => {
       expect(getOperatorByTypeAndName(PRIMARY_KEY, "=")).toEqual({
         multi: true,
