@@ -67,13 +67,20 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get(".bar");
     });
 
-    it.skip("should work for longitude", () => {
+    it("should work for longitude", () => {
       cy.findByTestId("sidebar-right").within(() => {
         openPopoverFromDefaultBucketSize("LONGITUDE", "Auto binned");
       });
 
       popover().within(() => {
-        cy.findByText("Bin every 10 degrees").click();
+        /**
+         * The correct option should say "Bin every 10 degrees", but this is out of the scope of this test.
+         * It was covered in `frontend/test/metabase/scenarios/binning/binning-options.cy.spec.js`
+         * Please see: https://github.com/metabase/metabase/issues/16675.
+         *
+         * TODO: Change back to "Bin every 10 degrees" once metabase#16675 gets fixed.
+         */
+        cy.findByText("10°").click();
       });
 
       waitAndAssertOnRequest("@dataset");
@@ -122,11 +129,18 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get(".bar");
     });
 
-    it.skip("should work for longitude", () => {
+    it("should work for longitude", () => {
       popover().within(() => {
         openPopoverFromDefaultBucketSize("LONGITUDE", "Auto binned");
       });
-      cy.findByText("Bin every 10 degrees").click();
+      /**
+       * The correct option should say "Bin every 10 degrees", but this is out of the scope of this test.
+       * It was covered in `frontend/test/metabase/scenarios/binning/binning-options.cy.spec.js`
+       * Please see: https://github.com/metabase/metabase/issues/16675
+       *
+       * TODO: Change back to "Bin every 10 degrees" once metabase#16675 gets fixed.
+       */
+      cy.findByText("10°").click();
 
       cy.findByText("Count by LONGITUDE: 10°");
       cy.button("Visualize").click();
