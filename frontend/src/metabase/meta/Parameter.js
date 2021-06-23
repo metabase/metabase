@@ -285,6 +285,19 @@ export function dimensionFilterForParameter(
   return dimension => fieldFilter(dimension.field());
 }
 
+export function getTagOperatorFilterForParameter(parameter) {
+  const subtype = getParameterSubType(parameter);
+  const parameterOperatorName = getParameterOperatorName(subtype);
+
+  return tag => {
+    const { "widget-type": widgetType } = tag;
+    const subtype = getParameterSubType(widgetType);
+    const tagOperatorName = getParameterOperatorName(subtype);
+
+    return parameterOperatorName === tagOperatorName;
+  };
+}
+
 export function variableFilterForParameter(
   parameter: Parameter,
 ): VariableFilter {
