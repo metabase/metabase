@@ -105,7 +105,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  it.skip("should be possible to update/change label for an empty row value (metabase#12128)", () => {
+  it("should be possible to update/change label for an empty row value (metabase#12128)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",

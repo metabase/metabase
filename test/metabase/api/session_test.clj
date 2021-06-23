@@ -95,7 +95,7 @@
 
     (testing "Test for inactive user (user shouldn't be able to login if :is_active = false)"
       ;; Return same error as incorrect password to avoid leaking existence of user
-      (is (= {:errors {:password "did not match stored password"}}
+      (is (= {:errors {:_error "Your account is disabled."}}
              (mt/client :post 401 "session" (mt/user->credentials :trashbird)))))
 
     (testing "Test for password checking"
@@ -418,6 +418,15 @@
       ;; NOTE: there's a different password in LDAP for Lucky
       (is (= {:errors {:password "did not match stored password"}}
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
+
+    (testing "Test that a deactivated user cannot login with LDAP"
+      (let [user-id (test-users/user->id :rasta)]
+        (try
+          (db/update! User user-id :is_active false)
+          (is (= {:errors {:_error "Your account is disabled."}}
+                 (mt/client :post 401 "session" (mt/user->credentials :rasta))))
+          (finally
+            (db/update! User user-id :is_active true)))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]

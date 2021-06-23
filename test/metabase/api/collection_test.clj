@@ -363,6 +363,9 @@
         (mt/with-temp Collection [collection {:name "Art Collection"}]
           (perms/grant-collection-read-permissions! (group/all-users) collection)
           (with-some-children-of-collection collection
+            (is (= ()
+                   (mt/boolean-ids-and-timestamps
+                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
             (is (= [(default-item {:name "Dine & Dashboard", :description nil, :favorite false, :model "dashboard"})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))

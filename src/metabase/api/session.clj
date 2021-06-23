@@ -92,19 +92,28 @@
           ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly
           ;; outdated password
           (throw (ex-info (str password-fail-message)
-                   {:status-code 401
-                    :errors      {:password password-fail-snippet}})))
-        ;; password is ok, return new session
-        (create-session! :sso (ldap/fetch-or-create-user! user-info) device-info))
+                          {:status-code 401
+                           :errors      {:password password-fail-snippet}})))
+        ;; password is ok, return new session if user is not deactivated
+        (let [user (ldap/fetch-or-create-user! user-info)]
+          (if (:is_active user)
+            (create-session! :sso (ldap/fetch-or-create-user! user-info) device-info)
+            (throw (ex-info (str disabled-account-message)
+                            {:status-code 401
+                             :errors      {:_error disabled-account-snippet}})))))
       (catch LDAPSDKException e
         (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
 
 (s/defn ^:private email-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password device-info :- request.u/DeviceInfo]
-  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :%lower.email (u/lower-case-en username), :is_active true)]
+  (when-let [user (db/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (pass/verify-password password (:password_salt user) (:password user))
-      (create-session! :password user device-info))))
+      (if (:is_active user)
+        (create-session! :password user device-info)
+        (throw (ex-info (str disabled-account-message)
+                        {:status-code 401
+                         :errors      {:_error disabled-account-snippet}}))))))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
@@ -265,7 +274,7 @@
          (if (and user (:is_active user))
            (mw.session/set-session-cookie request response session)
            (throw (ex-info (str disabled-account-message)
-                           {:status-code 400
+                           {:status-code 401
                             :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]

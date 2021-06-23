@@ -146,6 +146,54 @@ describe("binning related reproductions", () => {
       cy.get(".bar");
     });
   });
+
+  describe("result metadata issues", () => {
+    /**
+     * Issues that arise only when we save SQL question without running it first.
+     * It doesn't load the necessary metadata, which results in the wrong binning results.
+     */
+
+    beforeEach(() => {
+      // This query is the equivalent of saving the question without running it first.
+      cy.createNativeQuestion({
+        name: "SQL Binning",
+        native: {
+          query:
+            "SELECT ORDERS.CREATED_AT, ORDERS.TOTAL, PEOPLE.LONGITUDE FROM ORDERS JOIN PEOPLE ON orders.user_id = people.id",
+        },
+      });
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      cy.visit("/question/new");
+      cy.findByText("Simple question").click();
+      cy.findByText("Saved Questions").click();
+      cy.findByText("SQL Binning").click();
+      cy.findByText("Summarize").click();
+      cy.wait("@dataset");
+    });
+
+    it.skip("should render number auto binning correctly (metabase#16670)", () => {
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("TOTAL").click();
+      });
+
+      cy.wait("@dataset");
+
+      cy.findByText("Count by TOTAL: Auto binned");
+      cy.get(".bar").should("have.length.of.at.most", 10);
+
+      cy.findByText("-60");
+    });
+
+    it.skip("should render time series auto binning default bucket correctly (metabase#16671)", () => {
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("CREATED_AT")
+          .closest(".List-item")
+          .should("contain", "by month");
+      });
+    });
+  });
 });
 
 function openSummarizeOptions(questionType) {

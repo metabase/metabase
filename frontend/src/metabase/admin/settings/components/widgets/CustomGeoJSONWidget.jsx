@@ -82,6 +82,34 @@ export default class CustomGeoJSONWidget extends Component {
     await this._saveMap(map.id, null);
   };
 
+  _validateGeoJson = geoJson => {
+    if (!geoJson) {
+      throw t`Invalid custom GeoJSON`;
+    }
+
+    if (geoJson.type !== "FeatureCollection" && geoJson.type !== "Feature") {
+      throw t`Invalid custom GeoJSON: does not contain features`;
+    }
+
+    if (geoJson.type === "FeatureCollection") {
+      if (!geoJson.features || geoJson.features.length === 0) {
+        throw t`Invalid custom GeoJSON: does not contain features`;
+      }
+
+      for (const feature of geoJson.features) {
+        if (!feature.properties) {
+          throw t`Invalid custom GeoJSON: feature is misssing properties`;
+        }
+      }
+    }
+
+    if (geoJson.type === "Feature") {
+      if (!geoJson.properties) {
+        throw t`Invalid custom GeoJSON: feature is misssing properties`;
+      }
+    }
+  };
+
   _loadGeoJson = async () => {
     try {
       const { map } = this.state;
@@ -93,6 +121,7 @@ export default class CustomGeoJSONWidget extends Component {
       const geoJson = await GeoJSONApi.load({
         url: encodeURIComponent(map.url),
       });
+      this._validateGeoJson(geoJson);
       this.setState({
         geoJson: geoJson,
         geoJsonLoading: false,
@@ -219,10 +248,17 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
 const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
   const options = {};
   if (geoJson) {
-    for (const feature of geoJson.features) {
-      for (const property in feature.properties) {
+    if (geoJson.type === "FeatureCollection") {
+      for (const feature of geoJson.features) {
+        for (const property in feature.properties) {
+          options[property] = options[property] || [];
+          options[property].push(feature.properties[property]);
+        }
+      }
+    } else if (geoJson.type === "Feature") {
+      for (const property in geoJson.properties) {
         options[property] = options[property] || [];
-        options[property].push(feature.properties[property]);
+        options[property].push(geoJson.properties[property]);
       }
     }
   }

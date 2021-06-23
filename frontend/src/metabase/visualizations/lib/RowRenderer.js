@@ -176,7 +176,8 @@ export default function rowRenderer(
   // assume all bars are same height?
   const barHeight = chart.select("g.row")[0][0].getBoundingClientRect().height;
   if (barHeight > ROW_MAX_HEIGHT) {
-    chart.fixedBarHeight(ROW_MAX_HEIGHT);
+    const reasolableMaxGap = containerHeight / 3;
+    chart.gap(Math.min(barHeight / 2, reasolableMaxGap));
   }
 
   chart.render();

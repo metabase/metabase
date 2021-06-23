@@ -31,7 +31,9 @@ Once a question returns results, you can save the question, download the results
 
 ## Visualization types and options
 
-Each visualization type has its own advanced options. Click the **Settings** button next to the Visualization button to see your options. The options panel also automatically opens up whenever you pick a new visualization type. Here's an overview of what you can do:
+Each visualization type has its own advanced options. Click the **Settings** button next to the Visualization button to see your options. The options panel also automatically opens up whenever you pick a new visualization type. 
+
+Not sure which visualization type to use? Check out [Which chart should you use?](https://www.metabase.com/learn/basics/visualizing-data/guide.html).
 
 ### Numbers
 
@@ -71,7 +73,7 @@ Open up the visualization settings to define your own ranges, choose colors for 
 
 ### Tables
 
-The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting.
+The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/basics/visualizing-data/table.html).
 
 #### Rearranging, adding, and removing columns
 
@@ -172,9 +174,13 @@ Where it makes sense, Metabase will automatically include subtotals for grouped 
 
 To collapse a group on a pivot table, you can click on the minus (–) button next to the group's heading (or the plus (+) button to expand it). When you save a pivot table, Metabase will remember which groups were expanded and which were collapsed.
 
+For more, check out [How to create a pivot table to summarize your data](https://www.metabase.com/learn/basics/visualizing-data/how-to-create-pivot-tables.html).
+
 ### Line, bar, and area charts
 
-**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year).
+**Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html).
+
+Bar charts are great for displaying a number grouped by a category (e.g., the number of users you have by country). Bar charts can also be useful for showing a number over time if you have a smaller number of x-axis values (like orders per month this year).
 
 ![Bar chart](images/visualizations/bar.png)
 

@@ -4,6 +4,9 @@ import {
   version,
   popover,
 } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+
+const { ORDERS } = SAMPLE_DATASET;
 
 describe("scenarios > admin > settings", () => {
   beforeEach(() => {
@@ -177,6 +180,29 @@ describe("scenarios > admin > settings", () => {
     // check the reset formatting in a question
     openOrdersTable();
     cy.contains(/^February 11, 2019, 9:40 PM$/);
+  });
+
+  it("should correctly apply the globalized date formats (metabase#11394)", () => {
+    cy.server();
+    cy.route("PUT", "**/custom-formatting").as("saveFormatting");
+
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+
+    cy.visit("/admin/settings/localization");
+
+    cy.contains("Date style")
+      .closest("li")
+      .find(".AdminSelect")
+      .first()
+      .click();
+    cy.findByText("2018/1/7").click();
+    cy.contains("17:24 (24-hour clock)").click();
+    cy.wait("@saveFormatting");
+
+    openOrdersTable();
+    cy.contains(/^2019\/2\/11, 21:40$/);
   });
 
   it("should search for and select a new timezone", () => {
