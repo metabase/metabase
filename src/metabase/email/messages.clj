@@ -166,23 +166,25 @@
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? hostname password-reset-url]
+  [email google-auth? hostname password-reset-url is-active?]
   {:pre [(m/boolean? google-auth?)
          (u/email? email)
          (string? hostname)
          (string? password-reset-url)]}
-  (let [message-body (stencil/render-file "metabase/email/password_reset"
-                       (merge (common-context)
-                              {:emailType        "password_reset"
-                               :hostname         hostname
-                               :sso              google-auth?
-                               :passwordResetUrl password-reset-url
-                               :logoHeader       true}))]
+  (let [message-body (stencil/render-file
+                      "metabase/email/password_reset"
+                      (merge (common-context)
+                             {:emailType        "password_reset"
+                              :hostname         hostname
+                              :sso              google-auth?
+                              :passwordResetUrl password-reset-url
+                              :logoHeader       true
+                              :isActive         is-active?}))]
     (email/send-message!
-      :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
-      :recipients   [email]
-      :message-type :html
-      :message      message-body)))
+     :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
+     :recipients   [email]
+     :message-type :html
+     :message      message-body)))
 
 (defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects

@@ -28,7 +28,7 @@
            :subject "[Metabase] Password Reset Request",
            :body    [{:type "text/html; charset=utf-8"}]}]
          (email-test/with-fake-inbox
-           (messages/send-password-reset-email! "test@test.com" (not :google-auth) "test.domain.com" "http://localhost/some/url")
+           (messages/send-password-reset-email! "test@test.com" (not :google-auth) "test.domain.com" "http://localhost/some/url" true)
            (-> (@email-test/inbox "test@test.com")
                (update-in [0 :body 0] dissoc :content))))))
 
