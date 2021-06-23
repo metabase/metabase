@@ -60,12 +60,12 @@ describe("scenarios > binning > from a saved sql question", () => {
       });
 
       popover().within(() => {
-        cy.findByText("100 bins").click();
+        cy.findByText("50 bins").click();
       });
 
       waitAndAssertOnRequest("@dataset");
 
-      cy.findByText("Count by TOTAL: 100 bins");
+      cy.findByText("Count by TOTAL: 50 bins");
       cy.get(".bar");
     });
 
