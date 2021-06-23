@@ -44,7 +44,7 @@ executors:
     docker:
       - image: metabase/ci:java-16-lein-2.9.6-clj-1.10.3.822-04-22-2021
 
-  postgres-9-6:
+  postgres:
     working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
@@ -77,7 +77,7 @@ executors:
           POSTGRES_DB: metabase_test
           POSTGRES_HOST_AUTH_METHOD: trust
 
-  mysql-5-7:
+  mysql:
     working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
@@ -596,6 +596,9 @@ jobs:
 
   lein:
     parameters:
+      java-version:
+        type: string
+        default: ""
       e:
         type: executor
         default: clojure-and-node
@@ -649,6 +652,9 @@ jobs:
 
   test-driver:
     parameters:
+      db:
+        type: string
+        default: ""
       e:
         type: executor
         default: clojure-and-node
@@ -958,22 +964,16 @@ workflows:
           <<: *Matrix
 
       - lein:
-          name: be-tests-java-11-<< matrix.edition >>
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
+              java-version: ["11", "16"]
+          name: be-tests-java-<< matrix.java-version >>-<< matrix.edition >>
           requires:
             - be-deps
-          e: java-11
+          e: java-<< matrix.java-version >>
           lein-command: with-profile +junit test
           skip-when-no-change: true
-          <<: *Matrix
-
-      - lein:
-          name: be-tests-java-16-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: java-16
-          lein-command: with-profile +junit test
-          skip-when-no-change: true
-          <<: *Matrix
 
       - lein:
           name: be-linter-cloverage
@@ -987,39 +987,31 @@ workflows:
           skip-when-no-change: true
 
       - test-driver:
-          name: be-tests-bigquery-ee
+          matrix:
+            parameters:
+              db: ["bigquery", "googleanalytics", "sqlite"]
+          name: be-tests-<< matrix.db >>-ee
           requires:
             - be-tests-ee
-          driver: bigquery
+          driver: << matrix.db >>
+      
+      - test-driver:
+          matrix:
+            parameters:
+              db: ["druid", "mongo",  "mysql", "postgres", "sqlserver"]
+          name: be-tests-<< matrix.db >>-ee
+          requires:
+            - be-tests-ee
+          driver: << matrix.db >>
+          e: << matrix.db >>
 
       - test-driver:
-          name: be-tests-druid-ee
+          name: be-tests-postgres-latest-ee
+          description: "(Latest)"
           requires:
             - be-tests-ee
-          e: druid
-          driver: druid
-
-      - test-driver:
-          name: be-tests-googleanalytics-ee
-          requires:
-            - be-tests-ee
-          driver: googleanalytics
-
-      - test-driver:
-          name: be-tests-mongo-ee
-          requires:
-            - be-tests-ee
-          e: mongo
-          driver: mongo
-
-      - test-driver:
-          name: be-tests-mysql-ee
-          description: "(MySQL 5.7)"
-          requires:
-            - be-tests-ee
-          e:
-            name: mysql-5-7
-          driver: mysql
+          e: postgres-latest
+          driver: postgres
 
       - test-driver:
           name: be-tests-mysql-latest-ee
@@ -1077,22 +1069,6 @@ workflows:
                       -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
 
       - test-driver:
-          name: be-tests-postgres-ee
-          description: "(9.6)"
-          requires:
-            - be-tests-ee
-          e: postgres-9-6
-          driver: postgres
-
-      - test-driver:
-          name: be-tests-postgres-latest-ee
-          description: "(Latest)"
-          requires:
-            - be-tests-ee
-          e: postgres-latest
-          driver: postgres
-
-      - test-driver:
           name: be-tests-presto-ee
           requires:
             - be-tests-ee
@@ -1125,19 +1101,6 @@ workflows:
             - wait-for-port:
                 port: 10000
           driver: sparksql
-
-      - test-driver:
-          name: be-tests-sqlite-ee
-          requires:
-            - be-tests-ee
-          driver: sqlite
-
-      - test-driver:
-          name: be-tests-sqlserver-ee
-          requires:
-            - be-tests-ee
-          e: sqlserver
-          driver: sqlserver
 
       - test-driver:
           name: be-tests-vertica-ee
@@ -1185,7 +1148,7 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-              test: ["admin", "collections", "dashboard", "onboarding", "native", "question", "binning", "sharing", "visualizations"]
+              test: ["admin", "binning", "collections", "dashboard", "onboarding", "native", "question", "sharing", "visualizations"]
           name: e2e-tests-<< matrix.test >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
