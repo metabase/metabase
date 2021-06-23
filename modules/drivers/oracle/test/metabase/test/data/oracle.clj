@@ -148,8 +148,7 @@
 (defn- execute! [format-string & args]
   (let [sql (apply format format-string args)]
     (println (u/format-color 'blue "[oracle] %s" sql))
-    (jdbc/execute! (dbspec) sql)
-    (println (u/format-color 'green "    [ok]")))
+    (jdbc/execute! (dbspec) sql))
   (println (u/format-color 'blue "[ok]")))
 
 (defn- clean-session-schemas! []
