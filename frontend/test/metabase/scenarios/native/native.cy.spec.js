@@ -164,7 +164,7 @@ describe("scenarios > question > native", () => {
     cy.contains("18,760");
   });
 
-  it("can load a question with a date filter (from issue metabase#12228)", () => {
+  it.only("can load a question with a date filter (from issue metabase#12228)", () => {
     cy.createNativeQuestion({
       name: "Test Question",
       native: {

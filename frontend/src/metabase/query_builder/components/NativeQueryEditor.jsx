@@ -38,7 +38,7 @@ import Popover from "metabase/components/Popover";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
-import Parameters from "metabase/parameters/components/Parameters";
+import Parameters from "metabase/parameters/components/Parameters/Parameters";
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
