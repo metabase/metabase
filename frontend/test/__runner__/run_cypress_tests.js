@@ -75,10 +75,10 @@ const init = async () => {
   };
   const specsConfig = isSpecFlag && { testFiles };
   const ignoreConfig =
-    // if we're not running specific tests, avoid including db and smoketests
+    // if we're not running specific tests, avoid including db tests
     folderConfig || specsConfig
       ? null
-      : { ignoreTestFiles: "**/metabase-{smoketest,db}/**" };
+      : { ignoreTestFiles: "**/metabase-db/**" };
 
   const config = {
     ...baseConfig,

@@ -1173,6 +1173,16 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
+          name: e2e-tests-smoketest-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "smoketest-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/smoketest
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
           name: e2e-tests-admin-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
