@@ -1,6 +1,6 @@
 # Running Metabase on Kubernetes
 
-This guide will help you install Metabase on Kubernetes using [Metabase Helm chart](https://github.com/kubernetes/charts/tree/master/stable/metabase)
+This guide will help you install Metabase on Kubernetes using [Metabase Helm chart](https://www.metabase.com/helm/index.yaml)
 
 ### Prerequisites
 
@@ -31,7 +31,7 @@ This chart bootstraps a [Metabase](https://github.com/metabase/metabase) deploym
 This helm chart is highly configurable. For example, you can:
 - Connect to any application database.
 - Tune the Jetty server.
-- Pass configuration parameters to Metabase to, for example, set the maximum number of data warehouse connections.
+- Change some configuration parameters, for example, set the maximum number of data warehouse connections (see https://www.metabase.com/docs/latest/operations-guide/environment-variables.html).
 
 Note that the chart's default deployment will run Metabase with the H2 database, which is [strongly discouraged for production environments](https://www.metabase.com/docs/latest/operations-guide/migrating-from-h2.html).
 
