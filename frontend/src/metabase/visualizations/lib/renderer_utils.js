@@ -363,6 +363,8 @@ export const isHistogram = settings =>
   settings["graph.x_axis.scale"] === "histogram";
 export const isOrdinal = settings =>
   settings["graph.x_axis.scale"] === "ordinal";
+export const isLine = settings => settings.display === "line";
+export const isArea = settings => settings.display === "area";
 
 // bar histograms have special tick formatting:
 // * aligned with beginning of bar to show bin boundaries

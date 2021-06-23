@@ -8,6 +8,8 @@ import {
   isQuantitative,
   isHistogram,
   isHistogramBar,
+  isLine,
+  isArea,
 } from "./renderer_utils";
 import timeseriesScale from "./timeseriesScale";
 
@@ -52,12 +54,17 @@ function fillMissingValuesInData(
   rows,
 ) {
   const { settings } = props;
-  const { "line.missing": lineMissing } = settings.series(singleSeries);
+  const seriesSettings = settings.series(singleSeries);
+  const lineMissing = seriesSettings["line.missing"];
 
-  // return now if we're not filling with either 0 or null
   if (!(lineMissing === "zero" || lineMissing === "none")) {
-    return rows;
+    const shouldRemoveNulls =
+      lineMissing === "interpolate" &&
+      (isLine(seriesSettings) || isArea(seriesSettings));
+
+    return shouldRemoveNulls ? rows.filter(([_x, y]) => y !== null) : rows;
   }
+
   let getKey;
   const fillValue = lineMissing === "zero" ? 0 : null;
   if (isTimeseries(settings)) {
