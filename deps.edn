@@ -143,15 +143,24 @@
     ring/ring-mock              {:mvn/version "0.4.0"}
     talltale/talltale           {:mvn/version "0.5.4"}}
 
-   :extra-paths
-   ["dev/src" "local/src" "test" "shared/test" "test_resources"]}
+   :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
+   :jvm-opts    ["-Dmb.run.mode=dev"
+                 "-Duser.timezone=UTC"
+                 "-Duser.language=en"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
   {:extra-deps {io.github.cognitect-labs/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
                                                       :sha     "705ad25bbf0228b1c38d0244a36001c2987d7337"}}
    :exec-fn    cognitect.test-runner.api/test
-   :exec-args  {:dirs ["test" "shared/test"]}}
+   :exec-args  {:dirs ["test" "shared/test"]}
+   :jvm-opts   ["-Dmb.run.mode=test"
+                "-Dmb.db.in.memory=true"
+                "-Dmb.jetty.join=false"
+                "-Dmb.field.filter.operators.enabled=true"
+                "-Dmb.api.key=test-api-key"
+                "-Dmb.jetty.port=3200"  ; todo -- figure out how to do a random port like tests?
+                ]}
 
   ;; exists for symmetry with the ee profile
   :oss
@@ -177,4 +186,9 @@
   ;; run oracle tests with clojure -X:dev:test:dev-oracle:dev-oracle-test
   ;; EE oracle tests:      clojure -X:dev:test:ee:ee-dev:ee-test:dev-oracle:dev-oracle-test
   :dev-oracle-test
-  {:extra-paths ["modules/drivers/oracle/test"]}}}
+  {:extra-paths ["modules/drivers/oracle/test"]}
+
+  ;; TODO: all the other drivers
+  ;; TODO: combined dev-all-drivers profile
+  ;; TODO
+  }}
