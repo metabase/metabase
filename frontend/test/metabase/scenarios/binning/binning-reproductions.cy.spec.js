@@ -193,6 +193,19 @@ describe("binning related reproductions", () => {
           .should("contain", "by month");
       });
     });
+
+    it.skip("should work for longitude (metabase#16672)", () => {
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("LONGITUDE").click();
+      });
+
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+
+      cy.findByText("Count by LONGITUDE: Auto binned");
+      cy.findByText("170° W");
+    });
   });
 });
 
