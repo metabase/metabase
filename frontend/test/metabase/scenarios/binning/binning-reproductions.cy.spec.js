@@ -164,16 +164,16 @@ describe("binning related reproductions", () => {
       });
 
       cy.intercept("POST", "/api/dataset").as("dataset");
-    });
 
-    it.skip("should render number auto binning correctly (metabase#16670)", () => {
       cy.visit("/question/new");
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("SQL Binning").click();
       cy.findByText("Summarize").click();
       cy.wait("@dataset");
+    });
 
+    it.skip("should render number auto binning correctly (metabase#16670)", () => {
       cy.findByTestId("sidebar-right").within(() => {
         cy.findByText("TOTAL").click();
       });
@@ -184,6 +184,14 @@ describe("binning related reproductions", () => {
       cy.get(".bar").should("have.length.of.at.most", 10);
 
       cy.findByText("-60");
+    });
+
+    it.skip("should render time series auto binning default bucket correctly (metabase#16671)", () => {
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("CREATED_AT")
+          .closest(".List-item")
+          .should("contain", "by month");
+      });
     });
   });
 });
