@@ -67,6 +67,7 @@ export default class Parameters extends Component {
     // sync parameters from URL query string
     const { parameters, setParameterValue, query, metadata } = this.props;
     if (setParameterValue) {
+      const parameterValues = {};
       for (const parameter of parameters) {
         const queryParam = query && query[parameter.slug];
         if (queryParam != null || parameter.default != null) {
@@ -76,19 +77,22 @@ export default class Parameters extends Component {
           // date widget and all targets are fields. This matches that logic.
           const willUseFieldValuesWidget =
             parameter.hasOnlyFieldTargets && !/^date\//.test(parameter.type);
+
           if (willUseFieldValuesWidget && value && !Array.isArray(value)) {
             // FieldValuesWidget always produces an array. If we'll use that
             // widget, we should start with an array to match.
             value = [value];
           }
+
           // field IDs can be either ["field", <integer-id>, <options>] or ["field", <string-name>, <options>]
           const fieldIds = parameter.field_ids || [];
           const fields = fieldIds.map(
             id =>
               metadata.field(id) || Dimension.parseMBQL(id, metadata).field(),
           );
-          setParameterValue(parameter.id, parseQueryParam(value, fields));
+          parameterValues[parameter.id] = parseQueryParam(value, fields);
         }
+        setParameterValue(parameterValues);
       }
     }
   }
