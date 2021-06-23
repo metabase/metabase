@@ -83,7 +83,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
   });
 
-  context.skip("via custom question", () => {
+  context("via custom question", () => {
     beforeEach(() => {
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
@@ -96,7 +96,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Pick a column to group by").click();
     });
 
-    it("should work for time series", () => {
+    it.skip("should work for time series", () => {
       popover().within(() => {
         openPopoverFromDefaultBucketSize("CREATED_AT", "by minute");
       });
@@ -113,16 +113,16 @@ describe("scenarios > binning > from a saved sql question", () => {
       popover().within(() => {
         openPopoverFromDefaultBucketSize("TOTAL", "Auto binned");
       });
-      cy.findByText("100 bins").click();
+      cy.findByText("50 bins").click();
 
-      cy.findByText("Count by TOTAL: 100 bins");
+      cy.findByText("Count by TOTAL: 50 bins");
       cy.button("Visualize").click();
 
       waitAndAssertOnRequest("@dataset");
       cy.get(".bar");
     });
 
-    it("should work for longitude", () => {
+    it.skip("should work for longitude", () => {
       popover().within(() => {
         openPopoverFromDefaultBucketSize("LONGITUDE", "Auto binned");
       });
