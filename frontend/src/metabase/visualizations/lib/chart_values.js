@@ -165,7 +165,7 @@ export function onRenderValueLabels(
     if (!isBarLike(display)) {
       if (displays.some(d => isBarLike(d))) {
         // this aligns labels on non-bars with in the center of the bar group
-        return ((1 + chart._rangeBandPadding()) * xScale.rangeBand()) / 2;
+        return 1 + chart._rangeBandPadding();
       }
       return 0;
     }
