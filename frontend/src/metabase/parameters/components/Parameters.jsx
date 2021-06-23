@@ -64,6 +64,14 @@ export default class Parameters extends Component {
   }
 
   setParameterValuesFromQueryParamOrDefault() {
+    if (this.props.commitImmediately) {
+      this.setParameterValuesFromQueryParamOrDefaultForInternalQuestion();
+    } else {
+      this.setParameterValuesFromQueryParamOrDefaultForPublicQuestion();
+    }
+  }
+
+  setParameterValuesFromQueryParamOrDefaultForPublicQuestion() {
     // sync parameters from URL query string
     const { parameters, setParameterValue, query, metadata } = this.props;
     if (setParameterValue) {
@@ -93,6 +101,36 @@ export default class Parameters extends Component {
           parameterValues[parameter.id] = parseQueryParam(value, fields);
         }
         setParameterValue(parameterValues);
+      }
+    }
+  }
+
+  setParameterValuesFromQueryParamOrDefaultForInternalQuestion() {
+    // sync parameters from URL query string
+    const { parameters, setParameterValue, query, metadata } = this.props;
+    if (setParameterValue) {
+      for (const parameter of parameters) {
+        const queryParam = query && query[parameter.slug];
+        if (queryParam != null || parameter.default != null) {
+          let value = queryParam != null ? queryParam : parameter.default;
+
+          // ParameterValueWidget uses FieldValuesWidget if there's no available
+          // date widget and all targets are fields. This matches that logic.
+          const willUseFieldValuesWidget =
+            parameter.hasOnlyFieldTargets && !/^date\//.test(parameter.type);
+          if (willUseFieldValuesWidget && value && !Array.isArray(value)) {
+            // FieldValuesWidget always produces an array. If we'll use that
+            // widget, we should start with an array to match.
+            value = [value];
+          }
+          // field IDs can be either ["field", <integer-id>, <options>] or ["field", <string-name>, <options>]
+          const fieldIds = parameter.field_ids || [];
+          const fields = fieldIds.map(
+            id =>
+              metadata.field(id) || Dimension.parseMBQL(id, metadata).field(),
+          );
+          setParameterValue(parameter.id, parseQueryParam(value, fields));
+        }
       }
     }
   }
