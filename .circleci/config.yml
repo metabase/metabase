@@ -955,19 +955,10 @@ workflows:
             - checkout
 
       - lein:
-          name: be-tests-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: java-8
-          lein-command: with-profile +junit test
-          skip-when-no-change: true
-          <<: *Matrix
-
-      - lein:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-              java-version: ["11", "16"]
+              java-version: ["8", "11", "16"]
           name: be-tests-java-<< matrix.java-version >>-<< matrix.edition >>
           requires:
             - be-deps
@@ -992,7 +983,7 @@ workflows:
               db: ["bigquery", "googleanalytics", "sqlite"]
           name: be-tests-<< matrix.db >>-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           driver: << matrix.db >>
       
       - test-driver:
@@ -1001,7 +992,7 @@ workflows:
               db: ["druid", "mongo",  "mysql", "postgres", "sqlserver"]
           name: be-tests-<< matrix.db >>-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           driver: << matrix.db >>
           e: << matrix.db >>
 
@@ -1009,7 +1000,7 @@ workflows:
           name: be-tests-postgres-latest-ee
           description: "(Latest)"
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: postgres-latest
           driver: postgres
 
@@ -1017,7 +1008,7 @@ workflows:
           name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e:
             name: mysql-latest
           driver: mysql
@@ -1038,7 +1029,7 @@ workflows:
           name: be-tests-mariadb-ee
           description: "(MariaDB 10.2)"
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e:
             name: mariadb-10-2
           driver: mysql
@@ -1047,7 +1038,7 @@ workflows:
           name: be-tests-mariadb-latest-ee
           description: "(MariaDB latest)"
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e:
             name: mariadb-latest
           driver: mysql
@@ -1055,7 +1046,7 @@ workflows:
       - test-driver:
           name: be-tests-oracle-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -1071,7 +1062,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: presto
           before-steps:
             - wait-for-port:
@@ -1081,21 +1072,21 @@ workflows:
       - test-driver:
           name: be-tests-redshift-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           driver: redshift
           timeout: 15m
 
       - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           driver: snowflake
           timeout: 115m
 
       - test-driver:
           name: be-tests-sparksql-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: sparksql
           before-steps:
             - wait-for-port:
@@ -1105,7 +1096,7 @@ workflows:
       - test-driver:
           name: be-tests-vertica-ee
           requires:
-            - be-tests-ee
+            - be-tests-java-8-ee
           e: vertica
           before-steps:
             - fetch-jdbc-driver:
