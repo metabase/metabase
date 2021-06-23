@@ -22,7 +22,7 @@
   hydrated this method doesn't need to make any DB calls."
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
-                   (db/select-one [Card :dataset_query] :id (u/get-id (:card_id dashcard))))
+                   (db/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
                    (series dashcard))]
     (apply set/union (i/perms-objects-set card read-or-write) (for [series-card series]

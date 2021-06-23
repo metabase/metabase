@@ -497,7 +497,7 @@
   Otherwise returns `nil`.
 
   Provided as a convenience to allow model-layer functions to easily accept either an object or raw ID. Use this in
-  cases where the ID/object is allowed to be `nil`. Use `get-id` below in cases where you would also like to guarantee
+  cases where the ID/object is allowed to be `nil`. Use `the-id` below in cases where you would also like to guarantee
   it is non-`nil`."
   ^Integer [object-or-id]
   (cond
@@ -514,10 +514,6 @@
   ^Integer [object-or-id]
   (or (id object-or-id)
       (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
-
-(def ^:deprecated ^Integer ^{:arglists '([object-or-id])} get-id
-  "DEPRECATED: Use `the-id` instead, which does the same thing, but has a clearer name."
-  the-id)
 
 ;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.

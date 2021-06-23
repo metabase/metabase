@@ -26,7 +26,7 @@
 
 (defn- perms-objects-set [metric read-or-write]
   (let [table (or (:table metric)
-                  (db/select-one ['Table :db_id :schema :id] :id (u/get-id (:table_id metric))))]
+                  (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
     (i/perms-objects-set table read-or-write)))
 
 (u/strict-extend (class Metric)
