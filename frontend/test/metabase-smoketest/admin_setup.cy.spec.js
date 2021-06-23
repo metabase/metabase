@@ -951,7 +951,7 @@ describe("smoketest > admin_setup", () => {
       cy.button("Sign in").click();
 
       cy.findByText("Failed");
-      cy.contains("Password: did not match stored password");
+      cy.contains("Your account is disabled.");
     });
   });
 });
