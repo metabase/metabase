@@ -1,5 +1,10 @@
 version: 2.1
 
+parameters:
+  working_directory:
+    type: string
+    default: /home/circleci/metabase/metabase/
+
 ########################################################################################################################
 #                                                      EXECUTORS                                                       #
 ########################################################################################################################
@@ -7,40 +12,40 @@ version: 2.1
 executors:
   # Our brand new builder
   clojure-and-node:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
 
   # CircleCI base (Lein 2.9.5) + Node + Headless browsers + Clojure CLI - big one
   # Maildev runs by default with all Cypress tests
   clojure-and-node-and-browsers:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: maildev/maildev
 
   java-8:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
-      - image: circleci/clojure:openjdk-8-lein-2.9.5-buster
+      - image: metabase/ci:java-8-lein-2.9.6-clj-1.10.3.822-04-22-2021
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
   # what this means.
   java-11:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
   java-16:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
-      - image: circleci/clojure:openjdk-16-lein-2.9.5-buster
+      - image: metabase/ci:java-16-lein-2.9.6-clj-1.10.3.822-04-22-2021
 
   postgres-9-6:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
@@ -56,7 +61,7 @@ executors:
           POSTGRES_DB: circle_test
 
   postgres-latest:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
@@ -73,7 +78,7 @@ executors:
           POSTGRES_HOST_AUTH_METHOD: trust
 
   mysql-5-7:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
@@ -86,7 +91,7 @@ executors:
       - image: circleci/mysql:5.7.23
 
   mysql-latest:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
@@ -99,7 +104,7 @@ executors:
       - image: circleci/mysql:latest
 
   mariadb-10-2:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
@@ -112,7 +117,7 @@ executors:
       - image: circleci/mariadb:10.2.23
 
   mariadb-latest:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
@@ -129,13 +134,13 @@ executors:
           # MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
   mongo:
-     working_directory: /home/circleci/metabase/metabase/
+     working_directory: << pipeline.parameters.working_directory >>
      docker:
        - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
        - image: circleci/mongo:4.0
 
   presto:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: metabase/presto-mb-ci:0.186
@@ -146,19 +151,19 @@ executors:
     resource_class: large
 
   sparksql:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: metabase/spark:2.1.1
 
   vertica:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: sumitchawla/vertica
 
   sqlserver:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
         environment:
@@ -172,7 +177,7 @@ executors:
           MSSQL_MEMORY_LIMIT_MB: 1024
 
   druid:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: metabase/druid:0.20.2
@@ -184,19 +189,19 @@ executors:
 
 
   fe-mongo-4:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: metabase/qa-databases:mongo-sample-4.0
 
   fe-postgres-12:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: metabase/qa-databases:postgres-sample-12
 
   fe-mysql-8:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: << pipeline.parameters.working_directory >>
     docker:
       - image: circleci/clojure:lein-2.9.5-node-browsers
       - image: metabase/qa-databases:mysql-sample-8
@@ -370,10 +375,10 @@ commands:
           name: Persist dummy file .SUCCESS to cache with key << parameters.checksum >>
           <<: *CacheKeyRunOnChange
           paths:
-            - /home/circleci/metabase/metabase/.SUCCESS
+            - << pipeline.parameters.working_directory >>.SUCCESS
       - run:
           name: Delete dummy file .SUCCESS so subsequent steps don't see it
-          command: rm /home/circleci/metabase/metabase/.SUCCESS
+          command: rm << pipeline.parameters.working_directory >>.SUCCESS
 
   # Creates a file that contains checksums for all the files found using the find command with supplied arguments.
   # You can use a checksum of the checksum file for cache keys including run-on-change cache keys.
@@ -417,7 +422,7 @@ commands:
           no_output_timeout: 15m
       - steps: << parameters.after-steps >>
       - store_test_results:
-          path: /home/circleci/metabase/metabase/target/junit
+          path: << pipeline.parameters.working_directory >>target/junit
 
   run-yarn-command:
     parameters:
@@ -480,7 +485,7 @@ commands:
     steps:
       - run:
           name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
+          command: mkdir << pipeline.parameters.working_directory >>plugins
       - run:
           name: Download JDBC driver JAR << parameters.dest >>
           command: |
@@ -525,10 +530,10 @@ jobs:
           command: git log -1 > .COMMIT
       - run:
           name: Remove .git directory (not needed for tests)
-          command: rm -rf /home/circleci/metabase/metabase/.git
+          command: rm -rf << pipeline.parameters.working_directory >>.git
       - run:
           name: Remove ./OSX directory (not needed for tests)
-          command: rm -rf /home/circleci/metabase/metabase/OSX
+          command: rm -rf << pipeline.parameters.working_directory >>OSX
       # .CACHE-PREFIX is described above in the Cache Keys section of this file
       - run:
           name: 'Create cache key prefix .CACHE-PREFIX to bust caches if commit message includes [ci nocache]'
@@ -582,7 +587,7 @@ jobs:
             - restore-be-deps-cache
             - run: lein with-profile +include-all-drivers,+cloverage,+junit,+dev,+<< parameters.edition >> deps
             - run: |
-                cd /home/circleci/metabase/metabase/bin/build-mb && clojure -P
+                cd << pipeline.parameters.working_directory >>bin/build-mb && clojure -P
             - save_cache:
                 name: Cache backend dependencies
                 <<: *CacheKeyBackendDeps
@@ -677,7 +682,7 @@ jobs:
                 command: << parameters.extra-env >> lein with-profile +ci,+junit,+ee test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
-                path: /home/circleci/metabase/metabase/target/junit
+                path: << pipeline.parameters.working_directory >>target/junit
 
   test-build-scripts:
     executor: clojure-and-node
@@ -690,32 +695,32 @@ jobs:
             - run:
                 name: Run metabuild-common build script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
+                  cd << pipeline.parameters.working_directory >>bin/common && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run build-drivers build script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
+                  cd << pipeline.parameters.working_directory >>bin/build-drivers && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run i18n script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/i18n && clojure -M:test
+                  cd << pipeline.parameters.working_directory >>bin/i18n && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run build-mb build script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
+                  cd << pipeline.parameters.working_directory >>bin/build-mb && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run release script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
+                  cd << pipeline.parameters.working_directory >>bin/release && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run Liquibase migrations linter tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
+                  cd << pipeline.parameters.working_directory >>bin/lint-migrations-file && clojure -M:test
                 no_output_timeout: 15m
 
 
@@ -742,7 +747,7 @@ jobs:
                 paths:
                   - /home/circleci/.yarn
                   - /home/circleci/.yarn-cache
-                  - /home/circleci/metabase/metabase/node_modules
+                  - << pipeline.parameters.working_directory >>node_modules
                   - /home/circleci/.cache/Cypress
 
   shared-tests-cljs:
@@ -790,19 +795,19 @@ jobs:
                 name: Cache the built drivers
                 <<: *CacheKeyDrivers
                 paths:
-                  - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
-                  - /home/circleci/metabase/metabase/modules/drivers/druid/target
-                  - /home/circleci/metabase/metabase/modules/drivers/google/target
-                  - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
-                  - /home/circleci/metabase/metabase/modules/drivers/mongo/target
-                  - /home/circleci/metabase/metabase/modules/drivers/oracle/target
-                  - /home/circleci/metabase/metabase/modules/drivers/presto/target
-                  - /home/circleci/metabase/metabase/modules/drivers/redshift/target
-                  - /home/circleci/metabase/metabase/modules/drivers/snowflake/target
-                  - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
-                  - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
-                  - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
-                  - /home/circleci/metabase/metabase/modules/drivers/vertica/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/bigquery/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/druid/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/google/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/googleanalytics/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/mongo/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/oracle/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/presto/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/redshift/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/snowflake/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/sparksql/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/sqlite/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/sqlserver/target
+                  - << pipeline.parameters.working_directory >>modules/drivers/vertica/target
 
   # Build the frontend client. parameters.edition determines whether we build the OSS or EE version.
   build-uberjar-frontend:
@@ -826,7 +831,7 @@ jobs:
                 name: Cache the built frontend
                 <<: *CacheKeyFrontend
                 paths:
-                  - /home/circleci/metabase/metabase/resources/frontend_client
+                  - << pipeline.parameters.working_directory >>resources/frontend_client
 
   # Build the uberjar. parmeters.edition determines whether we build the OSS or EE version.
   build-uberjar:
@@ -863,15 +868,15 @@ jobs:
                 command: ./bin/build version drivers uberjar
                 no_output_timeout: 15m
             - store_artifacts:
-                path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+                path: << pipeline.parameters.working_directory >>target/uberjar/metabase.jar
             - store_artifacts:
-                path: /home/circleci/metabase/metabase/resources/version.properties
+                path: << pipeline.parameters.working_directory >>resources/version.properties
             - save_cache:
                 name: Cache the built uberjar & version.properties
                 <<: *CacheKeyUberjar
                 paths:
-                  - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
-                  - /home/circleci/metabase/metabase/resources/version.properties
+                  - << pipeline.parameters.working_directory >>target/uberjar/metabase.jar
+                  - << pipeline.parameters.working_directory >>resources/version.properties
 
   fe-tests-cypress:
     parameters:
@@ -911,7 +916,7 @@ jobs:
                   run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> --folder << parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
-                      path: /home/circleci/metabase/metabase/cypress
+                      path: << pipeline.parameters.working_directory >>cypress
                   - store_test_results:
                       path: cypress/results
 
@@ -1030,7 +1035,7 @@ workflows:
             MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
             MB_MYSQL_SSL_TEST_SSL=true
             MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS='verifyServerCertificate=true'
-            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
+            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat << pipeline.parameters.working_directory >>resources/certificates/rds-combined-ca-bundle.pem)"
             MB_MYSQL_SSL_TEST_USER=metabase
             MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
 
@@ -1064,7 +1069,7 @@ workflows:
           extra-env: >-
             MB_ORACLE_SSL_TEST_SSL=true
             MB_ORACLE_SSL_TEST_PORT=2484
-            JVM_OPTS="-Djavax.net.ssl.trustStore=/home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
+            JVM_OPTS="-Djavax.net.ssl.trustStore=<< pipeline.parameters.working_directory >>resources/certificates/cacerts_with_RDS_root_ca.jks
                       -Djavax.net.ssl.trustStoreType=JKS
                       -Djavax.net.ssl.trustStorePassword=metabase $JAVA_OPTS"
 
