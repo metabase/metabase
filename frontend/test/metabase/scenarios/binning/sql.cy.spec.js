@@ -36,12 +36,10 @@ describe("scenarios > binning > from a saved sql question", () => {
     it.skip("should work for time series", () => {
       cy.findByTestId("sidebar-right").within(() => {
         /*
-         * This basic/default bucket size seems wrong.
-         * For every other scenario, the default bucket for time series is "by month".
-         *
-         * TODO: update to "by month" once (metabase#16671) gets fixed.
+         * If `result_metadata` is not loaded (SQL question is not run before saving),
+         * the granularity is much finer and one can see "by minute" as the default bucket (metabase#16671).
          */
-        openPopoverFromDefaultBucketSize("CREATED_AT", "by minute");
+        openPopoverFromDefaultBucketSize("CREATED_AT", "by month");
       });
 
       popover().within(() => {
