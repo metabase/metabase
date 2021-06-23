@@ -171,7 +171,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get(".bar");
     });
 
-    it.skip("should work for longitude (metabase#16672)", () => {
+    it("should work for longitude", () => {
       cy.findByText("LONGITUDE").click();
       cy.findByText("Distribution").click();
 
