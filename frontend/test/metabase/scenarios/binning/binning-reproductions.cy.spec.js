@@ -147,10 +147,13 @@ describe("binning related reproductions", () => {
     });
   });
 
-  describe("result metadata issues", () => {
+  describe.skip("result metadata issues", () => {
     /**
      * Issues that arise only when we save SQL question without running it first.
      * It doesn't load the necessary metadata, which results in the wrong binning results.
+     *
+     * Fixing the underlying issue with `result_metadata` will most likely fix all three issues reproduced here.
+     * Unskip the whole `describe` block once the fix is ready.
      */
 
     beforeEach(() => {
@@ -173,7 +176,7 @@ describe("binning related reproductions", () => {
       cy.wait("@dataset");
     });
 
-    it.skip("should render number auto binning correctly (metabase#16670)", () => {
+    it("should render number auto binning correctly (metabase#16670)", () => {
       cy.findByTestId("sidebar-right").within(() => {
         cy.findByText("TOTAL").click();
       });
@@ -186,12 +189,25 @@ describe("binning related reproductions", () => {
       cy.findByText("-60");
     });
 
-    it.skip("should render time series auto binning default bucket correctly (metabase#16671)", () => {
+    it("should render time series auto binning default bucket correctly (metabase#16671)", () => {
       cy.findByTestId("sidebar-right").within(() => {
         cy.findByText("CREATED_AT")
           .closest(".List-item")
           .should("contain", "by month");
       });
+    });
+
+    it("should work for longitude (metabase#16672)", () => {
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("LONGITUDE").click();
+      });
+
+      cy.wait("@dataset").then(xhr => {
+        expect(xhr.response.body.error).not.to.exist;
+      });
+
+      cy.findByText("Count by LONGITUDE: Auto binned");
+      cy.findByText("170° W");
     });
   });
 });
