@@ -282,6 +282,8 @@
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as `binding`.
 
+  If an env var value is set for the setting, this acts as a wrapper around `do-with-temp-env-var-value`.
+
   Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
@@ -290,16 +292,14 @@
   (let [setting                    (#'setting/resolve-setting setting-k)
         env-var-value              (#'setting/env-var-value setting)
         original-db-or-cache-value (#'setting/db-or-cache-value setting)]
-    (try
-      (setting/set! setting-k value)
-      (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-        (if env-var-value
-          (testing (colorize/red (format "NOTE: %s is set to %s by an env var, which takes precedence\n"
-                                         (keyword setting-k) (pr-str env-var-value)))
+    (if env-var-value
+      (do-with-temp-env-var-value setting env-var-value f)
+      (try
+        (setting/set! setting-k value)
+        (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
             (f))
-          (f)))
-      (finally
-        (setting/set! setting-k original-db-or-cache-value)))))
+        (finally
+          (setting/set! setting-k original-db-or-cache-value))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
@@ -308,7 +308,8 @@
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
-  To temporarily override the value of *read-only* env-var based Settings, use `with-temp-env-var-value`."
+  If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
+  To temporarily override the value of *read-only* env vars, use `with-temp-env-var-value`."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
