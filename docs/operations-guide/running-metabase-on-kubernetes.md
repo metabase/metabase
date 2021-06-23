@@ -28,7 +28,12 @@ $ helm install meta-helm-chart metabase/metabase
 
 This chart bootstraps a [Metabase](https://github.com/metabase/metabase) deployment on a [Kubernetes](http://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager. The chart sets up liveliness and readiness probes, and separates configuration details between ConfigMaps and Secrets.
 
-This helm is highly configurable as it can be connected to any application database, tune Jetty or maximum data warehouse connections by passing configuration parameters (be aware that the default deployment will run with the H2 database which is [strongly discouraged](https://www.metabase.com/docs/latest/operations-guide/migrating-from-h2.html)).
+This helm chart is highly configurable. For example, you can:
+- Connect to any application database.
+- Tune the Jetty server.
+- Pass configuration parameters to Metabase to, for example, set the maximum number of data warehouse connections.
+
+Note that the chart's default deployment will run Metabase with the H2 database, which is [strongly discouraged for production environments](https://www.metabase.com/docs/latest/operations-guide/migrating-from-h2.html).
 
 This helm chart pulls the `latest` docker tag of the `metabase/metabase` image, but you can configure the chart to pull Metabase Enterprise, or a specific version.
 
