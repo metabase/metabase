@@ -266,7 +266,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-root-collection "test"
         (mt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/get-id group)}]]
+                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
           (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
           (is (= (remove (comp #{"collection"} :model) (default-search-results))
                  (search-request-data :rasta :q "test")))))))

@@ -132,7 +132,7 @@
                                                                                  (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                   fingerprint/save-fingerprint!                                (fn [& _] (reset! fingerprinted? true))]
       (tt/with-temp* [Table [table]
-                      Field [_ (assoc field-properties :table_id (u/get-id table))]]
+                      Field [_ (assoc field-properties :table_id (u/the-id table))]]
         [(fingerprint/fingerprint-fields! table)
          @fingerprinted?]))))
 
@@ -236,7 +236,7 @@
         (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
                 :fingerprint_version 3
                 :last_analyzed       nil}
-               (into {} (db/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/get-id field)))))))))
+               (into {} (db/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field)))))))))
 
 (deftest test-fingerprint-failure
   (testing "if fingerprinting fails, the exception should not propagate"

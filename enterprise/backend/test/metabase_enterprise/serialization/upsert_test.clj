@@ -41,7 +41,7 @@
 ;; the new style. Feel free to give them better names - Cam
 (deftest maybe-upsert-many!-skip-test
   (mt/with-model-cleanup [Card]
-    (let [existing-ids (mapv (comp u/get-id (partial db/insert! Card)) @cards)
+    (let [existing-ids (mapv (comp u/the-id (partial db/insert! Card)) @cards)
           inserted-ids (vec (upsert/maybe-upsert-many! {:mode :skip} Card @cards))]
       (is (= existing-ids inserted-ids)))))
 
@@ -59,7 +59,7 @@
 (deftest maybe-upsert-many!-update-test
   (mt/with-model-cleanup [Card]
     (let [[e1 e2]           @cards
-          id1               (u/get-id (db/insert! Card e1))
+          id1               (u/the-id (db/insert! Card e1))
           e1-mutated        (mutate Card e1)
           [id1-mutated id2] (upsert/maybe-upsert-many! {:mode :update} Card [e1-mutated e2])]
       (testing "Card 1 ID"

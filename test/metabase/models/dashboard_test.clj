@@ -196,13 +196,13 @@
 (defn do-with-dash-in-collection [f]
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection    [collection]
-                    Dashboard     [dash  {:collection_id (u/get-id collection)}]
+                    Dashboard     [dash  {:collection_id (u/the-id collection)}]
                     Database      [db    {:engine :h2}]
-                    Table         [table {:db_id (u/get-id db)}]
-                    Card          [card  {:dataset_query {:database (u/get-id db)
+                    Table         [table {:db_id (u/the-id db)}]
+                    Card          [card  {:dataset_query {:database (u/the-id db)
                                                           :type     :query
-                                                          :query    {:source-table (u/get-id table)}}}]
-                    DashboardCard [_ {:dashboard_id (u/get-id dash), :card_id (u/get-id card)}]]
+                                                          :query    {:source-table (u/the-id table)}}}]
+                    DashboardCard [_ {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]]
       (f db collection dash))))
 
 (defmacro with-dash-in-collection
@@ -224,7 +224,7 @@
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
                   "that Collection"))
-    (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/get-id db))})]
+    (binding [api/*current-user-permissions-set* (atom #{(perms/object-path (u/the-id db))})]
       (is (= false
              (mi/can-read? dash))))
 

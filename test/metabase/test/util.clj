@@ -424,18 +424,18 @@
   (let [model                    (db/resolve-model model)
         [original-column->value] (db/query {:select (keys column->temp-value)
                                             :from   [model]
-                                            :where  [:= :id (u/get-id object-or-id)]})]
+                                            :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
-      (format "%s %d not found." (name model) (u/get-id object-or-id)))
+      (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
-      (db/update! model (u/get-id object-or-id)
+      (db/update! model (u/the-id object-or-id)
                   column->temp-value)
       (f)
       (finally
         (db/execute!
          {:update model
           :set    original-column->value
-          :where  [:= :id (u/get-id object-or-id)]})))))
+          :where  [:= :id (u/the-id object-or-id)]})))))
 
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
@@ -727,7 +727,7 @@
      (fn []
        (db/delete! Permissions
          :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
-         :group_id [:not= (u/get-id (group/admin))])
+         :group_id [:not= (u/the-id (group/admin))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
@@ -735,7 +735,7 @@
     (finally
       (when (and (:metabase.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/the-id (group/admin))])]
           (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 

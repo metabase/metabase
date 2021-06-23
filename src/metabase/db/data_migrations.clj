@@ -209,7 +209,7 @@
               ;; #legacySQL directive...
               (let [updated-sql (str "#legacySQL\n" sql)]
                 ;; and save the updated dataset_query map
-                (db/update! Card (u/get-id card-id)
+                (db/update! Card (u/the-id card-id)
                   :dataset_query (assoc-in query [:native :query] updated-sql))))))
         ;; if for some reason something above fails (as in #8924) let's log the error and proceed. It's not mission
         ;; critical that we migrate existing queries anyway, and for ones that are impossible to migrate (e.g. ones
@@ -225,7 +225,7 @@
 (defmigration ^{:author "senior", :added "0.30.0"} clear-ldap-user-local-passwords
   (db/transaction
     (doseq [user (db/select [User :id :password_salt] :ldap_auth [:= true])]
-      (db/update! User (u/get-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
+      (db/update! User (u/the-id user) :password (creds/hash-bcrypt (str (:password_salt user) (UUID/randomUUID)))))))
 
 
 ;; In 0.30 dashboards and pulses will be saved in collections rather than on separate list pages. Additionally, there
@@ -249,7 +249,7 @@
 ;;    new collections.
 ;;
 (defmigration ^{:author "camsaul", :added "0.30.0"} add-migrated-collections
-  (let [non-admin-group-ids (db/select-ids PermissionsGroup :id [:not= (u/get-id (perm-group/admin))])]
+  (let [non-admin-group-ids (db/select-ids PermissionsGroup :id [:not= (u/the-id (perm-group/admin))])]
     ;; 1. Grant Root Collection readwrite perms to all Groups. Except for admin since they already have root (`/`)
     ;; perms, and we don't want to put extra entries in there that confuse things
     (doseq [group-id non-admin-group-ids]
@@ -267,9 +267,9 @@
         (perms/revoke-collection-permissions! group-id new-collection))
       ;; 4. move everything not in this Collection to a new Collection
       (log/info (trs "Moving instances of {0} that aren''t in a Collection to {1} Collection {2}"
-                     (name model) new-collection-name (u/get-id new-collection)))
+                     (name model) new-collection-name (u/the-id new-collection)))
       (db/update-where! model {:collection_id nil}
-        :collection_id (u/get-id new-collection)))))
+        :collection_id (u/the-id new-collection)))))
 
 (defn- fix-click-through
   "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:

@@ -79,7 +79,7 @@
            (command "show" "Cam's Card that doesn't exist at all"))))
   (testing "with no permission to see the card"
     (mt/with-temp* [Collection [collection]
-                    Card       [{card-id :id} {:collection_id (u/get-id collection), :dataset_query (venues-count-query)}]]
+                    Card       [{card-id :id} {:collection_id (u/the-id collection), :dataset_query (venues-count-query)}]]
       (perms/revoke-collection-permissions! (group/metabot) collection)
       (is (= {:response '(Exception. "You don't have permissions to do that.")
               :messages []}

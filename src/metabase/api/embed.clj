@@ -168,7 +168,7 @@
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
-  (-> (db/select-one [Card :dataset_query], :id (u/get-id card-or-id))
+  (-> (db/select-one [Card :dataset_query], :id (u/the-id card-or-id))
       add-implicit-card-parameters
       :parameters))
 
