@@ -13,5 +13,5 @@
 
                        ;; the following deps are to have jars on the classpath for testing
                        org.apache.commons/commons-math3 {:mvn/version "3.6.1"}
-                       hiccup/hiccup {:mvn/version "1.0.5"}}
+                       net.redhogs.cronparser/cron-parser-core {:mvn/version "3.4"}}
          :main-opts   ["-m" "cognitect.test-runner"]}}}

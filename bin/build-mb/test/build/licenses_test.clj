@@ -7,7 +7,7 @@
             [clojure.test :refer [deftest is run-tests testing]]
             [metabuild-common.core :as u])
   (:import (java.io StringReader StringWriter)
-           java.util.jar.JarFile))
+           (java.nio.file Files FileSystems LinkOption Paths)))
 
 (def classpath-urls (str/split (System/getProperty "java.class.path")
                                (re-pattern lic/classpath-separator)))
@@ -73,13 +73,14 @@
                :version  "0.7.11"}
               (lic/pom->coordinates xml)))))))
 
-(defn jar-file [filename]
-  (if (.exists (io/file filename))
-    (JarFile. filename)
-    (throw (ex-data (str "Jar " filename " not found") {:filename filename}))))
+(defn jar->path [filename]
+  (let [path (Paths/get filename (into-array String []))]
+    (if (Files/exists path (into-array LinkOption []))
+      path
+      (throw (ex-data (str "Jar " filename " not found") {:filename filename})))))
 
 (defn jar [filename]
-  (jar-file (jar-filename-from-cp filename classpath-urls)))
+  (jar->path (jar-filename-from-cp filename classpath-urls)))
 
 (deftest pom->license-test
   (testing "Can find license information from the pom"
@@ -89,31 +90,37 @@
                 :url          "http://opensource.org/licenses/eclipse-1.0.php"
                 :distribution "repo"}
                (lic/pom->licenses xml))))
-      (let [jar-filename (jar-filename-from-cp "org/clojure/clojure" classpath-urls)]
-        (is (= {:name         "Eclipse Public License 1.0"
-                :url          "http://opensource.org/licenses/eclipse-1.0.php"
-                :distribution "repo"}
-               (lic/apply-to-pom jar-filename lic/pom->licenses)))))
+      (let [jar-filename (jar-filename-from-cp "org/clojure/clojure" classpath-urls)
+            jar-path (Paths/get jar-filename (into-array String []))]
+        (with-open [jar-fs (FileSystems/newFileSystem jar-path nil)]
+          (let [pom-path (lic/determine-pom jar-filename jar-fs)]
+            (is (= {:name         "Eclipse Public License 1.0"
+                    :url          "http://opensource.org/licenses/eclipse-1.0.php"
+                    :distribution "repo"}
+                   (lic/do-with-path-is pom-path (comp lic/pom->licenses parse))))))))
     (testing "Returning nil if not present"
       (let [xml (parse (StringReader. clojure-jdbc-xml))]
         (is (nil? (lic/pom->licenses xml)))))))
 
 (deftest license-from-jar-test
-  (letfn [(license [j] (some->> j
-                                lic/license-from-jar
-                                str/split-lines
-                                (drop-while str/blank?)
-                                first
-                                str/trim))]
+  (letfn [(license-path [j f]
+            (with-open [jar-fs (FileSystems/newFileSystem (jar j) nil)]
+              (some-> (lic/license-from-jar jar-fs)
+                      f)))
+          (first-line [path]
+            (lic/do-with-path-is path (fn [is]
+                                        (->> (slurp is)
+                                             str/split-lines
+                                             (drop-while str/blank?)
+                                             first
+                                             str/trim))))]
     (testing "Can find license information bundled in the jar"
       (is (= "META-INF/LICENSE.txt"
-             (some-> (jar "commons/commons-math3")
-                     (lic/get-entry "META-INF/LICENSE.txt")
-                     (.getName))))
+             (license-path "commons/commons-math3" str)))
       (is (= "Apache License"
-             (license (jar "commons/commons-math3")))))
+             (license-path "commons/commons-math3" first-line))))
     (testing "Nil if not present"
-      (is (nil? (license (jar "hiccup/hiccup")))))))
+      (is (nil? (license-path "cronparser/cron-parser-core" identity))))))
 
 (deftest license-from-backfill-test
   (let [backfill {"a" {"a" "License Information"}
@@ -133,42 +140,49 @@
 (deftest process*-test
   (testing "categorizes jar entries"
     (let [jars            (map #(jar-filename-from-cp % classpath-urls)
-                    ["org/clojure/clojure"
-                     "commons/commons-math3"
-                     "hiccup/hiccup"])
+                               ["org/clojure/clojure"
+                                "commons/commons-math3"
+                                "cronparser/cron-parser-core"])
           normalize-entry (fn [[jar {:keys [coords license error]}]]
                             [((juxt :group :artifact) coords)
                              (cond-> {:license (not (str/blank? license))}
                                error (assoc :error error))])
           normalize       (fn [results]
                             (into {}
-                            (map (fn [[k v]]
-                                   [k (into {} (map normalize-entry) v)]))
-                            results))]
-      (is (= {:with-license
-              {["org.clojure" "clojure"]              {:license true}
-               ["org.apache.commons" "commons-math3"] {:license true}}
-              :without-license
-              {["hiccup" "hiccup"]
-               {:license false :error "Error determining license or coords"}}}
-             (normalize (lic/process* {:classpath-entries jars
-                                       :backfill          {}}))))
-      (is (= {:with-license
-              {["org.clojure" "clojure"]              {:license true}
-               ["org.apache.commons" "commons-math3"] {:license true}
-               ["hiccup" "hiccup"]                    {:license true}}
-              :without-license
-              {}}
-             (normalize (lic/process* {:classpath-entries jars
-                                       :backfill {"hiccup" {"hiccup" "license"}}}))))
-      (is (= {:with-license
-              {["org.clojure" "clojure"]              {:license true}
-               ["org.apache.commons" "commons-math3"] {:license true}
-               ["hiccup" "hiccup"]                    {:license true}}
-              :without-license
-              {}}
-             (normalize (lic/process* {:classpath-entries jars
-                                       :backfill {:override/group {"hiccup" "license"}}})))))))
+                                  (map (fn [[k v]]
+                                         [k (into {} (map normalize-entry) v)]))
+                                  results))]
+      (testing "without backfill"
+        (is (= {:with-license
+                {["org.clojure" "clojure"]              {:license true}
+                 ["org.apache.commons" "commons-math3"] {:license true}}
+                :without-license
+                {["net.redhogs.cronparser" "cron-parser-core"]
+                 {:license false :error "Error determining license or coords"}}}
+               (normalize (lic/process* {:classpath-entries jars
+                                         :backfill          {}})))))
+      (testing "with backfill by group and artifact"
+        (is (= {:with-license
+                {["org.clojure" "clojure"]                     {:license true}
+                 ["org.apache.commons" "commons-math3"]        {:license true}
+                 ["net.redhogs.cronparser" "cron-parser-core"] {:license true}}
+                :without-license
+                {}}
+               (normalize (lic/process* {:classpath-entries jars
+                                         :backfill
+                                         {"net.redhogs.cronparser"
+                                          {"cron-parser-core" "license"}}})))))
+      (testing "with backfill by group override"
+        (is (= {:with-license
+                {["org.clojure" "clojure"]                     {:license true}
+                 ["org.apache.commons" "commons-math3"]        {:license true}
+                 ["net.redhogs.cronparser" "cron-parser-core"] {:license true}}
+                :without-license
+                {}}
+               (normalize (lic/process* {:classpath-entries jars
+                                         :backfill
+                                         {:override/group
+                                          {"net.redhogs.cronparser" "license"}}}))))))))
 
 (deftest write-license-test
   (is (= (str "The following software may be included in this product:  a : a . "
@@ -212,4 +226,5 @@
                                    :backfill  {}}))))))))
 (comment
   (run-tests)
-  (binding [clojure.test/*test-out* *out*] (run-tests)))
+  (binding [clojure.test/*test-out* *out*] (run-tests))
+  )
