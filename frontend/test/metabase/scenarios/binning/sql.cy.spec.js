@@ -162,19 +162,12 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Q1 - 2017");
     });
 
-    it("should work for number (metabase##16670)", () => {
+    it("should work for number", () => {
       cy.findByText("TOTAL").click();
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "TOTAL", yLabel: "Count" });
       cy.findByText("Count by TOTAL: Auto binned");
-      /*
-       * Auto binning result is much more granular than it is for QB Questions.
-       * Please, see https://github.com/metabase/metabase/issues/16670
-       *
-       * However, this is not the scope of this particular test.
-       * The explicit repro will be added later in the separate file.
-       */
       cy.get(".bar");
     });
 
