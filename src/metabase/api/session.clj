@@ -193,12 +193,11 @@
   (let [request-source (request.u/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
   (throttle-check (forgot-password-throttlers :email)      email)
-  (comment (def email "noah@metabase.com"))
   (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
              (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
     (let [reset-token        (user/set-password-reset-token! user-id)
           password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email! email google-auth? server-name password-reset-url)
+      (email/send-password-reset-email! email google-auth? server-name password-reset-url is-active?)
       (log/info password-reset-url)))
   api/generic-204-no-content)
 
