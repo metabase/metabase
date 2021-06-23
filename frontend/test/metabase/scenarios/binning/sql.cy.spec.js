@@ -2,6 +2,9 @@ import { restore, popover } from "__support__/e2e/cypress";
 
 describe("scenarios > binning > from a saved sql question", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     restore();
     cy.signInAsAdmin();
     cy.createNativeQuestion({
@@ -10,12 +13,17 @@ describe("scenarios > binning > from a saved sql question", () => {
         query:
           "SELECT ORDERS.CREATED_AT, ORDERS.TOTAL, PEOPLE.LONGITUDE FROM ORDERS JOIN PEOPLE ON orders.user_id = people.id",
       },
+    }).then(({ body }) => {
+      /**
+       * We need to visit the question and to wait for the result metadata to load first.
+       * Please see: https://github.com/metabase/metabase/pull/16707#issuecomment-866126310
+       */
+      cy.visit(`/question/${body.id}`);
+      cy.wait("@cardQuery");
     });
-
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  context.skip("via simple question", () => {
+  context("via simple question", () => {
     beforeEach(() => {
       cy.visit("/question/new");
       cy.findByText("Simple question").click();
@@ -25,15 +33,13 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.wait("@dataset");
     });
 
-    it("should work for time series", () => {
+    it.skip("should work for time series", () => {
       cy.findByTestId("sidebar-right").within(() => {
         /*
-         * This basic/default bucket size seems wrong.
-         * For every other scenario, the default bucket for time series is "by month".
-         *
-         * TODO: update to "by month" once (metabase#16671) gets fixed.
+         * If `result_metadata` is not loaded (SQL question is not run before saving),
+         * the granularity is much finer and one can see "by minute" as the default bucket (metabase#16671).
          */
-        openPopoverFromDefaultBucketSize("CREATED_AT", "by minute");
+        openPopoverFromDefaultBucketSize("CREATED_AT", "by month");
       });
 
       popover().within(() => {
@@ -52,12 +58,12 @@ describe("scenarios > binning > from a saved sql question", () => {
       });
 
       popover().within(() => {
-        cy.findByText("100 bins").click();
+        cy.findByText("50 bins").click();
       });
 
       waitAndAssertOnRequest("@dataset");
 
-      cy.findByText("Count by TOTAL: 100 bins");
+      cy.findByText("Count by TOTAL: 50 bins");
       cy.get(".bar");
     });
 
@@ -67,7 +73,14 @@ describe("scenarios > binning > from a saved sql question", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Bin every 10 degrees").click();
+        /**
+         * The correct option should say "Bin every 10 degrees", but this is out of the scope of this test.
+         * It was covered in `frontend/test/metabase/scenarios/binning/binning-options.cy.spec.js`
+         * Please see: https://github.com/metabase/metabase/issues/16675.
+         *
+         * TODO: Change back to "Bin every 10 degrees" once metabase#16675 gets fixed.
+         */
+        cy.findByText("10°").click();
       });
 
       waitAndAssertOnRequest("@dataset");
@@ -77,7 +90,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
   });
 
-  context.skip("via custom question", () => {
+  context("via custom question", () => {
     beforeEach(() => {
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
@@ -90,7 +103,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Pick a column to group by").click();
     });
 
-    it("should work for time series", () => {
+    it.skip("should work for time series", () => {
       popover().within(() => {
         openPopoverFromDefaultBucketSize("CREATED_AT", "by minute");
       });
@@ -107,9 +120,9 @@ describe("scenarios > binning > from a saved sql question", () => {
       popover().within(() => {
         openPopoverFromDefaultBucketSize("TOTAL", "Auto binned");
       });
-      cy.findByText("100 bins").click();
+      cy.findByText("50 bins").click();
 
-      cy.findByText("Count by TOTAL: 100 bins");
+      cy.findByText("Count by TOTAL: 50 bins");
       cy.button("Visualize").click();
 
       waitAndAssertOnRequest("@dataset");
@@ -120,7 +133,14 @@ describe("scenarios > binning > from a saved sql question", () => {
       popover().within(() => {
         openPopoverFromDefaultBucketSize("LONGITUDE", "Auto binned");
       });
-      cy.findByText("Bin every 10 degrees").click();
+      /**
+       * The correct option should say "Bin every 10 degrees", but this is out of the scope of this test.
+       * It was covered in `frontend/test/metabase/scenarios/binning/binning-options.cy.spec.js`
+       * Please see: https://github.com/metabase/metabase/issues/16675
+       *
+       * TODO: Change back to "Bin every 10 degrees" once metabase#16675 gets fixed.
+       */
+      cy.findByText("10°").click();
 
       cy.findByText("Count by LONGITUDE: 10°");
       cy.button("Visualize").click();
@@ -156,23 +176,16 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Q1 - 2017");
     });
 
-    it("should work for number (metabase##16670)", () => {
+    it("should work for number", () => {
       cy.findByText("TOTAL").click();
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "TOTAL", yLabel: "Count" });
       cy.findByText("Count by TOTAL: Auto binned");
-      /*
-       * Auto binning result is much more granular than it is for QB Questions.
-       * Please, see https://github.com/metabase/metabase/issues/16670
-       *
-       * However, this is not the scope of this particular test.
-       * The explicit repro will be added later in the separate file.
-       */
       cy.get(".bar");
     });
 
-    it.skip("should work for longitude (metabase#16672)", () => {
+    it("should work for longitude", () => {
       cy.findByText("LONGITUDE").click();
       cy.findByText("Distribution").click();
 
