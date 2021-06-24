@@ -147,6 +147,30 @@ describe("scenarios > visualizations > line chart", () => {
       .and("contain", "cat3");
   });
 
+  it("should interpolate null value by not rendering a data point (metabase#4122)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `
+            select 'a' x, 1 y
+            union all
+            select 'b' x, null y
+            union all
+            select 'c' x, 2 y
+          `,
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "line",
+    });
+
+    cy.get(`.sub._0`)
+      .find("circle")
+      .should("have.length", 2);
+  });
+
   describe.skip("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
     const RENAMED_FIRST_SERIES = "Foo";
     const RENAMED_SECOND_SERIES = "Bar";
