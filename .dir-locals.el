@@ -38,7 +38,7 @@
                               (p.types/defrecord+ '(2 nil nil (:defn)))
                               (prop/for-all 1)
                               (tools.macro/macrolet '(1 (:defn))))))
-                  (cider-clojure-cli-aliases . "dev:test:ee:ee-test:include-drivers")
+                  (cider-clojure-cli-aliases . "dev")
                   (clojure-indent-style . always-align)
                   ;; if you're using clj-refactor (highly recommended!)
                   (cljr-favor-prefix-notation . nil)
