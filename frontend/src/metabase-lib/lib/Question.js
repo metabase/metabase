@@ -540,6 +540,67 @@ export default class Question {
     }
   }
 
+  _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
+    const query = this.query();
+
+    if (
+      !_.isEqual(
+        previousQuestion.setting("table.columns"),
+        this.setting("table.columns"),
+      )
+    ) {
+      return syncTableColumnsToQuery(this);
+    }
+
+    const addedColumnNames = _.difference(
+      query.columnNames(),
+      previousQuery.columnNames(),
+    );
+    const removedColumnNames = _.difference(
+      previousQuery.columnNames(),
+      query.columnNames(),
+    );
+
+    if (
+      this.setting("graph.metrics") &&
+      addedColumnNames.length > 0 &&
+      removedColumnNames.length === 0
+    ) {
+      const addedMetricColumnNames = addedColumnNames.filter(
+        name =>
+          query.columnDimensionWithName(name) instanceof AggregationDimension,
+      );
+      if (addedMetricColumnNames.length > 0) {
+        return this.updateSettings({
+          "graph.metrics": [
+            ...this.setting("graph.metrics"),
+            ...addedMetricColumnNames,
+          ],
+        });
+      }
+    }
+
+    if (
+      this.setting("table.columns") &&
+      addedColumnNames.length > 0 &&
+      removedColumnNames.length === 0
+    ) {
+      return this.updateSettings({
+        "table.columns": [
+          ...this.setting("table.columns"),
+          ...addedColumnNames.map(name => {
+            const dimension = query.columnDimensionWithName(name);
+            return {
+              name: name,
+              field_ref: dimension.baseDimension().mbql(),
+              enabled: true,
+            };
+          }),
+        ],
+      });
+    }
+  }
+
   syncColumnsAndSettings(previous) {
     const query = this.query();
     const previousQuery = previous && previous.query();
@@ -547,62 +608,10 @@ export default class Question {
       query instanceof StructuredQuery &&
       previousQuery instanceof StructuredQuery
     ) {
-      if (
-        !_.isEqual(
-          previous.setting("table.columns"),
-          this.setting("table.columns"),
-        )
-      ) {
-        return syncTableColumnsToQuery(this);
-      }
-
-      const addedColumnNames = _.difference(
-        query.columnNames(),
-        previousQuery.columnNames(),
+      return this._syncStructuredQueryColumnsAndSettings(
+        previous,
+        previousQuery,
       );
-      const removedColumnNames = _.difference(
-        previousQuery.columnNames(),
-        query.columnNames(),
-      );
-
-      if (
-        this.setting("graph.metrics") &&
-        addedColumnNames.length > 0 &&
-        removedColumnNames.length === 0
-      ) {
-        const addedMetricColumnNames = addedColumnNames.filter(
-          name =>
-            query.columnDimensionWithName(name) instanceof AggregationDimension,
-        );
-        if (addedMetricColumnNames.length > 0) {
-          return this.updateSettings({
-            "graph.metrics": [
-              ...this.setting("graph.metrics"),
-              ...addedMetricColumnNames,
-            ],
-          });
-        }
-      }
-
-      if (
-        this.setting("table.columns") &&
-        addedColumnNames.length > 0 &&
-        removedColumnNames.length === 0
-      ) {
-        return this.updateSettings({
-          "table.columns": [
-            ...this.setting("table.columns"),
-            ...addedColumnNames.map(name => {
-              const dimension = query.columnDimensionWithName(name);
-              return {
-                name: name,
-                field_ref: dimension.baseDimension().mbql(),
-                enabled: true,
-              };
-            }),
-          ],
-        });
-      }
     }
     return this;
   }
