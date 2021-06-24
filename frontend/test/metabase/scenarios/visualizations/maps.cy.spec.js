@@ -55,7 +55,7 @@ describe("scenarios > visualizations > maps", () => {
     cy.get(".leaflet-container");
   });
 
-  it.skip("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
+  it("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
     cy.createNativeQuestion({
       name: "14254",
       native: {

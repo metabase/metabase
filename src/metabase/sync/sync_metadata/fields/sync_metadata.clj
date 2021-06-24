@@ -93,7 +93,7 @@
            {:name new-database-name}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (db/update! Field (u/get-id metabase-field) updates))
+             (db/update! Field (u/the-id metabase-field) updates))
       1
       0)))
 

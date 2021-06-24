@@ -26,7 +26,7 @@
     (testing ":details-only fields should not be returned in normal queries"
       (tu/with-temp-vals-in-db Field (mt/id :venues :price) {:visibility_type :details-only}
         (is (= (u/key-by :id (for [col (qp.test/expected-cols :venues)]
-                               (if (= (mt/id :venues :price) (u/get-id col))
+                               (if (= (mt/id :venues :price) (u/the-id col))
                                  (assoc col :visibility_type :details-only)
                                  col)))
                (u/key-by :id (venues-cols-from-query))))))))

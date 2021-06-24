@@ -82,7 +82,7 @@
                    (public-settings/admin-email))))
 
           (testing "Should record :user-joined Activity (#12933)"
-            (let [user-id (u/get-id (db/select-one-id User :email email))]
+            (let [user-id (u/the-id (db/select-one-id User :email email))]
               (is (schema= {:topic    (s/eq :user-joined)
                             :model_id (s/eq user-id)
                             :user_id  (s/eq user-id)
@@ -160,7 +160,7 @@
                 (assert (some? db))
                 (is (= 4
                        (wait-for-result (fn []
-                                          (let [cnt (db/count Table :db_id (u/get-id db))]
+                                          (let [cnt (db/count Table :db_id (u/the-id db))]
                                             (when (= cnt 4)
                                               cnt))))))))))))
 

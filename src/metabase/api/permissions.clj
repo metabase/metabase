@@ -66,7 +66,7 @@
   (db/select PermissionsGroup
              (cond-> {:where    (if (metabot/metabot-enabled)
                                   true
-                                  [:not= :id (u/get-id (group/metabot))])
+                                  [:not= :id (u/the-id (group/metabot))])
                       :order-by [:%lower.name]}
                (some? limit)  (hh/limit  limit)
                (some? offset) (hh/offset offset))))
@@ -77,7 +77,7 @@
   [groups]
   (let [group-id->num-members (group-id->num-members)]
     (for [group groups]
-      (assoc group :member_count (get group-id->num-members (u/get-id group) 0)))))
+      (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
 
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."

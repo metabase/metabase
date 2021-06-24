@@ -76,14 +76,14 @@
 
 (defn- do-with-alert-in-collection [f]
   (pulse-test/with-pulse-in-collection [db collection alert card]
-    (assert (db/exists? PulseCard :card_id (u/get-id card), :pulse_id (u/get-id alert)))
+    (assert (db/exists? PulseCard :card_id (u/the-id card), :pulse_id (u/the-id alert)))
     ;; Make this Alert actually be an alert
-    (db/update! Pulse (u/get-id alert) :alert_condition "rows")
-    (let [alert (db/select-one Pulse :id (u/get-id alert))]
+    (db/update! Pulse (u/the-id alert) :alert_condition "rows")
+    (let [alert (db/select-one Pulse :id (u/the-id alert))]
       (assert (pulse/is-alert? alert))
       ;; Since Alerts do not actually go in Collections, but rather their Cards do, put the Card in the Collection
-      (db/update! Card (u/get-id card) :collection_id (u/get-id collection))
-      (let [card (db/select-one Card :id (u/get-id card))]
+      (db/update! Card (u/the-id card) :collection_id (u/the-id collection))
+      (let [card (db/select-one Card :id (u/the-id card))]
         (f db collection alert card)))))
 
 (defmacro ^:private with-alert-in-collection
@@ -113,9 +113,9 @@
       (grant-collection-perms-fn! (group/all-users) collection)
       ;; Go ahead and put all the Cards for all of the Alerts in the temp Collection
       (when (seq alerts-or-ids)
-        (doseq [alert (db/select Pulse :id [:in (set (map u/get-id alerts-or-ids))])
+        (doseq [alert (db/select Pulse :id [:in (set (map u/the-id alerts-or-ids))])
                 :let  [card (#'metabase.models.pulse/alert->card alert)]]
-          (db/update! Card (u/get-id card) :collection_id (u/get-id collection))))
+          (db/update! Card (u/the-id card) :collection_id (u/the-id collection))))
       (f))))
 
 (defmacro ^:private with-alerts-in-readable-collection [alerts-or-ids & body]
@@ -150,8 +150,8 @@
     (is (= #{"Not Archived"}
            (with-alert-in-collection [_ _ not-archived-alert]
              (with-alert-in-collection [_ _ archived-alert]
-               (db/update! Pulse (u/get-id not-archived-alert) :name "Not Archived")
-               (db/update! Pulse (u/get-id archived-alert)     :name "Archived", :archived true)
+               (db/update! Pulse (u/the-id not-archived-alert) :name "Not Archived")
+               (db/update! Pulse (u/the-id archived-alert)     :name "Archived", :archived true)
                (with-alerts-in-readable-collection [not-archived-alert archived-alert]
                  (set (map :name ((user->client :rasta) :get 200 "alert")))))))))
 
@@ -159,8 +159,8 @@
     (is (= #{"Archived"}
            (with-alert-in-collection [_ _ not-archived-alert]
              (with-alert-in-collection [_ _ archived-alert]
-               (db/update! Pulse (u/get-id not-archived-alert) :name "Not Archived")
-               (db/update! Pulse (u/get-id archived-alert)     :name "Archived", :archived true)
+               (db/update! Pulse (u/the-id not-archived-alert) :name "Not Archived")
+               (db/update! Pulse (u/the-id archived-alert)     :name "Archived", :archived true)
                (with-alerts-in-readable-collection [not-archived-alert archived-alert]
                  (set (map :name ((user->client :rasta) :get 200 "alert?archived=true"))))))))))
 
@@ -264,14 +264,14 @@
             (rasta-new-alert-email {"has any results" true})]
            (tu/with-non-admin-groups-no-root-collection-perms
              (tt/with-temp Collection [collection]
-               (db/update! Card (u/get-id card) :collection_id (u/get-id collection))
+               (db/update! Card (u/the-id card) :collection_id (u/the-id collection))
                (with-alert-setup
                  (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
                  [(et/with-expected-messages 1
                     (alert-response
                      ((alert-client :rasta) :post 200 "alert"
-                      {:card             {:id (u/get-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
-                       :collection_id    (u/get-id collection)
+                      {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+                       :collection_id    (u/the-id collection)
                        :alert_condition  "rows"
                        :alert_first_only false
                        :channels         [daily-email-channel]})))
@@ -304,7 +304,7 @@
              (array-map
               :response (et/with-expected-messages 2
                           (-> ((alert-client :crowberto) :post 200 "alert"
-                               {:card             {:id (u/get-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+                               {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
                                 :alert_condition  "rows"
                                 :alert_first_only false
                                 :channels         [(assoc daily-email-channel
@@ -324,12 +324,12 @@
            (tt/with-temp* [Collection [collection]
                            Card       [card {:name          "My question"
                                              :display       "line"
-                                             :collection_id (u/get-id collection)}]]
+                                             :collection_id (u/the-id collection)}]]
              (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
              (with-alert-setup
                (et/with-expected-messages 1
                  ((user->client :rasta) :post 200 "alert"
-                  {:card             {:id (u/get-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+                  {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
                    :alert_condition  "goal"
                    :alert_above_goal false
                    :alert_first_only false
@@ -345,13 +345,13 @@
            (tt/with-temp* [Collection [collection]
                            Card       [card {:name          "My question"
                                              :display       "bar"
-                                             :collection_id (u/get-id collection)}]]
+                                             :collection_id (u/the-id collection)}]]
              (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
              (with-alert-setup
                (et/with-expected-messages 1
                  ((user->client :rasta) :post 200 "alert"
-                  {:card             {:id (u/get-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
-                   :collection_id    (u/get-id collection)
+                  {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+                   :collection_id    (u/the-id collection)
                    :alert_condition  "goal"
                    :alert_above_goal true
                    :alert_first_only false
@@ -396,12 +396,12 @@
   ([card pulse-card-or-id]
    (default-alert-req card pulse-card-or-id {} []))
   ([card pulse-card-or-id alert-map users]
-   (merge {:card             {:id (u/get-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+   (merge {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
            :alert_condition  "rows"
            :alert_first_only false
            :channels         [(if (seq users)
-                                (default-email-channel (u/get-id pulse-card-or-id) users)
-                                (default-email-channel (u/get-id pulse-card-or-id)))]
+                                (default-email-channel (u/the-id pulse-card-or-id) users)
+                                (default-email-channel (u/the-id pulse-card-or-id)))]
            :skip_if_empty    false}
           alert-map)))
 
@@ -413,19 +413,19 @@
 
 (defn- recipient [pulse-channel-or-id username-keyword]
   (let [user (mt/fetch-user username-keyword)]
-    {:user_id          (u/get-id user)
-     :pulse_channel_id (u/get-id pulse-channel-or-id)}))
+    {:user_id          (u/the-id user)
+     :pulse_channel_id (u/the-id pulse-channel-or-id)}))
 
 (defn- pulse-card [alert-or-id card-or-id]
-  {:pulse_id (u/get-id alert-or-id)
-   :card_id  (u/get-id card-or-id)
+  {:pulse_id (u/the-id alert-or-id)
+   :card_id  (u/the-id card-or-id)
    :position 0})
 
 (defn- pulse-channel [alert-or-id]
-  {:pulse_id (u/get-id alert-or-id)})
+  {:pulse_id (u/the-id alert-or-id)})
 
 (defn- alert-url [alert-or-id]
-  (format "alert/%d" (u/get-id alert-or-id)))
+  (format "alert/%d" (u/the-id alert-or-id)))
 
 (deftest update-alerts-test
   (testing "Non-admin users can update alerts they created *if* they are in the recipient list"
@@ -467,7 +467,7 @@
              (tu/with-model-cleanup [Pulse]
                (alert-response
                 ((alert-client :crowberto) :put 200 (alert-url alert)
-                 (default-alert-req card (u/get-id pc) {:alert_first_only true, :alert_above_goal true, :alert_condition "goal"}
+                 (default-alert-req card (u/the-id pc) {:alert_first_only true, :alert_above_goal true, :alert_condition "goal"}
                                     [(fetch-user :rasta)]))))))))
 
   (testing "Admin users can add a recipient, that recipient should be notified"
@@ -543,17 +543,17 @@
   (testing "Can we archive an Alert?"
     (is (with-alert-in-collection [_ collection alert]
           (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-          ((user->client :rasta) :put 200 (str "alert/" (u/get-id alert))
+          ((user->client :rasta) :put 200 (str "alert/" (u/the-id alert))
            {:archived true})
-          (db/select-one-field :archived Pulse :id (u/get-id alert)))))
+          (db/select-one-field :archived Pulse :id (u/the-id alert)))))
 
   (testing "Can we unarchive an Alert?"
     (is (false? (with-alert-in-collection [_ collection alert]
                   (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
-                  (db/update! Pulse (u/get-id alert) :archived true)
-                  ((user->client :rasta) :put 200 (str "alert/" (u/get-id alert))
+                  (db/update! Pulse (u/the-id alert) :archived true)
+                  ((user->client :rasta) :put 200 (str "alert/" (u/the-id alert))
                    {:archived false})
-                  (db/select-one-field :archived Pulse :id (u/get-id alert)))))))
+                  (db/select-one-field :archived Pulse :id (u/the-id alert)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |
@@ -568,7 +568,7 @@
                               :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :hour}]]}}})
 
 (defn- alert-question-url [card-or-id]
-  (format "alert/question/%d" (u/get-id card-or-id)))
+  (format "alert/question/%d" (u/the-id card-or-id)))
 
 (defn- api:alert-question-count [user-kw card-or-id]
   (count ((alert-client user-kw) :get 200 (alert-question-url card-or-id))))
@@ -607,7 +607,7 @@
                  (array-map
                   :count-1 (count ((alert-client :rasta) :get 200 (alert-question-url card)))
                   :count-2 (do
-                             (db/delete! PulseChannelRecipient :id (u/get-id pcr))
+                             (db/delete! PulseChannelRecipient :id (u/the-id pcr))
                              (api:alert-question-count :rasta card)))))))))
 
   (testing "Non-admin users should not see others alerts, admins see all alerts"
@@ -638,7 +638,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- alert-unsubscribe-url [alert-or-id]
-  (format "alert/%d/unsubscribe" (u/get-id alert-or-id)))
+  (format "alert/%d/unsubscribe" (u/the-id alert-or-id)))
 
 (defn- api:unsubscribe! [user-kw expected-status-code alert-or-id]
   (mt/user-http-request user-kw :put expected-status-code (alert-unsubscribe-url alert-or-id)))

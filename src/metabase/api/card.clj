@@ -525,7 +525,7 @@
             (api/reconcile-position-for-collection! collection_id collection_position nil)
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
-            (db/update! Card (u/get-id card)
+            (db/update! Card (u/the-id card)
               :collection_position idx
               :collection_id       new-collection-id-or-nil))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
@@ -565,7 +565,7 @@
         ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
-                                                 (u/get-id card)))]
+                                                 (u/the-id card)))]
           (db/update-where! Card {:id [:in (set cards-without-position)]}
             :collection_id new-collection-id-or-nil))))))
 
