@@ -1,10 +1,26 @@
 import Dimension from "metabase-lib/lib/Dimension";
 
 export const syncQueryParamsWithURL = props => {
-  if (props.commitImmediately) {
-    syncForInternalQuestion(props);
-  } else {
-    syncForPublicQuestion(props);
+  props.commitImmediately
+    ? syncForInternalQuestion(props)
+    : syncForPublicQuestion(props);
+};
+
+const syncForInternalQuestion = props => {
+  const { parameters, setParameterValue, query, metadata } = props;
+
+  if (!setParameterValue) {
+    return;
+  }
+
+  for (const parameter of parameters) {
+    const queryParam = query && query[parameter.slug];
+
+    if (queryParam != null || parameter.default != null) {
+      const parsedParam = parseQueryParams(queryParam, parameter, metadata);
+
+      setParameterValue(parameter.id, parsedParam);
+    }
   }
 };
 
@@ -28,32 +44,11 @@ const syncForPublicQuestion = props => {
   setParameterValue(parameterValues);
 };
 
-const syncForInternalQuestion = props => {
-  const { parameters, setParameterValue, query, metadata } = props;
+const parseQueryParams = (queryParam, parameter, metadata) => {
+  const value = getValue(queryParam, parameter);
+  const fields = getFields(parameter, metadata);
 
-  if (!setParameterValue) {
-    return;
-  }
-
-  for (const parameter of parameters) {
-    const queryParam = query && query[parameter.slug];
-
-    if (queryParam != null || parameter.default != null) {
-      const parsedParam = parseQueryParams(queryParam, parameter, metadata);
-
-      setParameterValue(parameter.id, parsedParam);
-    }
-  }
-};
-
-// field IDs can be either
-// ["field", <integer-id>, <options>] or
-// ["field", <string-name>, <options>]
-const getFields = (parameter, metadata) => {
-  const fieldIds = parameter.field_ids || [];
-  return fieldIds.map(
-    id => metadata.field(id) || Dimension.parseMBQL(id, metadata).field(),
-  );
+  return getValueFromFields(value, fields);
 };
 
 const getValue = (queryParam, parameter) => {
@@ -75,11 +70,14 @@ const treatValueForFieldValuesWidget = (value, parameter) => {
   return value;
 };
 
-const parseQueryParams = (queryParam, parameter, metadata) => {
-  const value = getValue(queryParam, parameter);
-  const fields = getFields(parameter, metadata);
-
-  return getValueFromFields(value, fields);
+// field IDs can be either
+// ["field", <integer-id>, <options>] or
+// ["field", <string-name>, <options>]
+const getFields = (parameter, metadata) => {
+  const fieldIds = parameter.field_ids || [];
+  return fieldIds.map(
+    id => metadata.field(id) || Dimension.parseMBQL(id, metadata).field(),
+  );
 };
 
 const getValueFromFields = (value, fields) => {
