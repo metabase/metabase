@@ -30,7 +30,10 @@ import { memoize, sortObject } from "metabase-lib/lib/utils";
 // TODO: remove these dependencies
 import * as Card_DEPRECATED from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
-import { syncTableColumnsToQuery } from "metabase/lib/dataset";
+import {
+  findColumnSettingIndexForColumn,
+  syncTableColumnsToQuery,
+} from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
 import {
   parameterToMBQLFilter,
@@ -601,7 +604,30 @@ export default class Question {
     }
   }
 
-  syncColumnsAndSettings(previous) {
+  _syncNativeQuerySettings({ data: { cols = [] } = {} } = {}) {
+    const vizSettings = this.setting("table.columns") || [];
+    let addedColumns = cols.filter(col => {
+      const hasVizSettings =
+        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
+      return !hasVizSettings;
+    });
+
+    if (addedColumns.length === 0) {
+      return this;
+    }
+
+    addedColumns = addedColumns.map(col => ({
+      name: col.name,
+      fieldRef: col.field_ref,
+      enabled: true,
+    }));
+
+    return this.updateSettings({
+      "table.columns": [...vizSettings, ...addedColumns],
+    });
+  }
+
+  syncColumnsAndSettings(previous, queryResults) {
     const query = this.query();
     const previousQuery = previous && previous.query();
     if (
@@ -612,6 +638,9 @@ export default class Question {
         previous,
         previousQuery,
       );
+    }
+    if (query instanceof NativeQuery && previousQuery instanceof NativeQuery) {
+      return this._syncNativeQuerySettings(queryResults);
     }
     return this;
   }
