@@ -732,7 +732,7 @@ describe("scenarios > question > native", () => {
         name: "filter",
         "display-name": "Filter",
         type: "dimension",
-        dimension: ["field", 4, null],
+        dimension: ["field", PRODUCTS.CATEGORY, null],
         "widget-type": "string/=",
         default: null,
       };
