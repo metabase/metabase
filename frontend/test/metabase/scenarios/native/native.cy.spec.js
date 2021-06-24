@@ -756,7 +756,6 @@ describe("scenarios > question > native", () => {
         cy.wait("@cardQuery");
       });
 
-      cy.icon("expand").click();
       cy.icon("play").should("not.exist");
     });
   });
