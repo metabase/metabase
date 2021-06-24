@@ -16,18 +16,7 @@ const setForPublicQuestion = props => {
     for (const parameter of parameters) {
       const queryParam = query && query[parameter.slug];
       if (queryParam != null || parameter.default != null) {
-        let value = queryParam != null ? queryParam : parameter.default;
-
-        // ParameterValueWidget uses FieldValuesWidget if there's no available
-        // date widget and all targets are fields. This matches that logic.
-        const willUseFieldValuesWidget =
-          parameter.hasOnlyFieldTargets && !/^date\//.test(parameter.type);
-
-        if (willUseFieldValuesWidget && value && !Array.isArray(value)) {
-          // FieldValuesWidget always produces an array. If we'll use that
-          // widget, we should start with an array to match.
-          value = [value];
-        }
+        const value = getValue(queryParam, parameter);
 
         // field IDs can be either ["field", <integer-id>, <options>] or ["field", <string-name>, <options>]
         const fieldIds = parameter.field_ids || [];
@@ -48,17 +37,8 @@ const setForInternalQuestion = props => {
     for (const parameter of parameters) {
       const queryParam = query && query[parameter.slug];
       if (queryParam != null || parameter.default != null) {
-        let value = queryParam != null ? queryParam : parameter.default;
+        const value = getValue(queryParam, parameter);
 
-        // ParameterValueWidget uses FieldValuesWidget if there's no available
-        // date widget and all targets are fields. This matches that logic.
-        const willUseFieldValuesWidget =
-          parameter.hasOnlyFieldTargets && !/^date\//.test(parameter.type);
-        if (willUseFieldValuesWidget && value && !Array.isArray(value)) {
-          // FieldValuesWidget always produces an array. If we'll use that
-          // widget, we should start with an array to match.
-          value = [value];
-        }
         // field IDs can be either ["field", <integer-id>, <options>] or ["field", <string-name>, <options>]
         const fieldIds = parameter.field_ids || [];
         const fields = fieldIds.map(
@@ -68,6 +48,25 @@ const setForInternalQuestion = props => {
       }
     }
   }
+};
+
+const getValue = (queryParam, parameter) => {
+  const value = queryParam != null ? queryParam : parameter.default;
+  return treatValueForFieldValuesWidget(value, parameter);
+};
+
+const treatValueForFieldValuesWidget = (value, parameter) => {
+  // ParameterValueWidget uses FieldValuesWidget if there's no available
+  // date widget and all targets are fields.
+  const willUseFieldValuesWidget =
+    parameter.hasOnlyFieldTargets && !/^date\//.test(parameter.type);
+
+  // If we'll use FieldValuesWidget, we should start with an array to match.
+  if (willUseFieldValuesWidget && !Array.isArray(value)) {
+    value = [value];
+  }
+
+  return value;
 };
 
 const parseQueryParam = (value, fields) => {
