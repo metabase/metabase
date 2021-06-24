@@ -416,7 +416,7 @@ describe("scenarios > question > nested", () => {
   });
 
   ["count", "average"].forEach(test => {
-    it.skip(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
+    it(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
 
