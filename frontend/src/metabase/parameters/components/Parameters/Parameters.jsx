@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import querystring from "querystring";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { setParameterValuesFromQueryParamOrDefault } from "./setParameterValuesFromQueryParamOrDefault";
+import { syncQueryParamsWithURL } from "./syncQueryParamsWithURL";
 import { collateParametersWithValues } from "metabase/meta/Parameter";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -17,7 +17,7 @@ export default class Parameters extends Component {
   constructor(props) {
     super(props);
 
-    setParameterValuesFromQueryParamOrDefault(props);
+    syncQueryParamsWithURL(props);
   }
 
   componentDidUpdate() {

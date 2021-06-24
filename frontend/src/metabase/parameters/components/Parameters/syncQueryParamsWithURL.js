@@ -1,37 +1,34 @@
 import Dimension from "metabase-lib/lib/Dimension";
 
-export const setParameterValuesFromQueryParamOrDefault = props => {
+export const syncQueryParamsWithURL = props => {
   if (props.commitImmediately) {
-    setForInternalQuestion(props);
+    syncForInternalQuestion(props);
   } else {
-    setForPublicQuestion(props);
+    syncForPublicQuestion(props);
   }
 };
 
-const setForPublicQuestion = props => {
+const syncForPublicQuestion = props => {
   const { parameters, setParameterValue, query, metadata } = props;
 
   if (!setParameterValue) {
     return;
   }
 
-  const parameterValues = {};
-
-  for (const parameter of parameters) {
+  const parameterValues = parameters.reduce((acc, parameter) => {
     const queryParam = query && query[parameter.slug];
-    if (queryParam != null || parameter.default != null) {
-      const value = getValue(queryParam, parameter);
-      const fields = getFields(parameter, metadata);
-      const parsedQueryParam = parseQueryParam(value, fields);
 
-      parameterValues[parameter.id] = parsedQueryParam;
+    if (queryParam != null || parameter.default != null) {
+      acc[parameter.id] = parseQueryParams(queryParam, parameter, metadata);
     }
 
-    setParameterValue(parameterValues);
-  }
+    return acc;
+  }, {});
+
+  setParameterValue(parameterValues);
 };
 
-const setForInternalQuestion = props => {
+const syncForInternalQuestion = props => {
   const { parameters, setParameterValue, query, metadata } = props;
 
   if (!setParameterValue) {
@@ -42,11 +39,9 @@ const setForInternalQuestion = props => {
     const queryParam = query && query[parameter.slug];
 
     if (queryParam != null || parameter.default != null) {
-      const value = getValue(queryParam, parameter);
-      const fields = getFields(parameter, metadata);
-      const parsedQueryParam = parseQueryParam(value, fields);
+      const parsedParam = parseQueryParams(queryParam, parameter, metadata);
 
-      setParameterValue(parameter.id, parsedQueryParam);
+      setParameterValue(parameter.id, parsedParam);
     }
   }
 };
@@ -80,9 +75,16 @@ const treatValueForFieldValuesWidget = (value, parameter) => {
   return value;
 };
 
-const parseQueryParam = (value, fields) => {
+const parseQueryParams = (queryParam, parameter, metadata) => {
+  const value = getValue(queryParam, parameter);
+  const fields = getFields(parameter, metadata);
+
+  return getValueFromFields(value, fields);
+};
+
+const getValueFromFields = (value, fields) => {
   if (Array.isArray(value)) {
-    return value.map(v => parseQueryParam(v, fields));
+    return value.map(v => getValueFromFields(v, fields));
   }
 
   // [].every is always true, so only check if there are some fields
