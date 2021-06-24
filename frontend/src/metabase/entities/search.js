@@ -41,8 +41,9 @@ export default createEntity({
           );
         }
 
-        const { data, ...rest } = await collectionList({
-          collection,
+        const canonicalCollection = canonicalCollectionId(collection);
+        return (await collectionList({
+          canonicalCollection,
           archived,
           models,
           namespace,
