@@ -80,7 +80,7 @@ const getFields = (parameter, metadata) => {
   );
 };
 
-const getValueFromFields = (value, fields) => {
+export const getValueFromFields = (value, fields) => {
   if (Array.isArray(value)) {
     return value.map(v => getValueFromFields(v, fields));
   }
