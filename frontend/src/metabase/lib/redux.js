@@ -9,13 +9,16 @@ import {
   setRequestUnloaded,
 } from "metabase/redux/requests";
 
-// convienence
-export { combineReducers, compose } from "redux";
-export { handleActions, createAction } from "redux-actions";
+import * as redux from "redux";
+import * as reduxActions from "redux-actions";
 
-import { compose } from "redux";
 import { createSelectorCreator } from "reselect";
 import memoize from "lodash.memoize";
+
+export const combineReducers = redux.combineReducers;
+export const compose = redux.compose;
+export const handleActions = reduxActions.handleActions;
+export const createAction = reduxActions.createAction;
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
