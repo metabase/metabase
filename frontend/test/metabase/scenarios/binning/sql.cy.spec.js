@@ -103,9 +103,9 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.findByText("Pick a column to group by").click();
     });
 
-    it.skip("should work for time series", () => {
+    it("should work for time series", () => {
       popover().within(() => {
-        openPopoverFromDefaultBucketSize("CREATED_AT", "by minute");
+        openPopoverFromDefaultBucketSize("CREATED_AT", "by month");
       });
       cy.findByText("Year").click();
 
