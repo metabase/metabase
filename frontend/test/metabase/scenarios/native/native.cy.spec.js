@@ -724,6 +724,43 @@ describe("scenarios > question > native", () => {
     });
   });
 
+  ["normal", "nodata"].forEach(user => {
+    //Very related to the metabase#15981, only this time the issue happens with the Field Filter without the value being set.
+    it.skip(`filter feature flag shouldn't cause run-overlay of results in native editor for ${user} user (metabase#16739)`, () => {
+      const filter = {
+        id: "7795c137-a46c-3db9-1930-1d690c8dbc03",
+        name: "filter",
+        "display-name": "Filter",
+        type: "dimension",
+        dimension: ["field", 4, null],
+        "widget-type": "string/=",
+        default: null,
+      };
+
+      mockSessionProperty("field-filter-operators-enabled?", true);
+
+      cy.createNativeQuestion({
+        native: {
+          query: "select * from PRODUCTS where {{ filter }}",
+          "template-tags": { filter },
+        },
+      }).then(({ body: { id } }) => {
+        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
+
+        if (user === "nodata") {
+          cy.signOut();
+          cy.signIn(user);
+        }
+
+        cy.visit(`/question/${id}`);
+        cy.wait("@cardQuery");
+      });
+
+      cy.icon("expand").click();
+      cy.icon("play").should("not.exist");
+    });
+  });
+
   it("should link correctly from the variables sidebar (metabase#16212)", () => {
     cy.createNativeQuestion({
       name: "test-question",
