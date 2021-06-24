@@ -91,16 +91,22 @@
   [endpoint results-key params]
   ;; use default limit (page size) of 1000 instead of 100 so we don't end up making a hundred API requests for orgs
   ;; with a huge number of channels or users.
-  (let [default-params {:limit 1000}
-        response       (m/mapply GET endpoint (merge default-params params))]
-    (when (seq response)
-      (take
-       max-list-results
-       (concat
-        (get response results-key)
-        (when-let [next-cursor (next-cursor response)]
-          (lazy-seq
-           (paged-list-request endpoint results-key (assoc params :cursor next-cursor)))))))))
+  (try
+    (let [default-params {:limit 1000}
+             response       (u/auto-retry-with-pause 3 (m/mapply GET endpoint (merge default-params params)))]
+         (when (seq response)
+           (take
+             max-list-results
+             (concat
+               (get response results-key)
+               (when-let [next-cursor (next-cursor response)]
+                 (lazy-seq
+                   (paged-list-request endpoint results-key (assoc params :cursor next-cursor))))))))
+    (catch Exception e
+      (log/warn "Slack request exception!" e)
+      [])
+    )
+  )
 
 (defn conversations-list
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
@@ -130,11 +136,7 @@
 (defn users-list
   "Calls Slack API `users.list` endpoint and returns the list of available users."
   [& {:as query-parameters}]
-  (->> (paged-list-request "users.list" :members query-parameters)
-       ;; filter out deleted users and bots. At the time of this writing there's no way to do this in the Slack API
-       ;; itself so we need to do it after the fact.
-       (filter (complement :deleted))
-       (filter (complement :is_bot))))
+  [])
 
 (defn- files-channel* []
   (or (channel-with-name files-channel-name)

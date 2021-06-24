@@ -432,7 +432,7 @@
 
    Consider using the `auto-retry` macro instead of calling this function directly."
   {:style/indent 1}
-  [num-retries f]
+  [num-retries f & [wait_on_retry]]
   (if (<= num-retries 0)
     (f)
     (try
@@ -441,6 +441,7 @@
         (when (::no-auto-retry? (all-ex-data e))
           (throw e))
         (log/warn (format-color 'red "auto-retry %s: %s" f (.getMessage e)))
+        (when wait_on_retry (Thread/sleep 30000))
         (do-with-auto-retries (dec num-retries) f)))))
 
 (defmacro auto-retry
@@ -453,6 +454,17 @@
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
+
+(defmacro auto-retry-with-pause
+  "Execute `body` and return the results. If `body` fails with an exception, retry execution up to `num-retries` times
+  until it succeeds. Will wait 60s on retry
+
+  You can disable auto-retries for a specific ExceptionInfo by including `{:metabase.util/no-auto-retry? true}` in its
+  data (or the data of one of its causes.)"
+  {:style/indent 1}
+  [num-retries & body]
+  `(do-with-auto-retries ~num-retries
+                         (fn [] ~@body) true))
 
 (defn key-by
   "Convert a sequential `coll` to a map of `(f item)` -> `item`.
