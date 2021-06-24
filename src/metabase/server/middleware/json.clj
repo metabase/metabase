@@ -1,6 +1,7 @@
 (ns metabase.server.middleware.json
   "Middleware related to parsing JSON requests and generating JSON responses."
   (:require [cheshire.core :as json]
+            [cheshire.factory :as json.factory]
             [cheshire.generate :as json.generate]
             [metabase.util.date-2 :as u.date]
             [ring.middleware.json :as ring.json]
@@ -18,8 +19,8 @@
 ;; Tell the JSON middleware to use a date format that includes milliseconds (why?)
 (def ^:private default-date-format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
-(alter-var-root #'cheshire.factory/default-date-format (constantly default-date-format))
-(alter-var-root #'cheshire.generate/*date-format* (constantly default-date-format))
+(alter-var-root #'json.factory/default-date-format (constantly default-date-format))
+(alter-var-root #'json.generate/*date-format* (constantly default-date-format))
 
 ;; ## Custom JSON encoders
 

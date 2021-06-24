@@ -9,7 +9,7 @@
             [metabase-enterprise.serialization.upsert :refer [maybe-fixup-card-template-ids! maybe-upsert-many!]]
             [metabase.config :as config]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.util]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -122,7 +122,7 @@
                 (vector? v)
                 (map (fn [x] (conj node x)) (range (count v)))
 
-                :default
+                :else
                 [])))
           (branch? [node] (-> (children node) seq boolean))]
     (->> (keys m)
@@ -140,7 +140,7 @@
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
-  (mbql.util/replace entity
+  (mbql.u/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
@@ -185,8 +185,8 @@
    (unresolved-names->string entity nil))
   ([entity insert-id]
    (str
-    (if-let [nm (:name entity)] (str "\"" nm "\""))
-    (if insert-id (format " (inserted as ID %d) " insert-id))
+    (when-let [nm (:name entity)] (str "\"" nm "\""))
+    (when insert-id (format " (inserted as ID %d) " insert-id))
     "missing:\n  "
     (str/join
      "\n  "
@@ -338,17 +338,17 @@
   (-> (if-let [link-type (::mb.viz/link-type click-behavior)]
         (case link-type
           ::mb.viz/card (let [card-id (::mb.viz/link-target-id click-behavior)]
-                          (if (string? card-id)
+                          (when (string? card-id)
                             (update-existing-in-capture-missing
                              click-behavior
                              [::mb.viz/link-target-id]
                              (comp :card fully-qualified-name->context))))
           ::mb.viz/dashboard (let [dashboard-id (::mb.viz/link-target-id click-behavior)]
-                              (if (string? dashboard-id)
-                                (update-existing-in-capture-missing
-                                 click-behavior
-                                 [::mb.viz/link-target-id]
-                                 (comp :dashboard fully-qualified-name->context))))
+                               (when (string? dashboard-id)
+                                 (update-existing-in-capture-missing
+                                  click-behavior
+                                  [::mb.viz/link-target-id]
+                                  (comp :dashboard fully-qualified-name->context))))
           click-behavior)
         click-behavior)
       (m/update-existing ::mb.viz/parameter-mapping resolve-click-behavior-parameter-mapping)))
@@ -397,11 +397,11 @@
   {:added "0.40.0"}
   [context dashboards]
   (let [dashboard-ids   (maybe-upsert-many! context Dashboard
-                          (for [dashboard dashboards]
-                            (-> dashboard
-                                (dissoc :dashboard_cards)
-                                (assoc :collection_id (:collection context)
-                                       :creator_id    @default-user))))
+                                            (for [dashboard dashboards]
+                                              (-> dashboard
+                                                  (dissoc :dashboard_cards)
+                                                  (assoc :collection_id (:collection context)
+                                                         :creator_id    @default-user))))
         dashboard-cards (map :dashboard_cards dashboards)
         ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
         ;; card_id could be resolved from the fully qualified name
@@ -418,12 +418,12 @@
                               (let [add-keys         [:dashboard_cards card-idx :visualization_settings]
                                     fixed-names      (m/map-vals #(concat add-keys %) unresolved)
                                     with-fixed-names (assoc with-viz ::unresolved-names fixed-names)]
-                               (-> acc
-                                   (update ::revisit (fn [revisit-map]
-                                                       (update revisit-map dash-idx #(cons with-fixed-names %))))
-                                   ;; index means something different here than in the Card case (it's actually the index
-                                   ;; of the dashboard)
-                                   (update ::revisit-index #(conj % dash-idx))))
+                                (-> acc
+                                    (update ::revisit (fn [revisit-map]
+                                                        (update revisit-map dash-idx #(cons with-fixed-names %))))
+                                    ;; index means something different here than in the Card case (it's actually the index
+                                    ;; of the dashboard)
+                                    (update ::revisit-index #(conj % dash-idx))))
                               (update acc ::process #(conj % with-viz)))))
         prep-init-acc   {::process [] ::revisit-index #{} ::revisit {}}
         filtered-cards  (reduce-kv
@@ -439,14 +439,14 @@
         dashcard-ids    (maybe-upsert-many! context DashboardCard (map #(dissoc % :series) proceed-cards))
         series-pairs    (map vector (map :series proceed-cards) dashcard-ids)]
     (maybe-upsert-many! context DashboardCardSeries
-      (for [[series dashboard-card-id] series-pairs
-            dashboard-card-series      series
-            :when (and dashboard-card-series dashboard-card-id)]
-        (-> dashboard-card-series
-            (assoc :dashboardcard_id dashboard-card-id)
-            (update :card_id fully-qualified-name->card-id))))
+                        (for [[series dashboard-card-id] series-pairs
+                              dashboard-card-series      series
+                              :when (and dashboard-card-series dashboard-card-id)]
+                          (-> dashboard-card-series
+                              (assoc :dashboardcard_id dashboard-card-id)
+                              (update :card_id fully-qualified-name->card-id))))
     (let [revisit-dashboards (map (partial nth dashboards) revisit-indexes)]
-      (if-not (empty? revisit-dashboards)
+      (when-not (empty? revisit-dashboards)
         (let [revisit-map    (::revisit filtered-cards)
               revisit-inf-fn (fn [[dash-idx dashcards]]
                                (format
@@ -496,7 +496,7 @@
             channel             channels
             :when pulse-id]
         (assoc channel :pulse_id pulse-id)))
-    (if-not (empty? revisit)
+    (when-not (empty? revisit)
       (let [revisit-info-map (group-by ::pulse-name revisit)]
         (log/infof "Unresolved references for pulses in collection %s; will reload after first pass complete:%n%s%n"
                    (or (:collection context) "root")
@@ -567,7 +567,7 @@
           (-> card
               :dataset_query
               :type
-              mbql.util/normalize-token
+              mbql.u/normalize-token
               (= :query)) resolve-card-dataset-query
           (-> card
               :dataset_query
@@ -612,8 +612,7 @@
      Card
      (for [card (slurp-many paths)] (resolve-card card (assoc context :mode :update)))
      touched-card-ids)
-
-    (if dummy-insert-cards
+    (when dummy-insert-cards
       (let [dummy-inserted-ids (maybe-upsert-many!
                                 context
                                 Card
@@ -650,7 +649,7 @@
 
 (defn- make-reload-fn [all-results]
   (let [all-fns (filter fn? all-results)]
-    (if-not (empty? all-fns)
+    (when (seq all-fns)
       (let [new-fns (doall all-fns)]
         (fn []
           (make-reload-fn (for [reload-fn new-fns]

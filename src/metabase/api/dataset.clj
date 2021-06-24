@@ -88,20 +88,20 @@
   [export-format :as {{:keys [query]} :params}]
   {query         su/JSONString
    export-format ExportFormat}
-  (let [{:keys [database] :as query} (json/parse-string query keyword)]
-    (let [query (-> (assoc query :async? true)
-                    (dissoc :constraints)
-                    (update :middleware #(-> %
-                                             (dissoc :add-default-userland-constraints? :js-int-to-string?)
-                                             (assoc :skip-results-metadata? true
-                                                    :format-rows? false))))
-          info  {:executed-by api/*current-user-id*
-                 :context     (export-format->context export-format)}]
-      (run-query-async
-       query
-       :export-format export-format
-       :context       (export-format->context export-format)
-       :qp-runner     qp/process-query-and-save-execution!))))
+  (let [{:keys [database] :as query} (json/parse-string query keyword)
+        query                        (-> (assoc query :async? true)
+                                         (dissoc :constraints)
+                                         (update :middleware #(-> %
+                                                                  (dissoc :add-default-userland-constraints? :js-int-to-string?)
+                                                                  (assoc :skip-results-metadata? true
+                                                                         :format-rows? false))))
+        info                         {:executed-by api/*current-user-id*
+                                      :context     (export-format->context export-format)}]
+    (run-query-async
+     query
+     :export-format export-format
+     :context       (export-format->context export-format)
+     :qp-runner     qp/process-query-and-save-execution!)))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------

@@ -4,7 +4,7 @@
             [clj-time.format :as time]
             [metabase.config :refer [local-process-uuid]])
   (:import org.apache.commons.lang3.exception.ExceptionUtils
-           [org.apache.logging.log4j.core Appender Filter Layout LogEvent LoggerContext]
+           [org.apache.logging.log4j.core Appender LogEvent LoggerContext]
            org.apache.logging.log4j.core.config.LoggerConfig
            org.apache.logging.log4j.LogManager))
 

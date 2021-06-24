@@ -5,7 +5,7 @@
             [metabase-enterprise.serialization.names :refer [fully-qualified-name]]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.util]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -39,32 +39,30 @@
 
 (defn- mbql-id->fully-qualified-name
   [mbql]
-  (-> mbql
-      mbql.normalize/normalize-tokens
-      (mbql.util/replace
-        ;; `integer?` guard is here to make the operation idempotent
-        [:field (id :guard integer?) opts]
-        [:field (fully-qualified-name Field id) (mbql-id->fully-qualified-name opts)]
+  (mbql.u/replace (mbql.normalize/normalize-tokens mbql)
+    ;; `integer?` guard is here to make the operation idempotent
+    [:field (id :guard integer?) opts]
+    [:field (fully-qualified-name Field id) (mbql-id->fully-qualified-name opts)]
 
-        ;; field-id is still used within parameter mapping dimensions
-        ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
-        [:field-id (id :guard integer?)]
-        [:field-id (fully-qualified-name Field id)]
+    ;; field-id is still used within parameter mapping dimensions
+    ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
+    [:field-id (id :guard integer?)]
+    [:field-id (fully-qualified-name Field id)]
 
-        ;; source-field is also used within parameter mapping dimensions
-        ;; example relevant clause - [:field 2 {:source-field 1}]
-        {:source-field (id :guard integer?)}
-        (assoc &match :source-field (fully-qualified-name Field id))
+    ;; source-field is also used within parameter mapping dimensions
+    ;; example relevant clause - [:field 2 {:source-field 1}]
+    {:source-field (id :guard integer?)}
+    (assoc &match :source-field (fully-qualified-name Field id))
 
-        [:metric (id :guard integer?)]
-        [:metric (fully-qualified-name Metric id)]
+    [:metric (id :guard integer?)]
+    [:metric (fully-qualified-name Metric id)]
 
-        [:segment (id :guard integer?)]
-        [:segment (fully-qualified-name Segment id)])))
+    [:segment (id :guard integer?)]
+    [:segment (fully-qualified-name Segment id)]))
 
 (defn- ids->fully-qualified-names
   [entity]
-  (mbql.util/replace entity
+  (mbql.u/replace entity
     mbql-entity-reference?
     (mbql-id->fully-qualified-name &match)
 

@@ -1,6 +1,7 @@
 (ns metabase.server.middleware.misc
   "Misc Ring middleware."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.api.common :as api]
             metabase.async.streaming-response
             [metabase.db :as mdb]
@@ -42,7 +43,7 @@
 (defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent] :as headers} :headers, :as request}]
   (when (and (mdb/db-is-set-up?)
              (not (public-settings/site-url))
-              api/*current-user* (or (nil? user-agent) ((complement clojure.string/includes?) user-agent "HealthChecker"))); Not setting URL if it's a healthcheck by ELB
+              api/*current-user* (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker"))); Not setting URL if it's a healthcheck by ELB
     (when-let [site-url (or origin x-forwarded-host host)]
       (log/info (trs "Setting Metabase site URL to {0}" site-url))
       (try

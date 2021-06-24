@@ -151,18 +151,17 @@
   [ip-addresses :- [s/Str]]
   (let [ip-addresses (set (filter u/ip-address? ip-addresses))]
     (when (seq ip-addresses)
-      (try
-        (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
-          (try
-            (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
-                                              :socket-timeout     gecode-ip-address-timeout-ms
-                                              :connection-timeout gecode-ip-address-timeout-ms})
-                               :body
-                               (json/parse-string true))]
-              (into {} (for [info response]
-                         [(:ip info) {:description (or (describe-location info)
-                                                       "Unknown location")
-                                      :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
-            (catch Throwable e
-              (log/error e (trs "Error geocoding IP addresses") {:url url})
-              nil)))))))
+      (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
+        (try
+          (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+                                            :socket-timeout     gecode-ip-address-timeout-ms
+                                            :connection-timeout gecode-ip-address-timeout-ms})
+                             :body
+                             (json/parse-string true))]
+            (into {} (for [info response]
+                       [(:ip info) {:description (or (describe-location info)
+                                                     "Unknown location")
+                                    :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+          (catch Throwable e
+            (log/error e (trs "Error geocoding IP addresses") {:url url})
+            nil))))))

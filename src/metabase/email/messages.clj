@@ -3,7 +3,6 @@
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [clojure.core.cache :as cache]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [java-time :as t]
@@ -40,20 +39,20 @@
   (alter-meta! #'stencil.core/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
-(def ^:private ^:const data-uri-svg-regex #"^data:image/svg\+xml;base64,(.*)$")
+;; (def ^:private ^:const data-uri-svg-regex #"^data:image/svg\+xml;base64,(.*)$")
 
-(defn- data-uri-svg? [url]
-  (re-matches data-uri-svg-regex url))
+;; (defn- data-uri-svg? [url]
+;;   (re-matches data-uri-svg-regex url))
 
-(defn- themed-image-url
-  [url color]
-  (try
-    (let [base64 (second (re-matches data-uri-svg-regex url))
-          svg    (u/decode-base64 base64)
-          themed (str/replace svg #"<svg\b([^>]*)( fill=\"[^\"]*\")([^>]*)>" (str "<svg$1$3 fill=\"" color "\">"))]
-      (str "data:image/svg+xml;base64," (u/encode-base64 themed)))
-  (catch Throwable e
-    url)))
+;; (defn- themed-image-url
+;;   [url color]
+;;   (try
+;;     (let [base64 (second (re-matches data-uri-svg-regex url))
+;;           svg    (u/decode-base64 base64)
+;;           themed (str/replace svg #"<svg\b([^>]*)( fill=\"[^\"]*\")([^>]*)>" (str "<svg$1$3 fill=\"" color "\">"))]
+;;       (str "data:image/svg+xml;base64," (u/encode-base64 themed)))
+;;   (catch Throwable e
+;;     url)))
 
 (defn- logo-url []
   (let [url   (public-settings/application-logo-url)
@@ -62,9 +61,10 @@
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
       ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
-      true                              nil
-      (data-uri-svg? url)               (themed-image-url url color)
-      :else                             url)))
+      :else                              nil
+      ;; (data-uri-svg? url)               (themed-image-url url color)
+      ;; :else                             url
+      )))
 
 (defn- button-style [color]
   (str "display: inline-block; "

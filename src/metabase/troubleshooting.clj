@@ -1,7 +1,7 @@
 (ns metabase.troubleshooting
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.java.jmx :as jmx]
-            [metabase.config :as mc]
+            [metabase.config :as config]
             [metabase.db :as mdb]
             [metabase.models.setting :as setting]
             [metabase.util.stats :as mus]
@@ -36,8 +36,8 @@
                                                   :version (.getDatabaseProductVersion metadata)}
                                     :jdbc-driver {:name    (.getDriverName metadata)
                                                   :version (.getDriverVersion metadata)}})
-   :run-mode                     (mc/config-kw :mb-run-mode)
-   :version                      mc/mb-version-info
+   :run-mode                     (config/config-kw :mb-run-mode)
+   :version                      config/mb-version-info
    :settings                     {:report-timezone (setting/get :report-timezone)}})
 
 (defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]

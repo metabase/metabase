@@ -56,13 +56,13 @@
                                  (merge {:executed-by pulse-creator-id
                                          :context     :pulse
                                          :card-id     card-id}
-                                        options))))]
-          (let [result (if pulse-creator-id
-                     (session/with-current-user pulse-creator-id
-                       (process-query))
-                     (process-query))]
-            {:card   card
-             :result result})))
+                                        options))))
+              result        (if pulse-creator-id
+                              (session/with-current-user pulse-creator-id
+                                (process-query))
+                              (process-query))]
+          {:card   card
+           :result result}))
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
 

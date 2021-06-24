@@ -63,13 +63,12 @@
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
   [max-age-seconds]
   {:pre [(number? max-age-seconds)]}
-  (do
-    (log/tracef "Purging old cache entries.")
-    (try
-      (db/simple-delete! QueryCache
-        :updated_at [:<= (seconds-ago max-age-seconds)])
-      (catch Throwable e
-        (log/error e (trs "Error purging old cache entries")))))
+  (log/tracef "Purging old cache entries.")
+  (try
+    (db/simple-delete! QueryCache
+      :updated_at [:<= (seconds-ago max-age-seconds)])
+    (catch Throwable e
+      (log/error e (trs "Error purging old cache entries"))))
   nil)
 
 (defn- save-results!

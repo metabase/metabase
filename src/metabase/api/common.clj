@@ -5,7 +5,7 @@
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
             [medley.core :as m]
-            [metabase.api.common.internal :refer :all]
+            [metabase.api.common.internal :as internal]
             [metabase.models.interface :as mi]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
@@ -224,8 +224,8 @@
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
 (defn- parse-defendpoint-args [[method route & more]]
-  (let [fn-name                (route-fn-name method route)
-        route                  (add-route-param-regexes route)
+  (let [fn-name                (internal/route-fn-name method route)
+        route                  (internal/add-route-param-regexes route)
         [docstr [args & more]] (u/optional string? more)
         [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)]
     (when-not docstr
@@ -237,7 +237,7 @@
      :fn-name     fn-name
      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
      ;; their API error messages
-     :docstr      (route-dox method route docstr args (m/map-vals eval arg->schema) body)
+     :docstr      (internal/route-dox method route docstr args (m/map-vals eval arg->schema) body)
      :args        args
      :arg->schema arg->schema
      :body        body}))
@@ -256,32 +256,32 @@
       ~@body)))
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
-;; e.g. `auto-parse`
+;; e.g. `internal/auto-parse`
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
 
-   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
-      `Integer/parseInt`
+   - calls [[metabase.api.common.internal/auto-parse]] to automatically parse certain args. e.g. `id` is converted
+     from `String` to `Integer` via `Integer/parseInt`
 
    -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
 
    -  sequentially applies specified annotation functions on args to validate them.
 
-   -  automatically calls `wrap-response-if-needed` on the result of `body`
+   - automatically calls [[metabase.api.common.internal/wrap-response-if-needed]] on the result of `body`
 
-   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
-      the function in the generated `defroutes` form.
+   - tags function's metadata in a way that subsequent calls to [[metabase.api.common/define-routes]] (see below) will
+     automatically include the function in the generated `defroutes` form.
 
    -  Generates a super-sophisticated Markdown-formatted docstring"
   {:arglists '([method route docstr? args schemas-map? & body])}
   [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
-                           :body `((auto-parse ~args
-                                     ~@(validate-params arg->schema)
-                                     (wrap-response-if-needed
-                                      (do ~@body))))))))
+                           :body `((internal/auto-parse ~args
+                                                       ~@(internal/validate-params arg->schema)
+                                                       (internal/wrap-response-if-needed
+                                                        (do ~@body))))))))
 
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
@@ -291,7 +291,7 @@
     `(defendpoint* ~(assoc defendpoint-args
                            :args []
                            :body `((fn ~args
-                                     ~@(validate-params arg->schema)
+                                     ~@(internal/validate-params arg->schema)
                                      ~@body))))))
 
 (defn- namespace->api-route-fns
@@ -313,8 +313,9 @@
           (u/pprint-to-str middleware)))))
 
 (defmacro define-routes
-  "Create a `(defroutes routes ...)` form that automatically includes all functions created with `defendpoint` in the
-  current namespace. Optionally specify middleware that will apply to all of the endpoints in the current namespace.
+  "Create a `(defroutes routes ...)` form that automatically includes all functions created
+  with [[metabase.api.common/defendpoint]] in the current namespace. Optionally specify middleware that will apply to
+  all of the endpoints in the current namespace.
 
      (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
   {:style/indent 0}
@@ -364,9 +365,9 @@
    (read-check (apply db/select-one entity :id id other-conditions))))
 
 (defn write-check
-  "Check whether we can write an existing OBJ, or ENTITY with ID.
-   If the object doesn't exist, throw a 404; if we don't have proper permissions, throw a 403.
-   This will fetch the object if it was not already fetched, and returns OBJ if the check is successful."
+  "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
+  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
+  `obj` if the check is successful."
   {:style/indent 2}
   ([obj]
    (check-404 obj)
@@ -422,10 +423,8 @@
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
   [limit offset]
-  (do
-    (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
-    (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")])
-    ))
+  (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
+  (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")]))
 
 
 (s/defn column-will-change? :- s/Bool

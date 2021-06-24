@@ -34,8 +34,7 @@
       0
       (if (empty? source-query)
         clause
-        (do
-          (recur field source-query clause)))
+        (recur field source-query clause))
 
       ;; if there are multiple candidates, try ignoring the implicit ones
       ;; presence of `:fk-field-id` indicates that the join was implicit, as the result of an `fk->` form

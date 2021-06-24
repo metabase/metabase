@@ -201,7 +201,7 @@
       (first (jdbc/query (db/connection) (cons sql params))))))
 
 (defn- merge-current-user-info
-  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]9
+  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]
   (merge
    request
    (current-user-info-for-session metabase-session-id anti-csrf-token)

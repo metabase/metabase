@@ -143,17 +143,20 @@
     (let [database-id (u/the-id db-or-id-or-spec)
           get-fn      (fn [db-id log-tunnel-check]
                         (when-let [details (get @database-id->connection-pool db-id)]
-                          (cond (nil? (:tunnel-session details))
-                                ;; no tunnel in use; valid
-                                details
-                                (ssh/ssh-tunnel-open? details)
-                                ;; tunnel in use, and open; valid
-                                details
-                                :default
-                                ;; tunnel in use, and not open; invalid
-                                (do (when log-tunnel-check
-                                      (log-ssh-tunnel-reconnect-msg! db-id))
-                                    nil))))]
+                          (cond
+                            ;; no tunnel in use; valid
+                            (nil? (:tunnel-session details))
+                            details
+
+                            ;; tunnel in use, and open; valid
+                            (ssh/ssh-tunnel-open? details)
+                            details
+
+                            :else
+                            ;; tunnel in use, and not open; invalid
+                            (do (when log-tunnel-check
+                                  (log-ssh-tunnel-reconnect-msg! db-id))
+                                nil))))]
       (or
        ;; we have an existing pool for this database, so use it
        (get-fn database-id true)

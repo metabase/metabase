@@ -7,6 +7,7 @@
             [schema.core :as s]))
 
 (s/defn ^:internal-query-fn details
+  "Details about a specific query (currently just average execution time)."
   [query-hash :- su/NonBlankString]
   {:metadata [[:query                  {:display_name "Query",                :base_type :type/Dictionary}]
               [:average_execution_time {:display_name "Avg. Exec. Time (ms)", :base_type :type/Number}]]

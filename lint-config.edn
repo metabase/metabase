@@ -1,9 +1,111 @@
-^:replace
-{:linters {:missing-else-branch          {:level :warn}
-           :misplaced-docstring          {:level :warn}
-           :missing-body-in-when         {:level :warn}
-           :missing-docstring            {:level :warn}
-           :refer-all                    {:level   :warn
+;; Run clj-kondo with something like
+;;
+;;    clj-kondo --parallel --lint src/ shared/src enterprise/backend/src --config lint-config.edn
+;;
+;; To find the warnings that are actually causing the linter to fail:
+;;
+;;    clj-kondo ... | grep warning
+;;
+;; `:warn`    => Print a warning but don't fail
+;; `:warning` => Print a warning and DO fail
+{:linters {:consistent-alias             {:level   :warning
+                                          :aliases {
+                                                    ;; metabase.util.i18n                i18n
+                                                    cheshire.core                      json
+                                                    metabase.mbql.schema mbql.s
+                                                    metabase.driver.common driver.common
+                                                    clojure.core.cache                 cache
+                                                    clojure.java.io                    io
+                                                    clojure.string                     str
+                                                    clojure.tools.logging              log
+                                                    environ.core                       env
+                                                    honeysql.core                      hsql
+                                                    java-time                          t
+                                                    medley.core                        m
+                                                    metabase.api.common                api
+                                                    metabase.config                    config
+                                                    metabase.db                        mdb
+                                                    metabase.driver                    driver
+                                                    metabase.driver.util               driver.u
+                                                    metabase.mbql.util                 mbql.u
+                                                    metabase.models.collection.root    collection.root
+                                                    metabase.models.setting            setting
+                                                    metabase.plugins.classloader       classloader
+                                                    metabase.public-settings           public-settings
+                                                    metabase.query-processor.reducible qp.reducible
+                                                    metabase.query-processor.store     qp.store
+                                                    metabase.server                    server
+                                                    metabase.server.handler            handler
+                                                    metabase.setup                     setup
+                                                    metabase.task                      task
+                                                    metabase.test                      mt
+                                                    metabase.util                      u
+                                                    metabase.util.date-2               u.date
+                                                    metabase.util.honeysql-extensions  hx
+                                                    metabase.util.schema               su
+                                                    potemkin                           p
+                                                    potemkin.types                     p.types
+                                                    schema.core                        s
+                                                    stencil.core                       stencil
+                                                    toucan.db                          db
+                                                    }}
+           :deprecated-var               {:level :warn}
+           ;; off for now since this has false positives for stuff like the match macros -- see
+           ;; https://github.com/clj-kondo/clj-kondo/issues/1304
+           :invalid-arity                {:level :off}
+           :missing-else-branch          {:level :warning}
+           :misplaced-docstring          {:level :warning}
+           :missing-body-in-when         {:level :warning}
+           :missing-docstring            {:level :warning}
+           :refer-all                    {:level   :warning
                                           :exclude [clojure.test]}
-           :unsorted-required-namespaces {:level :warn}
-           :use                          {:level :warn}}}
+           :shadowed-var                 {:level :warn}
+           :unsorted-required-namespaces {:level :warning}
+           :unresolved-symbol            {:level   :off
+                                          :exclude [(clojure.core.logic/fresh)
+                                                    (clojure.core.logic/matcha)
+                                                    (clojure.core.logic/matche)
+                                                    (clojure.core.logic/run)
+                                                    (clojure.core.logic/run1)
+                                                    (metabase.api.common/defendpoint)
+                                                    (metabase.api.common/defendpoint-async)
+                                                    (metabase.async.streaming-response/streaming-response)
+                                                    (metabase.db.liquibase/with-liquibase)
+                                                    (metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info)
+                                                    (metabase.integrations.ldap/with-ldap-connection)
+                                                    (metabase.mbql.util.match/match)
+                                                    (metabase.mbql.util.match/match-one)
+                                                    (metabase.mbql.util.match/replace)
+                                                    (metabase.mbql.util.match/replace-in)
+                                                    (metabase.mbql.util/match)
+                                                    (metabase.mbql.util/match-one)
+                                                    (metabase.mbql.util/replace)
+                                                    (metabase.mbql.util/replace-in)
+                                                    (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
+                                                    (metabase.query-processor.streaming/streaming-response)
+                                                    (metabase.util.regex/rx [opt or and])
+                                                    (metabase.util/prog1 [<>])
+                                                    (toucan.db/with-call-counting)]}
+           :unused-binding               {:level :warn}
+           :use                          {:level :warning}}
+
+ :lint-as
+ {clojure.core.async/go-loop                                 clojure.core/loop
+  clojurewerkz.quartzite.jobs/defjob                         clj-kondo.lint-as/def-catch-all
+  compojure.core/defroutes                                   clojure.core/def
+  metabase.api.common/define-routes                          clojure.core/vector
+  metabase.db.data-migrations/defmigration                   clj-kondo.lint-as/def-catch-all
+  metabase.mbql.schema.macros/defclause                      clj-kondo.lint-as/def-catch-all
+  metabase.models.setting.multi-setting/define-multi-setting clj-kondo.lint-as/def-catch-all
+  metabase.models.setting/defsetting                         clj-kondo.lint-as/def-catch-all
+  metabase.query-processor.error-type/deferror               clj-kondo.lint-as/def-catch-all
+  metabase.sync.util/sum-for                                 clojure.core/for
+  metabase.sync.util/with-emoji-progress-bar                 clojure.core/let
+  metabase.util.files/with-open-path-to-resource             clojure.core/let
+  potemkin.types/defprotocol+                                clojure.core/defprotocol
+  potemkin.types/defrecord+                                  clojure.core/defrecord
+  potemkin.types/deftype+                                    clojure.core/deftype
+  potemkin/defprotocol+                                      clojure.core/defprotocol
+  potemkin/defrecord+                                        clojure.core/defrecord
+  potemkin/deftype+                                          clojure.core/deftype
+  toucan.models/defmodel                                     clj-kondo.lint-as/def-catch-all}}

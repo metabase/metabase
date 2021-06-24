@@ -1,6 +1,7 @@
 (ns metabase.api.user
   "/api/user endpoints"
   (:require [cemerick.friend.credentials :as creds]
+            [clojure.string :as str]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
@@ -81,7 +82,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (str "%" (clojure.string/lower-case query) "%"))
+(defn- wildcard-query [query] (str "%" (str/lower-case query) "%"))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"

@@ -15,7 +15,7 @@
 
 (defn- hash-image-url
   "Generate a hash to be used in a Content-ID"
-  [^java.net.URL url]
+  [^URL url]
   (-> url io/input-stream IOUtils/toByteArray hash-bytes))
 
 (defn- content-id-reference [content-id]
@@ -47,8 +47,8 @@
   (fn [render-type url-or-bytes]
     [render-type (class url-or-bytes)]))
 
-(defmethod make-image-bundle [:attachment java.net.URL]
-  [render-type, ^java.net.URL url]
+(defmethod make-image-bundle [:attachment URL]
+  [render-type, ^URL url]
   (let [content-id (mb-hash-str (hash-image-url url))]
     {:content-id  content-id
      :image-url   url
@@ -64,8 +64,8 @@
      :image-src   (content-id-reference content-id)
      :render-type render-type}))
 
-(defmethod make-image-bundle [:inline java.net.URL]
-  [render-type, ^java.net.URL url]
+(defmethod make-image-bundle [:inline URL]
+  [render-type, ^URL url]
   {:image-src   (-> url io/input-stream IOUtils/toByteArray render-img-data-uri)
    :image-url   url
    :render-type render-type})

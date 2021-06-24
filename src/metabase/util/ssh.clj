@@ -11,7 +11,6 @@
            org.apache.sshd.client.SshClient
            [org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$ResourceDecodeResult]
            [org.apache.sshd.common.session
-            SessionHeartbeatController
             SessionHeartbeatController$HeartbeatType
             SessionHolder]
            org.apache.sshd.common.util.GenericUtils
@@ -151,15 +150,18 @@
 
 (defmethod driver/incorporate-ssh-tunnel-details :sql-jdbc
   [_ db-details]
-  (cond (not (use-ssh-tunnel? db-details))
-        ;; no ssh tunnel in use
-        db-details
-        (ssh-tunnel-open? db-details)
-        ;; tunnel in use, and is open
-        db-details
-        :default
-        ;; tunnel in use, and is not open
-        (include-ssh-tunnel! db-details)))
+  (cond
+    ;; no ssh tunnel in use
+    (not (use-ssh-tunnel? db-details))
+    db-details
+
+    ;; tunnel in use, and is open
+    (ssh-tunnel-open? db-details)
+    db-details
+
+    ;; tunnel in use, and is not open
+    :else
+    (include-ssh-tunnel! db-details)))
 
 (defn close-tunnel!
   "Close a running tunnel session"

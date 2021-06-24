@@ -15,8 +15,7 @@
             [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import org.joda.time.DateTime))
+            [toucan.db :as db]))
 
 (declare notify-database-updated)
 

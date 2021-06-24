@@ -65,7 +65,7 @@
   []
   ;; override env var that would normally make Jetty block forever
   (classloader/require 'environ.core 'metabase.core)
-  (alter-var-root #'environ.core/env assoc :mb-jetty-join "false")
+  (alter-var-root (resolve 'environ.core/env) assoc :mb-jetty-join "false")
   (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password

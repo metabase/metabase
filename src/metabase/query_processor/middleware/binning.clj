@@ -198,11 +198,11 @@
                                                                     (get binning (:strategy binning))
                                                                     metadata
                                                                     min-value max-value)
-        resolved-options                           (merge min-max resolved-options)]
-    ;; Bail out and use unmodifed version if we can't converge on a nice version.
-    (let [new-options (or (nicer-breakout new-strategy resolved-options)
-                          resolved-options)]
-      [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)])))
+        resolved-options                           (merge min-max resolved-options)
+        ;; Bail out and use unmodifed version if we can't converge on a nice version.
+        new-options                                (or (nicer-breakout new-strategy resolved-options)
+                                                       resolved-options)]
+    [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)]))
 
 (defn update-binning-strategy-in-inner-query
   "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."

@@ -1,7 +1,7 @@
 (ns metabase.config
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [environ.core :as environ]
+            [environ.core :as env]
             [metabase.plugins.classloader :as classloader])
   (:import clojure.lang.Keyword
            java.util.UUID))
@@ -56,7 +56,7 @@
    3.  hard coded `app-defaults`"
   [k]
   (let [k       (keyword k)
-        env-val (k environ/env)]
+        env-val (k env/env)]
     (or (when-not (str/blank? env-val) env-val)
         (k app-defaults))))
 

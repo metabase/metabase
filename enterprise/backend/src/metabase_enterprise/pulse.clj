@@ -1,8 +1,7 @@
 (ns metabase-enterprise.pulse
   (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase.public-settings.metastore :as settings.metastore]
-            [metabase.pulse.interface :as i])
-  (:import metabase.pulse.interface.SubscriptionParameters))
+            [metabase.pulse.interface :as i]))
 
 (def parameters-impl
   "Blend parameters from dashboard subscription and the dashboard itself"
