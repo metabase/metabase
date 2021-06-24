@@ -72,7 +72,7 @@ describe("binning related reproductions", () => {
     cy.findByText("User → Created At: Minute");
   });
 
-  it.skip("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
+  it("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
     cy.createNativeQuestion({
       name: "16327",
       native: { query: "select * from products limit 5" },

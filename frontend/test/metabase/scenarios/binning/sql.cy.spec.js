@@ -33,7 +33,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.wait("@dataset");
     });
 
-    it.skip("should work for time series", () => {
+    it("should work for time series", () => {
       cy.findByTestId("sidebar-right").within(() => {
         /*
          * If `result_metadata` is not loaded (SQL question is not run before saving),
