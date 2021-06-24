@@ -65,4 +65,4 @@ Next, in the Auth0 Addon: SAML2 Web App popup, click on the **Usage** tab and th
 
 The SAML Application Name" value can be left as the default one (Metabase).
 
-Click in Save and enable SAML in Metabase with the toggle in the top of the page and you are good to go!
+Save your settings. Then enable SAML(authenticating-with-saml.html#turning-on-saml-based-sso) in Metabase, and you should be good to go!
