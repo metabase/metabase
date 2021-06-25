@@ -606,7 +606,7 @@ export default class Question {
     return this;
   }
 
-  _syncNativeQuerySettings({ data: { cols = [] } = {} } = {}) {
+  _syncNativeQuerySettings({ data: { cols = [] } = {} }) {
     const vizSettings = this.setting("table.columns") || [];
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
@@ -631,7 +631,7 @@ export default class Question {
 
   syncColumnsAndSettings(previous, queryResults) {
     const query = this.query();
-    if (query instanceof NativeQuery) {
+    if (query instanceof NativeQuery && queryResults) {
       return this._syncNativeQuerySettings(queryResults);
     }
     const previousQuery = previous && previous.query();
