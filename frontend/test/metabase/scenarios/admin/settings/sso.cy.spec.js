@@ -6,13 +6,17 @@ describe("scenarios > admin > settings > SSO", () => {
     cy.signInAsAdmin();
   });
 
-  it("Google sign-in client ID should save on subsequent tries (metabase#15974)", () => {
-    cy.visit("/admin/settings/authentication/google");
-    cy.findByLabelText("Client ID").type("123");
-    saveSettings();
+  describe("Google", () => {
+    beforeEach(() => {});
 
-    cy.findByDisplayValue("123").type("456");
-    saveSettings();
+    it("Google sign-in client ID should save on subsequent tries (metabase#15974)", () => {
+      cy.visit("/admin/settings/authentication/google");
+      cy.findByLabelText("Client ID").type("123");
+      saveSettings();
+
+      cy.findByDisplayValue("123").type("456");
+      saveSettings();
+    });
   });
 
   describe("LDAP", () => {
