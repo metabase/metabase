@@ -53,7 +53,7 @@ If you need to set additional user properties, you can always return to this ste
 ### Configuring Metabase
 Next, in the Auth0 Addon: SAML2 Web App popup, click on the **Usage** tab and then configure in Metabase (column on the left) the values that this tab provides (column on the right)
 
-[!Auth0 SAML usage](images/saml-auth0/auth0samlusage.png)
+![Auth0 SAML usage](images/saml-auth0/auth0samlusage.png)
 
 ---
 | Metabase | Auth0 |
@@ -65,4 +65,4 @@ Next, in the Auth0 Addon: SAML2 Web App popup, click on the **Usage** tab and th
 
 The SAML Application Name" value can be left as the default one (Metabase).
 
-Save your settings. Then enable SAML(authenticating-with-saml.html#turning-on-saml-based-sso) in Metabase, and you should be good to go!
+Save your settings. Then [enable SAML](authenticating-with-saml.md) in Metabase, and you should be good to go!
