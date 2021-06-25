@@ -1,24 +1,25 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import cx from "classnames";
 
+const timeGroupingPopoverPropTypes = {
+  title: PropTypes.string,
+  className: PropTypes.string,
+  dimension: PropTypes.object.isRequired,
+  onChangeDimension: PropTypes.func.isRequired,
+};
+
+const timeGroupingPopoverDefaultProps = {
+  title: t`Group time by`,
+};
+
 export default class TimeGroupingPopover extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {};
   }
-
-  static propTypes = {
-    dimension: PropTypes.object.isRequired,
-    onChangeDimension: PropTypes.func.isRequired,
-  };
-
-  static defaultProps = {
-    title: t`Group time by`,
-  };
 
   render() {
     const { title, className, dimension, onChangeDimension } = this.props;
@@ -47,3 +48,6 @@ export default class TimeGroupingPopover extends Component {
     );
   }
 }
+
+TimeGroupingPopover.propTypes = timeGroupingPopoverPropTypes;
+TimeGroupingPopover.defaultProps = timeGroupingPopoverDefaultProps;
