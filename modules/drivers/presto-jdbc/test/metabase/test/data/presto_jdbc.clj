@@ -12,24 +12,26 @@
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl])
-  (:import java.sql.DriverManager))
+  (:import [java.sql Connection DriverManager PreparedStatement]))
 
 (sql-jdbc.tx/add-test-extensions! :presto-jdbc)
 
 ;; during unit tests don't treat presto as having FK support
 (defmethod driver/supports? [:presto-jdbc :foreign-keys] [_ _] (not config/is-test?))
 
-(doseq [[base-type db-type] {:type/BigInteger     "BIGINT"
-                             :type/Boolean        "BOOLEAN"
-                             :type/Date           "DATE"
-                             :type/DateTime       "TIMESTAMP"
-                             :type/DateTimeWithTZ "TIMESTAMP WITH TIME ZONE"
-                             :type/Decimal        "DECIMAL"
-                             :type/Float          "DOUBLE"
-                             :type/Integer        "INTEGER"
-                             :type/Text           "VARCHAR"
-                             :type/Time           "TIME"
-                             :type/TimeWithTZ     "TIME WITH TIME ZONE"}]
+(doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
+                             :type/Boolean                "BOOLEAN"
+                             :type/Date                   "DATE"
+                             :type/DateTime               "TIMESTAMP"
+                             :type/DateTimeWithTZ         "TIMESTAMP WITH TIME ZONE"
+                             :type/DateTimeWithZoneID     "TIMESTAMP WITH TIME ZONE"
+                             :type/DateTimeWithZoneOffset "TIMESTAMP WITH TIME ZONE"
+                             :type/Decimal                "DECIMAL"
+                             :type/Float                  "DOUBLE"
+                             :type/Integer                "INTEGER"
+                             :type/Text                   "VARCHAR"
+                             :type/Time                   "TIME"
+                             :type/TimeWithTZ             "TIME WITH TIME ZONE"}]
   (defmethod sql.tx/field-base-type->sql-type [:presto-jdbc base-type] [_ _] db-type))
 
 ;; in the past, we had to manually update our Docker image and add a new catalog for every new dataset definition we
@@ -55,8 +57,6 @@
 (defmethod execute/execute-sql! :presto-jdbc
   [& args]
   (apply execute/sequentially-execute-sql! args))
-
-(remove-method load-data/load-data! :presto-jdbc)
 
 (defn- load-data [dbdef tabledef]
   ;; the JDBC driver statements fail with a cryptic status 500 error if there are too many
@@ -84,7 +84,7 @@
   "This is to work around some weird interplay between clojure.java.jdbc caching behavior of connections based on URL,
   combined with the fact that the Presto driver apparently closes the connection when it closes a prepare statement.
   Therefore, create a fresh connection from the DriverManager."
-  [jdbc-spec]
+  ^Connection [jdbc-spec]
   (DriverManager/getConnection (format "jdbc:%s:%s" (:subprotocol jdbc-spec) (:subname jdbc-spec))
     (connection-pool/map->properties (select-keys jdbc-spec [:user :SSL]))))
 
@@ -94,7 +94,7 @@
     (with-open [conn (jdbc-spec->connection spec)]
       (doseq [[^String sql & params] statements]
         (try
-          (with-open [stmt (.prepareStatement conn sql)]
+          (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
             (sql-jdbc.execute/set-parameters! driver stmt params)
             (let [tbl-nm        ((comp last :components) (into {} table-identifier))
                   rows-affected (.executeUpdate stmt)]

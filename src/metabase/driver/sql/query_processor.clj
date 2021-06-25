@@ -68,18 +68,6 @@
   additional keys there and need to access them."
   nil)
 
-(def ^:dynamic *parent-expr-type-info*
-  "Bound to the type info (i.e. result of calling (hx/type-info expr)) of a parent expression. Useful if a child
-  expression needs to vary its behavior according to the parent's type. Rebind as necessary when expanding complex
-  expressions.
-
-  Example: in Presto, checkins.date AT TIME ZONE 'America/Los_Angeles' is not allowed, because that column is of
-  type 'date', and the 'AT TIME ZONE' operator can only be invoked on types 'timestamp with time zone' and 'time
-  with time zone'. However, if a date bucketing expression is being expanded, the innermost ->honeysql form may
-  not have access to the original column's type info (since it's actually inside a SQL call to add or subtract dates,
-  etc."
-  nil)
-
 (p.types/deftype+ SQLSourceQuery [sql params]
   hformat/ToSql
   (to-sql [_]
@@ -112,7 +100,8 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti current-datetime-honeysql-form
-  "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`."
+  "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
+  include the database type info on the form (ex: via `hx/with-type-info`)."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -120,17 +109,6 @@
 (defmethod current-datetime-honeysql-form :sql
   [driver]
   :%now)
-
-(defmulti current-datetime-base-type
-  "Field :base-type that is returned by the DB specific \"current datetime\" HSQL form
-  (i.e. `current-datetime-honeysql-form`).  Defaults to `:type/DateTime`."
-  {:arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod current-datetime-base-type :default
-  [_]
-  :type/DateTime)
 
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
@@ -147,8 +125,7 @@
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetics
-  (binding [*parent-expr-type-info* (hx/type-info expr)]
-    (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)])))
+  (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.

@@ -271,15 +271,11 @@
                (run-venues-count-query)))))
 
     (testing "Make sure that you can still use a SQL-based GTAP without needing to have SQL read perms for the Database"
-      (let [exp (if (= driver/*driver* :oracle)
-                    [[1M "Red Medicine"]
-                     [2M "Stout Burgers & Beers"]] ;; Oracle returns the IDs as BigDecimal for some reason
-                    [[1 "Red Medicine"]
-                     [2 "Stout Burgers & Beers"]])]
-        (is (= exp
-               (mt/rows
-                 (mt/with-gtaps {:gtaps {:venues (venue-names-native-gtap-def)}}
-                   (mt/run-mbql-query venues {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]})))))))
+      (is (= [[1 "Red Medicine"]
+              [2 "Stout Burgers & Beers"]]
+             (mt/formatted-rows [int str]
+               (mt/with-gtaps {:gtaps {:venues (venue-names-native-gtap-def)}}
+                 (mt/run-mbql-query venues {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))))
 
     (testing (str "When no card_id is included in the GTAP, should default to a query against the table, with the GTAP "
                   "criteria applied")
@@ -332,11 +328,12 @@
 
 (defn- row-level-restrictions-fk-drivers
   "Drivers to test row-level restrictions against foreign keys with. Includes BigQuery, which for whatever reason does
-  not normally have FK tests ran for it."
+  not normally have FK tests ran for it. Excludes Presto JDBC, because that driver does NOT support fetching foreign
+  keys from the JDBC metadata, even though we enable the feature in the UI."
   []
   (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (@tx.env/test-drivers :bigquery) (conj :bigquery)
-    :always                          (disj :presto-jdbc)))
+    true                             (disj :presto-jdbc)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -920,10 +917,12 @@
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
-  ;; sample-dataset doesn't work on Redshift yet -- see #14784
   (mt/test-drivers (disj
                      (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
+                     ;; sample-dataset doesn't work on Redshift yet -- see #14784
                      :redshift
+                     ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
+                     ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
                      :presto-jdbc)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset sample-dataset

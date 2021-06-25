@@ -21,6 +21,7 @@
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor-test :as sql.qp.test]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -30,7 +31,8 @@
             [metabase.util.date-2 :as u.date]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.util.honeysql-extensions :as hx])
   (:import [java.time LocalDate LocalDateTime]
            [org.joda.time DateTime DateTimeZone]))
 
@@ -848,16 +850,22 @@
   (pretty [_]
     (list 'TimestampDatasetDef. intervalSeconds)))
 
+(defn- driver->current-datetime-base-type
+  "Returns the :base-type of the \"current timestamp\" HoneySQL form defined by the driver `d`. Relies upon the driver
+  implementation having set that explicitly via `hx/with-type-info`."
+  [d]
+  (when (isa? driver/hierarchy driver/*driver* :sql)
+    (sql-jdbc.sync/database-type->base-type d (-> (sql.qp/current-datetime-honeysql-form d)
+                                                  hx/type-info
+                                                  hx/type-info->db-type))))
+
 (defmethod mt/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)]
     (mt/dataset-definition (str "checkins_interval_" interval-seconds)
       ["checkins"
        [{:field-name "timestamp"
-         :base-type  (if-let [d driver/*driver*]
-                       ;; unsure why this hack is needed; sometimes driver/*driver* is nil
-                       (sql.qp/current-datetime-base-type d)
-                       :type/DateTime)}]
+         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
        (vec (for [i (range -15 15)]
               ;; TIMESTAMP FIXME — not sure if still needed
               ;;
@@ -1032,7 +1040,6 @@
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  ;; TODO: somehow this is getting turned into timestamp '2019-01-16 00:00 UTC'
                   :filter      [:= [:field $timestamp nil] "2019-01-16"]}))))
 
       (testing "Check that automatic bucketing still happens when using compound filter clauses (#9127)"
@@ -1081,9 +1088,15 @@
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
     (mt/test-drivers (mt/normal-drivers)
       (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
-        (testing (format "\nunit = %s" unit)
-          (is (= expected-count (count-of-checkins unit filter-value))
-              (format "count of rows where (= (%s date) %s) should be %d" (name unit) filter-value expected-count)))))))
+        (doseq [tz [nil "UTC"]] ;iterate on at least two report time zones to suss out bugs related to that
+          (mt/with-temporary-setting-values [report-timezone tz]
+            (testing (format "\nunit = %s" unit)
+              (is (= expected-count (mt/with-log-level :trace (count-of-checkins unit filter-value)))
+                  (format
+                    "count of rows where (= (%s date) %s) should be %d"
+                    (name unit)
+                    filter-value
+                    expected-count)))))))))
 
 (deftest legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "

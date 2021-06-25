@@ -172,12 +172,12 @@
 (defmethod sql.qp/date [:presto-common :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 
 (defmethod sql.qp/date [:presto-common :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :presto-common (hsql/call :day_of_week expr)))
+  [driver _ expr]
+  (sql.qp/adjust-day-of-week driver (hsql/call :day_of_week expr)))
 
 (defmethod sql.qp/date [:presto-common :week]
-  [_ _ expr]
-  (sql.qp/adjust-start-of-week :presto-common (partial hsql/call :date_trunc (hx/literal :week)) expr))
+  [driver _ expr]
+  (sql.qp/adjust-start-of-week driver (partial hsql/call :date_trunc (hx/literal :week)) expr))
 
 (defmethod sql.qp/date [:presto-common :month]           [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
 (defmethod sql.qp/date [:presto-common :month-of-year]   [_ _ expr] (hsql/call :month expr))

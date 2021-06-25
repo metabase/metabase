@@ -36,6 +36,8 @@
 ;;; |                                          Custom HoneySQL Clause Impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private ^:const timestamp-with-time-zone-db-type "timestamp with time zone")
+
 (defmethod sql.qp/->honeysql [:presto-jdbc :log]
   [driver [_ field]]
   ;; recent Presto versions have a `log10` function (not `log`)
@@ -54,12 +56,15 @@
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ZonedDateTime]
   [_ ^ZonedDateTime t]
-  ;; use the Presto `from_iso8601_timestamp` function to interpret in the correct TZ, regardless of connection zone
-  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
-        ;; shift the time zone to the report time zone, if available
-        ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
-    ;; the ISO_INSTANT formatter will convert to UTC and output in ISO 8601 format
-    (hsql/call "from_iso8601_timestamp" (.format ts DateTimeFormatter/ISO_INSTANT))))
+  ;; use the Presto cast to `timestamp with time zone` operation to interpret in the correct TZ, regardless of
+  ;; connection zone
+  (hx/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc OffsetDateTime]
+  [_ ^OffsetDateTime t]
+  ;; use the Presto cast to `timestamp with time zone` operation to interpret in the correct TZ, regardless of
+  ;; connection zone
+  (hx/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
 
 (defrecord AtTimeZone
   ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
@@ -76,14 +81,15 @@
   [expr]
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
         ;; if the expression itself has type info, use that, or else use a parent expression's type info if defined
-        type-info   (or (hx/type-info expr) sql.qp/*parent-expr-type-info*)
+        type-info   (hx/type-info expr)
         db-type     (hx/type-info->db-type type-info)]
-    ;; it should never apply to `date`, `timestamp`, or `time` Presto types, since those do not support the notion
-    ;; of a timezone (and the query will fail if you try)
-    (if (and (not (contains? #{"date" "timestamp" "time"} db-type))
+    (if (and ;; AT TIME ZONE is only valid on these Presto types; if applied to something else (ex: `date`), then
+             ;; an error will be thrown by the query analyzer
+             (contains? #{"timestamp" "timestamp with time zone" "time" "time with time zone"} db-type)
+             ;; if one has already been set, don't do so again
              (not (::in-report-zone? (meta expr)))
              report-zone)
-      (-> (hx/with-database-type-info (->AtTimeZone expr report-zone) "timestamp with time zone")
+      (-> (hx/with-database-type-info (->AtTimeZone expr report-zone) timestamp-with-time-zone-db-type)
         (vary-meta assoc ::in-report-zone? true))
       expr)))
 
@@ -164,14 +170,14 @@
                (hsql/call :from_unixtime (hsql/call :/ expr 1000) (hx/literal "UTC")))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :microseconds]
-  [_ _ expr]
+  [driver _ expr]
   ;; Presto can't even represent microseconds, so convert to millis and call that version
-  (sql.qp/unix-timestamp->honeysql :presto-jdbc :milliseconds (hsql/call :/ expr 1000)))
+  (sql.qp/unix-timestamp->honeysql driver :milliseconds (hsql/call :/ expr 1000)))
 
-(defmethod sql.qp/current-datetime-base-type :presto-jdbc
+(defmethod sql.qp/current-datetime-honeysql-form :presto-jdbc
   [_]
-  ;; in Presto, `now()` returns the current instant as `timestamp with time zone` type
-  :type/DateTimeWithTZ)
+  ;; the current_timestamp in Presto returns a `timestamp with time zone`, so this needs to be overridden
+  (hx/with-type-info :%now {::hx/database-type timestamp-with-time-zone-db-type}))
 
 (defmethod hformat/fn-handler (u/qualified-name ::mod)
   [_ x y]
@@ -319,15 +325,11 @@
   (let [stmt (.createStatement conn
                                ResultSet/TYPE_FORWARD_ONLY
                                ResultSet/CONCUR_READ_ONLY)]
-       (try
-         (try
-           (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
-           (catch Throwable e
-             (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
-         stmt
-         (catch Throwable e
-           (.close stmt)
-           (throw e)))))
+    (try
+      (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+      (catch Throwable e
+        (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+    stmt))
 
 (defmethod driver/can-connect? :sql-jdbc
   [driver details]
@@ -359,17 +361,17 @@
         (.close conn)
         (throw e)))))
 
-(defmethod sql-jdbc.execute/set-parameter [:presto-jdbc OffsetDateTime]
-  [_ prepared-statement i ^OffsetDateTime t]
-  ;; necessary because `PrestoPreparedStatement` does not support `OffsetDateTime` in its setObject method
-  ;; convert to a SQL `timestamp` at UTC (offset 0), and set that
-  (jdbc/set-parameter (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0))) prepared-statement i))
+#_(defmethod sql-jdbc.execute/set-parameter [:presto-jdbc OffsetDateTime]
+    [_ prepared-statement i ^OffsetDateTime t]
+    ;; necessary because `PrestoPreparedStatement` does not support `OffsetDateTime` in its setObject method
+    ;; convert to a SQL `timestamp` at UTC (offset 0), and set that
+    (jdbc/set-parameter (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0))) prepared-statement i))
 
-(defmethod sql-jdbc.execute/set-parameter [:presto-jdbc ZonedDateTime]
-  [_ prepared-statement i ^OffsetDateTime t]
-  ;; necessary because `PrestoPreparedStatement` does not support `ZonedDateTime` in its setObject method
-  ;; convert to a SQL `timestamp` at UTC, and set that
-  (jdbc/set-parameter (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC"))) prepared-statement i))
+#_(defmethod sql-jdbc.execute/set-parameter [:presto-jdbc ZonedDateTime]
+    [_ prepared-statement i ^OffsetDateTime t]
+    ;; necessary because `PrestoPreparedStatement` does not support `ZonedDateTime` in its setObject method
+    ;; convert to a SQL `timestamp` at UTC, and set that
+    (jdbc/set-parameter (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC"))) prepared-statement i))
 
 (defn- date-time->substitution [ts-str]
   (sql.params.substitution/make-stmt-subs "from_iso8601_timestamp(?)" [ts-str]))
@@ -389,6 +391,12 @@
   ;; similar to above implementation, but for `LocalDateTime`
   ;; when Presto parses this, it will account for session (report) time zone
   (date-time->substitution (.format t DateTimeFormatter/ISO_LOCAL_DATE_TIME)))
+
+(defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc OffsetDateTime]
+  [_ ^OffsetDateTime t]
+  ;; similar to above implementation, but for `ZonedDateTime`
+  ;; when Presto parses this, it will account for session (report) time zone
+  (date-time->substitution (.format t DateTimeFormatter/ISO_OFFSET_DATE_TIME)))
 
 (defn- set-time-param
   "Converts the given instance of `java.time.temporal`, assumed to be a time (either `LocalTime` or `OffsetTime`)
@@ -421,20 +429,21 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData rs-meta ^Integer i]
-  #(let [local-time (-> (.getTime rs i)
-                        sql-time->local-time)
-         type-name  (.getColumnTypeName rs-meta i)
-         base-type  (presto-common/presto-type->base-type type-name)]
-     ;; for both `time` and `time with time zone`, the JDBC type reported by the driver is `Types/TIME`, hence
-     ;; we also need to check the column type name to differentiate between them here
-     (if (isa? base-type :type/TimeWithTZ)
-       ;; even though this value is a `LocalTime`, the base-type is time with time zone, so we need to shift it back to
-       ;; the UTC (0) offset
-       (t/offset-time
-         local-time
-         (t/zone-offset 0))
-       ;; else the base-type is time without time zone, so just return the local-time value
-       local-time)))
+  (let [type-name  (.getColumnTypeName rs-meta i)
+        base-type  (presto-common/presto-type->base-type type-name)
+        with-tz?   (isa? base-type :type/TimeWithTZ)]
+    #(let [local-time (-> (.getTime rs i)
+                          sql-time->local-time)]
+       ;; for both `time` and `time with time zone`, the JDBC type reported by the driver is `Types/TIME`, hence
+       ;; we also need to check the column type name to differentiate between them here
+       (if with-tz?
+         ;; even though this value is a `LocalTime`, the base-type is time with time zone, so we need to shift it back to
+         ;; the UTC (0) offset
+         (t/offset-time
+           local-time
+           (t/zone-offset 0))
+         ;; else the base-type is time without time zone, so just return the local-time value
+         local-time))))
 
 (defn- ^PrestoConnection rs->presto-conn
   "Returns the `PrestoConnection` associated with the given `ResultSet` `rs`."
@@ -444,7 +453,8 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
   [_ ^ResultSet rset ^ResultSetMetaData rsmeta ^Integer i]
-  (let [zone     (.getTimeZoneId (rs->presto-conn rset))]
+  (let [zone     (.getTimeZoneId (rs->presto-conn rset))
+        db-type  (.getColumnTypeName rsmeta i)]
     (fn []
       (when-let [s (.getString rset i)]
         (when-let [t (u.date/parse s)]

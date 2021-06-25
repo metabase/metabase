@@ -588,6 +588,9 @@
     (is (u.date/with-time-zone-same-instant java.time.OffsetDateTime/MIN (t/zone-id "UTC")))))
 
 (deftest standard-offset-test
-  (testing "standard-offset works correctly"
-    (is (= (t/zone-offset "-06:00") (u.date.common/standard-offset (t/zone-id "America/Chicago"))))
-    (is (= (t/zone-offset "Z") (u.date.common/standard-offset (t/zone-id "UTC"))))))
+  (testing "standard-offset works correctly, regardless of system clock timezone"
+    (doseq [clk [#t "2021-01-01T00:00-06:00[US/Central]"   ; one in CST
+                 #t "2021-07-01T00:00-05:00[US/Central]"]] ; one in CDT
+      (mt/with-clock clk
+        (is (= (t/zone-offset "-06:00") (u.date.common/standard-offset (t/zone-id "America/Chicago"))))
+        (is (= (t/zone-offset "Z") (u.date.common/standard-offset (t/zone-id "UTC"))))))))
