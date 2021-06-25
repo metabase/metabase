@@ -31,5 +31,9 @@
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js",
     "/frontend/src/cljs/"
-  ]
+  ],
+  "testEnvironment": "jsdom",
+  "transform": {
+    "\\.[jt]sx?$": "babel-jest"
+  }
 }

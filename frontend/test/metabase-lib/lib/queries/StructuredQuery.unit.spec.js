@@ -185,24 +185,24 @@ describe("StructuredQuery", () => {
       // TODO Atte Keinänen 6/14/17: Add the mock metadata for aggregation options
       // (currently the fixture doesn't include them)
       it("should return a non-empty list of options", () => {
-        pending();
+        // pending();
         expect(query.aggregationOperators().length).toBeGreaterThan(0);
       });
       it("should contain the count aggregation", () => {
-        pending();
+        // pending();
       });
     });
     describe("aggregationOperatorsWithoutRaw", () => {
       // Also waiting for the mock metadata
-      pending();
+      // pending();
     });
 
     describe("aggregationFieldOptions()", () => {
       it("includes expressions to the results without a field filter", () => {
-        pending();
+        // pending();
       });
       it("includes expressions to the results with a field filter", () => {
-        pending();
+        // pending();
       });
     });
 
@@ -303,25 +303,25 @@ describe("StructuredQuery", () => {
 
     describe("removeAggregation", () => {
       it("removes the correct aggregation", () => {
-        pending();
+        // pending();
       });
       it("removes all breakouts when removing the last aggregation", () => {
-        pending();
+        // pending();
       });
     });
 
     describe("updateAggregation", () => {
       it("updates the correct aggregation", () => {
-        pending();
+        // pending();
       });
       it('removes all breakouts and aggregations when setting an aggregation to "rows"', () => {
-        pending();
+        // pending();
       });
     });
 
     describe("clearAggregations", () => {
       it("clears all aggreagtions and breakouts", () => {
-        pending();
+        // pending();
       });
     });
   });
@@ -329,7 +329,7 @@ describe("StructuredQuery", () => {
   // BREAKOUTS:
   describe("BREAKOUT METHODS", () => {
     describe("breakouts", () => {
-      pending();
+      // pending();
     });
     describe("breakoutOptions", () => {
       it("returns the correct count of dimensions", () => {
@@ -362,7 +362,7 @@ describe("StructuredQuery", () => {
       });
     });
     describe("canAddBreakout", () => {
-      pending();
+      // pending();
     });
     describe("hasValidBreakout", () => {
       it("should return false if there are no breakouts", () => {
@@ -374,33 +374,33 @@ describe("StructuredQuery", () => {
     });
 
     describe("addBreakout", () => {
-      pending();
+      // pending();
     });
 
     describe("removeBreakout", () => {
-      pending();
+      // pending();
     });
 
     describe("updateBreakout", () => {
-      pending();
+      // pending();
     });
 
     describe("clearBreakouts", () => {
-      pending();
+      // pending();
     });
   });
 
   // FILTERS:
   describe("FILTER METHODS", () => {
     describe("filters", () => {
-      pending();
+      // pending();
     });
 
     describe("filterDimensionOptions", () => {
-      pending();
+      // pending();
     });
     describe("filterSegmentOptions", () => {
-      pending();
+      // pending();
     });
 
     describe("segments", () => {
@@ -414,27 +414,27 @@ describe("StructuredQuery", () => {
     });
 
     describe("canAddFilter", () => {
-      pending();
+      // pending();
     });
 
     describe("addFilter", () => {
       it("adds an filter", () => {
-        pending();
+        // pending();
       });
     });
     describe("removeFilter", () => {
       it("removes the correct filter", () => {
-        pending();
+        // pending();
       });
     });
     describe("updateFilter", () => {
       it("updates the correct filter", () => {
-        pending();
+        // pending();
       });
     });
     describe("clearFilters", () => {
       it("clears all filters", () => {
-        pending();
+        // pending();
       });
     });
   });
@@ -475,32 +475,32 @@ describe("StructuredQuery", () => {
     });
 
     describe("canAddSort", () => {
-      pending();
+      // pending();
     });
 
     describe("addSort", () => {
       it("adds a sort", () => {
-        pending();
+        // pending();
       });
     });
     describe("updateSort", () => {
       it("", () => {
-        pending();
+        // pending();
       });
     });
     describe("removeSort", () => {
       it("removes the correct sort", () => {
-        pending();
+        // pending();
       });
     });
     describe("clearSort", () => {
       it("clears all sorts", () => {
-        pending();
+        // pending();
       });
     });
     describe("replaceSort", () => {
       it("replaces sorts with a new sort", () => {
-        pending();
+        // pending();
       });
     });
   });
@@ -509,21 +509,21 @@ describe("StructuredQuery", () => {
   describe("LIMIT METHODS", () => {
     describe("limit", () => {
       it("returns null if there is no limit", () => {
-        pending();
+        // pending();
       });
       it("returns the limit if one has been set", () => {
-        pending();
+        // pending();
       });
     });
 
     describe("updateLimit", () => {
       it("updates the limit", () => {
-        pending();
+        // pending();
       });
     });
     describe("clearLimit", () => {
       it("clears the limit", () => {
-        pending();
+        // pending();
       });
     });
   });
@@ -531,20 +531,20 @@ describe("StructuredQuery", () => {
   describe("EXPRESSION METHODS", () => {
     describe("expressions", () => {
       it("returns an empty map", () => {
-        pending();
+        // pending();
       });
       it("returns a map with the expressions", () => {
-        pending();
+        // pending();
       });
     });
     describe("updateExpression", () => {
       it("updates the correct expression", () => {
-        pending();
+        // pending();
       });
     });
     describe("removeExpression", () => {
       it("removes the correct expression", () => {
-        pending();
+        // pending();
       });
     });
   });
@@ -571,19 +571,19 @@ describe("StructuredQuery", () => {
       });
     });
     describe("dimensions", () => {
-      pending();
+      // pending();
     });
     describe("tableDimensions", () => {
-      pending();
+      // pending();
     });
     describe("expressionDimensions", () => {
-      pending();
+      // pending();
     });
     describe("breakoutDimensions", () => {
-      pending();
+      // pending();
     });
     describe("aggregationDimensions", () => {
-      pending();
+      // pending();
     });
   });
 
@@ -599,7 +599,7 @@ describe("StructuredQuery", () => {
     });
 
     describe("parseFieldReference", () => {
-      pending();
+      // pending();
     });
   });
 

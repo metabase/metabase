@@ -19,7 +19,7 @@ describe("Table", () => {
 
   describe("dimensions", () => {
     it("returns dimension fields", () => {
-      pending();
+      // pending();
       // expect(table.dimensions().length)
     });
   });

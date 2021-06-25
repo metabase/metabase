@@ -140,21 +140,21 @@ describe("Dimension", () => {
   describe("INSTANCE METHODS", () => {
     describe("dimensions()", () => {
       it("returns `dimension_options` of the underlying field if available", () => {
-        pending();
+        // pending();
       });
       it("returns sub-dimensions for matching dimension if no `dimension_options`", () => {
         // just a single scenario should be sufficient here as we will test
         // `static dimensions()` individually for each dimension
-        pending();
+        // pending();
       });
     });
 
     describe("isSameBaseDimension(other)", () => {
       it("returns true if the base dimensions are same", () => {
-        pending();
+        // pending();
       });
       it("returns false if the base dimensions don't match", () => {
-        pending();
+        // pending();
       });
     });
 
@@ -317,13 +317,13 @@ describe("Dimension", () => {
     describe("STATIC METHODS", () => {
       describe("dimensions(parentDimension)", () => {
         it("should return array of FK dimensions for foreign key field dimension", () => {
-          pending();
+          // pending();
           // Something like this:
           // fieldsInProductsTable = metadata.table(1).fields.length;
           // expect(FieldDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
         });
         it("should return empty array for non-FK field dimension", () => {
-          pending();
+          // pending();
         });
       });
     });
@@ -387,21 +387,21 @@ describe("Dimension", () => {
     describe("STATIC METHODS", () => {
       describe("dimensions(parentDimension)", () => {
         it("should return an array with dimensions for each datetime unit", () => {
-          pending();
+          // pending();
           // Something like this:
           // fieldsInProductsTable = metadata.table(1).fields.length;
           // expect(FieldDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
         });
         it("should return empty array for non-date field dimension", () => {
-          pending();
+          // pending();
         });
       });
       describe("defaultDimension(parentDimension)", () => {
         it("should return dimension with 'day' datetime unit", () => {
-          pending();
+          // pending();
         });
         it("should return null for non-date field dimension", () => {
-          pending();
+          // pending();
         });
       });
     });
@@ -535,10 +535,10 @@ describe("Dimension", () => {
     describe("STATIC METHODS", () => {
       describe("dimensions(parentDimension)", () => {
         it("should return an array of dimensions based on default binning", () => {
-          pending();
+          // pending();
         });
         it("should return empty array for non-number field dimension", () => {
-          pending();
+          // pending();
         });
       });
     });
@@ -596,13 +596,13 @@ describe("Dimension", () => {
     describe("STATIC METHODS", () => {
       describe("dimensions(parentDimension)", () => {
         it("should return array of FK dimensions for foreign key field dimension", () => {
-          pending();
+          // pending();
           // Something like this:
           // fieldsInProductsTable = metadata.table(1).fields.length;
           // expect(FieldDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
         });
         it("should return empty array for non-FK field dimension", () => {
-          pending();
+          // pending();
         });
       });
     });

@@ -20,13 +20,13 @@ describe("query_time", () => {
     });
 
     it("returns the default unit for FK reference", () => {
-      pending();
+      // pending();
     });
     it("returns the default unit for local field reference", () => {
-      pending();
+      // pending();
     });
     it("returns the default unit for other field types", () => {
-      pending();
+      // pending();
     });
   });
 

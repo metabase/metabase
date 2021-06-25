@@ -109,7 +109,6 @@
     "@testing-library/react": "^11.0.2",
     "@testing-library/user-event": "^12.6.0",
     "babel-eslint": "10.1.0",
-    "babel-jest": "^27.0.5",
     "babel-loader": "^8.2.2",
     "babel-plugin-styled-components": "^1.10.7",
     "babel-plugin-transform-flow-strip-types": "^6.22.0",
