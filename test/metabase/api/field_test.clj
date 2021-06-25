@@ -149,10 +149,14 @@
                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
                                                         {:coercion_strategy strategy}))]
               ;; ensure that there is no coercion strategy from previous tests
-              (is (= "type/Integer" (:effective_type (set-strategy! nil))))
-              (is (contains? (get-in (Field field-id) [:fingerprint :type]) :type/Number))
+              (set-strategy! nil)
+              (let [field (Field field-id)]
+                (is (= :type/Integer (:effective_type field)))
+                (is (contains? (get-in field [:fingerprint :type]) :type/Number)))
               (set-strategy! :Coercion/UNIXSeconds->DateTime)
-              (is (contains? (get-in (Field field-id) [:fingerprint :type]) :type/DateTime)))))))))
+              (let [field (Field field-id)]
+                (is (= :type/Instant (:effective_type field)))
+                (is (contains? (get-in field [:fingerprint :type]) :type/DateTime))))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
