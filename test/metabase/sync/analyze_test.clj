@@ -10,6 +10,7 @@
             [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
             [metabase.sync.analyze.classifiers.text-fingerprint :as classify-text-fingerprint]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+            [metabase.sync.concurrent :as sync.concurrent]
             [metabase.sync.interface :as i]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
@@ -231,18 +232,13 @@
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (let [original-submit (var-get #'table-api/submit-task)
-          finished?       (promise)]
-      (with-redefs [table-api/submit-task (fn [task]
-                                            @(original-submit task)
-                                            (deliver finished? true))]
-        (mt/with-temp* [Table [table (fake-table)]
-                        Field [field (fake-field table)]]
-          (set-table-visibility-type-via-api! table "hidden")
-          (set-table-visibility-type-via-api! table nil)
-          (deref finished? 1000 ::timeout)
-          (is (= true
-                 (fake-field-was-analyzed? field))))))))
+    (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
+      (mt/with-temp* [Table [table (fake-table)]
+                      Field [field (fake-field table)]]
+        (set-table-visibility-type-via-api! table "hidden")
+        (set-table-visibility-type-via-api! table nil)
+        (is (= true
+               (fake-field-was-analyzed? field)))))))
 
 (deftest dont-analyze-rehidden-table-test
   (testing "re-hiding a table should not cause it to be analyzed"
