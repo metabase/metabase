@@ -71,5 +71,7 @@
   (let [table (field/table field)
         database (table/database table)]
     (if (driver.u/can-connect-with-details? (:engine database) (:details database))
-      (fingerprint/refingerprint-field field)
+      (sync-util/with-error-handling (format "Error refingerprinting field %s"
+                                             (sync-util/name-for-logging field))
+        (fingerprint/refingerprint-field field))
       :sync/no-connection)))
