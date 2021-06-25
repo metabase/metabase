@@ -1,4 +1,9 @@
-import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openOrdersTable,
+  visitQuestionAdhoc,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
@@ -92,6 +97,46 @@ describe("binning related reproductions", () => {
 
     // Implicit assertion - it fails if there is more than one instance of the string, which is exactly what we need for this repro
     cy.findByText("Month");
+  });
+
+  it.skip("should be able to update the bucket size / granularity on a field that has sorting applied to it (metabase#16770)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          "order-by": [
+            ["asc", ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+    });
+
+    cy.wait("@dataset");
+
+    cy.contains("Summarize").click();
+    cy.get(".List-item--selected")
+      .contains("by month")
+      .click();
+
+    popover().within(() => {
+      cy.findByText("Year").click();
+    });
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+
+    cy.findByText("Count by Created At: Year");
+    cy.findByText("2018");
   });
 
   describe.skip("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
