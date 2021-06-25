@@ -10,6 +10,11 @@ export default class MBQLArrayClause extends Array {
     _private(this, "_query", query);
   }
 
+  // see https://javascript.info/extend-natives
+  static get [Symbol.species]() {
+    return Array;
+  }
+
   set(mbql: any[]) {
     return new this.constructor(mbql, this._index, this._query);
   }

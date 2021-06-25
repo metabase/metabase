@@ -55,13 +55,13 @@ describe("LoadingAndErrorWrapper", () => {
         );
 
         screen.getByText("One");
-        jest.runTimersToTime(interval);
+        jest.advanceTimersByTime(interval);
 
         screen.getByText("Two");
-        jest.runTimersToTime(interval);
+        jest.advanceTimersByTime(interval);
 
         screen.getByText("Three");
-        jest.runTimersToTime(interval);
+        jest.advanceTimersByTime(interval);
 
         screen.getByText("One");
       });

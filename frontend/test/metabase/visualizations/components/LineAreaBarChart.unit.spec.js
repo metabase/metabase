@@ -439,6 +439,18 @@ const numberCard = {
 };
 
 describe("LineAreaBarChart", () => {
+  beforeEach(() => {
+    window.SVGElement.prototype.getBBox = () => ({
+      x: 0,
+      y: 0,
+      // whatever other props you need
+    });
+  });
+
+  afterEach(() => {
+    delete window.SVGElement.prototype.getBBox;
+  });
+
   it("should let you combine series with datetimes only", () => {
     expect(
       LineAreaBarChart.seriesAreCompatible(dateTimeCard, dateTimeCard),

@@ -81,6 +81,19 @@ describe("LineAreaBarRenderer-bar", () => {
   let element;
   const qsa = selector => [...element.querySelectorAll(selector)];
 
+  beforeEach(() => {
+    window.SVGElement.prototype.getBBox = () => ({
+      x: 0,
+      y: 0,
+      width: 1000,
+      height: 1000,
+    });
+  });
+
+  afterEach(() => {
+    delete window.SVGElement.prototype.getBBox;
+  });
+
   beforeEach(function() {
     element = createFixture();
   });

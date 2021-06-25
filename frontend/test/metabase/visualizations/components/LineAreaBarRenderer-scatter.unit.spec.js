@@ -25,6 +25,18 @@ describe("LineAreaBarRenderer-scatter", () => {
     ...window.document.documentElement.querySelectorAll(selector),
   ];
 
+  beforeEach(() => {
+    window.SVGElement.prototype.getBBox = () => ({
+      x: 0,
+      y: 0,
+      // whatever other props you need
+    });
+  });
+
+  afterEach(() => {
+    delete window.SVGElement.prototype.getBBox;
+  });
+
   beforeEach(function() {
     element = createFixture();
   });
