@@ -145,13 +145,22 @@ executors:
     # OOM sometimes with the default medium size.
     resource_class: large
 
-  presto-254:
+  presto-jdbc-env:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
       - image: metabase/presto-mb-ci:latest # version 0.254
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
+          MB_PRESTO_JDBC_TEST_CATALOG: test_data
+          MB_PRESTO_JDBC_TEST_HOST: localhost
+          MB_PRESTO_JDBC_TEST_PORT: 8443
+          MB_PRESTO_JDBC_TEST_SSL: true
+          MB_PRESTO_JDBC_TEST_USER: metabase
+          MB_PRESTO_JDBC_TEST_PASSWORD: metabase
+          MB_ENABLE_PRESTO_JDBC_DRIVER: true
+          MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS: >
+            SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit
     # (see above)
     resource_class: large
 
@@ -1128,7 +1137,7 @@ workflows:
           name: be-tests-presto-jdbc-ee
           requires:
             - be-tests-ee
-          e: presto-254
+          e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
           before-steps:
             - wait-for-port:
                 port: 8443
@@ -1159,15 +1168,6 @@ workflows:
                 command: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
                 when: always
           driver: presto-jdbc
-          extra-env: >-
-            MB_PRESTO_JDBC_TEST_CATALOG=test_data
-            MB_PRESTO_JDBC_TEST_HOST=localhost
-            MB_PRESTO_JDBC_TEST_PORT=8443
-            MB_PRESTO_JDBC_TEST_SSL=true
-            MB_PRESTO_JDBC_TEST_USER=metabase
-            MB_PRESTO_JDBC_TEST_PASSWORD=metabase
-            MB_ENABLE_PRESTO_JDBC_DRIVER=true
-            MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS="SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit"
 
       - test-driver:
           name: be-tests-redshift-ee
