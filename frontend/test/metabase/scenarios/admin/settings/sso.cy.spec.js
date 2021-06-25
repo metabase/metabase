@@ -14,6 +14,10 @@ describe("scenarios > admin > settings > SSO", () => {
       cy.findByLabelText("Client ID").type("123");
       saveSettings();
 
+      // This string lingers for far too long in the UI, so we have to wait for it to disappear before we assert on that same button again.
+      // Otherwise, the test fails. That's why we added a custom timeout of 6s.
+      cy.findByText("Success", { timeout: 6000 }).should("not.exist");
+
       cy.findByDisplayValue("123").type("456");
       saveSettings();
     });
@@ -113,7 +117,4 @@ describe("scenarios > admin > settings > SSO", () => {
 function saveSettings() {
   cy.button("Save changes").click();
   cy.findByText("Success");
-  // This string linger for far too long in the UI, so we have to wait for it to disappear before we assert on anything else.
-  // Otherwise, the test fails. That's why we added a custom timeout of 6s.
-  cy.findByText("Success", { timeout: 6000 }).should("not.exist");
 }
