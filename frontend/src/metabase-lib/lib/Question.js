@@ -602,6 +602,8 @@ export default class Question {
         ],
       });
     }
+
+    return this;
   }
 
   _syncNativeQuerySettings({ data: { cols = [] } = {} } = {}) {
@@ -629,6 +631,9 @@ export default class Question {
 
   syncColumnsAndSettings(previous, queryResults) {
     const query = this.query();
+    if (query instanceof NativeQuery) {
+      return this._syncNativeQuerySettings(queryResults);
+    }
     const previousQuery = previous && previous.query();
     if (
       query instanceof StructuredQuery &&
@@ -638,9 +643,6 @@ export default class Question {
         previous,
         previousQuery,
       );
-    }
-    if (query instanceof NativeQuery && previousQuery instanceof NativeQuery) {
-      return this._syncNativeQuerySettings(queryResults);
     }
     return this;
   }
