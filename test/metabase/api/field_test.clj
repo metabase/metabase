@@ -151,8 +151,6 @@
               ;; ensure that there is no coercion strategy from previous tests
               (is (= "type/Integer" (:effective_type (set-strategy! nil))))
               (is (contains? (get-in (Field field-id) [:fingerprint :type]) :type/Number))
-              ;; annoyingly, the return from the api is the stale, old fingerprint because we refingerprint
-              ;; off-thread. not sure what to do about that
               (set-strategy! :Coercion/UNIXSeconds->DateTime)
               (is (contains? (get-in (Field field-id) [:fingerprint :type]) :type/DateTime)))))))))
 
