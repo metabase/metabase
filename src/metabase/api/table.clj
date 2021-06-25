@@ -384,8 +384,9 @@
   [id]
   (api/check-superuser)
   ;; async so as not to block the UI
-  (future
-    (sync-field-values/update-field-values-for-table! (api/check-404 (Table id))))
+  (sync.concurrent/submit-task
+    (fn []
+      (sync-field-values/update-field-values-for-table! (api/check-404 (Table id)))))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
