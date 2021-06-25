@@ -107,6 +107,9 @@ describe("scenarios > admin > settings > SSO", () => {
 });
 
 function saveSettings() {
-  cy.button("Save Changes").click();
-  cy.findByText("Saved");
+  cy.button("Save changes").click();
+  cy.findByText("Success");
+  // This string linger for far too long in the UI, so we have to wait for it to disappear before we assert on anything else.
+  // Otherwise, the test fails. That's why we added a custom timeout of 6s.
+  cy.findByText("Success", { timeout: 6000 }).should("not.exist");
 }
