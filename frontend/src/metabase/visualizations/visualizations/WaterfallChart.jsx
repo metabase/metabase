@@ -1,8 +1,8 @@
 import { t } from "ttag";
-import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
-import { waterfallRenderer } from "../lib/LineAreaBarRenderer";
 import { assocIn } from "icepick";
 
+import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
+import { waterfallRenderer } from "../lib/LineAreaBarRenderer";
 import {
   GRAPH_DATA_SETTINGS,
   GRAPH_AXIS_SETTINGS,
@@ -10,8 +10,24 @@ import {
 } from "../lib/settings/graph";
 
 import { color } from "metabase/lib/colors";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 export default class WaterfallChart extends LineAreaBarChart {
+  static checkRenderable(series, settings) {
+    LineAreaBarChart.checkRenderable(series, settings);
+    const dimensions = (settings["graph.dimensions"] || []).filter(
+      name => name,
+    );
+    const metrics = (settings["graph.metrics"] || []).filter(name => name);
+    if (dimensions.length < 1 || metrics.length !== 1) {
+      throw new ChartSettingsError(
+        t`Which fields do you want to use for the X and Y axes?`,
+        { section: t`Data` },
+        t`Choose fields`,
+      );
+    }
+  }
+
   static uiName = t`Waterfall`;
   static identifier = "waterfall";
   static iconName = "waterfall";

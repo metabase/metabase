@@ -109,7 +109,7 @@ describe("scenarios > visualizations > waterfall", () => {
     });
   });
 
-  it.skip("should not be enabled for multi-series questions (metabase#15152)", () => {
+  it("should not be enabled for multi-series questions (metabase#15152)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 

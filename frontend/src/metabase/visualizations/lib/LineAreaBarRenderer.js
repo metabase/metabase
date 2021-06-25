@@ -194,8 +194,12 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
   const dimension = dataset.dimension(d => d[0]);
   const groups = [
     datas.map((data, seriesIndex) =>
-      reduceGroup(dimension.group(), seriesIndex + 1, () =>
-        warn(unaggregatedDataWarning(props.series[seriesIndex].data.cols[0])),
+      reduceGroup(
+        dimension.group(),
+        seriesIndex + 1,
+        () =>
+          props.series[seriesIndex] &&
+          warn(unaggregatedDataWarning(props.series[seriesIndex].data.cols[0])),
       ),
     ),
   ];

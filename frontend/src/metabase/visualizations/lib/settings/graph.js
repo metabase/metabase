@@ -152,13 +152,16 @@ export const GRAPH_DATA_SETTINGS = {
       const options = data.cols
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
+
+      const isWaterfall = card.display === "waterfall";
+      const canAddMoreSeries =
+        !isWaterfall &&
+        options.length > value.length &&
+        vizSettings["graph.dimensions"].length < 2;
+
       return {
         options,
-        addAnother:
-          options.length > value.length &&
-          vizSettings["graph.dimensions"].length < 2
-            ? t`Add another series...`
-            : null,
+        addAnother: canAddMoreSeries ? t`Add another series...` : null,
         columns: data.cols,
         showColumnSetting: true,
       };
