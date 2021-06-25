@@ -8,7 +8,10 @@
 
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
-  (:require [metabase.sync.analyze :as analyze]
+  (:require [metabase.driver.util :as driver.u]
+            [metabase.models.field :as field]
+            [metabase.models.table :as table]
+            [metabase.sync.analyze :as analyze]
             [metabase.sync.analyze.fingerprint :as fingerprint]
             [metabase.sync.field-values :as field-values]
             [metabase.sync.interface :as i]
@@ -53,13 +56,20 @@
                [field-values/update-field-values! "field-values"])])))))
 
 (s/defn sync-table!
-  "Perform all the different sync operations synchronously for a given `table`."
+  "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
+  tables, caller should check if can connect."
   [table :- i/TableInstance]
-  (sync-metadata/sync-table-metadata! table)
-  (analyze/analyze-table! table)
-  (field-values/update-field-values-for-table! table))
+  (let [database (table/database table)]
+    (sync-metadata/sync-table-metadata! table)
+    (analyze/analyze-table! table)
+    (field-values/update-field-values-for-table! table)))
 
 (s/defn refingerprint-field!
-  "Refingerprint a field, usually after its type changes."
+  "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning
+  `:sync/no-connection` if not."
   [field :- i/FieldInstance]
-  (fingerprint/refingerprint-field field))
+  (let [table (field/table field)
+        database (table/database table)]
+    (if (driver.u/can-connect-with-details? (:engine database) (:details database))
+      (fingerprint/refingerprint-field field)
+      :sync/no-connection)))
