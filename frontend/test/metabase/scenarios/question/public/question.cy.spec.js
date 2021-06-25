@@ -1,4 +1,7 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+
+const { PEOPLE } = SAMPLE_DATASET;
 
 const QUESTION_DATA = {
   name: "15460",
@@ -12,7 +15,7 @@ const QUESTION_DATA = {
           name: "birthdate",
           "display-name": "Birthdate",
           type: "dimension",
-          dimension: ["field", 24, null],
+          dimension: ["field", PEOPLE.BIRTH_DATE, null],
           "widget-type": "date/all-options",
           default: "past30years",
         },
@@ -21,7 +24,7 @@ const QUESTION_DATA = {
           name: "source",
           "display-name": "Source",
           type: "dimension",
-          dimension: ["field", 26, null],
+          dimension: ["field", PEOPLE.SOURCE, null],
           "widget-type": "string/=",
           default: "Affiliate",
         },
@@ -47,7 +50,10 @@ const enableSharing = () => {
 };
 
 const visitPublicURL = () => {
-  cy.findByDisplayValue(/^http:\/\/localhost:4000/)
+  // Ideally we would just find the first input
+  // but unless we filter by value
+  // Cypress finds an input before the copyable inputs are rendered
+  cy.findByDisplayValue(/^http/)
     .invoke("val")
     .then(publicURL => {
       // Copied URL has no get params
@@ -63,7 +69,6 @@ describe("scenarios > question > public", () => {
     cy.signInAsAdmin();
 
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("adds filters to url as get params (metabase#7120)", () => {
