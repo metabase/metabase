@@ -9,6 +9,7 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the `sync-database!` function to do all three at once."
   (:require [metabase.sync.analyze :as analyze]
+            [metabase.sync.analyze.fingerprint :as fingerprint]
             [metabase.sync.field-values :as field-values]
             [metabase.sync.interface :as i]
             [metabase.sync.sync-metadata :as sync-metadata]
@@ -57,3 +58,8 @@
   (sync-metadata/sync-table-metadata! table)
   (analyze/analyze-table! table)
   (field-values/update-field-values-for-table! table))
+
+(s/defn refingerprint-field!
+  "Refingerprint a field, usually after its type changes."
+  [field :- i/FieldInstance]
+  (fingerprint/refingerprint-field field))
