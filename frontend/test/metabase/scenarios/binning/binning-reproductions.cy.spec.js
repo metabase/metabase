@@ -139,7 +139,7 @@ describe("binning related reproductions", () => {
     cy.findByText("2018");
   });
 
-  describe.skip("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
+  describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
       cy.createQuestion({
         name: "16379",
