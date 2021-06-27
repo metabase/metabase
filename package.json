@@ -43,6 +43,7 @@
     "normalizr": "^3.0.2",
     "number-to-locale-string": "^1.0.1",
     "password-generator": "^2.0.1",
+    "postcss": "^8.3.5",
     "prop-types": "^15.5.7",
     "re-reselect": "^3.4.0",
     "react": "~16.14.0",
