@@ -25,6 +25,8 @@ import {
   getParentPath,
 } from "metabase/collections/utils";
 
+import { setOpenCollections } from "metabase/collections/actions";
+
 const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
 // TODO - what's different about this from another sidebar component?
@@ -39,6 +41,13 @@ const Sidebar = styled(Box.withComponent("aside"))`
   flex-direction: column;
 `;
 
+const mapStateToProps = (state, props) => ({
+  openCollections: state.collections.openCollections,
+  currentUser: getCurrentUser(state),
+});
+
+const mapDispatchToProps = { setOpenCollections };
+
 @Collection.loadList({
   /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
     we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
@@ -51,37 +60,43 @@ const Sidebar = styled(Box.withComponent("aside"))`
   // See: https://github.com/metabase/metabase/issues/14603
   loadingAndErrorWrapper: false,
 })
-class CollectionSidebar extends React.Component {
-  state = {
-    openCollections: [],
-  };
-
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
+export default class CollectionSidebar extends React.Component {
   componentDidUpdate(prevProps) {
     const { collectionId, collections, loading } = this.props;
     const loaded = prevProps.loading && !loading;
     if (loaded) {
       const ancestors = getParentPath(collections, collectionId) || [];
-      this.setState({ openCollections: ancestors });
+      this.props.setOpenCollections(ancestors);
     }
   }
 
   onOpen = id => {
-    this.setState({ openCollections: this.state.openCollections.concat(id) });
+    this.props.setOpenCollections(this.props.openCollections.concat(id));
   };
 
   onClose = id => {
-    this.setState({
-      openCollections: this.state.openCollections.filter(c => {
+    this.props.setOpenCollections(
+      this.props.openCollections.filter(c => {
         return c !== id;
       }),
-    });
+    );
   };
 
   // TODO Should we update the API to filter archived collections?
   filterPersonalCollections = collection => !collection.archived;
 
   renderContent = () => {
-    const { currentUser, isRoot, collectionId, list } = this.props;
+    const {
+      currentUser,
+      isRoot,
+      collectionId,
+      list,
+      openCollections,
+    } = this.props;
     return (
       <React.Fragment>
         <Collection.Loader id="root">
@@ -105,7 +120,7 @@ class CollectionSidebar extends React.Component {
 
         <Box pb={4}>
           <CollectionsList
-            openCollections={this.state.openCollections}
+            openCollections={openCollections}
             onClose={this.onClose}
             onOpen={this.onOpen}
             collections={list}
@@ -115,7 +130,7 @@ class CollectionSidebar extends React.Component {
 
           <Box>
             <CollectionsList
-              openCollections={this.state.openCollections}
+              openCollections={openCollections}
               onClose={this.onClose}
               onOpen={this.onOpen}
               collections={currentUserPersonalCollections(list, currentUser.id)}
@@ -166,5 +181,3 @@ class CollectionSidebar extends React.Component {
     );
   }
 }
-
-export default connect(getCurrentUser)(CollectionSidebar);

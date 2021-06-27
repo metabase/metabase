@@ -72,6 +72,16 @@ describe("scenarios > collection items listing", () => {
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
     });
+
+    it("should keep opened list even go to the another page", () => {
+      cy.visit("/");
+      cy.findByText("First collection").click();
+      cy.findByText("Second collection");
+
+      cy.go("back");
+      cy.findByText("Browse all items").click();
+      cy.findByText("Second collection");
+    });
   });
 
   describe("sorting", () => {
