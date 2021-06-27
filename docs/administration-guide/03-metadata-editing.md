@@ -218,7 +218,7 @@ You can also select from several options:
 - **Database.** (Default) The order of columns as they appear in the database.
 - **Alphabetical.** A, B, C... however the alphabet works.
 - **Custom.** You choose the order. Metabase will automatically switch to custom if you rearrange any of the columns.
-- **Smart.** Metabase chooses for you.
+- **Smart.** Metabase chooses for you, ordering foreign keys first, followed by `:type/Name`s, then `:type/Temporal`s, and from there on in alphabetical order.
 
 ---
 
