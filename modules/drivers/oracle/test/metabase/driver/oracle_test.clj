@@ -227,7 +227,7 @@
                     :fields       [$id $name $category_id $latitude $longitude $price]
                     :limit        100
                     :joins        [{:source-table $$categories
-                                    :alias        "test_data_categories__via__cat",
+                                    :alias        "test_data_categories__via__cat"
                                     :strategy     :left-join
                                     :condition    [:=
                                                    $category_id
@@ -245,3 +245,11 @@
                                "Skipping %s because %s env var is not set"
                                "oracle-connect-with-ssl-test"
                                "MB_ORACLE_SSL_TEST_SSL")))))
+
+(deftest text-equals-empty-string-test
+  (mt/test-driver :oracle
+    (testing ":= with empty string should work correctly (#13158)"
+      (mt/dataset airports
+        (is (= [1M]
+               (mt/first-row
+                (mt/run-mbql-query airport {:aggregation [:count], :filter [:= $code ""]}))))))))
