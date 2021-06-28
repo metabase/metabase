@@ -1,4 +1,5 @@
 import moment from "moment-timezone";
+
 import { t } from "ttag";
 
 const NUMERIC_UNIT_FORMATS = {
@@ -118,4 +119,8 @@ export function formatFrame(frame) {
     default:
       return frame;
   }
+}
+
+export function getRelativeTime(timestamp) {
+  return moment(timestamp).fromNow();
 }

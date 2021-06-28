@@ -30,26 +30,23 @@ function ClampedText({ className, text, visibleLines }) {
     const clampedHeight = clampedDiv.current.getBoundingClientRect().height;
     const textHeight = innerDiv.current.getBoundingClientRect().height;
 
-    if (textHeight > clampedHeight) {
-      setIsOverflowing(true);
-    }
+    setIsOverflowing(textHeight > clampedHeight);
   }, [text]);
 
   return (
     <div className={cx("clamped-text", className)}>
       <ClampedDiv
-        className="clamped-text--clamp"
         innerRef={clampedDiv}
         visibleLines={isClamped ? visibleLines : undefined}
       >
-        <div ref={innerDiv} className="clamped-text--text">
+        <div className="clamped-text--text" ref={innerDiv}>
           {text}
         </div>
       </ClampedDiv>
-      <div className="clamped-text--footer">
+      <div>
         {isOverflowing && (
           <Button
-            className="clamped-text--toggle"
+            className="p0 my1 text-underline-hover bg-transparent-hover"
             borderless
             onClick={() => setIsClamped(isClamped => !isClamped)}
           >

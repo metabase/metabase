@@ -51,7 +51,14 @@ import {
   getSnippetCollectionId,
 } from "./selectors";
 
-import { MetabaseApi, CardApi, UserApi } from "metabase/services";
+import {
+  MetabaseApi,
+  CardApi,
+  UserApi,
+  ModerationReviewApi,
+  ModerationRequestApi,
+  ModerationCommentApi,
+} from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -67,6 +74,7 @@ import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getUser } from "metabase/selectors/user";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";
@@ -123,6 +131,13 @@ export const onCloseChartSettings = createAction(
   "metabase/qb/CLOSE_CHART_SETTINGS",
 );
 export const onOpenChartType = createAction("metabase/qb/OPEN_CHART_TYPE");
+export const onOpenQuestionDetails = createAction(
+  "metabase/qb/OPEN_QUESTION_DETAILS",
+);
+export const onCloseQuestionDetails = createAction(
+  "metabase/qb/CLOSE_QUESTION_DETAILS",
+);
+
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
@@ -318,6 +333,7 @@ export const initializeQB = (location, params) => {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
       queryBuilderMode: getQueryBuilderModeFromLocation(location),
+      isShowingQuestionDetailsSidebar: !!location.query.moderationRequest,
     };
 
     // load up or initialize the card we'll be working on
@@ -721,14 +737,24 @@ export const setParameterValue = createAction(
   },
 );
 
-export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
-export const reloadCard = createThunkAction(RELOAD_CARD, () => {
+// refetches the card without triggering a run of the card's query
+export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
+export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    const outdatedCard = getState().qb.card;
+    const outdatedCard = getCard(getState());
     const action = await dispatch(
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
     );
-    const card = Questions.HACK_getObjectFromAction(action);
+
+    return Questions.HACK_getObjectFromAction(action);
+  };
+});
+
+export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
+export const reloadCard = createThunkAction(RELOAD_CARD, () => {
+  return async (dispatch, getState) => {
+    await dispatch(softReloadCard());
+    const card = getCard(getState());
 
     dispatch(loadMetadataForCard(card));
 
@@ -1333,3 +1359,14 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
+
+export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
+export const revertToRevision = createThunkAction(
+  REVERT_TO_REVISION,
+  revision => {
+    return async dispatch => {
+      await revision.revert();
+      await dispatch(reloadCard());
+    };
+  },
+);

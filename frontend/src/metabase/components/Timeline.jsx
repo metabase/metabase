@@ -1,9 +1,9 @@
 import React, { useMemo } from "react";
+
 import PropTypes from "prop-types";
 import _ from "underscore";
 import styled from "styled-components";
-import moment from "moment";
-
+import { getRelativeTime } from "metabase/lib/time";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
@@ -15,22 +15,27 @@ const TimelineContainer = styled.div`
 `;
 
 const TimelineItem = styled.div`
+  display: flex;
+  align-items: start;
+  justify-content: start;
   transform: translateX(-${props => props.leftShift}px);
   white-space: pre-line;
+  width: 100%;
+  margin-bottom: 1rem;
 `;
 
 // shift the border down slightly so that it doesn't appear above the top-most icon
+// also using a negative `bottom` to connect the border with the event icon beneath it
 const Border = styled.div`
   position: absolute;
   top: ${props => props.borderShift}px;
-  left: 0;
-  right: 0;
-  bottom: -${props => props.borderShift}px;
+  left: ${props => props.borderShift}px;
+  bottom: calc(-1rem - ${props => props.borderShift}px);
   border-left: 1px solid ${color("border")};
 `;
 
 const Timeline = ({ className, items = [], renderFooter }) => {
-  const iconSize = 20;
+  const iconSize = 16;
   const halfIconSize = iconSize / 2;
 
   const sortedFormattedItems = useMemo(() => {
@@ -39,7 +44,7 @@ const Timeline = ({ className, items = [], renderFooter }) => {
       .map(item => {
         return {
           ...item,
-          formattedTimestamp: moment(item.timestamp).fromNow(),
+          formattedTimestamp: getRelativeTime(item.timestamp),
         };
       });
   }, [items]);
@@ -50,22 +55,23 @@ const Timeline = ({ className, items = [], renderFooter }) => {
       bottomShift={halfIconSize}
       className={className}
     >
-      <Border borderShift={halfIconSize} />
       {sortedFormattedItems.map((item, index) => {
         const { icon, title, description, formattedTimestamp } = item;
         const key = item.key == null ? index : item.key;
+        const isNotLastEvent = index !== sortedFormattedItems.length - 1;
 
         return (
-          <TimelineItem
-            key={key}
-            leftShift={halfIconSize}
-            className="flex align-start justify-start mb2"
-          >
-            <Icon className="text-light" name={icon} size={iconSize} />
-            <div className="ml1">
+          <TimelineItem key={key} leftShift={halfIconSize}>
+            {isNotLastEvent && <Border borderShift={halfIconSize} />}
+            <Icon className="relative text-light" name={icon} size={iconSize} />
+            <div className="ml1 flex-1">
               <div className="text-bold">{title}</div>
-              <div className="text-medium text-small">{formattedTimestamp}</div>
-              <div>{description}</div>
+              <div className="text-medium text-small pb1">
+                {formattedTimestamp}
+              </div>
+              <div className={renderFooter && description && "mb1"}>
+                {description}
+              </div>
               {_.isFunction(renderFooter) && <div>{renderFooter(item)}</div>}
             </div>
           </TimelineItem>
