@@ -304,7 +304,14 @@ export class UnconnectedDataSelector extends Component {
         ...this.state,
         ...newState,
       });
-      this.setState({ ...newState, ...computedState }, resolve);
+      const updatedState = { ...newState, ...computedState };
+      this.setState(updatedState, resolve);
+
+      const { selectedTable } = updatedState;
+      if (selectedTable) {
+        // delayed because of imminent step hydration first
+        setTimeout(() => this.popover.current.close(), 0);
+      }
     });
   }
 
