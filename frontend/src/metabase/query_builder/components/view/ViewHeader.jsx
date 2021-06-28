@@ -165,6 +165,7 @@ export class ViewTitleHeader extends React.Component {
                 <LastEditInfoLabel
                   className="ml1 text-light"
                   item={question.card()}
+                  onClick={() => onOpenModal("history")}
                 />
               )}
             </div>

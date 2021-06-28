@@ -6,12 +6,19 @@ import { t } from "ttag";
 import moment from "moment";
 
 import { color } from "metabase/lib/colors";
-
 import { getUser } from "metabase/selectors/user";
 
-const Label = styled.span`
+import Button from "metabase/components/Button";
+
+const LabelButton = styled(Button)`
   font-weight: bold;
   color: ${color("text-medium")};
+  border: none;
+  padding: 0;
+
+  &:hover {
+    background-color: transparent;
+  }
 `;
 
 function mapStateToProps(state) {
@@ -33,6 +40,7 @@ LastEditInfoLabel.propTypes = {
   user: PropTypes.shape({
     id: PropTypes.number,
   }).isRequired,
+  onClick: PropTypes.func.isRequired,
 };
 
 function formatEditorName(firstName, lastName) {
@@ -40,16 +48,22 @@ function formatEditorName(firstName, lastName) {
   return `${firstName} ${lastNameFirstLetter}.`;
 }
 
-function LastEditInfoLabel({ item, user, ...props }) {
+function LastEditInfoLabel({ item, user, onClick, ...props }) {
   const { first_name, last_name, id: editorId, timestamp } = item[
     "last-edit-info"
   ];
   const time = moment(timestamp).fromNow();
 
   const editor =
-    editorId === user.id ? "you" : formatEditorName(first_name, last_name);
+    editorId === user.id ? `you` : formatEditorName(first_name, last_name);
 
-  return <Label {...props}>{t`Edited ${time} by ${editor}`}</Label>;
+  return (
+    <LabelButton
+      onClick={onClick}
+      data-testid="history-button"
+      {...props}
+    >{t`Edited ${time} by ${editor}`}</LabelButton>
+  );
 }
 
 export default connect(mapStateToProps)(LastEditInfoLabel);
