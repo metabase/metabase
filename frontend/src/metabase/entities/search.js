@@ -18,12 +18,12 @@ const collectionList = GET("/api/collection/:collection/items");
 // Usually the "data" member of object is index into automatically
 // but the explicit GET of the collectionList means we need to
 // explicitly get that member from the resulting object or array
-const getListPortion = (maybeList) => {
+const getListPortion = maybeList => {
   if (!Array.isArray(maybeList)) {
     return maybeList.data;
   }
   return maybeList;
-}
+};
 
 export default createEntity({
   name: "search",
