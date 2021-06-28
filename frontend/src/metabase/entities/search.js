@@ -15,6 +15,16 @@ const ENTITIES_TYPES = Object.keys(ENTITIES_SCHEMA_MAP);
 const searchList = GET("/api/search");
 const collectionList = GET("/api/collection/:collection/items");
 
+// Usually the "data" member of object is index into automatically
+// but the explicit GET of the collectionList means we need to
+// explicitly get that member from the resulting object or array
+const getListPortion = (maybeList) => {
+  if (!Array.isArray(maybeList)) {
+    return maybeList.data;
+  }
+  return maybeList;
+}
+
 export default createEntity({
   name: "search",
   path: "/api/search",
@@ -40,9 +50,7 @@ export default createEntity({
               Object.keys(unsupported).join(", "),
           );
         }
-
-        const canonicalCollection = canonicalCollectionId(collection);
-        return (await collectionList({
+        return getListPortion(await collectionList({
           collection,
           archived,
           models,
@@ -52,8 +60,7 @@ export default createEntity({
           offset,
           sort_column,
           sort_direction,
-        });
-        }))["data"].map(item => ({
+        })).map(item => ({
           collection_id: canonicalCollectionId(collection),
           archived: archived || false,
           ...item,
