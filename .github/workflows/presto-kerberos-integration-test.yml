@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: metabase/mba
-          ref: docker-exec-no-tty
+          ref: tty-detection
           token: ${{ secrets.GITHUB_TOKEN }}
           path: mba-src
       - name: ls mba
