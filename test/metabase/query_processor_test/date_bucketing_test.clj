@@ -16,6 +16,7 @@
   their results."
   (:require [clj-time.core :as time]
             [clj-time.format :as tformat]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
@@ -29,10 +30,10 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
-            [toucan.db :as db]
-            [metabase.util.honeysql-extensions :as hx])
+            [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime]
            [org.joda.time DateTime DateTimeZone]))
 
@@ -852,12 +853,14 @@
 
 (defn- driver->current-datetime-base-type
   "Returns the :base-type of the \"current timestamp\" HoneySQL form defined by the driver `d`. Relies upon the driver
-  implementation having set that explicitly via `hx/with-type-info`."
+  implementation having set that explicitly via `hx/with-type-info`. Returns `nil` if it can't be determined."
   [d]
   (when (isa? driver/hierarchy driver/*driver* :sql)
-    (sql-jdbc.sync/database-type->base-type d (-> (sql.qp/current-datetime-honeysql-form d)
-                                                  hx/type-info
-                                                  hx/type-info->db-type))))
+    (let [db-type (-> (sql.qp/current-datetime-honeysql-form d)
+                    hx/type-info
+                    hx/type-info->db-type)]
+      (when-not (str/blank? db-type)
+        (sql-jdbc.sync/database-type->base-type d db-type)))))
 
 (defmethod mt/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
