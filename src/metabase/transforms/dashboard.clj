@@ -36,7 +36,7 @@
   [table]
   {:creator_id             api/*current-user-id*
    :dataset_query          {:type     :query
-                            :query    {:source-table (u/get-id table)}
+                            :query    {:source-table (u/the-id table)}
                             :database (:db_id table)}
    :name                   (:display_name table)
    :collection_id          nil

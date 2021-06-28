@@ -133,8 +133,7 @@
 
         ([acc row]
          (if (map? row)
-           (do (vreset! final-metadata row)
-               (rf acc))
+           (vreset! final-metadata row)
            (rf acc row)))))))
 
 (defn- maybe-reduce-cached-results

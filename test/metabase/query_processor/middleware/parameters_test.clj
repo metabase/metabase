@@ -7,7 +7,10 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.query-processor.middleware.parameters :as parameters]
-            [metabase.test :as mt])
+            [metabase.test :as mt]
+            [metabase.util :as u]
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest move-top-level-params-to-inner-query-test
@@ -160,7 +163,7 @@
       (let [card-1-id  (:id card-1)
             card-2-id  (:id card-2)]
         (is (= (mt/native-query
-                {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2" :params nil})
+                {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
                (substitute-params
                 (mt/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-1-id "}} AS c1, {{#" card-2-id "}} AS c2")
@@ -172,7 +175,7 @@
       (let [card-1-id  (:id card-1)
             card-2-id  (:id card-2)]
         (is (= (mt/native-query
-                {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2" :params nil})
+                {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params []})
                (substitute-params
                 (mt/native-query
                  {:query         (str "WITH c1 AS {{#" card-1-id "}}, "
@@ -187,7 +190,7 @@
       (let [card-1-id  (:id card-1)
             card-2-id  (:id card-2)]
         (is (= (mt/native-query
-                {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2" :params nil})
+                {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
                (substitute-params
                 (mt/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
@@ -210,7 +213,7 @@
                                  "FROM \"PUBLIC\".\"VENUES\" "
                                  "LIMIT 1048575")]
         (is (= (mt/native-query
-                {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params nil})
+                {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
                (substitute-params
                 (mt/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
@@ -224,7 +227,7 @@
                                                                      {:id "x", :name "x", :display-name "Number x",
                                                                       :type :number, :default "1", :required true}}})}]
       (is (= (mt/native-query
-              {:query "SELECT * FROM (SELECT 1) AS x" :params nil})
+              {:query "SELECT * FROM (SELECT 1) AS x", :params []})
              (substitute-params
               (mt/native-query
                {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
@@ -275,8 +278,33 @@
 
     (testing "multiple snippets are expanded from saved sub-query"
       (is (= (mt/native-query
-               {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params nil})
+               {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params []})
              (substitute-params
               (mt/native-query
                 {:query         (str "SELECT * FROM {{#" (:id card) "}} AS x")
                  :template-tags (card-template-tags [(:id card)])})))))))
+
+(deftest include-card-parameters-test
+  (testing "Expanding a Card reference should include its parameters (#12236)"
+    (mt/dataset sample-dataset
+      (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
+                                                 {:filter      [:between $total 30 60]
+                                                  :aggregation [[:aggregation-options
+                                                                 [:count-where
+                                                                  [:starts-with $product_id->products.category "G"]]
+                                                                 {:name "G Monies", :display-name "G Monies"}]]
+                                                  :breakout    [!month.created_at]})}]
+        (let [card-tag (str "#" (u/the-id card))
+              query    (mt/native-query
+                         {:query         (format "SELECT * FROM {{%s}}" card-tag)
+                          :template-tags {card-tag
+                                          {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
+                                           :name         card-tag
+                                           :display-name card-tag
+                                           :type         :card
+                                           :card-id      (u/the-id card)}}})]
+          (is (schema= {:native   {:query    su/NonBlankString
+                                   :params   (s/eq ["G%"])
+                                   s/Keyword s/Any}
+                        s/Keyword s/Any}
+                       (substitute-params query))))))))

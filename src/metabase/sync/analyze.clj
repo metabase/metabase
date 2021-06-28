@@ -54,7 +54,7 @@
 
 (s/defn ^:private update-last-analyzed!
   [tables :- [i/TableInstance]]
-  (when-let [ids (seq (map u/get-id tables))]
+  (when-let [ids (seq (map u/the-id tables))]
     ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
     (db/update-where! Field {:table_id            [:in ids]
                              :fingerprint_version i/latest-fingerprint-version

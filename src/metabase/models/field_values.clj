@@ -150,7 +150,7 @@
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
    created/updated/deleted as a result of this call."
   [field & [human-readable-values]]
-  (let [field-values (FieldValues :field_id (u/get-id field))
+  (let [field-values (FieldValues :field_id (u/the-id field))
         values       (distinct-values field)
         field-name   (or (:name field) (:id field))]
     (cond
@@ -169,8 +169,8 @@
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
                        field-name (count values))
                   (trs "Switching Field to use a search widget instead."))
-        (db/update! 'Field (u/get-id field) :has_field_values nil)
-        (db/delete! FieldValues :field_id (u/get-id field)))
+        (db/update! 'Field (u/the-id field) :has_field_values nil)
+        (db/delete! FieldValues :field_id (u/the-id field)))
 
       (= (:values field-values) values)
       (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
@@ -179,7 +179,7 @@
       (and field-values values)
       (do
         (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
-        (db/update-non-nil-keys! FieldValues (u/get-id field-values)
+        (db/update-non-nil-keys! FieldValues (u/the-id field-values)
           :values                values
           :human_readable_values (fixup-human-readable-values field-values values))
         ::fv-updated)
@@ -189,7 +189,7 @@
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
         (db/insert! FieldValues
-          :field_id              (u/get-id field)
+          :field_id              (u/the-id field)
           :values                values
           :human_readable_values human-readable-values)
         ::fv-created)
@@ -197,7 +197,7 @@
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
       :else
       (do
-        (db/delete! FieldValues :field_id (u/get-id field))
+        (db/delete! FieldValues :field_id (u/the-id field))
         ::fv-deleted))))
 
 (defn field-values->pairs
@@ -224,13 +224,13 @@
   [field-id values]
   {:pre [(integer? field-id) (coll? values)]}
   (if-let [field-values (FieldValues :field_id field-id)]
-    (db/update! FieldValues (u/get-id field-values), :values values)
+    (db/update! FieldValues (u/the-id field-values), :values values)
     (db/insert! FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values!
   "Remove the FieldValues for `field-or-id`."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/get-id field-or-id)))
+  (db/delete! FieldValues :field_id (u/the-id field-or-id)))
 
 (defn- table-ids->table-id->is-on-demand?
   "Given a collection of `table-ids` return a map of Table ID to whether or not its Database is subject to 'On Demand'
@@ -260,5 +260,5 @@
       (when (table-id->is-on-demand? table-id)
         (log/debug
          (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                 (u/get-id field) (:name field)))
+                 (u/the-id field) (:name field)))
         (create-or-update-field-values! field)))))

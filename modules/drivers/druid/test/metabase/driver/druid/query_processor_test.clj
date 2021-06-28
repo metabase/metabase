@@ -542,7 +542,7 @@
                   ["4" 197.0]]
                  (mt/rows
                    (mt/run-mbql-query checkins
-                     {:aggregation [:+ [:metric (u/get-id metric)] 1]
+                     {:aggregation [:+ [:metric (u/the-id metric)] 1]
                       :breakout    [$venue_price]})))))))))
 
 (deftest order-by-aggregation-test

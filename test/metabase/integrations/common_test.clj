@@ -16,7 +16,7 @@
 (defn- group-memberships
   "Return set of names of PermissionsGroups `user` currently belongs to."
   [user]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/get-id user)))]
+  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user)))]
     (db/select-field :name PermissionsGroup :id [:in group-ids])))
 
 (defn- do-with-user-in-groups
@@ -25,7 +25,7 @@
      (do-with-user-in-groups f user groups-or-ids)))
   ([f user [group-or-id & more]]
    (if group-or-id
-     (tt/with-temp PermissionsGroupMembership [_ {:group_id (u/get-id group-or-id), :user_id (u/get-id user)}]
+     (tt/with-temp PermissionsGroupMembership [_ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
        (do-with-user-in-groups f user more))
      (f user))))
 
@@ -61,8 +61,8 @@
     (with-user-in-groups [group {:name (str ::group)}
                           user  [group]]
       (let [membership-id          #(db/select-one-id PermissionsGroupMembership
-                                                      :group_id (u/get-id group)
-                                                      :user_id  (u/get-id user))
+                                                      :group_id (u/the-id group)
+                                                      :user_id  (u/the-id user))
             original-membership-id (membership-id)]
         (integrations.common/sync-group-memberships! user #{group} #{group} false)
         (is (= original-membership-id

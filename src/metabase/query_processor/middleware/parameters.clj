@@ -30,7 +30,7 @@
       (-> (update-in join [:source-query :filter] mbql.u/combine-filter-clauses filter-clause)
           (dissoc :filter)))))
 
-(defn- expand-mbql-params [outer-query {:keys [parameters] :as m}]
+(defn- expand-mbql-params [outer-query {:keys [parameters], :as m}]
   ;; HACK `params.mbql/expand` assumes it's operating on an outer query so wrap `m` to look like an outer query. TODO
   ;; - fix `params.mbql` to operate on abitrary maps instead of only on top-level queries.
   (let [wrapped           (assoc outer-query :query m)

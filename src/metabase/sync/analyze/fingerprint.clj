@@ -24,7 +24,7 @@
   ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
   ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
   ;; latest fingerprints.
-  (db/update! Field (u/get-id field)
+  (db/update! Field (u/the-id field)
     :fingerprint         fingerprint
     :fingerprint_version i/latest-fingerprint-version
     :last_analyzed       nil))
@@ -157,7 +157,7 @@
 
   ([table :- i/TableInstance]
    (h/merge-where (honeysql-for-fields-that-need-fingerprint-updating)
-                  [:= :table_id (u/get-id table)])))
+                  [:= :table_id (u/the-id table)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |

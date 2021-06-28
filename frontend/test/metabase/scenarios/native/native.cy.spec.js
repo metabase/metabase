@@ -644,7 +644,7 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it.skip("should be able to add new columns after hiding some (metabase#15393)", () => {
+  it("should be able to add new columns after hiding some (metabase#15393)", () => {
     cy.visit("/");
     cy.icon("sql").click();
     cy.get(".ace_content")
@@ -721,6 +721,42 @@ describe("scenarios > question > native", () => {
         });
         cy.get(".Visualization").contains("23.54");
       });
+    });
+  });
+
+  ["normal", "nodata"].forEach(user => {
+    //Very related to the metabase#15981, only this time the issue happens with the Field Filter without the value being set.
+    it.skip(`filter feature flag shouldn't cause run-overlay of results in native editor for ${user} user (metabase#16739)`, () => {
+      const filter = {
+        id: "7795c137-a46c-3db9-1930-1d690c8dbc03",
+        name: "filter",
+        "display-name": "Filter",
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "widget-type": "string/=",
+        default: null,
+      };
+
+      mockSessionProperty("field-filter-operators-enabled?", true);
+
+      cy.createNativeQuestion({
+        native: {
+          query: "select * from PRODUCTS where {{ filter }}",
+          "template-tags": { filter },
+        },
+      }).then(({ body: { id } }) => {
+        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
+
+        if (user === "nodata") {
+          cy.signOut();
+          cy.signIn(user);
+        }
+
+        cy.visit(`/question/${id}`);
+        cy.wait("@cardQuery");
+      });
+
+      cy.icon("play").should("not.exist");
     });
   });
 
