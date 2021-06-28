@@ -52,8 +52,8 @@
           svg    (u/decode-base64 base64)
           themed (str/replace svg #"<svg\b([^>]*)( fill=\"[^\"]*\")([^>]*)>" (str "<svg$1$3 fill=\"" color "\">"))]
       (str "data:image/svg+xml;base64," (u/encode-base64 themed)))
-  (catch Throwable e
-    url)))
+    (catch Throwable e
+      url)))
 
 (defn- logo-url []
   (let [url   (public-settings/application-logo-url)
@@ -179,7 +179,9 @@
                               :sso              google-auth?
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
-                              :isActive         is-active?}))]
+                              :isActive         is-active?
+                              :adminEmail       (public-settings/admin-email)
+                              :adminEmailSet    (boolean (public-settings/admin-email))}))]
     (email/send-message!
       :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
