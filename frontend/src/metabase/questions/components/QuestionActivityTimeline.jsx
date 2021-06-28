@@ -8,15 +8,11 @@ import { revertToRevision } from "metabase/query_builder/actions";
 import { getRevisionEvents } from "metabase/lib/revisions";
 import User from "metabase/entities/users";
 import Revision from "metabase/entities/revisions";
-import { PLUGIN_MODERATION_SERVICE } from "metabase/plugins";
 import Timeline from "metabase/components/Timeline";
 import {
   SidebarSectionHeader,
-  RequestButton,
   RevertButton,
 } from "./QuestionActivityTimeline.styled";
-
-const { getModerationEvents, isRequestOpen } = PLUGIN_MODERATION_SERVICE;
 
 QuestionActivityTimeline.propTypes = {
   question: PropTypes.object,
@@ -35,34 +31,17 @@ function QuestionActivityTimeline({
   onRequestClick,
   users,
 }) {
-  const usersById = _.indexBy(users, "id");
   const canWrite = question.canWrite();
-
-  const moderationEvents =
-    getModerationEvents(
-      question.getModerationRequests(),
-      question.getModerationReviews(),
-      usersById,
-    ) || [];
   const revisionEvents = getRevisionEvents(revisions, canWrite) || [];
-  const events = [...moderationEvents, ...revisionEvents];
 
   return (
     <div className={className}>
       <SidebarSectionHeader>{t`Activity`}</SidebarSectionHeader>
       <Timeline
-        items={events}
+        items={revisionEvents}
         renderFooter={item => {
-          const { showFooter, request, footerText, revision } = item;
-          if (request && showFooter) {
-            return (
-              <ModerationRequestEventFooter
-                request={request}
-                statusText={footerText}
-                onRequestClick={onRequestClick}
-              />
-            );
-          } else if (revision && showFooter) {
+          const { showFooter, revision } = item;
+          if (showFooter) {
             return (
               <RevisionEventFooter
                 revision={revision}
@@ -92,25 +71,6 @@ export default _.compose(
     },
   ),
 )(QuestionActivityTimeline);
-
-ModerationRequestEventFooter.propTypes = {
-  request: PropTypes.object.isRequired,
-  statusText: PropTypes.string.isRequired,
-  onRequestClick: PropTypes.func.isRequired,
-};
-
-function ModerationRequestEventFooter({ request, statusText, onRequestClick }) {
-  return (
-    <div>
-      <RequestButton
-        color={isRequestOpen(request) ? "text-dark" : "text-light"}
-        onClick={() => onRequestClick(request)}
-      >
-        {statusText}
-      </RequestButton>
-    </div>
-  );
-}
 
 RevisionEventFooter.propTypes = {
   revision: PropTypes.object.isRequired,

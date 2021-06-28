@@ -51,14 +51,7 @@ import {
   getSnippetCollectionId,
 } from "./selectors";
 
-import {
-  MetabaseApi,
-  CardApi,
-  UserApi,
-  ModerationReviewApi,
-  ModerationRequestApi,
-  ModerationCommentApi,
-} from "metabase/services";
+import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -74,7 +67,6 @@ import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getUser } from "metabase/selectors/user";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";
@@ -333,7 +325,6 @@ export const initializeQB = (location, params) => {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
       queryBuilderMode: getQueryBuilderModeFromLocation(location),
-      isShowingQuestionDetailsSidebar: !!location.query.moderationRequest,
     };
 
     // load up or initialize the card we'll be working on
