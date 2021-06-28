@@ -43,7 +43,7 @@ export default createEntity({
 
         const canonicalCollection = canonicalCollectionId(collection);
         return (await collectionList({
-          canonicalCollection,
+          collection,
           archived,
           models,
           namespace,
@@ -53,15 +53,11 @@ export default createEntity({
           sort_column,
           sort_direction,
         });
-
-        return {
-          ...rest,
-          data: data.map(item => ({
-            collection_id: canonicalCollectionId(collection),
-            archived: archived || false,
-            ...item,
-          })),
-        };
+        }))["data"].map(item => ({
+          collection_id: canonicalCollectionId(collection),
+          archived: archived || false,
+          ...item,
+        }));
       } else {
         return searchList(query);
       }
