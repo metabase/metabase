@@ -32,6 +32,7 @@ import * as Card_DEPRECATED from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import {
   findColumnSettingIndexForColumn,
+  findColumnIndexForColumnSetting,
   syncTableColumnsToQuery,
 } from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
@@ -621,7 +622,13 @@ export default class Question {
       return !hasVizSettings;
     });
 
-    if (addedColumns.length === 0) {
+    const validVizSettings = vizSettings.filter(colSetting => {
+      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
+      return hasColumn;
+    });
+    const noColumnsRemoved = validVizSettings.length === vizSettings.length;
+
+    if (noColumnsRemoved && addedColumns.length === 0) {
       return this;
     }
 
@@ -632,7 +639,7 @@ export default class Question {
     }));
 
     return this.updateSettings({
-      "table.columns": [...vizSettings, ...addedColumns],
+      "table.columns": [...validVizSettings, ...addedColumns],
     });
   }
 
