@@ -1094,7 +1094,7 @@
         (doseq [tz [nil "UTC"]] ;iterate on at least two report time zones to suss out bugs related to that
           (mt/with-temporary-setting-values [report-timezone tz]
             (testing (format "\nunit = %s" unit)
-              (is (= expected-count (mt/with-log-level :trace (count-of-checkins unit filter-value)))
+              (is (= expected-count (count-of-checkins unit filter-value))
                   (format
                     "count of rows where (= (%s date) %s) should be %d"
                     (name unit)
