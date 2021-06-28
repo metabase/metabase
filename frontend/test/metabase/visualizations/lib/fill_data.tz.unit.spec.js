@@ -6,6 +6,19 @@ import fillMissingValuesInDatas from "metabase/visualizations/lib/fill_data";
 
 testAcrossTimezones(reportTz => {
   describe("fillMissingValuesInDatas", () => {
+    beforeEach(() => {
+      window.SVGElement.prototype.getBBox = () => ({
+        x: 0,
+        y: 0,
+        width: 4000,
+        height: 4000,
+      });
+    });
+
+    afterEach(() => {
+      delete window.SVGElement.prototype.getBBox;
+    });
+
     it("should fill zeros for timeseries across DST boundary", () => {
       const time1 = moment.tz("2019-03-01T00:00:00", reportTz);
       const time2 = moment.tz("2019-03-30T00:00:00", reportTz);

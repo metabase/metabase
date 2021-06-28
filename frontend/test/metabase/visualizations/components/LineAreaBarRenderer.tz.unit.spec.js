@@ -16,6 +16,13 @@ import {
 const WIDTH = 4000;
 const HEIGHT = 1000;
 
+window.SVGElement.prototype.getBBox = () => ({
+  x: 0,
+  y: 0,
+  width: WIDTH,
+  height: HEIGHT,
+});
+
 describe("LineAreaBarRenderer-bar", () => {
   let element;
   let onHoverChange;
@@ -163,6 +170,7 @@ describe("LineAreaBarRenderer-bar", () => {
           activateTooltips();
         });
         afterAll(teardownFixture);
+
         it("should have tooltips that match source data", () => {
           expect(getTooltipDimensionValueText()).toEqual(
             rows.map(([timestamp]) =>

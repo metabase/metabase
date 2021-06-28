@@ -6,6 +6,19 @@ import { computeTimeseriesDataInverval } from "metabase/visualizations/lib/times
 
 testAcrossTimezones(reportTz => {
   describe("computeTimeseriesDataInvervalIndex", () => {
+    beforeEach(() => {
+      window.SVGElement.prototype.getBBox = () => ({
+        x: 0,
+        y: 0,
+        width: 4000,
+        height: 4000,
+      });
+    });
+
+    afterEach(() => {
+      delete window.SVGElement.prototype.getBBox;
+    });
+
     [
       ["hour", 6, ["2015-01-01T00:00:00", "2016-05-04T06:00:00"]],
       ["hour", 12, ["2015-01-01T00:00:00", "2016-05-04T12:00:00"]],

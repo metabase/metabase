@@ -22,5 +22,9 @@
   "coveragePathIgnorePatterns": [
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js"
-  ]
+  ],
+  "testEnvironment": "jsdom",
+  "transform": {
+    "\\.[jt]sx?$": "babel-jest"
+  }
 }
