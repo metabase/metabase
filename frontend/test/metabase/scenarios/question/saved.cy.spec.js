@@ -94,8 +94,8 @@ describe("scenarios > question > saved", () => {
     cy.visit("/question/1");
     cy.wait("@query");
 
-    cy.get(".Icon-pencil").click();
-    cy.findByText("Duplicate this question").click();
+    cy.findByTestId("saved-question-header-button").click();
+    cy.icon("segment").click();
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");

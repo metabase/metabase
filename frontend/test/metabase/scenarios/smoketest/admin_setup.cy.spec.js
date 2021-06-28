@@ -281,8 +281,8 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Settings");
 
-      cy.icon("pencil").click();
-      cy.findByText("Edit this question").click();
+      cy.findByTestId("saved-question-header-button").click();
+      cy.findByTestId("edit-details-button").click();
       cy.findByLabelText("Name")
         .clear()
         .type("Test Question");
@@ -540,8 +540,8 @@ describe("smoketest > admin_setup", () => {
       );
 
       cy.findByText("Test Question").click();
-      cy.icon("pencil").click();
-      cy.findByText("Edit this question").click();
+      cy.findByTestId("saved-question-header-button").click();
+      cy.findByTestId("edit-details-button").click();
 
       cy.findByText("Edit question");
       cy.findByText("Testing question description");
