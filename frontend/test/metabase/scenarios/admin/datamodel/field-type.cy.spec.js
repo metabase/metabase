@@ -47,6 +47,18 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     getFieldType("Foreign Key");
     getFKTargetField("Products → ID");
   });
+
+  it.skip("should let you change the type to 'Number' (metabase#16781)", () => {
+    visitAlias("@ORDERS_PRODUCT_ID_URL");
+
+    setFieldType({ oldValue: "Foreign Key", newValue: "Number" });
+
+    waitAndAssertOnResponse("fieldUpdate");
+
+    cy.reload();
+
+    getFieldType("Number");
+  });
 });
 
 function waitAndAssertOnResponse(alias) {
