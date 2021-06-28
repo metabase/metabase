@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 
 // functions called when the application is started
