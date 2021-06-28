@@ -608,6 +608,13 @@ export default class Question {
 
   _syncNativeQuerySettings({ data: { cols = [] } = {} }) {
     const vizSettings = this.setting("table.columns") || [];
+    // "table.columns" receive a value only if there are custom settings
+    // e.g. some columns are hidden. If it's empty, it means everything is visible
+    const isUsingDefaultSettings = vizSettings.length === 0;
+    if (isUsingDefaultSettings) {
+      return this;
+    }
+
     let addedColumns = cols.filter(col => {
       const hasVizSettings =
         findColumnSettingIndexForColumn(vizSettings, col) >= 0;
