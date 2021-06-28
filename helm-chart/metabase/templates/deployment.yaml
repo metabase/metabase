@@ -59,6 +59,12 @@ spec:
           - name: {{ include "metabase.fullname" . }}-secrets
             mountPath: /etc/secret
             readOnly: true
+          {{- if .Values.extraArgs }}
+          args:
+          {{- range $key, $value := .Values.extraArgs }}
+          - {{ $value }}
+          {{- end }}
+          {{- end }}
           env:
           {{- if .Values.config.jetty.host }}
           - name: MB_JETTY_HOST
@@ -72,14 +78,7 @@ spec:
               configMapKeyRef:
                 name: {{ include "metabase.fullname" . }}-configs
                 key: MB_JETTY_PORT
-          {{- if and 
-            (ne .Values.config.database.type "h2") 
-            (.Values.secrets.database.host) 
-            (.Values.secrets.database.password) 
-            (.Values.secrets.database.username) 
-            (.Values.secrets.database.port) 
-            (.Values.secrets.database.dbname) 
-          }}
+          {{- if and (ne .Values.config.database.type "h2") (.Values.secrets.database.host) (.Values.secrets.database.password) (.Values.secrets.database.username) (.Values.secrets.database.port) (.Values.secrets.database.dbName) }}
           - name: MB_DB_TYPE
             valueFrom:
               configMapKeyRef:
@@ -111,7 +110,7 @@ spec:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_DB_PORT
           {{- end }}
-          {{- if .Values.secrets.database.connString }}
+          {{- if and (ne .Values.config.database.type "h2") (.Values.secrets.database.connString) }}
           - name: MB_DB_CONNECTION_URI
             valueFrom:
               secretKeyRef:
@@ -125,6 +124,33 @@ spec:
                 name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_ENCRYPTION_SECRET_KEY
           {{- end }}
+          {{- if and (.Values.secrets.email.host) (.Values.secrets.email.username) (.Values.secrets.email.password) (.Values.secrets.email.port) (.Values.secrets.email.security) }}
+          - name: MB_EMAIL_SMTP_HOST
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_EMAIL_SMTP_HOST
+          - name: MB_EMAIL_SMTP_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_EMAIL_SMTP_USERNAME
+          - name: MB_EMAIL_SMTP_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_EMAIL_SMTP_PASSWORD
+          - name: MB_EMAIL_SMTP_PORT
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_EMAIL_SMTP_PORT
+          - name: MB_EMAIL_SMTP_SECURITY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_EMAIL_SMTP_SECURITY
+          {{- end }}
           {{- if .Values.config.security.passComplexity }}
           - name: MB_PASSWORD_COMPLEXITY
             valueFrom:
@@ -132,12 +158,659 @@ spec:
                 name: {{ include "metabase.fullname" . }}-configs
                 key: MB_PASSWORD_COMPLEXITY
           {{- end }}
-          {{- if .Values.config.security.passLenght }}
+          {{- if .Values.config.security.passLength }}
           - name: MB_PASSWORD_LENGTH
             valueFrom:
               configMapKeyRef:
                 name: {{ include "metabase.fullname" . }}-configs
                 key: MB_PASSWORD_LENGTH
+          {{- end }}
+          {{- if .Values.config.dw.maxConnectionPoolSize }}
+          - name: MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE
+          {{- end }}
+          {{- if .Values.config.email.fromAddress }}
+          - name: MB_EMAIL_FROM_ADDRESS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_EMAIL_FROM_ADDRESS
+          {{- end }}
+          {{- if .Values.config.security.sessionAge }}
+          - name: MAX_SESSION_AGE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MAX_SESSION_AGE
+          {{- end }}
+          {{- if .Values.config.email.admin }}
+          - name: MB_ADMIN_EMAIL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_ADMIN_EMAIL
+          {{- end }}
+          {{- if .Values.secrets.config.api_key }}
+          - name: MB_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_API_KEY
+          {{- end }}
+          {{- if .Values.config.application.favicon_url }}
+          - name: MB_APPLICATION_FAVICON_URL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_APPLICATION_FAVICON_URL
+          {{- end }}
+          {{- if .Values.config.application.logo_url }}
+          - name: MB_APPLICATION_LOGO_URL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_APPLICATION_LOGO_URL
+          {{- end }}
+          {{- if .Values.config.application.anon_tracking_enabled }}
+          - name: MB_ANON_TRACKING_ENABLED
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_ANON_TRACKING_ENABLED
+          {{- end }}
+          {{- if .Values.config.application.name }}
+          - name: MB_APPLICATION_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_APPLICATION_NAME
+          {{- end }}
+          {{- if .Values.config.dw.AsyncQueryThreadPoolSize }}
+          - name: MB_ASYNC_QUERY_THREAD_POOL_SIZE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_ASYNC_QUERY_THREAD_POOL_SIZE
+          {{- end }}
+          {{- if .Values.config.application.breakoutBinWidth }}
+          - name: MB_BREAKOUT_BIN_WIDTH
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_BREAKOUT_BIN_WIDTH
+          {{- end }}
+          {{- if .Values.config.application.breakoutBinNum }}
+          - name: MB_BREAKOUT_BINS_NUM
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_BREAKOUT_BINS_NUM
+          {{- end }}
+          {{- if .Values.config.application.checkForUpdates }}
+          - name: MB_CHECK_FOR_UPDATES
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_CHECK_FOR_UPDATES
+          {{- end }}
+          {{- if .Values.config.database.automigrate }}
+          - name: MB_DB_AUTOMIGRATE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_DB_AUTOMIGRATE
+          {{- end }}
+          {{- if .Values.config.database.connectionTimeoutMs }}
+          - name: MB_DB_CONNECTION_TIMEOUT_MS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_DB_CONNECTION_TIMEOUT_MS
+          {{- end }}
+          {{- if .Values.config.application.disableSessionThrottle }}
+          - name: MB_DISABLE_SESSION_THROTTLE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_DISABLE_SESSION_THROTTLE
+          {{- end }}
+          {{- if .Values.config.application.embeddingAppOrigin }}
+          - name: MB_EMBEDDING_APP_ORIGIN
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_EMBEDDING_APP_ORIGIN
+          {{- end }}
+          {{- if .Values.secrets.config.embeddingToken }}
+          - name: MB_PREMIUM_EMBEDDING_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_PREMIUM_EMBEDDING_TOKEN
+          {{- end }}
+          {{- if .Values.config.application.enableEmbedding }}
+          - name: MB_ENABLE_EMBEDDING
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_ENABLE_EMBEDDING
+          {{- end }}
+          {{- if .Values.config.application.enableNestedQueries }}
+          - name: MB_ENABLE_NESTED_QUERIES
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_ENABLE_NESTED_QUERIES
+          {{- end }}
+          {{- if .Values.config.application.enablePasswordLogin }}
+          - name: MB_ENABLE_PASSWORD_LOGIN
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_ENABLE_PASSWORD_LOGIN
+          {{- end }}
+          {{- if .Values.config.application.enablePublicSharing }}
+          - name: MB_ENABLE_PUBLIC_SHARING
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_ENABLE_PUBLIC_SHARING
+          {{- end }}
+          {{- if eq .Values.config.application.enableQueryCaching "true" }}
+          - name: MB_ENABLE_QUERY_CACHING
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_ENABLE_QUERY_CACHING
+          {{- if .Values.config.application.queryCachingMaxKb }}
+          - name: MB_QUERY_CACHING_MAX_KB
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_QUERY_CACHING_MAX_KB
+          {{- end }}
+          {{- if .Values.config.application.queryCachingMaxTTL }}
+          - name: MB_QUERY_CACHING_MAX_TTL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_QUERY_CACHING_MAX_TTL
+          {{- end }}
+          {{- if .Values.config.application.queryCachingMinTTL }}
+          - name: MB_QUERY_CACHING_MIN_TTL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_QUERY_CACHING_MIN_TTL
+          {{- end }}
+          {{- if .Values.config.application.queryCachingTTLRatio }}
+          - name: MB_QUERY_CACHING_TTL_RATIO
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_QUERY_CACHING_TTL_RATIO
+          {{- end }}
+          {{- end }}
+          {{- if .Values.config.application.enableXrays }}
+          - name: MB_ENABLE_XRAYS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_ENABLE_XRAYS
+          {{- end }}
+          {{- if .Values.config.sso.googleAuthAutoCreateAccountDomains }}
+          - name: MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN
+          {{- end }}
+          {{- if .Values.config.sso.googleAuthClientId }}
+          - name: MB_GOOGLE_AUTH_CLIENT_ID
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_GOOGLE_AUTH_CLIENT_ID
+          {{- end }}
+          {{- if .Values.config.dw.jdbcDataWarehouseMaxConnectionPoolSize }}
+          - name: MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE
+          {{- end }}
+          {{- if .Values.config.jetty.asyncResponseTimeout }}
+          - name: MB_JETTY_ASYNC_RESPONSE_TIMEOUT
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_ASYNC_RESPONSE_TIMEOUT
+          {{- end }}
+          {{- if .Values.config.jetty.daemon }}
+          - name: MB_JETTY_DAEMON
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_DAEMON
+          {{- end }}
+          {{- if .Values.config.jetty.join }}
+          - name: MB_JETTY_JOIN
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_JOIN
+          {{- end }}
+          {{- if .Values.config.jetty.maxIdleTime }}
+          - name: MB_JETTY_MAXIDLETIME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_MAXIDLETIME
+          {{- end }}
+          {{- if .Values.config.jetty.maxQueued }}
+          - name: MB_JETTY_MAXQUEUED
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_MAXQUEUED
+          {{- end }}
+          {{- if .Values.config.jetty.maxThreads }}
+          - name: MB_JETTY_MAXTHREADS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_MAXTHREADS
+          {{- end }}
+          {{- if .Values.config.jetty.minThreads }}
+          - name: MB_JETTY_MINTHREADS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_MINTHREADS
+          {{- end }}
+          {{- if .Values.config.jetty.requestHeaderSize }}
+          - name: MB_JETTY_REQUEST_HEADER_SIZE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JETTY_REQUEST_HEADER_SIZE
+          {{- end }}
+          {{- if and (eq .Values.config.sso.jwtEnabled "true") (.Values.secrets.sso.jwt) (.Values.config.sso.jwtIdentityProviderUri) }}
+          - name: MB_JWT_ENABLED
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JWT_ENABLED
+          - name: MB_JWT_SHARED_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_JWT_SHARED_SECRET
+          - name: MB_JWT_IDENTITY_PROVIDER_URI
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JWT_IDENTITY_PROVIDER_URI
+          {{- if .Values.config.sso.jwtAttributeEmail }}
+          - name: MB_JWT_ATTRIBUTE_EMAIL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JWT_ATTRIBUTE_EMAIL
+          {{- end }}
+          {{- if .Values.config.sso.jwtAttributeFirstName }}
+          - name: MB_JWT_ATTRIBUTE_FIRSTNAME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JWT_ATTRIBUTE_FIRSTNAME
+          {{- end }}
+          {{- if .Values.config.sso.jwtAttributeGroups }}
+          - name: MB_JWT_ATTRIBUTE_GROUPS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JWT_ATTRIBUTE_GROUPS
+          {{- end }}
+          {{- if .Values.config.sso.jwtAttributeLastName }}
+          - name: MB_JWT_ATTRIBUTE_LASTNAME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JWT_ATTRIBUTE_LASTNAME
+          {{- end }}
+          {{- if .Values.config.sso.jwtGroupMappings }}
+          - name: MB_JWT_GROUP_MAPPINGS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JWT_GROUP_MAPPINGS
+          {{- end }}
+          {{- if .Values.config.sso.jwtGroupSync }}
+          - name: MB_JWT_GROUP_SYNC
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_JWT_GROUP_SYNC
+          {{- end }}
+          {{- end }}
+          {{- if .Values.config.application.landingPage }}
+          - name: MB_LANDING_PAGE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LANDING_PAGE
+          {{- end }}
+          {{- if and (eq .Values.config.sso.ldapEnabled "true") (.Values.secrets.ldap.host) (.Values.secrets.ldap.password) (.Values.secrets.ldap.port) (.Values.secrets.ldap.security) (.Values.config.sso.ldapBindDN) (.Values.config.sso.ldapUserBase) (.Values.config.sso.ldapGroupBase) }}
+          - name: MB_LDAP_ENABLED
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_ENABLED
+          - name: MB_LDAP_HOST
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_LDAP_HOST
+          - name: MB_LDAP_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_LDAP_PASSWORD
+          - name: MB_LDAP_PORT
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_LDAP_PORT
+          - name: MB_LDAP_SECURITY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_LDAP_SECURITY
+          - name: MB_LDAP_BIND_DN
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_BIND_DN
+          - name: MB_LDAP_GROUP_BASE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_GROUP_BASE
+          - name: MB_LDAP_USER_BASE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_USER_BASE
+          {{- if .Values.config.sso.ldapAttributeEmail }}
+          - name: MB_LDAP_ATTRIBUTE_EMAIL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_ATTRIBUTE_EMAIL
+          {{- end }}
+          {{- if .Values.config.sso.ldapAttributeFirstName }}
+          - name: MB_LDAP_ATTRIBUTE_FIRSTNAME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_ATTRIBUTE_FIRSTNAME
+          {{- end }}
+          {{- if .Values.config.sso.ldapAttributeLastName }}
+          - name: MB_LDAP_ATTRIBUTE_LASTNAME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_ATTRIBUTE_LASTNAME
+          {{- end }}
+          {{- if .Values.config.sso.ldapuserFilter }}
+          - name: MB_LDAP_USER_FILTER
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_USER_FILTER
+          {{- end }}
+          {{- if .Values.config.sso.ldapGroupMappings }}
+          - name: MB_LDAP_GROUP_MAPPINGS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_GROUP_MAPPINGS
+          {{- end }}
+          {{- if .Values.config.sso.ldapGroupSync }}
+          - name: MB_LDAP_GROUP_SYNC
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_GROUP_SYNC
+          {{- end }}
+          {{- if .Values.config.sso.ldapSyncUserAttributes }}
+          - name: MB_LDAP_SYNC_USER_ATTRIBUTES
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_SYNC_USER_ATTRIBUTES
+          {{- end }}
+          {{- if .Values.config.sso.ldapSyncUserAttributesBlacklist }}
+          - name: MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST
+          {{- end }}
+          {{- end }}
+          {{- if .Values.config.application.mapTileServerURL }}
+          - name: MB_MAP_TILE_SERVER_URL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_MAP_TILE_SERVER_URL
+          {{- end }}
+          {{- if .Values.config.application.metabotEnabled }}
+          - name: MB_METABOT_ENABLED
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_METABOT_ENABLED
+          {{- end }}
+          {{- if .Values.config.debug.namespaceTrace }}
+          - name: MB_NS_TRACE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_NS_TRACE
+          {{- end }}
+          {{- if .Values.config.application.pluginsDir }}
+          - name: MB_PLUGINS_DIR
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_PLUGINS_DIR
+          {{- end }}
+          {{- if .Values.config.dw.redshiftFetchSize }}
+          - name: MB_REDSHIFT_FETCH_SIZE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_REDSHIFT_FETCH_SIZE
+          {{- end }}
+          {{- if .Values.config.application.reportTimezone }}
+          - name: MB_REPORT_TIMEZONE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_REPORT_TIMEZONE
+          {{- end }}
+          {{- if and (.Values.config.sso.samlEnabled) (.Values.config.sso.samlApplicationName) (.Values.config.sso.samlIdPURI) (.Values.secrets.sso.samlIdentityProviderCertificate) }}
+          - name: MB_SAML_ENABLED
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_ENABLED
+          - name: MB_SAML_IDENTITY_PROVIDER_CERTIFICATE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_IDENTITY_PROVIDER_CERTIFICATE
+          - name: MB_SAML_APPLICATION_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_APPLICATION_NAME
+          - name: MB_SAML_IDENTITY_PROVIDER_URI
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_IDENTITY_PROVIDER_URI
+          {{- if (.Values.config.sso.samlAttributeEmail) }}
+          - name: MB_SAML_ATTRIBUTE_EMAIL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_ATTRIBUTE_EMAIL
+          {{- end }}
+          {{- if (.Values.config.sso.samlAttributeFirstName) }}
+          - name: MB_SAML_ATTRIBUTE_FIRSTNAME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_ATTRIBUTE_FIRSTNAME
+          {{- end }}
+          {{- if (.Values.config.sso.samlAttributeGroup) }}
+          - name: MB_SAML_ATTRIBUTE_GROUP
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_ATTRIBUTE_GROUP
+          {{- end }}
+          {{- if (.Values.config.sso.samlAttributeLastName) }}
+          - name: MB_SAML_ATTRIBUTE_LASTNAME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_ATTRIBUTE_LASTNAME
+          {{- end }}
+          {{- if (.Values.config.sso.samlGroupMappings) }}
+          - name: MB_SAML_GROUP_MAPPINGS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_GROUP_MAPPINGS
+          {{- end }}
+          {{- if (.Values.config.sso.samlGroupSync) }}
+          - name: MB_SAML_GROUP_SYNC
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_GROUP_SYNC
+          {{- if (.Values.config.sso.samlKeystoreAlias) }}
+          {{- end }}
+          - name: MB_SAML_KEYSTORE_ALIAS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SAML_KEYSTORE_ALIAS
+          {{- end }}
+          {{- end }}
+          {{- if .Values.config.sso.sendNewSSOUserAdminEmail }}
+          - name: MB_SEND_NEW_SSO_USER_ADMIN_EMAIL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SEND_NEW_SSO_USER_ADMIN_EMAIL
+          {{- end }}
+          {{- if .Values.config.security.sessionCookies }}
+          - name: MB_SESSION_COOKIES
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SESSION_COOKIES
+          {{- end }}
+          {{- if .Values.config.application.showHomepageData }}
+          - name: MB_SHOW_HOMEPAGE_DATA
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SHOW_HOMEPAGE_DATA
+          {{- end }}
+          {{- if .Values.config.application.showHomepageXrays }}
+          - name: MB_SHOW_HOMEPAGE_XRAYS
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SHOW_HOMEPAGE_XRAYS
+          {{- end }}
+          {{- if .Values.config.application.siteLocale }}
+          - name: MB_SITE_LOCALE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SITE_LOCALE
+          {{- end }}
+          {{- if .Values.config.application.siteName }}
+          - name: MB_SITE_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SITE_NAME
+          {{- end }}
+          {{- if .Values.config.application.siteURL }}
+          - name: MB_SITE_URL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SITE_URL
+          {{- end }}
+          {{- if .Values.config.application.siteUUID }}
+          - name: MB_SITE_UUID
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SITE_UUID
+          {{- end }}
+          {{- if .Values.config.security.sourceAddressHeader }}
+          - name: MB_SOURCE_ADDRESS_HEADER
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SOURCE_ADDRESS_HEADER
+          {{- end }}
+          {{- if .Values.config.application.sshHearbeatIntervalSec }}
+          - name: MB_SSH_HEARTBEAT_INTERVAL_SEC
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SSH_HEARTBEAT_INTERVAL_SEC
+          {{- end }}
+          {{- if .Values.config.application.versionInfoURL }}
+          - name: MB_VERSION_INFO_URL
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_VERSION_INFO_URL
+          {{- end }}
+          {{- if (.Values.secrets.config.setupToken) }}
+          - name: MB_SETUP_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_SETUP_TOKEN
+          {{- end }}
+          {{- if (.Values.secrets.config.slackToken) }}
+          - name: MB_SLACK_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "metabase.fullname" . }}-secrets
+                key: MB_SLACK_TOKEN
+          {{- end }}
+          {{- if .Values.extraEnv }}
+          {{- range $key, $value := .Values.extraEnv }}
+          - name: {{ $key }}
+            value: {{ $value }}
+          {{- end }}
           {{- end }}
       volumes:
         - name: {{ include "metabase.fullname" . }}-configs

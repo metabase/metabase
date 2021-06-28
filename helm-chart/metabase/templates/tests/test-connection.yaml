@@ -11,5 +11,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "metabase.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "metabase.fullname" . }}:{{ .Values.service.externalPort }}']
   restartPolicy: Never

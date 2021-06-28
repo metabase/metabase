@@ -34,15 +34,15 @@ This helm chart is highly configurable. For example, you can:
 
 - Connect to any application database.
 - Tune the Jetty server.
-- Change some configuration parameters. For example, you can set the maximum number of data warehouse connections (check out [environment variables](environment-variables.md)).
+- Change absolutely every configuration parameter (check out [environment variables](environment-variables.md)).
 
 Note that the chart's default deployment will run Metabase with the H2 database, which is [strongly discouraged for production environments](https://www.metabase.com/docs/latest/operations-guide/migrating-from-h2.html).
 
-This helm chart pulls the `latest` docker tag of the `metabase/metabase` image, but you can configure the chart to pull Metabase Enterprise, or a specific version.
+This helm chart pulls the `latest` docker tag of the `metabase/metabase` image, but you can configure the chart to pull [Metabase Enterprise](https://www.metabase.com/enterprise/), or a specific version of our Open Source version.
 
 ### Uninstalling the Chart
 
-To uninstall/delete the `meta-helm-chart` deployment:
+To uninstall/delete the `meta-helm-chart` deployment simply do:
 
 ```bash
 $ helm delete meta-helm-chart
@@ -55,6 +55,16 @@ $ helm delete metabase-@@@@@@@@@@
 ```
 
 The command removes all the Kubernetes components associated with the chart and deletes the release.
+
+### Horizontally scaling Metabase
+
+Want to spin up several pods of Metabase? simply do:
+
+```bash
+$ kubectl scale --replicas=xxx deployments/meta-helm-metabase
+```
+
+in the case you've named `meta-helm` to your installation. Remember that for horizontally scaling Metabase you'll need to have set up a database for Metabase to persist its state, and an ingress controller that will load balance across all the replicas that you start. Metabase scales both horizontally and vertically, so in case you want to know how to deploy Metabase in production check out our [Metabase at Scale](https://www.metabase.com/learn/administration/metabase-at-scale.html) guide
 
 ### Configuration
 
@@ -75,7 +85,7 @@ The following table lists the configurable parameters of the Metabase chart and 
 | secrets.database.connString        | Database connection URI (alternative to the below settings) | null              |
 | secrets.database.host              | Database host                                               | null              |
 | secrets.database.port              | Database port                                               | null              |
-| secrets.database.dbname            | Database name                                               | null              |
+| secrets.database.dbName            | Database name                                               | null              |
 | secrets.database.username          | Database username                                           | null              |
 | secrets.database.password          | Database password                                           | null              |
 | config.security.passComplexity     | Complexity requirement for Metabase account's password      | normal            |
@@ -106,17 +116,17 @@ The following table lists the configurable parameters of the Metabase chart and 
 | config.jetty.minThreads            | Jetty min number of threads                                 | 8                 |
 | config.dw.maxConnectionPoolSize    | Maximum number of connections to a data warehouse           | 15                |
 
-The above parameters map to the [environment variables](./environment-variables.md).
+The above parameters map to the [environment variables](./environment-variables.md). As this Helm Chart can tweak every parameter of a Metabase installation, please check out in the documentation the default values of each one and change accordingly. You can also see all the parameters that can be changed in the [source of this helm chart](https://github.com/metabase/metabase/blob/master/helm-chart/metabase/values.yaml)
 
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`. For example:
 
 ```bash
 $ helm install meta-helm-chart \
-  --set image.tag=v0.39.4,config.security.passComplexity=strong,config.security.passlength=10 \
+  --set image.tag=v0.41.0,config.security.passComplexity=strong,config.security.passlength=10 \
     metabase/metabase
 ```
 
-The above command starts Metabase on version `0.39.4`, and sets the user password complexity to `strong`, with a minimum length of `10`.
+The above command starts Metabase on version `0.41.0`, and sets the user password complexity to `strong`, with a minimum length of `10`.
 
 Alternatively, you can provide a YAML file that specifies the values for the parameters. For example:
 
@@ -128,6 +138,6 @@ Want to run [Metabase Enterprise](https://www.metabase.com/enterprise/)? Run:
 
 ```bash
 $ helm install meta-helm-chart \
-  --set image.tag=v1.39.3,image.repository=metabase/metabase-enterprise \
+  --set image.tag=v1.41.0,image.repository=metabase/metabase-enterprise \
     metabase/metabase
 ```
