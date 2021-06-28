@@ -644,7 +644,7 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it.skip("should be able to add new columns after hiding some (metabase#15393)", () => {
+  it("should be able to add new columns after hiding some (metabase#15393)", () => {
     cy.visit("/");
     cy.icon("sql").click();
     cy.get(".ace_content")

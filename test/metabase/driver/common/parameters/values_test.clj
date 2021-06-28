@@ -7,9 +7,11 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [metabase.query-processor.middleware.permissions :as qp.perms])
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest variable-value-test
@@ -215,7 +217,7 @@
       (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                 :type     "native"
                                                 :native   {:query test-query}}}]
-        (is (= (i/->ReferencedCardQuery (:id card) test-query)
+        (is (= (i/map->ReferencedCardQuery {:card-id (u/the-id card), :query test-query})
                (#'values/value-for-tag
                 {:name         "card-template-tag-test"
                  :display-name "Card template tag test"
@@ -240,7 +242,7 @@
                                 "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
                                 "LIMIT 1048575")]
           (mt/with-temp Card [card {:dataset_query mbql-query}]
-            (is (= (i/->ReferencedCardQuery (:id card) expected-sql)
+            (is (= (i/map->ReferencedCardQuery {:card-id (u/the-id card), :query expected-sql})
                    (#'values/value-for-tag
                     {:name         "card-template-tag-test"
                      :display-name "Card template tag test"
@@ -389,3 +391,25 @@
                   :target              [:variable [:template-tag "id"]]
                   :value               "2"
                   :filteringParameters "222b245f"}])))))))
+
+(deftest parse-card-include-parameters-test
+  (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
+    (mt/dataset sample-dataset
+      (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
+                                                 {:filter      [:between $total 30 60]
+                                                  :aggregation [[:aggregation-options
+                                                                 [:count-where [:starts-with $product_id->products.category "G"]]
+                                                                 {:name "G Monies", :display-name "G Monies"}]]
+                                                  :breakout    [!month.created_at]})}]
+        (let [card-tag (str "#" (u/the-id card))]
+          (is (schema= {:card-id  (s/eq (u/the-id card))
+                        :query    su/NonBlankString
+                        :params   (s/eq ["G%"])
+                        s/Keyword s/Any}
+                       (#'values/parse-tag
+                        {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
+                         :name         card-tag
+                         :display-name card-tag
+                         :type         :card
+                         :card-id      (u/the-id card)}
+                        nil))))))))

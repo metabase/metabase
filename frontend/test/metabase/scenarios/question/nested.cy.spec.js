@@ -4,7 +4,6 @@ import {
   createNativeQuestion,
   openOrdersTable,
   remapDisplayValueToFK,
-  sidebar,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
 
@@ -416,9 +415,8 @@ describe("scenarios > question > nested", () => {
   });
 
   ["count", "average"].forEach(test => {
-    it.skip(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
+    it(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
       cy.createNativeQuestion({
         name: "15397",
@@ -426,19 +424,28 @@ describe("scenarios > question > nested", () => {
           query:
             "select count(*), orders.product_id from orders group by orders.product_id;",
         },
+      }).then(({ body: { id } }) => {
+        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
+
+        // Visit the question to load the `result_metadata`
+        cy.visit(`/question/${id}`);
+        cy.wait("@cardQuery");
       });
+
       cy.visit("/question/new");
       cy.findByText("Simple question").click();
       cy.findByText("Saved Questions").click();
       cy.findByText("15397").click();
+
       cy.wait("@dataset");
       cy.findAllByText("Summarize")
         .first()
         .click();
+
       if (test === "average") {
-        sidebar()
-          .findByText("Count")
+        cy.findByTestId("sidebar-right")
           .should("be.visible")
+          .findByText("Count")
           .click();
         cy.findByText("Average of ...").click();
         popover()
@@ -446,6 +453,7 @@ describe("scenarios > question > nested", () => {
           .click();
         cy.wait("@dataset");
       }
+
       cy.findByText("Group by")
         .parent()
         .findByText("COUNT(*)")
@@ -454,7 +462,7 @@ describe("scenarios > question > nested", () => {
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
-      cy.get(".bar").should("have.length.of.at.least", 20);
+      cy.get(".bar").should("have.length.of.at.least", 5);
     });
   });
 

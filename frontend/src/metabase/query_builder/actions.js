@@ -838,10 +838,10 @@ export const updateQuestion = (
       newQuestion = newQuestion.withoutNameAndId();
     }
 
-    newQuestion = newQuestion.syncColumnsAndSettings(oldQuestion);
+    const queryResult = getFirstQueryResult(getState());
+    newQuestion = newQuestion.syncColumnsAndSettings(oldQuestion, queryResult);
 
     if (run === "auto") {
-      const queryResult = getFirstQueryResult(getState());
       run = hasNewColumns(newQuestion, queryResult);
     }
 
@@ -1113,6 +1113,7 @@ export const queryCompleted = (question, queryResults) => {
       // Otherwise, trust that the question was saved with the correct display.
       question = question
         // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
+        .syncColumnsAndSettings(originalQuestion, queryResults[0])
         .maybeUnlockDisplay(getSensibleDisplays(data))
         .setDefaultDisplay()
         .switchTableScalar(data);

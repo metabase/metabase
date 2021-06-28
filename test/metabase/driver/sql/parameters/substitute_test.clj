@@ -184,8 +184,8 @@
 (deftest substitute-referenced-card-query-test
   (testing "Referenced card query substitution"
     (let [query ["SELECT * FROM " (param "#123")]]
-      (is (= ["SELECT * FROM (SELECT 1 `x`)" nil]
-             (substitute query {"#123" (i/->ReferencedCardQuery 123 "SELECT 1 `x`")}))))))
+      (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
+             (substitute query {"#123" (i/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
 
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
@@ -774,9 +774,6 @@
                                                     :default      "Fred 62"}}}
                 :parameters []}))))))
 
-
-;;; ------------------------------- Multiple Value Support (comma-separated or array) --------------------------------
-
 (deftest multiple-value-test
   (testing "Make sure using commas in numeric params treats them as separate IDs (#5457)"
     (is (= "SELECT * FROM USERS where id IN (1, 2, 3)"
@@ -814,3 +811,16 @@
              :parameters [{:type   :text
                            :target [:dimension [:template-tag "names_list"]]
                            :value  ["BBQ", "Bakery", "Bar"]}]})))))
+
+(deftest include-card-parameters-test
+  (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"
+    (binding [driver/*driver* :h2]
+      (is (= ["SELECT * FROM (SELECT * FROM table WHERE x LIKE ?)"
+              ["G%"]]
+             (substitute/substitute
+              ["SELECT * FROM " (i/->Param "#1")]
+              {"#1"
+               (i/map->ReferencedCardQuery
+                {:card-id 1
+                 :query   "SELECT * FROM table WHERE x LIKE ?"
+                 :params  ["G%"]})}))))))

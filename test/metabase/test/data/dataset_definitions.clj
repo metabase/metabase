@@ -56,7 +56,10 @@
 
     Continent > Country > Region (e.g. State) > Municipality (e.g. City) > Airport
 
-  This makes this dataset ideal for testing things where we must join multiple levels of tables.")
+  This makes this dataset ideal for testing things where we must join multiple levels of tables.
+
+  There are some `nil` `:name` strings in the `region` and `municipality` tables. `airport` has a row with an airport
+  whose `:code` is an empty string.")
 
 (tx/defdataset-edn sample-dataset
   "The sample dataset that ships with Metabase, but converted to an EDN dataset definition so it can be used in tests.
@@ -89,7 +92,6 @@
       OffsetTime     t
       OffsetDateTime (t/offset-time t)
       ZonedDateTime  (t/offset-time t))))
-
 
 (defonce ^{:doc "The main `test-data` dataset, but only the `users` table, and with `last_login_date` and
   `last_login_time` instead of `last_login`."}

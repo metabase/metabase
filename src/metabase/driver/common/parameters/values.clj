@@ -149,7 +149,7 @@
                i/no-value)}))
 
 (s/defmethod parse-tag :card :- ReferencedCardQuery
-  [{:keys [card-id], :as tag} :- TagParam, params :- (s/maybe [i/ParamValue])]
+  [{:keys [card-id], :as tag} :- TagParam params :- (s/maybe [i/ParamValue])]
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -158,8 +158,8 @@
                                   {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
       (i/map->ReferencedCardQuery
-       {:card-id card-id
-        :query   (:query (qp/query->native (assoc query :parameters params, :info {:card-id card-id})))})
+       (merge {:card-id card-id}
+              (qp/query->native (assoc query :parameters params, :info {:card-id card-id}))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
@@ -328,7 +328,7 @@
   (try
     (parse-value-for-type (:type tag) (parse-tag tag params))
     (catch Throwable e
-      (throw (ex-info (tru "Error determining value for parameter")
+      (throw (ex-info (tru "Error determining value for parameter: {0}" (ex-message e))
                       {:tag  tag
                        :type (or (:type (ex-data e)) qp.error-type/invalid-parameter)}
                       e)))))
@@ -351,7 +351,7 @@
                  (log/tracef "Value for tag %s %s -> %s" (pr-str k) (pr-str tag) (pr-str v))
                  {k v})))
     (catch Throwable e
-      (throw (ex-info (tru "Error building query parameter map")
+      (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
                       {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
                        :tags   tags
                        :params params}
