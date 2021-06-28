@@ -48,18 +48,122 @@ ingress:
           pathType: ImplementationSpecific
   tls: []
 
+extraArgs:
+  # - api-documentation 
+  # - driver-methods
+  # - dump [path] [path & args]
+  # - dump-to-h2 [h2-filename & opts]
+  # - help []
+  # - load [path] [path & args]
+  # - load-from-h2 [] [h2-connection-string]
+  # - migrate [direction]
+  # - profile []
+  # - refresh-integration-test-db-metadata []
+  # - reset-password [email-address]
+  # - rotate-encryption-key [new-key]
+  # - version []
+
+extraEnv:
+  # JAVA_OPTS: "-Dcom.sun.management.jmxremote.port=1099 -Dcom.sun.management.jmxremote.rmi.port=1099 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.local.only=false -Djava.rmi.server.hostname=metabase.local"
+
 config:
+  debug:
+    namespaceTrace: ""
   database:
     type: h2
+    automigrate: ""
+    connectionTimeoutMs: ""
   jetty:
     maxThreads: ""
     minThreads: ""
     host: ""
+    asyncResponseTimeout: ""
+    daemon: ""
+    join: ""
+    maxIdleTime: ""
+    maxQueued: ""
+    requestHeaderSize: ""
   dw:
     maxConnectionPoolSize: ""
+    asyncQueryThreadPoolSize: ""
+    jdbcDataWarehouseMaxConnectionPoolSize: ""
+    redshiftFetchSize: ""
   security:
     passComplexity: ""
-    passLenght: ""
+    passLength: ""
+    sessionAge: ""
+    sessionCookies: ""
+    sourceAddressHeader: ""
+  email:
+    fromAddress: ""
+    admin: ""
+  sso:
+    googleAuthAutoCreateAccountDomains: ""
+    googleAuthClientId: ""
+    jwtAttributeEmail: ""
+    jwtAttributeFirstName: ""
+    jwtAttributeGroups: ""
+    jwtAttributeLastName: ""
+    jwtEnabled: ""
+    jwtGroupMappings: ""
+    jwtGroupSync: ""
+    jwtIdentityProviderUri: ""
+    ldapAttributeEmail: ""
+    ldapAttributeFirstName: ""
+    ldapAttributeLastName: ""
+    ldapBindDN: ""
+    ldapEnabled: ""
+    ldapGroupBase: ""
+    ldapGroupMappings: ""
+    ldapGroupSync: ""
+    ldapSyncUserAttributes: ""
+    ldapSyncUserAttributesBlacklist: ""
+    ldapUserBase: ""
+    ldapuserFilter: ""
+    samlApplicationName: ""
+    samlAttributeEmail: ""
+    samlAttributeFirstName: ""
+    samlAttributeGroup: ""
+    samlAttributeLastName: ""
+    samlEnabled: ""
+    samlGroupMappings: ""
+    samlGroupSync: ""
+    samlIdPURI: ""
+    samlKeystoreAlias: ""
+    sendNewSSOUserAdminEmail: ""
+  application:
+    landingPage: ""
+    favicon_url: ""
+    logo_url: ""
+    anon_tracking_enabled: ""
+    name: ""
+    breakoutBinWidth: ""
+    breakoutBinNum: ""
+    checkForUpdates: ""
+    disableSessionThrottle: ""
+    embeddingAppOrigin: ""
+    enableEmbedding: ""
+    enableNestedQueries: ""
+    enablePasswordLogin: ""
+    enablePublicSharing: ""
+    enableQueryCaching: ""
+    queryCachingMaxKb: ""
+    queryCachingMaxTTL: ""
+    queryCachingMinTTL: ""
+    queryCachingTTLRatio: ""
+    enableXrays: ""
+    mapTileServerURL: ""
+    metabotEnabled: ""
+    pluginsDir: ""
+    reportTimezone: ""
+    showHomepageData: ""
+    showHomepageXrays: ""
+    siteLocale: ""
+    siteName: ""
+    siteURL: ""
+    siteUUID: ""
+    sshHearbeatIntervalSec: ""
+    versionInfoURL: ""
   
 secrets:
   database:
@@ -71,6 +175,27 @@ secrets:
     port: ""
   config:
     encryptionKey: ""
+    embeddingToken: ""
+    api_key: ""
+    setupToken: ""
+    slackToken: ""
+  email:
+    host: ""
+    username: ""
+    password: ""
+    port: ""
+    security: ""
+  sso:
+    jwt: ""
+    samlIdentityProviderCertificate: ""
+  ldap:
+    host: ""
+    port: ""
+    security: ""
+    password: ""
+  cache:
+    backend: ""
+  
 
 resources: {}
 

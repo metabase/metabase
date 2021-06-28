@@ -3,12 +3,94 @@ kind: ConfigMap
 data:
   MB_DB_TYPE: {{ .Values.config.database.type | quote }}
   MB_PASSWORD_COMPLEXITY: {{ .Values.config.security.passComplexity | quote }}
-  MB_PASSWORD_LENGTH: {{ .Values.config.security.passLenght | quote }}
+  MB_PASSWORD_LENGTH: {{ .Values.config.security.passLength | quote }}
   MB_JETTY_HOST: {{ .Values.config.jetty.host | quote }}
   MB_JETTY_PORT: {{ .Values.service.internalPort | quote }}
   MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE: {{ .Values.config.dw.maxConnectionPoolSize | quote }}
+  MB_EMAIL_FROM_ADDRESS: {{ .Values.config.email.fromAddress | quote }}
+  MAX_SESSION_AGE: {{ .Values.config.security.sessionAge | quote }} 
+  MB_ADMIN_EMAIL: {{ .Values.config.email.admin | quote }}
+  MB_APPLICATION_FAVICON_URL: {{ .Values.config.application.favicon_url | quote }}
+  MB_APPLICATION_LOGO_URL: {{ .Values.config.application.logo_url | quote }}
+  MB_ANON_TRACKING_ENABLED: {{ .Values.config.application.anon_tracking_enabled | quote }}
+  MB_APPLICATION_NAME: {{ .Values.config.application.name | quote }}
+  MB_ASYNC_QUERY_THREAD_POOL_SIZE: {{ .Values.config.dw.asyncQueryThreadPoolSize | quote }}
+  MB_BREAKOUT_BIN_WIDTH: {{ .Values.config.application.breakoutBinWidth | quote }}
+  MB_BREAKOUT_BINS_NUM: {{ .Values.config.application.breakoutBinNum | quote }}
+  MB_CHECK_FOR_UPDATES: {{ .Values.config.application.checkForUpdates | quote }}
+  MB_DB_AUTOMIGRATE: {{ .Values.config.database.automigrate | quote }}
+  MB_DB_CONNECTION_TIMEOUT_MS: {{ .Values.config.database.connectionTimeoutMs | quote }}
+  MB_DISABLE_SESSION_THROTTLE: {{ .Values.config.application.disableSessionThrottle | quote }}
+  MB_EMBEDDING_APP_ORIGIN: {{ .Values.config.application.embeddingAppOrigin | quote }}
+  MB_ENABLE_EMBEDDING: {{ .Values.config.application.enableEmbedding | quote }}
+  MB_ENABLE_NESTED_QUERIES: {{ .Values.config.application.enableNestedQueries | quote }}
+  MB_ENABLE_PASSWORD_LOGIN: {{ .Values.config.application.enablePasswordLogin | quote }}
+  MB_ENABLE_PUBLIC_SHARING: {{ .Values.config.application.enablePublicSharing | quote }}
+  MB_ENABLE_QUERY_CACHING: {{ .Values.config.application.enableQueryCaching | quote }}
+  MB_ENABLE_XRAYS: {{ .Values.config.application.enableXrays | quote }}
+  MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN: {{ .Values.config.sso.googleAuthAutoCreateAccountDomains | quote }}
+  MB_GOOGLE_AUTH_CLIENT_ID: {{ .Values.config.sso.googleAuthClientId | quote }}
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE: {{ .Values.config.dw.jdbcDataWarehouseMaxConnectionPoolSize | quote }}
+  MB_JETTY_ASYNC_RESPONSE_TIMEOUT: {{ .Values.config.jetty.asyncResponseTimeout | quote }}
+  MB_JETTY_DAEMON: {{ .Values.config.jetty.daemon | quote }}
+  MB_JETTY_JOIN: {{ .Values.config.jetty.join | quote }}
+  MB_JETTY_MAXIDLETIME: {{ .Values.config.jetty.maxIdleTime | quote }}
+  MB_JETTY_MAXQUEUED: {{ .Values.config.jetty.maxQueued | quote }}
   MB_JETTY_MAXTHREADS: {{ .Values.config.jetty.maxThreads | quote }}
   MB_JETTY_MINTHREADS: {{ .Values.config.jetty.minThreads | quote }}
+  MB_JETTY_REQUEST_HEADER_SIZE: {{ .Values.config.jetty.requestHeaderSize | quote }}
+  MB_JWT_ATTRIBUTE_EMAIL: {{ .Values.config.sso.jwtAttributeEmail | quote }}
+  MB_JWT_ATTRIBUTE_FIRSTNAME: {{ .Values.config.sso.jwtAttributeFirstName | quote }}
+  MB_JWT_ATTRIBUTE_GROUPS: {{ .Values.config.sso.jwtAttributeGroups | quote }}
+  MB_JWT_ATTRIBUTE_LASTNAME: {{ .Values.config.sso.jwtAttributeLastName | quote }}
+  MB_JWT_ENABLED: {{ .Values.config.sso.jwtEnabled | quote }}
+  MB_JWT_GROUP_MAPPINGS: {{ .Values.config.sso.jwtGroupMappings | quote }}
+  MB_JWT_GROUP_SYNC: {{ .Values.config.sso.jwtGroupSync | quote }}
+  MB_JWT_IDENTITY_PROVIDER_URI: {{ .Values.config.sso.jwtIdentityProviderUri | quote }}
+  MB_LANDING_PAGE: {{ .Values.config.application.landingPage | quote }}
+  MB_LDAP_ATTRIBUTE_EMAIL: {{ .Values.config.sso.ldapAttributeEmail | quote }}
+  MB_LDAP_ATTRIBUTE_FIRSTNAME: {{ .Values.config.sso.ldapAttributeFirstName | quote }}
+  MB_LDAP_ATTRIBUTE_LASTNAME: {{ .Values.config.sso.ldapAttributeLastName | quote }}
+  MB_LDAP_BIND_DN: {{ .Values.config.sso.ldapBindDN | quote }}
+  MB_LDAP_ENABLED: {{ .Values.config.sso.ldapEnabled | quote }}
+  MB_LDAP_GROUP_BASE: {{ .Values.config.sso.ldapGroupBase | quote }}
+  MB_LDAP_GROUP_MAPPINGS: {{ .Values.config.sso.ldapGroupMappings | quote }}
+  MB_LDAP_GROUP_SYNC: {{ .Values.config.sso.ldapGroupSync | quote }}
+  MB_LDAP_SYNC_USER_ATTRIBUTES: {{ .Values.config.sso.ldapSyncUserAttributes | quote }}
+  MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST: {{ .Values.config.sso.ldapSyncUserAttributesBlacklist | quote }}
+  MB_LDAP_USER_BASE: {{ .Values.config.sso.ldapUserBase | quote }}
+  MB_LDAP_USER_FILTER: {{ .Values.config.sso.ldapuserFilter | quote }}
+  MB_MAP_TILE_SERVER_URL: {{ .Values.config.application.mapTileServerURL | quote }}
+  MB_METABOT_ENABLED: {{ .Values.config.application.metabotEnabled | quote }}
+  MB_NS_TRACE: {{ .Values.config.debug.namespaceTrace | quote }}
+  MB_PLUGINS_DIR: {{ .Values.config.application.pluginsDir | quote }}
+  MB_QUERY_CACHING_MAX_KB: {{ .Values.config.application.queryCachingMaxKb | quote }}
+  MB_QUERY_CACHING_MAX_TTL: {{ .Values.config.application.queryCachingMaxTTL | quote }}
+  MB_QUERY_CACHING_MIN_TTL: {{ .Values.config.application.queryCachingMinTTL | quote }}
+  MB_QUERY_CACHING_TTL_RATIO: {{ .Values.config.application.queryCachingTTLRatio | quote }}
+  MB_REDSHIFT_FETCH_SIZE: {{ .Values.config.dw.redshiftFetchSize | quote }}
+  MB_REPORT_TIMEZONE: {{ .Values.config.application.reportTimezone | quote }}
+  MB_SAML_APPLICATION_NAME: {{ .Values.config.sso.samlApplicationName | quote }}
+  MB_SAML_ATTRIBUTE_EMAIL: {{ .Values.config.sso.samlAttributeEmail | quote }}
+  MB_SAML_ATTRIBUTE_FIRSTNAME: {{ .Values.config.sso.samlAttributeFirstName | quote }}
+  MB_SAML_ATTRIBUTE_GROUP: {{ .Values.config.sso.samlAttributeGroup | quote }}
+  MB_SAML_ATTRIBUTE_LASTNAME: {{ .Values.config.sso.samlAttributeLastName | quote }}
+  MB_SAML_ENABLED: {{ .Values.config.sso.samlEnabled | quote }}
+  MB_SAML_GROUP_MAPPINGS: {{ .Values.config.sso.samlGroupMappings | quote }}
+  MB_SAML_GROUP_SYNC: {{ .Values.config.sso.samlGroupSync | quote }}
+  MB_SAML_IDENTITY_PROVIDER_URI: {{ .Values.config.sso.samlIdPURI | quote }}
+  MB_SAML_KEYSTORE_ALIAS: {{ .Values.config.sso.samlKeystoreAlias | quote }}
+  MB_SEND_NEW_SSO_USER_ADMIN_EMAIL: {{ .Values.config.sso.sendNewSSOUserAdminEmail | quote }}
+  MB_SESSION_COOKIES: {{ .Values.config.security.sessionCookies | quote }}
+  MB_SHOW_HOMEPAGE_DATA: {{ .Values.config.application.showHomepageData | quote }}
+  MB_SHOW_HOMEPAGE_XRAYS: {{ .Values.config.application.showHomepageXrays | quote }}
+  MB_SITE_LOCALE: {{ .Values.config.application.siteLocale | quote }}
+  MB_SITE_NAME: {{ .Values.config.application.siteName | quote }}
+  MB_SITE_URL: {{ .Values.config.application.siteURL | quote }}
+  MB_SITE_UUID: {{ .Values.config.application.siteUUID | quote }}
+  MB_SOURCE_ADDRESS_HEADER: {{ .Values.config.security.sourceAddressHeader | quote }}
+  MB_SSH_HEARTBEAT_INTERVAL_SEC: {{ .Values.config.application.sshHearbeatIntervalSec | quote }}
+  MB_VERSION_INFO_URL: {{ .Values.config.application.versionInfoURL | quote }}
 metadata:
   name: {{ include "metabase.fullname" . }}-configs
   labels:
