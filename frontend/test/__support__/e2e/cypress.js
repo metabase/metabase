@@ -328,3 +328,7 @@ export function generateUsers(count, groupIds) {
 
   return users;
 }
+
+export function enableSharingQuestion(id) {
+  cy.request("POST", `/api/card/${id}/public_link`);
+}
