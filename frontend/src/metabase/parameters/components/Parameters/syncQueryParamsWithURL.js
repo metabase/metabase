@@ -1,6 +1,12 @@
 import Dimension from "metabase-lib/lib/Dimension";
 
 export const syncQueryParamsWithURL = props => {
+  props.commitImmediately
+    ? syncForInternalQuestion(props)
+    : syncForPublicQuestion(props);
+};
+
+const syncForInternalQuestion = props => {
   const { parameters, setParameterValue, query, metadata } = props;
 
   if (!setParameterValue) {
@@ -16,6 +22,26 @@ export const syncQueryParamsWithURL = props => {
       setParameterValue(parameter.id, parsedParam);
     }
   }
+};
+
+const syncForPublicQuestion = props => {
+  const { parameters, setParameterValue, query, metadata } = props;
+
+  if (!setParameterValue) {
+    return;
+  }
+
+  const parameterValues = parameters.reduce((acc, parameter) => {
+    const queryParam = query && query[parameter.slug];
+
+    if (queryParam != null || parameter.default != null) {
+      acc[parameter.id] = parseQueryParams(queryParam, parameter, metadata);
+    }
+
+    return acc;
+  }, {});
+
+  setParameterValue(parameterValues);
 };
 
 const parseQueryParams = (queryParam, parameter, metadata) => {
