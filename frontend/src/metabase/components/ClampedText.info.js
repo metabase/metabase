@@ -1,5 +1,4 @@
 import React from "react";
-
 import ClampedText from "metabase/components/ClampedText";
 
 export const component = ClampedText;
