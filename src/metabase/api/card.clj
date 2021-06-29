@@ -132,6 +132,11 @@
   [_]
   (db/select Card, [not nill :broken]))
 
+;; Cards with errors belonging to user
+(defmethod cards-for-filter-option* :my-broken
+  [_]
+  (db/select Card, [not nill :broken]))
+
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
       (hydrate :creator :collection :favorite)))
