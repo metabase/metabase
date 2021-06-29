@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 export function getRevisionDescription(revision) {
   if (revision.is_creation) {
-    return undefined;
+    return "First revision.";
   } else if (revision.is_reversion) {
     return t`Reverted to an earlier revision and ${revision.description}`;
   } else {
@@ -20,7 +20,9 @@ export function getRevisionEvents(revisions, canWrite) {
       title: revision.is_creation
         ? t`${username} created this`
         : t`${username} edited this`,
-      description: getRevisionDescription(revision),
+      description: revision.is_creation
+        ? undefined
+        : getRevisionDescription(revision),
       showFooter: canRevert,
       revision,
     };
