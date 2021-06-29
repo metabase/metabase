@@ -379,7 +379,6 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("Update").should("not.exist");
 
       // Make sure sidebar updated (waiting for a specific XHR didn't help)
-      cy.reload();
       // Before update, "First collection" was expanded, thus showing "Second collection"
       cy.findByText("Second collection").should("not.exist");
 

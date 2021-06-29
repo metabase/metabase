@@ -1,6 +1,6 @@
 export function getSidebarCollectionChildrenFor(item) {
   return cy
-    .findByTestId("sidebar")
+    .get("aside")
     .findByText(item)
     .closest("a")
     .parent()
