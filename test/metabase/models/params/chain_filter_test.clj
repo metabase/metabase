@@ -69,6 +69,51 @@
              (chain-filter venues.price {categories.name ["Bakery" "BBQ"]
                                          users.id        [1 2 3]}))))))
 
+(def megagraph
+  "A large graph that is hugely interconnected. All nodes can get to 50 and 50 has an edge to :end. But the fastest
+  route is [[:start 50] [50 :end]] and we should quickly identify this last route. Basically handy to demonstrate that
+  we are doing breadth first search rather than depth first search. Depth first would identify 1 -> 2 -> 3 ... 49 ->
+  50 -> end"
+  (let [big 50]
+    (merge-with merge
+                (reduce (fn [m [x y]] (assoc-in m [x y] [[x y]]))
+                        {}
+                        (for [x     (range (inc big))
+                              y     (range (inc big))
+                              :when (not= x y)]
+                          [x y]))
+                {:start (reduce (fn [m x] (assoc m x [[:start x]]))
+                                {}
+                                (range (inc big)))}
+                {big    {:end [[big :end]]}})))
+
+(deftest traverse-graph-test
+  (testing "If no need to join, returns immediately"
+    (is (nil? (#'chain-filter/traverse-graph {} :start :start 5))))
+  (testing "Finds a simple hop"
+    (let [graph {:start {:end [:start->end]}}]
+      (is (= [:start->end]
+             (#'chain-filter/traverse-graph graph :start :end 5))))
+    (testing "Finds over a few hops"
+      (let [graph {:start {:a [:start->a]}
+                   :a     {:b [:a->b]}
+                   :b     {:c [:b->c]}
+                   :c     {:end [:c->end]}}]
+        (is (= [:start->a :a->b :b->c :c->end]
+               (#'chain-filter/traverse-graph graph :start :end 5)))
+        (testing "But will not exceed the max depth"
+          (is (nil? (#'chain-filter/traverse-graph graph :start :end 2))))))
+    (testing "Can find a path in a dense and large graph"
+      (is (= [[:start 50] [50 :end]]
+             (#'chain-filter/traverse-graph megagraph :start :end 5))))
+    (testing "Returns nil if there is no path"
+      (let [graph {:start {1 [[:start 1]]}
+                   1      {2 [[1 2]]}
+                   ;; no way to get to 3
+                   3      {4 [[3 4]]}
+                   4      {:end [[4 :end]]}}]
+        (is (nil? (#'chain-filter/traverse-graph graph :start :end 5)))))))
+
 (deftest find-joins-test
   (mt/dataset airports
     (mt/$ids nil
