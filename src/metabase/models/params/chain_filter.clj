@@ -62,6 +62,7 @@
   WHERE lower(name) LIKE '%cam'
   AND field_2 = \"abc\""
   (:require [clojure.core.memoize :as memoize]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -215,19 +216,26 @@
   "A breadth first traversal of graph, not probing any paths that are over `max-depth` in length."
   [graph start end max-depth]
   (letfn [(transform [path] (let [edges (partition 2 1 path)]
-                              (not-empty (vec (mapcat (fn [[x y]] (get-in graph [x y])) edges)))))
-          (too-long? [path] (> (count path) max-depth))]
-    (loop [paths (conj clojure.lang.PersistentQueue/EMPTY [start])]
+                              (not-empty (vec (mapcat (fn [[x y]] (get-in graph [x y])) edges)))))]
+    (loop [paths      (conj clojure.lang.PersistentQueue/EMPTY [start])
+           seen-edges #{}]
       (let [path (peek paths)
             node (peek path)]
         (cond (nil? node)
               nil
+              ;; found a path, bfs finds shortest first
               (= node end)
               (transform path)
+              ;; abandon this path
+              (= (count path) max-depth)
+              (recur (pop paths) seen-edges)
+              ;; probe further and throw them on the queue
               :else
-              (let [advance (for [node (keys (get graph node))]
-                              (conj path node))]
-                (recur (into (pop paths) (remove too-long? advance)))))))))
+              (let [next-nodes (->> (get graph node)
+                                    keys
+                                    (remove (fn [n] (contains? seen-edges [node n]))))]
+                (recur (into (pop paths) (for [n next-nodes] (conj path n)))
+                       (set/union seen-edges (into #{} (map (fn [n] [node n])) next-nodes)))))))))
 
 (def ^:private max-traversal-depth 5)
 

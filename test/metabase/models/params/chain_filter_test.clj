@@ -112,7 +112,19 @@
                    ;; no way to get to 3
                    3      {4 [[3 4]]}
                    4      {:end [[4 :end]]}}]
-        (is (nil? (#'chain-filter/traverse-graph graph :start :end 5)))))))
+        (is (nil? (#'chain-filter/traverse-graph graph :start :end 5)))))
+    (testing "Not fooled by loops"
+      (let [graph {:start {:a [:start->a]}
+                   :a     {:b [:a->b]
+                           :a [:b->a]}
+                   :b     {:c [:b->c]
+                           :a [:c->a]
+                           :b [:c->b]}
+                   :c     {:end [:c->end]}}]
+        (is (= [:start->a :a->b :b->c :c->end]
+               (#'chain-filter/traverse-graph graph :start :end 5)))
+        (testing "But will not exceed the max depth"
+          (is (nil? (#'chain-filter/traverse-graph graph :start :end 2))))))))
 
 (deftest find-joins-test
   (mt/dataset airports
