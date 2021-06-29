@@ -127,6 +127,11 @@
   [_]
   (db/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
 
+;; Cards with errors
+(defmethod cards-for-filter-option* :broken
+  [_]
+  (db/select Card, [not nill :broken]))
+
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
       (hydrate :creator :collection :favorite)))
