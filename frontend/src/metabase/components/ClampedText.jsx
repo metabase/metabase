@@ -1,19 +1,13 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
 import PropTypes from "prop-types";
-import styled from "styled-components";
 import cx from "classnames";
 import { t } from "ttag";
-import Button from "metabase/components/Button";
 
-const ClampedDiv = styled.div`
-  max-height: ${props =>
-    props.visibleLines == null
-      ? "unset"
-      : `calc(1.5em * ${props.visibleLines})`};
-  overflow: hidden;
-  line-height: 1.5em;
-  font-size: 1em;
-  white-space: pre-line;
+import { ClampedDiv } from "./ClampedText.styled";
+import { TextButton } from "metabase/components/Button.styled";
+
+const PaddedTextButton = TextButton.extend`
+  margin: 0.5rem 0;
 `;
 
 function ClampedText({ className, text, visibleLines }) {
@@ -45,13 +39,11 @@ function ClampedText({ className, text, visibleLines }) {
       </ClampedDiv>
       <div>
         {isOverflowing && (
-          <Button
-            className="p0 my1 text-underline-hover bg-transparent-hover"
-            borderless
+          <PaddedTextButton
             onClick={() => setIsClamped(isClamped => !isClamped)}
           >
             {isClamped ? t`See more` : t`See less`}
-          </Button>
+          </PaddedTextButton>
         )}
       </div>
     </div>

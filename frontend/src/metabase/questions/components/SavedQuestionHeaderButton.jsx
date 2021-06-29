@@ -1,24 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
-import styled from "styled-components";
-import cx from "classnames";
 
-import Button from "metabase/components/Button";
-
-const StyledButton = styled(Button)`
-  font-size: 1.25rem;
-  border: none;
-  padding: 0.25rem 0.25rem;
-
-  .Icon-chevrondown {
-    height: 13px;
-  }
-`;
+import { HeaderButton } from "./SavedQuestionHeaderButton.styled";
 
 function SavedQuestionHeaderButton({ className, question, onClick, active }) {
   return (
-    <StyledButton
-      className={cx(className)}
+    <HeaderButton
+      className={className}
       onClick={onClick}
       iconRight="chevrondown"
       active={active}
@@ -26,7 +14,7 @@ function SavedQuestionHeaderButton({ className, question, onClick, active }) {
       data-testid="saved-question-header-button"
     >
       {question.displayName()}
-    </StyledButton>
+    </HeaderButton>
   );
 }
 

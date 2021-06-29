@@ -1,38 +1,18 @@
 import React, { useMemo } from "react";
-
 import PropTypes from "prop-types";
 import _ from "underscore";
-import styled from "styled-components";
 import { getRelativeTime } from "metabase/lib/time";
-import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
-
-const TimelineContainer = styled.div`
-  position: relative;
-  margin-left: ${props => props.leftShift}px;
-  margin-bottom: ${props => props.bottomShift}px;
-`;
-
-const TimelineItem = styled.div`
-  display: flex;
-  align-items: start;
-  justify-content: start;
-  transform: translateX(-${props => props.leftShift}px);
-  white-space: pre-line;
-  width: 100%;
-  margin-bottom: 1rem;
-`;
-
-// shift the border down slightly so that it doesn't appear above the top-most icon
-// also using a negative `bottom` to connect the border with the event icon beneath it
-const Border = styled.div`
-  position: absolute;
-  top: ${props => props.borderShift}px;
-  left: ${props => props.borderShift}px;
-  bottom: calc(-1rem - ${props => props.borderShift}px);
-  border-left: 1px solid ${color("border")};
-`;
+import {
+  TimelineContainer,
+  TimelineItem,
+  Border,
+  ItemIcon,
+  ItemBody,
+  ItemHeader,
+  Timestamp,
+  ItemFooter,
+} from "./Timeline.styled";
 
 const Timeline = ({ className, items = [], renderFooter }) => {
   const iconSize = 16;
@@ -56,24 +36,28 @@ const Timeline = ({ className, items = [], renderFooter }) => {
       className={className}
     >
       {sortedFormattedItems.map((item, index) => {
-        const { icon, title, description, formattedTimestamp } = item;
+        const {
+          icon,
+          title,
+          description,
+          timestamp,
+          formattedTimestamp,
+        } = item;
         const key = item.key == null ? index : item.key;
         const isNotLastEvent = index !== sortedFormattedItems.length - 1;
 
         return (
           <TimelineItem key={key} leftShift={halfIconSize}>
             {isNotLastEvent && <Border borderShift={halfIconSize} />}
-            <Icon className="relative text-light" name={icon} size={iconSize} />
-            <div className="ml1 flex-1">
-              <div className="text-bold">{title}</div>
-              <div className="text-medium text-small pb1">
-                {formattedTimestamp}
-              </div>
-              <div className={renderFooter && description && "mb1"}>
-                {description}
-              </div>
-              {_.isFunction(renderFooter) && <div>{renderFooter(item)}</div>}
-            </div>
+            <ItemIcon name={icon} size={iconSize} />
+            <ItemBody>
+              <ItemHeader>{title}</ItemHeader>
+              <Timestamp datetime={timestamp}>{formattedTimestamp}</Timestamp>
+              <div>{description}</div>
+              {_.isFunction(renderFooter) && (
+                <ItemFooter>{renderFooter(item)}</ItemFooter>
+              )}
+            </ItemBody>
           </TimelineItem>
         );
       })}

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import ClampedText from "metabase/components/ClampedText";
-import Button from "metabase/components/Button";
+import { TextButton } from "metabase/components/Button.styled";
 
 ClampedDescription.propTypes = {
   className: PropTypes.string,
@@ -17,10 +17,7 @@ export function ClampedDescription({ className, description, onEdit }) {
       {description ? (
         <ClampedText text={description} visibleLines={8} />
       ) : (
-        <Button
-          onClick={onEdit}
-          className="text-light p0 bg-transparent bg-transparent-hover borderless text-underline-hover"
-        >{t`Add a description`}</Button>
+        <TextButton onClick={onEdit}>{t`Add a description`}</TextButton>
       )}
     </div>
   );

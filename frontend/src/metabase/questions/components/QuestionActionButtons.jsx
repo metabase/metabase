@@ -4,15 +4,19 @@ import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 import Tooltip from "metabase/components/Tooltip";
+import {
+  Container,
+  PrimaryButtonContainer,
+  SecondaryButtonContainer,
+} from "./QuestionActionButtons.styled";
 
 function QuestionActionButtons({ canWrite, onOpenModal }) {
   return (
-    <div className="flex align-center">
-      <div className="my1 pr2">
+    <Container>
+      <PrimaryButtonContainer>
         {canWrite && (
           <Tooltip tooltip={t`Edit details`}>
             <Button
-              className="mr1"
               onlyIcon
               icon="pencil"
               iconSize={18}
@@ -30,12 +34,11 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
             data-testid="add-to-dashboard-button"
           />
         </Tooltip>
-      </div>
-      <div className="border-left pl2">
+      </PrimaryButtonContainer>
+      <SecondaryButtonContainer>
         {canWrite && (
           <Tooltip tooltip={t`Move`}>
             <Button
-              className="mr1 text-light"
               onlyIcon
               icon="move"
               iconSize={18}
@@ -47,7 +50,6 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
         {canWrite && (
           <Tooltip tooltip={t`Duplicate this question`}>
             <Button
-              className="mr1 text-light"
               onlyIcon
               icon="segment"
               iconSize={18}
@@ -59,7 +61,6 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
         {canWrite && (
           <Tooltip tooltip={t`Archive`}>
             <Button
-              className="text-light"
               onlyIcon
               icon="archive"
               iconSize={18}
@@ -68,8 +69,8 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
             />
           </Tooltip>
         )}
-      </div>
-    </div>
+      </SecondaryButtonContainer>
+    </Container>
   );
 }
 
