@@ -305,7 +305,7 @@ describe("collection permissions", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/card/1").as("updateQuestion");
                   cy.visit("/question/1");
-                  cy.icon("pencil").click();
+                  cy.findByTestId("saved-question-header-button").click();
                 });
 
                 it("should be able to edit question details (metabase#11719-1)", () => {
@@ -639,7 +639,7 @@ describe("collection permissions", () => {
                 // For now that's not possible for user without data access (likely it will be again when #11719 is fixed)
                 cy.skipOn(user === "nodata");
                 cy.visit("/question/1");
-                cy.findByTestId("history-button").click();
+                cy.findByTestId("revision-history-button").click();
 
                 clickRevert("First revision.");
                 cy.wait("@revert").then(xhr => {

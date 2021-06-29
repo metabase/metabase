@@ -60,7 +60,7 @@ function LastEditInfoLabel({ item, user, onClick, ...props }) {
   return (
     <LabelButton
       onClick={onClick}
-      data-testid="history-button"
+      data-testid="revision-history-button"
       {...props}
     >{t`Edited ${time} by ${editor}`}</LabelButton>
   );
