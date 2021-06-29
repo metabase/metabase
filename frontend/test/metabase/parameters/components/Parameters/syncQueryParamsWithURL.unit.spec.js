@@ -2,9 +2,215 @@ import Field from "metabase-lib/lib/metadata/Field";
 
 import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
-import { getValueFromFields } from "metabase/parameters/components/Parameters/syncQueryParamsWithURL";
+import {
+  getValueFromFields,
+  syncQueryParamsWithURL,
+} from "metabase/parameters/components/Parameters/syncQueryParamsWithURL";
 
 describe("Parameters", () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  describe("syncQueryParamsWithURL", () => {
+    const setParameterValue = jest.fn();
+
+    describe("for internal questions", () => {
+      describe("when parameters length is 0", () => {
+        const props = {
+          commitImmediately: true,
+          parameters: [],
+          query: {
+            createdAt: "2021",
+          },
+          setParameterValue,
+        };
+
+        it("does not call setParameterValue", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).not.toHaveBeenCalled();
+        });
+      });
+
+      describe("when query has no key that matches a parameter slug", () => {
+        const props = {
+          commitImmediately: true,
+          parameters: [
+            {
+              id: "id",
+              slug: "slugNotKeyInQuery",
+            },
+          ],
+          query: {
+            createdAt: "2021",
+          },
+          setParameterValue,
+        };
+
+        it("does not call setParameterValue", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).not.toHaveBeenCalled();
+        });
+      });
+
+      describe("when parameters length is 1", () => {
+        const props = {
+          commitImmediately: true,
+          parameters: [
+            {
+              id: "id",
+              slug: "createdAt",
+            },
+          ],
+          query: {
+            createdAt: "2021",
+          },
+          setParameterValue,
+        };
+
+        it("calls setParameterValue once", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledTimes(1);
+        });
+
+        it("calls setParameterValue with parameters.id and the value for query key ", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledWith("id", "2021");
+        });
+      });
+
+      describe("when parameters length is 2", () => {
+        const props = {
+          commitImmediately: true,
+          parameters: [
+            {
+              id: "id1",
+              slug: "createdAt",
+            },
+            {
+              id: "id2",
+              slug: "state",
+            },
+          ],
+
+          query: {
+            createdAt: "2021",
+            state: "CA",
+          },
+          setParameterValue,
+        };
+
+        it("calls setParameterValue twice", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledTimes(2);
+        });
+
+        it("calls setParameterValue each time with parameter.id and parsed paramater as arguments ", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledWith("id1", "2021");
+          expect(setParameterValue).toHaveBeenCalledWith("id2", "CA");
+        });
+      });
+    });
+
+    describe("for public questions", () => {
+      describe("when parameters length is 0", () => {
+        const props = {
+          parameters: [],
+          query: {
+            createdAt: "2021",
+          },
+          setParameterValue,
+        };
+
+        it("calls setParameterValue with empty object as argument", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledTimes(1);
+          expect(setParameterValue).toHaveBeenCalledWith({});
+        });
+      });
+
+      describe("when query has no key that matches a parameter slug", () => {
+        const props = {
+          parameters: [
+            {
+              id: "id",
+              slug: "slugNotKeyInQuery",
+            },
+          ],
+          query: {
+            createdAt: "2021",
+          },
+          setParameterValue,
+        };
+
+        it("calls setParameterValue with empty object as argument", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledWith({});
+        });
+      });
+
+      describe("when parameters length is 1", () => {
+        const props = {
+          parameters: [
+            {
+              id: "id",
+              slug: "createdAt",
+            },
+          ],
+          query: {
+            createdAt: "2021",
+          },
+          setParameterValue,
+        };
+
+        it("calls setParameterValue once", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledTimes(1);
+        });
+
+        it("calls setParameterValue with an object of key parameter.id and value of a parsed query param ", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledWith({ id: "2021" });
+        });
+      });
+
+      describe("when parameters length is 2", () => {
+        const props = {
+          parameters: [
+            {
+              id: "id1",
+              slug: "createdAt",
+            },
+            {
+              id: "id2",
+              slug: "state",
+            },
+          ],
+
+          query: {
+            createdAt: "2021",
+            state: "CA",
+          },
+          setParameterValue,
+        };
+
+        it("calls setParameterValue once", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledTimes(1);
+        });
+
+        it("calls setParameterValue with one object as argument, keys of parameter id and parsed param values", () => {
+          syncQueryParamsWithURL(props);
+          expect(setParameterValue).toHaveBeenCalledWith({
+            id1: "2021",
+            id2: "CA",
+          });
+        });
+      });
+    });
+  });
+
   describe("getValueFromFields", () => {
     it("should parse numbers", () => {
       expect(getValueFromFields("1.23", [ORDERS.TOTAL])).toBe(1.23);
