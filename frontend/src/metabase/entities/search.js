@@ -50,17 +50,19 @@ export default createEntity({
               Object.keys(unsupported).join(", "),
           );
         }
-        return getListPortion(await collectionList({
-          collection,
-          archived,
-          models,
-          namespace,
-          pinned_state,
-          limit,
-          offset,
-          sort_column,
-          sort_direction,
-        })).map(item => ({
+        return getListPortion(
+          await collectionList({
+            collection,
+            archived,
+            models,
+            namespace,
+            pinned_state,
+            limit,
+            offset,
+            sort_column,
+            sort_direction,
+          }),
+        ).map(item => ({
           collection_id: canonicalCollectionId(collection),
           archived: archived || false,
           ...item,
