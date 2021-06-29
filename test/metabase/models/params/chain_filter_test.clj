@@ -87,6 +87,30 @@
                                 (range (inc big)))}
                 {big    {:end [[big :end]]}})))
 
+(def megagraph-single-path
+  "Similar to the megagraph above, this graph only has a single path through a hugely interconnected graph. A naive
+  graph traversal will run out of memory or take quite a long time to find the traversal:
+
+  [[:start 90] [90 200] [200 :end]]
+
+  There is only one path to end (from 200) and only one path to 200 from 90. If you take out the seen nodes this path
+  will not be found as the traversal advances through all of the 50 paths from start, all of the 50 paths from 1, all
+  of the 50 paths from 2, ..."
+  (merge-with merge
+              ;; every node is linked to every other node (1 ... 199)
+              (reduce (fn [m [x y]] (assoc-in m [x y] [[x y]]))
+                      {}
+                      (for [x     (range 200)
+                            y     (range 200)
+                            :when (not= x y)]
+                        [x y]))
+              {:start (reduce (fn [m x] (assoc m x [[:start x]]))
+                              {}
+                              (range 200))}
+              ;; only 90 reaches 200 and only 200 (big) reaches the end
+              {90  {200 [[90 200]]}
+               200 {:end [[200 :end]]}}))
+
 (deftest traverse-graph-test
   (testing "If no need to join, returns immediately"
     (is (nil? (#'chain-filter/traverse-graph {} :start :start 5))))
@@ -105,7 +129,9 @@
           (is (nil? (#'chain-filter/traverse-graph graph :start :end 2))))))
     (testing "Can find a path in a dense and large graph"
       (is (= [[:start 50] [50 :end]]
-             (#'chain-filter/traverse-graph megagraph :start :end 5))))
+             (#'chain-filter/traverse-graph megagraph :start :end 5)))
+      (is (= [[:start 90] [90 200] [200 :end]]
+             (#'chain-filter/traverse-graph megagraph-single-path :start :end 5))))
     (testing "Returns nil if there is no path"
       (let [graph {:start {1 [[:start 1]]}
                    1      {2 [[1 2]]}

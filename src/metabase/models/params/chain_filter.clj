@@ -218,7 +218,7 @@
   (letfn [(transform [path] (let [edges (partition 2 1 path)]
                               (not-empty (vec (mapcat (fn [[x y]] (get-in graph [x y])) edges)))))]
     (loop [paths      (conj clojure.lang.PersistentQueue/EMPTY [start])
-           seen-edges #{}]
+           seen #{start}]
       (let [path (peek paths)
             node (peek path)]
         (cond (nil? node)
@@ -226,16 +226,16 @@
               ;; found a path, bfs finds shortest first
               (= node end)
               (transform path)
-              ;; abandon this path
+              ;; abandon this path. A bit hazy on how seen and max depth interact.
               (= (count path) max-depth)
-              (recur (pop paths) seen-edges)
+              (recur (pop paths) seen)
               ;; probe further and throw them on the queue
               :else
               (let [next-nodes (->> (get graph node)
                                     keys
-                                    (remove (fn [n] (contains? seen-edges [node n]))))]
+                                    (remove seen))]
                 (recur (into (pop paths) (for [n next-nodes] (conj path n)))
-                       (set/union seen-edges (into #{} (map (fn [n] [node n])) next-nodes)))))))))
+                       (set/union seen (set next-nodes)))))))))
 
 (def ^:private max-traversal-depth 5)
 
