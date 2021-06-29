@@ -15,11 +15,16 @@ export const ItemIcon = styled(Icon)`
     props.isHighlighted ? colors["brand"] : colors["text-light"]};
 `;
 
+const VERTICAL_PADDING_BY_SIZE = {
+  small: "0.5rem",
+  medium: "0.75rem",
+};
+
 export const ItemRoot = styled.li`
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 0.75rem 0.5rem;
+  padding: ${props => VERTICAL_PADDING_BY_SIZE[props.size]} 0.5rem;
   border-radius: 6px;
 
   &:hover {
