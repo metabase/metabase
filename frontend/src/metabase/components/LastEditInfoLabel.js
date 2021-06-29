@@ -1,25 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import styled from "styled-components";
 import { t } from "ttag";
 import moment from "moment";
 
-import { color } from "metabase/lib/colors";
 import { getUser } from "metabase/selectors/user";
 
-import Button from "metabase/components/Button";
-
-const LabelButton = styled(Button)`
-  font-weight: bold;
-  color: ${color("text-medium")};
-  border: none;
-  padding: 0;
-
-  &:hover {
-    background-color: transparent;
-  }
-`;
+import { TextButton } from "metabase/components/Button.styled";
 
 function mapStateToProps(state) {
   return {
@@ -58,11 +45,11 @@ function LastEditInfoLabel({ item, user, onClick, ...props }) {
     editorId === user.id ? `you` : formatEditorName(first_name, last_name);
 
   return (
-    <LabelButton
+    <TextButton
       onClick={onClick}
       data-testid="revision-history-button"
       {...props}
-    >{t`Edited ${time} by ${editor}`}</LabelButton>
+    >{t`Edited ${time} by ${editor}`}</TextButton>
   );
 }
 

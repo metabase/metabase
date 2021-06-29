@@ -23,7 +23,6 @@ const BUTTON_VARIANTS = [
   "white",
   "borderless",
   "onlyIcon",
-  "active",
 ];
 
 const BaseButton = ({
