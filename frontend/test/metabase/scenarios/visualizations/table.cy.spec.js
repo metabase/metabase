@@ -43,4 +43,25 @@ describe("scenarios > visualizations > table", () => {
       "http://metabase.com/people/1",
     );
   });
+
+  it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
+    openPeopleTable();
+    cy.wait("@dataset");
+
+    cy.findByText("City").click();
+    popover().within(() => {
+      cy.icon("arrow_up");
+      cy.icon("arrow_down");
+      cy.icon("gear");
+      cy.findByText("Filter by this column");
+      cy.findByText("Distribution");
+      cy.findByText("Distincts");
+    });
+
+    cy.findByText("City").click();
+    // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
+    // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.
+    cy.wait(100);
+    popover().should("not.exist");
+  });
 });
