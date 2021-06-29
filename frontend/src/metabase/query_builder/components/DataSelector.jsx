@@ -345,6 +345,7 @@ export class UnconnectedDataSelector extends Component {
     // this logic cleans up invalid states, e.x. if a selectedSchema's database
     // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
     const {
+      activeStep,
       selectedDatabase,
       selectedSchema,
       selectedTable,
@@ -376,6 +377,16 @@ export class UnconnectedDataSelector extends Component {
       });
     } else if (invalidField) {
       await this.switchToStep(FIELD_STEP, { selectedFieldId: null });
+    }
+
+    // Saved question picker operates at the SCHEMA step, not TABLE step
+    // (otherwise, a regular table picker will be rendered instead)
+    if (
+      selectedDatabase &&
+      selectedDatabase.is_saved_questions &&
+      activeStep === TABLE_STEP
+    ) {
+      await this.switchToStep(SCHEMA_STEP);
     }
   }
 
