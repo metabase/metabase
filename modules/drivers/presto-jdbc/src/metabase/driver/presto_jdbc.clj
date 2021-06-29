@@ -157,17 +157,18 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
   [_ _ expr]
-  ;; ensure that unix timestamps are always interpreted in UTC regardless of report zone
-  (hsql/call :from_unixtime expr (hx/literal "UTC")))
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
+    (hsql/call :from_unixtime expr (hx/literal (or report-zone "UTC")))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :milliseconds]
   [_ _ expr]
   ;; from_unixtime doesn't support milliseconds directly, but we can add them back in
-  (let [millis (hsql/call (u/qualified-name ::mod) expr 1000)]
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+        millis      (hsql/call (u/qualified-name ::mod) expr 1000)]
     (hsql/call :date_add
                (hx/literal "millisecond")
                millis
-               (hsql/call :from_unixtime (hsql/call :/ expr 1000) (hx/literal "UTC")))))
+               (hsql/call :from_unixtime (hsql/call :/ expr 1000) (hx/literal (or report-zone "UTC"))))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :microseconds]
   [driver _ expr]
