@@ -7,7 +7,7 @@
             [clojure.test :refer [deftest is run-tests testing]]
             [metabuild-common.core :as u])
   (:import (java.io StringReader StringWriter)
-           (java.nio.file Files FileSystems LinkOption Paths)))
+           (java.nio.file Files FileSystems LinkOption Path Paths)))
 
 (def classpath-urls (str/split (System/getProperty "java.class.path")
                                (re-pattern lic/classpath-separator)))
@@ -104,9 +104,12 @@
 
 (deftest license-from-jar-test
   (letfn [(license-path [j f]
-            (with-open [jar-fs (FileSystems/newFileSystem (jar j) nil)]
-              (some-> (lic/license-from-jar jar-fs)
-                      f)))
+            (let [cl ^ClassLoader (ClassLoader/getSystemClassLoader)]
+              ;; java 16 has a single arity that just takes a path, but older versions need a classloader. It can be
+              ;; nil but felt weird typehinting the nil in a binding
+              (with-open [jar-fs (FileSystems/newFileSystem ^Path (jar j) cl)]
+                (some-> (lic/license-from-jar jar-fs)
+                        f))))
           (first-line [path]
             (lic/do-with-path-is path (fn [is]
                                         (->> (slurp is)
