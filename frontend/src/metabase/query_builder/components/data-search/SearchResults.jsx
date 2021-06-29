@@ -9,10 +9,22 @@ import Search from "metabase/entities/search";
 
 import { SearchResultItem } from "./SearchResultItem";
 
-export function SearchResults({ searchQuery, onSelect, databaseId }) {
+const propTypes = {
+  databaseId: PropTypes.string,
+  searchQuery: PropTypes.string.required,
+  onSelect: PropTypes.func.required,
+  searchModels: PropTypes.arrayOf(PropTypes.string.isRequired),
+};
+
+export function SearchResults({
+  searchQuery,
+  onSelect,
+  databaseId,
+  searchModels,
+}) {
   const query = {
     q: searchQuery,
-    models: ["table", "card"],
+    models: searchModels,
   };
 
   if (databaseId) {
@@ -51,11 +63,7 @@ export function SearchResults({ searchQuery, onSelect, databaseId }) {
   );
 }
 
-SearchResults.propTypes = {
-  databaseId: PropTypes.string,
-  searchQuery: PropTypes.string.required,
-  onSelect: PropTypes.func.required,
-};
+SearchResults.propTypes = propTypes;
 
 const SearchResultsRoot = styled.div`
   width: 300px;

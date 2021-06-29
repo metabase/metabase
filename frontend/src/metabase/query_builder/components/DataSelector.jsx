@@ -21,6 +21,7 @@ import {
   SearchResults,
   convertSearchResultToTableLikeItem,
 } from "./data-search";
+import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -121,10 +122,10 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
       }) ||
       [],
     hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { include: "tables", saved: true },
+      entityQuery: { include: "tables", saved: false },
     }),
     hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { saved: true },
+      entityQuery: { saved: false },
     }),
     hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
       entityQuery: { include: "tables" },
@@ -153,6 +154,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTableId: props.selectedTableId,
       selectedFieldId: props.selectedFieldId,
       searchText: "",
+      isSavedQuestionPickerShown: false,
     };
     const computedState = this._getComputedState(props, state);
     this.state = {
@@ -560,6 +562,11 @@ export class UnconnectedDataSelector extends Component {
   };
 
   onChangeDatabase = async database => {
+    if (database.is_saved_questions) {
+      this.setState({ isSavedQuestionPickerShown: true });
+      return;
+    }
+
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
     }
@@ -635,6 +642,11 @@ export class UnconnectedDataSelector extends Component {
       : "flex align-center";
   }
 
+  handleSavedQuestionPickerClose = () =>
+    this.setState({
+      isSavedQuestionPickerShown: false,
+    });
+
   renderActiveStep() {
     const { combineDatabaseSchemaSteps, hasTableSearch } = this.props;
     const props = {
@@ -674,6 +686,14 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
+  handleSavedQuestionSelect = async table => {
+    if (this.props.setSourceTableFn) {
+      this.props.setSourceTableFn(table.id);
+    }
+    this.popover.current.toggle();
+    this.handleClose();
+  };
+
   showTableSearch = () => {
     const { hasTableSearch, steps } = this.props;
     const { activeStep } = this.state;
@@ -705,11 +725,18 @@ export class UnconnectedDataSelector extends Component {
   };
 
   render() {
-    const { searchText } = this.state;
+    const { searchText, isSavedQuestionPickerShown } = this.state;
     const { canChangeDatabase, selectedDatabaseId } = this.props;
-    const searchDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
+    const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
+
+    const searchPlaceholder = isSavedQuestionPickerShown
+      ? `Search for a question...`
+      : t`Search for a table...`;
+    const searchModels = isSavedQuestionPickerShown
+      ? ["card"]
+      : ["card", "table"];
 
     return (
       <PopoverWithTrigger
@@ -731,18 +758,28 @@ export class UnconnectedDataSelector extends Component {
             className="bg-white m1"
             onChange={this.handleSearchTextChange}
             value={searchText}
-            placeholder={t`Search for a table...`}
+            placeholder={searchPlaceholder}
             autoFocus
           />
         )}
         {isSearchActive && (
           <SearchResults
+            searchModels={searchModels}
             searchQuery={searchText.trim()}
-            databaseId={searchDatabaseId}
+            databaseId={currentDatabaseId}
             onSelect={this.handleSearchItemSelect}
           />
         )}
-        {!isSearchActive && this.renderActiveStep()}
+        {!isSearchActive &&
+          (isSavedQuestionPickerShown ? (
+            <SavedQuestionPicker
+              databaseId={currentDatabaseId}
+              onSelect={this.handleSavedQuestionSelect}
+              onBack={this.handleSavedQuestionPickerClose}
+            />
+          ) : (
+            this.renderActiveStep()
+          ))}
       </PopoverWithTrigger>
     );
   }
