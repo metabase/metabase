@@ -1,9 +1,6 @@
 /* eslint-disable react/prop-types */
-
 import React from "react";
-
 import cx from "classnames";
-
 import { Motion, spring } from "react-motion";
 
 const SPRING_CONFIG = { stiffness: 200, damping: 26 };

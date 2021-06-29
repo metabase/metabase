@@ -2,7 +2,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import styled from "styled-components";
 import { Box } from "grid-styled";
 
 import Link from "metabase/components/Link";
@@ -24,6 +23,7 @@ import { QuestionSummarizeWidget } from "./QuestionSummaries";
 
 import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
+import { SavedQuestionHeaderButtonContainer } from "./ViewHeader.styled";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -63,10 +63,6 @@ const viewTitleHeaderPropTypes = {
   className: PropTypes.string,
   style: PropTypes.object,
 };
-const SavedQuestionHeaderButtonContainer = styled.div`
-  position: relative;
-  right: 0.38rem;
-`;
 
 export class ViewTitleHeader extends React.Component {
   constructor(props) {
@@ -169,7 +165,6 @@ export class ViewTitleHeader extends React.Component {
                 />
               )}
             </div>
-
             <ViewSubHeading className="flex align-center flex-wrap">
               <CollectionBadge
                 className="mb1"
