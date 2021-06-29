@@ -19,7 +19,6 @@ QuestionActivityTimeline.propTypes = {
   className: PropTypes.string,
   revisions: PropTypes.array,
   revertToRevision: PropTypes.func.isRequired,
-  onRequestClick: PropTypes.func.isRequired,
   users: PropTypes.array,
 };
 
@@ -28,7 +27,6 @@ function QuestionActivityTimeline({
   className,
   revisions,
   revertToRevision,
-  onRequestClick,
   users,
 }) {
   const canWrite = question.canWrite();
