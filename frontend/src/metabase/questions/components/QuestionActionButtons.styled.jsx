@@ -1,6 +1,5 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
 
 export const Container = styled.div`
   display: flex;
