@@ -466,7 +466,7 @@
           (cond
             (or (instance? OffsetDateTime t)
               (instance? ZonedDateTime t))
-            (t/offset-date-time t)
+            (t/with-offset-same-instant (t/offset-date-time t) (t/zone-offset 0))
 
             ;; presto "helpfully" returns local results already adjusted to session time zone offset for us, e.g.
             ;; '2021-06-15T00:00:00' becomes '2021-06-15T07:00:00' if the session timezone is US/Pacific. Undo the

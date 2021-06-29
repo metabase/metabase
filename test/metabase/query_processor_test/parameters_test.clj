@@ -86,6 +86,22 @@
                  :target [:dimension [:template-tag (name field)]]
                  :value  value}]})
 
+;; TODO: fix this test for Presto JDBC (detailed explanation follows)
+;; Spent a few hours and need to move on. Here is the query being generated for the failing case
+;;  SELECT count(*) AS "count" FROM "default"."attempts"
+;;    WHERE date_trunc('day', "default"."attempts"."datetime_tz") = date '2019-11-12';
+;; And here is what it *SHOULD* be to pass the test
+;;  SELECT count(*) AS "count" FROM "default"."attempts"
+;;    WHERE date_trunc('day', "default"."attempts"."datetime_tz" AT TIME ZONE 'UTC') = date '2019-11-12';
+;; Notice the AT TIME ZONE 'UTC' part. In this case, the test does not set a report timezone, so a fallback of UTC
+;; should (evidently) be applied.
+;; We need the type information, that the datetime_tz is `timestamp with time zone`, to be available to
+;; (defmethod sql.qp/date [:presto-jdbc :day]
+;; However, it is not available there. The expression's HSQL type-info and db-type are both nil. Somehow need to tell
+;; the query processor (or something else?) to *include* that type information when running this test, because it's
+;; clearly known (i.e. if you sync the DB and then query the `metabase_field`, it is there and is correct.
+;; Tried manually syncing the DB (with attempted-murders dataset), and storing it to an initialized QP, to no avail.
+
 ;; this isn't a complete test for all possible field filter types, but it covers mostly everything
 (deftest field-filter-param-test
   (letfn [(is-count-= [expected-count table field value-type value]
