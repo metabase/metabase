@@ -12,10 +12,23 @@
             [metabase.task :as task]
             [metabase.util.i18n :refer [trs]]))
 
-;; You can't run all the cards every time, that takes too long.
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             bad card check                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; You want to run all the cards so you get a nice list "ah here's all the bad ones".
+;; but you can't run all the cards every time, that takes too long.
 ;; Slip in a `limit 1` to everything, instead.
+
 ;; Question goes,
 ;;  1. Are there ways to create degenerate situations where even the `limit 1` makes things too long?
 ;;  2. This one can't do anything about wrong and slow answers, just stuff that explodes
+;;  3. It might still be too slow... can we sample?
 
 
+(defmethod task/init! ::BadCardCheck [_]
+  ;;;;;;;;;;;;;;;;;;
+  ;;;;;;;;;;;;;;;;;;
+  ;;;;;;;;;;;;;;;;;;
+  ;;;;;;;;;;;;;;;;;;
+    (task/schedule-task! job trigger))
