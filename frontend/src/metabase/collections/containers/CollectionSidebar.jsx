@@ -80,7 +80,8 @@ class CollectionSidebar extends React.Component {
     const loaded = prevProps.loading && !loading;
     if (loaded || this.checkCollectionsMapChanged(prevProps.collectionsById)) {
       const collections = Object.values(collectionsById);
-      const ancestors = getParentPath(collections, Number(collectionId)) || [];
+      const ancestors =
+        getParentPath(collections, parseInt(collectionId)) || [];
       this.setState({ openCollections: ancestors });
     }
   }
@@ -110,7 +111,7 @@ class CollectionSidebar extends React.Component {
     } = this.props;
 
     const isAnotherUserCollectionOpened = isAnotherUsersPersonalCollection(
-      Number(collectionId),
+      parseInt(collectionId),
       collectionsById,
       currentUser.id,
     );
@@ -166,7 +167,7 @@ class CollectionSidebar extends React.Component {
               onClose={this.onClose}
               onOpen={this.onOpen}
               collections={getParentPersonalCollection(
-                Number(collectionId),
+                parseInt(collectionId),
                 collectionsById,
               )}
               initialIcon="group"
