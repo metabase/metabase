@@ -98,8 +98,8 @@
                    (build-frontend! edition))
    :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
-   :backend-licenses (fn [{:keys [edition]}]
-                       (build-backend-licenses-file! edition))
+   ;;:backend-licenses (fn [{:keys [edition]}]
+   ;;                    (build-backend-licenses-file! edition))
    :frontend-licenses (fn [{:keys []}]
                         (build-frontend-licenses-file!))
    :uberjar      (fn [{:keys [edition]}]
