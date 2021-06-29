@@ -42,7 +42,7 @@ function LastEditInfoLabel({ item, user, onClick, ...props }) {
   const time = moment(timestamp).fromNow();
 
   const editor =
-    editorId === user.id ? `you` : formatEditorName(first_name, last_name);
+    editorId === user.id ? t`you` : formatEditorName(first_name, last_name);
 
   return (
     <TextButton
