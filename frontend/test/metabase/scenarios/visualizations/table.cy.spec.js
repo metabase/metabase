@@ -1,15 +1,4 @@
-import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
-
-const { PEOPLE_ID } = SAMPLE_DATASET;
-
-const testQuery = {
-  database: 1,
-  query: {
-    "source-table": PEOPLE_ID,
-  },
-  type: "query",
-};
+import { restore, openPeopleTable, popover } from "__support__/e2e/cypress";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -19,10 +8,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
-    visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "table",
-    });
+    openPeopleTable();
     cy.wait("@dataset");
 
     cy.findByText("City").click();
