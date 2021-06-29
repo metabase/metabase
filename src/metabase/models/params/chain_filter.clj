@@ -217,8 +217,8 @@
   [graph start end max-depth]
   (letfn [(transform [path] (let [edges (partition 2 1 path)]
                               (not-empty (vec (mapcat (fn [[x y]] (get-in graph [x y])) edges)))))]
-    (loop [paths      (conj clojure.lang.PersistentQueue/EMPTY [start])
-           seen #{start}]
+    (loop [paths (conj clojure.lang.PersistentQueue/EMPTY [start])
+           seen  #{start}]
       (let [path (peek paths)
             node (peek path)]
         (cond (nil? node)
