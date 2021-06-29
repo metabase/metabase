@@ -132,6 +132,7 @@
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^0.1.0",
     "html-webpack-plugin": "^2.30.1",
+    "husky": "^6.0.0",
     "image-diff": "^1.6.3",
     "jest": "^19.0.2",
     "jest-localstorage-mock": "^2.2.0",
@@ -155,8 +156,7 @@
     "webpack-postcss-tools": "^1.1.2",
     "xhr-mock": "^2.4.1",
     "xlsx": "^0.16.8",
-    "yaml-lint": "^1.2.4",
-    "husky": "^6.0.0"
+    "yaml-lint": "^1.2.4"
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
