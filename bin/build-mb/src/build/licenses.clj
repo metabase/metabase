@@ -137,11 +137,12 @@
   "Returns a tuple of [jar-filename {:coords :license [:error]}. Error is optional. License will be a string of license
   text, coords a map with group and artifact."
   [^String jar-filename backfill]
-  (let [jar-path (Paths/get jar-filename path-options)]
+  (let [jar-path ^Path (Paths/get jar-filename path-options)
+        classloader ^ClassLoader (ClassLoader/getSystemClassLoader)]
     (if-not (Files/exists jar-path link-options)
       [jar-filename {:error "Jar does not exist"}]
       (try
-        (with-open [jar-fs (FileSystems/newFileSystem jar-path nil)]
+        (with-open [jar-fs (FileSystems/newFileSystem jar-path classloader)]
           (let [pom-path             (determine-pom jar-filename jar-fs)
                 license-path         (license-from-jar jar-fs)
                 [coords pom-license] (do-with-path-is pom-path
