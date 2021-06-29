@@ -57,6 +57,6 @@ describe("Tree", () => {
     );
 
     fireEvent.click(getAllByRole("menuitem")[0]);
-    expect(onSelectMock).toHaveBeenCalledWith(1);
+    expect(onSelectMock).toHaveBeenCalledWith(data[0]);
   });
 });
