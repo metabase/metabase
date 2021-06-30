@@ -381,15 +381,15 @@
             (is (schema= SessionResponse
                          (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
-       (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
-         (with-redefs [http/post (fn [url] {:status 200
-                                            :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
-                                                         "\"email_verified\":\"true\","
-                                                         "\"first_name\":\"test\","
-                                                         "\"last_name\":\"user\","
-                                                         "\"email\":\"test@metabase.com\"}")})]
-           (is (= {:errors {:account "Your account is disabled."}}
-                  (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
+        (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
+          (with-redefs [http/post (fn [url] {:status 200
+                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                                                          "\"email_verified\":\"true\","
+                                                          "\"first_name\":\"test\","
+                                                          "\"last_name\":\"user\","
+                                                          "\"email\":\"test@metabase.com\"}")})]
+            (is (= {:errors {:account "Your account is disabled."}}
+                   (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
 
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 
