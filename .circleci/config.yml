@@ -497,6 +497,9 @@ jobs:
     executor: clojure-and-node
     steps:
       - checkout
+      - run:
+          name: Symlink dirs for caches
+          command: ln -s /home/circleci/.m2 ~/.m2 && ln -s /home/circleci/.yarn ~/.yarn && ln -s /home/circleci/.yarn-cache ~/.yarn-cache && ln -s /home/circleci/.cache ~/.cache
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
@@ -768,7 +771,7 @@ jobs:
           # need to rebuild them.
           checksum: '{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}'
           steps:
-            - restore-be-deps-cache            #
+            - restore-be-deps-cache
             - restore_cache:
                 <<: *CacheKeyMetabaseCore
             - restore_cache:
