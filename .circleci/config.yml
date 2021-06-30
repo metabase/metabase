@@ -895,26 +895,20 @@ jobs:
       DISPLAY: ""
     steps:
       - attach-workspace
-      - run:
-          name: "Install cypress"
-          command: yarn install cypress@6.8.0 -g
-      - run-on-change:
-          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
-          steps:
-            - run-yarn-command:
-                command-name: Run Cypress tests
-                before-steps:
-                  - restore_cache:
-                      name: Restore cached uberjar built in previous step
-                      <<: *CacheKeyUberjar
-                  - steps: << parameters.before-steps >>
-                command: |
-                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> --folder << parameters.source-folder >>
-                after-steps:
-                  - store_artifacts:
-                      path: ~/metabase/metabase/cypress
-                  - store_test_results:
-                      path: cypress/results
+      - run-yarn-command:
+          command-name: Run Cypress tests
+          before-steps:
+            - restore_cache:
+                name: Restore cached uberjar built in previous step
+                <<: *CacheKeyUberjar
+            - steps: << parameters.before-steps >>
+          command: |
+            run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> --folder << parameters.source-folder >>
+          after-steps:
+            - store_artifacts:
+                path: ~/metabase/metabase/cypress
+            - store_test_results:
+                path: cypress/results
 
 
 ########################################################################################################################
