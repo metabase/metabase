@@ -119,7 +119,7 @@
                         {:status-code 401
                          :errors      {:_error disabled-account-snippet}}))))
     (do
-      ;; User doesn't exist; run bcrypt hash anyway to avoid leaking account existance in request timing
+      ;; User doesn't exist; run bcrypt hash anyway to avoid leaking account existence in request timing
       (pass/verify-password password fake-salt fake-hashed-password)
       nil)))
 
@@ -193,6 +193,16 @@
   {:email      (throttle/make-throttler :email)
    :ip-address (throttle/make-throttler :email, :attempts-threshold 50)})
 
+(defn- forgot-password-impl
+  [email server-name]
+  (future
+   (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
+              (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
+     (let [reset-token        (user/set-password-reset-token! user-id)
+           password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+       (log/info password-reset-url)
+       (email/send-password-reset-email! email google-auth? server-name password-reset-url is-active?)))))
+
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {:keys [server-name] {:keys [email]} :body, :as request}]
@@ -200,15 +210,8 @@
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request.u/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
-  (throttle-check (forgot-password-throttlers :email)      email)
-  ;; Look up user and send email off-thread to avoid leaking user existence in request timing
-  (future
-    (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
-               (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
-      (let [reset-token        (user/set-password-reset-token! user-id)
-            password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
-        (email/send-password-reset-email! email google-auth? server-name password-reset-url is-active?)
-        (log/info password-reset-url))))
+  (throttle-check (forgot-password-throttlers :email) email)
+  (forgot-password-impl email server-name)
   api/generic-204-no-content)
 
 (def ^:private ^:const reset-token-ttl-ms
