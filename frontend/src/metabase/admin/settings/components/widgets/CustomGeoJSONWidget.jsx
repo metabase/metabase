@@ -412,3 +412,5 @@ const EditMap = ({
 const ChoroplethPreview = React.memo(({ geoJson }) => (
   <LeafletChoropleth geoJson={geoJson} />
 ));
+
+ChoroplethPreview.displayName = "ChoroplethPreview";
