@@ -16,7 +16,7 @@ executors:
   clojure-and-node-and-browsers:
     working_directory: ~/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.9.5-node-browsers
+      - image: cypress/browsers:node12.18.3-chrome89-ff86
       - image: maildev/maildev
 
   java-8:
@@ -895,6 +895,9 @@ jobs:
       DISPLAY: ""
     steps:
       - attach-workspace
+      - run:
+          name: "Install cypress"
+          command: yarn install cypress@6.8.0 -g
       - run-on-change:
           checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}-{{ checksum ".E2E-TESTS-CHECKSUMS" }}'
           steps:
