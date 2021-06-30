@@ -26,7 +26,7 @@
   (:import com.facebook.presto.jdbc.PrestoConnection
            com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           [java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.time.format.DateTimeFormatter
            [java.time.temporal ChronoField Temporal]))
 
@@ -400,13 +400,6 @@
   ;; similar to above implementation, but for `ZonedDateTime`
   ;; when Presto parses this, it will account for session (report) time zone
   (date-time->substitution (.format t DateTimeFormatter/ISO_OFFSET_DATE_TIME)))
-
-(defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc LocalDate]
-  [_ ^LocalDate t]
-  (let [report-zone       (or (qp.timezone/report-timezone-id-if-supported :presto-jdbc) "UTC")
-        ;; find midnight in the report timezone, at the start of `t`
-        dt                (t/zoned-date-time (.atStartOfDay t) (t/zone-id report-zone))]
-    (date-time->substitution (.format dt DateTimeFormatter/ISO_OFFSET_DATE_TIME))))
 
 (defn- set-time-param
   "Converts the given instance of `java.time.temporal`, assumed to be a time (either `LocalTime` or `OffsetTime`)
