@@ -16,6 +16,7 @@ import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionEntityMenu from "./QuestionEntityMenu";
+import ModelEntityMenu from "./ModelEntityMenu";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
@@ -54,6 +55,7 @@ const viewTitleHeaderPropTypes = {
   onAddFilter: PropTypes.func,
   onCloseFilter: PropTypes.func,
   makeSavedQuestionAModel: PropTypes.func,
+  makeModelASavedQuestion: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
@@ -61,6 +63,8 @@ const viewTitleHeaderPropTypes = {
 
   className: PropTypes.string,
   style: PropTypes.object,
+
+  isModel: PropTypes.bool,
 };
 
 export class ViewTitleHeader extends React.Component {
@@ -116,6 +120,8 @@ export class ViewTitleHeader extends React.Component {
       onAddFilter,
       onCloseFilter,
       makeSavedQuestionAModel,
+      makeModelASavedQuestion,
+      isModel,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
@@ -155,11 +161,19 @@ export class ViewTitleHeader extends React.Component {
                   tooltip={description}
                 />
               )}
-              <QuestionEntityMenu
-                question={question}
-                onOpenModal={onOpenModal}
-                makeSavedQuestionAModel={makeSavedQuestionAModel}
-              />
+              {isModel ? (
+                <ModelEntityMenu
+                  question={question}
+                  onOpenModal={onOpenModal}
+                  makeModelASavedQuestion={makeModelASavedQuestion}
+                />
+              ) : (
+                <QuestionEntityMenu
+                  question={question}
+                  onOpenModal={onOpenModal}
+                  makeSavedQuestionAModel={makeSavedQuestionAModel}
+                />
+              )}
               {lastEditInfo && (
                 <LastEditInfoLabel
                   className="ml1 text-light"

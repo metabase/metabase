@@ -103,6 +103,7 @@ export default class View extends React.Component {
       mode,
       fitClassNames,
       height,
+      isModel,
     } = this.props;
     const {
       aggregationIndex,

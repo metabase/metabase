@@ -52,6 +52,7 @@ import {
   getIsLiveResizable,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getIsModel,
 } from "../selectors";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -146,6 +147,8 @@ const mapStateToProps = (state, props) => {
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
     modalSnippet: getModalSnippet(state),
     snippetCollectionId: getSnippetCollectionId(state),
+
+    isModel: getIsModel(state),
   };
 };
 
