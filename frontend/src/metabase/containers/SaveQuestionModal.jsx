@@ -38,6 +38,8 @@ export default class SaveQuestionModal extends Component {
     //     .setDescription(details.description ? details.description.trim() : null)
     //     .setCollectionId(details.collection_id)
     let { card, originalCard, onCreate, onSave } = this.props;
+    const isBasedOnModel =
+      originalCard && originalCard.name.startsWith("MODEL: ");
 
     card = {
       ...card,
@@ -58,6 +60,11 @@ export default class SaveQuestionModal extends Component {
           : details.collection_id,
     };
 
+    if (isBasedOnModel) {
+      const modelId = originalCard.id;
+      card.name = `MODEL ${modelId}: ${card.name}`;
+    }
+
     if (details.saveType === "create") {
       await onCreate(card);
     } else if (details.saveType === "overwrite") {
@@ -75,6 +82,8 @@ export default class SaveQuestionModal extends Component {
     } = this.props;
 
     const isStructured = Q_DEPRECATED.isStructured(card.dataset_query);
+    const isBasedOnModel =
+      originalCard && originalCard.name.startsWith("MODEL: ");
 
     const initialValues = {
       name:
@@ -86,15 +95,14 @@ export default class SaveQuestionModal extends Component {
         card.collection_id === undefined
           ? initialCollectionId
           : card.collection_id,
-      saveType: originalCard ? "overwrite" : "create",
+      saveType: originalCard && !isBasedOnModel ? "overwrite" : "create",
     };
 
     const title = this.props.multiStep
       ? t`First, save your question`
       : t`Save question`;
 
-    const showSaveType = !card.id && !!originalCard;
-
+    const showSaveType = !card.id && !!originalCard && !isBasedOnModel;
     return (
       <ModalContent
         id="SaveQuestionModal"
