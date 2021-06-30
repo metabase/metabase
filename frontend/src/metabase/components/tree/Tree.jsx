@@ -11,16 +11,12 @@ const propTypes = {
   selectedId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };
 
-const defaultProps = {
-  variant: "default",
-};
-
 export function Tree({
   TreeNodeComponent = TreeNode,
   data,
   onSelect,
   selectedId,
-  variant,
+  variant = "default",
 }) {
   const [expandedIds, setExpandedIds] = useState(new Set());
 
@@ -48,7 +44,5 @@ export function Tree({
     />
   );
 }
-
-Tree.defaultProps = defaultProps;
 
 Tree.propTypes = propTypes;

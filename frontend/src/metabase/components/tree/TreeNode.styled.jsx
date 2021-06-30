@@ -2,23 +2,26 @@ import styled, { css } from "styled-components";
 import colors, { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
+// NOTE: whitelabeling/theming mutates colors object so we need to make it lazy
 const TEXT_COLOR_BY_VARIANT = {
-  default: colors["brand"],
-  admin: colors["text-medium"],
+  default: () => colors["brand"],
+  admin: () => colors["text-medium"],
 };
 
 const BACKGROUND_COLOR_BY_VARIANT = {
-  default: colors["brand"],
-  admin: colors["accent7"],
+  default: () => colors["brand"],
+  admin: () => colors["accent7"],
 };
 
 export const TreeNodeRoot = styled.li`
   display: flex;
   align-items: center;
   color: ${props =>
-    props.isSelected ? colors["white"] : TEXT_COLOR_BY_VARIANT[props.variant]};
+    props.isSelected
+      ? colors["white"]
+      : TEXT_COLOR_BY_VARIANT[props.variant]()};
   background-color: ${props =>
-    props.isSelected ? BACKGROUND_COLOR_BY_VARIANT[props.variant] : "unset"};
+    props.isSelected ? BACKGROUND_COLOR_BY_VARIANT[props.variant]() : "unset"};
   padding-left: ${props => props.depth + 0.5}rem;
   padding-right: 0.5rem;
   cursor: pointer;
@@ -27,8 +30,8 @@ export const TreeNodeRoot = styled.li`
   &:hover {
     background-color: ${props =>
       props.isSelected
-        ? BACKGROUND_COLOR_BY_VARIANT[props.variant]
-        : lighten(BACKGROUND_COLOR_BY_VARIANT[props.variant], 0.6)};
+        ? BACKGROUND_COLOR_BY_VARIANT[props.variant]()
+        : lighten(BACKGROUND_COLOR_BY_VARIANT[props.variant](), 0.6)};
   }
 `;
 
@@ -69,5 +72,7 @@ export const RightArrowContainer = styled.div`
   display: flex;
   align-items: center;
   color: ${props =>
-    props.isSelected ? colors["white"] : TEXT_COLOR_BY_VARIANT[props.variant]};
+    props.isSelected
+      ? colors["white"]
+      : TEXT_COLOR_BY_VARIANT[props.variant]()};
 `;
