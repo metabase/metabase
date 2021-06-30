@@ -5,44 +5,43 @@ version: 2.1
 ########################################################################################################################
 
 executors:
-  # Our brand new builder
-  clojure-and-node:
+  
+  metabase-ci:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
-
-  # CircleCI base (Lein 2.9.5) + Node + Headless browsers + Clojure CLI - big one
-  # Maildev runs by default with all Cypress tests
-  clojure-and-node-and-browsers:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.9.5-node-browsers
-      - image: maildev/maildev
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
 
   java-8:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-8-lein-2.9.5-buster
-
-  # Java 11 tests also test Metabase with the at-rest encryption enabled. See
-  # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
-  # what this means.
+      - image: circleci/clojure:openjdk-8-lein-2.9.6
+  
   java-11:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
-        environment:
-          MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
-
+      - image: circleci/clojure:openjdk-11-lein-2.9.6
+  
   java-16:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-16-lein-2.9.5-buster
+      - image: circleci/clojure:openjdk-16-lein-2.9.6
+  
+  clojure-and-node-and-browsers:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.9.6-node-browsers
+
+  java-11-ek:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
+        environment:
+          MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -58,7 +57,7 @@ executors:
   postgres-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -75,7 +74,7 @@ executors:
   mysql-5-7:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -88,7 +87,7 @@ executors:
   mysql-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -101,7 +100,7 @@ executors:
   mariadb-10-2:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -114,7 +113,7 @@ executors:
   mariadb-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -131,13 +130,13 @@ executors:
   mongo:
      working_directory: /home/circleci/metabase/metabase/
      docker:
-       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+       - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
        - image: circleci/mongo:4.0
 
   presto:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
       - image: metabase/presto-mb-ci:0.186
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -148,19 +147,19 @@ executors:
   sparksql:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
       - image: metabase/spark:2.1.1
 
   vertica:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
       - image: sumitchawla/vertica
 
   sqlserver:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
         environment:
           MB_SQLSERVER_TEST_HOST: localhost
           MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
@@ -174,7 +173,7 @@ executors:
   druid:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-lein-2.9.6-clj-1.10.3.855-07-1-2021
       - image: metabase/druid:0.20.2
         environment:
           CLUSTER_SIZE: nano-quickstart
@@ -186,19 +185,19 @@ executors:
   fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.9.5-node-browsers
+      - image: circleci/clojure:lein-2.9.6-node-browsers
       - image: metabase/qa-databases:mongo-sample-4.0
 
   fe-postgres-12:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.9.5-node-browsers
+      - image: circleci/clojure:lein-2.9.6-node-browsers
       - image: metabase/qa-databases:postgres-sample-12
 
   fe-mysql-8:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.9.5-node-browsers
+      - image: circleci/clojure:lein-2.9.6-node-browsers
       - image: metabase/qa-databases:mysql-sample-8
 
 
@@ -494,7 +493,7 @@ jobs:
 ########################################################################################################################
 
   checkout:
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - checkout
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
@@ -543,7 +542,7 @@ jobs:
 
   check-migrations:
     executor:
-      clojure-and-node
+      metabase-ci
     steps:
       - attach-workspace
       - create-checksum-file:
@@ -566,7 +565,7 @@ jobs:
 ########################################################################################################################
 
   be-deps:
-    executor: clojure-and-node
+    executor: metabase-ci
     parameters:
       <<: *Params
     steps:
@@ -590,7 +589,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node
+        default: metabase-ci
       before-steps:
         type: steps
         default: []
@@ -627,7 +626,7 @@ jobs:
                 edition: << parameters.edition >>
 
   be-linter-reflection-warnings:
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - run-on-change:
@@ -643,7 +642,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node
+        default: metabase-ci
       driver:
         type: string
       timeout:
@@ -677,7 +676,7 @@ jobs:
                 path: /home/circleci/metabase/metabase/target/junit
 
   test-build-scripts:
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - run-on-change:
@@ -721,7 +720,7 @@ jobs:
 ########################################################################################################################
 
   fe-deps:
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - attach-workspace
       # This step is *really* slow, so we can skip it if yarn.lock hasn't changed since last time we ran it
@@ -743,7 +742,7 @@ jobs:
                   - /home/circleci/.cache/Cypress
 
   shared-tests-cljs:
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - run-yarn-command:
           command-name: Run Cljs tests for shared/ code
@@ -753,7 +752,7 @@ jobs:
   # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
   # OSS and EE uberjars.
   build-uberjar-drivers:
-    executor: clojure-and-node
+    executor: metabase-ci
     parameters:
       <<: *Params
     steps:
@@ -805,7 +804,7 @@ jobs:
   build-uberjar-frontend:
     parameters:
       <<: *Params
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - run-on-change:
@@ -829,7 +828,7 @@ jobs:
   build-uberjar:
     parameters:
       <<: *Params
-    executor: clojure-and-node
+    executor: metabase-ci
     steps:
       - attach-workspace
       - run-on-change:
@@ -951,6 +950,15 @@ workflows:
           requires:
             - be-deps
           e: java-11
+          lein-command: with-profile +junit test
+          skip-when-no-change: true
+          <<: *Matrix
+
+      - lein:
+          name: be-tests-java-11-<< matrix.edition >>
+          requires:
+            - be-deps
+          e: java-11-ek
           lein-command: with-profile +junit test
           skip-when-no-change: true
           <<: *Matrix
