@@ -48,7 +48,7 @@ describe("Parameters", () => {
         const props = buildPropsForInternalQuestion({
           parameters: [
             {
-              id: "id",
+              id: "idForslugNotKeyInQuery",
               slug: "slugNotKeyInQuery",
             },
           ],
@@ -67,7 +67,7 @@ describe("Parameters", () => {
         const props = buildPropsForInternalQuestion({
           parameters: [
             {
-              id: "id",
+              id: "idForCreatedAt",
               slug: "createdAt",
             },
           ],
@@ -83,7 +83,10 @@ describe("Parameters", () => {
 
         it("calls setParameterValue with parameters.id and the value for query key ", () => {
           syncQueryParamsWithURL(props);
-          expect(props.setParameterValue).toHaveBeenCalledWith("id", "2021");
+          expect(props.setParameterValue).toHaveBeenCalledWith(
+            "idForCreatedAt",
+            "2021",
+          );
         });
       });
 
@@ -91,11 +94,11 @@ describe("Parameters", () => {
         const props = buildPropsForInternalQuestion({
           parameters: [
             {
-              id: "id1",
+              id: "idForCreatedAt",
               slug: "createdAt",
             },
             {
-              id: "id2",
+              id: "idForState",
               slug: "state",
             },
           ],
@@ -112,8 +115,14 @@ describe("Parameters", () => {
 
         it("calls setParameterValue each time with parameter.id and parsed paramater as arguments ", () => {
           syncQueryParamsWithURL(props);
-          expect(props.setParameterValue).toHaveBeenCalledWith("id1", "2021");
-          expect(props.setParameterValue).toHaveBeenCalledWith("id2", "CA");
+          expect(props.setParameterValue).toHaveBeenCalledWith(
+            "idForCreatedAt",
+            "2021",
+          );
+          expect(props.setParameterValue).toHaveBeenCalledWith(
+            "idForState",
+            "CA",
+          );
         });
       });
     });
@@ -138,7 +147,7 @@ describe("Parameters", () => {
         const props = buildPropsForPublicQuestion({
           parameters: [
             {
-              id: "id",
+              id: "idForSlugNotKeyInQuery",
               slug: "slugNotKeyInQuery",
             },
           ],
@@ -157,7 +166,7 @@ describe("Parameters", () => {
         const props = buildPropsForPublicQuestion({
           parameters: [
             {
-              id: "id",
+              id: "idForCreatedAt",
               slug: "createdAt",
             },
           ],
@@ -173,7 +182,9 @@ describe("Parameters", () => {
 
         it("calls setParameterValue with an object of key parameter.id and value of a parsed query param ", () => {
           syncQueryParamsWithURL(props);
-          expect(props.setParameterValue).toHaveBeenCalledWith({ id: "2021" });
+          expect(props.setParameterValue).toHaveBeenCalledWith({
+            idForCreatedAt: "2021",
+          });
         });
       });
 
@@ -181,11 +192,11 @@ describe("Parameters", () => {
         const props = buildPropsForPublicQuestion({
           parameters: [
             {
-              id: "id1",
+              id: "idForCreatedAt",
               slug: "createdAt",
             },
             {
-              id: "id2",
+              id: "idForState",
               slug: "state",
             },
           ],
@@ -203,8 +214,8 @@ describe("Parameters", () => {
         it("calls setParameterValue with one object as argument, keys of parameter id and parsed param values", () => {
           syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledWith({
-            id1: "2021",
-            id2: "CA",
+            idForCreatedAt: "2021",
+            idForState: "CA",
           });
         });
       });
