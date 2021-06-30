@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
-import { MetabaseApi } from "metabase/services";
+import Schemas from "metabase/entities/schemas";
 
 import SavedQuestionList from "./SavedQuestionList";
 import {
@@ -24,6 +24,7 @@ const propTypes = {
   onSelect: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
   collections: PropTypes.array.isRequired,
+  schemas: PropTypes.array.isRequired,
   databaseId: PropTypes.string,
 };
 
@@ -34,41 +35,32 @@ const OUR_ANALYTICS_COLLECTION = {
   icon: "folder",
 };
 
-function SavedQuestionPicker({ onBack, onSelect, collections, databaseId }) {
-  const [allowedSchemas, setAllowedSchemas] = useState(null);
+function SavedQuestionPicker({
+  onBack,
+  onSelect,
+  collections,
+  schemas,
+  databaseId,
+}) {
   const [selectedCollection, setSelectedCollection] = useState(
     OUR_ANALYTICS_COLLECTION,
   );
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function fetchCollectionSchemas() {
-      const collectionSchemas = await MetabaseApi.db_schemas({
-        dbId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
-      });
-
-      if (!isCancelled) {
-        setAllowedSchemas(collectionSchemas);
-      }
-    }
-
-    fetchCollectionSchemas();
-    return () => (isCancelled = true);
-  }, []);
 
   const handleSelect = useCallback(id => {
     setSelectedCollection(id);
   }, []);
 
   const collectionTree = useMemo(() => {
-    return allowedSchemas
+    return schemas.length > 0
       ? [
           OUR_ANALYTICS_COLLECTION,
-          ...buildCollectionTree(collections, new Set(allowedSchemas)),
+          ...buildCollectionTree(
+            collections,
+            new Set(schemas.map(schema => schema.name)),
+          ),
         ]
       : [OUR_ANALYTICS_COLLECTION];
-  }, [collections, allowedSchemas]);
+  }, [collections, schemas]);
 
   return (
     <SavedQuestionPickerRoot>
@@ -99,6 +91,9 @@ SavedQuestionPicker.propTypes = propTypes;
 const mapStateToProps = ({ currentUser }) => ({ currentUser });
 
 export default _.compose(
+  Schemas.loadList({
+    query: { dbId: SAVED_QUESTIONS_VIRTUAL_DB_ID },
+  }),
   Collection.loadList({
     query: () => ({ tree: true }),
   }),

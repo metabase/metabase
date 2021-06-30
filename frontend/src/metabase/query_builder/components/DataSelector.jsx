@@ -122,10 +122,10 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
       }) ||
       [],
     hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { include: "tables", saved: false },
+      entityQuery: { include: "tables", saved: true },
     }),
     hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { saved: false },
+      entityQuery: { saved: true },
     }),
     hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
       entityQuery: { include: "tables" },
@@ -345,7 +345,8 @@ export class UnconnectedDataSelector extends Component {
     const invalidSchema =
       selectedDatabase &&
       selectedSchema &&
-      selectedSchema.database.id !== selectedDatabase.id;
+      selectedSchema.database.id !== selectedDatabase.id &&
+      !selectedSchema.database.is_saved_questions;
     const invalidTable =
       selectedSchema &&
       selectedTable &&
@@ -561,9 +562,12 @@ export class UnconnectedDataSelector extends Component {
     }
   };
 
+  showSavedQuestionPicker = () =>
+    this.setState({ isSavedQuestionPickerShown: true });
+
   onChangeDatabase = async database => {
     if (database.is_saved_questions) {
-      this.setState({ isSavedQuestionPickerShown: true });
+      this.showSavedQuestionPicker();
       return;
     }
 
@@ -732,7 +736,7 @@ export class UnconnectedDataSelector extends Component {
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
 
     const searchPlaceholder = isSavedQuestionPickerShown
-      ? `Search for a question...`
+      ? t`Search for a question`
       : t`Search for a table...`;
     const searchModels = isSavedQuestionPickerShown
       ? ["card"]
@@ -871,7 +875,7 @@ const DatabaseSchemaPicker = ({
   const sections = databases.map(database => ({
     name: database.name,
     items:
-      database.schemas.length > 1
+      !database.is_saved_questions && database.schemas.length > 1
         ? database.schemas.map(schema => ({
             schema,
             name: schema.displayName(),
