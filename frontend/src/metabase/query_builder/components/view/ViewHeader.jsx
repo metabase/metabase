@@ -53,6 +53,7 @@ const viewTitleHeaderPropTypes = {
   onCloseSummary: PropTypes.func,
   onAddFilter: PropTypes.func,
   onCloseFilter: PropTypes.func,
+  makeSavedQuestionAModel: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
@@ -114,6 +115,7 @@ export class ViewTitleHeader extends React.Component {
       isShowingFilterSidebar,
       onAddFilter,
       onCloseFilter,
+      makeSavedQuestionAModel,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
@@ -156,6 +158,7 @@ export class ViewTitleHeader extends React.Component {
               <QuestionEntityMenu
                 question={question}
                 onOpenModal={onOpenModal}
+                makeSavedQuestionAModel={makeSavedQuestionAModel}
               />
               {lastEditInfo && (
                 <LastEditInfoLabel

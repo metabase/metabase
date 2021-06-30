@@ -1333,3 +1333,13 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
+
+export const MAKE_SAVED_QUESTION_A_MODEL = "MAKE_SAVED_QUESTION_A_MODEL";
+export const makeSavedQuestionAModel = () => async (dispatch, getState) => {
+  const question = getQuestion(getState());
+  const model = question
+    .setDisplayName(`MODEL: ${question.displayName()}`)
+    .setDisplay("table");
+
+  dispatch(apiUpdateQuestion(model));
+};

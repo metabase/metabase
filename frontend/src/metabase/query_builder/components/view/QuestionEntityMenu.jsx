@@ -10,6 +10,7 @@ export default function QuestionEntityMenu({
   className,
   question,
   onOpenModal,
+  makeSavedQuestionAModel,
 }) {
   const canWrite = question && question.canWrite();
   return (
@@ -41,6 +42,11 @@ export default function QuestionEntityMenu({
           icon: "clone",
           title: t`Duplicate this question`,
           action: () => onOpenModal("clone"),
+        },
+        canWrite && {
+          icon: "",
+          title: t`Make this a model`,
+          action: () => makeSavedQuestionAModel(),
         },
         canWrite && {
           icon: "archive",
