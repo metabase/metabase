@@ -38,7 +38,7 @@ describe("Parameters", () => {
           },
         });
 
-        it("does not call setParameterValue", () => {
+        it("does not try to sync parameters", () => {
           syncQueryParamsWithURL(props);
           expect(props.setParameterValue).not.toHaveBeenCalled();
         });
@@ -57,7 +57,7 @@ describe("Parameters", () => {
           },
         });
 
-        it("does not call setParameterValue", () => {
+        it("does not try to sync parameters", () => {
           syncQueryParamsWithURL(props);
           expect(props.setParameterValue).not.toHaveBeenCalled();
         });
@@ -76,13 +76,9 @@ describe("Parameters", () => {
           },
         });
 
-        it("calls setParameterValue once", () => {
+        it("syncs parameter with query params by slugs in one function call", () => {
           syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledTimes(1);
-        });
-
-        it("calls setParameterValue with parameters.id and the value for query key ", () => {
-          syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledWith(
             "idForCreatedAt",
             "2021",
@@ -108,13 +104,9 @@ describe("Parameters", () => {
           },
         });
 
-        it("calls setParameterValue twice", () => {
+        it("syncs parameter with query params by slugs in as many function calls as there are matching parameters", () => {
           syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledTimes(2);
-        });
-
-        it("calls setParameterValue each time with parameter.id and parsed paramater as arguments ", () => {
-          syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledWith(
             "idForCreatedAt",
             "2021",
@@ -136,7 +128,7 @@ describe("Parameters", () => {
           },
         });
 
-        it("calls setParameterValue with empty object as argument", () => {
+        it("uses empty object as argument when syncing params", () => {
           syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledTimes(1);
           expect(props.setParameterValue).toHaveBeenCalledWith({});
@@ -156,7 +148,7 @@ describe("Parameters", () => {
           },
         });
 
-        it("calls setParameterValue with empty object as argument", () => {
+        it("uses empty object as argument when syncing params", () => {
           syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledWith({});
         });
@@ -175,13 +167,9 @@ describe("Parameters", () => {
           },
         });
 
-        it("calls setParameterValue once", () => {
+        it("syncs parameter with query params by slugs, by passing one object with as many key/value pairs as there are matching parameters, all in a single function call", () => {
           syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledTimes(1);
-        });
-
-        it("calls setParameterValue with an object of key parameter.id and value of a parsed query param ", () => {
-          syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledWith({
             idForCreatedAt: "2021",
           });
@@ -206,13 +194,9 @@ describe("Parameters", () => {
           },
         });
 
-        it("calls setParameterValue once", () => {
+        it("syncs parameter with query params by slugs, by passing one object with as many key/value pairs as there are matching parameters, all in a single function call", () => {
           syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledTimes(1);
-        });
-
-        it("calls setParameterValue with one object as argument, keys of parameter id and parsed param values", () => {
-          syncQueryParamsWithURL(props);
           expect(props.setParameterValue).toHaveBeenCalledWith({
             idForCreatedAt: "2021",
             idForState: "CA",
