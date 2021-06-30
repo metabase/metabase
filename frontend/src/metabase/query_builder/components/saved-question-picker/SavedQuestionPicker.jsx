@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { Box } from "grid-styled";
 import _ from "underscore";
 import PropTypes from "prop-types";
@@ -26,6 +26,7 @@ const propTypes = {
   collections: PropTypes.array.isRequired,
   schemas: PropTypes.array.isRequired,
   databaseId: PropTypes.string,
+  tableId: PropTypes.string,
 };
 
 const OUR_ANALYTICS_COLLECTION = {
@@ -41,6 +42,7 @@ function SavedQuestionPicker({
   collections,
   schemas,
   databaseId,
+  tableId,
 }) {
   const [selectedCollection, setSelectedCollection] = useState(
     OUR_ANALYTICS_COLLECTION,
@@ -78,6 +80,7 @@ function SavedQuestionPicker({
         </Box>
       </CollectionsContainer>
       <SavedQuestionList
+        selectedId={tableId}
         databaseId={databaseId}
         schemaName={selectedCollection.schemaName}
         onSelect={onSelect}

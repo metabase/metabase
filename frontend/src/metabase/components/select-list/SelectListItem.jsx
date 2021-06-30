@@ -8,6 +8,7 @@ const propTypes = {
   name: PropTypes.string.isRequired,
   icon: PropTypes.string.isRequired,
   onSelect: PropTypes.func.isRequired,
+  isSelected: PropTypes.bool,
   isHighlighted: PropTypes.bool,
   hasRightArrow: PropTypes.bool,
   size: PropTypes.oneOf(["small", "medium"]),
@@ -18,12 +19,14 @@ export function SelectListItem({
   name,
   icon,
   onSelect,
+  isSelected = false,
   isHighlighted = false,
   hasRightArrow = false,
   size = "medium",
 }) {
   return (
     <ItemRoot
+      isSelected={isSelected}
       role="menuitem"
       tabIndex={0}
       size={size}

@@ -729,7 +729,11 @@ export class UnconnectedDataSelector extends Component {
   };
 
   render() {
-    const { searchText, isSavedQuestionPickerShown } = this.state;
+    const {
+      searchText,
+      isSavedQuestionPickerShown,
+      selectedTable,
+    } = this.state;
     const { canChangeDatabase, selectedDatabaseId } = this.props;
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
@@ -777,6 +781,7 @@ export class UnconnectedDataSelector extends Component {
         {!isSearchActive &&
           (isSavedQuestionPickerShown ? (
             <SavedQuestionPicker
+              tableId={selectedTable && selectedTable.id}
               databaseId={currentDatabaseId}
               onSelect={this.handleSavedQuestionSelect}
               onBack={this.handleSavedQuestionPickerClose}
@@ -911,15 +916,7 @@ const DatabaseSchemaPicker = ({
       className="text-brand"
       sections={sections}
       onChange={item => onChangeSchema(item.schema)}
-      onChangeSection={(section, sectionIndex) => {
-        if (
-          selectedDatabase &&
-          selectedDatabase.id === databases[sectionIndex].id
-        ) {
-          // You can't change to the current database. If you click on that,
-          // still return "true" to let the AccordionList collapse that section.
-          return true;
-        }
+      onChangeSection={(_section, sectionIndex) => {
         onChangeDatabase(databases[sectionIndex]);
         return true;
       }}

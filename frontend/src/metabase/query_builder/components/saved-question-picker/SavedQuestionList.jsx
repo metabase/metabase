@@ -15,9 +15,10 @@ const propTypes = {
   databaseId: PropTypes.string,
   schema: PropTypes.object.isRequired,
   onSelect: PropTypes.func.isRequired,
+  selectedId: PropTypes.string,
 };
 
-function SavedQuestionList({ schema, onSelect, databaseId }) {
+function SavedQuestionList({ schema, onSelect, databaseId, selectedId }) {
   const tables =
     databaseId != null
       ? schema.tables.filter(table => table.db_id === databaseId)
@@ -27,6 +28,7 @@ function SavedQuestionList({ schema, onSelect, databaseId }) {
     <SavedQuestionListRoot>
       {tables.map(t => (
         <SelectList.Item
+          isSelected={selectedId === t.id}
           key={t.id}
           size="small"
           name={t.display_name}
