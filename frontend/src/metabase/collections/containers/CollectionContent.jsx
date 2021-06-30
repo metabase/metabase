@@ -53,6 +53,10 @@ function CollectionContent({
     sort_column: "name",
     sort_direction: "asc",
   });
+  const [modelItemsSorting, setModelItemsSorting] = useState({
+    sort_column: "name",
+    sort_direction: "asc",
+  });
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
   const {
     selected,
@@ -101,6 +105,10 @@ function CollectionContent({
     setPinnedItemsSorting(sortingOpts);
   }, []);
 
+  const handleModelItemsSortingChange = useCallback(sortingOpts => {
+    setModelItemsSorting(sortingOpts);
+  }, []);
+
   const handleCloseModal = () => {
     setSelectedItems(null);
     setSelectedAction(null);
@@ -114,6 +122,12 @@ function CollectionContent({
   const handleCopy = selectedItems => {
     setSelectedItems(selectedItems);
     setSelectedAction("copy");
+  };
+
+  const modelQuery = {
+    collection: collectionId,
+    models: "card",
+    ...modelItemsSorting,
   };
 
   const unpinnedQuery = {
@@ -168,6 +182,35 @@ function CollectionContent({
                 onMove={handleMove}
                 onCopy={handleCopy}
               />
+
+              <Search.ListLoader
+                query={modelQuery}
+                loadingAndErrorWrapper={false}
+                keepListWhileLoading
+                wrapped
+              >
+                {({ list: cardItems = [], loading: loadingModelItems }) => {
+                  const modelItems = cardItems.filter(item =>
+                    item.name.startsWith("MODEL: "),
+                  );
+                  return (
+                    <Box mt={3}>
+                      <ItemsTable
+                        items={modelItems}
+                        collection={collection}
+                        sortingOptions={modelItemsSorting}
+                        onSortingOptionsChange={handleModelItemsSortingChange}
+                        selectedItems={selected}
+                        getIsSelected={getIsSelected}
+                        onToggleSelected={toggleItem}
+                        onDrop={clear}
+                        onMove={handleMove}
+                        onCopy={handleCopy}
+                      />
+                    </Box>
+                  );
+                }}
+              </Search.ListLoader>
 
               <Search.ListLoader
                 query={unpinnedQuery}
