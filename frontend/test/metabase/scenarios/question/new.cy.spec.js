@@ -178,6 +178,12 @@ describe("scenarios > question > new", () => {
         cy.findByText("Orders, Count").click();
         cy.findByText("18,760");
       });
+
+      it("should perform a search scoped to saved questions", () => {
+        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        cy.findByText("1,994");
+      });
     });
 
     describe("on a (custom) question page", () => {
@@ -211,6 +217,13 @@ describe("scenarios > question > new", () => {
         cy.button("Visualize").click();
         cy.findByText("2016");
         cy.findByText("5,834");
+      });
+
+      it("should perform a search scoped to saved questions", () => {
+        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        cy.button("Visualize").click();
+        cy.findByText("2018");
       });
     });
   });
