@@ -449,8 +449,7 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:presto-jdbc Types/TIMESTAMP]
   [_ ^ResultSet rset ^ResultSetMetaData rsmeta ^Integer i]
-  (let [zone     (.getTimeZoneId (rs->presto-conn rset))
-        db-type  (.getColumnTypeName rsmeta i)]
+  (let [zone     (.getTimeZoneId (rs->presto-conn rset))]
     (fn []
       (when-let [s (.getString rset i)]
         (when-let [t (u.date/parse s)]
