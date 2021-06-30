@@ -18,6 +18,7 @@
             [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.query :as query]
+            [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
@@ -130,12 +131,7 @@
 ;; Cards with errors
 (defmethod cards-for-filter-option* :broken
   [_]
-  (db/select Card, [not nill :broken]))
-
-;; Cards with errors belonging to user
-(defmethod cards-for-filter-option* :my-broken
-  [_]
-  (db/select Card, [not nill :broken]))
+  (cards-with-ids (map :card_id (db/select QueryExecution :error [:not= nil]))))
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
