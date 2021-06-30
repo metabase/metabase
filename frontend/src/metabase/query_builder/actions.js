@@ -1334,12 +1334,21 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
 
-export const MAKE_SAVED_QUESTION_A_MODEL = "MAKE_SAVED_QUESTION_A_MODEL";
 export const makeSavedQuestionAModel = () => async (dispatch, getState) => {
   const question = getQuestion(getState());
-  const model = question
+  const modelishQuestion = question
     .setDisplayName(`MODEL: ${question.displayName()}`)
     .setDisplay("table");
 
-  dispatch(apiUpdateQuestion(model));
+  dispatch(apiUpdateQuestion(modelishQuestion));
+};
+
+export const makeModelASavedQuestion = () => async (dispatch, getState) => {
+  const modelishQuestion = getQuestion(getState());
+
+  const question = modelishQuestion.setDisplayName(
+    modelishQuestion.displayName().slice(7),
+  );
+
+  dispatch(apiUpdateQuestion(question));
 };

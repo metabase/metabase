@@ -462,3 +462,8 @@ export const getIsLiveResizable = createSelector(
     }
   },
 );
+
+export const getIsModel = createSelector(
+  [getQuestion],
+  question => question && (question.displayName() || "").startsWith("MODEL: "),
+);
