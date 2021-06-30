@@ -212,8 +212,10 @@
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
-    (with-redefs [session-api/forgot-password-impl (let [orig @#'session-api/forgot-password-impl]
-                                                      (fn [& args] @(apply orig args)))]
+    ;; deref forgot-password-impl for the tests since it returns a future
+    (with-redefs [session-api/forgot-password-impl
+                  (let [orig @#'session-api/forgot-password-impl]
+                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (testing "Test that we can initiate password reset"
         (et/with-fake-inbox
           (letfn [(reset-fields-set? []
