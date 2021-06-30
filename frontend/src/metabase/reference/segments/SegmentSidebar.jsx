@@ -3,7 +3,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import pure from "recompose/pure";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -70,4 +69,4 @@ SegmentSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default pure(SegmentSidebar);
+export default React.memo(SegmentSidebar);
