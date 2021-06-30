@@ -52,6 +52,21 @@
                :order-by [[:avg_running_time :desc]]
                :limit    10})})
 
+(s/defn ^:internal-query-fn bad-table
+  "List of all failing questions"
+   {:metadata [[:card_id         {:display_name "Card ID",         :base_type :type/Integer, :remapped_to   :card_name}]
+               [:card_name       {:display_name "Name",            :base_type :type/Name,    :remapped_from :card_id}]
+               [:collection_id   {:display_name "Collection ID",   :base_type :type/Integer, :remapped_to   :collection_name}]
+               [:collection_name {:display_name "Collection",      :base_type :type/Text,    :remapped_from :collection_id}]
+               [:database_id     {:display_name "Database ID",     :base_type :type/Integer, :remapped_to   :database_name}]
+               [:database_name   {:display_name "Database",        :base_type :type/Text,    :remapped_from :database_id}]
+               [:table_id        {:display_name "Table ID",        :base_type :type/Integer, :remapped_to   :table_name}]
+               [:table_name      {:display_name "Table",           :base_type :type/Text,    :remapped_from :table_id}]
+               [:user_id         {:display_name "Created By ID",   :base_type :type/Integer, :remapped_to   :user_name}]
+               [:user_name       {:display_name "Created By",      :base_type :type/Text,    :remapped_from :user_id}]
+               [:last_error      {:display_name "Last Error",      :base_type :type/Text,    :remapped_from :error or some shit}]]}
+  some shit here)
+
 (s/defn ^:internal-query-fn table
   "A list of all questions.
 
