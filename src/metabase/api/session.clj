@@ -81,7 +81,7 @@
 (def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
 (def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
 
-;; Fake salt & hash used to run BCrypt if user doesn't exist, to avoid timing attacks (Metaboat #134)
+;; Fake salt & hash used to run bcrypt hash if user doesn't exist, to avoid timing attacks (Metaboat #134)
 (def ^:private fake-salt (str (UUID/randomUUID)))
 (def ^:private fake-hashed-password (creds/hash-bcrypt (str fake-salt "fake-password")))
 
