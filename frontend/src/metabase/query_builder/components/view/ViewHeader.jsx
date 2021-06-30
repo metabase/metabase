@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -20,6 +21,7 @@ import ModelEntityMenu from "./ModelEntityMenu";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
+import { MaybeLink } from "metabase/components/Badge";
 
 import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
@@ -28,6 +30,35 @@ import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { CardApi } from "metabase/services";
+
+function useHackyModelStuff(question) {
+  const questionDisplayName = (question && question.displayName()) || "";
+  const regex = React.useMemo(() => /^MODEL (\d+):/, []);
+  const isModel = questionDisplayName.startsWith("MODEL: ");
+  const isBasedOnModel = regex.test(questionDisplayName);
+
+  const [baseModelCard, setBaseModelCard] = React.useState(null);
+  React.useEffect(() => {
+    if (isBasedOnModel) {
+      const modelId = parseInt(questionDisplayName.match(regex)[1], 10);
+      CardApi.get({ cardId: modelId }).then(model => {
+        setBaseModelCard(model);
+      });
+    }
+  }, [questionDisplayName, isBasedOnModel, regex]);
+
+  return {
+    isModel,
+    isBasedOnModel,
+    baseModelCard,
+  };
+}
+
+export function ViewTitleHeader(props) {
+  const modelProps = useHackyModelStuff(props.question);
+  return <ViewTitleHeaderClass {...props} {...modelProps} />;
+}
 
 const viewTitleHeaderPropTypes = {
   question: PropTypes.object.isRequired,
@@ -67,7 +98,7 @@ const viewTitleHeaderPropTypes = {
   isModel: PropTypes.bool,
 };
 
-export class ViewTitleHeader extends React.Component {
+export class ViewTitleHeaderClass extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -122,6 +153,8 @@ export class ViewTitleHeader extends React.Component {
       makeSavedQuestionAModel,
       makeModelASavedQuestion,
       isModel,
+      isBasedOnModel,
+      baseModelCard,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
@@ -141,6 +174,21 @@ export class ViewTitleHeader extends React.Component {
 
     const showFiltersInHeading = !isSummarized && !isFiltersExpanded;
 
+    const questionDisplayName = (question && question.displayName()) || "";
+    let headerText = questionDisplayName;
+    if (isBasedOnModel) {
+      const id = baseModelCard && baseModelCard.id;
+      headerText = (
+        <span>
+          <MaybeLink to={`/question/${id}`}>
+            {baseModelCard && baseModelCard.name}
+          </MaybeLink>
+          <span className="mx1 text-light text-smaller">•</span>
+          <span>{questionDisplayName}</span>
+        </span>
+      );
+    }
+
     return (
       <ViewSection
         className={cx("border-bottom", className)}
@@ -150,9 +198,7 @@ export class ViewTitleHeader extends React.Component {
         {isSaved ? (
           <div>
             <div className="flex align-center">
-              <ViewHeading className="mr1">
-                {question.displayName()}
-              </ViewHeading>
+              <ViewHeading className="mr1">{headerText}</ViewHeading>
               {description && (
                 <Icon
                   name="info"

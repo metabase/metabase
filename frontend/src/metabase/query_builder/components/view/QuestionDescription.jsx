@@ -8,6 +8,12 @@ import QuestionDataSource from "./QuestionDataSource";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 const QuestionDescription = ({ question }) => {
+  const questionDisplayName = question.displayName() || "";
+  const isModel = questionDisplayName.startsWith("MODEL: ");
+  if (isModel) {
+    return question.displayName();
+  }
+
   const query = question.query();
   if (query instanceof StructuredQuery) {
     const topQuery = query.topLevelQuery();
@@ -45,6 +51,7 @@ const QuestionDescription = ({ question }) => {
       return <span>{breakoutDescription}</span>;
     }
   }
+
   if (question.database()) {
     return <QuestionDataSource question={question} />;
   } else {

@@ -24,5 +24,5 @@ export default function QuestionLineage({
   );
 }
 
-QuestionLineage.shouldRender = ({ question, originalQuestion }) =>
-  !question.isSaved() && !!originalQuestion;
+QuestionLineage.shouldRender = ({ question, originalQuestion, isModel }) =>
+  !isModel && !question.isSaved() && !!originalQuestion;
