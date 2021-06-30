@@ -26,7 +26,7 @@
   (:import com.facebook.presto.jdbc.PrestoConnection
            com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types]
-           [java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.time.format.DateTimeFormatter
            [java.time.temporal ChronoField Temporal]))
 
@@ -117,7 +117,7 @@
 
 (defmethod sql.qp/date [:presto-jdbc :day]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :day) (in-report-zone expr)))
+  (hsql/call :date (in-report-zone expr)))
 
 (defmethod sql.qp/date [:presto-jdbc :day-of-week]
   [_ _ expr]
@@ -276,7 +276,8 @@
   [driver {{:keys [catalog schema] :as details} :details :as database}]
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
                        jdbc/get-connection)]
-    (let [schemas (all-schemas driver conn catalog)]
+    (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
+                             (all-schemas driver conn catalog))]
       {:tables (reduce set/union schemas)})))
 
 (defmethod driver/describe-table :presto-jdbc
@@ -382,6 +383,7 @@
   ;; for native query parameter substitution, in order to not conflict with the `PrestoConnection` session time zone
   ;; (which was set via report time zone), it is necessary to use the `from_iso8601_timestamp` function on the string
   ;; representation of the `ZonedDateTime` instance, but converted to the report time zone
+  #_(date-time->substitution (.format (t/offset-date-time (t/local-date-time t) (t/zone-offset 0)) DateTimeFormatter/ISO_OFFSET_DATE_TIME))
   (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
         ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
     ;; the `from_iso8601_timestamp` only accepts timestamps with an offset (not a zone ID), so only format with offset
@@ -398,6 +400,13 @@
   ;; similar to above implementation, but for `ZonedDateTime`
   ;; when Presto parses this, it will account for session (report) time zone
   (date-time->substitution (.format t DateTimeFormatter/ISO_OFFSET_DATE_TIME)))
+
+(defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc LocalDate]
+  [_ ^LocalDate t]
+  (let [report-zone       (or (qp.timezone/report-timezone-id-if-supported :presto-jdbc) "UTC")
+        ;; find midnight in the report timezone, at the start of `t`
+        dt                (t/zoned-date-time (.atStartOfDay t) (t/zone-id report-zone))]
+    (date-time->substitution (.format dt DateTimeFormatter/ISO_OFFSET_DATE_TIME))))
 
 (defn- set-time-param
   "Converts the given instance of `java.time.temporal`, assumed to be a time (either `LocalTime` or `OffsetTime`)
@@ -466,7 +475,9 @@
           (cond
             (or (instance? OffsetDateTime t)
               (instance? ZonedDateTime t))
-            (t/with-offset-same-instant (t/offset-date-time t) (t/zone-offset 0))
+            (-> (t/offset-date-time t)
+              ;; tests are expecting this to be in the UTC offset, so convert to that
+              (t/with-offset-same-instant (t/zone-offset 0)))
 
             ;; presto "helpfully" returns local results already adjusted to session time zone offset for us, e.g.
             ;; '2021-06-15T00:00:00' becomes '2021-06-15T07:00:00' if the session timezone is US/Pacific. Undo the

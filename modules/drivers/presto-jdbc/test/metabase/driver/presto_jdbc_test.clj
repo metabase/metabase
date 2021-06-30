@@ -1,21 +1,23 @@
 (ns metabase.driver.presto-jdbc-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.presto-jdbc :as presto-jdbc]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
+            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.util :as tu]
-            [toucan.db :as db]
-            [metabase.util.honeysql-extensions :as hx]
-            [honeysql.format :as hformat]))
+            [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -109,7 +111,8 @@
         ;; the original Presto version of this test expected; therefore, convert the `ZonedDateTime` corresponding to
         ;; midnight on this date (at the report TZ) to `OffsetDateTime` for comparison's sake
         (is (= [[(-> (t/zoned-date-time 2014 8 2 0 0 0 0 (t/zone-id "Asia/Hong_Kong"))
-                     t/offset-date-time)
+                     t/offset-date-time
+                     (t/with-offset-same-instant (t/zone-offset 0)))
                  (t/local-date 2014 8 2)]]
                (mt/rows
                  (qp/process-query
@@ -159,3 +162,31 @@
                    " from_unixtime(((1623963256123456 / 1000) / 1000), 'UTC'))")]
              (-> (sql.qp/unix-timestamp->honeysql :presto-jdbc :microseconds (hsql/raw 1623963256123456))
                (hformat/format)))))))
+
+(defn- execute-ddl! [ddl-statements]
+  (mt/with-driver :presto-jdbc
+    (let [jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc (:details (mt/db)))]
+      (with-open [conn (doto (jdbc/get-connection jdbc-spec))]
+        (doseq [ddl-stmt ddl-statements]
+          (with-open [stmt (.prepareStatement conn ddl-stmt)]
+            (.executeUpdate stmt)))))))
+
+(deftest specific-schema-sync-test
+  (mt/test-driver :presto-jdbc
+    (testing "When a specific schema is designated, only that one is synced"
+      (let [s           "specific_schema"
+            t           "specific_table"
+            db-details  (:details (mt/db))
+            with-schema (assoc db-details :schema s)]
+        (execute-ddl! [(format "DROP TABLE IF EXISTS %s.%s" s t)
+                       (format "DROP SCHEMA IF EXISTS %s" s)
+                       (format "CREATE SCHEMA %s" s)
+                       (format "CREATE TABLE %s.%s (pk INTEGER, val1 VARCHAR(512))" s t)])
+        (mt/with-temp Database [db {:engine :presto-jdbc, :name "Temp Presto JDBC Schema DB", :details with-schema}]
+          (mt/with-db db
+            ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
+            (sync/sync-database! db)
+            (is (= [{:name t, :schema s, :db_id (mt/id)}]
+                   (map #(select-keys % [:name :schema :db_id]) (db/select Table :db_id (mt/id)))))))
+        (execute-ddl! [(format "DROP TABLE %s.%s" s t)
+                       (format "DROP SCHEMA %s" s)])))))
