@@ -64,8 +64,28 @@
                [:table_name      {:display_name "Table",           :base_type :type/Text,    :remapped_from :table_id}]
                [:user_id         {:display_name "Created By ID",   :base_type :type/Integer, :remapped_to   :user_name}]
                [:user_name       {:display_name "Created By",      :base_type :type/Text,    :remapped_from :user_id}]
-               [:last_error      {:display_name "Last Error",      :base_type :type/Text,    :remapped_from :error or some shit}]]}
-  some shit here)
+               [:last_error      {:display_name "Last Error",      :base_type :type/Text,    :remapped_from :error or some shit}]]
+    :results (common/reducible-query
+               { :select    [[:card.id :card_id]
+                              [:card.name :card_name]
+                              :collection_id
+                              [:coll.name :collection_name]
+                              :card.database_id
+                              [:db.name :database_name]
+                              :card.table_id
+                              [:t.name :table_name]
+                              [:card.creator_id :user_id]
+                              [(common/user-full-name :u) :user_name]
+                              [:last error or some shit]]
+                  :from      [[:report_card :card]]
+                  :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
+                              [:metabase_database :db] [:= :card.database_id :db.id]
+                              [:metabase_table :t]     [:= :card.table_id :t.id]
+                              [:core_user :u]          [:= :card.creator_id :u.id]
+                              :avg_exec_time           [:= :card.id :avg_exec_time.card_id]
+                              :total_runtime           [:= :card.id :total_runtime.card_id]
+                              :query_runs              [:= :card.id :query_runs.card_id]]
+                  :where     [:= :card.archived false]})})
 
 (s/defn ^:internal-query-fn table
   "A list of all questions.
