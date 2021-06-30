@@ -5,7 +5,7 @@ version: 2.1
 ########################################################################################################################
 
 executors:
-  # Our brand new builder
+  # Our brand new builder - Java 11
   clojure-and-node:
     working_directory: ~/metabase/metabase/
     docker:
@@ -22,7 +22,7 @@ executors:
   java-8:
     working_directory: ~/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-8-lein-2.9.5-buster
+      - image: metabase/ci:java-8-lein-2.9.6-clj-1.10.3.822-04-22-2021
 
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
@@ -37,7 +37,7 @@ executors:
   java-16:
     working_directory: ~/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-16-lein-2.9.5-buster
+      - image: metabase/ci:java-16-lein-2.9.6-clj-1.10.3.822-04-22-2021
 
   postgres-9-6:
     working_directory: ~/metabase/metabase/
