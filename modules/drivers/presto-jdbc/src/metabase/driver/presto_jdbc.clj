@@ -363,18 +363,6 @@
         (.close conn)
         (throw e)))))
 
-#_(defmethod sql-jdbc.execute/set-parameter [:presto-jdbc OffsetDateTime]
-    [_ prepared-statement i ^OffsetDateTime t]
-    ;; necessary because `PrestoPreparedStatement` does not support `OffsetDateTime` in its setObject method
-    ;; convert to a SQL `timestamp` at UTC (offset 0), and set that
-    (jdbc/set-parameter (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0))) prepared-statement i))
-
-#_(defmethod sql-jdbc.execute/set-parameter [:presto-jdbc ZonedDateTime]
-    [_ prepared-statement i ^OffsetDateTime t]
-    ;; necessary because `PrestoPreparedStatement` does not support `ZonedDateTime` in its setObject method
-    ;; convert to a SQL `timestamp` at UTC, and set that
-    (jdbc/set-parameter (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC"))) prepared-statement i))
-
 (defn- date-time->substitution [ts-str]
   (sql.params.substitution/make-stmt-subs "from_iso8601_timestamp(?)" [ts-str]))
 
@@ -439,18 +427,19 @@
   (let [type-name  (.getColumnTypeName rs-meta i)
         base-type  (presto-common/presto-type->base-type type-name)
         with-tz?   (isa? base-type :type/TimeWithTZ)]
-    #(let [local-time (-> (.getTime rs i)
-                          sql-time->local-time)]
-       ;; for both `time` and `time with time zone`, the JDBC type reported by the driver is `Types/TIME`, hence
-       ;; we also need to check the column type name to differentiate between them here
-       (if with-tz?
-         ;; even though this value is a `LocalTime`, the base-type is time with time zone, so we need to shift it back to
-         ;; the UTC (0) offset
-         (t/offset-time
-           local-time
-           (t/zone-offset 0))
-         ;; else the base-type is time without time zone, so just return the local-time value
-         local-time))))
+    (fn []
+      (let [local-time (-> (.getTime rs i)
+                           sql-time->local-time)]
+        ;; for both `time` and `time with time zone`, the JDBC type reported by the driver is `Types/TIME`, hence
+        ;; we also need to check the column type name to differentiate between them here
+        (if with-tz?
+          ;; even though this value is a `LocalTime`, the base-type is time with time zone, so we need to shift it back to
+          ;; the UTC (0) offset
+          (t/offset-time
+            local-time
+            (t/zone-offset 0))
+          ;; else the base-type is time without time zone, so just return the local-time value
+          local-time)))))
 
 (defn- ^PrestoConnection rs->presto-conn
   "Returns the `PrestoConnection` associated with the given `ResultSet` `rs`."
