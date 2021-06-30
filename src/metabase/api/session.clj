@@ -201,6 +201,7 @@
   (let [request-source (request.u/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
   (throttle-check (forgot-password-throttlers :email)      email)
+  ;; Look up user and send email off-thread to avoid leaking user existence in request timing
   (future
     (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
                (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
