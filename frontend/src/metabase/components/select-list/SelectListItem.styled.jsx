@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 
 import Label from "metabase/components/type/Label";
 import colors from "metabase/lib/colors";
@@ -15,6 +15,15 @@ export const ItemIcon = styled(Icon)`
     props.isHighlighted ? colors["brand"] : colors["text-light"]};
 `;
 
+const activeItemCss = css`
+  background-color: ${colors["brand"]};
+
+  ${ItemIcon},
+  ${ItemTitle} {
+    color: ${colors["white"]};
+  }
+`;
+
 const VERTICAL_PADDING_BY_SIZE = {
   small: "0.5rem",
   medium: "0.75rem",
@@ -26,13 +35,9 @@ export const ItemRoot = styled.li`
   cursor: pointer;
   padding: ${props => VERTICAL_PADDING_BY_SIZE[props.size]} 0.5rem;
   border-radius: 6px;
+  ${props => props.isSelected && activeItemCss}
 
   &:hover {
-    background-color: ${colors["brand"]};
-
-    ${ItemIcon},
-    ${ItemTitle} {
-      color: ${colors["white"]};
-    }
+    ${activeItemCss}
   }
 `;

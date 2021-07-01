@@ -66,6 +66,7 @@ export const IconContainer = styled.div`
   display: flex;
   align-items: center;
   padding: 0.25rem;
+  opacity: 0.5;
 `;
 
 export const RightArrowContainer = styled.div`
