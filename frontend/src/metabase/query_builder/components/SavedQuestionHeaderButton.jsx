@@ -3,6 +3,15 @@ import PropTypes from "prop-types";
 
 import { HeaderButton } from "./SavedQuestionHeaderButton.styled";
 
+export default SavedQuestionHeaderButton;
+
+SavedQuestionHeaderButton.propTypes = {
+  className: PropTypes.string,
+  question: PropTypes.object.isRequired,
+  onClick: PropTypes.func.isRequired,
+  active: PropTypes.bool,
+};
+
 function SavedQuestionHeaderButton({ className, question, onClick, active }) {
   return (
     <HeaderButton
@@ -17,12 +26,3 @@ function SavedQuestionHeaderButton({ className, question, onClick, active }) {
     </HeaderButton>
   );
 }
-
-export default SavedQuestionHeaderButton;
-
-SavedQuestionHeaderButton.propTypes = {
-  className: PropTypes.string,
-  question: PropTypes.object.isRequired,
-  onClick: PropTypes.func.isRequired,
-  active: PropTypes.bool,
-};
