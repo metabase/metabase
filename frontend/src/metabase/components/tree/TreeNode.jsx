@@ -75,7 +75,7 @@ export const TreeNode = React.memo(function TreeNode({
       </ExpandToggleButton>
 
       {icon && (
-        <IconContainer>
+        <IconContainer variant={variant}>
           <Icon name={icon} />
         </IconContainer>
       )}

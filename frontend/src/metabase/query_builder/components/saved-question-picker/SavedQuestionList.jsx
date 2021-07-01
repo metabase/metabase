@@ -16,39 +16,49 @@ const propTypes = {
   schema: PropTypes.object.isRequired,
   onSelect: PropTypes.func.isRequired,
   selectedId: PropTypes.string,
+  schemaName: PropTypes.string,
 };
 
-function SavedQuestionList({ schema, onSelect, databaseId, selectedId }) {
-  const tables =
-    databaseId != null
-      ? schema.tables.filter(table => table.db_id === databaseId)
-      : schema.tables;
-
+export default function SavedQuestionList({
+  onSelect,
+  databaseId,
+  selectedId,
+  schemaName,
+}) {
   return (
     <SavedQuestionListRoot>
-      {tables.map(t => (
-        <SelectList.Item
-          isSelected={selectedId === t.id}
-          key={t.id}
-          size="small"
-          name={t.display_name}
-          icon="table2"
-          onSelect={() => onSelect(t)}
-        />
-      ))}
+      <Schemas.Loader
+        id={generateSchemaId(SAVED_QUESTIONS_VIRTUAL_DB_ID, schemaName)}
+      >
+        {({ schema }) => {
+          const tables =
+            databaseId != null
+              ? schema.tables.filter(table => table.db_id === databaseId)
+              : schema.tables;
+          return (
+            <React.Fragment>
+              {tables.map(t => (
+                <SelectList.Item
+                  isSelected={selectedId === t.id}
+                  key={t.id}
+                  size="small"
+                  name={t.display_name}
+                  icon="table2"
+                  onSelect={() => onSelect(t)}
+                />
+              ))}
 
-      {tables.length === 0 ? (
-        <Box my="120px">
-          <EmptyState message={t`Nothing here`} icon="all" />
-        </Box>
-      ) : null}
+              {tables.length === 0 ? (
+                <Box my="120px">
+                  <EmptyState message={t`Nothing here`} icon="all" />
+                </Box>
+              ) : null}
+            </React.Fragment>
+          );
+        }}
+      </Schemas.Loader>
     </SavedQuestionListRoot>
   );
 }
 
 SavedQuestionList.propTypes = propTypes;
-
-export default Schemas.load({
-  id: (_state, props) =>
-    generateSchemaId(SAVED_QUESTIONS_VIRTUAL_DB_ID, props.schemaName),
-})(SavedQuestionList);
