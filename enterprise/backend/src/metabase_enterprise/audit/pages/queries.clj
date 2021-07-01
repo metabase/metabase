@@ -54,6 +54,7 @@
 
 (s/defn ^:internal-query-fn bad-table
   "List of all failing questions"
+  []
    {:metadata [[:card_id         {:display_name "Card ID",         :base_type :type/Integer, :remapped_to   :card_name}]
                [:card_name       {:display_name "Name",            :base_type :type/Name,    :remapped_from :card_id}]
                [:collection_id   {:display_name "Collection ID",   :base_type :type/Integer, :remapped_to   :collection_name}]
@@ -82,8 +83,10 @@
                               [:metabase_database :db] [:= :card.database_id :db.id]
                               [:metabase_table :t]     [:= :card.table_id :t.id]
                               [:core_user :u]          [:= :card.creator_id :u.id]
-                              [:query_execution :qe]   [:= :card.id :query_execution.id when the fucking thing has an error]]
-                  :where     [:= :card.archived false]})})
+                              [:query_execution :qe]   [:= :card.id :qe.id]]
+                  :where     [:and
+                              [:= :card.archived false]
+                              [:not= :qe.error nil]]})})
 
 (s/defn ^:internal-query-fn table
   "A list of all questions.
