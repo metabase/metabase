@@ -726,7 +726,7 @@ describe("scenarios > question > native", () => {
 
   ["normal", "nodata"].forEach(user => {
     //Very related to the metabase#15981, only this time the issue happens with the Field Filter without the value being set.
-    it.skip(`filter feature flag shouldn't cause run-overlay of results in native editor for ${user} user (metabase#16739)`, () => {
+    it(`filter feature flag shouldn't cause run-overlay of results in native editor for ${user} user (metabase#16739)`, () => {
       const filter = {
         id: "7795c137-a46c-3db9-1930-1d690c8dbc03",
         name: "filter",
