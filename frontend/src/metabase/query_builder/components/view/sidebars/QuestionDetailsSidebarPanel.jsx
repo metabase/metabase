@@ -1,13 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
+
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/questions/components/QuestionActionButtons";
 import QuestionActivityTimeline from "metabase/questions/components/QuestionActivityTimeline";
 import { ClampedDescription } from "metabase/questions/components/ClampedDescription";
 
-import {
-  SidebarOuterContainer,
-  SidebarInnerContainer,
-} from "./QuestionDetailsSidebarPanel.styled";
+import { SidebarContentContainer } from "./QuestionDetailsSidebarPanel.styled";
 
 QuestionDetailsSidebarPanel.propTypes = {
   setView: PropTypes.func.isRequired,
@@ -20,8 +19,8 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
   const description = question.description();
 
   return (
-    <SidebarOuterContainer>
-      <SidebarInnerContainer>
+    <SidebarContent>
+      <SidebarContentContainer>
         <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />
         <ClampedDescription
           description={description}
@@ -29,8 +28,8 @@ function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
           onEdit={() => onOpenModal("edit")}
         />
         <QuestionActivityTimeline question={question} />
-      </SidebarInnerContainer>
-    </SidebarOuterContainer>
+      </SidebarContentContainer>
+    </SidebarContent>
   );
 }
 
