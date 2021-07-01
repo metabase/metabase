@@ -12,11 +12,3 @@ export function convertSearchResultToTableLikeItem(searchResultItem) {
 
   return searchResultItem;
 }
-
-export function isSavedQuestion(table) {
-  return (
-    table != null &&
-    typeof table.id === "string" &&
-    table.id.includes(SAVED_QUESTION_ID_PREFIX)
-  );
-}
