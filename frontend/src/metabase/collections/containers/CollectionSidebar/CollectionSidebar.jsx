@@ -39,6 +39,10 @@ const Sidebar = styled(Box.withComponent("aside"))`
   position: fixed;
   top: 65px;
   width: ${props => props.width};
+
+  @media screen and (max-width: 768px) {
+    width: 50px;
+  }
 `;
 
 @Collection.loadList({
