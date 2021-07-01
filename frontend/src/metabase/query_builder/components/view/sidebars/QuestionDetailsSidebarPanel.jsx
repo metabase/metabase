@@ -2,9 +2,9 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import QuestionActionButtons from "metabase/questions/components/QuestionActionButtons";
-import QuestionActivityTimeline from "metabase/questions/components/QuestionActivityTimeline";
-import { ClampedDescription } from "metabase/questions/components/ClampedDescription";
+import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
+import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
+import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
 
 import { SidebarContentContainer } from "./QuestionDetailsSidebarPanel.styled";
 
