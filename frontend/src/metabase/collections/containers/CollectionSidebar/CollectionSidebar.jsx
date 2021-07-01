@@ -29,14 +29,16 @@ const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
 // TODO - what's different about this from another sidebar component?
 const Sidebar = styled(Box.withComponent("aside"))`
-  position: fixed;
-  left: 0;
   bottom: 0;
-  top: 65px;
-  overflow-x: hidden;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  left: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-top: 32px;
+  position: fixed;
+  top: 65px;
+  width: ${props => props.width};
 `;
 
 @Collection.loadList({
@@ -150,10 +152,10 @@ class CollectionSidebar extends React.Component {
   };
 
   render() {
-    const { allFetched } = this.props;
+    const { allFetched, width } = this.props;
 
     return (
-      <Sidebar w={340} pt={3} role="tree">
+      <Sidebar role="tree" width={width}>
         {allFetched ? (
           this.renderContent()
         ) : (
