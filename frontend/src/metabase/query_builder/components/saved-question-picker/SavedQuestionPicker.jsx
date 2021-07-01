@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import Collection from "metabase/entities/collections";
+import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 import Icon from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 
@@ -30,10 +30,9 @@ const propTypes = {
 };
 
 const OUR_ANALYTICS_COLLECTION = {
-  id: "root",
   schemaName: "Everything else",
-  name: t`Our analytics`,
   icon: "folder",
+  ...ROOT_COLLECTION,
 };
 
 function SavedQuestionPicker({

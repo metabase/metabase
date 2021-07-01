@@ -39,6 +39,7 @@ export default function SavedQuestionList({
             <React.Fragment>
               {tables.map(t => (
                 <SelectList.Item
+                  id={t.id}
                   isSelected={selectedId === t.id}
                   key={t.id}
                   size="small"

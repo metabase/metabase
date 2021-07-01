@@ -13,7 +13,9 @@ const propTypes = {
   databaseId: PropTypes.string,
   searchQuery: PropTypes.string.required,
   onSelect: PropTypes.func.required,
-  searchModels: PropTypes.arrayOf(PropTypes.string.isRequired),
+  searchModels: PropTypes.arrayOf(
+    PropTypes.arrayOf(PropTypes.oneOf(["card", "table"])),
+  ),
 };
 
 export function SearchResults({
