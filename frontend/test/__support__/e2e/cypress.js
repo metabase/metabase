@@ -332,3 +332,19 @@ export function generateUsers(count, groupIds) {
 export function enableSharingQuestion(id) {
   cy.request("POST", `/api/card/${id}/public_link`);
 }
+
+/**
+ * Open native (SQL) editor and alias it.
+ *
+ * @param {string} alias - The alias that can be used later in the test as `cy.get("@" + alias)`.
+ * @example
+ * openNativeEditor().type("SELECT 123");
+ */
+export function openNativeEditor(alias = "editor") {
+  cy.visit("/");
+  cy.icon("sql").click();
+  return cy
+    .get(".ace_content")
+    .as(alias)
+    .should("be.visible");
+}

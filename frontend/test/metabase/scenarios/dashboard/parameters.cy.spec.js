@@ -1,4 +1,9 @@
-import { sidebar, popover, restore } from "__support__/e2e/cypress";
+import {
+  sidebar,
+  popover,
+  restore,
+  openNativeEditor,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 // NOTE: some overlap with parameters-embedded.cy.spec.js
@@ -255,15 +260,9 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should allow linked question to be changed without breaking (metabase#9299)", () => {
-    cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Native query").click();
-    cy.get(".ace_content")
-      .as("editor")
-      .click()
-      .type("SELECT * FROM ORDERS WHERE {{filter}}", {
-        parseSpecialCharSequences: false,
-      });
+    openNativeEditor().type("SELECT * FROM ORDERS WHERE {{filter}}", {
+      parseSpecialCharSequences: false,
+    });
     // make {{filter}} a "Field Filter" connected to `Orders > Created At`
     cy.get(".AdminSelect")
       .contains("Text")
