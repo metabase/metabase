@@ -27,8 +27,8 @@
   {group_id (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
   (if (some? group_id)
-      (perms/graph group_id)
-      (perms/graph)))
+    (perms/graph group_id)
+    (perms/graph)))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
@@ -72,9 +72,9 @@
                                   true
                                   [:not= :id (u/get-id (group/metabot))])
                       :order-by [[:id :desc]]}
-               (some? group-filter) (hh/merge-where [:like :name (str "%" group-filter "%")])
-               (some? limit)        (hh/limit  limit)
-               (some? offset)       (hh/offset offset))))
+               group-filter (hh/merge-where [:like :name (str "%" group-filter "%")])
+               limit        (hh/limit  limit)
+               offset       (hh/offset offset))))
 
 (defn add-member-counts
   "Efficiently add `:member_count` to PermissionGroups."

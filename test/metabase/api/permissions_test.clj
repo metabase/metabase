@@ -97,9 +97,8 @@
   (testing "GET /api/permissions/graph"
     (testing "get the graph"
       (mt/with-temp PermissionsGroup [group]
-        (is (<= 1
-                (count (:groups
-                         (mt/user-http-request :crowberto :get 200 "permissions/graph")))))))))
+        (is (pos? (count (:groups
+                           (mt/user-http-request :crowberto :get 200 "permissions/graph")))))))))
 
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
