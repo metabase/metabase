@@ -166,7 +166,7 @@ export function collection(collection) {
 }
 
 export function isCollectionPath(path) {
-  return /\/collection\/.*/.test(path);
+  return /collection\/.*/.test(path);
 }
 
 export function label(label) {

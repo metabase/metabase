@@ -162,12 +162,19 @@ describe("urls", () => {
 
   describe("isCollectionPath", () => {
     const testCases = [
+      { path: "collection/1", expected: true },
+      { path: "collection/123", expected: true },
       { path: "/collection/1", expected: true },
       { path: "/collection/123", expected: true },
       { path: "/collection/1-stats", expected: true },
       { path: "/collection/123-stats-stats", expected: true },
+      { path: "/collection/1-stats/new", expected: true },
+      { path: "/collection/1-stats/nested/url", expected: true },
+      { path: "/collection/1-stats/new_collection", expected: true },
       { path: "/collection/root", expected: true },
       { path: "/collection/users", expected: true },
+
+      { path: "dashboard/1", expected: false },
       { path: "/dashboard/1", expected: false },
       { path: "/dashboard/12-orders", expected: false },
       { path: "/browse/1", expected: false },
