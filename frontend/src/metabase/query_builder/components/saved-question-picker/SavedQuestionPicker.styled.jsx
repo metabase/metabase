@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 export const SavedQuestionPickerRoot = styled.div`
   display: flex;
   width: 480px;
+  overflow: hidden;
 `;
 
 export const CollectionsContainer = styled.div`
@@ -11,6 +12,7 @@ export const CollectionsContainer = styled.div`
   flex-direction: column;
   min-width: 230px;
   background-color: ${color("bg-light")};
+  overflow: auto;
 `;
 
 export const BackButton = styled.a`
