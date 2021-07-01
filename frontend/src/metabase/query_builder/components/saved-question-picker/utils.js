@@ -7,7 +7,7 @@ export function buildCollectionTree(collections, allowedSchemas) {
   return collections
     .map(collection => {
       const children = buildCollectionTree(collection.children, allowedSchemas);
-
+      const isPersonal = !!collection.personal_owner_id;
       const shouldInclude =
         allowedSchemas.has(collection.name) || children.length > 0;
 
@@ -16,8 +16,8 @@ export function buildCollectionTree(collections, allowedSchemas) {
             id: collection.id,
             name: collection.name,
             schemaName: collection.name,
-            icon: "folder",
-            children: buildCollectionTree(collection.children, allowedSchemas),
+            icon: isPersonal ? "person" : "folder",
+            children,
           }
         : null;
     })
