@@ -11,7 +11,12 @@
  */
 
 import { onlyOn } from "@cypress/skip-test";
-import { restore, popover, sidebar } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  sidebar,
+  openNativeEditor,
+} from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
@@ -674,9 +679,7 @@ describe("collection permissions", () => {
   it("should offer to save items to 'Our analytics' if user has a 'curate' access to it", () => {
     cy.signIn("normal");
 
-    cy.visit("/question/new");
-    cy.findByText("Native query").click();
-    cy.get(".ace_content").type("select * from people");
+    openNativeEditor().type("select * from people");
     cy.findByText("Save").click();
 
     cy.get(".AdminSelect").findByText("Our analytics");

@@ -4,6 +4,7 @@ import {
   modal,
   visitQuestionAdhoc,
   mockSessionProperty,
+  openNativeEditor,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -18,25 +19,19 @@ describe("scenarios > question > native", () => {
   });
 
   it("lets you create and run a SQL question", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type("select count(*) from orders");
+    openNativeEditor().type("select count(*) from orders");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("18,760");
   });
 
   it("displays an error", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type("select * from not_a_table");
+    openNativeEditor().type("select * from not_a_table");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
   it("displays an error when running selected text", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type(
+    openNativeEditor().type(
       "select * from orders" +
       "{leftarrow}".repeat(3) + // move left three
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
@@ -46,13 +41,11 @@ describe("scenarios > question > native", () => {
   });
 
   it("clears a template tag's default when the type changes", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // Write a query with parameter x. It defaults to a text parameter.
-    cy.get(".ace_content").type("select * from orders where total = {{x}}", {
-      parseSpecialCharSequences: false,
-    });
+    openNativeEditor()
+      // Write a query with parameter x. It defaults to a text parameter.
+      .type("select * from orders where total = {{x}}", {
+        parseSpecialCharSequences: false,
+      });
 
     // Mark field as required and add a default text value.
     cy.contains("Required?")
@@ -81,13 +74,8 @@ describe("scenarios > question > native", () => {
   });
 
   it("doesn't reorder template tags when updated", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // Write a query with parameter x. It defaults to a text parameter.
-    cy.get(".ace_content").type("{{foo}} {{bar}}", {
+    openNativeEditor().type("{{foo}} {{bar}}", {
       parseSpecialCharSequences: false,
-      delay: 0,
     });
 
     cy.contains("Variables")
@@ -123,14 +111,11 @@ describe("scenarios > question > native", () => {
   });
 
   it("should show referenced cards in the template tag sidebar", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // start typing a question referenced
-    cy.get(".ace_content").type("select * from {{#}}", {
-      parseSpecialCharSequences: false,
-      delay: 0,
-    });
+    openNativeEditor()
+      // start typing a question referenced
+      .type("select * from {{#}}", {
+        parseSpecialCharSequences: false,
+      });
 
     cy.contains("Question #…")
       .parent()
@@ -188,9 +173,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("can save a question with no rows", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type("select * from people where false");
+    openNativeEditor().type("select * from people where false");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("No results!");
     cy.icon("contract").click();
@@ -209,13 +192,9 @@ describe("scenarios > question > native", () => {
     const FILTERS = ["Is not", "Does not contain"];
     const QUESTION = "QQ";
 
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content")
-      .should("be.visible")
-      .type(
-        `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
-      );
+    openNativeEditor().type(
+      `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
+    );
     cy.findByText("Save").click();
 
     modal().within(() => {
@@ -348,15 +327,10 @@ describe("scenarios > question > native", () => {
   });
 
   it("should reorder template tags by drag and drop (metabase#9357)", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // Write a query with parameter firstparameter,nextparameter,lastparameter.
-    cy.get(".ace_content").type(
+    openNativeEditor().type(
       "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
       {
         parseSpecialCharSequences: false,
-        delay: 0,
       },
     );
 
@@ -572,9 +546,7 @@ describe("scenarios > question > native", () => {
   it("should run with the default field filter set (metabase#15444)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.visit("/");
-    cy.icon("sql").click();
-    cy.get(".ace_content").type("select * from products where {{category}}", {
+    openNativeEditor().type("select * from products where {{category}}", {
       parseSpecialCharSequences: false,
     });
     // Change filter type from "Text" to Field Filter
@@ -614,9 +586,7 @@ describe("scenarios > question > native", () => {
       }
       const widgetType = test === "old" ? "Category" : "String";
 
-      cy.visit("/");
-      cy.icon("sql").click();
-      cy.get(".ace_content").type("{{filter}}", {
+      openNativeEditor().type("{{filter}}", {
         parseSpecialCharSequences: false,
       });
       cy.findByText("Variable type")
@@ -645,11 +615,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
-    cy.visit("/");
-    cy.icon("sql").click();
-    cy.get(".ace_content")
-      .as("editor")
-      .type("select 1 as visible, 2 as hidden");
+    openNativeEditor().type("select 1 as visible, 2 as hidden");
     cy.get(".NativeQueryEditor .Icon-play")
       .as("runQuery")
       .click();
@@ -674,15 +640,11 @@ describe("scenarios > question > native", () => {
           isFeatureFlagTurnedOn,
         );
 
-        cy.visit("/");
-        cy.icon("sql").click();
-        cy.get(".ace_content").as("editor");
-
         cy.intercept("POST", "/api/dataset").as("dataset");
       });
 
       it(`text filter should work with the feature flag turned ${testCase}`, () => {
-        cy.get("@editor").type(
+        openNativeEditor().type(
           "select * from PRODUCTS where CATEGORY = {{text_filter}}",
           {
             parseSpecialCharSequences: false,
@@ -698,7 +660,7 @@ describe("scenarios > question > native", () => {
       });
 
       it(`number filter should work with the feature flag turned ${testCase}`, () => {
-        cy.get("@editor").type(
+        openNativeEditor().type(
           "select * from ORDERS where QUANTITY = {{number_filter}}",
           {
             parseSpecialCharSequences: false,
@@ -765,9 +727,7 @@ describe("scenarios > question > native", () => {
       name: "test-question",
       native: { query: 'select 1 as "a", 2 as "b"' },
     }).then(({ body: { id: questionId } }) => {
-      cy.visit("/");
-      cy.icon("sql").click();
-      cy.get(".ace_content").type(`{{#${questionId}}}`, {
+      openNativeEditor().type(`{{#${questionId}}}`, {
         parseSpecialCharSequences: false,
       });
       cy.get(".NativeQueryEditor .Icon-play").click();

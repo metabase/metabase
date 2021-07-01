@@ -1,4 +1,9 @@
-import { restore, popover, mockSessionProperty } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  mockSessionProperty,
+  openNativeEditor,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > filters > sql filters > basic filter types", () => {
   beforeEach(() => {
@@ -9,11 +14,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     // Make sure feature flag is on regardles of the environment where this is running.
     mockSessionProperty("field-filter-operators-enabled?", true);
 
-    cy.visit("/");
-    cy.icon("sql").click();
-    cy.get(".ace_content")
-      .as("editor")
-      .should("be.visible");
+    openNativeEditor();
   });
 
   describe("should work for text", () => {
