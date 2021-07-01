@@ -6,7 +6,6 @@ import _ from "underscore";
 
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
-import User from "metabase/entities/users";
 import Revision from "metabase/entities/revisions";
 import Timeline from "metabase/components/Timeline";
 import {
@@ -15,7 +14,6 @@ import {
 } from "./QuestionActivityTimeline.styled";
 
 export default _.compose(
-  User.loadList(),
   Revision.loadList({
     query: (state, props) => ({
       model_type: "card",
@@ -55,15 +53,13 @@ QuestionActivityTimeline.propTypes = {
   className: PropTypes.string,
   revisions: PropTypes.array,
   revertToRevision: PropTypes.func.isRequired,
-  users: PropTypes.array,
 };
 
-function QuestionActivityTimeline({
+export function QuestionActivityTimeline({
   question,
   className,
   revisions,
   revertToRevision,
-  users,
 }) {
   const canWrite = question.canWrite();
   const revisionEvents = getRevisionEventsForTimeline(revisions, canWrite);
