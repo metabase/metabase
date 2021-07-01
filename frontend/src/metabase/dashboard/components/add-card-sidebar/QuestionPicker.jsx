@@ -63,6 +63,7 @@ function QuestionPicker({
   return (
     <Box p={2}>
       <SearchInput
+        autoFocus
         hasClearButton
         placeholder={t`Search…`}
         value={searchText}
