@@ -14,6 +14,42 @@ import {
   RevertButton,
 } from "./QuestionActivityTimeline.styled";
 
+export default _.compose(
+  User.loadList(),
+  Revision.loadList({
+    query: (state, props) => ({
+      model_type: "card",
+      model_id: props.question.id(),
+    }),
+    wrapped: true,
+  }),
+  connect(
+    null,
+    {
+      revertToRevision,
+    },
+  ),
+)(QuestionActivityTimeline);
+
+RevisionEventFooter.propTypes = {
+  revision: PropTypes.object.isRequired,
+  onRevisionClick: PropTypes.func.isRequired,
+};
+
+function RevisionEventFooter({ revision, onRevisionClick }) {
+  return (
+    <div>
+      <RevertButton
+        actionFn={() => onRevisionClick(revision)}
+        normalText={t`Revert back`}
+        activeText={t`Reverting…`}
+        failedText={t`Revert failed`}
+        successText={t`Reverted`}
+      />
+    </div>
+  );
+}
+
 QuestionActivityTimeline.propTypes = {
   question: PropTypes.object,
   className: PropTypes.string,
@@ -48,42 +84,6 @@ function QuestionActivityTimeline({
             );
           }
         }}
-      />
-    </div>
-  );
-}
-
-export default _.compose(
-  User.loadList(),
-  Revision.loadList({
-    query: (state, props) => ({
-      model_type: "card",
-      model_id: props.question.id(),
-    }),
-    wrapped: true,
-  }),
-  connect(
-    null,
-    {
-      revertToRevision,
-    },
-  ),
-)(QuestionActivityTimeline);
-
-RevisionEventFooter.propTypes = {
-  revision: PropTypes.object.isRequired,
-  onRevisionClick: PropTypes.func.isRequired,
-};
-
-function RevisionEventFooter({ revision, onRevisionClick }) {
-  return (
-    <div>
-      <RevertButton
-        actionFn={() => onRevisionClick(revision)}
-        normalText={t`Revert back`}
-        activeText={t`Reverting…`}
-        failedText={t`Revert failed`}
-        successText={t`Reverted`}
       />
     </div>
   );
