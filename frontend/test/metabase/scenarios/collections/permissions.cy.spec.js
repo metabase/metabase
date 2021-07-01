@@ -52,6 +52,18 @@ describe("collection permissions", () => {
                   cy.findByText("New dashboard").click();
                   cy.get(".AdminSelect").findByText("Second collection");
                 });
+
+                onlyOn(user === "admin", () => {
+                  it("should offer to save dashboard to root collection from a dashboard page (metabase#16832)", () => {
+                    cy.visit("/collection/root");
+                    cy.findByText("Orders in a dashboard").click();
+                    cy.icon("add").click();
+                    popover()
+                      .findByText("New dashboard")
+                      .click();
+                    cy.get(".AdminSelect").findByText("Our analytics");
+                  });
+                });
               });
 
               describe("pin", () => {
