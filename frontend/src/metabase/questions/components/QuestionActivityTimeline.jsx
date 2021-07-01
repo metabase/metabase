@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 
 import { revertToRevision } from "metabase/query_builder/actions";
-import { getRevisionEvents } from "metabase/lib/revisions";
+import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
 import User from "metabase/entities/users";
 import Revision from "metabase/entities/revisions";
 import Timeline from "metabase/components/Timeline";
@@ -30,7 +30,7 @@ function QuestionActivityTimeline({
   users,
 }) {
   const canWrite = question.canWrite();
-  const revisionEvents = getRevisionEvents(revisions, canWrite) || [];
+  const revisionEvents = getRevisionEventsForTimeline(revisions, canWrite);
 
   return (
     <div className={className}>
@@ -38,8 +38,8 @@ function QuestionActivityTimeline({
       <Timeline
         items={revisionEvents}
         renderFooter={item => {
-          const { showFooter, revision } = item;
-          if (showFooter) {
+          const { isRevertable, revision } = item;
+          if (isRevertable) {
             return (
               <RevisionEventFooter
                 revision={revision}

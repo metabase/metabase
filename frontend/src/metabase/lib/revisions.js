@@ -1,30 +1,47 @@
 import { t } from "ttag";
 
+export const REVISION_EVENT_ICON = "pencil";
+
 export function getRevisionDescription(revision) {
-  if (revision.is_creation) {
+  if (isCreationEvent(revision)) {
     return "First revision.";
-  } else if (revision.is_reversion) {
+  } else if (isReversionEvent(revision)) {
     return t`Reverted to an earlier revision and ${revision.description}`;
   } else {
     return revision.description;
   }
 }
 
-export function getRevisionEvents(revisions, canWrite) {
+export function getRevisionEventsForTimeline(revisions = [], canWrite) {
   return revisions.map((revision, index) => {
-    const canRevert = canWrite && index !== 0;
-    const username = revision.user.common_name;
+    const isCreation = isCreationEvent(revision);
+    const isRevertable = canWrite && index !== 0;
+    const username = getRevisionUsername(revision);
     return {
-      timestamp: new Date(revision.timestamp).valueOf(),
-      icon: "pencil",
-      title: revision.is_creation
+      timestamp: getRevisionEpochTimestamp(revision),
+      icon: REVISION_EVENT_ICON,
+      title: isCreation
         ? t`${username} created this`
         : t`${username} edited this`,
-      description: revision.is_creation
-        ? undefined
-        : getRevisionDescription(revision),
-      showFooter: canRevert,
+      description: isCreation ? undefined : getRevisionDescription(revision),
+      isRevertable,
       revision,
     };
   });
+}
+
+function isCreationEvent(revision) {
+  return revision.is_creation;
+}
+
+function isReversionEvent(revision) {
+  return revision.is_reversion;
+}
+
+function getRevisionUsername(revision) {
+  return revision.user.common_name;
+}
+
+function getRevisionEpochTimestamp(revision) {
+  return new Date(revision.timestamp).valueOf();
 }
