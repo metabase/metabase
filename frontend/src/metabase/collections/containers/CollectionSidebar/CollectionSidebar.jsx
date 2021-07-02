@@ -3,7 +3,6 @@ import React from "react";
 import { connect } from "react-redux";
 import { Box } from "grid-styled";
 import { t } from "ttag";
-import styled from "styled-components";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -11,6 +10,7 @@ import Collection from "metabase/entities/collections";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 
+import { Sidebar } from "./CollectionSidebar.styled";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -28,22 +28,6 @@ import {
 const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
 // TODO - what's different about this from another sidebar component?
-const Sidebar = styled(Box.withComponent("aside"))`
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  left: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding-top: 32px;
-  position: fixed;
-  top: 65px;
-  width: ${props => props.width};
-
-  @media screen and (max-width: 768px) {
-    width: 50px;
-  }
-`;
 
 @Collection.loadList({
   /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
