@@ -9,7 +9,7 @@ import CollectionSidebar from "metabase/collections/containers/CollectionSidebar
 import { ContentBox } from "./CollectionLanding.styled";
 
 const CollectionLanding = ({ params: { slug }, children }) => {
-  const [showMobileSidebar, setShowMobileSidebar] = useState(true);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   const handleToggleMobileSidebar = () =>
     setShowMobileSidebar(!showMobileSidebar);
