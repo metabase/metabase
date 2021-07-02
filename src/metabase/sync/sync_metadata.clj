@@ -6,11 +6,7 @@
    2.  Sync fields (`metabase.sync.sync-metadata.fields`)
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
    4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
-  (:require [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.table :as table]
-            [metabase.shared.util.log :as log]
-            [metabase.sync.interface :as i]
+  (:require [metabase.sync.interface :as i]
             [metabase.sync.sync-metadata.fields :as sync-fields]
             [metabase.sync.sync-metadata.fks :as sync-fks]
             [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
@@ -54,14 +50,7 @@
     (sync-util/run-sync-operation "sync" database sync-steps)))
 
 (s/defn sync-table-metadata!
-  "Sync the metadata for an individual `tbl` -- make sure Fields and FKs are up-to-date. Foreign keys are only
-  synced if the table's database's driver supports the `:foreign-keys` feature."
-  [tbl :- i/TableInstance]
-  (sync-fields/sync-fields-for-table! tbl)
-  (let [drv (-> tbl table/database driver.u/database->driver)]
-    (if (driver/supports? drv :foreign-keys)
-      (sync-fks/sync-fks-for-table! tbl)
-      (log/debug (u/format-color
-                  'yellow
-                  "Skipping sync-sync-fks-for-table! for table %s because its database doesn't support foreign keys"
-                  (sync-util/name-for-logging tbl))))))
+  "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
+  [table :- i/TableInstance]
+  (sync-fields/sync-fields-for-table! table)
+  (sync-fks/sync-fks-for-table! table))
