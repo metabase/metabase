@@ -87,7 +87,7 @@ const config = (module.exports = {
       },
       {
         test: /\.(eot|woff2?|ttf|svg|png)$/,
-        use: [{ loader: "file-loader" }],
+        type: "asset/resource",
       },
       {
         test: /\.css$/,
@@ -115,7 +115,7 @@ const config = (module.exports = {
       "metabase-lib": LIB_SRC_PATH,
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
-      "cljs": CLJS_SRC_PATH,
+      cljs: CLJS_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
       style: SRC_PATH + "/css/core/index",
       ace: __dirname + "/node_modules/ace-builds/src-min-noconflict",
@@ -172,7 +172,7 @@ const config = (module.exports = {
       outputPath: __dirname + "/resources/frontend_client/app/dist",
     }),
     new webpack.DefinePlugin({
-      "process": { env: { NODE_ENV: JSON.stringify(NODE_ENV) } },
+      process: { env: { NODE_ENV: JSON.stringify(NODE_ENV) } },
       INCLUDE_EE_PLUGINS: JSON.stringify(process.env.MB_EDITION === "ee"),
     }),
     new webpack.BannerPlugin({
