@@ -147,14 +147,10 @@ class CollectionSidebar extends React.Component {
   };
 
   render() {
-    const { allFetched, width } = this.props;
+    const { allFetched } = this.props;
 
     return (
-      <Sidebar
-        role="tree"
-        width={width}
-        showMobileSidebar={this.props.showMobileSidebar}
-      >
+      <Sidebar role="tree" showMobileSidebar={this.props.showMobileSidebar}>
         {allFetched ? (
           this.renderContent()
         ) : (
