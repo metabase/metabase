@@ -1,9 +1,19 @@
 import {
   restore,
-  popover,
   mockSessionProperty,
   openNativeEditor,
 } from "__support__/e2e/cypress";
+
+import {
+  enterNativeQuery,
+  mapFieldFilterTo,
+  openPopoverFromDefaultFilterType,
+  runQuery,
+  setFilterType,
+  setFilterWidgetType,
+  setFieldFilterWidgetValue,
+  setRequiredFieldFilterDefaultValue,
+} from "./filters-e2e-helpers";
 
 const STRING_FILTER_SUBTYPES = {
   String: {
@@ -83,71 +93,3 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
     },
   );
 });
-
-function openPopoverFromSelectedFilterType(filterType) {
-  cy.get(".AdminSelect-content")
-    .contains(filterType)
-    .click();
-}
-
-function openPopoverFromDefaultFilterType() {
-  openPopoverFromSelectedFilterType("Text");
-}
-
-function setFilterType(filterType) {
-  popover().within(() => {
-    cy.findByText(filterType).click();
-  });
-}
-
-function runQuery(xhrAlias = "dataset") {
-  cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.wait("@" + xhrAlias);
-  cy.icon("play").should("not.exist");
-}
-
-function enterNativeQuery(query) {
-  cy.get("@editor").type(query, { parseSpecialCharSequences: false });
-}
-
-function toggleRequiredFilter() {
-  cy.findByText("Required?")
-    .parent()
-    .find("a")
-    .click();
-}
-
-function setRequiredFieldFilterDefaultValue(value) {
-  toggleRequiredFilter();
-
-  cy.findByText("Enter a default value...").click();
-  cy.findByPlaceholderText("Enter a default value...").type(value);
-  cy.button("Add filter").click();
-}
-
-function mapFieldFilterTo({ table, field } = {}) {
-  popover()
-    .contains(table)
-    .click();
-  popover()
-    .contains(field)
-    .click();
-}
-
-function setFilterWidgetType(type) {
-  cy.findByText("Filter widget type")
-    .parent()
-    .find(".AdminSelect")
-    .click();
-  popover()
-    .findByText(type)
-    .click();
-}
-
-function setFieldFilterWidgetValue(string) {
-  cy.get("fieldset").click();
-  popover()
-    .find("input")
-    .type(string);
-  cy.button("Add filter").click();
-}

@@ -1,9 +1,18 @@
 import {
   restore,
-  popover,
   mockSessionProperty,
   openNativeEditor,
 } from "__support__/e2e/cypress";
+
+import {
+  enterNativeQuery,
+  openPopoverFromDefaultFilterType,
+  runQuery,
+  setFilterType,
+  setFilterWidgetValue,
+  setRequiredFilterDefaultValue,
+  toggleRequiredFilter,
+} from "./filters-e2e-helpers";
 
 describe("scenarios > filters > sql filters > basic filter types", () => {
   beforeEach(() => {
@@ -117,47 +126,3 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
   });
 });
-
-function openPopoverFromSelectedFilterType(filterType) {
-  cy.get(".AdminSelect-content")
-    .contains(filterType)
-    .click();
-}
-
-function openPopoverFromDefaultFilterType() {
-  openPopoverFromSelectedFilterType("Text");
-}
-
-function setFilterType(filterType) {
-  popover().within(() => {
-    cy.findByText(filterType).click();
-  });
-}
-
-function runQuery(xhrAlias = "dataset") {
-  cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.wait("@" + xhrAlias);
-  cy.icon("play").should("not.exist");
-}
-
-function enterNativeQuery(query) {
-  cy.get("@editor").type(query, { parseSpecialCharSequences: false });
-}
-
-function setFilterWidgetValue(value) {
-  cy.get("fieldset")
-    .click()
-    .type(value);
-}
-
-function toggleRequiredFilter() {
-  cy.findByText("Required?")
-    .parent()
-    .find("a")
-    .click();
-}
-
-function setRequiredFilterDefaultValue(value) {
-  toggleRequiredFilter();
-  cy.findByPlaceholderText("Enter a default value...").type(value);
-}
