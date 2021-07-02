@@ -308,14 +308,33 @@ export function getExpandedCollectionsById(
 
 // Initial collection ID selector helpers
 
+/**
+ * @param {ReduxState} state
+ * @param {{collectionId?: number}} props
+ * @returns {number | undefined}
+ */
 function byCollectionIdProp(state, { collectionId }) {
   return collectionId;
 }
 
+/**
+ * @param {ReduxState} state
+ * @param {params?: {collectionId?: number}} props
+ * @returns {number | undefined}
+ */
 function byCollectionIdNavParam(state, { params }) {
   return params && params.collectionId;
 }
 
+/**
+ * Extracts ID from collection URL slugs
+ *
+ * Example: /collection/14-marketing —> 14
+ *
+ * @param {ReduxState} state
+ * @param {params?: {slug?: string}, location?: {pathname?: string}} props
+ * @returns {number | undefined}
+ */
 function byCollectionUrlId(state, { params, location }) {
   const isCollectionPath =
     params &&
@@ -325,6 +344,15 @@ function byCollectionUrlId(state, { params, location }) {
   return isCollectionPath && Urls.extractCollectionId(params.slug);
 }
 
+/**
+ * Extracts collection ID from query params
+ *
+ * Example: /some-route?collectionId=14 —> 14
+ *
+ * @param {ReduxState} state
+ * @param {location?: {query?: {collectionId?: number}}} props
+ * @returns {number | undefined}
+ */
 function byCollectionQueryParameter(state, { location }) {
   return location && location.query && location.query.collectionId;
 }
