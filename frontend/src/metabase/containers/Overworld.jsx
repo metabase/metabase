@@ -339,14 +339,10 @@ class Overworld extends React.Component {
                                     <Tooltip
                                       tooltip={t`Learn about this database`}
                                     >
-                                      <Link
-                                        to={`reference/databases/${database.id}`}
-                                      >
-                                        <Icon
-                                          name="reference"
-                                          color={color("text-light")}
-                                        />
-                                      </Link>
+                                      <Icon
+                                        name="reference"
+                                        color={color("text-light")}
+                                      />
                                     </Tooltip>
                                   </Flex>
                                 </Box>
