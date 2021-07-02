@@ -31,7 +31,6 @@ export default function Header({
             mr={2}
             mt="4px"
             color={color("text-dark")}
-            hover={{ color: color("brand") }}
             size={20}
           />
           {collection.name}

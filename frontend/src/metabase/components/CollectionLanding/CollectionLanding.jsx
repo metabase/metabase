@@ -21,6 +21,7 @@ const CollectionLanding = ({ params: { slug }, children }) => {
     <PageWrapper>
       <CollectionSidebar
         isRoot={isRoot}
+        handleToggleMobileSidebar={handleToggleMobileSidebar}
         collectionId={collectionId}
         showMobileSidebar={showMobileSidebar}
       />

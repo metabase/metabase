@@ -10,7 +10,7 @@ import Collection from "metabase/entities/collections";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 
-import { Sidebar } from "./CollectionSidebar.styled";
+import { Sidebar, ToggleMobileSidebarIcon } from "./CollectionSidebar.styled";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -71,9 +71,16 @@ class CollectionSidebar extends React.Component {
   filterPersonalCollections = collection => !collection.archived;
 
   renderContent = () => {
-    const { currentUser, isRoot, collectionId, list } = this.props;
+    const {
+      currentUser,
+      handleToggleMobileSidebar,
+      isRoot,
+      collectionId,
+      list,
+    } = this.props;
     return (
       <React.Fragment>
+        <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
         <Collection.Loader id="root">
           {({ collection: root }) => (
             <Box mb={1} mt={2}>
