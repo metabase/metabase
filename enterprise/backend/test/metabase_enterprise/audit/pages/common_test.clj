@@ -1,6 +1,7 @@
 (ns metabase-enterprise.audit.pages.common-test
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase-enterprise.audit.pages.common :as pages.common]
             [metabase.db :as mdb]
             [metabase.public-settings.metastore-test :as metastore-test]
@@ -60,10 +61,8 @@
             (hx/with-type-info
               (hsql/call :cast :bob.dobbs #honeysql.types.SqlRaw{:s "date"})
               {::hx/database-type "date"})
-            (hx/with-type-info
-              (hsql/call :cast (hx/literal "2021-05-17") #honeysql.types.SqlRaw{:s "date"})
-              {::hx/database-type "date"})]}
-          (#'pages.common/add-45-days-clause {} :bob.dobbs)))))
+            nil]}
+          (assoc-in (#'pages.common/add-45-days-clause {} :bob.dobbs) [:where 2] nil))))
 
 (deftest add-search-clause-test
   (testing "add search clause"
