@@ -9,16 +9,16 @@ SavedQuestionHeaderButton.propTypes = {
   className: PropTypes.string,
   question: PropTypes.object.isRequired,
   onClick: PropTypes.func.isRequired,
-  active: PropTypes.bool,
+  isActive: PropTypes.bool.isRequired,
 };
 
-function SavedQuestionHeaderButton({ className, question, onClick, active }) {
+function SavedQuestionHeaderButton({ className, question, onClick, isActive }) {
   return (
     <HeaderButton
       className={className}
       onClick={onClick}
       iconRight="chevrondown"
-      active={active}
+      isActive={isActive}
       iconSize={20}
       data-testid="saved-question-header-button"
     >

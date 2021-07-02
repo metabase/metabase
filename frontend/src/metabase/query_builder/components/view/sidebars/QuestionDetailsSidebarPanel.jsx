@@ -5,16 +5,14 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
-
 import { SidebarContentContainer } from "./QuestionDetailsSidebarPanel.styled";
 
 QuestionDetailsSidebarPanel.propTypes = {
-  setView: PropTypes.func.isRequired,
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
 };
 
-function QuestionDetailsSidebarPanel({ setView, question, onOpenModal }) {
+function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
   const canWrite = question.canWrite();
   const description = question.description();
 

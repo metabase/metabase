@@ -4,8 +4,9 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import { revertToRevision } from "metabase/query_builder/actions";
 import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
+import { revertToRevision } from "metabase/query_builder/actions";
+
 import Revision from "metabase/entities/revisions";
 import Timeline from "metabase/components/Timeline";
 import {
@@ -49,7 +50,7 @@ function RevisionEventFooter({ revision, onRevisionClick }) {
 }
 
 QuestionActivityTimeline.propTypes = {
-  question: PropTypes.object,
+  question: PropTypes.object.isRequired,
   className: PropTypes.string,
   revisions: PropTypes.array,
   revertToRevision: PropTypes.func.isRequired,

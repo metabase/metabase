@@ -14,7 +14,23 @@ import {
   ItemFooter,
 } from "./Timeline.styled";
 
-const Timeline = ({ className, items = [], renderFooter }) => {
+Timeline.propTypes = {
+  className: PropTypes.string,
+  items: PropTypes.arrayOf(
+    PropTypes.shape({
+      timestamp: PropTypes.number.isRequired,
+      icon: PropTypes.string.isRequired,
+      title: PropTypes.string.isRequired,
+      description: PropTypes.string,
+      renderFooter: PropTypes.bool,
+    }),
+  ),
+  renderFooter: PropTypes.func,
+};
+
+export default Timeline;
+
+function Timeline({ className, items = [], renderFooter }) {
   const iconSize = 16;
   const halfIconSize = iconSize / 2;
 
@@ -63,12 +79,4 @@ const Timeline = ({ className, items = [], renderFooter }) => {
       })}
     </TimelineContainer>
   );
-};
-
-Timeline.propTypes = {
-  className: PropTypes.string,
-  items: PropTypes.array,
-  renderFooter: PropTypes.func,
-};
-
-export default Timeline;
+}
