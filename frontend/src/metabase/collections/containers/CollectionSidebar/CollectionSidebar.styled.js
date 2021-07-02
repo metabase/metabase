@@ -13,9 +13,9 @@ export const Sidebar = styled(Box.withComponent("aside"))`
   padding-top: 32px;
   position: fixed;
   top: 65px;
-  width: ${SIDEBAR_WIDTH};
+  width: ${props => (props.showMobileSidebar ? SIDEBAR_WIDTH : 0)};
 
-  @media screen and (max-width: 768px) {
-    width: 50px;
+  @media screen and (min-width: 768px) {
+    width: ${SIDEBAR_WIDTH};
   }
 `;

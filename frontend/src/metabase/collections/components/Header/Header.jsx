@@ -6,6 +6,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
+import { ToggleMobileSidebarIcon } from "./Header.styled";
 import Link from "metabase/components/Link";
 import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
@@ -17,11 +18,24 @@ export default function Header({
   isRoot,
   isPersonalCollectionChild,
   collectionId,
+  handleToggleMobileSidebar,
 }) {
   return (
     <Flex align="center" py={3}>
       <Flex align="center">
-        <PageHeading className="text-wrap">{collection.name}</PageHeading>
+        <PageHeading className="text-wrap">
+          <ToggleMobileSidebarIcon
+            name="burger"
+            onClick={handleToggleMobileSidebar}
+            ml={1}
+            mr={2}
+            mt="4px"
+            color={color("text-dark")}
+            hover={{ color: color("brand") }}
+            size={20}
+          />
+          {collection.name}
+        </PageHeading>
         {collection.description && (
           <Tooltip tooltip={collection.description}>
             <Icon
