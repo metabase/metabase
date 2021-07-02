@@ -43,6 +43,12 @@ const propTypes = {
 const defaultNameGetter = option => option.name;
 const defaultValueGetter = option => option.value;
 
+const VARIANTS = {
+  normal: [NormalList, NormalItem],
+  bubble: [BubbleList, BubbleItem],
+  underlined: [UnderlinedList, UnderlinedItem],
+};
+
 function Radio({
   name: nameFromProps,
   value,
@@ -62,11 +68,7 @@ function Radio({
   const id = useMemo(() => _.uniqueId("radio-"), []);
   const name = nameFromProps || id;
 
-  const [List = NormalList, Item = NormalItem] = {
-    normal: [NormalList, NormalItem],
-    bubble: [BubbleList, BubbleItem],
-    underlined: [UnderlinedList, UnderlinedItem],
-  }[variant];
+  const [List, Item] = VARIANTS[variant] || VARIANTS.normal;
 
   if (variant === "underlined" && value === undefined) {
     console.warn(
