@@ -119,7 +119,7 @@ const Collections = createEntity({
             return canonicalCollectionId(collectionId);
           }
         }
-        return null;
+        return canonicalCollectionId(ROOT_COLLECTION.id);
       },
     ),
   },
