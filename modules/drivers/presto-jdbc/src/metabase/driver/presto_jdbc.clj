@@ -200,8 +200,7 @@
    :kerberos-config-path "KerberosConfigPath"})
 
 (defn- details->kerberos-url-params [details]
-  (let [remove-blank-vals (fn [m] (into {} (remove (fn [[_ v]]
-                                                       (or (nil? v) (= "" v))) m)))
+  (let [remove-blank-vals (fn [m] (into {} (remove (comp str/blank? val) m)))
         ks                (keys kerb-props->url-param-names)]
     (-> (select-keys details ks)
       remove-blank-vals
