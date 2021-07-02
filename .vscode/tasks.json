@@ -15,6 +15,27 @@
           "kind": "build",
           "isDefault": true
         }
+      },
+      {
+        "label": "Format front-end code",
+        "type": "shell",
+        "command": "yarn prettier",
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "clear": true
+        }
+      },
+      {
+        "label": "Run front-end linters",
+        "type": "shell",
+        "command": "yarn lint",
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "clear": true
+        },
+        "problemMatcher": []
       }
     ]
   }
