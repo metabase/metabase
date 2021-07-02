@@ -24,7 +24,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [potemkin :as p])
-  (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types]
+  (:import com.mchange.v2.resourcepool.TimeoutException
+           [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException Statement Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            javax.sql.DataSource))
 
@@ -472,18 +473,41 @@
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
-   (with-open [conn          (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-               stmt          (statement-or-prepared-statement driver conn sql params (context/canceled-chan context))
-               ^ResultSet rs (try
-                               (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
-                               (catch Throwable e
-                                 (throw (ex-info (tru "Error executing query")
-                                                 {:sql sql, :params params, :type qp.error-type/invalid-query}
-                                                 e))))]
-     (let [rsmeta           (.getMetaData rs)
-           results-metadata {:cols (column-metadata driver rsmeta)}]
-       (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))
-
+   (let [responded     (atom false)
+         canceled-chan (context/canceled-chan context)
+         canceled      (atom (a/poll! canceled-chan))
+         iter-count    (atom 0)]
+     (while (and (not @responded) (not @canceled))
+       (swap! iter-count inc)
+       (log/trace (trs "Connection acquisition loop count {0}" @iter-count))
+       (try
+         (with-open [conn          (connection-with-timezone driver
+                                                             (qp.store/database)
+                                                             (qp.timezone/report-timezone-id-if-supported))
+                     stmt          (statement-or-prepared-statement driver
+                                                                    conn
+                                                                    sql
+                                                                    params
+                                                                    (context/canceled-chan context))
+                     ^ResultSet rs (try
+                                     (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
+                                     (catch Throwable e
+                                       (throw (ex-info (tru "Error executing query")
+                                                       {:sql sql, :params params, :type qp.error-type/invalid-query}
+                                                       e))))]
+           (let [rsmeta           (.getMetaData rs)
+                 results-metadata {:cols (column-metadata driver rsmeta)}]
+             (reset! responded true)
+             (respond results-metadata (reducible-rows driver rs rsmeta canceled-chan))))
+         (catch SQLException e
+           (if (instance? TimeoutException (.getCause e))
+             (do (reset! canceled (a/poll! canceled-chan))
+                 (log/trace (trs "TimeoutException trying to get connection, maybe repeating loop")))
+             (throw e))))) ; not a recognized timeout; re-throw
+     (log/trace (trs "Exited connection acquisition loop with: canceled {0}, responded: {1}" @canceled @responded))
+     (when @canceled
+       ;; put the canceled message back in the channel if there was one
+       (a/offer! canceled-chan @canceled)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |

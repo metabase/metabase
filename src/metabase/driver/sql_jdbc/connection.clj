@@ -78,7 +78,9 @@
    ;; Kill idle connections above the minPoolSize after 5 minutes.
    "maxIdleTimeExcessConnections" (* 5 60)
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier
-   "dataSourceName"               (format "db-%d-%s-%s" (u/the-id database) (name driver) (-> database :details :db))})
+   "dataSourceName"               (format "db-%d-%s-%s" (u/the-id database) (name driver) (-> database :details :db))
+   "checkoutTimeout"              (or (config/config-int :mb-jdbc-data-warehouse-checkout-timeout)
+                                    5000)}) ; TODO: change to 0 before final checkin, probably
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
