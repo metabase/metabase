@@ -33,6 +33,14 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
+  it("displays an error and positions are not borked", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+    cy.get(".ace_content").type("select * from not_a_table");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.contains("Position: 14");
+  });
+
   it("displays an error when running selected text", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
