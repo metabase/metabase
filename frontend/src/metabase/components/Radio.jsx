@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -30,89 +30,77 @@ const propTypes = {
   vertical: PropTypes.bool,
 };
 
-const defaultProps = {
-  optionNameFn: option => option.name,
-  optionValueFn: option => option.value,
-  optionKeyFn: option => option.value,
-  variant: "normal",
-  vertical: false,
-};
+const defaultNameGetter = option => option.name;
+const defaultValueGetter = option => option.value;
 
-class Radio extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this._id = _.uniqueId("radio-");
-  }
+function Radio({
+  name: nameFromProps,
+  value,
+  options,
+  onChange,
+  optionNameFn = defaultNameGetter,
+  optionValueFn = defaultValueGetter,
+  optionKeyFn = defaultValueGetter,
+  variant = "normal",
+  vertical = false,
+  xspace,
+  yspace,
+  py,
+  showButtons = vertical && variant !== "bubble",
+  ...props
+}) {
+  const id = useMemo(() => _.uniqueId("radio-"), []);
+  const name = nameFromProps || id;
 
-  render() {
-    const {
-      name = this._id,
-      value,
-      options,
-      onChange,
-      optionNameFn,
-      optionValueFn,
-      optionKeyFn,
-      variant,
-      vertical,
-      xspace,
-      yspace,
-      py,
-      showButtons = vertical && variant !== "bubble", // show buttons for vertical only by default
-      ...props
-    } = this.props;
+  const [List = NormalList, Item = NormalItem] = {
+    normal: [NormalList, NormalItem],
+    bubble: [BubbleList, BubbleItem],
+    underlined: [UnderlinedList, UnderlinedItem],
+  }[variant];
 
-    const [List = NormalList, Item = NormalItem] = {
-      normal: [NormalList, NormalItem],
-      bubble: [BubbleList, BubbleItem],
-      underlined: [UnderlinedList, UnderlinedItem],
-    }[variant];
-
-    if (variant === "underlined" && value === undefined) {
-      console.warn(
-        "Radio can't underline selected option when no value is given.",
-      );
-    }
-
-    return (
-      <List {...props} vertical={vertical} showButtons={showButtons}>
-        {options.map((option, index) => {
-          const selected = value === optionValueFn(option);
-          const last = index === options.length - 1;
-          return (
-            <Item
-              key={optionKeyFn(option)}
-              selected={selected}
-              last={last}
-              vertical={vertical}
-              showButtons={showButtons}
-              py={py}
-              xspace={xspace}
-              yspace={yspace}
-              onClick={e => onChange(optionValueFn(option))}
-            >
-              {option.icon && <Icon name={option.icon} mr={1} />}
-              <input
-                className="Form-radio"
-                type="radio"
-                name={name}
-                value={optionValueFn(option)}
-                checked={selected}
-                id={name + "-" + optionKeyFn(option)}
-              />
-              {showButtons && (
-                <label htmlFor={name + "-" + optionKeyFn(option)} />
-              )}
-              <span>{optionNameFn(option)}</span>
-            </Item>
-          );
-        })}
-      </List>
+  if (variant === "underlined" && value === undefined) {
+    console.warn(
+      "Radio can't underline selected option when no value is given.",
     );
   }
+
+  return (
+    <List {...props} vertical={vertical} showButtons={showButtons}>
+      {options.map((option, index) => {
+        const selected = value === optionValueFn(option);
+        const last = index === options.length - 1;
+        return (
+          <Item
+            key={optionKeyFn(option)}
+            selected={selected}
+            last={last}
+            vertical={vertical}
+            showButtons={showButtons}
+            py={py}
+            xspace={xspace}
+            yspace={yspace}
+            onClick={e => onChange(optionValueFn(option))}
+          >
+            {option.icon && <Icon name={option.icon} mr={1} />}
+            <input
+              className="Form-radio"
+              type="radio"
+              name={name}
+              value={optionValueFn(option)}
+              checked={selected}
+              id={name + "-" + optionKeyFn(option)}
+            />
+            {showButtons && (
+              <label htmlFor={name + "-" + optionKeyFn(option)} />
+            )}
+            <span>{optionNameFn(option)}</span>
+          </Item>
+        );
+      })}
+    </List>
+  );
 }
 
 Radio.propTypes = propTypes;
-Radio.defaultProps = defaultProps;
 
 export default Radio;
