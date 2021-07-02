@@ -62,7 +62,7 @@
               (hsql/call :cast :bob.dobbs #honeysql.types.SqlRaw{:s "date"})
               {::hx/database-type "date"})
             nil]}
-          (assoc-in (#'pages.common/add-45-days-clause {} :bob.dobbs) [:where 2] nil))))
+          (assoc-in (#'pages.common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
 
 (deftest add-search-clause-test
   (testing "add search clause"
