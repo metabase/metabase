@@ -24,6 +24,13 @@ export const ARCHIVE_ACTION = "archive";
 
 const ICON_SIZE = 18;
 
+QuestionActionButtons.propTypes = {
+  canWrite: PropTypes.bool.isRequired,
+  onOpenModal: PropTypes.func.isRequired,
+};
+
+export default QuestionActionButtons;
+
 function QuestionActionButtons({ canWrite, onOpenModal }) {
   return (
     <Container>
@@ -87,10 +94,3 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
     </Container>
   );
 }
-
-QuestionActionButtons.propTypes = {
-  canWrite: PropTypes.bool,
-  onOpenModal: PropTypes.func,
-};
-
-export default QuestionActionButtons;

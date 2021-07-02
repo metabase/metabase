@@ -14,7 +14,13 @@ describe("SavedQuestionHeaderButton", () => {
       displayName: () => "foo",
     };
 
-    render(<SavedQuestionHeaderButton question={question} onClick={onClick} />);
+    render(
+      <SavedQuestionHeaderButton
+        question={question}
+        onClick={onClick}
+        isActive={false}
+      />,
+    );
   });
 
   it("renders the name of the question", () => {
