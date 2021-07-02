@@ -24,15 +24,7 @@ export default function Header({
     <Flex align="center" py={3}>
       <Flex align="center">
         <PageHeading className="text-wrap">
-          <ToggleMobileSidebarIcon
-            name="burger"
-            onClick={handleToggleMobileSidebar}
-            ml={1}
-            mr={2}
-            mt="4px"
-            color={color("text-dark")}
-            size={20}
-          />
+          <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
           {collection.name}
         </PageHeading>
         {collection.description && (
