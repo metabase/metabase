@@ -938,7 +938,7 @@ workflows:
             - checkout
 
       - lein:
-          name: be-tests-<< matrix.edition >>
+          name: be-tests-java-8-<< matrix.edition >>
           requires:
             - be-deps
           e: java-8
@@ -956,7 +956,7 @@ workflows:
           <<: *Matrix
 
       - lein:
-          name: be-tests-java-11-<< matrix.edition >>
+          name: be-tests-java-11-<< matrix.edition >>-encryption-key
           requires:
             - be-deps
           e: java-11-ek
