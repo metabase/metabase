@@ -24,7 +24,7 @@ const EmailAdmin = () => {
 };
 
 function adjustPositions(error, origSql) {
-  /* Positions in error messages are borked coming in.
+  /* Positions in error messages are borked coming in for Postgres errors.
    * Previously, you would see "blahblahblah bombed out, Position: 119" in a 10-character invalid query.
    * This is because MB shoves in 'remarks' into the original query and we get the exception from the query with remarks.
    * This function adjusts the value of the positions in the exception message to account for this.
@@ -53,6 +53,17 @@ function adjustPositions(error, origSql) {
   return error.replace(/Position: (\d+)/, function(_, p1) {
     return "Position: " + (parseInt(p1) - adjustmentLength);
   });
+}
+
+function stripRemarks(error) {
+  /* SQL snippets in error messages are borked coming in for errors in many DBs.
+   * You're expecting something with just your sql in the message,
+   * but the whole error contains these remarks that MB added in. Confusing!
+   */
+  return error.replace(
+    /-- Metabase:: userID: \d+ queryType: native queryHash: \w+\n/,
+    "",
+  );
 }
 
 class VisualizationError extends Component {
@@ -104,13 +115,7 @@ class VisualizationError extends Component {
           <div className="QueryError-image QueryError-image--queryError mr4" />
           <div className="QueryError2-details">
             <h1 className="text-bold">{t`There was a problem with this visualization`}</h1>
-            <ErrorDetails
-              className="pt2"
-              details={adjustPositions(
-                error,
-                getIn(via, [0, "ex-data", "sql"]),
-              )}
-            />
+            <ErrorDetails className="pt2" details={error} />
           </div>
         </div>
       );
@@ -120,6 +125,11 @@ class VisualizationError extends Component {
       card.dataset_query.type === "native"
     ) {
       // always show errors for native queries
+      const adjustedError = adjustPositions(
+        error,
+        getIn(via, [0, "ex-data", "sql"]),
+      );
+      const processedError = stripRemarks(adjustedError);
       return (
         <div
           className={cx(className, "QueryError flex align-center text-error")}
@@ -135,9 +145,7 @@ class VisualizationError extends Component {
               <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z " />
             </svg>
           </div>
-          <span className="QueryError-message">
-            {adjustPositions(error, getIn(via, [0, "ex-data", "sql"]))}
-          </span>
+          <span className="QueryError-message">{processedError}</span>
         </div>
       );
     } else {
