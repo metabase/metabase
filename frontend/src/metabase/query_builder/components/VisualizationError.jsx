@@ -28,17 +28,31 @@ function adjustPositions(error, origSql) {
    * Previously, you would see "blahblahblah bombed out, Position: 119" in a 10-character invalid query.
    * This is because MB shoves in 'remarks' into the original query and we get the exception from the query with remarks.
    * This function adjusts the value of the positions in the exception message to account for this.
-   * This is done all the way here in frontend after everything because the alternative of doing it in backend
-   * is an absolutely terrifying kludge involving mutating exceptions.
+   * This is done in mildly scary kludge here in frontend after everything,
+   * because the alternative of doing it in backend
+   * is an absolutely terrifying kludge involving messing with exceptions.
    */
   let adjustmentLength = 0;
 
   // redshift remarks use c-style multiline comments...
-  // find "*/" and add to adjustmentlength if found
+  let multiLineBeginPos = origSql.search("/\\*");
+  let multiLineEndPos = origSql.search("\\*/");
+  // if multiLineBeginPos is 0 then we know it's a redshift remark
+  if (multiLineBeginPos === 0 && multiLineEndPos !== -1) {
+    adjustmentLength += multiLineEndPos + 2; // 2 for */ in itself
+  }
 
-  // find "--" and add to adjustmentlength if found
-  // const newError = grep for position lol and whack it
-  return null;
+  let chompedSql = origSql.substr(adjustmentLength);
+  // there also seem to be cases where remarks don't get in...
+  let commentPos = chompedSql.search("--");
+  let newLinePos = chompedSql.search("\n");
+  if (commentPos !== -1 && commentPos < 5) {
+    adjustmentLength += newLinePos + 2; // 2 for \n itself
+  }
+
+  return error.replace(/Position: (\d+)/, function(_, p1) {
+    return "Position: " + (parseInt(p1) - adjustmentLength);
+  });
 }
 
 class VisualizationError extends Component {
@@ -57,7 +71,7 @@ class VisualizationError extends Component {
   };
 
   render() {
-    const { card, duration, error, className } = this.props;
+    const { via, card, duration, error, className } = this.props;
     console.log("error", error);
 
     if (error && typeof error.status === "number") {
