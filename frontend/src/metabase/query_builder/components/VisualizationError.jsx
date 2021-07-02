@@ -35,17 +35,17 @@ function adjustPositions(error, origSql) {
   let adjustmentLength = 0;
 
   // redshift remarks use c-style multiline comments...
-  let multiLineBeginPos = origSql.search("/\\*");
-  let multiLineEndPos = origSql.search("\\*/");
+  const multiLineBeginPos = origSql.search("/\\*");
+  const multiLineEndPos = origSql.search("\\*/");
   // if multiLineBeginPos is 0 then we know it's a redshift remark
   if (multiLineBeginPos === 0 && multiLineEndPos !== -1) {
     adjustmentLength += multiLineEndPos + 2; // 2 for */ in itself
   }
 
-  let chompedSql = origSql.substr(adjustmentLength);
+  const chompedSql = origSql.substr(adjustmentLength);
   // there also seem to be cases where remarks don't get in...
-  let commentPos = chompedSql.search("--");
-  let newLinePos = chompedSql.search("\n");
+  const commentPos = chompedSql.search("--");
+  const newLinePos = chompedSql.search("\n");
   if (commentPos !== -1 && commentPos < 5) {
     adjustmentLength += newLinePos + 2; // 2 for \n itself
   }
