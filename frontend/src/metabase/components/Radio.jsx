@@ -26,18 +26,16 @@ const propTypes = {
   py: PropTypes.number,
 
   // Modes
-  bubble: PropTypes.bool,
+  variant: PropTypes.oneOf(["bubble", "normal", "underlined"]),
   vertical: PropTypes.bool,
-  underlined: PropTypes.bool,
 };
 
 const defaultProps = {
   optionNameFn: option => option.name,
   optionValueFn: option => option.value,
   optionKeyFn: option => option.value,
-  bubble: false,
+  variant: "normal",
   vertical: false,
-  underlined: false,
 };
 
 class Radio extends Component {
@@ -55,23 +53,22 @@ class Radio extends Component {
       optionNameFn,
       optionValueFn,
       optionKeyFn,
+      variant,
       vertical,
-      underlined,
-      bubble,
       xspace,
       yspace,
       py,
-      showButtons = vertical && !bubble, // show buttons for vertical only by default
+      showButtons = vertical && variant !== "bubble", // show buttons for vertical only by default
       ...props
     } = this.props;
 
-    const [List, Item] = bubble
-      ? [BubbleList, BubbleItem]
-      : underlined
-      ? [UnderlinedList, UnderlinedItem]
-      : [NormalList, NormalItem];
+    const [List = NormalList, Item = NormalItem] = {
+      normal: [NormalList, NormalItem],
+      bubble: [BubbleList, BubbleItem],
+      underlined: [UnderlinedList, UnderlinedItem],
+    }[variant];
 
-    if (underlined && value === undefined) {
+    if (variant === "underlined" && value === undefined) {
       console.warn(
         "Radio can't underline selected option when no value is given.",
       );

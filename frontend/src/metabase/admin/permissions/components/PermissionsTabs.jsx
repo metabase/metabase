@@ -14,7 +14,7 @@ const PermissionsTabs = ({ tab, onChangeTab }) => (
         { name: t`Collection permissions`, value: `collections` },
       ]}
       onChange={onChangeTab}
-      underlined
+      variant="underlined"
       py={2}
     />
   </div>
