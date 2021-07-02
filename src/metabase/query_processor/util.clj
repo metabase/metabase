@@ -39,7 +39,12 @@
 (defmulti query->remark
   "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query
   being executed. See documentation for `mbql->native` and #2386.
-  for more information."
+  for more information.
+
+  Note that this messes up the visualization errors for native queries.
+  Therefore there is a very very long-distance dependency that this causes on the VisualizationErrors
+  for native queries.
+  "
   {:arglists '(^String [driver query])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

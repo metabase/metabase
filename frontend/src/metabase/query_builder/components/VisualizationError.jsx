@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { getIn } from "icepick";
 import cx from "classnames";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -22,6 +23,24 @@ const EmailAdmin = () => {
   );
 };
 
+function adjustPositions(error, origSql) {
+  /* Positions in error messages are borked coming in.
+   * Previously, you would see "blahblahblah bombed out, Position: 119" in a 10-character invalid query.
+   * This is because MB shoves in 'remarks' into the original query and we get the exception from the query with remarks.
+   * This function adjusts the value of the positions in the exception message to account for this.
+   * This is done all the way here in frontend after everything because the alternative of doing it in backend
+   * is an absolutely terrifying kludge involving mutating exceptions.
+   */
+  let adjustmentLength = 0;
+
+  // redshift remarks use c-style multiline comments...
+  // find "*/" and add to adjustmentlength if found
+
+  // find "--" and add to adjustmentlength if found
+  // const newError = grep for position lol and whack it
+  return null;
+}
+
 class VisualizationError extends Component {
   constructor(props) {
     super(props);
@@ -30,6 +49,7 @@ class VisualizationError extends Component {
     };
   }
   static propTypes = {
+    via: PropTypes.object.isRequired,
     card: PropTypes.object.isRequired,
     duration: PropTypes.number.isRequired,
     error: PropTypes.object.isRequired,
@@ -70,7 +90,13 @@ class VisualizationError extends Component {
           <div className="QueryError-image QueryError-image--queryError mr4" />
           <div className="QueryError2-details">
             <h1 className="text-bold">{t`There was a problem with this visualization`}</h1>
-            <ErrorDetails className="pt2" details={error} />
+            <ErrorDetails
+              className="pt2"
+              details={adjustPositions(
+                error,
+                getIn(via, [0, "ex-data", "sql"]),
+              )}
+            />
           </div>
         </div>
       );
@@ -95,7 +121,9 @@ class VisualizationError extends Component {
               <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z " />
             </svg>
           </div>
-          <span className="QueryError-message">{error}</span>
+          <span className="QueryError-message">
+            {adjustPositions(error, getIn(via, [0, "ex-data", "sql"]))}
+          </span>
         </div>
       );
     } else {
