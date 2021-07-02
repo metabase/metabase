@@ -37,10 +37,12 @@ const DATE_FILTER_SUBTYPES = {
     value: "Past 7 days",
     representativeResult: "No results!",
   },
-  // "Date filter": {
-  //   value: "Years",
-  //   representativeResult: "Small Marble Shoes",
-  // },
+  "Date Filter": {
+    value: {
+      timeBucket: "Years",
+    },
+    representativeResult: "Small Marble Shoes",
+  },
 };
 
 describe("scenarios > filters > sql filters > field filter > Date", () => {
@@ -67,28 +69,26 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
   Object.entries(DATE_FILTER_SUBTYPES).forEach(
     ([subType, { value, representativeResult }]) => {
       describe(`should work for ${subType}`, () => {
-        it("when set through the filter widget", () => {
+        beforeEach(() => {
           setFilterWidgetType(subType);
+        });
 
-          switch (subType) {
-            case "Month and Year":
-              setMonthAndYearFilter(value);
-              break;
-            case "Quarter and Year":
-              setQuarterAndYearFilter(value);
-              break;
-            case "Single Date":
-              setSingleDateFilter(value);
-              break;
-            case "Date Range":
-              setDateRangeFilter(value);
-              break;
-            case "Relative Date":
-              setRelativeDateFilter(value);
-              break;
-            default:
-              throw new Error("Wrong filter!");
-          }
+        it("when set through the filter widget", () => {
+          dateFilterSelector({ filterType: subType, filterValue: value });
+
+          runQuery();
+
+          cy.get(".Visualization").within(() => {
+            cy.findByText(representativeResult);
+          });
+        });
+
+        it("when set as the default value for a required filter", () => {
+          dateFilterSelector({
+            filterType: subType,
+            filterValue: value,
+            isFilterRequired: true,
+          });
 
           runQuery();
 
@@ -136,42 +136,134 @@ function mapFieldFilterTo({ table, field } = {}) {
     .click();
 }
 
+/**
+ * Set the type for the filter widget.
+ *
+ * @param {("Text"|"Number"|"Date"|"Field Filter")} type - The allowed strings for the type param.
+ *
+ * @example
+ * setFilterWidgetType("Number");
+ */
 function setFilterWidgetType(type) {
   cy.findByText("Filter widget type")
     .parent()
     .find(".AdminSelect")
     .click();
+
   popover()
     .findByText(type)
     .click();
 }
 
 function setMonthAndYearFilter({ month, year } = {}) {
-  cy.get("fieldset").click();
   cy.findByText(currentYearString).click();
   cy.findByText(year).click();
   cy.findByText(month).click();
 }
 
 function setQuarterAndYearFilter({ quarter, year } = {}) {
-  cy.get("fieldset").click();
   cy.findByText(currentYearString).click();
   cy.findByText(year).click();
   cy.findByText(quarter).click();
 }
 
 function setSingleDateFilter(day) {
-  cy.get("fieldset").click();
   cy.findByText(day).click();
 }
 
 function setDateRangeFilter({ startDate, endDate } = {}) {
-  cy.get("fieldset").click();
   cy.findByText(startDate).click();
   cy.findByText(endDate).click();
 }
 
 function setRelativeDateFilter(term) {
-  cy.get("fieldset").click();
   cy.findByText(term).click();
+}
+
+function setDateFilter({ condition, quantity, timeBucket } = {}) {
+  if (condition) {
+    cy.get(".AdminSelect")
+      .contains("Previous")
+      .click();
+    popover()
+      .last()
+      .contains(condition)
+      .click();
+  }
+
+  if (quantity) {
+    cy.findByPlaceholderText("30")
+      .clear()
+      .type(quantity);
+  }
+
+  if (timeBucket) {
+    cy.get(".AdminSelect")
+      .contains("Days")
+      .click();
+    popover()
+      .last()
+      .contains(timeBucket)
+      .click();
+  }
+
+  cy.button("Update filter").click();
+}
+
+function toggleRequiredFilter() {
+  cy.findByText("Required?")
+    .parent()
+    .find("a")
+    .click();
+}
+
+function openDateFilterPicker(isFilterRequired) {
+  isFilterRequired && toggleRequiredFilter();
+
+  const selector = isFilterRequired
+    ? cy.findByText("Select a default value…")
+    : cy.get("fieldset");
+
+  return selector.click();
+}
+
+function dateFilterSelector({
+  filterType,
+  filterValue,
+  isFilterRequired = false,
+} = {}) {
+  switch (filterType) {
+    case "Month and Year":
+      openDateFilterPicker(isFilterRequired);
+      setMonthAndYearFilter(filterValue);
+      break;
+
+    case "Quarter and Year":
+      openDateFilterPicker(isFilterRequired);
+      setQuarterAndYearFilter(filterValue);
+      break;
+
+    case "Single Date":
+      openDateFilterPicker(isFilterRequired);
+      setSingleDateFilter(filterValue);
+      break;
+
+    case "Date Range":
+      openDateFilterPicker(isFilterRequired);
+      setDateRangeFilter(filterValue);
+      break;
+
+    case "Relative Date":
+      openDateFilterPicker(isFilterRequired);
+      setRelativeDateFilter(filterValue);
+      break;
+
+    case "Date Filter":
+      openDateFilterPicker(isFilterRequired);
+      setDateFilter(filterValue);
+      break;
+
+    default:
+      throw new Error("Wrong filter type!");
+  }
 }
