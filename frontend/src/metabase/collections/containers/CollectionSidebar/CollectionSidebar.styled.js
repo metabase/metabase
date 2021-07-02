@@ -18,7 +18,7 @@ export const Sidebar = styled(Box.withComponent("aside"))`
   top: 65px;
   width: ${props => (props.showMobileSidebar ? "100vw" : 0)};
 
-  @media screen and (min-width: 768px) {
+  @media screen and (min-width: 40em) {
     width: ${SIDEBAR_WIDTH};
   }
 `;
@@ -32,7 +32,7 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
 })`
   color: ${color("brand")};
 
-  @media screen and (min-width: 768px) {
+  @media screen and (min-width: 40em) {
     cursor: pointer;
     display: none;
   }

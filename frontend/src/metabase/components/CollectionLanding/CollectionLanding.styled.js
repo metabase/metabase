@@ -11,7 +11,7 @@ export const ContentBox = styled(Box)`
   overflow-y: auto;
   padding-bottom: 64px;
 
-  @media screen and (min-width: 768px) {
+  @media screen and (min-width: 40em) {
     display: block;
     margin-left: ${SIDEBAR_WIDTH};
   }

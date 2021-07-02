@@ -12,7 +12,7 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
   color: {color("text-dark")};
   cursor: pointer;
 
-  @media screen and (min-width: 768px) {
+  @media screen and (min-width: 40em) {
     display: none;
   }
 `;
