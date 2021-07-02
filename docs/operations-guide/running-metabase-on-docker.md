@@ -193,9 +193,9 @@ services:
     container_name: postgres-secrets
     hostname: postgres-secrets
     environment:
-      POSTGRES_USER: /run/secrets/db_user
+      POSTGRES_USER_FILE: /run/secrets/db_user
       POSTGRES_DB: metabase
-      POSTGRES_PASSWORD: /run/secrets/db_password
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
     networks: 
       - metanet1-secrets
     secrets:
