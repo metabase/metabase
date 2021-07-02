@@ -101,15 +101,14 @@ const Collections = createEntity({
     getInitialCollectionId: createSelector(
       [
         state => state.entities.collections,
+
         // these are listed in order of priority
-        (state, { collectionId }) => collectionId,
-        (state, { params }) => (params ? params.collectionId : undefined),
-        (state, { params, location }) =>
-          params && location && Urls.isCollectionPath(location.pathname)
-            ? Urls.extractCollectionId(params.slug)
-            : undefined,
-        (state, { location }) =>
-          location && location.query ? location.query.collectionId : undefined,
+        byCollectionIdProp,
+        byCollectionIdNavParam,
+        byCollectionUrlId,
+        byCollectionQueryParameter,
+
+        // defaults
         () => ROOT_COLLECTION.id,
         getUserPersonalCollectionId,
       ],
@@ -305,4 +304,27 @@ export function getExpandedCollectionsById(
   }
 
   return collectionsById;
+}
+
+// Initial collection ID selector helpers
+
+function byCollectionIdProp(state, { collectionId }) {
+  return collectionId;
+}
+
+function byCollectionIdNavParam(state, { params }) {
+  return params && params.collectionId;
+}
+
+function byCollectionUrlId(state, { params, location }) {
+  const isCollectionPath =
+    params &&
+    params.slug &&
+    location &&
+    Urls.isCollectionPath(location.pathname);
+  return isCollectionPath && Urls.extractCollectionId(params.slug);
+}
+
+function byCollectionQueryParameter(state, { location }) {
+  return location && location.query && location.query.collectionId;
 }
