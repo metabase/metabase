@@ -100,6 +100,7 @@
               :class      java.lang.Exception
               :error      "Something went wrong"
               :stacktrace true
+              :card_id    300
               :json_query {}
               :row_count  0
               :data       {:cols []}
@@ -111,11 +112,11 @@
                                                  (context/raisef (ex-info "Something went wrong."
                                                                    {:query-execution {:a            100
                                                                                       :b            200
+                                                                                      :card_id      300
                                                                                       ;; these keys should all get removed
-                                                                                      :result_rows  300
-                                                                                      :hash         400
+                                                                                      :result_rows  400
+                                                                                      :hash         500
                                                                                       :executor_id  500
-                                                                                      :card_id      600
                                                                                       :dashboard_id 700
                                                                                       :pulse_id     800
                                                                                       :native       900}}
