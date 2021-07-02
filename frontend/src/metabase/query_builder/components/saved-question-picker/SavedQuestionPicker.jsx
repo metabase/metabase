@@ -7,7 +7,6 @@ import { connect } from "react-redux";
 
 import Icon from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
 import Collection, {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
@@ -17,7 +16,6 @@ import {
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
-import Schemas from "metabase/entities/schemas";
 
 import SavedQuestionList from "./SavedQuestionList";
 import {
@@ -31,7 +29,6 @@ const propTypes = {
   onSelect: PropTypes.func.isRequired,
   onBack: PropTypes.func.isRequired,
   collections: PropTypes.array.isRequired,
-  schemas: PropTypes.array.isRequired,
   currentUser: PropTypes.object.isRequired,
   databaseId: PropTypes.string,
   tableId: PropTypes.string,
@@ -51,7 +48,6 @@ function SavedQuestionPicker({
   onBack,
   onSelect,
   collections,
-  schemas,
   currentUser,
   databaseId,
   tableId,
@@ -61,6 +57,9 @@ function SavedQuestionPicker({
   );
 
   const handleSelect = useCallback(collection => {
+    if (collection.id === PERSONAL_COLLECTIONS.id) {
+      return;
+    }
     setSelectedCollection(collection);
   }, []);
 
@@ -94,12 +93,9 @@ function SavedQuestionPicker({
 
     return [
       OUR_ANALYTICS_COLLECTION,
-      ...buildCollectionTree(
-        [OUR_ANALYTICS_COLLECTION, ...preparedCollections],
-        new Set(schemas.map(schema => schema.name)),
-      ),
+      ...buildCollectionTree(preparedCollections),
     ];
-  }, [collections, schemas, currentUser]);
+  }, [collections, currentUser]);
 
   return (
     <SavedQuestionPickerRoot>
@@ -131,9 +127,6 @@ SavedQuestionPicker.propTypes = propTypes;
 const mapStateToProps = ({ currentUser }) => ({ currentUser });
 
 export default _.compose(
-  Schemas.loadList({
-    query: { dbId: SAVED_QUESTIONS_VIRTUAL_DB_ID },
-  }),
   Collection.loadList({
     query: () => ({ tree: true }),
   }),
