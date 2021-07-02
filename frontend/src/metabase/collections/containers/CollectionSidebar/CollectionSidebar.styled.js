@@ -32,9 +32,9 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
   size: 20,
 })`
   color: ${color("brand")};
+  cursor: pointer;
 
   ${breakpointMinSmall} {
-    cursor: pointer;
     display: none;
   }
 `;
