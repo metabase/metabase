@@ -14,22 +14,23 @@ executors:
   java-8:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-8-lein-2.9.6
+      - image: circleci/clojure:openjdk-8-lein-2.9.6-buster
   
   java-11:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-11-lein-2.9.6
+      - image: circleci/clojure:openjdk-11-lein-2.9.6-buster
   
+  # there is no common image for this one, only debian buster
   java-16:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-16-lein-2.9.6
+      - image: circleci/clojure:openjdk-16-lein-2.9.6-buster
   
   clojure-and-node-and-browsers:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.9.6-node-browsers
+      - image: circleci/clojure:lein-2.9.6-buster-node-browsers
 
   java-11-ek:
     working_directory: /home/circleci/metabase/metabase/
@@ -185,19 +186,19 @@ executors:
   fe-mongo-4:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.9.6-node-browsers
+      - image: circleci/clojure:lein-2.9.6-buster-node-browsers
       - image: metabase/qa-databases:mongo-sample-4.0
 
   fe-postgres-12:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.9.6-node-browsers
+      - image: circleci/clojure:lein-2.9.6-buster-node-browsers
       - image: metabase/qa-databases:postgres-sample-12
 
   fe-mysql-8:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.9.6-node-browsers
+      - image: circleci/clojure:lein-2.9.6-buster-node-browsers
       - image: metabase/qa-databases:mysql-sample-8
 
 
