@@ -133,7 +133,7 @@
   (update-tables! ids body))
 
 
-(def ^:private auto-bin-str (deferred-tru "Auto bin"))
+(def ^:private auto-bin-str (deferred-tru "Auto binned"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
 (def ^:private day-str (deferred-tru "Day"))
 

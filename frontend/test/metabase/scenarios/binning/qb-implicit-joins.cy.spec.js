@@ -38,7 +38,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
     it("should work for number", () => {
       cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("Price", "Auto bin");
+        openPopoverFromDefaultBucketSize("Price", "Auto binned");
       });
 
       chooseBucketAndAssert({
@@ -50,7 +50,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
     it("should work for longitude", () => {
       cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("Longitude", "Auto bin");
+        openPopoverFromDefaultBucketSize("Longitude", "Auto binned");
       });
 
       chooseBucketAndAssert({
@@ -99,7 +99,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     it("should work for number", () => {
       cy.findByText("Product").click();
 
-      openPopoverFromDefaultBucketSize("Price", "Auto bin");
+      openPopoverFromDefaultBucketSize("Price", "Auto binned");
 
       chooseBucketAndAssert({
         bucketSize: "50 bins",
@@ -113,7 +113,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       cy.findByText("User").click();
       cy.findByPlaceholderText("Find...").type("longitude");
 
-      openPopoverFromDefaultBucketSize("Longitude", "Auto bin");
+      openPopoverFromDefaultBucketSize("Longitude", "Auto binned");
 
       chooseBucketAndAssert({
         // Test is currently incorrect in that it displays wrong binning options (please see: https://github.com/metabase/metabase/issues/16674)

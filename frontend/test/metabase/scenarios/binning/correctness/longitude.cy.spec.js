@@ -1,7 +1,7 @@
 import { restore, popover, openPeopleTable } from "__support__/e2e/cypress";
 
 const LONGITUDE_OPTIONS = {
-  "Auto bin": {
+  "Auto binned": {
     selected: "Auto binned",
     representativeValues: ["170° W", "100° W", "60° W"],
   },
@@ -29,7 +29,7 @@ describe("scenarios > binning > correctness > longitude", () => {
     cy.signInAsAdmin();
     openPeopleTable();
     cy.findByText("Summarize").click();
-    openPopoverFromDefaultBucketSize("Longitude", "Auto bin");
+    openPopoverFromDefaultBucketSize("Longitude", "Auto binned");
   });
 
   Object.entries(LONGITUDE_OPTIONS).forEach(

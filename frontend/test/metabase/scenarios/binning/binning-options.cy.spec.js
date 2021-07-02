@@ -58,7 +58,7 @@ const ordersJoinProductsQuery = {
 };
 
 const NUMBER_BUCKETS = [
-  "Auto bin",
+  "Auto binned",
   "10 bins",
   "50 bins",
   "100 bins",
@@ -84,7 +84,7 @@ const TIME_BUCKETS = [
 ];
 
 const LONGITUDE_BUCKETS = [
-  "Auto bin",
+  "Auto binned",
   "Bin every 0.1 degrees",
   "Bin every 1 degree",
   "Bin every 10 degrees",
@@ -110,7 +110,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Total: Auto binned");
 
       openPopoverFromSelectedBinningOption("Total", "Auto binned");
-      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto binned" });
     });
 
     it("should render time series binning options correctly", () => {
@@ -126,7 +126,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Longitude: Auto binned");
 
       openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
-      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto binned" });
     });
   });
 
@@ -143,7 +143,7 @@ describe("scenarios > binning > binning options", () => {
       cy.findByText("Total: Auto binned").click();
       openPopoverFromSelectedBinningOption("Total", "Auto binned");
 
-      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto binned" });
     });
 
     it("should render time series binning options correctly", () => {
@@ -173,7 +173,7 @@ describe("scenarios > binning > binning options", () => {
       cy.findByText("Longitude: Auto binned").click();
       openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
 
-      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto binned" });
     });
   });
 
@@ -211,7 +211,7 @@ describe("scenarios > binning > binning options", () => {
       });
 
       openPopoverFromSelectedBinningOption("Price", "Auto binned");
-      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto binned" });
     });
 
     it("should work for longitude", () => {
@@ -221,7 +221,7 @@ describe("scenarios > binning > binning options", () => {
       });
 
       openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
-      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto binned" });
     });
   });
 
@@ -247,7 +247,7 @@ describe("scenarios > binning > binning options", () => {
       });
 
       openPopoverFromSelectedBinningOption("Price", "Auto binned");
-      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto binned" });
     });
 
     it("should work for longitude", () => {
@@ -257,7 +257,7 @@ describe("scenarios > binning > binning options", () => {
       });
 
       openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
-      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto binned" });
     });
   });
 });

@@ -592,13 +592,13 @@
         "values": [],
         "default_dimension_option": {
           "mbql": ["field", null, {"binning": {"strategy": "default"}}],
-          "name": "Auto bin",
+          "name": "Auto binned",
           "type": "type/Number"
         },
         "dimension_options": [
           {
             "mbql": ["field", null, {"binning": {"strategy": "default"}}],
-            "name": "Auto bin",
+            "name": "Auto binned",
             "type": "type/Number"
           },
           {

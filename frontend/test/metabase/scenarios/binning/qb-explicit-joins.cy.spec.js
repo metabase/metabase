@@ -92,7 +92,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
     it("should work for number", () => {
       cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("Products → Price", "Auto bin");
+        openPopoverFromDefaultBucketSize("Products → Price", "Auto binned");
       });
 
       chooseBucketAndAssert({
@@ -104,7 +104,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
     it("should work for longitude", () => {
       cy.findByTestId("sidebar-right").within(() => {
-        openPopoverFromDefaultBucketSize("People → Longitude", "Auto bin");
+        openPopoverFromDefaultBucketSize("People → Longitude", "Auto binned");
       });
 
       chooseBucketAndAssert({
@@ -157,7 +157,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
     it("should work for number", () => {
       popover().within(() => {
-        openPopoverFromDefaultBucketSize("Products → Price", "Auto bin");
+        openPopoverFromDefaultBucketSize("Products → Price", "Auto binned");
       });
 
       chooseBucketAndAssert({
@@ -170,7 +170,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
     it("should work for longitude", () => {
       popover().within(() => {
-        openPopoverFromDefaultBucketSize("People → Longitude", "Auto bin");
+        openPopoverFromDefaultBucketSize("People → Longitude", "Auto binned");
       });
 
       chooseBucketAndAssert({

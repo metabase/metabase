@@ -14,7 +14,7 @@ describe("scenarios > binning > binning options", () => {
       chooseInitialBinningOption({
         table: ORDERS_ID,
         column: "Total",
-        defaultBucket: "Auto bin",
+        defaultBucket: "Auto binned",
         bucketSize: "50 bins",
       });
 
@@ -42,7 +42,7 @@ describe("scenarios > binning > binning options", () => {
       chooseInitialBinningOption({
         table: PEOPLE_ID,
         column: "Longitude",
-        defaultBucket: "Auto bin",
+        defaultBucket: "Auto binned",
         bucketSize: "Bin every 20 degrees",
       });
 
@@ -58,7 +58,7 @@ describe("scenarios > binning > binning options", () => {
       chooseInitialBinningOption({
         table: ORDERS_ID,
         column: "Total",
-        defaultBucket: "Auto bin",
+        defaultBucket: "Auto binned",
         bucketSize: "50 bins",
         mode: "notebook",
       });
@@ -88,7 +88,7 @@ describe("scenarios > binning > binning options", () => {
       chooseInitialBinningOption({
         table: PEOPLE_ID,
         column: "Longitude",
-        defaultBucket: "Auto bin",
+        defaultBucket: "Auto binned",
         bucketSize: "Bin every 20 degrees",
         mode: "notebook",
       });
