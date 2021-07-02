@@ -12,10 +12,20 @@ import {
   UnderlinedItem,
 } from "./Radio.styled";
 
+const optionShape = PropTypes.shape({
+  name: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.element,
+    PropTypes.node,
+  ]).isRequired,
+  value: PropTypes.any.isRequired,
+  icon: PropTypes.string,
+});
+
 const propTypes = {
   name: PropTypes.string,
   value: PropTypes.any,
-  options: PropTypes.array.isRequired,
+  options: PropTypes.arrayOf(optionShape).isRequired,
   onChange: PropTypes.func,
   optionNameFn: PropTypes.func,
   optionValueFn: PropTypes.func,
