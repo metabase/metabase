@@ -125,11 +125,12 @@ class VisualizationError extends Component {
       card.dataset_query.type === "native"
     ) {
       // always show errors for native queries
-      const adjustedError = adjustPositions(
-        error,
-        getIn(via, [via.length - 1, "ex-data", "sql"]),
-      );
-      const processedError = stripRemarks(adjustedError);
+      let processedError = error;
+      const origSql = getIn(via, [via.length - 1, "ex-data", "sql"]);
+      if (typeof error === "string" && typeof origSql === "string") {
+        const adjustedError = adjustPositions(error, origSql);
+        processedError = stripRemarks(adjustedError);
+      }
       return (
         <div
           className={cx(className, "QueryError flex align-center text-error")}
