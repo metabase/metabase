@@ -127,7 +127,7 @@ class VisualizationError extends Component {
       // always show errors for native queries
       const adjustedError = adjustPositions(
         error,
-        getIn(via, [0, "ex-data", "sql"]),
+        getIn(via, [via.length - 1, "ex-data", "sql"]),
       );
       const processedError = stripRemarks(adjustedError);
       return (
