@@ -41,6 +41,10 @@ export function browse() {
   return cy.get(".Nav .Icon-table_spaced");
 }
 
+export function filterWidget() {
+  return cy.get("fieldset");
+}
+
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
   selection.contains("Select…").click();
