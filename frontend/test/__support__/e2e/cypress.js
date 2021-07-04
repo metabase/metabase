@@ -7,15 +7,8 @@ import _ from "underscore";
 export const version = require("../../../../version.json");
 
 export * from "./helpers/e2e-setup-helpers";
-
-// Metabase utility functions for commonly-used patterns
-export function selectDashboardFilter(selection, filterName) {
-  selection.contains("Select…").click();
-  popover()
-    .contains(filterName)
-    .click({ force: true });
-}
 export * from "./helpers/e2e-ui-elements-helpers";
+export * from "./helpers/e2e-dashboard-helpers";
 
 export function openTable({ database = 1, table, mode = null } = {}) {
   const url = "/question/new?";
@@ -275,12 +268,6 @@ export function mockSessionProperty(propertyOrObject, value) {
 
 export function mockCurrentUserProperty(propertyOrObject, value) {
   mockProperty(propertyOrObject, value, "/api/user/current");
-}
-
-export function showDashboardCardActions(index = 0) {
-  cy.get(".DashCard")
-    .eq(index)
-    .realHover();
 }
 
 export function generateUsers(count, groupIds) {
