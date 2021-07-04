@@ -13,6 +13,7 @@ export * from "./helpers/e2e-open-table-helpers";
 export * from "./helpers/e2e-database-metadata-helpers";
 export * from "./helpers/e2e-qa-databases-helpers";
 export * from "./helpers/e2e-ad-hoc-question-helpers";
+export * from "./helpers/e2e-enterprise-helpers";
 
 export function setupLocalHostEmail() {
   // Email info
@@ -60,10 +61,6 @@ export function createNativeQuestion(name, query) {
     visualization_settings: {},
   });
 }
-
-export const describeWithToken = Cypress.env("HAS_ENTERPRISE_TOKEN")
-  ? describe
-  : describe.skip;
 
 // TODO: does this really need to be a global helper function?
 export function createBasicAlert({ firstAlert, includeNormal } = {}) {
