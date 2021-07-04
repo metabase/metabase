@@ -6,14 +6,7 @@ import _ from "underscore";
 
 export const version = require("../../../../version.json");
 
-export function snapshot(name) {
-  cy.request("POST", `/api/testing/snapshot/${name}`);
-}
-
-export function restore(name = "default") {
-  cy.log("Restore Data Set");
-  cy.request("POST", `/api/testing/restore/${name}`);
-}
+export * from "./helpers/e2e-setup-helpers";
 
 // various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
 export function popover() {
