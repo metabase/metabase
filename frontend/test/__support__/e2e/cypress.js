@@ -22,16 +22,6 @@ export * from "./helpers/e2e-deprecated-helpers";
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
-export function getIframeBody(selector = "iframe") {
-  return cy
-    .get(selector)
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.null")
-    .then(cy.wrap);
-}
-
 export function generateUsers(count, groupIds) {
   const users = _.range(count).map(index => ({
     first_name: `FirstName ${index}`,
