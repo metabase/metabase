@@ -14,6 +14,7 @@ export * from "./helpers/e2e-database-metadata-helpers";
 export * from "./helpers/e2e-qa-databases-helpers";
 export * from "./helpers/e2e-ad-hoc-question-helpers";
 export * from "./helpers/e2e-enterprise-helpers";
+export * from "./helpers/e2e-mock-app-settings-helpers";
 
 export function setupLocalHostEmail() {
   // Email info
@@ -122,27 +123,6 @@ export function getIframeBody(selector = "iframe") {
     .its("body")
     .should("not.be.null")
     .then(cy.wrap);
-}
-
-function mockProperty(propertyOrObject, value, url) {
-  cy.intercept("GET", url, req => {
-    req.reply(res => {
-      if (typeof propertyOrObject === "object") {
-        Object.assign(res.body, propertyOrObject);
-      }
-      {
-        res.body[propertyOrObject] = value;
-      }
-    });
-  });
-}
-
-export function mockSessionProperty(propertyOrObject, value) {
-  mockProperty(propertyOrObject, value, "/api/session/properties");
-}
-
-export function mockCurrentUserProperty(propertyOrObject, value) {
-  mockProperty(propertyOrObject, value, "/api/user/current");
 }
 
 export function generateUsers(count, groupIds) {
