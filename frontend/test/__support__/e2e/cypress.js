@@ -8,55 +8,6 @@ export const version = require("../../../../version.json");
 
 export * from "./helpers/e2e-setup-helpers";
 
-// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
-export function popover() {
-  return cy.get(".PopoverContainer.PopoverContainer--open");
-}
-
-export function modal() {
-  return cy.get(".ModalContainer .ModalContent");
-}
-
-export function nav() {
-  return cy.get("nav");
-}
-
-export function main() {
-  return cy.get("nav").next();
-}
-
-export function sidebar() {
-  return cy.get("aside");
-}
-
-export function browse() {
-  // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
-  return cy.get(".Nav .Icon-table_spaced");
-}
-
-/**
- * Get the `fieldset` HTML element that we use as a filter widget container.
- *
- * @returns HTMLFieldSetElement
- *
- * @example
- * // Simple SQL filter widget (works for "Text" and "Number" SQL variable types)
- * filterWidget().type("123");
- *
- * @example
- * // Filter widget that opens some other type of a filter picker (search, dropdown, input)
- * filterWidget()
- *  .contains("Search")
- *  .click();
- *
- * @todo Add the ability to choose between multiple widgets using their index.
- * @todo Add the ability to alias the chosen filter widget.
- * @todo Extract into a separate helper file.
- */
-export function filterWidget() {
-  return cy.get("fieldset");
-}
-
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
   selection.contains("Select…").click();
@@ -64,6 +15,7 @@ export function selectDashboardFilter(selection, filterName) {
     .contains(filterName)
     .click({ force: true });
 }
+export * from "./helpers/e2e-ui-elements-helpers";
 
 export function openTable({ database = 1, table, mode = null } = {}) {
   const url = "/question/new?";
