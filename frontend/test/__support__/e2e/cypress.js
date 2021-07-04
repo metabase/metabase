@@ -12,6 +12,7 @@ export * from "./helpers/e2e-dashboard-helpers";
 export * from "./helpers/e2e-open-table-helpers";
 export * from "./helpers/e2e-database-metadata-helpers";
 export * from "./helpers/e2e-qa-databases-helpers";
+export * from "./helpers/e2e-ad-hoc-question-helpers";
 
 export function setupLocalHostEmail() {
   // Email info
@@ -114,18 +115,6 @@ export function remapDisplayValueToFK({ display_value, name, fk } = {}) {
     human_readable_field_id: fk,
     type: "external",
   });
-}
-
-export function adhocQuestionHash(question) {
-  if (question.display) {
-    // without "locking" the display, the QB will run its picking logic and override the setting
-    question = Object.assign({}, question, { displayIsLocked: true });
-  }
-  return btoa(unescape(encodeURIComponent(JSON.stringify(question))));
-}
-
-export function visitQuestionAdhoc(question) {
-  cy.visit("/question#" + adhocQuestionHash(question));
 }
 
 export function getIframeBody(selector = "iframe") {
