@@ -17,6 +17,7 @@ export * from "./helpers/e2e-enterprise-helpers";
 export * from "./helpers/e2e-mock-app-settings-helpers";
 export * from "./helpers/e2e-assertion-helpers";
 export * from "./helpers/e2e-data-model-helpers";
+export * from "./helpers/e2e-misc-helpers";
 
 export function setupLocalHostEmail() {
   // Email info
@@ -35,22 +36,7 @@ export function setupLocalHostEmail() {
   cy.findByText("Send test email").click();
 }
 
-// Find a text field by label text, type it in, then blur the field.
-// Commonly used in our Admin section as we auto-save settings.
-export function typeAndBlurUsingLabel(label, value) {
-  cy.findByLabelText(label)
-    .clear()
-    .type(value)
-    .blur();
-}
-
 Cypress.on("uncaught:exception", (err, runnable) => false);
-
-export function visitAlias(alias) {
-  cy.get(alias).then(url => {
-    cy.visit(url);
-  });
-}
 
 export function createNativeQuestion(name, query) {
   return cy.request("POST", "/api/card", {
@@ -122,20 +108,4 @@ export function generateUsers(count, groupIds) {
 
 export function enableSharingQuestion(id) {
   cy.request("POST", `/api/card/${id}/public_link`);
-}
-
-/**
- * Open native (SQL) editor and alias it.
- *
- * @param {string} alias - The alias that can be used later in the test as `cy.get("@" + alias)`.
- * @example
- * openNativeEditor().type("SELECT 123");
- */
-export function openNativeEditor(alias = "editor") {
-  cy.visit("/");
-  cy.icon("sql").click();
-  return cy
-    .get(".ace_content")
-    .as(alias)
-    .should("be.visible");
 }
