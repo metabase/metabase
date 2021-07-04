@@ -20,7 +20,3 @@ export * from "./helpers/e2e-misc-helpers";
 export * from "./helpers/e2e-deprecated-helpers";
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
-
-export function enableSharingQuestion(id) {
-  cy.request("POST", `/api/card/${id}/public_link`);
-}

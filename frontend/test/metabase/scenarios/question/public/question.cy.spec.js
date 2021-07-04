@@ -1,4 +1,4 @@
-import { enableSharingQuestion, restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PEOPLE } = SAMPLE_DATASET;
@@ -68,4 +68,8 @@ const visitPublicURL = () => {
 
       cy.visit(publicURL);
     });
+};
+
+const enableSharingQuestion = id => {
+  cy.request("POST", `/api/card/${id}/public_link`);
 };
