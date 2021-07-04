@@ -2,7 +2,6 @@ import "@testing-library/cypress/add-commands";
 import "cypress-real-events/support";
 import "@cypress/skip-test/support";
 import "./commands";
-import _ from "underscore";
 
 export const version = require("../../../../version.json");
 
@@ -21,20 +20,6 @@ export * from "./helpers/e2e-misc-helpers";
 export * from "./helpers/e2e-deprecated-helpers";
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
-
-export function generateUsers(count, groupIds) {
-  const users = _.range(count).map(index => ({
-    first_name: `FirstName ${index}`,
-    last_name: `LastName ${index}`,
-    email: `user_${index}@metabase.com`,
-    password: `secure password ${index}`,
-    groupIds,
-  }));
-
-  users.forEach(u => cy.createUserFromRawData(u));
-
-  return users;
-}
 
 export function enableSharingQuestion(id) {
   cy.request("POST", `/api/card/${id}/public_link`);
