@@ -10,6 +10,7 @@ export * from "./helpers/e2e-setup-helpers";
 export * from "./helpers/e2e-ui-elements-helpers";
 export * from "./helpers/e2e-dashboard-helpers";
 export * from "./helpers/e2e-open-table-helpers";
+export * from "./helpers/e2e-database-metadata-helpers";
 
 export function setupLocalHostEmail() {
   // Email info
@@ -38,25 +39,6 @@ export function typeAndBlurUsingLabel(label, value) {
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
-
-export function withDatabase(databaseId, f) {
-  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
-    const database = {};
-    for (const table of body.tables) {
-      const fields = {};
-      for (const field of table.fields) {
-        fields[field.name.toUpperCase()] = field.id;
-      }
-      database[table.name.toUpperCase()] = fields;
-      database[table.name.toUpperCase() + "_ID"] = table.id;
-    }
-    f(database);
-  });
-}
-
-export function withSampleDataset(f) {
-  return withDatabase(1, f);
-}
 
 export function visitAlias(alias) {
   cy.get(alias).then(url => {
