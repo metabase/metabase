@@ -7,14 +7,6 @@ export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }
 
-export function nav() {
-  return cy.get("nav");
-}
-
-export function main() {
-  return cy.get("nav").next();
-}
-
 export function sidebar() {
   return cy.get("aside");
 }
