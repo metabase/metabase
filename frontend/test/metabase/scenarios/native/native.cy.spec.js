@@ -2,6 +2,7 @@ import {
   restore,
   popover,
   modal,
+  filterWidget,
   visitQuestionAdhoc,
   mockSessionProperty,
   openNativeEditor,
@@ -323,7 +324,7 @@ describe("scenarios > question > native", () => {
     cy.log("Reported failing on v0.35.3");
     cy.get(".ace_content").contains(ORIGINAL_QUERY);
     // Filter dropdown field
-    cy.get("fieldset").contains("Filter");
+    filterWidget().contains("Filter");
   });
 
   it("should reorder template tags by drag and drop (metabase#9357)", () => {
@@ -527,7 +528,7 @@ describe("scenarios > question > native", () => {
     });
 
     // Set the filter value
-    cy.get("fieldset")
+    filterWidget()
       .contains("Category")
       .click();
     popover()
@@ -650,7 +651,7 @@ describe("scenarios > question > native", () => {
             parseSpecialCharSequences: false,
           },
         );
-        cy.get("fieldset").type("Gizmo");
+        filterWidget().type("Gizmo");
         cy.get(".NativeQueryEditor .Icon-play").click();
         cy.wait("@dataset");
         cy.findByText("Rustic Paper Wallet");
@@ -676,7 +677,7 @@ describe("scenarios > question > native", () => {
         popover()
           .contains("Number")
           .click();
-        cy.get("fieldset").type("20");
+        filterWidget().type("20");
         cy.get(".NativeQueryEditor .Icon-play").click();
         cy.wait("@dataset").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
