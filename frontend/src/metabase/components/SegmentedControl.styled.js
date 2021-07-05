@@ -13,7 +13,7 @@ export const SegmentedItem = styled.li`
   font-weight: bold;
   cursor: pointer;
   color: ${props => (props.isSelected ? color(props.selectedColor) : null)};
-  padding: 4px 12px;
+  padding: 6px 12px;
 
   border: 1px solid ${color("border")};
   border-right-width: ${props => (props.isLast ? "1px" : 0)};
