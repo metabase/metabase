@@ -2,13 +2,11 @@ import {
   restore,
   mockSessionProperty,
   openNativeEditor,
-  popover,
 } from "__support__/e2e/cypress";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
-
-const currentYearString = new Date().getFullYear().toString();
+import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 
 const DATE_FILTER_SUBTYPES = {
   "Month and Year": {
@@ -106,61 +104,6 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
   );
 });
 
-function setMonthAndYearFilter({ month, year } = {}) {
-  cy.findByText(currentYearString).click();
-  cy.findByText(year).click();
-  cy.findByText(month).click();
-}
-
-function setQuarterAndYearFilter({ quarter, year } = {}) {
-  cy.findByText(currentYearString).click();
-  cy.findByText(year).click();
-  cy.findByText(quarter).click();
-}
-
-function setSingleDateFilter(day) {
-  cy.findByText(day).click();
-}
-
-function setDateRangeFilter({ startDate, endDate } = {}) {
-  cy.findByText(startDate).click();
-  cy.findByText(endDate).click();
-}
-
-function setRelativeDateFilter(term) {
-  cy.findByText(term).click();
-}
-
-function setDateFilter({ condition, quantity, timeBucket } = {}) {
-  if (condition) {
-    cy.get(".AdminSelect")
-      .contains("Previous")
-      .click();
-    popover()
-      .last()
-      .contains(condition)
-      .click();
-  }
-
-  if (quantity) {
-    cy.findByPlaceholderText("30")
-      .clear()
-      .type(quantity);
-  }
-
-  if (timeBucket) {
-    cy.get(".AdminSelect")
-      .contains("Days")
-      .click();
-    popover()
-      .last()
-      .contains(timeBucket)
-      .click();
-  }
-
-  cy.button("Update filter").click();
-}
-
 function openDateFilterPicker(isFilterRequired) {
   isFilterRequired && SQLFilter.toggleRequired();
 
@@ -180,27 +123,27 @@ function dateFilterSelector({
 
   switch (filterType) {
     case "Month and Year":
-      setMonthAndYearFilter(filterValue);
+      DateFilter.setMonthAndYear(filterValue);
       break;
 
     case "Quarter and Year":
-      setQuarterAndYearFilter(filterValue);
+      DateFilter.setQuarterAndYear(filterValue);
       break;
 
     case "Single Date":
-      setSingleDateFilter(filterValue);
+      DateFilter.setSingleDate(filterValue);
       break;
 
     case "Date Range":
-      setDateRangeFilter(filterValue);
+      DateFilter.setDateRange(filterValue);
       break;
 
     case "Relative Date":
-      setRelativeDateFilter(filterValue);
+      DateFilter.setRelativeDate(filterValue);
       break;
 
     case "Date Filter":
-      setDateFilter(filterValue);
+      DateFilter.setAdHocFilter(filterValue);
       break;
 
     default:
