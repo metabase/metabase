@@ -1,6 +1,7 @@
 import styled from "styled-components";
 
 import Icon from "metabase/components/Icon";
+import { breakpointMinSmall } from "metabase/styled-components/theme/media-queries";
 
 export const ToggleMobileSidebarIcon = styled(Icon).attrs({
   ml: 1,
@@ -9,10 +10,9 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
   name: "burger",
   size: 20,
 })`
-  color: {color("text-dark")};
   cursor: pointer;
 
-  @media screen and (min-width: 40em) {
+  ${breakpointMinSmall} {
     display: none;
   }
 `;

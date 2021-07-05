@@ -27,8 +27,6 @@ import {
 
 const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
-// TODO - what's different about this from another sidebar component?
-
 @Collection.loadList({
   /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
     we should eventually refactor code elsewhere in the app to use this by default instead of determining the relationships clientside, but this works in the interim
@@ -150,7 +148,10 @@ class CollectionSidebar extends React.Component {
     const { allFetched } = this.props;
 
     return (
-      <Sidebar role="tree" showMobileSidebar={this.props.showMobileSidebar}>
+      <Sidebar
+        role="tree"
+        shouldDisplayMobileSidebar={this.props.shouldDisplayMobileSidebar}
+      >
         {allFetched ? (
           this.renderContent()
         ) : (

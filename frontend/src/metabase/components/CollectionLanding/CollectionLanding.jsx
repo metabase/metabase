@@ -9,10 +9,12 @@ import CollectionSidebar from "metabase/collections/containers/CollectionSidebar
 import { ContentBox } from "./CollectionLanding.styled";
 
 const CollectionLanding = ({ params: { slug }, children }) => {
-  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [shouldDisplayMobileSidebar, setShouldDisplayMobileSidebar] = useState(
+    false,
+  );
 
   const handleToggleMobileSidebar = () =>
-    setShowMobileSidebar(!showMobileSidebar);
+    setShouldDisplayMobileSidebar(!shouldDisplayMobileSidebar);
 
   const collectionId = Urls.extractCollectionId(slug);
   const isRoot = collectionId === "root";
@@ -23,17 +25,20 @@ const CollectionLanding = ({ params: { slug }, children }) => {
         isRoot={isRoot}
         handleToggleMobileSidebar={handleToggleMobileSidebar}
         collectionId={collectionId}
-        showMobileSidebar={showMobileSidebar}
+        shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
       />
       {/* For now I'm wrapping this here so that we could potentially reuse CollectionContent without
         having the specific page margin and layout concerns, TBD whether that's a good idea or needed
         */}
-      <ContentBox className="border-left" showMobileSidebar={showMobileSidebar}>
+      <ContentBox
+        className="border-left"
+        shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
+      >
         <CollectionContent
           isRoot={isRoot}
           collectionId={collectionId}
           handleToggleMobileSidebar={handleToggleMobileSidebar}
-          showMobileSidebar={showMobileSidebar}
+          shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
         />
       </ContentBox>
       {

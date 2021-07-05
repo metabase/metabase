@@ -3,6 +3,7 @@ import { Box } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import { breakpointMinSmall } from "metabase/styled-components/theme/media-queries";
 
 import { SIDEBAR_WIDTH } from "metabase/collections/constants";
 
@@ -16,9 +17,9 @@ export const Sidebar = styled(Box.withComponent("aside"))`
   padding-top: 32px;
   position: fixed;
   top: 65px;
-  width: ${props => (props.showMobileSidebar ? "100vw" : 0)};
+  width: ${props => (props.shouldDisplayMobileSidebar ? "100vw" : 0)};
 
-  @media screen and (min-width: 40em) {
+  ${breakpointMinSmall} {
     width: ${SIDEBAR_WIDTH};
   }
 `;
@@ -32,7 +33,7 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
 })`
   color: ${color("brand")};
 
-  @media screen and (min-width: 40em) {
+  ${breakpointMinSmall} {
     cursor: pointer;
     display: none;
   }

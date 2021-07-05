@@ -6,11 +6,12 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
-import { ToggleMobileSidebarIcon } from "./Header.styled";
 import Link from "metabase/components/Link";
 import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
+
+import { ToggleMobileSidebarIcon } from "./Header.styled";
 
 export default function Header({
   collection,
