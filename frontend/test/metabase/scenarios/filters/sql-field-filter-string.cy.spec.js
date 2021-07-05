@@ -4,35 +4,10 @@ import {
   openNativeEditor,
 } from "__support__/e2e/cypress";
 
+import { STRING_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
+
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
-
-const STRING_FILTER_SUBTYPES = {
-  String: {
-    term: "Synergistic Granite Chair",
-    representativeResult: "Synergistic Granite Chair",
-  },
-  "String is not": {
-    term: "Synergistic Granite Chair",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "String contains": {
-    term: "Bronze",
-    representativeResult: "Incredible Bronze Pants",
-  },
-  "String does not contain": {
-    term: "Bronze",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "String starts with": {
-    term: "Rustic",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "String ends with": {
-    term: "Hat",
-    representativeResult: "Small Marble Hat",
-  },
-};
 
 describe("scenarios > filters > sql filters > field filter > String", () => {
   beforeEach(() => {
