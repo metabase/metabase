@@ -5,6 +5,7 @@ import {
   openReviewsTable,
   openPeopleTable,
   popover,
+  filterWidget,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
 
@@ -106,7 +107,7 @@ describe("scenarios > question > filter", () => {
         });
       });
 
-      cy.get("fieldset")
+      filterWidget()
         .last()
         .within(() => {
           cy.findByText("Category").click();
@@ -411,7 +412,7 @@ describe("scenarios > question > filter", () => {
         cy.url().should("not.include", "?category=Doohickey");
 
         // Set filter value to the `ID`
-        cy.get("fieldset")
+        filterWidget()
           .contains(/ID/i)
           .click();
         cy.findByPlaceholderText("Enter an ID").type("1");
