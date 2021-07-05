@@ -20,7 +20,7 @@ import CollectionLink from "metabase/collections/components/CollectionLink";
 
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 import {
-  nonPersonalCollection,
+  nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
   getParentPath,
 } from "metabase/collections/utils";
@@ -109,7 +109,7 @@ class CollectionSidebar extends React.Component {
             onClose={this.onClose}
             onOpen={this.onOpen}
             collections={list}
-            filter={nonPersonalCollection}
+            filter={nonPersonalOrArchivedCollection}
             currentCollection={collectionId}
           />
 
