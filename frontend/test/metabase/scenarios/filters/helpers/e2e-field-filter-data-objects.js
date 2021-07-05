@@ -1,49 +1,49 @@
 export const STRING_FILTER_SUBTYPES = {
   String: {
-    term: "Synergistic Granite Chair",
+    value: "Synergistic Granite Chair",
     representativeResult: "Synergistic Granite Chair",
   },
   "String is not": {
-    term: "Synergistic Granite Chair",
+    value: "Synergistic Granite Chair",
     representativeResult: "Rustic Paper Wallet",
   },
   "String contains": {
-    term: "Bronze",
+    value: "Bronze",
     representativeResult: "Incredible Bronze Pants",
   },
   "String does not contain": {
-    term: "Bronze",
+    value: "Bronze",
     representativeResult: "Rustic Paper Wallet",
   },
   "String starts with": {
-    term: "Rustic",
+    value: "Rustic",
     representativeResult: "Rustic Paper Wallet",
   },
   "String ends with": {
-    term: "Hat",
+    value: "Hat",
     representativeResult: "Small Marble Hat",
   },
 };
 
 export const NUMBER_FILTER_SUBTYPES = {
   "Equal to": {
-    term: "4.3",
+    value: "4.3",
     representativeResult: "Aerodynamic Linen Coat",
   },
   "Not equal to": {
-    term: "4.3",
+    value: "4.3",
     representativeResult: "Rustic Paper Wallet",
   },
   Between: {
-    term: ["4.3", "5"],
+    value: ["4.3", "5"],
     representativeResult: "Rustic Paper Wallet",
   },
   "Greater than or equal to": {
-    term: "4.3",
+    value: "4.3",
     representativeResult: "Rustic Paper Wallet",
   },
   "Less than or equal to": {
-    term: "4.3",
+    value: "4.3",
     representativeResult: "Small Marble Shoes",
   },
 };

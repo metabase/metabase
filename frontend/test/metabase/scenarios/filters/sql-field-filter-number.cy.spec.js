@@ -33,13 +33,13 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
   });
 
   Object.entries(NUMBER_FILTER_SUBTYPES).forEach(
-    ([subType, { term, representativeResult }]) => {
+    ([subType, { value, representativeResult }]) => {
       describe(`should work for ${subType}`, () => {
         it("when set through the filter widget", () => {
           FieldFilter.setWidgetType(subType);
 
           FieldFilter.openEntryForm();
-          FieldFilter.addWidgetNumberFilter(term);
+          FieldFilter.addWidgetNumberFilter(value);
 
           SQLFilter.runQuery();
 
@@ -54,7 +54,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
           SQLFilter.toggleRequired();
 
           FieldFilter.openEntryForm({ isFilterRequired: true });
-          FieldFilter.addDefaultNumberFilter(term);
+          FieldFilter.addDefaultNumberFilter(value);
 
           SQLFilter.runQuery();
 
