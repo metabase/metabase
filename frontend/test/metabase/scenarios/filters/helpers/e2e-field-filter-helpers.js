@@ -1,5 +1,4 @@
 import { filterWidget, popover } from "__support__/e2e/cypress";
-import { toggleRequired } from "./e2e-sql-filter-helpers";
 
 // FILTER WIDGET TYPE
 
@@ -87,13 +86,12 @@ export function mapTo({ table, field } = {}) {
 }
 
 /**
- * Opens a field filter entry form. Entry type (input, picker) depends on the underlying field filter type.
+ * Opens a field filter entry form.
+ * Entry type that it opens (input, picker) depends on the underlying field filter type.
  *
  * @param {boolean} isFilterRequired
  */
 export function openEntryForm(isFilterRequired) {
-  isFilterRequired && toggleRequired();
-
   const selector = isFilterRequired
     ? cy.findByText("Enter a default value...")
     : filterWidget();
