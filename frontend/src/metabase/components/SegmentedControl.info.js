@@ -19,6 +19,17 @@ const OPTIONS_WITH_ICONS = [
   { name: "Doohickey", value: 2, icon: "insight" },
 ];
 
+const OPTIONS_WITH_COLORS = [
+  {
+    name: "Gadget",
+    value: 0,
+    icon: "lightbulb",
+    selectedColor: "accent1",
+  },
+  { name: "Gizmo", value: 1, icon: "folder", selectedColor: "accent2" },
+  { name: "Doohickey", value: 2, icon: "insight" },
+];
+
 function SegmentedControlDemo(props) {
   const [value, setValue] = useState(0);
   return (
@@ -33,4 +44,5 @@ function SegmentedControlDemo(props) {
 export const examples = {
   default: <SegmentedControlDemo options={SIMPLE_OPTIONS} />,
   icons: <SegmentedControlDemo options={OPTIONS_WITH_ICONS} />,
+  colored: <SegmentedControlDemo options={OPTIONS_WITH_COLORS} />,
 };

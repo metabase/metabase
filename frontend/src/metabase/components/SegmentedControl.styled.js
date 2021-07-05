@@ -12,7 +12,7 @@ export const SegmentedItem = styled.li`
   align-items: center;
   font-weight: bold;
   cursor: pointer;
-  color: ${props => (props.isSelected ? color("brand") : null)};
+  color: ${props => (props.isSelected ? color(props.selectedColor) : null)};
   padding: 4px 12px;
 
   border: 1px solid ${color("border")};
@@ -25,6 +25,6 @@ export const SegmentedItem = styled.li`
   aria-selected: ${props => props.isSelected};
 
   :hover {
-    color: ${props => (!props.isSelected ? color("brand") : null)};
+    color: ${props => (!props.isSelected ? color(props.selectedColor) : null)};
   }
 `;

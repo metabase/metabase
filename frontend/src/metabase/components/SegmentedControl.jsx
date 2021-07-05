@@ -12,6 +12,11 @@ const optionShape = PropTypes.shape({
   ]).isRequired,
   value: PropTypes.any.isRequired,
   icon: PropTypes.string,
+
+  // Expects a color alias, not a color code
+  // Example: brand, accent1, success
+  // Won't work: red, #000, rgb(0, 0, 0)
+  selectedColor: PropTypes.string,
 });
 
 const propTypes = {
@@ -43,6 +48,7 @@ export function SegmentedControl({
             isFirst={isFirst}
             isLast={isLast}
             onClick={e => onChange(option.value)}
+            selectedColor={option.selectedColor || "brand"}
           >
             {option.icon && <Icon name={option.icon} mr={1} />}
             <input
