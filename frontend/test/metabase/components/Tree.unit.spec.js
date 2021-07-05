@@ -25,7 +25,7 @@ const data = [
 ];
 
 describe("Tree", () => {
-  it("should render items", () => {
+  it("should render collapsed items when selectedId is not specified", () => {
     const { getAllByRole, queryByText } = render(
       <Tree data={data} onSelect={jest.fn()} />,
     );
@@ -33,6 +33,16 @@ describe("Tree", () => {
     expect(queryByText("Item 1")).not.toBeNull();
     expect(queryByText("Item 2")).not.toBeNull();
     expect(queryByText("Item 3")).toBeNull();
+  });
+
+  it("expands tree to the selected item", () => {
+    const { getAllByRole, queryByText } = render(
+      <Tree data={data} onSelect={jest.fn()} selectedId={3} />,
+    );
+    expect(getAllByRole("menuitem")).toHaveLength(3);
+    expect(queryByText("Item 1")).not.toBeNull();
+    expect(queryByText("Item 2")).not.toBeNull();
+    expect(queryByText("Item 3")).not.toBeNull();
   });
 
   it("should render expand and collapse items with children", () => {

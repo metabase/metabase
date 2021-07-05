@@ -18,7 +18,7 @@ const propTypes = {
   onSelect: PropTypes.func.isRequired,
   selectedId: PropTypes.string,
   collection: PropTypes.shape({
-    id: PropTypes.oneOf([
+    id: PropTypes.oneOfType([
       PropTypes.string.isRequired,
       PropTypes.number.isRequired,
     ]),

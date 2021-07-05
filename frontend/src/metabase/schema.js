@@ -101,6 +101,7 @@ CollectionSchema.define({
 });
 
 export const parseSchemaId = id => String(id || "").split(":");
+export const getSchemaName = id => parseSchemaId(id)[1];
 export const generateSchemaId = (dbId, schemaName) =>
   `${dbId}:${schemaName || ""}`;
 

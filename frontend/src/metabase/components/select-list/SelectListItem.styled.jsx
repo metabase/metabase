@@ -35,6 +35,12 @@ export const ItemRoot = styled.li`
   cursor: pointer;
   padding: ${props => VERTICAL_PADDING_BY_SIZE[props.size]} 0.5rem;
   border-radius: 6px;
+  margin-bottom: 2px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
   ${props => props.isSelected && activeItemCss}
 
   &:hover {
