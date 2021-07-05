@@ -6,6 +6,7 @@ import {
 } from "__support__/e2e/cypress";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
+import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 
 const currentYearString = new Date().getFullYear().toString();
 
@@ -64,7 +65,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
 
-    mapFieldFilterTo({
+    FieldFilter.mapTo({
       table: "Products",
       field: "Created At",
     });
@@ -74,7 +75,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     ([subType, { value, representativeResult }]) => {
       describe(`should work for ${subType}`, () => {
         beforeEach(() => {
-          setFilterWidgetType(subType);
+          FieldFilter.setWidgetType(subType);
         });
 
         it("when set through the filter widget", () => {
@@ -104,34 +105,6 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     },
   );
 });
-
-function mapFieldFilterTo({ table, field } = {}) {
-  popover()
-    .contains(table)
-    .click();
-  popover()
-    .contains(field)
-    .click();
-}
-
-/**
- * Set the type for the filter widget.
- *
- * @param {("Text"|"Number"|"Date"|"Field Filter")} type - The allowed strings for the type param.
- *
- * @example
- * setFilterWidgetType("Number");
- */
-function setFilterWidgetType(type) {
-  cy.findByText("Filter widget type")
-    .parent()
-    .find(".AdminSelect")
-    .click();
-
-  popover()
-    .findByText(type)
-    .click();
-}
 
 function setMonthAndYearFilter({ month, year } = {}) {
   cy.findByText(currentYearString).click();
