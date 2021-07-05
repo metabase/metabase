@@ -4,47 +4,11 @@ import {
   openNativeEditor,
 } from "__support__/e2e/cypress";
 
+import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
+
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
-
-const DATE_FILTER_SUBTYPES = {
-  "Month and Year": {
-    value: {
-      month: "September",
-      year: "2017",
-    },
-    representativeResult: "Durable Steel Toucan",
-  },
-  "Quarter and Year": {
-    value: {
-      quarter: "Q2",
-      year: "2017",
-    },
-    representativeResult: "Aerodynamic Linen Coat",
-  },
-  "Single Date": {
-    value: "15",
-    representativeResult: "No results!",
-  },
-  "Date Range": {
-    value: {
-      startDate: "13",
-      endDate: "15",
-    },
-    representativeResult: "No results!",
-  },
-  "Relative Date": {
-    value: "Past 7 days",
-    representativeResult: "No results!",
-  },
-  "Date Filter": {
-    value: {
-      timeBucket: "Years",
-    },
-    representativeResult: "Small Marble Shoes",
-  },
-};
 
 describe("scenarios > filters > sql filters > field filter > Date", () => {
   beforeEach(() => {

@@ -4,31 +4,10 @@ import {
   openNativeEditor,
 } from "__support__/e2e/cypress";
 
+import { NUMBER_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
+
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
-
-const NUMBER_FILTER_SUBTYPES = {
-  "Equal to": {
-    term: "4.3",
-    representativeResult: "Aerodynamic Linen Coat",
-  },
-  "Not equal to": {
-    term: "4.3",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  Between: {
-    term: ["4.3", "5"],
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "Greater than or equal to": {
-    term: "4.3",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "Less than or equal to": {
-    term: "4.3",
-    representativeResult: "Small Marble Shoes",
-  },
-};
 
 describe("scenarios > filters > sql filters > field filter > Number", () => {
   beforeEach(() => {
@@ -54,13 +33,13 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
   });
 
   Object.entries(NUMBER_FILTER_SUBTYPES).forEach(
-    ([subType, { term, representativeResult }]) => {
+    ([subType, { value, representativeResult }]) => {
       describe(`should work for ${subType}`, () => {
         it("when set through the filter widget", () => {
           FieldFilter.setWidgetType(subType);
 
           FieldFilter.openEntryForm();
-          FieldFilter.addWidgetNumberFilter(term);
+          FieldFilter.addWidgetNumberFilter(value);
 
           SQLFilter.runQuery();
 
@@ -75,7 +54,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
           SQLFilter.toggleRequired();
 
           FieldFilter.openEntryForm({ isFilterRequired: true });
-          FieldFilter.addDefaultNumberFilter(term);
+          FieldFilter.addDefaultNumberFilter(value);
 
           SQLFilter.runQuery();
 
