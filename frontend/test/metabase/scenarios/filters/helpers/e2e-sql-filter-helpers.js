@@ -94,10 +94,10 @@ export function runQuery(xhrAlias = "dataset") {
 }
 
 /**
- * Enters parametrized native query into native editor.
+ * Enters parameterized native query into native editor.
  *
  * @param {string} query
  */
-export function enterParametrizedQuery(query) {
+export function enterParameterizedQuery(query) {
   cy.get("@editor").type(query, { parseSpecialCharSequences: false });
 }

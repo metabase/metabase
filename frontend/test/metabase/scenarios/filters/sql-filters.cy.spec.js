@@ -21,7 +21,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
   describe("should work for text", () => {
     beforeEach(() => {
-      SQLFilter.enterParametrizedQuery(
+      SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE products.category = {{textFilter}}",
       );
     });
@@ -52,7 +52,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
   describe("should work for number", () => {
     beforeEach(() => {
-      SQLFilter.enterParametrizedQuery(
+      SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE products.rating = {{numberFilter}}",
       );
 
@@ -86,7 +86,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
   describe("should work for date", () => {
     beforeEach(() => {
-      SQLFilter.enterParametrizedQuery(
+      SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE products.created_at = {{dateFilter}}",
       );
 
