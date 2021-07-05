@@ -5,6 +5,8 @@ import {
   popover,
 } from "__support__/e2e/cypress";
 
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
+
 const NUMBER_FILTER_SUBTYPES = {
   "Equal to": {
     term: "4.3",
@@ -38,10 +40,12 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
     mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
-    enterNativeQuery("SELECT * FROM products WHERE {{filter}}");
+    SQLFilter.enterParameterizedQuery(
+      "SELECT * FROM products WHERE {{filter}}",
+    );
 
-    openPopoverFromDefaultFilterType();
-    setFilterType("Field Filter");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
 
     mapFieldFilterTo({
       table: "Products",
@@ -57,7 +61,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
           setFieldFilterWidgetValue(term);
 
-          runQuery();
+          SQLFilter.runQuery();
 
           cy.get(".Visualization").within(() => {
             cy.findByText(representativeResult);
@@ -67,9 +71,10 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
         it("when set as the default value for a required filter", () => {
           setFilterWidgetType(subType);
 
+          SQLFilter.toggleRequired();
           setRequiredFieldFilterDefaultValue(term);
 
-          runQuery();
+          SQLFilter.runQuery();
 
           cy.get(".Visualization").within(() => {
             cy.findByText(representativeResult);
@@ -80,42 +85,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
   );
 });
 
-function openPopoverFromSelectedFilterType(filterType) {
-  cy.get(".AdminSelect-content")
-    .contains(filterType)
-    .click();
-}
-
-function openPopoverFromDefaultFilterType() {
-  openPopoverFromSelectedFilterType("Text");
-}
-
-function setFilterType(filterType) {
-  popover().within(() => {
-    cy.findByText(filterType).click();
-  });
-}
-
-function runQuery(xhrAlias = "dataset") {
-  cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.wait("@" + xhrAlias);
-  cy.icon("play").should("not.exist");
-}
-
-function enterNativeQuery(query) {
-  cy.get("@editor").type(query, { parseSpecialCharSequences: false });
-}
-
-function toggleRequiredFilter() {
-  cy.findByText("Required?")
-    .parent()
-    .find("a")
-    .click();
-}
-
 function setRequiredFieldFilterDefaultValue(value) {
-  toggleRequiredFilter();
-
   cy.findByText("Enter a default value...").click();
 
   if (Array.isArray(value)) {
