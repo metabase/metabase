@@ -5,6 +5,8 @@ import {
   popover,
 } from "__support__/e2e/cypress";
 
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
+
 const currentYearString = new Date().getFullYear().toString();
 
 const DATE_FILTER_SUBTYPES = {
@@ -55,10 +57,12 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
-    enterNativeQuery("SELECT * FROM products WHERE {{filter}}");
+    SQLFilter.enterParameterizedQuery(
+      "SELECT * FROM products WHERE {{filter}}",
+    );
 
-    openPopoverFromDefaultFilterType();
-    setFilterType("Field Filter");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
 
     mapFieldFilterTo({
       table: "Products",
@@ -76,7 +80,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         it("when set through the filter widget", () => {
           dateFilterSelector({ filterType: subType, filterValue: value });
 
-          runQuery();
+          SQLFilter.runQuery();
 
           cy.get(".Visualization").within(() => {
             cy.findByText(representativeResult);
@@ -90,7 +94,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
             isFilterRequired: true,
           });
 
-          runQuery();
+          SQLFilter.runQuery();
 
           cy.get(".Visualization").within(() => {
             cy.findByText(representativeResult);
@@ -100,32 +104,6 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     },
   );
 });
-
-function openPopoverFromSelectedFilterType(filterType) {
-  cy.get(".AdminSelect-content")
-    .contains(filterType)
-    .click();
-}
-
-function openPopoverFromDefaultFilterType() {
-  openPopoverFromSelectedFilterType("Text");
-}
-
-function setFilterType(filterType) {
-  popover().within(() => {
-    cy.findByText(filterType).click();
-  });
-}
-
-function runQuery(xhrAlias = "dataset") {
-  cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.wait("@" + xhrAlias);
-  cy.icon("play").should("not.exist");
-}
-
-function enterNativeQuery(query) {
-  cy.get("@editor").type(query, { parseSpecialCharSequences: false });
-}
 
 function mapFieldFilterTo({ table, field } = {}) {
   popover()
@@ -210,15 +188,8 @@ function setDateFilter({ condition, quantity, timeBucket } = {}) {
   cy.button("Update filter").click();
 }
 
-function toggleRequiredFilter() {
-  cy.findByText("Required?")
-    .parent()
-    .find("a")
-    .click();
-}
-
 function openDateFilterPicker(isFilterRequired) {
-  isFilterRequired && toggleRequiredFilter();
+  isFilterRequired && SQLFilter.toggleRequired();
 
   const selector = isFilterRequired
     ? cy.findByText("Select a default value…")
@@ -232,34 +203,30 @@ function dateFilterSelector({
   filterValue,
   isFilterRequired = false,
 } = {}) {
+  openDateFilterPicker(isFilterRequired);
+
   switch (filterType) {
     case "Month and Year":
-      openDateFilterPicker(isFilterRequired);
       setMonthAndYearFilter(filterValue);
       break;
 
     case "Quarter and Year":
-      openDateFilterPicker(isFilterRequired);
       setQuarterAndYearFilter(filterValue);
       break;
 
     case "Single Date":
-      openDateFilterPicker(isFilterRequired);
       setSingleDateFilter(filterValue);
       break;
 
     case "Date Range":
-      openDateFilterPicker(isFilterRequired);
       setDateRangeFilter(filterValue);
       break;
 
     case "Relative Date":
-      openDateFilterPicker(isFilterRequired);
       setRelativeDateFilter(filterValue);
       break;
 
     case "Date Filter":
-      openDateFilterPicker(isFilterRequired);
       setDateFilter(filterValue);
       break;
 
