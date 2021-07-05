@@ -1,8 +1,6 @@
 import { filterWidget, popover } from "__support__/e2e/cypress";
 
-/****************************************************************
- *                        FILTER TYPES                          *
- ****************************************************************/
+// FILTER TYPES
 
 /**
  * Opens popover with the list of possible SQL filter types to choose from.
@@ -40,9 +38,7 @@ export function chooseType(filterType) {
   });
 }
 
-/****************************************************************
- *                        FILTER VALUE                          *
- ****************************************************************/
+// FILTER VALUE
 
 /**
  * Enter filter value explicitly through the filter widget.
@@ -64,9 +60,7 @@ export function setDefaultValue(value) {
   cy.findByPlaceholderText("Enter a default value...").type(value);
 }
 
-/****************************************************************
- *                        UI PATTERNS                           *
- ****************************************************************/
+// UI PATTERNS
 
 /**
  * Toggle the required SQL filter on or off. It is off by default.
@@ -78,9 +72,7 @@ export function toggleRequired() {
     .click();
 }
 
-/****************************************************************
- *                        FILTER QUERY                          *
- ****************************************************************/
+// FILTER QUERY
 
 /**
  * Executes native query and waits for the results to load.
