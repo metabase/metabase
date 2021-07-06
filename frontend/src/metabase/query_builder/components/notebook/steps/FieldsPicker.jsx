@@ -52,12 +52,15 @@ export default function FieldsPicker({
           <li
             key={dimension.key()}
             className="px1 pb1 flex align-center cursor-pointer"
-            onClick={() => {
-              onToggleDimension(dimension, !selected.has(dimension.key()));
-            }}
           >
-            <CheckBox checked={selected.has(dimension.key())} className="mr1" />
-            {dimension.displayName()}
+            <CheckBox
+              checked={selected.has(dimension.key())}
+              label={dimension.displayName()}
+              onChange={() => {
+                onToggleDimension(dimension, !selected.has(dimension.key()));
+              }}
+              className="mr1"
+            />
           </li>
         ))}
       </ul>
