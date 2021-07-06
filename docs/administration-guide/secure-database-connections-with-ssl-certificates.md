@@ -15,7 +15,14 @@ A database that allows a JDBC connection, as you'll need to use a connection str
 
 ### Step 1: Download the root certificate from your provider
 
-If you're running Metabase via a Docker container, you should already have the certificates for AWS and Azure. Otherwise, go to your external provider and find a link to download the root certificate for connecting to your database.
+If you're running Metabase via a Docker container, you should already have the certificates for AWS and Azure.
+
+You'll find the certificates in the `/app/certs/` directory in Metabase's Docker image:
+
+- AWS RDS: `/app/certs/rds-combined-ca-bundle.pem`
+- Azure certificate: `/app/certs/DigiCertGlobalRootG2.crt.pem`
+
+If you need a different certificate, you can build your own Docker image. Visit your external provider's page for your database and find a link to download the root certificate for connecting to your database.
 
 ### Step 2: Save the certificate in your Metabase directory
 
@@ -59,5 +66,3 @@ You'll need to include the full connection string here, including the db host, p
 ```
 jdbc:postgresql://db.example.com:port/mydb?user=dbuser&password=dbpassword&ssl=true&sslmode=verify-full&sslrootcert=/path/to/certificate.pem
 ```
-
-
