@@ -45,9 +45,7 @@ function AppErrorCard({ errorInfo }) {
           onClick={() => setHasNewError(false)}
         />
       </div>
-      <pre style={{ height: "20vh" }} className="overflow-auto">
-        {errorInfo.componentStack}
-      </pre>
+      <pre>{errorInfo.componentStack}</pre>
     </CardComponent>
   ) : null;
 }

@@ -10,6 +10,7 @@ export const FullscreenCard = styled(Card)`
   height: 100vh;
   padding: 1rem;
   z-index: 5;
+  overflow: auto;
 `;
 
 export const FixedCard = styled(Card)`
@@ -17,7 +18,9 @@ export const FixedCard = styled(Card)`
   right: 0;
   bottom: 0;
   width: 350px;
-  padding: 1rem;
+  height: 500px;
   margin: 1rem;
+  padding: 1rem;
   z-index: 5;
+  overflow: auto;
 `;
