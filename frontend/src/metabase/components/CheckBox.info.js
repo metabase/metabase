@@ -27,13 +27,18 @@ const rowStyle = {
 
 export const examples = {
   Default: <CheckBoxDemo />,
-  Label: <CheckBoxDemo label="Confirm Stuff" />,
   Label: (
     <div>
       <CheckBoxDemo label="Confirm Stuff" />
       <CheckBoxDemo
         label={<h3 style={{ marginLeft: "8px" }}>Custom element label</h3>}
       />
+    </div>
+  ),
+  Disabled: (
+    <div>
+      <CheckBoxDemo disabled />
+      <CheckBoxDemo label="Confirm Stuff" disabled checked />
     </div>
   ),
   Sizing: (

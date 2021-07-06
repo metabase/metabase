@@ -10,6 +10,7 @@ const propTypes = {
   checked: PropTypes.bool,
   indeterminate: PropTypes.bool,
   label: PropTypes.string,
+  disabled: PropTypes.bool,
   onChange: PropTypes.func,
   onFocus: PropTypes.func,
   onBlur: PropTypes.func,
@@ -36,6 +37,7 @@ function Checkbox({
   label,
   checked,
   indeterminate,
+  disabled = false,
   onChange,
   onFocus,
   onBlur,
@@ -88,7 +90,7 @@ function Checkbox({
   }, [label]);
 
   return (
-    <CheckboxRoot className={className}>
+    <CheckboxRoot className={className} disabled={disabled}>
       <Container>
         <VisibleBox
           checked={checked}
@@ -100,6 +102,7 @@ function Checkbox({
           <Input
             {...props}
             checked={checked}
+            disabled={disabled}
             onChange={onChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
@@ -123,6 +126,13 @@ function Checkbox({
 const CheckboxRoot = styled.label`
   display: block;
   cursor: pointer;
+
+  ${props =>
+    props.disabled &&
+    css`
+      opacity: 0.4;
+      pointer-events: none;
+    `}
 `;
 
 const Container = styled.div`
