@@ -142,11 +142,9 @@ const VisibleBox = styled.span`
 
   ${props =>
     props.isFocused &&
+    !props.checked &&
     css`
-      outline: 1px auto
-        ${props.checked
-          ? color(darken(props.checkedColor))
-          : color(props.checkedColor)};
+      outline: 1px auto ${color(props.checkedColor)};
     `}
 `;
 
