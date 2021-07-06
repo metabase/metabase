@@ -6,6 +6,7 @@ import _ from "underscore";
 import { Box } from "grid-styled";
 
 import { updateSettings } from "metabase/admin/settings/settings";
+import { settingToFormField } from "metabase/admin/settings/utils";
 
 import Form, {
   FormField,
@@ -20,15 +21,6 @@ import CopyWidget from "metabase/components/CopyWidget";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 
 import MetabaseSettings from "metabase/lib/settings";
-
-const settingToFormField = setting => ({
-  name: setting.key,
-  description: setting.description,
-  placeholder: setting.is_env_setting
-    ? t`Using ${setting.env_name}`
-    : setting.placeholder || setting.default,
-  validate: setting.required ? value => !value && "required" : null,
-});
 
 @connect(
   null,

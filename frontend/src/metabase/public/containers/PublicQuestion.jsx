@@ -123,12 +123,12 @@ export default class PublicQuestion extends Component {
     }
   }
 
-  setParameterValue = (id: string, value: string) => {
+  setParameterValue = parameterValues => {
     this.setState(
       {
         parameterValues: {
           ...this.state.parameterValues,
-          [id]: value,
+          ...parameterValues,
         },
       },
       this.run,

@@ -5,7 +5,8 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import java.util.concurrent.locks.ReentrantReadWriteLock))
 
 ;;; --------------------------------------------------- Hierarchy ----------------------------------------------------
 
@@ -13,10 +14,37 @@
   hierarchy
   (make-hierarchy))
 
+
+(defonce ^{:doc "To find out whether a driver has been registered, we need to wait until any current driver-loading
+  operations have finished. Otherwise we can get a \"false positive\" -- see #13114.
+
+  To see whether a driver is registered, we only need to obtain a *read lock* -- multiple threads can have these at
+  once, and they only block if a write lock is held or if a thread is waiting for one (see dox
+  for [[ReentrantReadWriteLock]] for more details.)
+
+  If we're currently in the process of loading a driver namespace, obtain the *write lock* which will prevent other
+ threads from obtaining read locks until it finishes."} ^:private ^ReentrantReadWriteLock load-driver-lock
+  (ReentrantReadWriteLock.))
+
+(defmacro ^:private with-load-driver-read-lock [& body]
+  `(try
+     (.. load-driver-lock readLock lock)
+     ~@body
+     (finally
+       (.. load-driver-lock readLock unlock))))
+
+(defmacro ^:private with-load-driver-write-lock [& body]
+  `(try
+     (.. load-driver-lock writeLock lock)
+     ~@body
+     (finally
+       (.. load-driver-lock writeLock unlock))))
+
 (defn registered?
   "Is `driver` a valid registered driver?"
   [driver]
-  (isa? hierarchy (keyword driver) :metabase.driver/driver))
+  (with-load-driver-read-lock
+    (isa? hierarchy (keyword driver) :metabase.driver/driver)))
 
 (defn concrete?
   "Is `driver` registered, and non-abstract?"
@@ -60,14 +88,17 @@
   [driver]
   (when-not *compile-files*
     (when-not (registered? driver)
-      (u/profile (trs "Load driver {0}" driver)
-        (require-driver-ns driver)
-        ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
+      (with-load-driver-write-lock
+        ;; driver may have become registered while we were waiting for the lock, check again to be sure
         (when-not (registered? driver)
-          (require-driver-ns driver :reload)
-          ;; if *still* not registered, throw an Exception
-          (when-not (registered? driver)
-            (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))
+          (u/profile (trs "Load driver {0}" driver)
+            (require-driver-ns driver)
+            ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
+            (when-not (registered? driver)
+              (require-driver-ns driver :reload)
+              ;; if *still* not registered, throw an Exception
+              (when-not (registered? driver)
+                (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))))
 
 
 ;;; -------------------------------------------------- Registration --------------------------------------------------

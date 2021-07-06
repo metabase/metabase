@@ -212,7 +212,7 @@ export const LdapApi = {
 };
 
 export const MetabaseApi = {
-  db_list: GET("/api/database"),
+  db_list: GET("/api/database", res => res["data"]),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
   db_add_sample_dataset: POST("/api/database/sample_dataset"),
@@ -412,6 +412,7 @@ export const UtilApi = {
 };
 
 export const GeoJSONApi = {
+  load: GET("/api/geojson"),
   get: GET("/api/geojson/:id"),
 };
 

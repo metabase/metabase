@@ -117,7 +117,7 @@
    channels         (su/non-empty [su/Map])}
   ;; do various perms checks as needed. Perms for an Alert == perms for its Card. So to create an Alert you need write
   ;; perms for its Card
-  (api/write-check Card (u/get-id card))
+  (api/write-check Card (u/the-id card))
   ;; ok, now create the Alert
   (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/card->ref)
         new-alert  (api/check-500
@@ -145,10 +145,10 @@
             (tru "Invalid Alert: Alert does not have a Card associated with it"))
     ;; check permissions as needed.
     ;; Check permissions to update existing Card
-    (api/write-check Card (u/get-id (:card alert-before-update)))
+    (api/write-check Card (u/the-id (:card alert-before-update)))
     ;; if trying to change the card, check perms for that as well
     (when card
-      (api/write-check Card (u/get-id card)))
+      (api/write-check Card (u/the-id card)))
     ;; now update the Alert
     (let [updated-alert (pulse/update-alert!
                          (merge

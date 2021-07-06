@@ -37,16 +37,31 @@
             [schema.core :as s])
   (:import java.util.UUID))
 
-(defn- group-names->ids [group-names]
+(defn- group-names->ids
+  "Translate a user's group names to a set of MB group IDs using the configured mappings"
+  [group-names]
   (->> (cond-> group-names (string? group-names) vector)
        (map keyword)
        (mapcat (sso-settings/saml-group-mappings))
        set))
 
-(defn- sync-groups! [user group-names]
+(defn- all-mapped-group-ids
+  "Returns the set of all MB group IDs that have configured mappings"
+  []
+  (-> (sso-settings/saml-group-mappings)
+      vals
+      flatten
+      set))
+
+(defn- sync-groups!
+  "Sync a user's groups based on mappings configured in the SAML settings"
+  [user group-names]
   (when (sso-settings/saml-group-sync)
     (when group-names
-      (integrations.common/sync-group-memberships! user (group-names->ids group-names) false))))
+      (integrations.common/sync-group-memberships! user
+                                                   (group-names->ids group-names)
+                                                   (all-mapped-group-ids)
+                                                   false))))
 
 (s/defn ^:private fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Returns a Session for the given `email`. Will create the user if needed."

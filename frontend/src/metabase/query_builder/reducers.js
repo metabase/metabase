@@ -229,12 +229,7 @@ export const card = handleActions(
 
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
-    [QUERY_COMPLETED]: {
-      next: (state, { payload }) => ({
-        ...state,
-        display: payload.card.display,
-      }),
-    },
+    [QUERY_COMPLETED]: (state, { payload: { card } }) => card,
 
     [CREATE_PUBLIC_LINK]: {
       next: (state, { payload }) => ({ ...state, public_uuid: payload.uuid }),

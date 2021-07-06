@@ -4,8 +4,7 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
-
-import { QuestionPickerItem } from "./QuestionPickerItem";
+import { SelectList } from "metabase/components/select-list";
 
 import { EmptyStateContainer } from "./QuestionList.styled";
 
@@ -52,9 +51,10 @@ export function QuestionList({
         }
 
         return (
-          <ul role="menu">
+          <SelectList>
             {list.map(item => (
-              <QuestionPickerItem
+              <SelectList.Item
+                isHighlighted
                 key={item.id}
                 id={item.id}
                 name={item.getName()}
@@ -62,7 +62,7 @@ export function QuestionList({
                 onSelect={onSelect}
               />
             ))}
-          </ul>
+          </SelectList>
         );
       }}
     </Search.ListLoader>

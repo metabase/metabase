@@ -1,4 +1,8 @@
-import { restore, describeWithToken } from "__support__/e2e/cypress";
+import {
+  restore,
+  describeWithToken,
+  openNativeEditor,
+} from "__support__/e2e/cypress";
 
 describeWithToken("audit > ad-hoc", () => {
   describe("native query with JOIN", () => {
@@ -7,9 +11,8 @@ describeWithToken("audit > ad-hoc", () => {
 
       cy.log("Run ad hoc native query as normal user");
       cy.signInAsNormalUser();
-      cy.visit("/question/new");
-      cy.findByText("Native query").click();
-      cy.get(".ace_content").type("SELECT 123");
+
+      openNativeEditor().type("SELECT 123");
       cy.icon("play")
         .first()
         .click();

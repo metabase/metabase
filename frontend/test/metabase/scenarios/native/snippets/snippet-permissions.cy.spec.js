@@ -158,7 +158,7 @@ describeWithToken("scenarios > question > snippets", () => {
     cy.findByText("snippet 1");
   });
 
-  it.skip("should not display snippet folder as part of collections (metabase#14907)", () => {
+  it("should not display snippet folder as part of collections (metabase#14907)", () => {
     cy.server();
     cy.route("GET", "/api/collection/root").as("collections");
 

@@ -1,18 +1,17 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require [cemerick.friend.credentials :as creds]
-            [cheshire.core :as json]
-            [clj-http.client :as http]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
             [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.email.messages :as email]
             [metabase.events :as events]
+            [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
-            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.setting :as setting]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
@@ -93,19 +92,28 @@
           ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly
           ;; outdated password
           (throw (ex-info (str password-fail-message)
-                   {:status-code 401
-                    :errors      {:password password-fail-snippet}})))
-        ;; password is ok, return new session
-        (create-session! :sso (ldap/fetch-or-create-user! user-info) device-info))
+                          {:status-code 401
+                           :errors      {:password password-fail-snippet}})))
+        ;; password is ok, return new session if user is not deactivated
+        (let [user (ldap/fetch-or-create-user! user-info)]
+          (if (:is_active user)
+            (create-session! :sso (ldap/fetch-or-create-user! user-info) device-info)
+            (throw (ex-info (str disabled-account-message)
+                            {:status-code 401
+                             :errors      {:_error disabled-account-snippet}})))))
       (catch LDAPSDKException e
         (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
 
 (s/defn ^:private email-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password device-info :- request.u/DeviceInfo]
-  (when-let [user (db/select-one [User :id :password_salt :password :last_login], :%lower.email (u/lower-case-en username), :is_active true)]
+  (when-let [user (db/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (pass/verify-password password (:password_salt user) (:password user))
-      (create-session! :password user device-info))))
+      (if (:is_active user)
+        (create-session! :password user device-info)
+        (throw (ex-info (str disabled-account-message)
+                        {:status-code 401
+                         :errors      {:_error disabled-account-snippet}}))))))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
@@ -185,11 +193,11 @@
   (let [request-source (request.u/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
   (throttle-check (forgot-password-throttlers :email)      email)
-  (when-let [{user-id :id, google-auth? :google_auth} (db/select-one [User :id :google_auth]
-                                                        :%lower.email (u/lower-case-en email), :is_active true)]
+  (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
+             (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
     (let [reset-token        (user/set-password-reset-token! user-id)
           password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email! email google-auth? server-name password-reset-url)
+      (email/send-password-reset-email! email google-auth? server-name password-reset-url is-active?)
       (log/info password-reset-url)))
   api/generic-204-no-content)
 
@@ -248,106 +256,26 @@
    (when api/*is-superuser?*
      (setting/properties :admin))))
 
-
-;;; -------------------------------------------------- GOOGLE AUTH ---------------------------------------------------
-
-;; TODO - The more I look at all this code the more I think it should go in its own namespace.
-;; `metabase.integrations.google-auth` would be appropriate, or `metabase.integrations.auth.google` if we decide to
-;; add more 3rd-party SSO options
-
-(defsetting google-auth-client-id
-  (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
-  :visibility :public)
-
-(defsetting google-auth-auto-create-accounts-domain
-  (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
-
-(def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
-
-(defn- google-auth-token-info
-  ([token-info-response]
-   (google-auth-token-info token-info-response (google-auth-client-id)))
-  ([token-info-response client-id]
-   (let [{:keys [status body]} token-info-response]
-     (when-not (= status 200)
-       (throw (ex-info (tru "Invalid Google Auth token.") {:status-code 400})))
-     (u/prog1 (json/parse-string body keyword)
-       (let [audience (:aud <>)
-             audience (if (string? audience) [audience] audience)]
-         (when-not (contains? (set audience) client-id)
-           (throw (ex-info (str (deferred-tru "Google Auth token appears to be incorrect. ")
-                                (deferred-tru "Double check that it matches in Google and Metabase."))
-                           {:status-code 400}))))
-       (when-not (= (:email_verified <>) "true")
-         (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))
-
-;; TODO - are these general enough to move to `metabase.util`?
-(defn- email->domain ^String [email]
-  (last (re-find #"^.*@(.*$)" email)))
-
-(defn- email-in-domain? ^Boolean [email domain]
-  {:pre [(u/email? email)]}
-  (= (email->domain email) domain))
-
-(defn- autocreate-user-allowed-for-email? [email]
-  (when-let [domain (google-auth-auto-create-accounts-domain)]
-    (email-in-domain? email domain)))
-
-(defn check-autocreate-user-allowed-for-email
-  "Throws if an admin needs to intervene in the account creation."
-  [email]
-  (when-not (autocreate-user-allowed-for-email? email)
-    ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific
-    ;; to this situation
-    (throw
-     (ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
-       {:status-code 428}))))
-
-(s/defn ^:private google-auth-create-new-user!
-  [{:keys [email] :as new-user} :- user/NewUser]
-  (check-autocreate-user-allowed-for-email email)
-  ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to
-  ;; log in without Google Auth; this lets us keep the NOT NULL constraints on password / salt without having to make
-  ;; things hairy and only enforce those for non-Google Auth users
-  (user/create-new-google-auth-user! new-user))
-
-(s/defn ^:private google-auth-fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
-  [first-name last-name email device-info :- request.u/DeviceInfo]
-  (when-let [user (or (db/select-one [User :id :last_login] :%lower.email (u/lower-case-en email))
-                      (google-auth-create-new-user! {:first_name first-name
-                                                     :last_name  last-name
-                                                     :email      email}))]
-    (create-session! :sso user device-info)))
-
-(defn do-google-auth
-  "Call to Google to perform an authentication"
-  [{{:keys [token]} :body, :as request}]
-  (let [token-info-response                    (http/post (format google-auth-token-info-url token))
-        {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
-    (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
-    (let [{session-uuid :id, :as session} (api/check-500
-                                           (google-auth-fetch-or-create-user!
-                                            given_name family_name email (request.u/device-info request)))
-          response                        {:id (str session-uuid)}
-          user                            (db/select-one [User :id :is_active], :email email)]
-      (if (and user (:is_active user))
-        (mw.session/set-session-cookie request response session)
-        (throw (ex-info (str disabled-account-message)
-                        {:status-code 400
-                         :errors      {:account disabled-account-snippet}}))))))
-
 (api/defendpoint POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]
   {token su/NonBlankString}
-  (when-not (google-auth-client-id)
+  (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
   (if throttling-disabled?
-    (do-google-auth token)
+    (google/do-google-auth request)
     (http-401-on-error
-      (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
-        (do-google-auth request)))))
+     (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
+       (let [user (google/do-google-auth request)
+             {session-uuid :id, :as session} (create-session! :sso user (request.u/device-info request))
+             response {:id (str session-uuid)}
+             user (db/select-one [User :id :is_active], :email (:email user))]
+         (if (and user (:is_active user))
+           (mw.session/set-session-cookie request response session)
+           (throw (ex-info (str disabled-account-message)
+                           {:status-code 401
+                            :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
   (fn [request respond raise]

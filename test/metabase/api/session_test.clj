@@ -12,6 +12,7 @@
             [metabase.models.setting :as setting]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
@@ -20,8 +21,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo
-           java.util.UUID))
+  (:import java.util.UUID))
 
 ;; one of the tests below compares the way properties for the H2 driver are translated, so we need to make sure it's
 ;; loaded
@@ -43,6 +43,8 @@
 (def ^:private SessionResponse
   {:id (s/pred mt/is-uuid-string? "session")})
 
+(def ^:private session-cookie @#'mw.session/metabase-session-cookie)
+
 (deftest login-test
   (testing "POST /api/session"
     (testing "Test that we can login"
@@ -63,6 +65,14 @@
                         :active             (s/eq true)
                         s/Keyword s/Any}
                        (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+    (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
+      (let [body (assoc (mt/user->credentials :rasta) :remember true)
+            response (mt/client-full-response :post 200 "session" body)]
+        ;; clj-http sets :expires key in response when Max-Age attribute is set
+        (is (get-in response [:cookies session-cookie :expires])))
+      (let [body (assoc (mt/user->credentials :rasta) :remember false)
+            response (mt/client-full-response :post 200 "session" body)]
+        (is (nil? (get-in response [:cookies session-cookie :expires]))))))
     (testing "failure should log an error(#14317)"
       (mt/with-temp User [user]
         (is (schema= [(s/one (s/eq :error)
@@ -72,7 +82,7 @@
                       (s/one (s/eq "Authentication endpoint error")
                              "log message")]
                      (first (mt/with-log-messages-for-level :error
-                              (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))))))))
+                              (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))))))))
 
 (deftest login-validation-test
   (testing "POST /api/session"
@@ -85,7 +95,7 @@
 
     (testing "Test for inactive user (user shouldn't be able to login if :is_active = false)"
       ;; Return same error as incorrect password to avoid leaking existence of user
-      (is (= {:errors {:password "did not match stored password"}}
+      (is (= {:errors {:_error "Your account is disabled."}}
              (mt/client :post 401 "session" (mt/user->credentials :trashbird)))))
 
     (testing "Test for password checking"
@@ -356,123 +366,22 @@
                    :engines :h2 :details-fields first :display-name)))))))
 
 
-;;; ------------------------------------------ TESTS FOR GOOGLE AUTH STUFF -------------------------------------------
+;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 
-;;; tests for email->domain
-(deftest email->domain-test
-  (are [domain email] (is (= domain
-                             (#'session-api/email->domain email))
-                          (format "Domain of email address '%s'" email))
-    "metabase.com"   "cam@metabase.com"
-    "metabase.co.uk" "cam@metabase.co.uk"
-    "metabase.com"   "cam.saul+1@metabase.com"))
-
-;;; tests for email-in-domain?
-(deftest email-in-domain-test
-  (are [in-domain? email domain] (is (= in-domain?
-                                        (#'session-api/email-in-domain? email domain))
-                                     (format "Is email '%s' in domain '%s'?" email domain))
-    true  "cam@metabase.com"          "metabase.com"
-    false "cam.saul+1@metabase.co.uk" "metabase.com"
-    true  "cam.saul+1@metabase.com"   "metabase.com"))
-
-;;; tests for autocreate-user-allowed-for-email?
-(deftest allow-autocreation-test
-  (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-    (are [allowed? email] (is (= allowed?
-                                 (#'session-api/autocreate-user-allowed-for-email? email))
-                              (format "Can we autocreate an account for email '%s'?" email))
-      true  "cam@metabase.com"
-      false "cam@expa.com")))
-
-(deftest google-auth-create-new-user!-test
-  (testing "shouldn't be allowed to create a new user via Google Auth if their email doesn't match the auto-create accounts domain"
-    (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
-      (is (thrown?
-           clojure.lang.ExceptionInfo
-           (#'session-api/google-auth-create-new-user! {:first_name "Rasta"
-                                                        :last_name  "Toucan"
-                                                        :email      "rasta@metabase.com"})))))
-
-  (testing "should totally work if the email domains match up"
-    (et/with-fake-inbox
-      (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
-                                         admin-email                             "rasta@toucans.com"]
-        (try
-          (let [user (#'session-api/google-auth-create-new-user! {:first_name "Rasta"
-                                                                  :last_name  "Toucan"
-                                                                  :email      "rasta@sf-toucannery.com"})]
-            (is (= {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
-                   (select-keys user [:first_name :last_name :email]))))
-          (finally
-            (db/delete! User :email "rasta@sf-toucannery.com")))))))
-
-
-;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
-
-(deftest google-auth-token-info-tests
-  (testing "Throws exception"
-    (testing "for non-200 status"
-      (is (= [400 "Invalid Google Auth token."]
-             (try
-               (#'session-api/google-auth-token-info {:status 400} "")
-               (catch Exception e
-                 [(-> e ex-data :status-code) (.getMessage e)])))))
-
-    (testing "for invalid data."
-      (is (= [400 "Google Auth token appears to be incorrect. Double check that it matches in Google and Metabase."]
-             (try
-               (#'session-api/google-auth-token-info
-                {:status 200
-                 :body   "{\"aud\":\"BAD-GOOGLE-CLIENT-ID\"}"}
-                "PRETEND-GOOD-GOOGLE-CLIENT-ID")
-               (catch Exception e
-                 [(-> e ex-data :status-code) (.getMessage e)]))))
-      (is (= [400 "Email is not verified."]
-             (try
-               (#'session-api/google-auth-token-info
-                {:status 200
-                 :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
-                              "\"email_verified\":false}")}
-                "PRETEND-GOOD-GOOGLE-CLIENT-ID")
-               (catch Exception e
-                 [(-> e ex-data :status-code) (.getMessage e)]))))
-      (is (= {:aud            "PRETEND-GOOD-GOOGLE-CLIENT-ID"
-              :email_verified "true"}
-             (try
-               (#'session-api/google-auth-token-info
-                {:status 200
-                 :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
-                              "\"email_verified\":\"true\"}")}
-                "PRETEND-GOOD-GOOGLE-CLIENT-ID")
-               (catch Exception e
-                 [(-> e ex-data :status-code) (.getMessage e)]))))))
-
-  (testing "Supports multiple :aud token data fields"
-    (let [token-1 "GOOGLE-CLIENT-ID-1"
-          token-2 "GOOGLE-CLIENT-ID-2"]
-      (is (= [token-1 token-2]
-             (:aud (#'session-api/google-auth-token-info
-                    {:status 200
-                     :body   (format "{\"aud\":[\"%s\",\"%s\"],\"email_verified\":\"true\"}"
-                                     token-1
-                                     token-2)}
-                    token-1)))))))
-
-(deftest google-auth-tests
-  (mt/with-temporary-setting-values [google-auth-client-id "PRETEND-GOOD-GOOGLE-CLIENT-ID"]
-    (testing "with an active account"
-      (mt/with-temp User [user {:email "test@metabase.com" :is_active true}]
-        (with-redefs [http/post (fn [url] {:status 200
-                                           :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
-                                                        "\"email_verified\":\"true\","
-                                                        "\"first_name\":\"test\","
-                                                        "\"last_name\":\"user\","
-                                                        "\"email\":\"test@metabase.com\"}")})]
-
-          (let [result (session-api/do-google-auth {:body {:token "foo"}})]
-            (is (= 200 (:status result)))))))
-    (testing "with a disabled account"
+(deftest google-auth-test
+  (testing "POST /google_auth"
+    (mt/with-temporary-setting-values [google-auth-client-id "PRETEND-GOOD-GOOGLE-CLIENT-ID"]
+      (testing "Google auth works with an active account"
+        (mt/with-temp User [user {:email "test@metabase.com" :is_active true}]
+          (with-redefs [http/post (fn [url] {:status 200
+                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                                                          "\"email_verified\":\"true\","
+                                                          "\"first_name\":\"test\","
+                                                          "\"last_name\":\"user\","
+                                                          "\"email\":\"test@metabase.com\"}")})]
+            (is (schema= SessionResponse
+                         (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
+      (testing "Google auth throws exception for a disabled account"
       (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
         (with-redefs [http/post (fn [url] {:status 200
                                            :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
@@ -480,46 +389,8 @@
                                                         "\"first_name\":\"test\","
                                                         "\"last_name\":\"user\","
                                                         "\"email\":\"test@metabase.com\"}")})]
-          (is (thrown-with-msg?
-               ExceptionInfo
-               #"Your account is disabled. Please contact your administrator."
-               (session-api/do-google-auth {:body {:token "foo"}}))))))))
-
-;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
-
-(deftest google-auth-fetch-or-create-user!-test
-  (testing "test that an existing user can log in with Google auth even if the auto-create accounts domain is different from"
-    (mt/with-temp User [user {:email "cam@sf-toucannery.com"}]
-      (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-        (testing "their account should return a Session"
-          (is (schema= {:id       UUID
-                        s/Keyword s/Any}
-                       (#'session-api/google-auth-fetch-or-create-user!
-                        "Cam" "Saul" "cam@sf-toucannery.com"
-                        mock-device-info)))))))
-
-  (testing "test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception"
-    (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
-                                       admin-email                             "rasta@toucans.com"]
-      (is (thrown?
-           clojure.lang.ExceptionInfo
-           (#'session-api/google-auth-fetch-or-create-user!
-            "Rasta" "Can" "rasta@sf-toucannery.com"
-            mock-device-info)))))
-
-  (testing "test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created"
-    (et/with-fake-inbox
-      (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
-                                         admin-email                             "rasta@toucans.com"]
-        (try
-          (is (schema= {:id       UUID
-                        s/Keyword s/Any}
-                       (#'session-api/google-auth-fetch-or-create-user!
-                        "Rasta" "Toucan" "rasta@sf-toucannery.com"
-                        mock-device-info)))
-          (finally
-            (db/delete! User :email "rasta@sf-toucannery.com")))))))
-
+          (is (= {:errors {:account "Your account is disabled."}}
+                         (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
 
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 
@@ -547,6 +418,15 @@
       ;; NOTE: there's a different password in LDAP for Lucky
       (is (= {:errors {:password "did not match stored password"}}
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
+
+    (testing "Test that a deactivated user cannot login with LDAP"
+      (let [user-id (test-users/user->id :rasta)]
+        (try
+          (db/update! User user-id :is_active false)
+          (is (= {:errors {:_error "Your account is disabled."}}
+                 (mt/client :post 401 "session" (mt/user->credentials :rasta))))
+          (finally
+            (db/update! User user-id :is_active true)))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]

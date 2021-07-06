@@ -75,6 +75,7 @@
    ;; returned for Card, Dashboard, Pulse, and Collection
    :collection_id       :integer
    :collection_name     :text
+   :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
    :favorite            :boolean
@@ -162,7 +163,7 @@
 ;; Databases can't be archived
 (defmethod archived-where-clause (class Database)
   [model archived?]
-  [:= 1 1])
+  [:= 1 (if archived? 2 1)])
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause (class Table)
@@ -323,7 +324,8 @@
   (let [match             (wildcard-match (scoring/normalize query))
         columns-to-search (->> all-search-columns
                                (filter (fn [[k v]] (= v :text)))
-                               (map first))
+                               (map first)
+                               (remove #{:collection_authority_level}))
         case-clauses      (as-> columns-to-search <>
                                 (map (fn [col] [:like (hsql/call :lower col) match]) <>)
                                 (interleave <> (repeat 0))

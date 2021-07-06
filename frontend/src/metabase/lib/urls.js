@@ -49,6 +49,10 @@ export function question(card, hash = "", query = "") {
   return `${path}${query}${hash}`;
 }
 
+export function serializedQuestion(card) {
+  return question(null, card);
+}
+
 export const extractQueryParams = (query: Object): Array => {
   return [].concat(...Object.entries(query).map(flattenParam));
 };
@@ -159,6 +163,10 @@ export function collection(collection) {
     : slugg(collection.name);
 
   return appendSlug(`/collection/${collection.id}`, slug);
+}
+
+export function isCollectionPath(path) {
+  return /collection\/.*/.test(path);
 }
 
 export function label(label) {

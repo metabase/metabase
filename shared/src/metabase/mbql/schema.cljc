@@ -442,7 +442,7 @@
 
 (def arithmetic-expressions
   "Set of valid arithmetic expression clause keywords."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp})
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case})
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
@@ -565,8 +565,7 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
-(def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log))
+(declare ArithmeticExpression*)
 
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
@@ -726,6 +725,9 @@
 
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
+
+(def ^:private ArithmeticExpression*
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case))
 
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
@@ -990,7 +992,7 @@
     (every-pred
      (some-fn :source-table :source-query)
      (complement (every-pred :source-table :source-query)))
-    "Joins can must have either a `source-table` or `source-query`, but not both.")))
+    "Joins must have either a `source-table` or `source-query`, but not both.")))
 
 (def Joins
   "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique."

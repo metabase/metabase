@@ -79,10 +79,10 @@
   [table]
   (doall
    (map-indexed (fn [new-position field]
-                  (db/update! Field (u/get-id field) :position new-position))
+                  (db/update! Field (u/the-id field) :position new-position))
                 ;; Can't use `select-field` as that returns a set while we need an ordered list
                 (db/select [Field :id]
-                  :table_id  (u/get-id table)
+                  :table_id  (u/the-id table)
                   {:order-by (case (:field_order table)
                                :custom       [[:custom_position :asc]]
                                :smart        [[(hsql/call :case
@@ -99,7 +99,7 @@
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
   (= (db/select-ids Field
-       :table_id (u/get-id table)
+       :table_id (u/the-id table)
        :active   true)
      (set field-ordering)))
 
@@ -107,7 +107,7 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
-  (db/update! Table (u/get-id table) :field_order :custom)
+  (db/update! Table (u/the-id table) :field_order :custom)
   (doall
    (map-indexed (fn [position field-id]
                   (db/update! Field field-id {:position        position

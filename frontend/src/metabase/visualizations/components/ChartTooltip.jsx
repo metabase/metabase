@@ -22,7 +22,7 @@ export default class ChartTooltip extends Component {
       // Array of key, value, col: { data: [{ key, value, col }], element, event }
       return hovered.data.map(d => ({
         ...d,
-        key: d.key || getFriendlyName(d.col),
+        key: d.key || (d.col && getFriendlyName(d.col)),
       }));
     } else if (hovered.value !== undefined || hovered.dimensions) {
       // ClickObject: { value, column, dimensions: [{ value, column }], element, event }

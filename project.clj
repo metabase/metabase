@@ -153,7 +153,7 @@
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
-   [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
+   [pretty "1.0.5"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.12"]                                        ; Data schema declaration and validation library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
@@ -244,14 +244,14 @@
     :env
     {:mb-run-mode       "dev"
      :mb-field-filter-operators-enabled "true"
-     :mb-test-setting-1 "ABCDEFG"}
+     :mb-test-env-setting "ABCDEFG"}
 
     :jvm-opts
     ["-Dlogfile.path=target/log"]
 
     :repl-options
     {:init-ns user ; starting in the user namespace is a lot faster than metabase.core since it has less deps
-     :timeout 180000}}
+     :timeout 240000}}
 
    ;; output test results in JUnit XML format
    :junit
@@ -299,7 +299,7 @@
      :repl-options
      {:init    (do (require 'metabase.core)
                    (metabase.core/-main))
-      :timeout 180000}}]
+      :timeout 240000}}]
 
    ;; DISABLED FOR NOW SINCE IT'S BROKEN -- SEE #12181
    ;; start the dev HTTP server with 'lein ring server'

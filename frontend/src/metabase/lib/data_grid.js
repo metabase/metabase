@@ -354,8 +354,18 @@ function addValueColumnNodes(nodes, valueColumns) {
 // This inserts nodes into the left header tree for subtotals.
 // We also mark nodes with `hasSubtotal` to display collapsing UI
 function addSubtotals(rowColumnTree, formatters, showSubtotalsByColumn) {
+  // For top-level items we want to show subtotal even if they have only one child
+  // Except the case when top-level items have flat structure
+  // (meaning all of the items have just one child)
+  // If top-level items are flat, subtotals will just repeat their corresponding row
+  // https://github.com/metabase/metabase/issues/15211
+  // https://github.com/metabase/metabase/pull/16566
+  const notFlat = rowColumnTree.some(item => item.children.length > 1);
+
   return rowColumnTree.flatMap(item =>
-    addSubtotal(item, formatters, showSubtotalsByColumn),
+    addSubtotal(item, formatters, showSubtotalsByColumn, {
+      shouldShowSubtotal: notFlat || item.children.length > 1,
+    }),
   );
 }
 
@@ -363,8 +373,9 @@ function addSubtotal(
   item,
   [formatter, ...formatters],
   [isSubtotalEnabled, ...showSubtotalsByColumn],
+  { shouldShowSubtotal = false } = {},
 ) {
-  const hasSubtotal = item.children.length > 1 && isSubtotalEnabled;
+  const hasSubtotal = isSubtotalEnabled && shouldShowSubtotal;
   const subtotal = hasSubtotal
     ? [
         {
@@ -382,11 +393,13 @@ function addSubtotal(
   const node = {
     ...item,
     hasSubtotal,
-    children: item.children.flatMap(item =>
+    children: item.children.flatMap(child =>
       // add subtotals until the last level
-      item.children.length > 0
-        ? addSubtotal(item, formatters, showSubtotalsByColumn)
-        : item,
+      child.children.length > 0
+        ? addSubtotal(child, formatters, showSubtotalsByColumn, {
+            shouldShowSubtotal: child.children.length > 1,
+          })
+        : child,
     ),
   };
 

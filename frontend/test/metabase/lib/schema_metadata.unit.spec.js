@@ -8,10 +8,12 @@ import {
   LOCATION,
   COORDINATE,
   PRIMARY_KEY,
+  FOREIGN_KEY,
   foreignKeyCountsByOriginTable,
   isEqualsOperator,
   doesOperatorExist,
   getOperatorByTypeAndName,
+  getFilterOperators,
   isFuzzyOperator,
 } from "metabase/lib/schema_metadata";
 
@@ -135,6 +137,82 @@ describe("schema_metadata", () => {
         validArgumentsFilters: [expect.any(Function), expect.any(Function)],
         verboseName: "Between",
       });
+    });
+
+    it("should have 'between' filter operator for the coordinate type", () => {
+      expect(getOperatorByTypeAndName(COORDINATE, "between")).toEqual({
+        name: "between",
+        numFields: 2,
+        validArgumentsFilters: [expect.any(Function), expect.any(Function)],
+        verboseName: "Between",
+      });
+    });
+
+    it("should return a metadata object for primary key", () => {
+      expect(getOperatorByTypeAndName(PRIMARY_KEY, "=")).toEqual({
+        multi: true,
+        name: "=",
+        numFields: 1,
+        validArgumentsFilters: [expect.any(Function)],
+        verboseName: "Is",
+      });
+    });
+
+    it("should return a metadata object for foreign key", () => {
+      expect(getOperatorByTypeAndName(FOREIGN_KEY, "between")).toEqual({
+        name: "between",
+        numFields: 2,
+        validArgumentsFilters: [expect.any(Function), expect.any(Function)],
+        verboseName: "Between",
+      });
+    });
+  });
+
+  describe("getFilterOperators", () => {
+    it("should return proper filter operators for text/Integer primary key", () => {
+      expect(
+        getFilterOperators({
+          effective_type: TYPE.Integer,
+          semantic_type: TYPE.PK,
+        }).map(op => op.name),
+      ).toEqual([
+        "=",
+        "!=",
+        ">",
+        "<",
+        "between",
+        ">=",
+        "<=",
+        "is-null",
+        "not-null",
+      ]);
+    });
+    it("should return proper filter operators for type/Text primary key", () => {
+      expect(
+        getFilterOperators({
+          effective_type: TYPE.Text,
+          semantic_type: TYPE.PK,
+        }).map(op => op.name),
+      ).toEqual([
+        "=",
+        "!=",
+        "contains",
+        "does-not-contain",
+        "is-null",
+        "not-null",
+        "is-empty",
+        "not-empty",
+        "starts-with",
+        "ends-with",
+      ]);
+    });
+    it("should return proper filter operators for type/TextLike foreign key", () => {
+      expect(
+        getFilterOperators({
+          effective_type: TYPE.TextLike,
+          semantic_type: TYPE.FK,
+        }).map(op => op.name),
+      ).toEqual(["=", "!=", "is-null", "not-null", "is-empty", "not-empty"]);
     });
   });
 

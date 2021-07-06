@@ -357,17 +357,27 @@
       (testing "Database details *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
                                 (disj :details))]
-          (doseq [db ((mt/user->client :rasta) :get 200 "database")]
+          (doseq [db (:data ((mt/user->client :rasta) :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
                      (set (keys db)))))))))
+
+    (doseq [query-param ["?limit=2"
+                         "?limit=2&offset=1"]]
+      (testing query-param
+        (mt/with-temp*
+          [Database [{db-id :id1, db-name :name1} {:engine (u/qualified-name ::test-driver)}]
+           Database [{db-id :id2, db-name :name2} {:engine (u/qualified-name ::test-driver)}]]
+
+          (let [db (:data ((mt/user->client :rasta) :get 200 (str "database" query-param)))]
+            (is (= 2 (count db)))))))
 
     ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
     (doseq [query-param ["?include_tables=true"
                          "?include=tables"]]
       (testing query-param
         (mt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
-          (doseq [db ((mt/user->client :rasta) :get 200 (str "database" query-param))]
+          (doseq [db (:data ((mt/user->client :rasta) :get 200 (str "database" query-param)))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= (expected-tables db)
                      (:tables db))))))))))
@@ -381,7 +391,7 @@
                 :id                 mbql.s/saved-questions-virtual-database-id
                 :features           ["basic-aggregations"]
                 :is_saved_questions true}
-               (last ((mt/user->client :lucky) :get 200 "database?saved=true"))))))
+               (last (:data ((mt/user->client :lucky) :get 200 "database?saved=true")))))))
 
     (testing "We should not include the saved questions virtual DB if there aren't any cards"
       (not-any?
@@ -389,7 +399,7 @@
        ((mt/user->client :lucky) :get 200 "database?saved=true")))
     (testing "Omit virtual DB if nested queries are disabled"
       (tu/with-temporary-setting-values [enable-nested-queries false]
-        (every? some? ((mt/user->client :lucky) :get 200 "database?saved=true"))))))
+        (every? some? (:data ((mt/user->client :lucky) :get 200 "database?saved=true")))))))
 
 (deftest fetch-databases-with-invalid-driver-test
   (testing "GET /api/database"
@@ -400,7 +410,7 @@
                           "?saved=true"
                           "?include=tables"]]
             (testing (format "\nparams = %s" (pr-str params))
-              (let [db-ids (set (map :id ((mt/user->client :lucky) :get 200 (str "database" params))))]
+              (let [db-ids (set (map :id (:data ((mt/user->client :lucky) :get 200 (str "database" params)))))]
                 (testing "DB should still come back, even though driver is invalid :shrug:"
                   (is (contains? db-ids db-id)))))))))))
 
@@ -436,14 +446,14 @@
       (letfn [(fetch-virtual-database []
                 (some #(when (= (:name %) "Saved Questions")
                          %)
-                      ((mt/user->client :crowberto) :get 200 (str "database" params))))]
+                      (:data ((mt/user->client :crowberto) :get 200 (str "database" params)))))]
         (testing "Check that we get back 'virtual' tables for Saved Questions"
           (testing "The saved questions virtual DB should be the last DB in the list"
             (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
               ;; run the Card which will populate its result_metadata column
               ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card)))
               ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
-              (let [response (last ((mt/user->client :crowberto) :get 200 (str "database" params)))]
+              (let [response (last (:data ((mt/user->client :crowberto) :get 200 (str "database" params))))]
                 (is (schema= SavedQuestionsDB
                              response))
                 (check-tables-included response (virtual-table-for-card card)))))
@@ -467,7 +477,7 @@
               ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
             ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
             ;; Collection name as their Schema
-            (let [response (last ((mt/user->client :crowberto) :get 200 (str "database" params)))]
+            (let [response (last (:data ((mt/user->client :crowberto) :get 200 (str "database" params))))]
               (is (schema= SavedQuestionsDB
                            response))
               (check-tables-included

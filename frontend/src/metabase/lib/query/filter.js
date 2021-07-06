@@ -78,8 +78,10 @@ export function isStandard(filter: FilterClause): boolean {
     return false;
   }
 
+  const isStandardLiteral = arg => isLiteral(arg) || typeof arg === "boolean";
+
   // undefined args represents an incomplete filter (still standard, but not valid)
-  const isLiteralOrUndefined = arg => (arg ? isLiteral(arg) : true);
+  const isLiteralOrUndefined = arg => (arg ? isStandardLiteral(arg) : true);
 
   const [op, field, ...args] = filter;
 

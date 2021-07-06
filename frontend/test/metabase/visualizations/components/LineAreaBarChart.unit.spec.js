@@ -27,7 +27,7 @@ const millisecondCard = {
       },
     ],
     creator: {
-      email: "atte@metabase.com",
+      email: "atte@metabase.test",
       first_name: "Atte",
       last_login: "2017-07-21T17:51:23.181Z",
       is_qbnewb: false,
@@ -157,7 +157,7 @@ const dateTimeCard = {
       },
     ],
     creator: {
-      email: "atte@metabase.com",
+      email: "atte@metabase.test",
       first_name: "Atte",
       last_login: "2017-07-21T17:51:23.181Z",
       is_qbnewb: false,
@@ -334,7 +334,7 @@ const numberCard = {
       },
     ],
     creator: {
-      email: "atte@metabase.com",
+      email: "atte@metabase.test",
       first_name: "Atte",
       last_login: "2017-07-21T17:51:23.181Z",
       is_qbnewb: false,

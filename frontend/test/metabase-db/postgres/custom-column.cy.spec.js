@@ -9,7 +9,7 @@ describe("postgres > question > custom columns", () => {
     addPostgresDatabase(PG_DB_NAME);
   });
 
-  it.skip("should allow using strings in filter based on a custom column (metabase#13751)", () => {
+  it("should allow using strings in filter based on a custom column (metabase#13751)", () => {
     const CC_NAME = "C-States";
 
     cy.visit("/question/new");

@@ -121,7 +121,7 @@ export default class SelectPicker extends Component {
           </div>
         )}
         <div
-          className="px1 pt1"
+          className="px1 pt1 PopoverBody--marginBottom"
           style={{ maxHeight: "400px", overflowY: "scroll" }}
         >
           {placeholder ? <h5>{placeholder}</h5> : null}

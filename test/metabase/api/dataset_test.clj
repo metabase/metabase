@@ -99,6 +99,7 @@
                   :dashboard_id nil
                   :error        nil
                   :id           true
+                  :cache_hit    false
                   :database_id  (mt/id)
                   :started_at   true
                   :running_time true}

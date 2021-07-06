@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import Parameters from "metabase/parameters/components/Parameters";
+import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import Select, { Option } from "metabase/components/Select";
 
 import { color } from "metabase/lib/colors";

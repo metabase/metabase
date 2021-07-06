@@ -1,4 +1,4 @@
-{:paths ["src"]
+{:paths ["src" "resources"]
 
  :deps
  {common/common               {:local/root "../common"}
@@ -9,5 +9,9 @@
  :aliases
  {:test {:extra-paths ["test"]
          :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
-                                                  :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}}
+                                                  :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}
+
+                       ;; the following deps are to have jars on the classpath for testing
+                       org.apache.commons/commons-math3 {:mvn/version "3.6.1"}
+                       net.redhogs.cronparser/cron-parser-core {:mvn/version "3.4"}}
          :main-opts   ["-m" "cognitect.test-runner"]}}}

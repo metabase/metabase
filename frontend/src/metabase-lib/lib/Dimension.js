@@ -749,10 +749,18 @@ export class FieldDimension extends Dimension {
 
     // Add temporal dimensions
     if (field.isDate() && !this.isIntegerFieldId()) {
-      const temporalDimensions = DATETIME_UNITS.map(unit =>
-        this.withTemporalUnit(unit),
-      );
+      const temporalDimensions = _.difference(
+        DATETIME_UNITS,
+        dimensions.map(dim => dim.temporalUnit()),
+      ).map(unit => this.withTemporalUnit(unit));
       dimensions = [...dimensions, ...temporalDimensions];
+    }
+
+    const baseType = this.getOption("base-type");
+    if (baseType) {
+      dimensions = dimensions.map(dimension =>
+        dimension.withOption("base-type", baseType),
+      );
     }
 
     return dimensions;
@@ -778,6 +786,11 @@ export class FieldDimension extends Dimension {
     const joinAlias = this.joinAlias();
     if (joinAlias) {
       dimension = dimension.withJoinAlias(joinAlias);
+    }
+
+    const baseType = this.getOption("base-type");
+    if (baseType) {
+      dimension = dimension.withOption("base-type", baseType);
     }
 
     return dimension;

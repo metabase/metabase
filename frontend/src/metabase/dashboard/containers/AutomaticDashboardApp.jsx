@@ -18,7 +18,7 @@ import Link from "metabase/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
-import Parameters from "metabase/parameters/components/Parameters";
+import Parameters from "metabase/parameters/components/Parameters/Parameters";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
