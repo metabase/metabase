@@ -1,9 +1,9 @@
 import React from "react";
 
-import { Tree } from "../components/tree";
-import { Sidebar } from "../components/sidebar";
 import TextInput from "metabase/components/TextInput";
 import Icon from "metabase/components/Icon";
+import { Tree } from "metabase/components/tree";
+import { Sidebar } from "../components/sidebar";
 
 export function NewDataPermissionsPage() {
   const data = [
@@ -67,7 +67,7 @@ export function NewDataPermissionsPage() {
         />
       </Sidebar.Header>
       <Sidebar.Content>
-        <Tree data={data} />
+        <Tree variant="admin" data={data} />
       </Sidebar.Content>
     </Sidebar>
   );
