@@ -100,7 +100,7 @@ export default class FilterOptions extends Component {
             onClick={() => this.toggleOptionValue(name)}
           >
             <CheckBox
-              color="purple"
+              checkedColor="accent2"
               checked={this.getOptionValue(name)}
               onChange={() => this.toggleOptionValue(name)}
             />

@@ -1,93 +1,170 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
+import styled, { css } from "styled-components";
 
 import Icon from "metabase/components/Icon";
 
-import { color as c, normal as defaultColors } from "metabase/lib/colors";
-import { KEYCODE_SPACE } from "metabase/lib/keyboard";
+import { color, darken } from "metabase/lib/colors";
 
-export default class CheckBox extends Component {
-  static propTypes = {
-    checked: PropTypes.bool,
-    indeterminate: PropTypes.bool,
-    onChange: PropTypes.func,
-    color: PropTypes.oneOf(Object.keys(defaultColors)),
-    size: PropTypes.number, // TODO - this should probably be a concrete set of options
-    padding: PropTypes.number, // TODO - the component should pad itself properly based on the size
-    noIcon: PropTypes.bool,
-  };
+const propTypes = {
+  checked: PropTypes.bool,
+  indeterminate: PropTypes.bool,
+  label: PropTypes.string,
+  onChange: PropTypes.func,
+  onFocus: PropTypes.func,
+  onBlur: PropTypes.func,
+  checkedColor: PropTypes.string,
+  uncheckedColor: PropTypes.string,
+  size: PropTypes.number,
+  autoFocus: PropTypes.bool,
 
-  static defaultProps = {
-    size: 16,
-    padding: 2,
-    color: "blue",
-    style: {},
-  };
+  className: PropTypes.string,
+  style: PropTypes.object,
+};
 
-  onClick(e) {
-    if (this.props.onChange) {
-      // TODO: use a proper event object?
-      this.props.onChange({
-        // add preventDefault so checkboxes can optionally prevent
-        preventDefault: () => e.preventDefault(),
-        target: { checked: !this.props.checked },
-      });
-    }
-  }
+const ICON_PADDING = 4;
 
-  onKeyPress = e => {
-    if (e.keyCode === KEYCODE_SPACE) {
-      this.onClick(e);
-    }
-  };
+function Checkbox({
+  label,
+  checked,
+  indeterminate,
+  onChange,
+  onFocus,
+  onBlur,
+  checkedColor = "brand",
+  uncheckedColor = "text-light",
+  size = 16,
+  autoFocus = false,
+  className,
+  ...props
+}) {
+  const [isFocused, setFocused] = useState(autoFocus);
 
-  render() {
-    const {
-      className,
-      style,
-      checked,
-      indeterminate,
-      color,
-      padding,
-      size,
-      noIcon,
-    } = this.props;
+  const handleFocus = useCallback(
+    e => {
+      setFocused(true);
+      if (typeof onFocus === "function") {
+        onFocus(e);
+      }
+    },
+    [onFocus],
+  );
 
-    const checkedColor = defaultColors[color];
-    const uncheckedColor = c("text-light");
+  const handleBlur = useCallback(
+    e => {
+      setFocused(false);
+      if (typeof onBlur === "function") {
+        onBlur(e);
+      }
+    },
+    [onBlur],
+  );
 
-    const checkboxStyle = {
-      width: size,
-      height: size,
-      backgroundColor: checked ? checkedColor : "white",
-      border: `2px solid ${checked ? checkedColor : uncheckedColor}`,
-      borderRadius: 4,
-    };
-    return (
-      <div
-        className={cx(
-          className,
-          "flex align-center justify-center cursor-pointer",
-        )}
-        style={{ ...style, ...checkboxStyle }}
-        onClick={e => {
-          this.onClick(e);
-        }}
-        onKeyPress={this.onKeyPress}
-        role="checkbox"
-        aria-checked={checked}
-        tabIndex="0"
-      >
-        {(checked || indeterminate) && !noIcon && (
-          <Icon
-            style={{ color: checked ? "white" : uncheckedColor }}
-            name={indeterminate ? "dash" : "check"}
-            size={size - padding * 2}
+  const onKeyPress = useCallback(
+    e => {
+      if (e.key === "Enter" && typeof onChange === "function") {
+        onChange({
+          preventDefault: () => e.preventDefault(),
+          target: { checked: !checked },
+        });
+      }
+    },
+    [checked, onChange],
+  );
+
+  return (
+    <CheckboxRoot className={className}>
+      <Container>
+        <VisibleBox
+          checked={checked}
+          isFocused={isFocused}
+          size={size}
+          checkedColor={checkedColor}
+          uncheckedColor={uncheckedColor}
+        >
+          <Input
+            {...props}
+            checked={checked}
+            onChange={onChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onKeyPress={onKeyPress}
           />
-        )}
-      </div>
-    );
-  }
+          {(checked || indeterminate) && (
+            <CheckboxIcon
+              checked={checked}
+              name={indeterminate ? "dash" : "check"}
+              size={size - ICON_PADDING}
+              uncheckedColor={uncheckedColor}
+            />
+          )}
+        </VisibleBox>
+        {label && <LabelText>{label}</LabelText>}
+      </Container>
+    </CheckboxRoot>
+  );
 }
+
+const CheckboxRoot = styled.label`
+  display: block;
+  cursor: pointer;
+`;
+
+const Container = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const VisibleBox = styled.span`
+  display: flex;
+  align-items: center;
+  justify-center: center;
+  position: relative;
+  width: ${props => `${props.size}px`};
+  height: ${props => `${props.size}px`};
+
+  background-color: ${props =>
+    props.checked ? color(props.checkedColor) : color("bg-white")};
+
+  border: 2px solid
+    ${props =>
+      props.checked ? color(props.checkedColor) : color(props.uncheckedColor)};
+
+  border-radius: 4px;
+
+  ${props =>
+    props.isFocused &&
+    css`
+      outline: 1px auto
+        ${props.checked
+          ? color(darken(props.checkedColor))
+          : color(props.checkedColor)};
+    `}
+`;
+
+const Input = styled.input.attrs({ type: "checkbox" })`
+  cursor: inherit;
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  z-index: 1;
+`;
+
+const CheckboxIcon = styled(Icon)`
+  position: absolute;
+  color: ${props =>
+    props.checked ? color("white") : color(props.uncheckedColor)};
+`;
+
+const LabelText = styled.span`
+  margin-left: 8px;
+`;
+
+Checkbox.propTypes = propTypes;
+
+export default Checkbox;

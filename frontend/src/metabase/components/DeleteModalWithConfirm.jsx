@@ -49,8 +49,6 @@ export default class DeleteModalWithConfirm extends Component {
               >
                 <span className="text-error">
                   <CheckBox
-                    checkColor="currentColor"
-                    borderColor={checked[index] ? "currentColor" : undefined}
                     size={20}
                     checked={checked[index]}
                     onChange={e =>
