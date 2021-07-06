@@ -479,48 +479,6 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    visitQuestionAdhoc({
-      name: "15460",
-      dataset_query: {
-        database: 1,
-        native: {
-          query:
-            "select p.created_at, products.category\nfrom products\nleft join products p on p.id=products.id\nwhere {{category}}\n",
-          "template-tags": {
-            category: {
-              id: "d98c3875-e0f1-9270-d36a-5b729eef938e",
-              name: "category",
-              "display-name": "Category",
-              type: "dimension",
-              dimension: ["field", PRODUCTS.CATEGORY, null],
-              "widget-type": "category/=",
-              default: null,
-            },
-          },
-        },
-        type: "native",
-      },
-    });
-
-    // Set the filter value
-    filterWidget()
-      .contains("Category")
-      .click();
-    popover()
-      .findByText("Doohickey")
-      .click();
-    cy.button("Add filter").click();
-    // Rerun the query
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset").wait("@dataset");
-    cy.get(".Visualization").within(() => {
-      cy.findAllByText("Doohickey");
-      cy.findAllByText("Gizmo").should("not.exist");
-    });
-  });
-
   ["old", "new"].forEach(test => {
     it(`${test} syntax:\n should be able to select category Field Filter in Native query (metabase#15700)`, () => {
       if (test === "old") {
