@@ -34,63 +34,59 @@ export default QuestionActionButtons;
 function QuestionActionButtons({ canWrite, onOpenModal }) {
   return (
     <Container>
-      <PrimaryButtonContainer>
-        {canWrite && (
-          <Tooltip tooltip={t`Edit details`}>
-            <Button
-              onlyIcon
-              icon="pencil"
-              iconSize={ICON_SIZE}
-              onClick={() => onOpenModal(EDIT_ACTION)}
-              data-testid={EDIT_TESTID}
-            />
-          </Tooltip>
-        )}
-        <Tooltip tooltip={t`Add to dashboard`}>
+      {canWrite && (
+        <Tooltip tooltip={t`Edit details`}>
           <Button
             onlyIcon
-            icon="add_to_dash"
+            icon="pencil"
             iconSize={ICON_SIZE}
-            onClick={() => onOpenModal(ADD_TO_DASH_ACTION)}
-            data-testid={ADD_TO_DASH_TESTID}
+            onClick={() => onOpenModal(EDIT_ACTION)}
+            data-testid={EDIT_TESTID}
           />
         </Tooltip>
-      </PrimaryButtonContainer>
-      <SecondaryButtonContainer>
-        {canWrite && (
-          <Tooltip tooltip={t`Move`}>
-            <Button
-              onlyIcon
-              icon="move"
-              iconSize={ICON_SIZE}
-              onClick={() => onOpenModal(MOVE_ACTION)}
-              data-testid={MOVE_TESTID}
-            />
-          </Tooltip>
-        )}
-        {canWrite && (
-          <Tooltip tooltip={t`Duplicate this question`}>
-            <Button
-              onlyIcon
-              icon="segment"
-              iconSize={ICON_SIZE}
-              onClick={() => onOpenModal(CLONE_ACTION)}
-              data-testid={CLONE_TESTID}
-            />
-          </Tooltip>
-        )}
-        {canWrite && (
-          <Tooltip tooltip={t`Archive`}>
-            <Button
-              onlyIcon
-              icon="archive"
-              iconSize={ICON_SIZE}
-              onClick={() => onOpenModal(ARCHIVE_ACTION)}
-              data-testid={ARCHIVE_TESTID}
-            />
-          </Tooltip>
-        )}
-      </SecondaryButtonContainer>
+      )}
+      <Tooltip tooltip={t`Add to dashboard`}>
+        <Button
+          onlyIcon
+          icon="add_to_dash"
+          iconSize={ICON_SIZE}
+          onClick={() => onOpenModal(ADD_TO_DASH_ACTION)}
+          data-testid={ADD_TO_DASH_TESTID}
+        />
+      </Tooltip>
+      {canWrite && (
+        <Tooltip tooltip={t`Move`}>
+          <Button
+            onlyIcon
+            icon="move"
+            iconSize={ICON_SIZE}
+            onClick={() => onOpenModal(MOVE_ACTION)}
+            data-testid={MOVE_TESTID}
+          />
+        </Tooltip>
+      )}
+      {canWrite && (
+        <Tooltip tooltip={t`Duplicate this question`}>
+          <Button
+            onlyIcon
+            icon="segment"
+            iconSize={ICON_SIZE}
+            onClick={() => onOpenModal(CLONE_ACTION)}
+            data-testid={CLONE_TESTID}
+          />
+        </Tooltip>
+      )}
+      {canWrite && (
+        <Tooltip tooltip={t`Archive`}>
+          <Button
+            onlyIcon
+            icon="archive"
+            iconSize={ICON_SIZE}
+            onClick={() => onOpenModal(ARCHIVE_ACTION)}
+            data-testid={ARCHIVE_TESTID}
+          />
+        </Tooltip>
+      )}
     </Container>
   );
 }

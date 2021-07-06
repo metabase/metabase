@@ -25,7 +25,10 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
           visibleLines={8}
           onEdit={() => onOpenModal("edit")}
         />
-        <QuestionActivityTimeline question={question} />
+        <QuestionActivityTimeline
+          className="border-top mt2 pt4"
+          question={question}
+        />
       </SidebarContentContainer>
     </SidebarContent>
   );
