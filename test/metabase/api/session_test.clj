@@ -35,11 +35,6 @@
                         (reset! (:attempts throttler) nil))
                       (thunk)))
 
-(def ^:private mock-device-info
-  {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
-   :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
-   :ip_address         "0:0:0:0:0:0:0:1"})
-
 (def ^:private SessionResponse
   {:id (s/pred mt/is-uuid-string? "session")})
 
@@ -73,16 +68,16 @@
       (let [body (assoc (mt/user->credentials :rasta) :remember false)
             response (mt/client-full-response :post 200 "session" body)]
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
-    (testing "failure should log an error(#14317)"
-      (mt/with-temp User [user]
-        (is (schema= [(s/one (s/eq :error)
-                             "log type")
-                      (s/one clojure.lang.ExceptionInfo
-                             "exception")
-                      (s/one (s/eq "Authentication endpoint error")
-                             "log message")]
-                     (first (mt/with-log-messages-for-level :error
-                              (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))))))))
+  (testing "failure should log an error(#14317)"
+    (mt/with-temp User [user]
+      (is (schema= [(s/one (s/eq :error)
+                           "log type")
+                    (s/one clojure.lang.ExceptionInfo
+                           "exception")
+                    (s/one (s/eq "Authentication endpoint error")
+                           "log message")]
+                   (first (mt/with-log-messages-for-level :error
+                            (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))))))))
 
 (deftest login-validation-test
   (testing "POST /api/session"
@@ -217,33 +212,37 @@
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
-    (testing "Test that we can initiate password reset"
-      (et/with-fake-inbox
-        (letfn [(reset-fields-set? []
-                  (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
-                                                                :id (mt/user->id :rasta))]
-                    (boolean (and reset_token reset_triggered))))]
-          ;; make sure user is starting with no values
-          (db/update! User (mt/user->id :rasta), :reset_token nil, :reset_triggered nil)
-          (assert (not (reset-fields-set?)))
-          ;; issue reset request (token & timestamp should be saved)
-          (is (= nil
-                 (mt/user-http-request :rasta :post 204 "session/forgot_password" {:email (:username (mt/user->credentials :rasta))}))
-              "Request should return no content")
-          (is (= true
-                 (reset-fields-set?))
-              "User `:reset_token` and `:reset_triggered` should be updated")
-          (is (= "[Metabase] Password Reset Request"
-                 (-> @et/inbox (get "rasta@metabase.com") first :subject))
-              "User should get a password reset email"))))
+    ;; deref forgot-password-impl for the tests since it returns a future
+    (with-redefs [session-api/forgot-password-impl
+                  (let [orig @#'session-api/forgot-password-impl]
+                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+      (testing "Test that we can initiate password reset"
+        (et/with-fake-inbox
+          (letfn [(reset-fields-set? []
+                    (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
+                                                                  :id (mt/user->id :rasta))]
+                      (boolean (and reset_token reset_triggered))))]
+            ;; make sure user is starting with no values
+            (db/update! User (mt/user->id :rasta), :reset_token nil, :reset_triggered nil)
+            (assert (not (reset-fields-set?)))
+            ;; issue reset request (token & timestamp should be saved)
+            (is (= nil
+                   (mt/user-http-request :rasta :post 204 "session/forgot_password" {:email (:username (mt/user->credentials :rasta))}))
+                "Request should return no content")
+            (is (= true
+                   (reset-fields-set?))
+                "User `:reset_token` and `:reset_triggered` should be updated")
+            (is (= "[Metabase] Password Reset Request"
+                   (-> @et/inbox (get "rasta@metabase.com") first :subject))
+                "User should get a password reset email"))))
 
-    (testing "test that email is required"
-      (is (= {:errors {:email "value must be a valid email address."}}
-             (mt/client :post 400 "session/forgot_password" {}))))
+      (testing "test that email is required"
+        (is (= {:errors {:email "value must be a valid email address."}}
+               (mt/client :post 400 "session/forgot_password" {}))))
 
-    (testing "Test that email not found also gives 200 as to not leak existence of user"
-      (is (= nil
-             (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"}))))))
+      (testing "Test that email not found also gives 200 as to not leak existence of user"
+        (is (= nil
+               (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))))
 
 (deftest forgot-password-throttling-test
   (testing "Test that email based throttling kicks in after the login failure threshold (10) has been reached"
@@ -283,7 +282,7 @@
                 (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
                               :success    (s/eq true)}
                              (mt/client :post 200 "session/reset_password" {:token    token
-                                                                         :password (:new password)}))))
+                                                                            :password (:new password)}))))
               (testing "Old creds should no longer work"
                 (is (= {:errors {:password "did not match stored password"}}
                        (mt/client :post 401 "session" (:old creds)))))
@@ -306,19 +305,19 @@
     (testing "Test that malformed token returns 400"
       (is (= {:errors {:password "Invalid reset token"}}
              (mt/client :post 400 "session/reset_password" {:token    "not-found"
-                                                         :password "whateverUP12!!"}))))
+                                                            :password "whateverUP12!!"}))))
 
     (testing "Test that invalid token returns 400"
       (is (= {:errors {:password "Invalid reset token"}}
              (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
-                                                         :password "whateverUP12!!"}))))
+                                                            :password "whateverUP12!!"}))))
 
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
         (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered 0)
         (is (= {:errors {:password "Invalid reset token"}}
                (mt/client :post 400 "session/reset_password" {:token    token
-                                                           :password "whateverUP12!!"})))))))
+                                                              :password "whateverUP12!!"})))))))
 
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
@@ -382,15 +381,15 @@
             (is (schema= SessionResponse
                          (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
-      (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
-        (with-redefs [http/post (fn [url] {:status 200
-                                           :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
-                                                        "\"email_verified\":\"true\","
-                                                        "\"first_name\":\"test\","
-                                                        "\"last_name\":\"user\","
-                                                        "\"email\":\"test@metabase.com\"}")})]
-          (is (= {:errors {:account "Your account is disabled."}}
-                         (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
+        (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
+          (with-redefs [http/post (fn [url] {:status 200
+                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                                                          "\"email_verified\":\"true\","
+                                                          "\"first_name\":\"test\","
+                                                          "\"last_name\":\"user\","
+                                                          "\"email\":\"test@metabase.com\"}")})]
+            (is (= {:errors {:account "Your account is disabled."}}
+                   (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
 
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 
