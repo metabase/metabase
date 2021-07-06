@@ -12,3 +12,9 @@ export function convertSearchResultToTableLikeItem(searchResultItem) {
 
   return searchResultItem;
 }
+
+export function isSavedQuestion(tableId) {
+  return (
+    typeof tableId === "string" && tableId.startsWith(SAVED_QUESTION_ID_PREFIX)
+  );
+}
