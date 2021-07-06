@@ -13,7 +13,6 @@ const BaseList = styled.ul`
 const BaseItem = styled.li.attrs({
   mr: props => (!props.vertical && !props.last ? props.xspace : null),
   mb: props => (props.vertical && !props.last ? props.yspace : null),
-  "aria-selected": props => props.selected,
 })`
   ${space}
   display: flex;
