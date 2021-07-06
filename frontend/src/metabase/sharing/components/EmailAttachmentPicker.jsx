@@ -208,15 +208,15 @@ export default class EmailAttachmentPicker extends Component {
                   <li
                     key={card.id}
                     className="pb2 flex align-center cursor-pointer"
-                    onClick={() => {
-                      this.onToggleCard(card);
-                    }}
                   >
                     <CheckBox
                       checked={selectedCardIds.has(card.id)}
+                      label={card.name}
+                      onChange={() => {
+                        this.onToggleCard(card);
+                      }}
                       className="mr1"
                     />
-                    {card.name}
                   </li>
                 ))}
               </ul>
