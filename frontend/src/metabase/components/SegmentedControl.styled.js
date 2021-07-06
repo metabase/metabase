@@ -22,8 +22,6 @@ export const SegmentedItem = styled.li`
   border-top-right-radius: ${props => (props.isLast ? BORDER_RADIUS : 0)};
   border-bottom-right-radius: ${props => (props.isLast ? BORDER_RADIUS : 0)};
 
-  aria-selected: ${props => props.isSelected};
-
   :hover {
     color: ${props => (!props.isSelected ? color(props.selectedColor) : null)};
   }

@@ -92,6 +92,7 @@ function Radio({
             xspace={xspace}
             yspace={yspace}
             onClick={e => onChange(optionValueFn(option))}
+            aria-selected={selected}
           >
             {option.icon && <Icon name={option.icon} mr={1} />}
             <input
