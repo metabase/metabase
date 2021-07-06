@@ -66,43 +66,6 @@ describe("scenarios > question > native", () => {
     );
   });
 
-  it("doesn't reorder template tags when updated", () => {
-    openNativeEditor().type("{{foo}} {{bar}}", {
-      parseSpecialCharSequences: false,
-    });
-
-    cy.contains("Variables")
-      .parent()
-      .parent()
-      .find(".text-brand")
-      .as("variableLabels");
-
-    // ensure they're in the right order to start
-    cy.get("@variableLabels")
-      .first()
-      .should("have.text", "foo");
-    cy.get("@variableLabels")
-      .last()
-      .should("have.text", "bar");
-
-    // change the parameter to a number.
-    cy.contains("Variable type")
-      .first()
-      .next()
-      .as("variableType");
-    cy.get("@variableType").click();
-    cy.contains("Number").click();
-    cy.get("@variableType").should("have.text", "Number");
-
-    // ensure they're still in the right order
-    cy.get("@variableLabels")
-      .first()
-      .should("have.text", "foo");
-    cy.get("@variableLabels")
-      .last()
-      .should("have.text", "bar");
-  });
-
   it("should show referenced cards in the template tag sidebar", () => {
     openNativeEditor()
       // start typing a question referenced
