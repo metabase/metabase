@@ -3,14 +3,15 @@ import { color } from "metabase/lib/colors";
 
 export const SavedQuestionPickerRoot = styled.div`
   display: flex;
-  width: 480px;
+  width: 620px;
   overflow: hidden;
+  border-top: 1px solid ${color("border")};
 `;
 
 export const CollectionsContainer = styled.div`
   display: flex;
   flex-direction: column;
-  min-width: 230px;
+  min-width: 310px;
   background-color: ${color("bg-light")};
   overflow: auto;
 `;

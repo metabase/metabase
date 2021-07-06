@@ -764,6 +764,7 @@ export class UnconnectedDataSelector extends Component {
     return (
       <PopoverWithTrigger
         id="DataPopover"
+        autoWidth
         ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
         triggerElement={this.getTriggerElement()}
