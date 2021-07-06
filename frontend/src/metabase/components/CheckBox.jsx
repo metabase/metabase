@@ -22,6 +22,10 @@ const propTypes = {
   style: PropTypes.object,
 };
 
+export const DEFAULT_CHECKED_COLOR = "brand";
+export const DEFAULT_UNCHECKED_COLOR = "text-light";
+export const DEFAULT_SIZE = 16;
+
 const ICON_PADDING = 4;
 
 function Checkbox({
@@ -31,9 +35,9 @@ function Checkbox({
   onChange,
   onFocus,
   onBlur,
-  checkedColor = "brand",
-  uncheckedColor = "text-light",
-  size = 16,
+  checkedColor = DEFAULT_CHECKED_COLOR,
+  uncheckedColor = DEFAULT_UNCHECKED_COLOR,
+  size = DEFAULT_SIZE,
   autoFocus = false,
   className,
   ...props

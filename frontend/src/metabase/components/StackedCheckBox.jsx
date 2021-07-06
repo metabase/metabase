@@ -1,25 +1,73 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-import cx from "classnames";
+import PropTypes from "prop-types";
+import styled from "styled-components";
 
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox, {
+  DEFAULT_CHECKED_COLOR,
+  DEFAULT_UNCHECKED_COLOR,
+  DEFAULT_SIZE,
+} from "metabase/components/CheckBox";
+import { color } from "metabase/lib/colors";
 
-const OFFSET = 3;
+const propTypes = {
+  checked: PropTypes.bool,
+  checkedColor: PropTypes.string,
+  uncheckedColor: PropTypes.string,
+  size: PropTypes.number,
+  className: PropTypes.string,
+};
 
-const StackedCheckBox = ({ className, ...props }) => (
-  <div className={cx(className, "relative")} style={{ transform: "scale(1)" }}>
-    <CheckBox {...props} />
-    <CheckBox
-      className="absolute"
-      style={{
-        top: -OFFSET,
-        left: OFFSET,
-        zIndex: -1,
-      }}
-      {...props}
-      noIcon
-    />
-  </div>
-);
+function StackedCheckBox({
+  checked,
+  checkedColor = DEFAULT_CHECKED_COLOR,
+  uncheckedColor = DEFAULT_UNCHECKED_COLOR,
+  size = DEFAULT_SIZE,
+  className,
+  ...props
+}) {
+  return (
+    <StackedCheckBoxRoot className={className}>
+      <CheckBox
+        checked={checked}
+        checkedColor={checkedColor}
+        uncheckedColor={uncheckedColor}
+        size={size}
+        {...props}
+      />
+      <StackedBackground
+        checked={checked}
+        checkedColor={checkedColor}
+        uncheckedColor={uncheckedColor}
+        size={size}
+      />
+    </StackedCheckBoxRoot>
+  );
+}
+
+const StackedCheckBoxRoot = styled.div`
+  position: relative;
+  transform: scale(1);
+`;
+
+const StackedBackground = styled.div`
+  width: ${props => `${props.size}px`};
+  height: ${props => `${props.size}px`};
+  border-radius: 4px;
+  position: absolute;
+  display: inline-block;
+
+  z-index: -1;
+  top: -3px;
+  left: 3px;
+
+  background: ${props =>
+    props.checked ? color(props.checkedColor) : color("bg-white")};
+
+  border: 2px solid
+    ${props =>
+      props.checked ? color(props.checkedColor) : color(props.uncheckedColor)};
+`;
+
+StackedCheckBox.propTypes = propTypes;
 
 export default StackedCheckBox;
