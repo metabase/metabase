@@ -167,7 +167,7 @@ export default class DatabaseEditApp extends Component {
                     value={currentTab}
                     options={TABS}
                     onChange={currentTab => this.setState({ currentTab })}
-                    underlined
+                    variant="underlined"
                   />
                 </div>
               )}

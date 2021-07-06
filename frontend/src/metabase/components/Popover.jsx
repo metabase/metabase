@@ -57,7 +57,11 @@ export default class Popover extends Component {
     onClose: PropTypes.func,
     className: PropTypes.string,
     style: PropTypes.object,
-    children: PropTypes.oneOfType([PropTypes.element, PropTypes.func]),
+    children: PropTypes.oneOfType([
+      PropTypes.element,
+      PropTypes.func,
+      PropTypes.array,
+    ]),
     dismissOnClickOutside: PropTypes.func,
     dismissOnEscape: PropTypes.func,
     target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),

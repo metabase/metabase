@@ -13,6 +13,7 @@ import Collection from "metabase/entities/collections";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 
+import { Sidebar, ToggleMobileSidebarIcon } from "./CollectionSidebar.styled";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -22,24 +23,12 @@ import CollectionLink from "metabase/collections/components/CollectionLink";
 
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 import {
-  nonPersonalCollection,
+  nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
   isAnotherUsersPersonalCollection,
   getParentPath,
   getParentPersonalCollection,
 } from "metabase/collections/utils";
-
-// TODO - what's different about this from another sidebar component?
-const Sidebar = styled(Box.withComponent("aside"))`
-  position: fixed;
-  left: 0;
-  bottom: 0;
-  top: 65px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-`;
 
 function mapStateToProps(state) {
   return {
@@ -47,6 +36,8 @@ function mapStateToProps(state) {
     collectionsById: state.entities.collections,
   };
 }
+
+const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
 @Collection.loadList({
   /* pass "tree" here so that the collection entity knows to use the /tree endpoint and send children in the response
@@ -102,6 +93,7 @@ class CollectionSidebar extends React.Component {
   renderContent = () => {
     const {
       currentUser,
+      handleToggleMobileSidebar,
       isRoot,
       collectionId,
       collectionsById,
@@ -116,6 +108,7 @@ class CollectionSidebar extends React.Component {
 
     return (
       <React.Fragment>
+        <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
         <Collection.Loader id="root">
           {({ collection: root }) => (
             <Box mb={1} mt={2}>
@@ -141,7 +134,7 @@ class CollectionSidebar extends React.Component {
             onClose={this.onClose}
             onOpen={this.onOpen}
             collections={list}
-            filter={nonPersonalCollection}
+            filter={nonPersonalOrArchivedCollection}
             currentCollection={collectionId}
           />
 
@@ -201,7 +194,10 @@ class CollectionSidebar extends React.Component {
     const { allFetched } = this.props;
 
     return (
-      <Sidebar w={340} pt={3} role="tree">
+      <Sidebar
+        role="tree"
+        shouldDisplayMobileSidebar={this.props.shouldDisplayMobileSidebar}
+      >
         {allFetched ? (
           this.renderContent()
         ) : (

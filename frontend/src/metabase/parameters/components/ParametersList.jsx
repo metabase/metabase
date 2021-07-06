@@ -45,7 +45,12 @@ type Props = {
   setEditingParameter?: (parameterId: ParameterId) => void,
 };
 
-const StaticParameterWidgetList = ({ children, ...props }) => {
+const StaticParameterWidgetList = ({
+  children,
+  onSortStart,
+  onSortEnd,
+  ...props
+}) => {
   return <div {...props}>{children}</div>;
 };
 

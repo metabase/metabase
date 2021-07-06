@@ -1,9 +1,5 @@
-import {
-  restore,
-  popover,
-  setupDummySMTP,
-  generateUsers,
-} from "__support__/e2e/cypress";
+import _ from "underscore";
+import { restore, popover, setupDummySMTP } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { normal, admin } = USERS;
@@ -287,4 +283,18 @@ function clickButton(button_name) {
 
 function assertTableRowsCount(length) {
   cy.get(".ContentTable tbody tr").should("have.length", length);
+}
+
+function generateUsers(count, groupIds) {
+  const users = _.range(count).map(index => ({
+    first_name: `FirstName ${index}`,
+    last_name: `LastName ${index}`,
+    email: `user_${index}@metabase.com`,
+    password: `secure password ${index}`,
+    groupIds,
+  }));
+
+  users.forEach(u => cy.createUserFromRawData(u));
+
+  return users;
 }

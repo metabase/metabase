@@ -2,14 +2,8 @@ import {
   restore,
   popover,
   modal,
-  visitQuestionAdhoc,
-  mockSessionProperty,
+  openNativeEditor,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
-
-const { ORDERS, PRODUCTS } = SAMPLE_DATASET;
-const { COLLECTION_GROUP } = USER_GROUPS;
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
@@ -18,25 +12,19 @@ describe("scenarios > question > native", () => {
   });
 
   it("lets you create and run a SQL question", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type("select count(*) from orders");
+    openNativeEditor().type("select count(*) from orders");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("18,760");
   });
 
   it("displays an error", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type("select * from not_a_table");
+    openNativeEditor().type("select * from not_a_table");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
   it("displays an error when running selected text", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type(
+    openNativeEditor().type(
       "select * from orders" +
       "{leftarrow}".repeat(3) + // move left three
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
@@ -45,92 +33,12 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "ORD" not found');
   });
 
-  it("clears a template tag's default when the type changes", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // Write a query with parameter x. It defaults to a text parameter.
-    cy.get(".ace_content").type("select * from orders where total = {{x}}", {
-      parseSpecialCharSequences: false,
-    });
-
-    // Mark field as required and add a default text value.
-    cy.contains("Required?")
-      .next()
-      .click();
-    cy.contains("Default filter widget value")
-      .next()
-      .find("input")
-      .type("some text");
-
-    // Run the query and see an error.
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains(`Data conversion error converting "some text"`);
-
-    // Oh wait! That doesn't match the total column, so we'll change the parameter to a number.
-    cy.contains("Variable type")
-      .next()
-      .click();
-    cy.contains("Number").click();
-
-    // When we run it again, the default has been cleared out so we get the right error.
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains(
-      "You'll need to pick a value for 'X' before this query can run.",
-    );
-  });
-
-  it("doesn't reorder template tags when updated", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // Write a query with parameter x. It defaults to a text parameter.
-    cy.get(".ace_content").type("{{foo}} {{bar}}", {
-      parseSpecialCharSequences: false,
-      delay: 0,
-    });
-
-    cy.contains("Variables")
-      .parent()
-      .parent()
-      .find(".text-brand")
-      .as("variableLabels");
-
-    // ensure they're in the right order to start
-    cy.get("@variableLabels")
-      .first()
-      .should("have.text", "foo");
-    cy.get("@variableLabels")
-      .last()
-      .should("have.text", "bar");
-
-    // change the parameter to a number.
-    cy.contains("Variable type")
-      .first()
-      .next()
-      .as("variableType");
-    cy.get("@variableType").click();
-    cy.contains("Number").click();
-    cy.get("@variableType").should("have.text", "Number");
-
-    // ensure they're still in the right order
-    cy.get("@variableLabels")
-      .first()
-      .should("have.text", "foo");
-    cy.get("@variableLabels")
-      .last()
-      .should("have.text", "bar");
-  });
-
   it("should show referenced cards in the template tag sidebar", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // start typing a question referenced
-    cy.get(".ace_content").type("select * from {{#}}", {
-      parseSpecialCharSequences: false,
-      delay: 0,
-    });
+    openNativeEditor()
+      // start typing a question referenced
+      .type("select * from {{#}}", {
+        parseSpecialCharSequences: false,
+      });
 
     cy.contains("Question #…")
       .parent()
@@ -164,33 +72,8 @@ describe("scenarios > question > native", () => {
     cy.contains("18,760");
   });
 
-  it("can load a question with a date filter (from issue metabase#12228)", () => {
-    cy.createNativeQuestion({
-      name: "Test Question",
-      native: {
-        query: "select count(*) from orders where {{created_at}}",
-        "template-tags": {
-          created_at: {
-            id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
-            name: "created_at",
-            "display-name": "Created at",
-            type: "dimension",
-            dimension: ["field", ORDERS.CREATED_AT, null],
-            "widget-type": "date/month-year",
-          },
-        },
-      },
-      display: "scalar",
-    }).then(response => {
-      cy.visit(`/question/${response.body.id}?created_at=2020-01`);
-      cy.contains("580");
-    });
-  });
-
   it("can save a question with no rows", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type("select * from people where false");
+    openNativeEditor().type("select * from people where false");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("No results!");
     cy.icon("contract").click();
@@ -209,13 +92,9 @@ describe("scenarios > question > native", () => {
     const FILTERS = ["Is not", "Does not contain"];
     const QUESTION = "QQ";
 
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content")
-      .should("be.visible")
-      .type(
-        `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
-      );
+    openNativeEditor().type(
+      `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
+    );
     cy.findByText("Save").click();
 
     modal().within(() => {
@@ -272,384 +151,8 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it("should not make the question dirty when there are no changes (metabase#14302)", () => {
-    cy.createNativeQuestion({
-      name: "14302",
-      native: {
-        query:
-          'SELECT "CATEGORY", COUNT(*)\nFROM "PRODUCTS"\nWHERE "PRICE" > {{PRICE}}\nGROUP BY "CATEGORY"',
-        "template-tags": {
-          PRICE: {
-            id: "39b51ccd-47a7-9df6-a1c5-371918352c79",
-            name: "PRICE",
-            "display-name": "Price",
-            type: "number",
-            default: "10",
-            required: true,
-          },
-        },
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-      cy.findByText("14302");
-      cy.log("Reported on v0.37.5 - Regression since v0.37.0");
-      cy.findByText("Save").should("not.exist");
-    });
-  });
-
-  it("should correctly display a revision state after a restore (metabase#12581)", () => {
-    const ORIGINAL_QUERY = "SELECT * FROM ORDERS WHERE {{filter}} LIMIT 2";
-
-    // Start with the original version of the question made with API
-    cy.createNativeQuestion({
-      name: "12581",
-      native: {
-        query: ORIGINAL_QUERY,
-        "template-tags": {
-          filter: {
-            id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
-            name: "filter",
-            "display-name": "Filter",
-            type: "dimension",
-            dimension: ["field", ORDERS.CREATED_AT, null],
-            "widget-type": "date/month-year",
-            default: null,
-          },
-        },
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-    });
-    cy.findByText(/Open Editor/i).click();
-    cy.findByText(/Open Editor/i).should("not.exist");
-    // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
-    // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
-    cy.get(".ace_content")
-      .click()
-      .type("{selectall}{backspace}", { delay: 50 });
-    cy.get(".ace_content")
-      .click()
-      .type("{selectall}{backspace}SELECT * FROM ORDERS");
-    cy.findByText("Save").click();
-    modal().within(() => {
-      cy.findByText("Save").click();
-    });
-
-    cy.reload();
-    cy.icon("pencil").click();
-    cy.findByText(/View revision history/i).click();
-    cy.findByText(/Revert/i).click(); // Revert to the first revision
-    cy.findByText(/Open Editor/i).click();
-
-    cy.log("Reported failing on v0.35.3");
-    cy.get(".ace_content").contains(ORIGINAL_QUERY);
-    // Filter dropdown field
-    cy.get("fieldset").contains("Filter");
-  });
-
-  it("should reorder template tags by drag and drop (metabase#9357)", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // Write a query with parameter firstparameter,nextparameter,lastparameter.
-    cy.get(".ace_content").type(
-      "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
-      {
-        parseSpecialCharSequences: false,
-        delay: 0,
-      },
-    );
-
-    // Drag the firstparameter to last position
-    cy.get("fieldset .Icon-empty")
-      .first()
-      .trigger("mousedown", 0, 0, { force: true })
-      .trigger("mousemove", 5, 5, { force: true })
-      .trigger("mousemove", 430, 0, { force: true })
-      .trigger("mouseup", 430, 0, { force: true });
-
-    // Ensure they're in the right order
-    cy.findAllByText("Variable name")
-      .parent()
-      .as("variableField");
-
-    cy.get("@variableField")
-      .first()
-      .findByText("nextparameter");
-
-    cy.get("@variableField")
-      .last()
-      .findByText("firstparameter");
-  });
-
-  ["nodata+nosql", "nosql"].forEach(test => {
-    it.skip(`${test.toUpperCase()} version:\n should be able to view SQL question when accessing via dashboard with filters connected to modified card without SQL permissions (metabase#15163)`, () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
-      cy.signInAsAdmin();
-      cy.createNativeQuestion({
-        name: "15163",
-        native: {
-          query: 'SELECT COUNT(*) FROM "PRODUCTS" WHERE {{cat}}',
-          "template-tags": {
-            cat: {
-              id: "dd7f3e66-b659-7d1c-87b3-ab627317581c",
-              name: "cat",
-              "display-name": "Cat",
-              type: "dimension",
-              dimension: ["field-id", PRODUCTS.CATEGORY],
-              "widget-type": "category",
-              default: null,
-            },
-          },
-        },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard("15163D").then(({ body: { id: DASHBOARD_ID } }) => {
-          // Add filter to the dashboard
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-            parameters: [
-              {
-                name: "Category",
-                slug: "category",
-                id: "fd723065",
-                type: "category",
-              },
-            ],
-          });
-
-          // Add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            // Connect filter to that question
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
-                {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 10,
-                  sizeY: 8,
-                  series: [],
-                  visualization_settings: {
-                    "card.title": "New Title",
-                  },
-                  parameter_mappings: [
-                    {
-                      parameter_id: "fd723065",
-                      card_id: QUESTION_ID,
-                      target: ["dimension", ["template-tag", "cat"]],
-                    },
-                  ],
-                },
-              ],
-            });
-          });
-
-          if (test === "nosql") {
-            cy.updatePermissionsGraph({
-              [COLLECTION_GROUP]: { "1": { schemas: "all", native: "none" } },
-            });
-          }
-
-          cy.signIn("nodata");
-
-          // Visit dashboard and set the filter through URL
-          cy.visit(`/dashboard/${DASHBOARD_ID}?category=Gizmo`);
-          cy.findByText("New Title").click();
-          cy.wait("@dataset", { timeout: 5000 }).then(xhr => {
-            expect(xhr.response.body.error).not.to.exist;
-          });
-          cy.get(".ace_content").should("not.exist");
-          cy.findByText("Showing 1 row");
-        });
-      });
-    });
-  });
-
-  it.skip("field id should update when database source is changed (metabase#14145)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-    cy.signInAsAdmin();
-    // Add another H2 sample dataset DB
-    cy.request("POST", "/api/database", {
-      engine: "h2",
-      name: "Sample2",
-      details: {
-        db:
-          "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
-      },
-      auto_run_queries: true,
-      is_full_sync: true,
-      schedules: {},
-    });
-
-    cy.createNativeQuestion({
-      name: "14145",
-      native: {
-        query: "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}",
-        "template-tags": {
-          FILTER: {
-            id: "774521fb-e03f-3df1-f2ae-e952c97035e3",
-            name: "FILTER",
-            "display-name": "Filter",
-            type: "dimension",
-            dimension: ["field-id", PRODUCTS.CATEGORY],
-            "widget-type": "category",
-            default: null,
-          },
-        },
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-    });
-    // Change the source from "Sample Dataset" to the other database
-    cy.findByText(/Open Editor/i).click();
-    cy.get(".GuiBuilder-data")
-      .as("source")
-      .contains("Sample Dataset")
-      .click();
-    cy.findByText("Sample2").click();
-    // First assert on the UI
-    cy.icon("variable").click();
-    cy.findByText(/Field to map to/)
-      .siblings("a")
-      .contains("Category");
-    // Rerun the query and assert on the dimension (field-id) that didn't change
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset").then(xhr => {
-      const { dimension } = xhr.response.body.json_query.native[
-        "template-tags"
-      ].FILTER;
-      expect(dimension).not.to.contain(PRODUCTS.CATEGORY);
-    });
-  });
-
-  it("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    visitQuestionAdhoc({
-      name: "15460",
-      dataset_query: {
-        database: 1,
-        native: {
-          query:
-            "select p.created_at, products.category\nfrom products\nleft join products p on p.id=products.id\nwhere {{category}}\n",
-          "template-tags": {
-            category: {
-              id: "d98c3875-e0f1-9270-d36a-5b729eef938e",
-              name: "category",
-              "display-name": "Category",
-              type: "dimension",
-              dimension: ["field", PRODUCTS.CATEGORY, null],
-              "widget-type": "category/=",
-              default: null,
-            },
-          },
-        },
-        type: "native",
-      },
-    });
-
-    // Set the filter value
-    cy.get("fieldset")
-      .contains("Category")
-      .click();
-    popover()
-      .findByText("Doohickey")
-      .click();
-    cy.button("Add filter").click();
-    // Rerun the query
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset").wait("@dataset");
-    cy.get(".Visualization").within(() => {
-      cy.findAllByText("Doohickey");
-      cy.findAllByText("Gizmo").should("not.exist");
-    });
-  });
-
-  it("should run with the default field filter set (metabase#15444)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    cy.visit("/");
-    cy.icon("sql").click();
-    cy.get(".ace_content").type("select * from products where {{category}}", {
-      parseSpecialCharSequences: false,
-    });
-    // Change filter type from "Text" to Field Filter
-    cy.get(".AdminSelect")
-      .contains("Text")
-      .click();
-    popover()
-      .findByText("Field Filter")
-      .click();
-    popover()
-      .findByText("Products")
-      .click();
-    popover()
-      .findByText("Category")
-      .click();
-    cy.findByText("Required?").scrollIntoView();
-    // Add the default value
-    cy.findByText("Enter a default value...").click();
-    popover()
-      .findByText("Doohickey")
-      .click();
-    cy.button("Add filter").click();
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).not.to.exist;
-    });
-    cy.get(".Visualization").within(() => {
-      cy.findAllByText("Doohickey");
-      cy.findAllByText("Gizmo").should("not.exist");
-    });
-  });
-
-  ["old", "new"].forEach(test => {
-    it(`${test} syntax:\n should be able to select category Field Filter in Native query (metabase#15700)`, () => {
-      if (test === "old") {
-        mockSessionProperty("field-filter-operators-enabled?", false);
-      }
-      const widgetType = test === "old" ? "Category" : "String";
-
-      cy.visit("/");
-      cy.icon("sql").click();
-      cy.get(".ace_content").type("{{filter}}", {
-        parseSpecialCharSequences: false,
-      });
-      cy.findByText("Variable type")
-        .parent()
-        .findByText("Text")
-        .click();
-      popover()
-        .findByText("Field Filter")
-        .click();
-      popover().within(() => {
-        cy.findByText("Sample Dataset");
-        cy.findByText("Products").click();
-      });
-      popover()
-        .findByText("Category")
-        .click();
-      cy.findByText("Filter widget type")
-        .parent()
-        .find(".AdminSelect")
-        .findByText(widgetType)
-        .click();
-      popover()
-        .find(".List-section")
-        .should("have.length.gt", 1);
-    });
-  });
-
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
-    cy.visit("/");
-    cy.icon("sql").click();
-    cy.get(".ace_content")
-      .as("editor")
-      .type("select 1 as visible, 2 as hidden");
+    openNativeEditor().type("select 1 as visible, 2 as hidden");
     cy.get(".NativeQueryEditor .Icon-play")
       .as("runQuery")
       .click();
@@ -664,110 +167,12 @@ describe("scenarios > question > native", () => {
     cy.get("@sidebar").contains(/added/i);
   });
 
-  ["off", "on"].forEach(testCase => {
-    const isFeatureFlagTurnedOn = testCase === "off" ? false : true;
-
-    describe("Feature flag causes problems with Text and Number filters in Native query (metabase#15981)", () => {
-      beforeEach(() => {
-        mockSessionProperty(
-          "field-filter-operators-enabled?",
-          isFeatureFlagTurnedOn,
-        );
-
-        cy.visit("/");
-        cy.icon("sql").click();
-        cy.get(".ace_content").as("editor");
-
-        cy.intercept("POST", "/api/dataset").as("dataset");
-      });
-
-      it(`text filter should work with the feature flag turned ${testCase}`, () => {
-        cy.get("@editor").type(
-          "select * from PRODUCTS where CATEGORY = {{text_filter}}",
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
-        cy.get("fieldset").type("Gizmo");
-        cy.get(".NativeQueryEditor .Icon-play").click();
-        cy.wait("@dataset");
-        cy.findByText("Rustic Paper Wallet");
-        cy.icon("contract").click();
-        cy.findByText("Showing 51 rows");
-        cy.icon("play").should("not.exist");
-      });
-
-      it(`number filter should work with the feature flag turned ${testCase}`, () => {
-        cy.get("@editor").type(
-          "select * from ORDERS where QUANTITY = {{number_filter}}",
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
-        cy.findByTestId("sidebar-right")
-          .as("sidebar")
-          .within(() => {
-            cy.get(".AdminSelect")
-              .contains("Text")
-              .click();
-          });
-        popover()
-          .contains("Number")
-          .click();
-        cy.get("fieldset").type("20");
-        cy.get(".NativeQueryEditor .Icon-play").click();
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
-        cy.get(".Visualization").contains("23.54");
-      });
-    });
-  });
-
-  ["normal", "nodata"].forEach(user => {
-    //Very related to the metabase#15981, only this time the issue happens with the Field Filter without the value being set.
-    it.skip(`filter feature flag shouldn't cause run-overlay of results in native editor for ${user} user (metabase#16739)`, () => {
-      const filter = {
-        id: "7795c137-a46c-3db9-1930-1d690c8dbc03",
-        name: "filter",
-        "display-name": "Filter",
-        type: "dimension",
-        dimension: ["field", PRODUCTS.CATEGORY, null],
-        "widget-type": "string/=",
-        default: null,
-      };
-
-      mockSessionProperty("field-filter-operators-enabled?", true);
-
-      cy.createNativeQuestion({
-        native: {
-          query: "select * from PRODUCTS where {{ filter }}",
-          "template-tags": { filter },
-        },
-      }).then(({ body: { id } }) => {
-        cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
-
-        if (user === "nodata") {
-          cy.signOut();
-          cy.signIn(user);
-        }
-
-        cy.visit(`/question/${id}`);
-        cy.wait("@cardQuery");
-      });
-
-      cy.icon("play").should("not.exist");
-    });
-  });
-
   it("should link correctly from the variables sidebar (metabase#16212)", () => {
     cy.createNativeQuestion({
       name: "test-question",
       native: { query: 'select 1 as "a", 2 as "b"' },
     }).then(({ body: { id: questionId } }) => {
-      cy.visit("/");
-      cy.icon("sql").click();
-      cy.get(".ace_content").type(`{{#${questionId}}}`, {
+      openNativeEditor().type(`{{#${questionId}}}`, {
         parseSpecialCharSequences: false,
       });
       cy.get(".NativeQueryEditor .Icon-play").click();

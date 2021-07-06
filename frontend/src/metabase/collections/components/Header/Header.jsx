@@ -11,17 +11,23 @@ import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 
+import { ToggleMobileSidebarIcon } from "./Header.styled";
+
 export default function Header({
   collection,
   isAdmin,
   isRoot,
   isPersonalCollectionChild,
   collectionId,
+  handleToggleMobileSidebar,
 }) {
   return (
     <Flex align="center" py={3}>
       <Flex align="center">
-        <PageHeading className="text-wrap">{collection.name}</PageHeading>
+        <PageHeading className="text-wrap">
+          <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
+          {collection.name}
+        </PageHeading>
         {collection.description && (
           <Tooltip tooltip={collection.description}>
             <Icon

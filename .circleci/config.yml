@@ -1213,6 +1213,16 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
+          name: e2e-tests-filters-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+          cypress-group: "filters-<< matrix.edition >>"
+          source-folder: frontend/test/metabase/scenarios/filters
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["ee", "oss"]
           name: e2e-tests-onboarding-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
