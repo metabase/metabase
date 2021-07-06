@@ -93,7 +93,7 @@ describe("personal collections", () => {
       // Ensure only selected user's collection is visible at the moment
       otherUsers.forEach(user => {
         const collection = `${user.first_name} ${user.last_name}'s Personal Collection`;
-        cy.findByTestId("sidebar")
+        sidebar()
           .findByText(collection)
           .should("not.exist");
       });
@@ -104,10 +104,10 @@ describe("personal collections", () => {
       getSidebarCollectionChildrenFor(personalCollection).findByText("Foo");
 
       // Another user's personal collection has to disappear once a user switches to another collection
-      cy.findByTestId("sidebar")
+      sidebar()
         .findByText("Our analytics")
         .click();
-      cy.findByTestId("sidebar")
+      sidebar()
         .findByText(personalCollection)
         .should("not.exist");
     });
