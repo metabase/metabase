@@ -4,7 +4,7 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 const { PEOPLE } = SAMPLE_DATASET;
 
 const questionData = {
-  name: "15460",
+  name: "7210",
   native: {
     query: "SELECT * FROM PEOPLE WHERE {{birthdate}} AND {{source}}",
     "template-tags": {
