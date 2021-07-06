@@ -3,7 +3,6 @@ import {
   popover,
   modal,
   filterWidget,
-  mockSessionProperty,
   openNativeEditor,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -492,62 +491,6 @@ describe("scenarios > question > native", () => {
     cy.get("@editor").type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();
     cy.get("@sidebar").contains(/added/i);
-  });
-
-  ["off", "on"].forEach(testCase => {
-    const isFeatureFlagTurnedOn = testCase === "off" ? false : true;
-
-    describe("Feature flag causes problems with Text and Number filters in Native query (metabase#15981)", () => {
-      beforeEach(() => {
-        mockSessionProperty(
-          "field-filter-operators-enabled?",
-          isFeatureFlagTurnedOn,
-        );
-
-        cy.intercept("POST", "/api/dataset").as("dataset");
-      });
-
-      it(`text filter should work with the feature flag turned ${testCase}`, () => {
-        openNativeEditor().type(
-          "select * from PRODUCTS where CATEGORY = {{text_filter}}",
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
-        filterWidget().type("Gizmo");
-        cy.get(".NativeQueryEditor .Icon-play").click();
-        cy.wait("@dataset");
-        cy.findByText("Rustic Paper Wallet");
-        cy.icon("contract").click();
-        cy.findByText("Showing 51 rows");
-        cy.icon("play").should("not.exist");
-      });
-
-      it(`number filter should work with the feature flag turned ${testCase}`, () => {
-        openNativeEditor().type(
-          "select * from ORDERS where QUANTITY = {{number_filter}}",
-          {
-            parseSpecialCharSequences: false,
-          },
-        );
-        cy.findByTestId("sidebar-right")
-          .as("sidebar")
-          .within(() => {
-            cy.get(".AdminSelect")
-              .contains("Text")
-              .click();
-          });
-        popover()
-          .contains("Number")
-          .click();
-        filterWidget().type("20");
-        cy.get(".NativeQueryEditor .Icon-play").click();
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
-        });
-        cy.get(".Visualization").contains("23.54");
-      });
-    });
   });
 
   ["normal", "nodata"].forEach(user => {
