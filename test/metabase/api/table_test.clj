@@ -518,6 +518,7 @@
                     :id                card-virtual-table-id
                     :description       nil
                     :dimension_options (default-dimension-options)
+                    :collection_id     nil
                     :fields            [{:name                     "NAME"
                                          :display_name             "NAME"
                                          :base_type                "type/Text"
