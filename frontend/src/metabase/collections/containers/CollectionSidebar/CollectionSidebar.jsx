@@ -101,7 +101,7 @@ class CollectionSidebar extends React.Component {
     } = this.props;
 
     const isAnotherUserCollectionOpened = isAnotherUsersPersonalCollection(
-      parseInt(collectionId),
+      collectionId,
       collectionsById,
       currentUser.id,
     );
@@ -158,7 +158,7 @@ class CollectionSidebar extends React.Component {
               onClose={this.onClose}
               onOpen={this.onOpen}
               collections={getParentPersonalCollection(
-                parseInt(collectionId),
+                collectionId,
                 collectionsById,
               )}
               initialIcon="group"
@@ -170,7 +170,7 @@ class CollectionSidebar extends React.Component {
             {currentUser.is_superuser && (
               <Link
                 my={2}
-                to={Urls.collection("users")}
+                to={Urls.collection({ id: "users" })}
                 className="flex align-center text-bold text-light text-brand-hover"
               >
                 <Icon name="group" mr={1} />
