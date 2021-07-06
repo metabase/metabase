@@ -12,8 +12,6 @@
 
 In the main navigation bar, click on the **gears** icon in the top right, and select **Admin**.
 
-![profiledropdown](images/ProfileDropdown.png)
-
 Once in the Admin section, select the **Databases** tab from the navigation bar at the top of the screen. You’ll see a list of your connected databases (if any). To connect a database to Metabase, click **Add database** and follow the connection instructions for your database.
 
 Although connection details differ database to database, in general you'll need to get connection info from your database admin, usually some combination of hostname (sometimes called endpoint), port, database username and password, and the name of the database. 
