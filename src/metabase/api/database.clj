@@ -13,7 +13,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.collection :as collection]
             [metabase.models.database :as database :refer [Database protected-password]]
             [metabase.models.field :refer [Field readable-fields-only]]
             [metabase.models.field-values :refer [FieldValues]]
