@@ -227,31 +227,6 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it("should not make the question dirty when there are no changes (metabase#14302)", () => {
-    cy.createNativeQuestion({
-      name: "14302",
-      native: {
-        query:
-          'SELECT "CATEGORY", COUNT(*)\nFROM "PRODUCTS"\nWHERE "PRICE" > {{PRICE}}\nGROUP BY "CATEGORY"',
-        "template-tags": {
-          PRICE: {
-            id: "39b51ccd-47a7-9df6-a1c5-371918352c79",
-            name: "PRICE",
-            "display-name": "Price",
-            type: "number",
-            default: "10",
-            required: true,
-          },
-        },
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-      cy.findByText("14302");
-      cy.log("Reported on v0.37.5 - Regression since v0.37.0");
-      cy.findByText("Save").should("not.exist");
-    });
-  });
-
   it("should reorder template tags by drag and drop (metabase#9357)", () => {
     openNativeEditor().type(
       "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
