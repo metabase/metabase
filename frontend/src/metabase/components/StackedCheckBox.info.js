@@ -30,6 +30,14 @@ const rowStyle = {
 
 export const examples = {
   Default: <StackedCheckBoxDemo />,
+  Label: (
+    <div>
+      <StackedCheckBoxDemo label="Confirm Stuff" />
+      <StackedCheckBoxDemo
+        label={<h3 style={{ marginLeft: "8px" }}>Custom element label</h3>}
+      />
+    </div>
+  ),
   Sizing: (
     <div style={rowStyle}>
       {[10, 12, 14, 16, 18, 20, 24].map(size => (
