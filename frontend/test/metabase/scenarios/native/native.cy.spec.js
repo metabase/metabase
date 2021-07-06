@@ -3,7 +3,6 @@ import {
   popover,
   modal,
   filterWidget,
-  visitQuestionAdhoc,
   mockSessionProperty,
   openNativeEditor,
 } from "__support__/e2e/cypress";
@@ -476,41 +475,6 @@ describe("scenarios > question > native", () => {
         "template-tags"
       ].FILTER;
       expect(dimension).not.to.contain(PRODUCTS.CATEGORY);
-    });
-  });
-
-  ["old", "new"].forEach(test => {
-    it(`${test} syntax:\n should be able to select category Field Filter in Native query (metabase#15700)`, () => {
-      if (test === "old") {
-        mockSessionProperty("field-filter-operators-enabled?", false);
-      }
-      const widgetType = test === "old" ? "Category" : "String";
-
-      openNativeEditor().type("{{filter}}", {
-        parseSpecialCharSequences: false,
-      });
-      cy.findByText("Variable type")
-        .parent()
-        .findByText("Text")
-        .click();
-      popover()
-        .findByText("Field Filter")
-        .click();
-      popover().within(() => {
-        cy.findByText("Sample Dataset");
-        cy.findByText("Products").click();
-      });
-      popover()
-        .findByText("Category")
-        .click();
-      cy.findByText("Filter widget type")
-        .parent()
-        .find(".AdminSelect")
-        .findByText(widgetType)
-        .click();
-      popover()
-        .find(".List-section")
-        .should("have.length.gt", 1);
     });
   });
 
