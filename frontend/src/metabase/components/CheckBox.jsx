@@ -24,7 +24,6 @@ const propTypes = {
   autoFocus: PropTypes.bool,
 
   className: PropTypes.string,
-  style: PropTypes.object,
 };
 
 export const DEFAULT_CHECKED_COLOR = "brand";
