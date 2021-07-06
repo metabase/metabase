@@ -249,7 +249,7 @@
     :all
     (set
      (for [path  permissions-set
-           :let  [[_ id-str] (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)]
+           :let  [[_ id-str] (re-matches #"/collection/((?:\d+)|root)/((read|edit)/)?" path)]
            :when id-str]
        (cond-> id-str
          (not= id-str "root") Integer/parseInt)))))
@@ -497,7 +497,7 @@
 
 (s/defn perms-for-archiving :- #{perms/ObjectPath}
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
-  *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
+  *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('edit')
   permissions for the Collection itself and all its descendants, but not for its parent Collection.
 
   For example, suppose we have a Collection hierarchy like:
@@ -641,14 +641,15 @@
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
-  "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
-  and write perms for every Group with write perms for the source Collection."
+  "Grant permissions (read/write/moderate) to destination Collections for every Group with the same permissions for a source Collection"
   [source-collection-or-id dest-collections-or-ids]
   ;; figure out who has permissions for the source Collection...
-  (let [group-ids-with-read-perms  (db/select-field :group_id Permissions
-                                     :object (perms/collection-read-path source-collection-or-id))
-        group-ids-with-write-perms (db/select-field :group_id Permissions
-                                     :object (perms/collection-readwrite-path source-collection-or-id))]
+  (let [group-ids-with-read-perms     (db/select-field :group_id Permissions
+                                        :object (perms/collection-read-path source-collection-or-id))
+        group-ids-with-write-perms    (db/select-field :group_id Permissions
+                                        :object (perms/collection-readwrite-path source-collection-or-id))
+        group-ids-with-moderate-perms (db/select-field :group_id Permissions
+                                        :object (perms/collection-moderate-path source-collection-or-id))]
     ;; ...and insert corresponding rows for each destination Collection
     (db/insert-many! Permissions
       (concat
@@ -661,11 +662,15 @@
        (for [dest     dest-collections-or-ids
              :let     [readwrite-path (perms/collection-readwrite-path dest)]
              group-id group-ids-with-write-perms]
-         {:group_id group-id, :object readwrite-path})))))
+         {:group_id group-id, :object readwrite-path})
+       (for [dest     dest-collections-or-ids
+             :let     [moderate-path (perms/collection-moderate-path dest)]
+             group-id group-ids-with-moderate-perms]
+         {:group_id group-id, :object moderate-path})))))
 
 (defn- copy-parent-permissions!
   "When creating a new Collection, we shall copy the Permissions entries for its parent. That way, Groups who can see
-  its parent can see it; and Groups who can 'curate' (write) its parent can 'curate' it, as a default state. (Of
+  its parent can see it; and Groups who can edit (write) its parent can edit it, as a default state. (Of
   course, admins can change these permissions after the fact.)
 
   This does *not* apply to Collections that are created inside a Personal Collection or one of its descendants.
@@ -741,7 +746,7 @@
 (s/defn ^:private grant-perms-when-moving-out-of-personal-collection!
   "When moving a descendant of a Personal Collection into the Root Collection, or some other Collection not descended
   from a Personal Collection, we need to grant it Permissions, since now that it has moved across the boundary into
-  impersonal-land it *requires* Permissions to be seen or 'curated'. If we did not grant Permissions when moving, it
+  impersonal-land it *requires* Permissions to be seen or edited. If we did not grant Permissions when moving, it
   would immediately become invisible to all save admins, because no Group would have perms for it. This is obviously a
   bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
   somewhere else and lose all access for it."
@@ -853,8 +858,8 @@
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
 (defn perms-objects-set
-  "Return the required set of permissions to `read-or-write` `collection-or-id`."
-  [collection-or-id read-or-write]
+  "Return the required set of permissions to read, write, or moderate the `collection-or-id`."
+  [collection-or-id permission-type]
   (let [collection (if (integer? collection-or-id)
                      (db/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
@@ -864,9 +869,10 @@
       #{}
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
-      #{(case read-or-write
-          :read  (perms/collection-read-path collection-or-id)
-          :write (perms/collection-readwrite-path collection-or-id))})))
+      #{(case permission-type
+          :read     (perms/collection-read-path collection-or-id)
+          :write    (perms/collection-readwrite-path collection-or-id)
+          :moderate (perms/collection-moderate-path collection-or-id))})))
 
 (u/strict-extend (class Collection)
   models/IModel
@@ -882,6 +888,7 @@
   (merge i/IObjectPermissionsDefaults
          {:can-read?         (partial i/current-user-has-full-permissions? :read)
           :can-write?        (partial i/current-user-has-full-permissions? :write)
+          :can-moderate?     (partial i/current-user-has-full-permissions? :moderate)
           :perms-objects-set perms-objects-set}))
 
 

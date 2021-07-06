@@ -247,7 +247,7 @@
       this)")
 
   (^{:added "0.32.0"} can-create? [entity m]
-    "NEW! Check whether or not current user is allowed to CREATE a new instance of `entity` with properties in map
+   "NEW! Check whether or not current user is allowed to CREATE a new instance of `entity` with properties in map
     `m`.
 
   Because this method was added YEARS after `can-read?` and `can-write?`, most models do not have an implementation
@@ -261,7 +261,12 @@
 
   This method is appropriate for powering `PUT` API endpoints. Like `can-create?` this method was added YEARS after
   most of the current API endpoints were written, so it is used in very few places, and this logic is determined
-  ad-hoc in the API endpoints themselves. Use this method going forward!"))
+  ad-hoc in the API endpoints themselves. Use this method going forward!")
+
+  (^{:added "0.40.0"} can-moderate? [instance changes]
+   "NEW! Check whether or not the current user is allowed to create `ModerationReview`s for the object
+
+  This method is appropriate for powering `PUT` API endpoints."))
 
 (def IObjectPermissionsDefaults
   "Default implementations for `IObjectPermissions`."
@@ -274,6 +279,13 @@
       (NoSuchMethodException.
        (str (format "%s does not yet have an implementation for `can-create?`. " (name entity))
             "Please consider adding one. See dox for `can-create?` for more details."))))
+
+   :can-moderate?
+   (fn [entity _]
+     (throw
+      (NoSuchMethodException.
+       (str (format "%s does not yet have an implementation for `can-moderate?`. " (name entity))
+            "Please consider adding one. See dox for `can-moderate?` for more details."))))
 
    :can-update?
    (fn
@@ -310,16 +322,16 @@
      (u/prog1 (f (current-user-permissions-set) perms-set)
        (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([permission-type entity object-id] [permission-type object] [perms-set])}
   current-user-has-full-permissions?
-  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *full*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
-  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of `can-read?`/`can-write?`/`can-moderate?` for the old permissions system. `true` if the current user has *full*
+  permissions for the paths returned by its implementation of `perms-objects-set`. (`permission-type` is either `:read`,
+  `:write`, or `:moderate` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-full-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([permission-type entity object-id] [permission-type object] [perms-set])}
   current-user-has-partial-permissions?
-  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *partial*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
-  `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
+  "Implementation of `can-read?`/`can-write?`/`can-moderate?` for the old permissions system. `true` if the current user has *partial*
+  permissions for the paths returned by its implementation of `perms-objects-set`. (`permission-type` is either `:read`,
+  `:write`, or `:moderate` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))

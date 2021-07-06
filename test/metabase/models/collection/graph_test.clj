@@ -80,7 +80,7 @@
       (is (= {:revision 0
               :groups   {(u/the-id (group/all-users)) {:root :none}
                          (u/the-id (group/metabot))   {:root :none}
-                         (u/the-id (group/admin))     {:root :write}}}
+                         (u/the-id (group/admin))     {:root :moderate}}}
              (graph :clear-revisions? true))))))
 
 (deftest new-collection-perms-test
@@ -88,9 +88,9 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
         (is (= {:revision 0
-                :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :none}
-                           (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
-                           (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
+                :groups   {(u/the-id (group/all-users)) {:root :none,     :COLLECTION :none}
+                           (u/the-id (group/metabot))   {:root :none,     :COLLECTION :none}
+                           (u/the-id (group/admin))     {:root :moderate, :COLLECTION :moderate}}}
                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
 (deftest read-perms-test
@@ -99,9 +99,9 @@
       (mt/with-temp Collection [collection]
         (perms/grant-collection-read-permissions! (group/all-users) collection)
         (is (= {:revision 0
-                :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :read}
-                           (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
-                           (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
+                :groups   {(u/the-id (group/all-users)) {:root :none,     :COLLECTION :read}
+                           (u/the-id (group/metabot))   {:root :none,     :COLLECTION :none}
+                           (u/the-id (group/admin))     {:root :moderate, :COLLECTION :moderate}}}
                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
 (deftest grant-write-perms-for-new-collections-test
@@ -110,9 +110,20 @@
       (mt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
         (is (=  {:revision 0
-                 :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :write}
-                            (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
-                            (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
+                 :groups   {(u/the-id (group/all-users)) {:root :none,     :COLLECTION :write}
+                            (u/the-id (group/metabot))   {:root :none,     :COLLECTION :none}
+                            (u/the-id (group/admin))     {:root :moderate, :COLLECTION :moderate}}}
+                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
+
+(deftest grant-moderate-perms-for-new-collections-test
+  (testing "make sure we can grant moderate perms for new collections (!)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp Collection [collection]
+        (perms/grant-collection-moderate-permissions! (group/all-users) collection)
+        (is (=  {:revision 0
+                 :groups   {(u/the-id (group/all-users)) {:root :none,     :COLLECTION :moderate}
+                            (u/the-id (group/metabot))   {:root :none,     :COLLECTION :none}
+                            (u/the-id (group/admin))     {:root :moderate, :COLLECTION :moderate}}}
                 (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
 (deftest non-magical-groups-test
@@ -122,7 +133,7 @@
         (is (=   {:revision 0
                   :groups   {(u/the-id (group/all-users)) {:root :none}
                              (u/the-id (group/metabot))   {:root :none}
-                             (u/the-id (group/admin))     {:root :write}
+                             (u/the-id (group/admin))     {:root :moderate}
                              (u/the-id new-group)         {:root :none}}}
                  (graph :clear-revisions? true, :groups [new-group])))))))
 
@@ -134,8 +145,20 @@
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none}
                            (u/the-id (group/metabot))   {:root :none}
-                           (u/the-id (group/admin))     {:root :write}
+                           (u/the-id (group/admin))     {:root :moderate}
                            (u/the-id new-group)         {:root :read}}}
+               (graph :clear-revisions? true, :groups [new-group])))))))
+
+(deftest root-collection-moderate-perms-test
+  (testing "How abut *moderate* permissions for the Root Collection?"
+    (mt/with-temp PermissionsGroup [new-group]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (perms/grant-collection-moderate-permissions! new-group collection/root-collection)
+        (is (= {:revision 0
+                :groups   {(u/the-id (group/all-users)) {:root :none}
+                           (u/the-id (group/metabot))   {:root :none}
+                           (u/the-id (group/admin))     {:root :moderate}
+                           (u/the-id new-group)         {:root :moderate}}}
                (graph :clear-revisions? true, :groups [new-group])))))))
 
 (deftest root-collection-write-perms-test
@@ -146,7 +169,7 @@
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none}
                            (u/the-id (group/metabot))   {:root :none}
-                           (u/the-id (group/admin))     {:root :write}
+                           (u/the-id (group/admin))     {:root :moderate}
                            (u/the-id new-group)         {:root :write}}}
                (graph :clear-revisions? true, :groups [new-group])))))))
 
@@ -160,7 +183,7 @@
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none}
                            (u/the-id (group/metabot))   {:root :none}
-                           (u/the-id (group/admin))     {:root :write}}}
+                           (u/the-id (group/admin))     {:root :moderate}}}
                (graph))
             "revision should not have changed, because there was nothing to do...")))))
 
@@ -174,9 +197,9 @@
                                          [:groups (u/the-id (group/all-users)) (u/the-id collection)]
                                          :read))
           (is (= {:revision 1
-                  :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :read}
-                             (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
-                             (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
+                  :groups   {(u/the-id (group/all-users)) {:root :none,     :COLLECTION :read}
+                             (u/the-id (group/metabot))   {:root :none,     :COLLECTION :none}
+                             (u/the-id (group/admin))     {:root :moderate, :COLLECTION :moderate}}}
                  (replace-collection-ids collection (graph :collections [collection]))))))))
 
   (testing "can we give them *write* perms?"
@@ -187,9 +210,9 @@
                                          [:groups (u/the-id (group/all-users)) (u/the-id collection)]
                                          :write))
           (is (= {:revision 1
-                  :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :write}
-                             (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
-                             (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
+                  :groups   {(u/the-id (group/all-users)) {:root :none,     :COLLECTION :write}
+                             (u/the-id (group/metabot))   {:root :none,     :COLLECTION :none}
+                             (u/the-id (group/admin))     {:root :moderate, :COLLECTION :moderate}}}
                  (replace-collection-ids collection (graph :collections [collection])))))))))
 
 (deftest revoke-perms-test
@@ -203,9 +226,9 @@
                                          [:groups (u/the-id (group/all-users)) (u/the-id collection)]
                                          :none))
           (is (= {:revision 1
-                  :groups   {(u/the-id (group/all-users)) {:root :none,  :COLLECTION :none}
-                             (u/the-id (group/metabot))   {:root :none,  :COLLECTION :none}
-                             (u/the-id (group/admin))     {:root :write, :COLLECTION :write}}}
+                  :groups   {(u/the-id (group/all-users)) {:root :none,     :COLLECTION :none}
+                             (u/the-id (group/metabot))   {:root :none,     :COLLECTION :none}
+                             (u/the-id (group/admin))     {:root :moderate, :COLLECTION :moderate}}}
                  (replace-collection-ids collection (graph :collections [collection])))))))))
 
 (deftest grant-root-permissions-test
@@ -220,7 +243,7 @@
           (is (= {:revision 1
                   :groups   {(u/the-id (group/all-users)) {:root :none}
                              (u/the-id (group/metabot))   {:root :none}
-                             (u/the-id (group/admin))     {:root :write}
+                             (u/the-id (group/admin))     {:root :moderate}
                              (u/the-id new-group)         {:root :read}}}
                  (graph :groups [new-group])))))))
 
@@ -235,7 +258,7 @@
           (is (= {:revision 1
                   :groups   {(u/the-id (group/all-users)) {:root :none}
                              (u/the-id (group/metabot))   {:root :none}
-                             (u/the-id (group/admin))     {:root :write}
+                             (u/the-id (group/admin))     {:root :moderate}
                              (u/the-id new-group)         {:root :write}}}
                  (graph :groups [new-group]))))))))
 
@@ -252,7 +275,7 @@
           (is (= {:revision 1
                   :groups   {(u/the-id (group/all-users)) {:root :none}
                              (u/the-id (group/metabot))   {:root :none}
-                             (u/the-id (group/admin))     {:root :write}
+                             (u/the-id (group/admin))     {:root :moderate}
                              (u/the-id new-group)         {:root :none}}}
                  (graph :groups [new-group]))))))))
 
@@ -262,7 +285,7 @@
       (is (= {:revision 0
               :groups   {(u/the-id (group/all-users)) {:root :none}
                          (u/the-id (group/metabot))   {:root :none}
-                         (u/the-id (group/admin))     {:root :write}}}
+                         (u/the-id (group/admin))     {:root :moderate}}}
              (graph :clear-revisions? true)))))
 
   (testing "Make sure descendants of Personal Collections do not come back as part of the graph either..."
@@ -272,7 +295,7 @@
         (is (= {:revision 0
                 :groups   {(u/the-id (group/all-users)) {:root :none}
                            (u/the-id (group/metabot))   {:root :none}
-                           (u/the-id (group/admin))     {:root :write}}}
+                           (u/the-id (group/admin))     {:root :moderate}}}
                (graph)))))))
 
 (deftest disallow-editing-personal-collections-test
@@ -287,7 +310,7 @@
           (is (= {:revision 0
                   :groups   {(u/the-id (group/all-users)) {:root :none}
                              (u/the-id (group/metabot))   {:root :none}
-                             (u/the-id (group/admin))     {:root :write}}}
+                             (u/the-id (group/admin))     {:root :moderate}}}
                  (graph))))
 
         (testing "No revision should have been saved"

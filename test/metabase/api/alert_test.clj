@@ -792,7 +792,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- api:delete! [user-kw expected-status-code alert-or-id]
-  ((user->client user-kw) :delete expected-status-code (alert-url alert-or-id)))
+  (user-http-request user-kw :delete expected-status-code (alert-url alert-or-id)))
 
 (deftest delete-alert-test
   (testing "Only admins can delete an alert"
@@ -821,7 +821,7 @@
                              PulseChannel          [pc    (pulse-channel alert)]
                              PulseChannelRecipient [_     (recipient pc :rasta)]]
                (with-alert-setup
-                 (let [original-alert-response ((user->client :crowberto) :get 200 (alert-question-url card))]
+                 (let [original-alert-response (user-http-request :crowberto :get 200 (alert-question-url card))]
 
                    ;; A user can't delete an admin's alert
                    (api:delete! :rasta 403 alert)

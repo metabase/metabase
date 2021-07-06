@@ -20,7 +20,7 @@ import {
 import { USERS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
-  curate: ["admin", "normal", "nodata"],
+  edit: ["admin", "normal", "nodata"],
   view: ["readonly"],
   no: ["nocollection", "nosql", "none"],
 };
@@ -35,7 +35,7 @@ describe("collection permissions", () => {
     Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
       context(`${permission} access`, () => {
         userGroup.forEach(user => {
-          onlyOn(permission === "curate", () => {
+          onlyOn(permission === "edit", () => {
             describe(`${user} user`, () => {
               beforeEach(() => {
                 cy.signIn(user);
@@ -605,7 +605,7 @@ describe("collection permissions", () => {
         userGroup.forEach(user => {
           // This function `onlyOn` will not generate tests for any other condition.
           // It helps to make both our tests and Cypress runner sidebar clean
-          onlyOn(permission === "curate", () => {
+          onlyOn(permission === "edit", () => {
             describe(`${user} user`, () => {
               beforeEach(() => {
                 cy.signInAsAdmin();
@@ -682,7 +682,7 @@ describe("collection permissions", () => {
     });
   });
 
-  it("should offer to save items to 'Our analytics' if user has a 'curate' access to it", () => {
+  it("should offer to save items to 'Our analytics' if user has 'edit' access to it", () => {
     cy.signIn("normal");
 
     openNativeEditor().type("select * from people");
