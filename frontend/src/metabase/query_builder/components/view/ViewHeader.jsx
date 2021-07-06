@@ -10,7 +10,6 @@ import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import SavedQuestionHeaderButton from "metabase/questions/components/SavedQuestionHeaderButton";
-import HistoryButton from "metabase/questions/components/HistoryButton";
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
@@ -44,6 +43,7 @@ const viewTitleHeaderPropTypes = {
   isNativeEditorOpen: PropTypes.bool,
   isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
+  isShowingQuestionDetailsSidebar: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -53,6 +53,8 @@ const viewTitleHeaderPropTypes = {
   onCloseSummary: PropTypes.func,
   onAddFilter: PropTypes.func,
   onCloseFilter: PropTypes.func,
+  onOpenQuestionDetails: PropTypes.func,
+  onCloseQuestionDetails: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
@@ -61,7 +63,6 @@ const viewTitleHeaderPropTypes = {
   className: PropTypes.string,
   style: PropTypes.object,
 };
-
 const SavedQuestionHeaderButtonContainer = styled.div`
   position: relative;
   right: 0.38rem;
@@ -125,7 +126,6 @@ export class ViewTitleHeader extends React.Component {
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
-    const description = question.description();
     const lastEditInfo = question.lastEditInfo();
 
     const isStructured = question.isStructured();
@@ -161,14 +161,6 @@ export class ViewTitleHeader extends React.Component {
                   }
                 />
               </SavedQuestionHeaderButtonContainer>
-              <HistoryButton
-                className="pl1"
-                onClick={() => onOpenModal("history")}
-                modelType="card"
-                modelId={question.id()}
-              />
-            </SavedQuestionHeaderButtonContainer>
-            <div>
               {lastEditInfo && (
                 <LastEditInfoLabel
                   className="ml1 text-light"
