@@ -76,12 +76,10 @@ class CollectionSidebar extends React.Component {
   };
 
   componentDidUpdate(prevProps) {
-    const { collectionId, collectionsById, loading } = this.props;
+    const { collectionId, collections, collectionsById, loading } = this.props;
     const loaded = prevProps.loading && !loading;
     if (loaded || this.checkCollectionsMapChanged(prevProps.collectionsById)) {
-      const collections = Object.values(collectionsById);
-      const ancestors =
-        getParentPath(collections, parseInt(collectionId)) || [];
+      const ancestors = getParentPath(collections, collectionId) || [];
       this.setState({ openCollections: ancestors });
     }
   }
