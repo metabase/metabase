@@ -463,6 +463,7 @@
                   :id                card-virtual-table-id
                   :description       nil
                   :dimension_options (default-dimension-options)
+                  :collection_id     nil
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                                 with-field-literal-id)
                                           [{:name         "NAME"
