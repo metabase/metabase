@@ -4,7 +4,7 @@ import styled, { css } from "styled-components";
 
 import Icon from "metabase/components/Icon";
 
-import { color, darken } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const propTypes = {
   checked: PropTypes.bool,
@@ -80,6 +80,13 @@ function Checkbox({
     [checked, onChange],
   );
 
+  const renderLabel = useCallback(() => {
+    if (label == null) {
+      return null;
+    }
+    return React.isValidElement(label) ? label : <LabelText>{label}</LabelText>;
+  }, [label]);
+
   return (
     <CheckboxRoot className={className}>
       <Container>
@@ -107,7 +114,7 @@ function Checkbox({
             />
           )}
         </VisibleBox>
-        {label && <LabelText>{label}</LabelText>}
+        {renderLabel()}
       </Container>
     </CheckboxRoot>
   );
@@ -172,5 +179,6 @@ const LabelText = styled.span`
 `;
 
 Checkbox.propTypes = propTypes;
+Checkbox.Label = LabelText;
 
 export default Checkbox;

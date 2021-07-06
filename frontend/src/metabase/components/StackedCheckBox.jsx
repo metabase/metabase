@@ -69,5 +69,6 @@ const StackedBackground = styled.div`
 `;
 
 StackedCheckBox.propTypes = propTypes;
+StackedCheckBox.Label = CheckBox.Label;
 
 export default StackedCheckBox;
