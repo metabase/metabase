@@ -10,7 +10,9 @@ import CheckBox, {
 import { color } from "metabase/lib/colors";
 
 const propTypes = {
+  label: PropTypes.string,
   checked: PropTypes.bool,
+  disabled: PropTypes.bool,
   checkedColor: PropTypes.string,
   uncheckedColor: PropTypes.string,
   size: PropTypes.number,
@@ -18,7 +20,9 @@ const propTypes = {
 };
 
 function StackedCheckBox({
+  label,
   checked,
+  disabled = false,
   checkedColor = DEFAULT_CHECKED_COLOR,
   uncheckedColor = DEFAULT_UNCHECKED_COLOR,
   size = DEFAULT_SIZE,
@@ -28,7 +32,9 @@ function StackedCheckBox({
   return (
     <StackedCheckBoxRoot className={className}>
       <CheckBox
+        label={label}
         checked={checked}
+        disabled={disabled}
         checkedColor={checkedColor}
         uncheckedColor={uncheckedColor}
         size={size}
@@ -36,8 +42,10 @@ function StackedCheckBox({
       />
       <StackedBackground
         checked={checked}
+        disabled={disabled}
         checkedColor={checkedColor}
         uncheckedColor={uncheckedColor}
+        hasLabel={!!label}
         size={size}
       />
     </StackedCheckBoxRoot>
@@ -57,7 +65,7 @@ const StackedBackground = styled.div`
   display: inline-block;
 
   z-index: -1;
-  top: -3px;
+  top: ${props => (props.hasLabel ? 0 : "-3px")};
   left: 3px;
 
   background: ${props =>
@@ -66,6 +74,8 @@ const StackedBackground = styled.div`
   border: 2px solid
     ${props =>
       props.checked ? color(props.checkedColor) : color(props.uncheckedColor)};
+
+  opacity: ${props => (props.disabled ? 0.4 : 1)};
 `;
 
 StackedCheckBox.propTypes = propTypes;

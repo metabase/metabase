@@ -38,6 +38,13 @@ export const examples = {
       />
     </div>
   ),
+  Disabled: (
+    <div>
+      <StackedCheckBoxDemo disabled />
+      <br />
+      <StackedCheckBoxDemo label="Confirm Stuff" disabled checked />
+    </div>
+  ),
   Sizing: (
     <div style={rowStyle}>
       {[10, 12, 14, 16, 18, 20, 24].map(size => (
