@@ -5,11 +5,7 @@ import Icon from "metabase/components/Icon";
 import { SegmentedList, SegmentedItem } from "./SegmentedControl.styled";
 
 const optionShape = PropTypes.shape({
-  name: PropTypes.oneOfType([
-    PropTypes.string,
-    PropTypes.element,
-    PropTypes.node,
-  ]).isRequired,
+  name: PropTypes.node.isRequired,
   value: PropTypes.any.isRequired,
   icon: PropTypes.string,
 
