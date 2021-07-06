@@ -13,8 +13,13 @@ const propTypes = {
   onChange: PropTypes.func,
   onFocus: PropTypes.func,
   onBlur: PropTypes.func,
+
+  // Expect color aliases, literals
+  // Example: brand, accent1, success
+  // Won't work: red, #000, rgb(0, 0, 0)
   checkedColor: PropTypes.string,
   uncheckedColor: PropTypes.string,
+
   size: PropTypes.number,
   autoFocus: PropTypes.bool,
 
