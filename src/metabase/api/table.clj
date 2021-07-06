@@ -332,11 +332,12 @@
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
   (let [card (hydrate card :collection)]
-    (cond-> {:id           (str "card__" (u/the-id card))
-             :db_id        (:database_id card)
-             :display_name (:name card)
-             :schema       (get-in card [:collection :name] (root-collection-schema-name))
-             :description  (:description card)}
+    (cond-> {:id            (str "card__" (u/the-id card))
+             :db_id         (:database_id card)
+             :display_name  (:name card)
+             :schema        (get-in card [:collection :name] (root-collection-schema-name))
+             :collection_id (get-in card [:collection :id])
+             :description   (:description card)}
       include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
                                                                            database_id
                                                                            (:result_metadata card))))))

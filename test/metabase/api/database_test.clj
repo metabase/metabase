@@ -333,11 +333,12 @@
 
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge
-   {:id           (format "card__%d" (u/the-id card))
-    :db_id        (:database_id card)
-    :display_name (:name card)
-    :schema       "Everything else"
-    :description  nil}
+   {:id            (format "card__%d" (u/the-id card))
+    :db_id         (:database_id card)
+    :display_name  (:name card)
+    :schema        "Everything else"
+    :collection_id (:collection_id card)
+    :description   nil}
    kvs))
 
 (driver/register! ::no-nested-query-support
@@ -420,11 +421,12 @@
    :id                 (s/eq -1337)
    :features           (s/eq ["basic-aggregations"])
    :is_saved_questions (s/eq true)
-   :tables             [{:id           #"^card__\d+$"
-                         :db_id        s/Int
-                         :display_name s/Str
-                         :schema       s/Str ; collection name
-                         :description  (s/maybe s/Str)}]})
+   :tables             [{:id            #"^card__\d+$"
+                         :db_id         s/Int
+                         :display_name  s/Str
+                         :schema        s/Str ; collection name
+                         :description   (s/maybe s/Str)
+                         :collection_id (s/maybe s/Int)}]})
 
 (defn- check-tables-included [response & tables]
   (let [response-tables (set (:tables response))]
@@ -543,12 +545,13 @@
                       :id                 (s/eq -1337)
                       :is_saved_questions (s/eq true)
                       :features           (s/eq ["basic-aggregations"])
-                      :tables             [{:id           #"^card__\d+$"
-                                            :db_id        s/Int
-                                            :display_name s/Str
-                                            :schema       s/Str ; collection name
-                                            :description  (s/maybe s/Str)
-                                            :fields       [su/Map]}]}
+                      :tables             [{:id            #"^card__\d+$"
+                                            :db_id         s/Int
+                                            :display_name  s/Str
+                                            :schema        s/Str ; collection name
+                                            :description   (s/maybe s/Str)
+                                            :collection_id (s/maybe s/Int)
+                                            :fields        [su/Map]}]}
                      response))
         (check-tables-included
          response
@@ -829,8 +832,8 @@
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
-        (is (= ["Everything else"
-                "My Collection"]
+        (is (= [{:schema "Everything else", :collection_id nil}
+                {:schema "My Collection", :collection_id (:id coll)}]
                ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id))))))
 
     (testing "null and empty schemas should both come back as blank strings"
@@ -936,34 +939,33 @@
         (doseq [card [card-1 card-2]]
           ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
         (testing "Should be able to get saved questions in a specific collection"
-          (is (= [{:id           (format "card__%d" (:id card-1))
-                   :db_id        (mt/id)
-                   :display_name "Card 1"
-                   :schema       "My Collection"
-                   :description  nil}]
+          (is (= [{:id            (format "card__%d" (:id card-1))
+                   :db_id         (mt/id)
+                   :display_name  "Card 1"
+                   :schema        "My Collection"
+                   :collection_id (:id coll)
+                   :description   nil}]
                  ((mt/user->client :lucky) :get 200
-                  (format "database/%d/schema/My Collection" mbql.s/saved-questions-virtual-database-id)))))
+                  (format "database/%d/schema/%d" mbql.s/saved-questions-virtual-database-id
+                          (:id coll))))))
 
         (testing "Should be able to get saved questions in the root collection"
           (let [response ((mt/user->client :lucky) :get 200
-                          (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name)))]
-            (is (schema= [{:id           #"^card__\d+$"
-                           :db_id        s/Int
-                           :display_name s/Str
-                           :schema       (s/eq (table-api/root-collection-schema-name))
-                           :description  (s/maybe s/Str)}]
+                          (format "database/%d/schema/root" mbql.s/saved-questions-virtual-database-id))]
+            (is (schema= [{:id            #"^card__\d+$"
+                           :db_id         s/Int
+                           :display_name  s/Str
+                           :schema        (s/eq (table-api/root-collection-schema-name))
+                           :collection_id (s/maybe s/Int)
+                           :description   (s/maybe s/Str)}]
                          response))
             (is (contains? (set response)
                            {:id           (format "card__%d" (:id card-2))
                             :db_id        (mt/id)
                             :display_name "Card 2"
                             :schema       (table-api/root-collection-schema-name)
-                            :description  nil}))))
-
-        (testing "Should throw 404 if the schema/Collection doesn't exist"
-          (is (= "Not found."
-                 ((mt/user->client :lucky) :get 404
-                  (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))
+                            :collection_id (:collection_id card-2)
+                            :description  nil}))))))
 
     (mt/with-temp* [Database [{db-id :id}]
                     Table    [_ {:db_id db-id, :schema nil, :name "t1"}]

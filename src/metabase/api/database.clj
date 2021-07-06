@@ -698,9 +698,9 @@
   []
   (when (public-settings/enable-nested-queries)
     (->> (cards-virtual-tables)
-         (map :schema)
-         distinct
-         (sort-by str/lower-case))))
+         (map #(select-keys % [:schema :collection_id]))
+         (m/distinct-by :collection_id)
+         (sort-by (comp str/lower-case :schema)))))
 
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
@@ -726,15 +726,22 @@
   (api/check-404 (seq (concat (schema-tables-list id nil)
                               (schema-tables-list id "")))))
 
-(api/defendpoint GET ["/:virtual-db/schema/:schema"
+(api/defendpoint GET ["/:virtual-db/schema/root"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
-  [schema]
+  []
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
-          :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
-                                      [:= :collection_id nil]
-                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
+          :additional-constraints [[:= :collection_id nil]])
+         (map table-api/card->virtual-table))))
+
+(api/defendpoint GET ["/:virtual-db/schema/:collection-id"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+  "Returns a list of Tables for the saved questions virtual database."
+  [collection-id]
+  (when (public-settings/enable-nested-queries)
+    (->> (source-query-cards
+          :additional-constraints [[:= :collection_id collection-id]])
          (map table-api/card->virtual-table))))
 
 
