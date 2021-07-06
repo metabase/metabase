@@ -33,39 +33,6 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "ORD" not found');
   });
 
-  it("clears a template tag's default when the type changes", () => {
-    openNativeEditor()
-      // Write a query with parameter x. It defaults to a text parameter.
-      .type("select * from orders where total = {{x}}", {
-        parseSpecialCharSequences: false,
-      });
-
-    // Mark field as required and add a default text value.
-    cy.contains("Required?")
-      .next()
-      .click();
-    cy.contains("Default filter widget value")
-      .next()
-      .find("input")
-      .type("some text");
-
-    // Run the query and see an error.
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains(`Data conversion error converting "some text"`);
-
-    // Oh wait! That doesn't match the total column, so we'll change the parameter to a number.
-    cy.contains("Variable type")
-      .next()
-      .click();
-    cy.contains("Number").click();
-
-    // When we run it again, the default has been cleared out so we get the right error.
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains(
-      "You'll need to pick a value for 'X' before this query can run.",
-    );
-  });
-
   it("should show referenced cards in the template tag sidebar", () => {
     openNativeEditor()
       // start typing a question referenced
