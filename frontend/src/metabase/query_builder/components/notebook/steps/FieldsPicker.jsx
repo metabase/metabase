@@ -2,7 +2,6 @@
 import React from "react";
 
 import { t } from "ttag";
-import cx from "classnames";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CheckBox from "metabase/components/CheckBox";
@@ -27,32 +26,25 @@ export default function FieldsPicker({
     >
       <ul className="pt1">
         {(onSelectAll || onSelectNone) && (
-          <li
-            className={cx(
-              "px1 pb1 flex align-center cursor-pointer border-bottom mb1",
-              { disabled: isAll && !onSelectNone },
-            )}
-            onClick={() => {
-              if (isAll) {
-                onSelectNone();
-              } else {
-                onSelectAll();
-              }
-            }}
-          >
+          <li className="px1 pb1 flex align-center border-bottom mb1">
             <StackedCheckBox
+              label={isAll && onSelectNone ? t`Select None` : t`Select All`}
               checked={isAll}
               indeterminate={!isAll && !isNone}
+              disabled={isAll && !onSelectNone}
+              onChange={() => {
+                if (isAll) {
+                  onSelectNone();
+                } else {
+                  onSelectAll();
+                }
+              }}
               className="mr1"
             />
-            {isAll && onSelectNone ? t`Select None` : t`Select All`}
           </li>
         )}
         {dimensions.map(dimension => (
-          <li
-            key={dimension.key()}
-            className="px1 pb1 flex align-center cursor-pointer"
-          >
+          <li key={dimension.key()} className="px1 pb1 flex align-center">
             <CheckBox
               checked={selected.has(dimension.key())}
               label={dimension.displayName()}
