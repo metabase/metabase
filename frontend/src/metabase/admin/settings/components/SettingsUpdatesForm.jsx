@@ -3,6 +3,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 import { Flex, Box } from "grid-styled";
+import cx from "classnames";
+
 import MetabaseSettings from "metabase/lib/settings";
 import SettingsSetting from "./SettingsSetting";
 
@@ -102,7 +104,11 @@ export default class SettingsUpdatesForm extends Component {
         {!MetabaseSettings.isHosted() && <ul>{settings}</ul>}
 
         <div className="px2">
-          <div className="pt3 border-top">
+          <div
+            className={cx("pt3", {
+              "border-top": !MetabaseSettings.isHosted(),
+            })}
+          >
             {this.renderVersionUpdateNotice()}
           </div>
         </div>
