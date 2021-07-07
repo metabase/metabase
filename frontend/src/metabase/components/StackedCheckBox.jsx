@@ -45,7 +45,6 @@ function StackedCheckBox({
         disabled={disabled}
         checkedColor={checkedColor}
         uncheckedColor={uncheckedColor}
-        hasLabel={!!label}
         size={size}
       />
     </StackedCheckBoxRoot>
@@ -65,7 +64,7 @@ const StackedBackground = styled.div`
   display: inline-block;
 
   z-index: -1;
-  top: ${props => (props.hasLabel ? 0 : "-3px")};
+  top: -3px;
   left: 3px;
 
   background: ${props =>
