@@ -58,13 +58,5 @@
     "ecmaFeatures": {
       "legacyDecorators": true
     }
-  },
-  "overrides": [
-    {
-      "files": ["**.info.js", "**.info.jsx"],
-      "rules": {
-        "react/prop-types": 0
-      }
-    }
-  ]
+  }
 }
