@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
+import _ from "underscore";
 
 import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
@@ -20,12 +21,12 @@ import Tables from "metabase/entities/tables";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
+  isSavedQuestion,
 } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
-
-import _ from "underscore";
+import { getSchemaName } from "metabase/schema";
 
 const MIN_SEARCH_LENGTH = 2;
 
@@ -333,6 +334,15 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
+  async componentDidMount() {
+    if (this.props.selectedTableId) {
+      await this.props.fetchFields(this.props.selectedTableId);
+      if (this.isSavedQuestionSelected()) {
+        this.showSavedQuestionPicker();
+      }
+    }
+  }
+
   async componentDidUpdate() {
     // this logic cleans up invalid states, e.x. if a selectedSchema's database
     // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
@@ -350,6 +360,7 @@ export class UnconnectedDataSelector extends Component {
     const invalidTable =
       selectedSchema &&
       selectedTable &&
+      !isSavedQuestion(selectedTable.id) &&
       selectedTable.schema.id !== selectedSchema.id;
     const invalidField =
       selectedTable &&
@@ -374,7 +385,9 @@ export class UnconnectedDataSelector extends Component {
 
   async hydrateActiveStep() {
     const { steps } = this.props;
-    if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
+    if (this.isSavedQuestionSelected()) {
+      await this.switchToStep(DATABASE_STEP);
+    } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
     } else if (this.state.selectedSchemaId && steps.includes(TABLE_STEP)) {
       await this.switchToStep(TABLE_STEP);
@@ -690,6 +703,8 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
+  isSavedQuestionSelected = () => isSavedQuestion(this.props.selectedTableId);
+
   handleSavedQuestionSelect = async table => {
     if (this.props.setSourceTableFn) {
       this.props.setSourceTableFn(table.id);
@@ -781,6 +796,11 @@ export class UnconnectedDataSelector extends Component {
         {!isSearchActive &&
           (isSavedQuestionPickerShown ? (
             <SavedQuestionPicker
+              collectionName={
+                selectedTable &&
+                selectedTable.schema &&
+                getSchemaName(selectedTable.schema.id)
+              }
               tableId={selectedTable && selectedTable.id}
               databaseId={currentDatabaseId}
               onSelect={this.handleSavedQuestionSelect}

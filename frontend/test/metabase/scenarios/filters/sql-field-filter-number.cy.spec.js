@@ -2,31 +2,12 @@ import {
   restore,
   mockSessionProperty,
   openNativeEditor,
-  popover,
 } from "__support__/e2e/cypress";
 
-const NUMBER_FILTER_SUBTYPES = {
-  "Equal to": {
-    term: "4.3",
-    representativeResult: "Aerodynamic Linen Coat",
-  },
-  "Not equal to": {
-    term: "4.3",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  Between: {
-    term: ["4.3", "5"],
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "Greater than or equal to": {
-    term: "4.3",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "Less than or equal to": {
-    term: "4.3",
-    representativeResult: "Small Marble Shoes",
-  },
-};
+import { NUMBER_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
+
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
+import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 
 describe("scenarios > filters > sql filters > field filter > Number", () => {
   beforeEach(() => {
@@ -38,26 +19,29 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
     mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
-    enterNativeQuery("SELECT * FROM products WHERE {{filter}}");
+    SQLFilter.enterParameterizedQuery(
+      "SELECT * FROM products WHERE {{filter}}",
+    );
 
-    openPopoverFromDefaultFilterType();
-    setFilterType("Field Filter");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
 
-    mapFieldFilterTo({
+    FieldFilter.mapTo({
       table: "Products",
       field: "Rating",
     });
   });
 
   Object.entries(NUMBER_FILTER_SUBTYPES).forEach(
-    ([subType, { term, representativeResult }]) => {
+    ([subType, { value, representativeResult }]) => {
       describe(`should work for ${subType}`, () => {
         it("when set through the filter widget", () => {
-          setFilterWidgetType(subType);
+          FieldFilter.setWidgetType(subType);
 
-          setFieldFilterWidgetValue(term);
+          FieldFilter.openEntryForm();
+          FieldFilter.addWidgetNumberFilter(value);
 
-          runQuery();
+          SQLFilter.runQuery();
 
           cy.get(".Visualization").within(() => {
             cy.findByText(representativeResult);
@@ -65,11 +49,14 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
         });
 
         it("when set as the default value for a required filter", () => {
-          setFilterWidgetType(subType);
+          FieldFilter.setWidgetType(subType);
 
-          setRequiredFieldFilterDefaultValue(term);
+          SQLFilter.toggleRequired();
 
-          runQuery();
+          FieldFilter.openEntryForm({ isFilterRequired: true });
+          FieldFilter.addDefaultNumberFilter(value);
+
+          SQLFilter.runQuery();
 
           cy.get(".Visualization").within(() => {
             cy.findByText(representativeResult);
@@ -79,93 +66,3 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
     },
   );
 });
-
-function openPopoverFromSelectedFilterType(filterType) {
-  cy.get(".AdminSelect-content")
-    .contains(filterType)
-    .click();
-}
-
-function openPopoverFromDefaultFilterType() {
-  openPopoverFromSelectedFilterType("Text");
-}
-
-function setFilterType(filterType) {
-  popover().within(() => {
-    cy.findByText(filterType).click();
-  });
-}
-
-function runQuery(xhrAlias = "dataset") {
-  cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.wait("@" + xhrAlias);
-  cy.icon("play").should("not.exist");
-}
-
-function enterNativeQuery(query) {
-  cy.get("@editor").type(query, { parseSpecialCharSequences: false });
-}
-
-function toggleRequiredFilter() {
-  cy.findByText("Required?")
-    .parent()
-    .find("a")
-    .click();
-}
-
-function setRequiredFieldFilterDefaultValue(value) {
-  toggleRequiredFilter();
-
-  cy.findByText("Enter a default value...").click();
-
-  if (Array.isArray(value)) {
-    setBetweenFilterValue(value);
-  } else {
-    cy.findByPlaceholderText("Enter a default value...").type(value);
-    cy.button("Add filter").click();
-  }
-}
-
-function mapFieldFilterTo({ table, field } = {}) {
-  popover()
-    .contains(table)
-    .click();
-  popover()
-    .contains(field)
-    .click();
-}
-
-function setFilterWidgetType(type) {
-  cy.findByText("Filter widget type")
-    .parent()
-    .find(".AdminSelect")
-    .click();
-  popover()
-    .findByText(type)
-    .click();
-}
-
-function setFieldFilterWidgetValue(value) {
-  cy.get("fieldset").click();
-
-  if (Array.isArray(value)) {
-    setBetweenFilterValue(value);
-  } else {
-    popover()
-      .find("input")
-      .type(value);
-    cy.button("Add filter").click();
-  }
-}
-
-function setBetweenFilterValue([low, high] = []) {
-  popover().within(() => {
-    cy.get("input")
-      .first()
-      .type(low);
-    cy.get("input")
-      .last()
-      .type(high);
-  });
-  cy.button("Add filter").click();
-}

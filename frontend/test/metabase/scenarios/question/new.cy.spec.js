@@ -225,6 +225,17 @@ describe("scenarios > question > new", () => {
         cy.button("Visualize").click();
         cy.findByText("2018");
       });
+
+      it("should reopen saved question picker after returning back to editor mode", () => {
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        cy.button("Visualize").click();
+        cy.icon("notebook").click();
+        cy.findByTestId("data-step-cell").click();
+
+        cy.findByTestId("select-list").within(() => {
+          cy.findByText("Orders, Count, Grouped by Created At (year)");
+        });
+      });
     });
   });
 

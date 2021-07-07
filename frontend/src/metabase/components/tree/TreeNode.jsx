@@ -39,12 +39,10 @@ export const TreeNode = React.memo(function TreeNode({
 }) {
   const { name, icon, hasRightArrow, id } = item;
 
-  const handleExpand = e => {
-    e.stopPropagation();
+  const handleSelect = () => {
+    onSelect(item);
     onToggleExpand(id);
   };
-
-  const handleSelect = () => onSelect(item);
 
   const handleKeyDown = ({ key }) => {
     switch (key) {
@@ -70,7 +68,7 @@ export const TreeNode = React.memo(function TreeNode({
       isSelected={isSelected}
       onKeyDown={handleKeyDown}
     >
-      <ExpandToggleButton onClick={handleExpand} hidden={!hasChildren}>
+      <ExpandToggleButton hidden={!hasChildren}>
         <ExpandToggleIcon isExpanded={isExpanded} />
       </ExpandToggleButton>
 

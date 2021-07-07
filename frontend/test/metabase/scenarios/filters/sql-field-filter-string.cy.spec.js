@@ -1,36 +1,13 @@
 import {
   restore,
-  popover,
   mockSessionProperty,
   openNativeEditor,
 } from "__support__/e2e/cypress";
 
-const STRING_FILTER_SUBTYPES = {
-  String: {
-    term: "Synergistic Granite Chair",
-    representativeResult: "Synergistic Granite Chair",
-  },
-  "String is not": {
-    term: "Synergistic Granite Chair",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "String contains": {
-    term: "Bronze",
-    representativeResult: "Incredible Bronze Pants",
-  },
-  "String does not contain": {
-    term: "Bronze",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "String starts with": {
-    term: "Rustic",
-    representativeResult: "Rustic Paper Wallet",
-  },
-  "String ends with": {
-    term: "Hat",
-    representativeResult: "Small Marble Hat",
-  },
-};
+import { STRING_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
+
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
+import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 
 describe("scenarios > filters > sql filters > field filter > String", () => {
   beforeEach(() => {
@@ -42,26 +19,29 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
     mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
-    enterNativeQuery("SELECT * FROM products WHERE {{filter}}");
+    SQLFilter.enterParameterizedQuery(
+      "SELECT * FROM products WHERE {{filter}}",
+    );
 
-    openPopoverFromDefaultFilterType();
-    setFilterType("Field Filter");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
 
-    mapFieldFilterTo({
+    FieldFilter.mapTo({
       table: "Products",
       field: "Title",
     });
   });
 
   Object.entries(STRING_FILTER_SUBTYPES).forEach(
-    ([subType, { term, representativeResult }]) => {
+    ([subType, { value, representativeResult }]) => {
       describe(`should work for ${subType}`, () => {
         it("when set through the filter widget", () => {
-          setFilterWidgetType(subType);
+          FieldFilter.setWidgetType(subType);
 
-          setFieldFilterWidgetValue(term);
+          FieldFilter.openEntryForm();
+          FieldFilter.addWidgetStringFilter(value);
 
-          runQuery();
+          SQLFilter.runQuery();
 
           cy.get(".Visualization").within(() => {
             cy.findByText(representativeResult);
@@ -69,11 +49,14 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
         });
 
         it("when set as the default value for a required filter", () => {
-          setFilterWidgetType(subType);
+          FieldFilter.setWidgetType(subType);
 
-          setRequiredFieldFilterDefaultValue(term);
+          SQLFilter.toggleRequired();
 
-          runQuery();
+          FieldFilter.openEntryForm({ isFilterRequired: true });
+          FieldFilter.addDefaultStringFilter(value);
+
+          SQLFilter.runQuery();
 
           cy.get(".Visualization").within(() => {
             cy.findByText(representativeResult);
@@ -83,71 +66,3 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
     },
   );
 });
-
-function openPopoverFromSelectedFilterType(filterType) {
-  cy.get(".AdminSelect-content")
-    .contains(filterType)
-    .click();
-}
-
-function openPopoverFromDefaultFilterType() {
-  openPopoverFromSelectedFilterType("Text");
-}
-
-function setFilterType(filterType) {
-  popover().within(() => {
-    cy.findByText(filterType).click();
-  });
-}
-
-function runQuery(xhrAlias = "dataset") {
-  cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.wait("@" + xhrAlias);
-  cy.icon("play").should("not.exist");
-}
-
-function enterNativeQuery(query) {
-  cy.get("@editor").type(query, { parseSpecialCharSequences: false });
-}
-
-function toggleRequiredFilter() {
-  cy.findByText("Required?")
-    .parent()
-    .find("a")
-    .click();
-}
-
-function setRequiredFieldFilterDefaultValue(value) {
-  toggleRequiredFilter();
-
-  cy.findByText("Enter a default value...").click();
-  cy.findByPlaceholderText("Enter a default value...").type(value);
-  cy.button("Add filter").click();
-}
-
-function mapFieldFilterTo({ table, field } = {}) {
-  popover()
-    .contains(table)
-    .click();
-  popover()
-    .contains(field)
-    .click();
-}
-
-function setFilterWidgetType(type) {
-  cy.findByText("Filter widget type")
-    .parent()
-    .find(".AdminSelect")
-    .click();
-  popover()
-    .findByText(type)
-    .click();
-}
-
-function setFieldFilterWidgetValue(string) {
-  cy.get("fieldset").click();
-  popover()
-    .find("input")
-    .type(string);
-  cy.button("Add filter").click();
-}

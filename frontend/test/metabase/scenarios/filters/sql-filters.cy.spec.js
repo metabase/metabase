@@ -1,9 +1,11 @@
 import {
   restore,
-  popover,
   mockSessionProperty,
   openNativeEditor,
+  filterWidget,
 } from "__support__/e2e/cypress";
+
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > filters > sql filters > basic filter types", () => {
   beforeEach(() => {
@@ -19,15 +21,15 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
   describe("should work for text", () => {
     beforeEach(() => {
-      enterNativeQuery(
+      SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE products.category = {{textFilter}}",
       );
     });
 
     it("when set through the filter widget", () => {
-      setFilterWidgetValue("Gizmo");
+      SQLFilter.setWidgetValue("Gizmo");
 
-      runQuery();
+      SQLFilter.runQuery();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("Rustic Paper Wallet");
@@ -36,9 +38,10 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
 
     it("when set as the default value for a required filter", () => {
-      setRequiredFilterDefaultValue("Gizmo");
+      SQLFilter.toggleRequired();
+      SQLFilter.setDefaultValue("Gizmo");
 
-      runQuery();
+      SQLFilter.runQuery();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("Rustic Paper Wallet");
@@ -49,18 +52,18 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
   describe("should work for number", () => {
     beforeEach(() => {
-      enterNativeQuery(
+      SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE products.rating = {{numberFilter}}",
       );
 
-      openPopoverFromDefaultFilterType();
-      setFilterType("Number");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Number");
     });
 
     it("when set through the filter widget", () => {
-      setFilterWidgetValue("4.3");
+      SQLFilter.setWidgetValue("4.3");
 
-      runQuery();
+      SQLFilter.runQuery();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
@@ -69,9 +72,10 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
 
     it("when set as the default value for a required filter (metabase#16811)", () => {
-      setRequiredFilterDefaultValue("4.3");
+      SQLFilter.toggleRequired();
+      SQLFilter.setDefaultValue("4.3");
 
-      runQuery();
+      SQLFilter.runQuery();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("Aerodynamic Linen Coat");
@@ -82,21 +86,21 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
   describe("should work for date", () => {
     beforeEach(() => {
-      enterNativeQuery(
+      SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE products.created_at = {{dateFilter}}",
       );
 
-      openPopoverFromDefaultFilterType();
-      setFilterType("Date");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Date");
     });
 
     it("when set through the filter widget", () => {
-      cy.get("fieldset").click();
+      filterWidget().click();
       // Since we have fixed dates in Sample Dataset (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
       cy.findByText("15").click();
 
-      runQuery();
+      SQLFilter.runQuery();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("No results!");
@@ -104,12 +108,12 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
 
     it("when set as the default value for a required filter", () => {
-      toggleRequiredFilter();
+      SQLFilter.toggleRequired();
 
       cy.findByText("Select a default value…").click();
       cy.findByText("15").click();
 
-      runQuery();
+      SQLFilter.runQuery();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("No results!");
@@ -117,47 +121,3 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
   });
 });
-
-function openPopoverFromSelectedFilterType(filterType) {
-  cy.get(".AdminSelect-content")
-    .contains(filterType)
-    .click();
-}
-
-function openPopoverFromDefaultFilterType() {
-  openPopoverFromSelectedFilterType("Text");
-}
-
-function setFilterType(filterType) {
-  popover().within(() => {
-    cy.findByText(filterType).click();
-  });
-}
-
-function runQuery(xhrAlias = "dataset") {
-  cy.get(".NativeQueryEditor .Icon-play").click();
-  cy.wait("@" + xhrAlias);
-  cy.icon("play").should("not.exist");
-}
-
-function enterNativeQuery(query) {
-  cy.get("@editor").type(query, { parseSpecialCharSequences: false });
-}
-
-function setFilterWidgetValue(value) {
-  cy.get("fieldset")
-    .click()
-    .type(value);
-}
-
-function toggleRequiredFilter() {
-  cy.findByText("Required?")
-    .parent()
-    .find("a")
-    .click();
-}
-
-function setRequiredFilterDefaultValue(value) {
-  toggleRequiredFilter();
-  cy.findByPlaceholderText("Enter a default value...").type(value);
-}
