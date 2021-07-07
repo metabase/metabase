@@ -93,7 +93,11 @@ function Checkbox({
   }, [label]);
 
   return (
-    <CheckboxRoot className={className} disabled={disabled}>
+    <CheckboxRoot
+      className={className}
+      disabled={disabled}
+      data-testid="checkbox-root"
+    >
       <Container>
         <VisibleBox
           checked={checked}
