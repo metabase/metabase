@@ -37,7 +37,7 @@ function StackedCheckBox({
   }, [label]);
 
   return (
-    <StackedCheckBoxRoot className={className}>
+    <StackedCheckBoxRoot className={className} disabled={disabled}>
       <OpaqueCheckBox
         label={renderLabel()}
         checked={checked}
@@ -61,6 +61,11 @@ function StackedCheckBox({
 const StackedCheckBoxRoot = styled.div`
   position: relative;
   transform: scale(1);
+  opacity: ${props => (props.disabled ? 0.4 : 1)};
+`;
+
+const OpaqueCheckBox = styled(CheckBox)`
+  opacity: 1;
 `;
 
 const StackedBackground = styled.div`
