@@ -429,7 +429,7 @@ describe("scenarios > collection_defaults", () => {
         });
     });
 
-    it.skip("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
+    it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
       cy.request("POST", "/api/collection", {
         name: "foo:bar",
         color: "#509EE3",
