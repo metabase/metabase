@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import styled from "styled-components";
 
@@ -29,10 +29,17 @@ function StackedCheckBox({
   className,
   ...props
 }) {
+  const renderLabel = useCallback(() => {
+    if (label == null) {
+      return null;
+    }
+    return <Label>{label}</Label>;
+  }, [label]);
+
   return (
     <StackedCheckBoxRoot className={className}>
-      <CheckBox
-        label={label}
+      <OpaqueCheckBox
+        label={renderLabel()}
         checked={checked}
         disabled={disabled}
         checkedColor={checkedColor}
@@ -73,11 +80,13 @@ const StackedBackground = styled.div`
   border: 2px solid
     ${props =>
       props.checked ? color(props.checkedColor) : color(props.uncheckedColor)};
+`;
 
-  opacity: ${props => (props.disabled ? 0.4 : 1)};
+const Label = styled(CheckBox.Label)`
+  margin-top: -2px;
 `;
 
 StackedCheckBox.propTypes = propTypes;
-StackedCheckBox.Label = CheckBox.Label;
+StackedCheckBox.Label = Label;
 
 export default StackedCheckBox;
