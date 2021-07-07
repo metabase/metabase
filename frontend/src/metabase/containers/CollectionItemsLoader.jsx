@@ -13,7 +13,14 @@ const CollectionItemsLoader = ({ collectionId, children, ...props }: Props) => (
     {({ object }) => (
       <Search.ListLoader
         {...props}
-        query={{ collection: collectionId }}
+        query={{
+          collection: collectionId,
+          pinned_state: "is_pinned",
+          sort_column: "name",
+          sort_direction: "asc",
+          models: "dashboard",
+          limit: 200,
+        }}
         wrapped
       >
         {({ list }) =>
