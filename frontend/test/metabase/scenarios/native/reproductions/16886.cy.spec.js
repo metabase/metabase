@@ -8,7 +8,7 @@ const highlightSelectedText = "{shift}{rightarrow}".repeat(
   SELECTED_TEXT.length,
 );
 
-describe.skip("issue 16886", () => {
+describe("issue 16886", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
