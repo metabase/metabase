@@ -23,7 +23,7 @@ export default class SettingsUpdatesForm extends Component {
 
     if (MetabaseSettings.isHosted()) {
       return (
-        <div>{t`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}</div>
+        <div>{jt`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}</div>
       );
     }
 
