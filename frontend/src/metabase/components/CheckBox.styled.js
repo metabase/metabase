@@ -1,4 +1,6 @@
+import React from "react";
 import styled, { css } from "styled-components";
+import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
@@ -57,7 +59,12 @@ export const Input = styled.input.attrs({ type: "checkbox" })`
   z-index: 1;
 `;
 
-export const CheckboxIcon = styled(Icon)`
+function IconWrapped(props) {
+  const iconProps = _.omit(props, "uncheckedColor");
+  return <Icon {...iconProps} />;
+}
+
+export const CheckboxIcon = styled(IconWrapped)`
   position: absolute;
   color: ${props =>
     props.checked ? color("white") : color(props.uncheckedColor)};
