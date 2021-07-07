@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import InputBlurChange from "metabase/components/InputBlurChange";

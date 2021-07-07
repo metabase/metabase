@@ -36,9 +36,9 @@ describe("Query", () => {
     it("should return multiple aggregations", () => {
       expect(
         Query.getAggregations({
-          aggregation: [["count"], ["sum", ["field-id", 1]]],
+          aggregation: [["count"], ["sum", ["field", 1, null]]],
         }),
-      ).toEqual([["count"], ["sum", ["field-id", 1]]]);
+      ).toEqual([["count"], ["sum", ["field", 1, null]]]);
     });
   });
   describe("addAggregation", () => {
@@ -51,37 +51,37 @@ describe("Query", () => {
       expect(
         Query.addAggregation({ aggregation: [["count"]] }, [
           "sum",
-          ["field-id", 1],
+          ["field", 1, null],
         ]),
-      ).toEqual({ aggregation: [["count"], ["sum", ["field-id", 1]]] });
+      ).toEqual({ aggregation: [["count"], ["sum", ["field", 1, null]]] });
       // legacy
       expect(
         Query.addAggregation({ aggregation: [["count"]] }, [
           "sum",
-          ["field-id", 1],
+          ["field", 1, null],
         ]),
-      ).toEqual({ aggregation: [["count"], ["sum", ["field-id", 1]]] });
+      ).toEqual({ aggregation: [["count"], ["sum", ["field", 1, null]]] });
     });
   });
   describe("updateAggregation", () => {
     it("should update the correct aggregation", () => {
       expect(
         Query.updateAggregation(
-          { aggregation: [["count"], ["sum", ["field-id", 1]]] },
+          { aggregation: [["count"], ["sum", ["field", 1, null]]] },
           1,
-          ["sum", ["field-id", 2]],
+          ["sum", ["field", 2, null]],
         ),
-      ).toEqual({ aggregation: [["count"], ["sum", ["field-id", 2]]] });
+      ).toEqual({ aggregation: [["count"], ["sum", ["field", 2, null]]] });
     });
   });
   describe("removeAggregation", () => {
     it("should remove one of two aggregations", () => {
       expect(
         Query.removeAggregation(
-          { aggregation: [["count"], ["sum", ["field-id", 1]]] },
+          { aggregation: [["count"], ["sum", ["field", 1, null]]] },
           0,
         ),
-      ).toEqual({ aggregation: [["sum", ["field-id", 1]]] });
+      ).toEqual({ aggregation: [["sum", ["field", 1, null]]] });
     });
     it("should remove the last aggregations", () => {
       expect(Query.removeAggregation({ aggregation: [["count"]] }, 0)).toEqual(
@@ -98,7 +98,7 @@ describe("Query", () => {
       expect(Query.clearAggregations({ aggregation: [["count"]] })).toEqual({});
       expect(
         Query.clearAggregations({
-          aggregation: [["count"], ["sum", ["field-id", 1]]],
+          aggregation: [["count"], ["sum", ["field", 1, null]]],
         }),
       ).toEqual({});
     });
@@ -113,8 +113,8 @@ describe("Query", () => {
       expect(
         Query.removeBreakout(
           {
-            breakout: [["field-id", 1]],
-            "order-by": [["asc", ["field-id", 1]]],
+            breakout: [["field", 1, null]],
+            "order-by": [["asc", ["field", 1, null]]],
           },
           0,
         ),
@@ -122,14 +122,14 @@ describe("Query", () => {
       expect(
         Query.removeBreakout(
           {
-            breakout: [["field-id", 2], ["field-id", 1]],
-            "order-by": [["asc", ["field-id", 1]]],
+            breakout: [["field", 2, null], ["field", 1, null]],
+            "order-by": [["asc", ["field", 1, null]]],
           },
           0,
         ),
       ).toEqual({
-        breakout: [["field-id", 1]],
-        "order-by": [["asc", ["field-id", 1]]],
+        breakout: [["field", 1, null]],
+        "order-by": [["asc", ["field", 1, null]]],
       });
     });
     it("should not remove aggregation sorts", () => {
@@ -137,14 +137,14 @@ describe("Query", () => {
         Query.removeBreakout(
           {
             aggregation: [["count"]],
-            breakout: [["field-id", 2], ["field-id", 1]],
+            breakout: [["field", 2, null], ["field", 1, null]],
             "order-by": [["asc", ["aggregation", 0]]],
           },
           0,
         ),
       ).toEqual({
         aggregation: [["count"]],
-        breakout: [["field-id", 1]],
+        breakout: [["field", 1, null]],
         "order-by": [["asc", ["aggregation", 0]]],
       });
     });

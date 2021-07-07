@@ -2,11 +2,10 @@
   (:require [clojure.core.async :as a]
             [metabase.async.streaming-response :as streaming-response]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.streaming
-             [csv :as streaming.csv]
-             [interface :as i]
-             [json :as streaming.json]
-             [xlsx :as streaming.xlsx]]
+            [metabase.query-processor.streaming.csv :as streaming.csv]
+            [metabase.query-processor.streaming.interface :as i]
+            [metabase.query-processor.streaming.json :as streaming.json]
+            [metabase.query-processor.streaming.xlsx :as streaming.xlsx]
             [metabase.util :as u])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            java.io.OutputStream

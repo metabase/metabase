@@ -1,7 +1,8 @@
 (ns macos-release.create-dmg
   (:require [macos-release
              [codesign :as codesign]
-             [common :as c]]))
+             [common :as c]]
+            [metabuild-common.core :as u]))
 
 (def ^:private dmg         (c/artifact "Metabase.dmg"))
 (def ^:private temp-dmg    "/tmp/Metabase.dmg")
@@ -10,7 +11,7 @@
 
 (defn- copy-app-to-source-dir! []
   (c/step "Copy app to source dir"
-    (c/delete-file! source-dir)
+    (u/delete-file-if-exists! source-dir)
     (c/create-directory-unless-exists! source-dir)
     (let [source-app (c/assert-file-exists (c/artifact "Metabase.app"))
           dest-app   (str source-dir "/Metabase.app")]
@@ -19,7 +20,7 @@
       (codesign/verify-codesign dest-app))))
 
 (defn- create-dmg-from-source-dir! []
-  (c/delete-file! temp-dmg)
+  (u/delete-file-if-exists! temp-dmg)
   (c/step (format "Create DMG %s from source dir %s" temp-dmg source-dir)
     (c/sh "hdiutil"    "create"
           "-srcfolder" (str (c/assert-file-exists source-dir) "/")
@@ -71,14 +72,14 @@
 
 (defn- add-applications-shortcut! []
   (c/assert-file-exists mounted-dmg)
-  (c/sh "osascript" (c/assert-file-exists (str c/macos-source-dir "/macos_release/addShortcut.scpt"))))
+  (c/sh "osascript" (c/assert-file-exists (u/filename c/macos-source-dir "src" "macos_release" "addShortcut.scpt"))))
 
 (defn- delete-temporary-files-in-dmg!
   "Delete any temporary files that might have creeped in."
   []
   (c/assert-file-exists mounted-dmg)
-  (c/delete-file! (str mounted-dmg "/.Trashes")
-                  (str mounted-dmg "/.fseventsd")))
+  (u/delete-file-if-exists! (str mounted-dmg "/.Trashes")
+                            (str mounted-dmg "/.fseventsd")))
 
 (defn- set-dmg-permissions! []
   (c/sh "chmod" "-Rf" "go-w" (c/assert-file-exists mounted-dmg)))
@@ -88,7 +89,7 @@
 
 (defn- compress-and-copy-dmg!
   []
-  (c/delete-file! dmg)
+  (u/delete-file-if-exists! dmg)
   (c/step (format "Compress DMG %s -> %s" (c/assert-file-exists temp-dmg) dmg)
     (c/sh "hdiutil" "convert" temp-dmg
           "-format" "UDZO"
@@ -98,11 +99,11 @@
 
 (defn- delete-temp-files! []
   (c/step "Delete temp files"
-    (c/delete-file! temp-dmg source-dir)))
+    (u/delete-file-if-exists! temp-dmg source-dir)))
 
 (defn create-dmg! []
   (c/step (format "Create %s" dmg)
-    (c/delete-file! dmg temp-dmg source-dir)
+    (u/delete-file-if-exists! dmg temp-dmg source-dir)
     (copy-app-to-source-dir!)
     (create-dmg-from-source-dir!)
     (with-mounted-dmg [_ temp-dmg]

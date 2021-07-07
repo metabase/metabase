@@ -1,5 +1,5 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -15,9 +15,15 @@ import Question from "metabase-lib/lib/Question";
 import { updateLatLonFilter } from "metabase/modes/lib/actions";
 
 export default class LeafletMap extends Component {
+  constructor(props) {
+    super(props);
+
+    this.mapRef = React.createRef();
+  }
+
   componentDidMount() {
     try {
-      const element = ReactDOM.findDOMNode(this.refs.map);
+      const element = this.mapRef.current;
 
       const map = (this.map = L.map(element, {
         scrollWheelZoom: false,
@@ -48,10 +54,13 @@ export default class LeafletMap extends Component {
       map.setView([0, 0], 8);
 
       const mapTileUrl = MetabaseSettings.get("map-tile-server-url");
-      const mapTileAttribution =
-        mapTileUrl.indexOf("openstreetmap.org") >= 0
-          ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
-          : null;
+      let mapTileHostname = "";
+      try {
+        mapTileHostname = new URL(mapTileUrl).host;
+      } catch (e) {}
+      const mapTileAttribution = mapTileHostname.includes("openstreetmap.org")
+        ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
+        : null;
 
       L.tileLayer(mapTileUrl, { attribution: mapTileAttribution }).addTo(map);
 
@@ -160,7 +169,7 @@ export default class LeafletMap extends Component {
 
   render() {
     const { className } = this.props;
-    return <div className={className} ref="map" />;
+    return <div className={className} ref={this.mapRef} />;
   }
 
   _getLatLonIndexes() {

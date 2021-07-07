@@ -1,5 +1,3 @@
-/* @flow */
-
 export const totalQueryExecutionsByDb = () => ({
   card: {
     name: "Total queries and their average speed",

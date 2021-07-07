@@ -1,21 +1,20 @@
 (ns metabase.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require [cheshire.core :as json]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
+            [metabase.db :as mdb]
             [metabase.mbql.normalize :as normalize]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [toucan
-             [db :as db]
-             [models :as models]]))
+            [toucan.db :as db]
+            [toucan.models :as models]))
 
 (models/defmodel Query :query)
 
 (u/strict-extend (class Query)
   models/IModel
   (merge models/IModelDefaults
-         {:types (constantly {:query :json})}))
+         {:types       (constantly {:query :json})
+          :primary-key (constantly :query_hash)}))
 
 
 ;;; Helper Fns

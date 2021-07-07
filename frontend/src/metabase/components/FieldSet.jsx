@@ -6,7 +6,7 @@ type Props = {
   className: string,
   legend: string,
   noPadding?: boolean,
-  children: React$Element<any>,
+  children: React.Element,
 };
 
 export default function FieldSet({
@@ -24,7 +24,7 @@ export default function FieldSet({
           {legend}
         </legend>
       )}
-      <div>{children}</div>
+      <div className="w-full">{children}</div>
     </fieldset>
   );
 }

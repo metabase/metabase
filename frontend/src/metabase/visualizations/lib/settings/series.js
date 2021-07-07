@@ -1,5 +1,3 @@
-/* @flow */
-
 import { t } from "ttag";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -127,7 +125,6 @@ export function seriesSetting({
           { name: t`Right`, value: "right" },
         ],
       },
-      getHidden: (single, settings, { series }) => series.length < 2,
     },
     show_series_values: {
       title: t`Show values for this series`,

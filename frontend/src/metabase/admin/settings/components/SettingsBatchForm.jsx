@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -11,7 +12,7 @@ import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
 
-import { updateSettings } from "../settings";
+import { updateSettings as defaultUpdateSettings } from "../settings";
 
 const VALIDATIONS = {
   email: {
@@ -32,7 +33,10 @@ const SAVE_SETTINGS_BUTTONS_STATES = {
 
 @connect(
   null,
-  { updateSettings },
+  (dispatch, { updateSettings }) => ({
+    updateSettings:
+      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
+  }),
   null,
   { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
 )
@@ -40,7 +44,7 @@ export default class SettingsBatchForm extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
-      dirty: false,
+      pristine: true,
       formData: {},
       submitting: "default",
       valid: false,
@@ -54,12 +58,12 @@ export default class SettingsBatchForm extends Component {
     updateSettings: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     // this gives us an opportunity to load up our formData with any existing values for elements
     this.updateFormData(this.props);
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.updateFormData(nextProps);
   }
 
@@ -68,7 +72,7 @@ export default class SettingsBatchForm extends Component {
     for (const element of props.elements) {
       formData[element.key] = element.value;
     }
-    this.setState({ formData });
+    this.setState({ formData, pristine: true });
   }
 
   componentDidMount() {
@@ -164,8 +168,12 @@ export default class SettingsBatchForm extends Component {
         );
       }
 
+      const pristine = this.props.elements.every(
+        ({ key, value }) => settingsValues[key] === value,
+      );
+
       return {
-        dirty: true,
+        pristine,
         formData: settingsValues,
       };
     });
@@ -200,7 +208,7 @@ export default class SettingsBatchForm extends Component {
 
       this.props.updateSettings(formData).then(
         () => {
-          this.setState({ dirty: false, submitting: "success" });
+          this.setState({ pristine: true, submitting: "success" });
 
           // show a confirmation for 3 seconds, then return to normal
           setTimeout(() => this.setState({ submitting: "default" }), 3000);
@@ -221,8 +229,8 @@ export default class SettingsBatchForm extends Component {
       formData,
       formErrors,
       submitting,
+      pristine,
       valid,
-      dirty,
       validationErrors,
     } = this.state;
 
@@ -255,6 +263,7 @@ export default class SettingsBatchForm extends Component {
           settingValues={settingValues}
           onChangeSetting={(key, value) => this.handleChangeEvent(key, value)}
           errorMessage={errorMessage}
+          fireOnChange
         />
       );
     };
@@ -287,7 +296,7 @@ export default class SettingsBatchForm extends Component {
             mr={1}
             primary={!disabled}
             success={submitting === "success"}
-            disabled={disabled}
+            disabled={disabled || pristine}
             onClick={this.updateSettings}
           >
             {SAVE_SETTINGS_BUTTONS_STATES[submitting]}
@@ -298,7 +307,7 @@ export default class SettingsBatchForm extends Component {
               valid,
               submitting,
               disabled,
-              dirty,
+              pristine,
             })}
         </div>
       </div>

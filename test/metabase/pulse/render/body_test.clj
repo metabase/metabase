@@ -1,12 +1,10 @@
 (ns metabase.pulse.render.body-test
-  (:require [clojure
-             [test :refer :all]
-             [walk :as walk]]
+  (:require [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [hiccup.core :refer [html]]
-            [metabase.pulse.render
-             [body :as body]
-             [common :as common]
-             [test-util :as render.tu]]))
+            [metabase.pulse.render.body :as body]
+            [metabase.pulse.render.common :as common]
+            [metabase.pulse.render.test-util :as render.tu]))
 
 (def ^:private pacific-tz "America/Los_Angeles")
 
@@ -14,22 +12,22 @@
   [{:name            "ID",
     :display_name    "ID",
     :base_type       :type/BigInteger
-    :special_type    nil
+    :semantic_type   nil
     :visibility_type :normal}
    {:name            "latitude"
     :display_name    "Latitude"
     :base_type       :type/Float
-    :special_type    :type/Latitude
+    :semantic_type   :type/Latitude
     :visibility_type :normal}
    {:name            "last_login"
     :display_name    "Last Login"
     :base_type       :type/DateTime
-    :special_type    nil
+    :semantic_type   nil
     :visibility_type :normal}
    {:name            "name"
     :display_name    "Name"
     :base_type       :type/Text
-    :special_type    nil
+    :semantic_type   nil
     :visibility_type :normal}])
 
 (def ^:private test-data
@@ -58,24 +56,24 @@
 (def ^:private description-col {:name         "desc_col"
                                 :display_name "Description Column"
                                 :base_type    :type/Text
-                                :special_type :type/Description
+                                :semantic_type :type/Description
                                 :visibility_type :normal})
 (def ^:private detail-col      {:name            "detail_col"
                                 :display_name    "Details Column"
                                 :base_type       :type/Text
-                                :special_type    nil
+                                :semantic_type    nil
                                 :visibility_type :details-only})
 
 (def ^:private sensitive-col   {:name            "sensitive_col"
                                 :display_name    "Sensitive Column"
                                 :base_type       :type/Text
-                                :special_type    nil
+                                :semantic_type    nil
                                 :visibility_type :sensitive})
 
 (def ^:private retired-col     {:name            "retired_col"
                                 :display_name    "Retired Column"
                                 :base_type       :type/Text
-                                :special_type    nil
+                                :semantic_type    nil
                                 :visibility_type :retired})
 
 ;; Testing the format of headers
@@ -115,13 +113,13 @@
           cols    [{:name            "last_login"
                     :display_name    "Last Login"
                     :base_type       :type/DateTime
-                    :special_type    nil
+                    :semantic_type    nil
                     :visibility_type :normal
                     :field_ref       [:field-id 321]}
                    {:name            "name"
                     :display_name    "Name"
                     :base_type       :type/Text
-                    :special_type    nil
+                    :semantic_type    nil
                     :visibility_type :normal}]]
 
       ;; card contains custom column names
@@ -181,12 +179,12 @@
               {:name         "rating"
                :display_name "Rating"
                :base_type    :type/Integer
-               :special_type :type/Category
+               :semantic_type :type/Category
                :remapped_to  "rating_desc"}
               {:name          "rating_desc"
                :display_name  "Rating Desc"
                :base_type     :type/Text
-               :special_type  nil
+               :semantic_type  nil
                :remapped_from "rating"}))
 
 (def ^:private test-data-with-remapping
@@ -231,17 +229,18 @@
            [(boolean (re-find #"Showing.*10.*of.*100.*columns" html-output))
             (boolean (re-find #"Showing .* of .* rows" html-output))]))))
 
-(def ^:private test-columns-with-date-special-type
+(def ^:private test-columns-with-date-semantic-type
   (update test-columns 2 merge {:base_type    :type/Text
-                                :special_type :type/DateTime}))
+                                :effective_type :type/DateTime
+                                :coercion_strategy :Coercion/ISO8601->DateTime}))
 
-(deftest cols-with-special-types
+(deftest cols-with-semantic-types
   (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
-                                               {:cols test-columns-with-date-special-type :rows test-data}
+                                               {:cols test-columns-with-date-semantic-type :rows test-data}
                                                (count test-columns))))))
 
 (defn- render-scalar-value [results]
@@ -254,7 +253,7 @@
          (render-scalar-value {:cols [{:name         "ID",
                                        :display_name "ID",
                                        :base_type    :type/BigInteger
-                                       :special_type nil}]
+                                       :semantic_type nil}]
                                :rows [[10]]}))))
 
 (deftest renders-float
@@ -262,7 +261,7 @@
          (render-scalar-value {:cols [{:name         "floatnum",
                                        :display_name "FLOATNUM",
                                        :base_type    :type/Float
-                                       :special_type nil}]
+                                       :semantic_type nil}]
                                :rows [[10.12345]]}))))
 
 (deftest renders-string
@@ -270,14 +269,14 @@
          (render-scalar-value {:cols [{:name         "stringvalue",
                                        :display_name "STRINGVALUE",
                                        :base_type    :type/Text
-                                       :special_type nil}]
+                                       :semantic_type nil}]
                                :rows [["foo"]]}))))
 (deftest renders-date
   (is (= "Apr 1, 2014"
          (render-scalar-value {:cols [{:name         "date",
                                        :display_name "DATE",
                                        :base_type    :type/DateTime
-                                       :special_type nil}]
+                                       :semantic_type nil}]
                                :rows [["2014-04-01T08:30:00.0000"]]}))))
 
 (defn- replace-style-maps [hiccup-map]
@@ -350,11 +349,11 @@
   [{:name         "Price",
     :display_name "Price",
     :base_type    :type/BigInteger
-    :special_type nil}
+    :semantic_type nil}
    {:name         "NumPurchased",
     :display_name "NumPurchased",
     :base_type    :type/BigInteger
-    :special_type nil}])
+    :semantic_type nil}])
 
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"

@@ -1,6 +1,6 @@
 ## Embedding all of Metabase in your web app
 
-The open-source edition of Metabase allows you to [embed standalone charts or dashboards](../administration-guide/13-embedding.md) in your own web applications for simple situations. But what if you want to provide your users with a more interactive, browsable experience? Metabase Enterprise Edition allows you to embed the entire Metabase app within your own web app, allowing you to provide [drill-through](/learn/basics/questions/drill-through.html) for your embedded charts and dashboards, or even embed the graphical query builder, or collections of dashboards and charts.
+The open-source edition of Metabase allows you to [embed standalone charts or dashboards](../administration-guide/13-embedding.md) in your own web applications for simple situations. But what if you want to provide your users with a more interactive, browsable experience? Metabase Enterprise Edition allows you to embed the entire Metabase app within your own web app, allowing you to provide [drill-through](https://www.metabase.com/learn/basics/questions/drill-through.html) for your embedded charts and dashboards, or even embed the graphical query builder, or collections of dashboards and charts.
 
 You'll be putting the whole Metabase app into an iframe, and the SSO integration you've set up with Metabase will be used to make sure the embedded Metabase respects the collection and data permissions you've set up for your user groups. Clicking on charts and graphs in the embed will do just what they do in Metabase itself. You can even display a specific Metabase collection in an embed to allow your users to browse through all the dashboards and questions that you've made available to them. The only difference is that Metabase's top nav bar and global search will not be rendered in your iframe.
 
@@ -34,7 +34,7 @@ The main elements you'll need to embed Metabase in your app are:
 
 - An SSO authentication endpoint in your application, typically JWT or SAML, and Metabase configured to use them.
 - An `<iframe>` element in your application, with the `src` attribute set to either a URL in Metabase (e.x. `http://metabase.yourcompany.com/dashboard/1`), or directly to the authentication endpoint in your application, with a parameter specifying where to redirect back to (e.x. `http://yourcompany.com/api/auth?redirect=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1`). The latter will avoid an extra redirect if the user has not been authenticated.
-- Optional: When the embedding website is hosted under a domain _other_ than the one your Metabase instance is hosted under, you may need to customize Metabase's session cookie's [`SameSite` directive](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#SameSite_cookies), by setting the environment variable `MB_SESSION_COOKIE_SAMESITE=None`. Available options are `Lax` (default), `None` or `Strict`.
+- Optional: when the embedding website is hosted under a domain _other_ than the one your Metabase instance is hosted under, you may need to set the environment variable `MB_SESSION_COOKIE_SAMESITE=None`. Setting the variable to `None` requires you to use HTTPS in Metabase, otherwise browsers will reject the request. Other options for the SameSite variable are `Lax` (default) or `Strict`. Visit MDN to learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 - Optional: JavaScript using [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) in your application for enabling communication to and from the embedded Metabase. Here are the types of `postMessage` messages we currently support:
 
 #### Supported `postMessage` messages _from_ embedded Metabase:
@@ -71,7 +71,7 @@ One of the main differences between embedding the full Metabase app vs. standalo
 
 When clicking on any part of a chart — like a dot, bar, slice, or state — your users will see the drill-through action menu.
 
-![Action menu](/docs/enterprise-guide/images/full-app-embedding/action-menu.png)
+![Action menu](../enterprise-guide/images/full-app-embedding/action-menu.png)
 
 This will let them do things like:
 
@@ -84,7 +84,7 @@ Drill-through also allows users to click on the title of a chart in a dashboard 
 
 Depending on the collections permissions you set, your users can also save their explorations into collections. If you want to allow them to find these saved explorations, make sure your web application implements a link to view the collections directory.
 
-Check out our article, [Create charts with explorable data](/learn/basics/questions/drill-through.html).
+Check out our article, [Create charts with explorable data](https://www.metabase.com/learn/basics/questions/drill-through.html).
 
 #### Using SSO to apply data or collection permissions to embeds
 

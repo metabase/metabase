@@ -1,18 +1,18 @@
 (ns metabase.models.field
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.models
-             [dimension :refer [Dimension]]
-             [field-values :as fv :refer [FieldValues]]
-             [humanization :as humanization]
-             [interface :as i]
-             [permissions :as perms]]
+            [metabase.models.dimension :refer [Dimension]]
+            [metabase.models.field-values :as fv :refer [FieldValues]]
+            [metabase.models.humanization :as humanization]
+            [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms]
             [metabase.util :as u]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]
-             [models :as models]]))
+            [metabase.util.i18n :refer [trs tru]]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models]))
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -60,22 +60,50 @@
 
 (models/defmodel Field :metabase_field)
 
-(defn- check-valid-types [{base-type :base_type, special-type :special_type}]
-  (when base-type
-    (assert (isa? (keyword base-type) :type/*)
-      (str "Invalid base type: " base-type)))
-  (when special-type
-    (assert (isa? (keyword special-type) :type/*)
-      (str "Invalid special type: " special-type))))
+(defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
+  (fn [k]
+    (when-let [k (keyword k)]
+      (when-not (some
+                 (partial isa? k)
+                 ancestor-types)
+        (let [message (tru "Invalid Field {0} {1}" column-name k)]
+          (throw (ex-info message
+                          {:status-code 400
+                           :errors      {column-name message}
+                           :value       k}))))
+      (u/qualified-name k))))
+
+(defn- hierarchy-keyword-out [column-name & {:keys [fallback-type ancestor-types]}]
+  (fn [s]
+    (when (seq s)
+      (let [k (keyword s)]
+        (if (some
+             (partial isa? k)
+             ancestor-types)
+          k
+          (do
+            (log/warn (trs "Invalid Field {0} {1}: falling back to {2}" column-name k fallback-type))
+            fallback-type))))))
+
+(models/add-type! ::base-type
+  :in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
+  :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*))
+
+(models/add-type! ::effective-type
+  :in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
+  :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*))
+
+(models/add-type! ::semantic-type
+  :in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
+  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil))
+
+(models/add-type! ::coercion-strategy
+  :in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
+  :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil))
 
 (defn- pre-insert [field]
-  (check-valid-types field)
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
-
-(defn- pre-update [field]
-  (u/prog1 field
-    (check-valid-types field)))
 
 ;;; Field permissions
 ;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
@@ -114,41 +142,42 @@
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
     (perms-objects-set* table-id)))
 
-(defn- maybe-parse-special-numeric-values [maybe-double-value]
+(defn- maybe-parse-semantic-numeric-values [maybe-double-value]
   (if (string? maybe-double-value)
     (u/ignore-exceptions (Double/parseDouble maybe-double-value))
     maybe-double-value))
 
-(defn- update-special-numeric-values
+(defn- update-semantic-numeric-values
   "When fingerprinting decimal columns, NaN and Infinity values are possible. Serializing these values to JSON just
   yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
   [fingerprint]
   (m/update-existing-in fingerprint [:type :type/Number]
-                        (partial m/map-vals maybe-parse-special-numeric-values)))
+                        (partial m/map-vals maybe-parse-semantic-numeric-values)))
 
 (models/add-type! :json-for-fingerprints
   :in  i/json-in
-  :out (comp update-special-numeric-values i/json-out-with-keywordization))
+  :out (comp update-semantic-numeric-values i/json-out-with-keywordization))
 
 
 (u/strict-extend (class Field)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-          :types          (constantly {:base_type        :keyword
-                                       :special_type     :keyword
-                                       :visibility_type  :keyword
-                                       :has_field_values :keyword
-                                       :fingerprint      :json-for-fingerprints
-                                       :settings         :json})
+          :types          (constantly {:base_type         ::base-type
+                                       :effective_type    ::effective-type
+                                       :coercion_strategy ::coercion-strategy
+                                       :semantic_type     ::semantic-type
+                                       :visibility_type   :keyword
+                                       :has_field_values  :keyword
+                                       :fingerprint       :json-for-fingerprints
+                                       :settings          :json})
           :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert
-          :pre-update     pre-update})
+          :pre-insert     pre-insert})
 
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-read?         (partial i/current-user-has-partial-permissions? :read)
           :can-write?        i/superuser?}))
 
 
@@ -156,8 +185,8 @@
 
 (defn target
   "Return the FK target `Field` that this `Field` points to."
-  [{:keys [special_type fk_target_field_id]}]
-  (when (and (isa? special_type :type/FK)
+  [{:keys [semantic_type fk_target_field_id]}]
+  (when (and (isa? semantic_type :type/FK)
              fk_target_field_id)
     (Field fk_target_field_id)))
 
@@ -253,7 +282,7 @@
   {:batched-hydrate :target}
   [fields]
   (let [target-field-ids (set (for [field fields
-                                    :when (and (isa? (:special_type field) :type/FK)
+                                    :when (and (isa? (:semantic_type field) :type/FK)
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (u/key-by :id (when (seq target-field-ids)
@@ -298,9 +327,3 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
-
-(defn unix-timestamp?
-  "Is field a UNIX timestamp?"
-  [{:keys [base_type special_type]}]
-  (and (isa? base_type :type/Integer)
-       (isa? special_type :type/Temporal)))

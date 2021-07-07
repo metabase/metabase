@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
@@ -48,8 +49,7 @@ export default class GoogleButton extends Component {
               );
 
               if (
-                result.payload["status"] &&
-                result.payload["status"] === 400 &&
+                result.payload &&
                 result.payload.data &&
                 result.payload.data.errors
               ) {

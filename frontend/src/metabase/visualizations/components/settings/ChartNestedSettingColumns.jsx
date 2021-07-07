@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import ColumnItem from "./ColumnItem";
@@ -20,8 +19,9 @@ export default class ChartNestedSettingColumns extends React.Component {
     } else {
       return (
         <div>
-          {objects.map(column => (
+          {objects.map((column, index) => (
             <ColumnItem
+              key={index}
               title={displayNameForColumn(column)}
               onEdit={() => onChangeEditingObject(column)}
               onClick={() => onChangeEditingObject(column)}

@@ -11,32 +11,29 @@
   determined by the cardinality of the Field, like Category status. Thus it is entirely possibly for a Field to be
   both a Category and a `list` Field."
   (:require [clojure.tools.logging :as log]
-            [metabase.models
-             [field :as field]
-             [field-values :as field-values]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.models.field :as field]
+            [metabase.models.field-values :as field-values]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-
 (defn- cannot-be-category-or-list?
-  [{:keys [base_type special_type]}]
+  [{:keys [base_type semantic_type]}]
   (or (isa? base_type :type/Temporal)
       (isa? base_type :type/Collection)
       (isa? base_type :type/Float)
-      ;; Don't let IDs become list Fields (they already can't become categories, because they already have a special
+      ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
       ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
-      (isa? special_type :type/PK)
-      (isa? special_type :type/FK)))
+      (isa? semantic_type :type/PK)
+      (isa? semantic_type :type/FK)))
 
 (s/defn ^:private field-should-be-category? :- (s/maybe s/Bool)
   [fingerprint :- (s/maybe i/Fingerprint), field :- su/Map]
   (let [distinct-count (get-in fingerprint [:global :distinct-count])
         nil%           (get-in fingerprint [:global :nil%])]
-    ;; Only mark a Field as a Category if it doesn't already have a special type.
-    (when (and (nil? (:special_type field))
+    ;; Only mark a Field as a Category if it doesn't already have a semantic type.
+    (when (and (nil? (:semantic_type field))
                (or (some-> nil% (< 1))
                    (isa? (:base_type field) :type/Boolean))
                (some-> distinct-count (<= field-values/category-cardinality-threshold)))
@@ -68,5 +65,5 @@
   (when (and fingerprint
              (not (cannot-be-category-or-list? field)))
     (cond-> field
-      (field-should-be-category? fingerprint field)  (assoc :special_type :type/Category)
+      (field-should-be-category? fingerprint field)  (assoc :semantic_type :type/Category)
       (field-should-be-auto-list? fingerprint field) (assoc :has_field_values :auto-list))))

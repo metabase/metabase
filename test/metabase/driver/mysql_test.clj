@@ -1,28 +1,29 @@
 (ns metabase.driver.mysql-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [sync :as sync]
-             [test :as mt]
-             [util :as u]]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
+            [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
+            [metabase.driver.mysql :as mysql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
+            ;; used for one SSL with PEM connectivity test
+            [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
+            [metabase.sync :as sync]
             [metabase.sync.analyze.fingerprint :as fingerprint]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt])
-  (:import [java.time ZonedDateTime ZoneId]
-           java.time.format.DateTimeFormatter))
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.util.test :as tt]))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -58,22 +59,24 @@
 (tx/defdataset ^:private tiny-int-ones
   [["number-of-cans"
      [{:field-name "thing",          :base-type :type/Text}
-      {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}}]
+      {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}, :effective-type :type/Integer}]
      [["Six Pack"              6]
       ["Toucan"                2]
       ["Empty Vending Machine" 0]]]])
 
 (defn- db->fields [db]
-  (let [table-ids (db/select-ids 'Table :db_id (u/get-id db))]
-    (set (map (partial into {}) (db/select [Field :name :base_type :special_type] :table_id [:in table-ids])))))
+  (let [table-ids (db/select-ids 'Table :db_id (u/the-id db))]
+    (set (map (partial into {}) (db/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
 
 (deftest tiny-int-1-test
   (mt/test-driver :mysql
     (mt/dataset tiny-int-ones
+      ;; trigger a full sync on this database so fields are categorized correctly
+      (sync/sync-database! (mt/db))
       (testing "By default TINYINT(1) should be a boolean"
-        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :special_type :type/Category}
-                 {:name "id", :base_type :type/Integer, :special_type :type/PK}
-                 {:name "thing", :base_type :type/Text, :special_type :type/Category}}
+        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type :type/Category}
+                 {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                 {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                (db->fields (mt/db)))))
 
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
@@ -81,22 +84,22 @@
                                     :details (assoc (:details (mt/db))
                                                     :additional-options "tinyInt1isBit=false")}]
           (sync/sync-database! db)
-          (is (= #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Quantity}
-                   {:name "id", :base_type :type/Integer, :special_type :type/PK}
-                   {:name "thing", :base_type :type/Text, :special_type :type/Category}}
+          (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :type/Quantity}
+                   {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                  (db->fields db))))))))
 
 (tx/defdataset ^:private year-db
   [["years"
-    [{:field-name "year_column", :base-type {:native "YEAR"}}]
+    [{:field-name "year_column", :base-type {:native "YEAR"}, :effective-type :type/Date}]
     [[2001] [2002] [1999]]]])
 
 (deftest year-test
   (mt/test-driver :mysql
     (mt/dataset year-db
       (testing "By default YEAR"
-        (is (= #{{:name "year_column", :base_type :type/Date, :special_type nil}
-                 {:name "id", :base_type :type/Integer, :special_type :type/PK}}
+        (is (= #{{:name "year_column", :base_type :type/Date, :semantic_type nil}
+                 {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
                (db->fields (mt/db)))))
       (let [table  (db/select-one Table :db_id (u/id (mt/db)))
             fields (db/select Field :table_id (u/id table) :name "year_column")]
@@ -163,7 +166,7 @@
                       :type       :native
                       :settings   {:report-timezone "UTC"}
                       :native     {:query         "SELECT cast({{date}} as date)"
-                                   :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
+                                   :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
                       :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))]
         (testing "date formatting when system-timezone == report-timezone"
           (is (= ["2018-04-18T00:00:00+08:00"]
@@ -199,8 +202,9 @@
 
 (deftest connection-spec-test
   (testing "Do `:ssl` connection details give us the connection spec we'd expect?"
-    (= (assoc sample-jdbc-spec :useSSL true)
-       (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl true))))
+    (is (= (assoc sample-jdbc-spec :useSSL true :serverSslCert "sslCert")
+           (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl      true
+                                                                                           :ssl-cert "sslCert")))))
 
   (testing "what about non-SSL connections?"
     (is (= (assoc sample-jdbc-spec :useSSL false)
@@ -285,33 +289,57 @@
                            (map table-fingerprint))))))))))))
 
 (deftest group-on-time-column-test
-  (let [driver :mysql]
-    (mt/test-driver driver
-      (let [db-name "time_test"
-            spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details driver :server nil))]
-        (doseq [stmt ["DROP DATABASE IF EXISTS time_test;"
-                      "CREATE DATABASE time_test;"]]
-          (jdbc/execute! spec [stmt]))
-        (let [details (tx/dbdef->connection-details driver :db {:database-name db-name})
-              spec (sql-jdbc.conn/connection-details->spec driver details)]
-          (doseq [stmt ["DROP TABLE IF EXISTS time_table;"
-                        "CREATE TABLE time_table (id serial, mytime time);"
-                        "INSERT INTO time_table (mytime) VALUES ('00:00'), ('00:00'), ('23:01'), ('23:01'), ('18:43');"]]
-            (jdbc/execute! spec [stmt]))
-          (mt/with-temp Database [db {:engine driver :details details}]
-            (sync/sync-database! db)
-            (mt/with-db db
-              (testing "can group on TIME columns"
-                (let [now (ZonedDateTime/now (ZoneId/of "UTC"))
-                      now-date-str (.format now (DateTimeFormatter/ISO_LOCAL_DATE))
-                      add-date-fn (fn [t] [(str now-date-str "T" t)])]
-                  (is (= (map add-date-fn ["00:00:00Z" "18:43:00Z" "23:01:00Z"])
-                         (mt/rows
-                           (mt/run-mbql-query time_table
-                             {:breakout [[:datetime-field (mt/id :time_table :mytime) :minute]]
-                              :order-by [[:asc [:datetime-field (mt/id :time_table :mytime) :minute]]]}))))
-                  (is (= (map add-date-fn ["23:00:00Z" "18:00:00Z" "00:00:00Z"])
-                         (mt/rows
-                           (mt/run-mbql-query time_table
-                             {:breakout [[:datetime-field (mt/id :time_table :mytime) :hour]]
-                              :order-by [[:desc [:datetime-field (mt/id :time_table :mytime) :hour]]]})))))))))))))
+  (mt/test-driver :mysql
+    (testing "can group on TIME columns (#12846)"
+      (mt/dataset attempted-murders
+        (let [now-date-str (u.date/format (t/local-date (t/zone-id "UTC")))
+              add-date-fn  (fn [t] [(str now-date-str "T" t)])]
+          (testing "by minute"
+            (is (= (map add-date-fn ["00:14:00Z" "00:23:00Z" "00:35:00Z"])
+                   (mt/rows
+                     (mt/run-mbql-query attempts
+                       {:breakout [!minute.time]
+                        :order-by [[:asc !minute.time]]
+                        :limit    3})))))
+          (testing "by hour"
+            (is (= (map add-date-fn ["23:00:00Z" "20:00:00Z" "19:00:00Z"])
+                   (mt/rows
+                     (mt/run-mbql-query attempts
+                       {:breakout [!hour.time]
+                        :order-by [[:desc !hour.time]]
+                        :limit    3}))))))))))
+
+(defn- pretty-sql [s]
+  (str/replace s #"`" ""))
+
+(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+  (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
+    (mt/test-driver :mysql
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!day.date]})]
+          (is (= (str "SELECT attempts.date AS date, count(*) AS count "
+                      "FROM attempts "
+                      "GROUP BY attempts.date "
+                      "ORDER BY attempts.date ASC")
+                 (some-> (qp/query->native query) :query pretty-sql))))))
+
+    (testing "trunc-with-format should not cast a field if it is already a DATETIME"
+      (is (= ["SELECT str_to_date(date_format(CAST(field AS datetime), '%Y'), '%Y')"]
+             (hsql/format {:select [(#'mysql/trunc-with-format "%Y" :field)]})))
+      (is (= ["SELECT str_to_date(date_format(field, '%Y'), '%Y')"]
+             (hsql/format {:select [(#'mysql/trunc-with-format
+                                     "%Y"
+                                     (hx/with-database-type-info :field "datetime"))]}))))))
+
+(deftest mysql-connect-with-ssl-and-pem-cert-test
+  (mt/test-driver :mysql
+    (if (System/getenv "MB_MYSQL_SSL_TEST_SSL_CERT")
+      (testing "MySQL with SSL connectivity using PEM certificate"
+        (mt/with-env-keys-renamed-by #(str/replace-first % "mb-mysql-ssl-test" "mb-mysql-test")
+          (string-extracts-test/test-breakout)))
+      (println (u/format-color 'yellow
+                               "Skipping %s because %s env var is not set"
+                               "mysql-connect-with-ssl-and-pem-cert-test"
+                               "MB_MYSQL_SSL_TEST_SSL_CERT")))))

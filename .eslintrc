@@ -12,20 +12,25 @@
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
     "react/display-name": 1,
-    "react/prop-types": 0,
+    "react/prop-types": 2,
     "react/no-did-mount-set-state": 0,
     "react/no-did-update-set-state": 0,
     "react/no-find-dom-node": 0,
-    "flowtype/define-flow-type": 1,
-    "flowtype/use-flow-type": 1,
+    "react/no-children-prop": 2,
+    "react/no-string-refs": 2,
+    "react/no-unescaped-entities": 2,
+    "react/jsx-no-target-blank": 2,
+    "react/jsx-key": 2,
     "prefer-const": [1, { "destructuring": "all" }],
-    "no-useless-escape": 0
+    "no-useless-escape": 0,
+    "no-only-tests/no-only-tests": "error",
+    "complexity": ["error", { "max": 54 }]
   },
   "globals": {
     "pending": false,
     "before": true,
     "cy": true,
-    "Cypress": true,
+    "Cypress": true
   },
   "env": {
     "browser": true,
@@ -34,16 +39,20 @@
     "jest": true
   },
   "parser": "babel-eslint",
-  "plugins": ["react", "flowtype"],
+  "plugins": ["react", "no-only-tests"],
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
     "plugin:import/errors",
     "plugin:import/warnings"
   ],
   "settings": {
     "import/resolver": "webpack",
-    "import/ignore": ["\\.css$"]
+    "import/ignore": ["\\.css$"],
+    "react": {
+      "version": "detect"
+    }
   },
   "parserOptions": {
     "ecmaFeatures": {

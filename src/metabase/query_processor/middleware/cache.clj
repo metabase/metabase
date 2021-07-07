@@ -14,17 +14,14 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.query-processor
-             [context :as context]
-             [util :as qputil]]
-            [metabase.query-processor.middleware.cache-backend
-             [db :as backend.db]
-             [interface :as i]]
+            [metabase.config :as config]
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.middleware.cache-backend.db :as backend.db]
+            [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]])
   (:import org.eclipse.jetty.io.EofException))
 
@@ -35,12 +32,6 @@
 
     [initial-metadata row-1 row-2 ... row-n final-metadata]"
   3)
-
-;; TODO - Why not make this an option in the query itself? :confused:
-(def ^:dynamic ^Boolean *ignore-cached-results*
-  "Should we force the query to run, ignoring cached results even if they're available?
-  Setting this to `true` will run the query again and will still save the updated results."
-  false)
 
 (def ^:dynamic *backend*
   "Current cache backend. Dynamically rebindable primary for test purposes."
@@ -130,27 +121,26 @@
         ([]
          (rf))
 
-        ([acc]
-         ;; if results are in the 'normal format' then use the final metadata from the cache rather than
-         ;; whatever `acc` is right now since we don't run the entire post-processing pipeline for cached results
-         (let [normal-format? (and (map? acc) (seq (get-in acc [:data :cols])))
-               acc*           (-> (if normal-format?
-                                    @final-metadata
-                                    acc)
+        ([result]
+         (let [normal-format? (and (map? (unreduced result))
+                                   (seq (get-in (unreduced result) [:data :cols])))
+               result*        (-> (if normal-format?
+                                    (merge-with merge @final-metadata (unreduced result))
+                                    (unreduced result))
                                   (assoc :cached true, :updated_at last-ran))]
-           (rf acc*)))
+           (rf (cond-> result*
+                 (reduced? result) reduced))))
 
         ([acc row]
          (if (map? row)
-           (do (vreset! final-metadata row)
-               (rf acc))
+           (vreset! final-metadata row)
            (rf acc row)))))))
 
 (defn- maybe-reduce-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
-  [query-hash max-age-seconds rff context]
+  [ignore-cache? query-hash max-age-seconds rff context]
   (try
-    (or (when-not *ignore-cached-results*
+    (or (when-not ignore-cache?
           (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
                       (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
           (i/with-cached-results *backend* query-hash max-age-seconds [is]
@@ -176,11 +166,11 @@
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (defn- run-query-with-cache
-  [qp {:keys [cache-ttl], :as query} rff context]
+  [qp {:keys [cache-ttl middleware], :as query} rff context]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)
-        result     (maybe-reduce-cached-results query-hash cache-ttl rff context)]
+        result     (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-ttl rff context)]
     (when (= result ::miss)
       (let [start-time-ms (System/currentTimeMillis)]
         (log/trace "Running query and saving cached results (if eligible)...")

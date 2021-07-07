@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import Base from "./Base";
 import Table from "./Table";
 
@@ -173,11 +171,11 @@ export default class Field extends Base {
 
   dimension() {
     if (Array.isArray(this.id)) {
-      // if ID is an array, it's a MBQL field reference, typically "field-literal"
+      // if ID is an array, it's a MBQL field reference, typically "field"
       return Dimension.parseMBQL(this.id, this.metadata, this.query);
     } else {
       return Dimension.parseMBQL(
-        ["field-id", this.id],
+        ["field", this.id, null],
         this.metadata,
         this.query,
       );
@@ -206,12 +204,10 @@ export default class Field extends Base {
   }
 
   // @deprecated: use filterOperators
-  // $FlowFixMe: known to not have side-effects
   get filter_operators() {
     return this.filterOperators();
   }
   // @deprecated: use filterOperatorsLookup
-  // $FlowFixMe: known to not have side-effects
   get filter_operators_lookup() {
     return this.filterOperatorsLookup();
   }
@@ -241,12 +237,10 @@ export default class Field extends Base {
   }
 
   // @deprecated: use aggregationOperators
-  // $FlowFixMe: known to not have side-effects
   get aggregation_operators() {
     return this.aggregationOperators();
   }
   // @deprecated: use aggregationOperatorsLookup
-  // $FlowFixMe: known to not have side-effects
   get aggregation_operators_lookup() {
     return this.aggregationOperatorsLookup();
   }

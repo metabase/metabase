@@ -20,7 +20,6 @@ const Metrics = createEntity({
     ) => Metrics.actions.update({ id }, { archived, revision_message }),
 
     // NOTE: DELETE not currently implemented
-    // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
   },
 

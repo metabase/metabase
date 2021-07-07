@@ -44,7 +44,18 @@ sN: Taylor
 givenname: Fred
 uid: ftaylor300
 mAiL: fred.taylor@metabase.com
-userpassword: unh4ck4bl3
+userpassword: pa$$word
+
+dn: cn=Jane Miller,ou=People,dc=metabase,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Jane Miller
+sn: Miller
+uid: jmiller
+mail: jane.miller@metabase.com
+userPassword: n0peeking
 
 dn: ou=Birds,dc=metabase,dc=com
 objectClass: top
@@ -87,3 +98,9 @@ objectClass: groupOfNames
 cn: Accounting
 member: cn=John Smith,ou=People,dc=metabase,dc=com
 member: cn=Rasta Toucan,ou=Birds,dc=metabase,dc=com
+
+dn: cn=Engineering,ou=Groups,dc=metabase,dc=com
+objectClass: posixGroup
+gidNumber: 1000
+cn: Engineering
+memberUid: sbrown20

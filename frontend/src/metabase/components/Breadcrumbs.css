@@ -17,7 +17,7 @@
   font-size: 0.75rem;
   font-weight: bold;
   text-transform: uppercase;
-  cursor: pointer;
+  cursor: default;
 }
 
 :local(.breadcrumbDivider) {
@@ -30,6 +30,7 @@
 :local(.breadcrumb.breadcrumbPath) {
   color: currentColor;
   transition: color 0.3s linear;
+  cursor: pointer;
 }
 
 :local(.breadcrumb.breadcrumbPath):hover {

@@ -19,3 +19,14 @@ Metabase will securely encrypt and store the connection details for any new Data
 Existing databases with unencrypted details will continue to work normally.
 
 >Take care not to lose this key because you can't decrypt connection details without it. If you lose (or change) the key, you'll have to reset all of the connection details that have been encrypted with it in the Admin Panel.
+
+
+# Key rotation
+
+You can rotate the encryption key using the cli command `rotate-encryption-key`. This command needs both the current encryption key set as `MB_ENCRYPTION_SECRET_KEY` and the new encryption key as a parameter.
+
+    MB_ENCRYPTION_SECRET_KEY=your-current-key java -jar metabase.jar rotate-encryption-key new-key
+
+Metabase app should be stopped while running this command, and restarted with the new key as the `MB_ENCRYPTION_SECRET_KEY` environment variable.
+
+**Note**: As with all data migrations, it's recommended that you [backup](./backing-up-metabase-application-data.md) your data before doing a key rotation.

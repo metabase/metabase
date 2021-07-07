@@ -1,6 +1,6 @@
-/* @flow */
-
 import React from "react";
+import PropTypes from "prop-types";
+import cx from "classnames";
 
 import NumberPicker from "./NumberPicker";
 import SelectPicker from "./SelectPicker";
@@ -8,7 +8,10 @@ import TextPicker from "./TextPicker";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
+import {
+  getFilterArgumentFormatOptions,
+  isFuzzyOperator,
+} from "metabase/lib/schema_metadata";
 
 import type Filter from "metabase-lib/lib/queries/structured/Filter";
 
@@ -21,6 +24,22 @@ type Props = {
   isSidebar?: boolean,
   minWidth?: number,
   maxWidth?: number,
+};
+
+const defaultPickerPropTypes = {
+  filter: PropTypes.object,
+  setValue: PropTypes.func,
+  setValues: PropTypes.func,
+  onCommit: PropTypes.func,
+  className: PropTypes.string,
+  isSidebar: PropTypes.bool,
+  minWidth: PropTypes.number,
+  maxWidth: PropTypes.number,
+};
+
+const defaultLayoutPropTypes = {
+  className: PropTypes.string,
+  fieldWidgets: PropTypes.array,
 };
 
 export default function DefaultPicker({
@@ -41,6 +60,8 @@ export default function DefaultPicker({
   const dimension = filter.dimension();
   const field = dimension && dimension.field();
   const operatorFields = operator.fields || [];
+  const disableSearch = isFuzzyOperator(operator);
+
   const fieldWidgets = operatorFields
     .map((operatorField, index) => {
       let values, onValuesChange;
@@ -83,9 +104,11 @@ export default function DefaultPicker({
             placeholder={placeholder}
             fields={underlyingField ? [underlyingField] : []}
             disablePKRemappingForSearch={true}
+            isSidebar={isSidebar}
             autoFocus={index === 0}
             alwaysShowOptions={operator.fields.length === 1}
             formatOptions={getFilterArgumentFormatOptions(operator, index)}
+            disableSearch={disableSearch}
             minWidth={minWidth}
             maxWidth={maxWidth}
             optionsMaxHeight={isSidebar ? null : undefined}
@@ -117,14 +140,15 @@ export default function DefaultPicker({
       return null;
     })
     .filter(f => f);
+
   if (fieldWidgets.length > 0) {
-    const Layout = DefaultLayout;
-    // TODO: custom layouts for different operators
-    return <Layout className={className} fieldWidgets={fieldWidgets} />;
+    return <DefaultLayout className={className} fieldWidgets={fieldWidgets} />;
   } else {
-    return <div className={className} />;
+    return <div className={cx(className, "PopoverBody--marginBottom")} />;
   }
 }
+
+DefaultPicker.propTypes = defaultPickerPropTypes;
 
 const DefaultLayout = ({ className, fieldWidgets }) => (
   <div className={className}>
@@ -138,3 +162,5 @@ const DefaultLayout = ({ className, fieldWidgets }) => (
     ))}
   </div>
 );
+
+DefaultLayout.propTypes = defaultLayoutPropTypes;

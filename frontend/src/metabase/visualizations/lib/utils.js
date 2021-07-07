@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import _ from "underscore";
 import d3 from "d3";
 import { t } from "ttag";
@@ -322,7 +320,6 @@ export function getDefaultDimensionsAndMetrics(
 export function computeMaxDecimalsForValues(values, options) {
   try {
     // Intl.NumberFormat isn't supported on all browsers, so wrap in try/catch
-    // $FlowFixMe
     const formatter = Intl.NumberFormat("en", options);
     let maxDecimalCount = 0;
     for (const value of values) {

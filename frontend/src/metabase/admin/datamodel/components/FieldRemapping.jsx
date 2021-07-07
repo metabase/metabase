@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { t } from "ttag";
@@ -16,10 +17,7 @@ import SelectSeparator from "../components/SelectSeparator";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import Dimension, {
-  DatetimeFieldDimension,
-  FKDimension,
-} from "metabase-lib/lib/Dimension";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import Question from "metabase-lib/lib/Question";
 
 const MAP_OPTIONS = {
@@ -36,6 +34,8 @@ export default class FieldRemapping extends React.Component {
 
   constructor(props, context) {
     super(props, context);
+
+    this.fkPopover = React.createRef();
   }
 
   getMappingTypeForField = field => {
@@ -60,7 +60,7 @@ export default class FieldRemapping extends React.Component {
     const { field } = this.props;
 
     const hasForeignKeys =
-      field.special_type === "type/FK" && this.getForeignKeys().length > 0;
+      field.semantic_type === "type/FK" && this.getForeignKeys().length > 0;
 
     // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -84,7 +84,7 @@ export default class FieldRemapping extends React.Component {
     if (fkTargetFields) {
       // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in Field.js?
       const nameField = fkTargetFields.find(
-        field => field.special_type === "type/Name",
+        field => field.semantic_type === "type/Name",
       );
       return nameField ? nameField.id : null;
     } else {
@@ -181,20 +181,20 @@ export default class FieldRemapping extends React.Component {
 
     // TODO Atte Keinänen 7/10/17: Use Dimension class when migrating to metabase-lib
     const dimension = Dimension.parseMBQL(foreignKeyClause);
-    if (dimension && dimension instanceof FKDimension) {
+    if (dimension && dimension instanceof FieldDimension && dimension.fk()) {
       MetabaseAnalytics.trackEvent("Data Model", "Update FK Remapping Target");
       await updateFieldDimension(
         { id: field.id },
         {
           type: "external",
           name: field.display_name,
-          human_readable_field_id: dimension.destination().field().id,
+          human_readable_field_id: dimension.field().id,
         },
       );
 
       await fetchTableMetadata({ id: table.id }, { reload: true });
 
-      this.refs.fkPopover.close();
+      this.fkPopover.current.close();
     } else {
       throw new Error(t`The selected field isn't a foreign key`);
     }
@@ -207,7 +207,10 @@ export default class FieldRemapping extends React.Component {
 
   // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
   isValidFKRemappingTarget = dimension =>
-    !(dimension.defaultDimension() instanceof DatetimeFieldDimension);
+    !(
+      dimension.defaultDimension() instanceof FieldDimension &&
+      dimension.temporalUnit()
+    );
 
   getForeignKeys = () => {
     const { table, field } = this.props;
@@ -268,7 +271,8 @@ export default class FieldRemapping extends React.Component {
           {mappingType === MAP_OPTIONS.foreign && [
             <SelectSeparator classname="flex" key="foreignKeySeparator" />,
             <PopoverWithTrigger
-              ref="fkPopover"
+              key="foreignKeyName"
+              ref={this.fkPopover}
               triggerElement={
                 <SelectButton
                   hasValue={hasFKMappingValue}
@@ -326,7 +330,7 @@ export class ValueRemappings extends React.Component {
     editingRemappings: new Map(),
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this._updateEditingRemappings(this.props.remappings);
   }
 
@@ -408,7 +412,7 @@ export class ValueRemappings extends React.Component {
         </div>
         <ol>
           {[...editingRemappings].map(([original, mapped]) => (
-            <li className="mb1">
+            <li key={original} className="mb1">
               <FieldValueMapping
                 original={original}
                 mapped={mapped}

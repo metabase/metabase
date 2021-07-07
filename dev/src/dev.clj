@@ -1,20 +1,32 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
   (:require [clojure.core.async :as a]
+            [dev.debug-qp :as debug-qp]
             [honeysql.core :as hsql]
-            [metabase
-             [core :as mbc]
-             [db :as mdb]
-             [driver :as driver]
-             [handler :as handler]
-             [plugins :as pluguns]
-             [server :as server]
-             [test :as mt]
-             [util :as u]]
             [metabase.api.common :as api-common]
+            [metabase.core :as mbc]
+            [metabase.core.initialization-status :as init-status]
+            [metabase.db :as mdb]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.db.setup :as mdb.setup]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.plugins :as plugins]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test.data.impl :as data.impl]))
+            [metabase.server :as server]
+            [metabase.server.handler :as handler]
+            [metabase.test :as mt]
+            [metabase.test.data.impl :as data.impl]
+            [metabase.util :as u]
+            [potemkin :as p]))
+
+(comment debug-qp/keep-me)
+
+(defn tap>-spy [x]
+  (doto x tap>))
+
+(p/import-vars
+ [debug-qp process-query-debug])
 
 (def initialized?
   (atom nil))
@@ -28,10 +40,10 @@
   []
   (when-not @initialized?
     (init!))
-  (metabase.server/start-web-server! #'metabase.handler/app)
-  (metabase.db/setup-db!)
-  (metabase.plugins/load-plugins!)
-  (metabase.core.initialization-status/set-complete!))
+  (server/start-web-server! #'handler/app)
+  (mdb/setup-db!)
+  (plugins/load-plugins!)
+  (init-status/set-complete!))
 
 (defn stop!
   []
@@ -52,6 +64,10 @@
 
   ([a-namespace]
    (doseq [[symb] (ns-interns a-namespace)]
+     (ns-unmap a-namespace symb))
+   (doseq [[symb varr] (ns-refers a-namespace)
+           :when (not= (the-ns (:ns (meta varr)))
+                       (the-ns 'clojure.core))]
      (ns-unmap a-namespace symb))))
 
 (defn ns-unalias-all
@@ -106,7 +122,7 @@
         (letfn [(thunk []
                   (with-open [conn (sql-jdbc.execute/connection-with-timezone driver (mt/db) (qp.timezone/report-timezone-id-if-supported))
                               stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
-                              rs   (sql-jdbc.execute/execute-query! driver stmt)]
+                              rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
                     (let [rsmeta (.getMetaData rs)]
                       {:cols (sql-jdbc.execute/column-metadata driver rsmeta)
                        :rows (reduce conj [] (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))})))]
@@ -116,3 +132,8 @@
       (catch InterruptedException e
         (a/>!! canceled-chan :cancel)
         (throw e)))))
+
+(defn migrate!
+  "Run migrations for the Metabase application database."
+  []
+  (mdb.setup/migrate! (mdb.connection/jdbc-spec) :up))

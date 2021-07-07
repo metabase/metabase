@@ -1,5 +1,3 @@
-/* @flow */
-
 export type EmbeddingParams = {
   [key: string]: string,
 };

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
@@ -55,6 +53,7 @@ import {
   isRemappedToString,
   isMultiCardSeries,
   hasClickBehavior,
+  replaceNullValuesForOrdinal,
 } from "./renderer_utils";
 
 import lineAndBarOnRender from "./LineAreaBarPostRender";
@@ -101,14 +100,20 @@ function getXAxisProps(props, datas, warn) {
   const rawXValues = getXValues(props);
   const isHistogram = isHistogramBar(props);
   const xInterval = getXInterval(props, rawXValues, warn);
+  const isWaterfallWithTotalColumn =
+    props.chartType === "waterfall" && props.settings["waterfall.show_total"];
 
-  // For histograms we add a fake x value one xInterval to the right
-  // This compensates for the barshifting we do align ticks
-  const xValues = isHistogram
-    ? [...rawXValues, Math.max(...rawXValues) + xInterval]
-    : props.chartType === "waterfall" && props.settings["waterfall.show_total"]
-    ? [...rawXValues, xValueForWaterfallTotal(props)]
-    : rawXValues;
+  let xValues = rawXValues;
+
+  if (isHistogram) {
+    // For histograms we add a fake x value one xInterval to the right
+    // This compensates for the barshifting we do align ticks
+    xValues = [...rawXValues, Math.max(...rawXValues) + xInterval];
+  } else if (isWaterfallWithTotalColumn) {
+    xValues = [...rawXValues, xValueForWaterfallTotal(props)];
+  } else if (isOrdinal(props.settings)) {
+    xValues = xValues.map(x => replaceNullValuesForOrdinal(x));
+  }
 
   return {
     isHistogramBar: isHistogram,
@@ -357,7 +362,6 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
     if (range) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
-      // $FlowFixMe: Question requires Metadata but we don't actually need it in this case
       const query = new Question(card).query();
       const [start, end] = range;
       if (isDimensionTimeseries(series)) {
@@ -889,7 +893,7 @@ export default function lineAreaBar(
 
   datas.map(data => {
     data.map(d => {
-      if (d._waterfallValue) {
+      if (isFinite(d._waterfallValue)) {
         d[1] = d._waterfallValue;
       }
     });
@@ -914,7 +918,6 @@ export default function lineAreaBar(
   if (onRender) {
     onRender({
       yAxisSplit: yAxisProps.yAxisSplit,
-      // $FlowFixMe
       warnings: (Object.values(warnings): string[]),
     });
   }

@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import Question from "../Question";
 
 import Base from "./Base";
@@ -53,7 +51,6 @@ export default class Database extends Base {
   }
 
   // @deprecated: use tablesLookup
-  // $FlowFixMe: known to not have side-effects
   get tables_lookup() {
     return this.tablesLookup();
   }
@@ -77,6 +74,10 @@ export default class Database extends Base {
     } else {
       return set.has(feature);
     }
+  }
+
+  supportsPivots() {
+    return this.hasFeature("expressions") && this.hasFeature("left-join");
   }
 
   // QUESTIONS

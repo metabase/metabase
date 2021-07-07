@@ -2,28 +2,26 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [test :as mt]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.test.data
-             [interface :as tx]
-             [sql :as sql.tx]]
-            [metabase.test.data.sql-jdbc
-             [execute :as execute]
-             [spec :as spec]]
+            [metabase.test :as mt]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.test.data.sql-jdbc.execute :as execute]
+            [metabase.test.data.sql-jdbc.spec :as spec]
             [metabase.test.data.sql.ddl :as ddl]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.SQLException))
 
 (defmulti load-data!
-  "Load the rows for a specific table into a DB. `load-data-chunked!` is the default implementation (see below); several
-  other implementations like `load-data-all-at-once!` and `load-data-one-at-a-time!` are already defined; see below.
-  It will likely take some experimentation to see which implementation works correctly and performs best with your
-  driver."
+  "Load the rows for a specific table (which has already been created) into a DB. `load-data-chunked!` is the default
+  implementation (see below); several other implementations like `load-data-all-at-once!` and
+  `load-data-one-at-a-time!` are already defined; see below. It will likely take some experimentation to see which
+  implementation works correctly and performs best with your driver."
   {:arglists '([driver dbdef tabledef])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -132,31 +130,35 @@
 ;; You can use one of these alternative implementations instead of `load-data-chunked!` if that doesn't work with your
 ;; DB or one of these other ones performs faster
 
-(def load-data-all-at-once!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-all-at-once!
   "Implementation of `load-data!`. Insert all rows at once."
   (make-load-data-fn))
 
-(def load-data-chunked!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-chunked!
   "Implementation of `load-data!`. Insert rows in chunks of 200 at a time."
   (make-load-data-fn load-data-chunked))
 
-(def load-data-one-at-a-time!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time!
   "Implementation of `load-data!`. Insert rows one at a time."
   (make-load-data-fn load-data-one-at-a-time))
 
-(def load-data-add-ids!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids!
   "Implementation of `load-data!`. Insert all rows at once; add IDs."
   (make-load-data-fn load-data-add-ids))
 
-(def load-data-one-at-a-time-add-ids!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-chunked!
+  "Implementation of `load-data!`. Insert rows in chunks of 200 at a time; add IDs."
+  (make-load-data-fn load-data-add-ids load-data-chunked))
+
+(def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time-add-ids!
   "Implementation of `load-data!` that inserts rows one at a time, but adds IDs."
   (make-load-data-fn load-data-add-ids load-data-one-at-a-time))
 
-(def load-data-chunked-parallel!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-chunked-parallel!
   "Implementation of `load-data!`. Insert rows in chunks of 200 at a time, in parallel."
   (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
 
-(def load-data-one-at-a-time-parallel!
+(def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time-parallel!
   "Implementation of `load-data!`. Insert rows one at a time, in parallel."
   (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
 ;; ^ the parallel versions aren't neccesarily faster than the sequential versions for all drivers so make sure to do
@@ -194,6 +196,9 @@
           (jdbc/print-sql-exception-chain e)
           (throw e))))))
 
+(defonce ^:private reference-load-durations
+  (delay (edn/read-string (slurp "test_resources/load-durations.edn"))))
+
 (defn create-db!
   "Default implementation of `create-db!` for SQL drivers."
   {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
@@ -210,8 +215,12 @@
     ;; DB rather than on `:server` (no DB in particular)
     (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
   ;; Now load the data for each Table
-  (doseq [tabledef table-definitions]
-    (u/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
+  (doseq [tabledef table-definitions
+          :let [reference-duration (or (some-> (get @reference-load-durations [(:database-name dbdef) (:table-name tabledef)])
+                                               u/format-nanoseconds)
+                                       "NONE")]]
+    (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
+                       (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
       (load-data! driver dbdef tabledef))))
 
 (defn destroy-db!

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -22,7 +23,19 @@ import { getParameters } from "metabase/dashboard/selectors";
 @connect((state, props) => {
   const { object, isDash, dashcard, clickBehavior } = props;
   const metadata = getMetadata(state, props);
-  const parameters = getParameters(state, props);
+  let parameters = getParameters(state, props);
+
+  if (props.excludeParametersSources) {
+    // Remove parameters as possible sources.
+    // We still include any that were already in use prior to this code change.
+    const parametersUsedAsSources = Object.values(
+      clickBehavior.parameterMapping || {},
+    )
+      .filter(mapping => getIn(mapping, ["source", "type"]) === "parameter")
+      .map(mapping => mapping.source.id);
+    parameters = parameters.filter(p => parametersUsedAsSources.includes(p.id));
+  }
+
   const [setTargets, unsetTargets] = _.partition(
     getTargetsWithSourceFilters({ isDash, object, metadata }),
     ({ id }) =>
@@ -70,6 +83,7 @@ class ClickMappings extends React.Component {
           {setTargets.map(target => {
             return (
               <TargetWithSource
+                key={target.id}
                 targetName={this.getTargetName()}
                 target={target}
                 {...this.props}
@@ -86,6 +100,7 @@ class ClickMappings extends React.Component {
               {unsetTargetsWithSourceOptions.map(
                 ({ target, sourceOptions }) => (
                   <TargetWithoutSource
+                    key={target.id}
                     target={target}
                     {...this.props}
                     sourceOptions={sourceOptions}

@@ -2,9 +2,13 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
+import _ from "underscore";
+
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import { isExpression } from "metabase/lib/expressions";
 import MetabaseSettings from "metabase/lib/settings";
+
+import ExternalLink from "metabase/components/ExternalLink";
 
 // TODO: combine with ExpressionPopover
 export default class ExpressionWidget extends Component {
@@ -14,7 +18,7 @@ export default class ExpressionWidget extends Component {
     query: PropTypes.object.isRequired,
     onChangeExpression: PropTypes.func.isRequired,
     onRemoveExpression: PropTypes.func,
-    onClose: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
   };
 
   static defaultProps = {
@@ -22,15 +26,17 @@ export default class ExpressionWidget extends Component {
     name: "",
   };
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(newProps) {
-    this.setState({
-      name: newProps.name,
-      expression: newProps.expression,
-    });
+  UNSAFE_componentWillReceiveProps(newProps) {
+    if (!this.state || !_.isEqual(this.props.expression, newProps.expression)) {
+      this.setState({
+        name: newProps.name,
+        expression: newProps.expression,
+      });
+    }
   }
 
   isValid() {
@@ -63,14 +69,14 @@ export default class ExpressionWidget extends Component {
             <p className="h5 text-medium">
               {t`Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost.`}
               &nbsp;
-              <a
+              <ExternalLink
                 className="link"
                 target="_blank"
                 href={MetabaseSettings.docsUrl(
                   "users-guide/custom-questions",
                   "creating-custom-columns",
                 )}
-              >{t`Learn more`}</a>
+              >{t`Learn more`}</ExternalLink>
             </p>
           </div>
 

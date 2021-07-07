@@ -4,6 +4,8 @@ import "metabase/visualizations/index";
 import {
   getComputedSettings,
   getSettingsWidgets,
+  mergeSettings,
+  getClickBehaviorSettings,
 } from "metabase/visualizations/lib/settings";
 
 describe("settings framework", () => {
@@ -170,6 +172,91 @@ describe("settings framework", () => {
       expect(onChangeSettings.mock.calls).toEqual([
         [{ foo: "bar", bar: "bar" }],
       ]);
+    });
+  });
+
+  describe("mergeSettings (metabase#14597)", () => {
+    it("should merge with second overriding first", () => {
+      expect(
+        mergeSettings({ foo: { a: 1 }, bar: { b: 1 } }, { foo: { c: 1 } }),
+      ).toEqual({ foo: { c: 1 }, bar: { b: 1 } });
+    });
+
+    it("should merge column settings", () => {
+      expect(
+        mergeSettings(
+          { column_settings: { col1: { set1: "val1", set2: "val2" } } },
+          {
+            column_settings: { col1: { set1: "val3" }, col2: { set3: "val4" } },
+          },
+        ),
+      ).toEqual({
+        column_settings: {
+          col1: { set1: "val3", set2: "val2" },
+          col2: { set3: "val4" },
+        },
+      });
+    });
+
+    it("should merge series settings", () => {
+      expect(
+        mergeSettings(
+          { series_settings: { s1: { set1: "val1", set2: "val2" } } },
+          { series_settings: { s1: { set1: "val3" }, s2: { set3: "val4" } } },
+        ),
+      ).toEqual({
+        series_settings: {
+          s1: { set1: "val3", set2: "val2" },
+          s2: { set3: "val4" },
+        },
+      });
+    });
+
+    it("should merge when only one setting has the nested key", () => {
+      expect(
+        mergeSettings({}, { column_settings: { col1: { set1: "val" } } }),
+      ).toEqual({ column_settings: { col1: { set1: "val" } } });
+    });
+  });
+
+  describe("getClickBehaviorSettings", () => {
+    it("should clone only click_behavior from column_settings", () => {
+      expect(
+        getClickBehaviorSettings({
+          column_settings: {
+            col1: {
+              click_behavior: { type: "stub" },
+              not_click_behavior: { type: "another stub" },
+            },
+          },
+        }),
+      ).toEqual({
+        column_settings: { col1: { click_behavior: { type: "stub" } } },
+      });
+    });
+
+    it("should clone only click_behavior from root settings", () => {
+      expect(
+        getClickBehaviorSettings({
+          click_behavior: { type: "stub" },
+          not_click_behavior: { type: "another stub" },
+        }),
+      ).toEqual({
+        click_behavior: { type: "stub" },
+      });
+    });
+
+    it("should return an empty object if there are no click behaviors set", () => {
+      expect(
+        getClickBehaviorSettings({
+          not_click_behavior: { type: "stub" },
+          column_settings: {
+            col1: {
+              not_click_behavior: { type: "stub" },
+            },
+          },
+        }),
+      ).toEqual({});
     });
   });
 });

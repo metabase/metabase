@@ -1,16 +1,14 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
   (:require [clojure.test :refer :all]
-            [metabase
-             [test :as mt]
-             [util :as u]]
             [metabase.api.permissions :as permissions-api]
-            [metabase.models
-             [database :refer [Database]]
-             [permissions :as perms]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [table :refer [Table]]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.table :refer [Table]]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -52,6 +50,17 @@
                             :member_count (s/eq 0)}
                            (get id->group (:id group)))))))))))
 
+(deftest groups-list-limit-test
+  (testing "GET /api/permissions/group?limit=1&offset=1"
+    (testing "Limit and offset pagination have defaults"
+      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "0")
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1")))
+      (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1" :limit 50)
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
+    (testing "Limit and offset pagination works for permissions list"
+      (is (= [{:id 1, :name "All Users", :member_count 3}]
+             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
+
 (deftest fetch-group-test
   (testing "GET /permissions/group/:id"
     (let [{:keys [members]} ((mt/user->client :crowberto) :get 200 (format "permissions/group/%d" (:id (group/all-users))))
@@ -84,20 +93,20 @@
       (mt/with-temp PermissionsGroup [group]
         ((mt/user->client :crowberto) :put 200 "permissions/graph"
          (assoc-in (perms/graph)
-                   [:groups (u/get-id group) (mt/id) :schemas]
+                   [:groups (u/the-id group) (mt/id) :schemas]
                    {"PUBLIC" {(mt/id :venues) :all}}))
         (is (= {(mt/id :venues) :all}
-               (get-in (perms/graph) [:groups (u/get-id group) (mt/id) :schemas "PUBLIC"]))))
+               (get-in (perms/graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))))
 
       (testing "Table-specific perms"
         (mt/with-temp PermissionsGroup [group]
           ((mt/user->client :crowberto) :put 200 "permissions/graph"
            (assoc-in (perms/graph)
-                     [:groups (u/get-id group) (mt/id) :schemas]
+                     [:groups (u/the-id group) (mt/id) :schemas]
                      {"PUBLIC" {(mt/id :venues) {:read :all, :query :segmented}}}))
           (is (= {(mt/id :venues) {:read  :all
                                    :query :segmented}}
-                 (get-in (perms/graph) [:groups (u/get-id group) (mt/id) :schemas "PUBLIC"]))))))
+                 (get-in (perms/graph) [:groups (u/the-id group) (mt/id) :schemas "PUBLIC"]))))))
 
     (testing "permissions for new db"
       (let [new-id (inc (mt/id))]
@@ -106,10 +115,10 @@
                         Table            [_ {:db_id db-id}]]
           ((mt/user->client :crowberto) :put 200 "permissions/graph"
            (assoc-in (perms/graph)
-                     [:groups (u/get-id group) db-id :schemas]
+                     [:groups (u/the-id group) db-id :schemas]
                      :all))
           (is (= :all
-                 (get-in (perms/graph) [:groups (u/get-id group) db-id :schemas]))))))
+                 (get-in (perms/graph) [:groups (u/the-id group) db-id :schemas]))))))
 
     (testing "permissions for new db with no tables"
       (let [new-id (inc (mt/id))]
@@ -117,9 +126,9 @@
                         Database         [{db-id :id}]]
           ((mt/user->client :crowberto) :put 200 "permissions/graph"
            (assoc-in (perms/graph)
-                     [:groups (u/get-id group) db-id :schemas]
+                     [:groups (u/the-id group) db-id :schemas]
                      :all))
           (is (= :all
-                 (get-in (perms/graph) [:groups (u/get-id group) db-id :schemas]))))))))
+                 (get-in (perms/graph) [:groups (u/the-id group) db-id :schemas]))))))))
 
 ;;

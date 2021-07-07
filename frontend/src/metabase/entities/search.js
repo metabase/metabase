@@ -25,8 +25,13 @@ export default createEntity({
         const {
           collection,
           archived,
-          model,
+          models,
           namespace,
+          pinned_state,
+          limit,
+          offset,
+          sort_column,
+          sort_direction,
           ...unsupported
         } = query;
         if (Object.keys(unsupported).length > 0) {
@@ -35,16 +40,27 @@ export default createEntity({
               Object.keys(unsupported).join(", "),
           );
         }
-        return (await collectionList({
+
+        const { data, ...rest } = await collectionList({
           collection,
           archived,
-          model,
+          models,
           namespace,
-        })).map(item => ({
-          collection_id: canonicalCollectionId(collection),
-          archived: archived || false,
-          ...item,
-        }));
+          pinned_state,
+          limit,
+          offset,
+          sort_column,
+          sort_direction,
+        });
+
+        return {
+          ...rest,
+          data: data.map(item => ({
+            collection_id: canonicalCollectionId(collection),
+            archived: archived || false,
+            ...item,
+          })),
+        };
       } else {
         return searchList(query);
       }

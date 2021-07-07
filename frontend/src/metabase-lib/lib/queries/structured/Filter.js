@@ -1,5 +1,3 @@
-/* @flow */
-
 import MBQLClause from "./MBQLClause";
 
 import type {
@@ -182,7 +180,6 @@ export default class Filter extends MBQLClause {
     const dimension = this.dimension();
     const operator = dimension && dimension.filterOperator(operatorName);
 
-    // $FlowFixMe: partial filter
     const filter: FieldFilter = [operatorName, dimension && dimension.mbql()];
 
     if (operator) {

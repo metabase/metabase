@@ -1,7 +1,6 @@
 (ns metabase.models.collection.root
-  (:require [metabase.models
-             [interface :as i]
-             [permissions :as perms]]
+  (:require [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms]
             [metabase.public-settings.metastore :as settings.metastore]
             [metabase.util :as u]
             [potemkin.types :as p.types]

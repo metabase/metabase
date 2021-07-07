@@ -1,87 +1,93 @@
 ###################
-# STAGE 1: builder
+# STAGE 1.1: builder frontend
 ###################
 
-# Build currently doesn't work on > Java 11 (i18n utils are busted) so build on 8 until we fix this
-FROM adoptopenjdk/openjdk8:alpine as builder
+FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as frontend
+
+ARG MB_EDITION=oss
 
 WORKDIR /app/source
 
-ENV FC_LANG en-US
-ENV LC_CTYPE en_US.UTF-8
+COPY . .
+RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn --frozen-lockfile && yarn build && bin/i18n/build-translation-resources
 
-# bash:    various shell scripts
-# wget:    installing lein (TODO -- is this actually needed? We don't use wget directly)
-# curl:    needed by script that installs Clojure CLI
-# git:     ./bin/version
-# yarn:    frontend building
-# make:    backend building (TODO -- huh? We don't use Make to build the backend)
-# gettext: translations
-# java-cacerts: installs updated cacerts to /etc/ssl/certs/java/cacerts
+###################
+# STAGE 1.2: backend deps
+###################
 
-RUN apk add --no-cache coreutils bash yarn git wget curl make gettext java-cacerts
+FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as backend
 
-# lein:    backend dependencies and building
-ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
-RUN chmod 744 /usr/local/bin/lein
-RUN lein upgrade
-
-# Clojure CLI (needed for some build scripts)
-ADD https://download.clojure.org/install/linux-install-1.10.1.708.sh /tmp/linux-install-1.10.1.708.sh
-RUN chmod +x /tmp/linux-install-1.10.1.708.sh
-RUN /tmp/linux-install-1.10.1.708.sh
-
-# install dependencies before adding the rest of the source to maximize caching
+WORKDIR /app/source
 
 # backend dependencies
 COPY project.clj .
-RUN lein deps
+RUN lein deps :tree
 
-# frontend dependencies
-COPY yarn.lock package.json .yarnrc ./
-RUN yarn
+###################
+# STAGE 1.3: drivers
+###################
+
+FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as drivers
+
+ARG MB_EDITION=oss
+
+WORKDIR /app/source
+
+COPY --from=backend /root/.m2/repository/. /root/.m2/repository/.
 
 # add the rest of the source
 COPY . .
 
 # build the app
-RUN INTERACTIVE=false bin/build
+RUN INTERACTIVE=false MB_EDITION=$MB_EDITION sh bin/build-drivers.sh
 
-# import AWS RDS cert into /etc/ssl/certs/java/cacerts
-ADD https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem .
-RUN keytool -noprompt -import -trustcacerts -alias aws-rds \
-  -file rds-combined-ca-bundle.pem \
-  -keystore /etc/ssl/certs/java/cacerts \
-  -keypass changeit -storepass changeit
+###################
+# STAGE 1.4: main builder
+###################
+
+FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as builder
+
+ARG MB_EDITION=oss
+
+WORKDIR /app/source
+
+# try to reuse caching as much as possible
+COPY --from=frontend /root/.m2/repository/. /root/.m2/repository/.
+COPY --from=frontend /app/source/. .
+COPY --from=backend /root/.m2/repository/. /root/.m2/repository/.
+COPY --from=backend /app/source/. .
+COPY --from=drivers /root/.m2/repository/. /root/.m2/repository/.
+COPY --from=drivers /app/source/. .
+
+# build the app
+RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build version uberjar
 
 # ###################
 # # STAGE 2: runner
 # ###################
 
+## Remember that this runner image needs to be the same as bin/docker/Dockerfile with the exception that this one grabs the
+## jar from the previous stage rather than the local build
+
 FROM adoptopenjdk/openjdk11:alpine-jre as runner
 
-WORKDIR /app
-
-ENV FC_LANG en-US
-ENV LC_CTYPE en_US.UTF-8
+ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add --no-cache bash ttf-dejavu fontconfig
-
-# add fixed cacerts
-COPY --from=builder /etc/ssl/certs/java/cacerts /opt/java/openjdk/lib/security/cacerts
+RUN apk upgrade && apk add --update-cache --no-cache bash ttf-dejavu fontconfig curl java-cacerts && \
+    mkdir -p /app/certs && \
+    curl https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem -o /app/certs/rds-combined-ca-bundle.pem  && \
+    /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias aws-rds -file /app/certs/rds-combined-ca-bundle.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
+    curl https://cacerts.digicert.com/DigiCertGlobalRootG2.crt.pem -o /app/certs/DigiCertGlobalRootG2.crt.pem  && \
+    /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias azure-cert -file /app/certs/DigiCertGlobalRootG2.crt.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
+    mkdir -p /plugins && chmod a+rwx /plugins
 
 # add Metabase script and uberjar
-RUN mkdir -p bin target/uberjar
-COPY --from=builder /app/source/target/uberjar/metabase.jar /app/target/uberjar/
-COPY --from=builder /app/source/bin/start /app/bin/
-
-# create the plugins directory, with writable permissions
-RUN mkdir -p /plugins
-RUN chmod a+rwx /plugins
+COPY --from=builder /app/source/target/uberjar/metabase.jar /app/
+COPY bin/docker/run_metabase.sh /app/
 
 # expose our default runtime port
 EXPOSE 3000
 
 # run it
-ENTRYPOINT ["/app/bin/start"]
+ENTRYPOINT ["/app/run_metabase.sh"]

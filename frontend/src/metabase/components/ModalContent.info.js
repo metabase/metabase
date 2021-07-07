@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
@@ -19,7 +20,7 @@ export const examples = {
       <ModalContent
         title="Do something crazy?"
         onClose={() => alert("close!")}
-        footer={[<Button danger>Ok</Button>]}
+        footer={<Button danger>Ok</Button>}
       >
         Are you sure?
       </ModalContent>

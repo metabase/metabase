@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -30,7 +29,6 @@ export default class FilterList extends Component {
   };
 
   render() {
-    // $FlowFixMe: metadata provided by @connect
     const { filters, metadata, filterRenderer } = this.props;
     return (
       <div className="Query-filterList scroll-x scroll-show">
@@ -40,8 +38,9 @@ export default class FilterList extends Component {
             filter={filter}
             metadata={metadata}
             maxDisplayValues={this.props.maxDisplayValues}
-            children={filterRenderer}
-          />
+          >
+            {filterRenderer}
+          </Filter>
         ))}
       </div>
     );

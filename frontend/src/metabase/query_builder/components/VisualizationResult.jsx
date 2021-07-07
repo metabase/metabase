@@ -11,6 +11,9 @@ import { DatasetQuery } from "metabase-types/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+import type { Question } from "metabase-lib/lib/Question";
 
 type Props = {
   className?: string,
@@ -26,6 +29,7 @@ type Props = {
   onOpenChartSettings: () => void,
   onUpdateWarnings: () => void,
   onUpdateVisualizationSettings: (settings: any) => void,
+  query?: StructuredQuery,
 };
 
 export default class VisualizationResult extends Component {
@@ -108,6 +112,7 @@ export default class VisualizationResult extends Component {
           onUpdateVisualizationSettings={
             this.props.onUpdateVisualizationSettings
           }
+          query={this.props.query}
         />
       );
     }

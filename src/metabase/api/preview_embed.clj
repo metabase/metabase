@@ -9,9 +9,9 @@
 
    Refer to the documentation for those endpoints for further details."
   (:require [compojure.core :refer [GET]]
-            [metabase.api
-             [common :as api]
-             [embed :as embed-api]]
+            [metabase.api.common :as api]
+            [metabase.api.embed :as embed-api]
+            [metabase.query-processor.pivot :as qp.pivot]
             [metabase.util.embed :as eu]))
 
 (defn- check-and-unsign [token]
@@ -61,5 +61,34 @@
       :token-params     token-params
       :query-params     query-params)))
 
+(api/defendpoint ^:streaming GET "/pivot/card/:token/query"
+  "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
+  [token & query-params]
+  (let [unsigned-token (check-and-unsign token)
+        card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (embed-api/run-query-for-card-with-params-async
+      :export-format    :api
+      :card-id          card-id
+      :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
+      :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+      :query-params     query-params
+      :qp-runner        qp.pivot/run-pivot-query)))
+
+(api/defendpoint ^:streaming GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
+  [token dashcard-id card-id & query-params]
+  (let [unsigned-token   (check-and-unsign token)
+        dashboard-id     (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+        token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (embed-api/dashcard-results-async
+      :export-format    :api
+      :dashboard-id     dashboard-id
+      :dashcard-id      dashcard-id
+      :card-id          card-id
+      :embedding-params embedding-params
+      :token-params     token-params
+      :query-params     query-params
+      :qp-runner        qp.pivot/run-pivot-query)))
 
 (api/define-routes)

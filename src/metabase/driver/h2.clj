@@ -1,27 +1,23 @@
 (ns metabase.driver.h2
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [db :as mdb]
-             [driver :as driver]
-             [util :as u]]
-            [metabase.db
-             [jdbc-protocols :as jdbc-protocols]
-             [spec :as dbspec]]
+            [metabase.db.jdbc-protocols :as jdbc-protocols]
+            [metabase.db.spec :as dbspec]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor
-             [error-type :as error-type]
-             [store :as qp.store]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :refer [deferred-tru tru]]])
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.ssh :as ssh])
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime))
 
@@ -144,12 +140,20 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :milliseconds] [_ _ expr]
   (add-to-1970 expr "millisecond"))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :microseconds] [_ _ expr]
   (add-to-1970 expr "microsecond"))
 
+(defmethod sql.qp/cast-temporal-string [:h2 :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (hsql/call :parsedatetime expr (hx/literal "yyyyMMddHHmmss")))
+
+(defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               (hsql/call :utf8tostring expr)))
 
 ;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
 ;; and then converting back to a date.
@@ -295,9 +299,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
-               details
-               (update details :db connection-string-set-safe-options))))
+  (dbspec/h2 (update details :db connection-string-set-safe-options)))
 
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
@@ -307,7 +309,7 @@
   [driver database ^String timezone-id]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
   ;; steps that are in the default impl
-  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (doto conn
         (.setReadOnly true))
@@ -330,3 +332,14 @@
   [driver prepared-statement i t]
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
+
+(defmethod driver/incorporate-ssh-tunnel-details :h2
+  [_ db-details]
+  (if (and (:tunnel-enabled db-details) (ssh/ssh-tunnel-open? db-details))
+    (if (and (:db db-details) (str/starts-with? (:db db-details) "tcp://"))
+      (let [details (ssh/include-ssh-tunnel! db-details)
+            db      (:db details)]
+        (assoc details :db (str/replace-first db (str (:orig-port details)) (str (:tunnel-entrance-port details)))))
+      (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
+          db-details))
+    db-details))

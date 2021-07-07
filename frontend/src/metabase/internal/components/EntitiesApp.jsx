@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Route, IndexRoute } from "react-router";
 import { connect } from "react-redux";
@@ -151,7 +152,7 @@ const EntitySidebarLayout = ({ params, children }) => (
   </div>
 );
 
-EntitiesApp.routes = [
+EntitiesApp.routes = (
   <Route path="entities">
     <IndexRoute component={EntitiesApp} />
     <Route path=":entityType">
@@ -165,5 +166,5 @@ EntitiesApp.routes = [
         />
       </Route>
     </Route>
-  </Route>,
-];
+  </Route>
+);

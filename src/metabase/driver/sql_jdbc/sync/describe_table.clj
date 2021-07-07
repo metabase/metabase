@@ -4,18 +4,16 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync
-             [common :as common]
-             [interface :as i]]
+            [metabase.driver.sql-jdbc.sync.common :as common]
+            [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
-(defmethod i/column->special-type :sql-jdbc [_ _ _] nil)
+(defmethod i/column->semantic-type :sql-jdbc [_ _ _] nil)
 
 (defn pattern-based-database-type->base-type
   "Return a `database-type->base-type` function that matches types based on a sequence of pattern / base-type pairs.
@@ -43,13 +41,13 @@
                             database-type))
           :type/*)))
 
-(defn- calculated-special-type
-  "Get an appropriate special type for a column with `column-name` of type `database-type`."
+(defn- calculated-semantic-type
+  "Get an appropriate semantic type for a column with `column-name` of type `database-type`."
   [driver ^String column-name ^String database-type]
-  (when-let [special-type (i/column->special-type driver database-type column-name)]
-    (assert (isa? special-type :type/*)
-      (str "Invalid type: " special-type))
-    special-type))
+  (when-let [semantic-type (i/column->semantic-type driver database-type column-name)]
+    (assert (isa? semantic-type :type/*)
+      (str "Invalid type: " semantic-type))
+    semantic-type))
 
 (defmethod i/fallback-metadata-query :sql-jdbc
   [driver schema table]
@@ -139,8 +137,8 @@
                    (u/select-non-nil-keys col [:name :database-type :field-comment])
                    {:base-type         (database-type->base-type-or-warn driver database-type)
                     :database-position i}
-                   (when-let [special-type (calculated-special-type driver column-name database-type)]
-                     {:special-type special-type}))))
+                   (when-let [semantic-type (calculated-semantic-type driver column-name database-type)]
+                     {:semantic-type semantic-type}))))
    (fields-metadata driver conn table db-name-or-nil)))
 
 (defn add-table-pks

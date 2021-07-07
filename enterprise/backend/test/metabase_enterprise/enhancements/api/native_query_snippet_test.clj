@@ -1,14 +1,12 @@
 (ns metabase-enterprise.enhancements.api.native-query-snippet-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [models :refer [Collection NativeQuerySnippet]]
-             [test :as mt]
-             [util :as u]]
-            [metabase.models
-             [collection :as collection]
-             [permissions :as perms]
-             [permissions-group :as group]]
+            [metabase.models :refer [Collection NativeQuerySnippet]]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
             [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
@@ -58,7 +56,7 @@
          (boolean
           (some
            (fn [a-snippet]
-             (= (u/get-id a-snippet) (u/get-id snippet)))
+             (= (u/the-id a-snippet) (u/the-id snippet)))
            ((mt/user->client :rasta) :get "native-query-snippet"))))))))
 
 (deftest fetch-test
@@ -67,7 +65,7 @@
       (test-perms
        :read
        (fn [snippet]
-         (let [response ((mt/user->client :rasta) :get (format "native-query-snippet/%d" (u/get-id snippet)))]
+         (let [response ((mt/user->client :rasta) :get (format "native-query-snippet/%d" (u/the-id snippet)))]
            (not= response "You don't have permissions to do that.")))))))
 
 (deftest create-test
@@ -91,7 +89,7 @@
       (test-perms
        :write
        (fn [snippet]
-         (let [response ((mt/user->client :rasta) :put (format "native-query-snippet/%d" (u/get-id snippet)) {:name (mt/random-name)})]
+         (let [response ((mt/user->client :rasta) :put (format "native-query-snippet/%d" (u/the-id snippet)) {:name (mt/random-name)})]
            (not= response "You don't have permissions to do that.")))))))
 
 (deftest move-perms-test

@@ -1,5 +1,5 @@
 import React from "react";
-import { shallow } from "enzyme";
+import { render } from "@testing-library/react";
 
 import Question from "metabase-lib/lib/Question";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
@@ -12,12 +12,12 @@ describe("QuestionResultLoader", () => {
 
     const loadSpy = jest.spyOn(QuestionResultLoader.prototype, "_loadResult");
 
-    shallow(
+    render(
       <QuestionResultLoader question={question}>
         {() => <div />}
       </QuestionResultLoader>,
     );
 
-    expect(loadSpy).toHaveBeenCalledWith(question, undefined);
+    expect(loadSpy).toHaveBeenCalledWith(question, undefined, false);
   });
 });

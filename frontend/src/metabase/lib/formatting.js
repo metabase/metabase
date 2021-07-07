@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment-timezone";
@@ -39,7 +38,11 @@ import {
   getTimeFormatFromStyle,
   hasHour,
 } from "metabase/lib/formatting/date";
-import { renderLinkTextForClick } from "metabase/lib/formatting/link";
+import {
+  renderLinkTextForClick,
+  renderLinkURLForClick,
+} from "metabase/lib/formatting/link";
+import { NULL_NUMERIC_VALUE, NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase-types/types/Dataset";
@@ -105,7 +108,7 @@ export type FormattingOptions = {
   markdown_template?: string,
 };
 
-type FormattedString = string | React$Element<any>;
+type FormattedString = string | React.Element;
 
 export const FK_SYMBOL = "→";
 
@@ -152,7 +155,6 @@ export function numberFormatterForOptions(options: FormattingOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
-  // $FlowFixMe: doesn't know about Intl.NumberFormat
   return new Intl.NumberFormat("en", {
     style: options.number_style,
     currency: options.currency,
@@ -177,7 +179,6 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   if (number < 0 && options.negativeInParentheses) {
     return (
       "(" +
-      // $FlowFixMe coerce into string
       formatNumber(-number, { ...options, negativeInParentheses: false }) +
       ")"
     );
@@ -518,7 +519,6 @@ export function formatDateTimeWithUnit(
 
   if (!dateFormat) {
     dateFormat = getDateFormatFromStyle(
-      // $FlowFixMe: date_style default set above
       options["date_style"],
       unit,
       options["date_separator"],
@@ -527,7 +527,6 @@ export function formatDateTimeWithUnit(
 
   if (!timeFormat) {
     timeFormat = getTimeFormatFromStyle(
-      // $FlowFixMe: time_style default set above
       options.time_style,
       unit,
       options.time_enabled,
@@ -547,22 +546,26 @@ export function formatTime(value: Value) {
 }
 
 // https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
-const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
+const EMAIL_ALLOW_LIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
 export function formatEmail(
   value: Value,
-  // $FlowFixMe: unclear problem with `view_as` default
-  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text, clicked }: FormattingOptions = {},
 ) {
   const email = String(value);
+  const label =
+    clicked && link_text
+      ? renderLinkTextForClick(link_text, getDataFromClicked(clicked))
+      : null;
+
   if (
     jsx &&
     rich &&
     (view_as === "email_link" || view_as === "auto") &&
-    EMAIL_WHITELIST_REGEX.test(email)
+    EMAIL_ALLOW_LIST_REGEX.test(email)
   ) {
     return (
-      <ExternalLink href={"mailto:" + email}>{link_text || email}</ExternalLink>
+      <ExternalLink href={"mailto:" + email}>{label || email}</ExternalLink>
     );
   } else {
     return email;
@@ -571,7 +574,6 @@ export function formatEmail(
 
 function getUrlProtocol(url) {
   try {
-    // $FlowFixMe: url might not be a string, but we're in a try/catch
     const { protocol } = new URL(url);
     return protocol;
   } catch (e) {
@@ -591,41 +593,74 @@ function isDefaultLinkProtocol(protocol) {
   );
 }
 
-export function formatUrl(value: Value, options: FormattingOptions = {}) {
-  const { jsx, rich, view_as, column, link_text } = options;
-  const url = value;
+function getLinkUrl(value, { view_as, link_url, clicked, column }) {
+  const isExplicitLink = view_as === "link";
+  const hasCustomizedUrl = link_url && clicked;
 
-  const protocol = getUrlProtocol(url);
-  if (
-    jsx &&
-    rich &&
-    protocol &&
-    isSafeProtocol(protocol) &&
-    (view_as === undefined
-      ? isURL(column) || isDefaultLinkProtocol(protocol)
-      : view_as === "link"
-      ? true
-      : view_as === "auto"
-      ? isDefaultLinkProtocol(protocol)
-      : false)
-  ) {
-    const urlText =
-      link_text ||
-      getRemappedValue(value, options) ||
-      formatValue(value, { ...options, view_as: null });
+  if (isExplicitLink && hasCustomizedUrl) {
+    return renderLinkURLForClick(link_url, getDataFromClicked(clicked));
+  }
+
+  const protocol = getUrlProtocol(value);
+  const isValueSafeLink = protocol && isSafeProtocol(protocol);
+
+  if (!isValueSafeLink) {
+    return null;
+  }
+
+  if (isExplicitLink) {
+    return value;
+  }
+
+  const isDefaultProtocol = protocol && isDefaultLinkProtocol(protocol);
+  const isMaybeLink = view_as === "auto";
+
+  if (isMaybeLink && isDefaultProtocol) {
+    return value;
+  }
+
+  if (view_as === undefined && (isURL(column) || isDefaultProtocol)) {
+    return value;
+  }
+
+  return null;
+}
+
+function getLinkText(value, options) {
+  const { view_as, link_text, clicked } = options;
+
+  const isExplicitLink = view_as === "link";
+  const hasCustomizedText = link_text && clicked;
+
+  if (isExplicitLink && hasCustomizedText) {
+    return renderLinkTextForClick(link_text, getDataFromClicked(clicked));
+  }
+
+  return (
+    getRemappedValue(value, options) ||
+    formatValue(value, { ...options, view_as: null })
+  );
+}
+
+export function formatUrl(value, options = {}) {
+  const { jsx, rich } = options;
+
+  const url = getLinkUrl(value, options);
+
+  if (jsx && rich && url) {
+    const text = getLinkText(value, options);
     return (
       <ExternalLink className="link link--wrappable" href={url}>
-        {urlText}
+        {text}
       </ExternalLink>
     );
   } else {
-    return url;
+    return value;
   }
 }
 
 export function formatImage(
   value: Value,
-  // $FlowFixMe: unclear problem with `view_as` default
   { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const url = String(value);
@@ -638,7 +673,7 @@ export function formatImage(
   }
 }
 
-// fallback for formatting a string without a column special_type
+// fallback for formatting a string without a column semantic_type
 function formatStringFallback(value: Value, options: FormattingOptions = {}) {
   if (options.view_as !== null) {
     value = formatUrl(value, options);
@@ -698,7 +733,6 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         </span>
       );
     } else {
-      // $FlowFixMe: doesn't understand formatted is a string
       return `${options.prefix || ""}${formatted}${options.suffix || ""}`;
     }
   } else {
@@ -711,9 +745,7 @@ export function getRemappedValue(
   { remap, column }: FormattingOptions = {},
 ): ?string {
   if (remap && column) {
-    // $FlowFixMe: column could be Field or Column
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
-      // $FlowFixMe: column could be Field or Column
       return column.remappedValue(value);
     }
     // or it may be a raw column object with a "remapping" object
@@ -738,8 +770,22 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     return remapped;
   }
 
-  if (value == null) {
+  if (value === NULL_NUMERIC_VALUE) {
+    return NULL_DISPLAY_VALUE;
+  } else if (value == null) {
     return null;
+  } else if (
+    options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.jsx
+  ) {
+    // Style this like a link if we're in a jsx context.
+    // It's not actually a link since we handle the click differently for dashboard and question targets.
+    return (
+      <div className="link link--wrappable">
+        {formatValueRaw(value, { ...options, jsx: false })}
+      </div>
+    );
   } else if (
     options.click_behavior &&
     options.click_behavior.linkTextTemplate
@@ -767,7 +813,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   ) {
     return formatDateTime(value, options);
   } else if (typeof value === "string") {
-    if (column && column.special_type != null) {
+    if (column && column.semantic_type != null) {
       return value;
     } else {
       return formatStringFallback(value, options);
@@ -798,7 +844,7 @@ export function formatColumn(column: Column): string {
   if (!column) {
     return "";
   } else if (column.remapped_to_column != null) {
-    // $FlowFixMe: remapped_to_column is a special field added by Visualization.jsx
+    // remapped_to_column is a special field added by Visualization.jsx
     return formatColumn(column.remapped_to_column);
   } else {
     let columnTitle = getFriendlyName(column);
@@ -819,32 +865,26 @@ export function formatField(field: Field): string {
   }
 }
 
-// $FlowFixMe
 export function singularize(...args) {
   return inflection.singularize(...args);
 }
 
-// $FlowFixMe
 export function pluralize(...args) {
   return inflection.pluralize(...args);
 }
 
-// $FlowFixMe
 export function capitalize(...args) {
   return inflection.capitalize(...args);
 }
 
-// $FlowFixMe
 export function inflect(...args) {
   return inflection.inflect(...args);
 }
 
-// $FlowFixMe
 export function titleize(...args) {
   return inflection.titleize(...args);
 }
 
-// $FlowFixMe
 export function humanize(...args) {
   return inflection.humanize(...args);
 }

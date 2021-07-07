@@ -2,7 +2,7 @@
 <Configuration>
   <Appenders>
     <Console name="STDOUT" target="SYSTEM_OUT">
-      <PatternLayout pattern="%d %p %c{2} :: %m%n">
+      <PatternLayout pattern="%date %level %logger{2} :: %message%n%throwable">
         <replace regex=":basic-auth \\[.*\\]" replacement=":basic-auth [redacted]"/>
       </PatternLayout>
     </Console>
@@ -25,7 +25,7 @@
     <Logger name="metabase" level="INFO"/>
     <Logger name="metabase-enterprise" level="INFO"/>
     <Logger name="metabase.plugins" level="DEBUG"/>
-    <Logger name="metabase.middleware" level="DEBUG"/>
+    <Logger name="metabase.server.middleware" level="DEBUG"/>
     <Logger name="metabase.query-processor.async" level="DEBUG"/>
     <Logger name="com.mchange" level="ERROR"/>
 

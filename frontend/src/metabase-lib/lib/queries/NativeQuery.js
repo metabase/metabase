@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
@@ -226,7 +224,7 @@ export default class NativeQuery extends AtomicQuery {
       this._originalQuestion,
       updateIn(
         this._datasetQuery,
-        ["native", "template_tags"],
+        ["native", "template-tags"],
         templateTags => {
           const entries = Array.from(Object.entries(templateTags));
           const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
@@ -263,7 +261,6 @@ export default class NativeQuery extends AtomicQuery {
     return getEngineNativeRequiresTable(this.engine());
   }
 
-  // $FlowFixMe
   templateTags(): TemplateTag[] {
     return Object.values(this.templateTagsMap());
   }
@@ -299,15 +296,14 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   dimensionOptions(
-    dimensionFilter: DimensionFilter = () => true,
+    dimensionFilter: DimensionFilter = _.identity,
+    operatorFilter = _.identity,
   ): DimensionOptions {
     const dimensions = this.templateTags()
-      .filter(tag => tag.type === "dimension")
-      .map(
-        tag =>
-          new TemplateTagDimension(null, [tag.name], this.metadata(), this),
-      )
-      .filter(dimensionFilter);
+      .filter(tag => tag.type === "dimension" && operatorFilter(tag))
+      .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
+      .filter(dimension => dimensionFilter(dimension));
+
     return new DimensionOptions({
       dimensions: dimensions,
       count: dimensions.length,
@@ -360,7 +356,7 @@ export default class NativeQuery extends AtomicQuery {
       for (const tag of tagsBySnippetId[snippet.id] || []) {
         if (tag["snippet-name"] !== snippet.name) {
           queryText = queryText.replace(
-            new RegExp(`\{\{\\s*${tag.name}\\s*\}\}`, "g"),
+            new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
             `{{snippet: ${snippet.name}}}`,
           );
         }
@@ -451,7 +447,6 @@ export default class NativeQuery extends AtomicQuery {
         }
 
         // ensure all tags have an id since we need it for parameter values to work
-        // $FlowFixMe
         for (const tag: TemplateTag of Object.values(templateTags)) {
           if (tag.id == null) {
             tag.id = Utils.uuid();

@@ -2,10 +2,9 @@
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
-            [metabase.models
-             [card :refer [Card]]
-             [dependency :as dependency :refer [IDependent]]
-             [metric :refer [Metric]]]))
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dependency :as dependency :refer [IDependent]]
+            [metabase.models.metric :refer [Metric]]))
 
 (def ^:private ^:const dependencies-topics
   "The `Set` of event topics which are subscribed to for use in dependencies tracking."

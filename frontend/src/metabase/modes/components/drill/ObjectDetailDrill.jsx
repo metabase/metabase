@@ -1,5 +1,3 @@
-/* @flow */
-
 import { isFK, isPK } from "metabase/lib/schema_metadata";
 import { t } from "ttag";
 import type {
@@ -17,7 +15,6 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     return [];
   }
 
-  // $FlowFixMe
   let field = question.metadata().field(clicked.column.id);
   if (!field) {
     return [];

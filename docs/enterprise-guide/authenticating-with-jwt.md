@@ -38,6 +38,9 @@ Once you have configured your JWT authentication, you can choose to disable the 
 
 ![Password disable](images/password-disable.png)
 
+### Example code using JWT
+
+You can find example code that uses JWT authentication in the [SSO examples repository](https://github.com/metabase/sso-examples).
 
 ---
 

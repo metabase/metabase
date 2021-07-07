@@ -15,6 +15,11 @@ export const HOUR_OPTIONS = _.times(12, n => ({
   value: n,
 }));
 
+export const MINUTE_OPTIONS = _.times(60, n => ({
+  name: n.toString(),
+  value: n,
+}));
+
 export const AM_PM_OPTIONS = [
   { name: "AM", value: 0 },
   { name: "PM", value: 1 },
@@ -55,7 +60,10 @@ export default class SchedulePicker extends Component {
     // text prepended to "12:00 PM PST, your Metabase timezone"
     textBeforeSendTime: PropTypes.string,
     onScheduleChange: PropTypes.func.isRequired,
+    minutesOnHourPicker: PropTypes.bool,
   };
+
+  DEFAULT_DAY = "mon";
 
   handleChangeProperty(name, value) {
     let newSchedule = {
@@ -71,6 +79,7 @@ export default class SchedulePicker extends Component {
           schedule_day: null,
           schedule_frame: null,
           schedule_hour: null,
+          schedule_minute: 0,
         };
       }
 
@@ -95,7 +104,7 @@ export default class SchedulePicker extends Component {
       if (value === "weekly") {
         newSchedule = {
           ...newSchedule,
-          schedule_day: "mon",
+          schedule_day: this.DEFAULT_DAY,
           schedule_frame: null,
         };
       }
@@ -105,13 +114,19 @@ export default class SchedulePicker extends Component {
         newSchedule = {
           ...newSchedule,
           schedule_frame: "first",
-          schedule_day: "mon",
+          schedule_day: this.DEFAULT_DAY,
         };
       }
     } else if (name === "schedule_frame") {
       // when the monthly schedule frame is the 15th, clear out the schedule_day
       if (value === "mid") {
         newSchedule = { ...newSchedule, schedule_day: null };
+      } else {
+        // first or last, needs a day of the week
+        newSchedule = {
+          ...newSchedule,
+          schedule_day: newSchedule.schedule_day || this.DEFAULT_DAY,
+        };
       }
     }
 
@@ -170,6 +185,32 @@ export default class SchedulePicker extends Component {
           options={DAY_OF_WEEK_OPTIONS}
         />
       </span>
+    );
+  }
+
+  renderMinutePicker() {
+    const { schedule } = this.props;
+    const minuteOfHour = isNaN(schedule.schedule_minute)
+      ? 0
+      : schedule.schedule_minute;
+    return (
+      <div className="mt1">
+        <div className="flex align-center">
+          <span
+            className="text-bold"
+            style={{ minWidth: "48px" }}
+          >{t`at`}</span>
+          <Select
+            className="mr1 text-bold bg-white"
+            value={minuteOfHour}
+            options={MINUTE_OPTIONS}
+            onChange={({ target: { value } }) =>
+              this.handleChangeProperty("schedule_minute", value)
+            }
+          />
+          <span className="text-bold">{t`minutes past the hour`}</span>
+        </div>
+      </div>
     );
   }
 
@@ -238,6 +279,9 @@ export default class SchedulePicker extends Component {
           />
           {scheduleType === "weekly" && this.renderDayPicker()}
         </div>
+        {scheduleType === "hourly" &&
+          this.props.minutesOnHourPicker &&
+          this.renderMinutePicker()}
         {scheduleType === "monthly" && this.renderMonthlyPicker()}
         {(scheduleType === "daily" ||
           scheduleType === "weekly" ||

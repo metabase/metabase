@@ -1,8 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Flex } from "grid-styled";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import Icon from "metabase/components/Icon";
@@ -45,7 +45,6 @@ export const NotFound = () => (
       illustrationElement={<img src={NoResults} />}
       title={t`We're a little lost...`}
       message={t`The page you asked for couldn't be found.`}
-      link={Urls.question()}
     />
   </ErrorPageWrapper>
 );

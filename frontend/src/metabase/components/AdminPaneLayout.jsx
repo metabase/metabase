@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import Button from "metabase/components/Button";
@@ -10,6 +11,7 @@ const AdminPaneTitle = ({
   buttonAction,
   buttonDisabled,
   buttonLink,
+  headingContent,
 }) => (
   <section className="clearfix px2">
     {buttonText && buttonLink && (
@@ -27,7 +29,8 @@ const AdminPaneTitle = ({
         {buttonText}
       </Button>
     )}
-    <h2 className="PageTitle">{title}</h2>
+    {headingContent && <React.Fragment>{headingContent}</React.Fragment>}
+    {title && <h2 className="PageTitle">{title}</h2>}
     {description && <p className="text-measure">{description}</p>}
   </section>
 );
@@ -40,6 +43,7 @@ const AdminPaneLayout = ({
   buttonDisabled,
   children,
   buttonLink,
+  headingContent,
 }) => (
   <div className="wrapper">
     <AdminPaneTitle
@@ -49,6 +53,7 @@ const AdminPaneLayout = ({
       buttonAction={buttonAction}
       buttonDisabled={buttonDisabled}
       buttonLink={buttonLink}
+      headingContent={headingContent}
     />
     {children}
   </div>

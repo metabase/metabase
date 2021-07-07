@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import cx from "classnames";
 import { t } from "ttag";
@@ -12,18 +11,19 @@ import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/meta/Parameter";
 
 import type { OperatorName } from "metabase/query_builder/components/filters/pickers/DatePicker";
-import type { FieldFilter } from "metabase-types/types/Query";
+import type {
+  FieldFilter,
+  LocalFieldReference,
+} from "metabase-types/types/Query";
 
 type UrlEncoded = string;
 
 // Use a placeholder value as field references are not used in dashboard filters
-// $FlowFixMe
 const noopRef: LocalFieldReference = null;
 
 function getFilterValueSerializer(
   func: (val1: string, val2: string) => UrlEncoded,
 ) {
-  // $FlowFixMe
   return filter => func(filter[2], filter[3], filter[4] || {});
 }
 
@@ -32,7 +32,6 @@ const serializersByOperatorName: {
 } = {
   previous: getFilterValueSerializer(
     (value, unit, options = {}) =>
-      // $FlowFixMe
       `past${-value}${unit}s${options["include-current"] ? "~" : ""}`,
   ),
   next: getFilterValueSerializer(
@@ -91,10 +90,8 @@ export default class DateAllOptionsWidget extends Component {
     this.state = {
       filter:
         props.value != null
-          ? // $FlowFixMe
-            dateParameterValueToMBQL(props.value, noopRef) || []
-          : // $FlowFixMe
-            [],
+          ? dateParameterValueToMBQL(props.value, noopRef) || []
+          : [],
     };
   }
 

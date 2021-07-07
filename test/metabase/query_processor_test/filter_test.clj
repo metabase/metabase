@@ -1,11 +1,10 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [test :as mt]]))
+            [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]))
 
 (deftest and-test
   (mt/test-drivers (mt/normal-drivers)
@@ -401,12 +400,13 @@
 
 (deftest etc-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing "make sure that filtering with dates truncating to minutes works (#4632)"
-      (is (= 107
-             (count-with-filter-clause checkins [:between
-                                                 [:datetime-field $date :minute]
-                                                 "2015-01-01T12:30:00"
-                                                 "2015-05-31"]))))
+    (mt/dataset office-checkins
+      (testing "make sure that filtering with timestamps truncating to minutes works (#4632)"
+        (is (= 4
+               (count-with-filter-clause checkins [:between
+                                                   [:datetime-field $timestamp :minute]
+                                                   "2019-01-01T12:30:00"
+                                                   "2019-01-14"])))))
     (testing "make sure that filtering with dates bucketing by weeks works (#4956)"
       (is (= 7
              (count-with-filter-clause checkins [:= [:datetime-field $date :week] "2015-06-21T07:00:00.000000000-00:00"]))))))
@@ -447,3 +447,55 @@
       (testing "String parameter to an Integer Field"
         (is (= (mt/rows (mt/run-mbql-query venues {:filter [:= $price 4]}))
                (mt/rows (mt/run-mbql-query venues {:filter [:= $price "4"]}))))))))
+
+;; For the tests below:
+;;
+;; - there are 415 regions, and 8 have a `nil` name; 407 have non-empty, non-nil names
+;; - there are 601 airports, and 1 has a `""` code; 600 have non-empty, non-nil codes
+
+(deftest text-equals-nil-empty-string-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":= against a text column should match the correct columns when value is"
+        (testing "nil"
+          (is (= [[8]]
+                 (mt/formatted-rows [int]
+                   (mt/run-mbql-query region {:aggregation [:count], :filter [:= $name nil]}))))
+          (testing "an empty string (#13158)"
+            (is (= [[1]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:= $code ""]}))))))))))
+
+(deftest text-not-equals-nil-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":!= against a nil/NULL in a text column should be truthy"
+        (testing "should match non-nil, non-empty strings"
+          (is (= [[414]]
+                 (mt/formatted-rows [int]
+                   (mt/run-mbql-query region {:aggregation [:count], :filter [:!= $name "California"]}))))
+          (is (= [[600]]
+                 (mt/formatted-rows [int]
+                   (mt/run-mbql-query airport {:aggregation [:count], :filter [:!= $code "SFO"]})))))))))
+
+(deftest is-empty-not-empty-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing ":is-empty and :not-empty filters should work correctly (#13158)"
+        (testing :is-empty
+          (testing "should match nil strings"
+            (is (= [[8]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query region {:aggregation [:count], :filter [:is-empty $name]})))))
+          (testing "should match EMPTY strings"
+            (is (= [[1]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:is-empty $code]}))))))
+        (testing :not-empty
+          (testing "should match non-nil, non-empty strings"
+            (is (= [[407]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query region {:aggregation [:count], :filter [:not-empty $name]}))))
+            (is (= [[600]]
+                   (mt/formatted-rows [int]
+                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))

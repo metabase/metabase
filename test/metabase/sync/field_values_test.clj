@@ -1,14 +1,12 @@
 (ns metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
   (:require [clojure.test :refer :all]
-            [metabase
-             [sync :as sync]
-             [test :as mt]]
-            [metabase.models
-             [field :refer [Field]]
-             [field-values :as field-values :refer [FieldValues]]
-             [table :refer [Table]]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.field-values :as field-values :refer [FieldValues]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync :as sync]
             [metabase.sync.util-test :as sut]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan.db :as db]))

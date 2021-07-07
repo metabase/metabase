@@ -1,5 +1,3 @@
-/* @flow */
-
 import MBQLClause from "./MBQLClause";
 
 import type { Breakout as BreakoutObject } from "metabase-types/types/Query";

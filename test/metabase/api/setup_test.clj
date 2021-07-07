@@ -3,20 +3,19 @@
   (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [email :as email]
-             [events :as events]
-             [http-client :as http]
-             [models :refer [Activity Database Table User]]
-             [public-settings :as public-settings]
-             [setup :as setup]
-             [test :as mt]
-             [util :as u]]
             [metabase.api.setup :as setup-api]
+            [metabase.email :as email]
+            [metabase.events :as events]
+            [metabase.http-client :as http]
             [metabase.integrations.slack :as slack]
+            [metabase.models :refer [Activity Database Table User]]
             [metabase.models.setting :as setting]
             [metabase.models.setting.cache-test :as setting.cache-test]
+            [metabase.public-settings :as public-settings]
+            [metabase.setup :as setup]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -83,7 +82,7 @@
                    (public-settings/admin-email))))
 
           (testing "Should record :user-joined Activity (#12933)"
-            (let [user-id (u/get-id (db/select-one-id User :email email))]
+            (let [user-id (u/the-id (db/select-one-id User :email email))]
               (is (schema= {:topic    (s/eq :user-joined)
                             :model_id (s/eq user-id)
                             :user_id  (s/eq user-id)
@@ -161,7 +160,7 @@
                 (assert (some? db))
                 (is (= 4
                        (wait-for-result (fn []
-                                          (let [cnt (db/count Table :db_id (u/get-id db))]
+                                          (let [cnt (db/count Table :db_id (u/the-id db))]
                                             (when (= cnt 4)
                                               cnt))))))))))))
 
@@ -226,11 +225,11 @@
 
       (testing "password"
         (testing "missing"
-          (is (= {:errors {:password "Insufficient password strength"}}
+          (is (= {:errors {:password "password is too common."}}
                  (setup! m/dissoc-in [:user :password]))))
 
         (testing "invalid"
-          (is (= {:errors {:password "Insufficient password strength"}}
+          (is (= {:errors {:password "password is too common."}}
                  (setup! assoc-in [:user :password] "anything"))))))))
 
 (deftest setup-with-empty-cache-test
@@ -258,7 +257,7 @@
                          :user     {:first_name (mt/random-name)
                                     :last_name  (mt/random-name)
                                     :email      user-email
-                                    :password   "p@ssw0rd"}}]
+                                    :password   "p@ssword1"}}]
         (do-with-setup*
          body
          (fn []

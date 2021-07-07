@@ -5,8 +5,6 @@ import ReactDOM from "react-dom";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
 
-import { constrainToScreen } from "metabase/lib/dom";
-
 import cx from "classnames";
 
 import "./Popover.css";
@@ -33,7 +31,6 @@ export default class Popover extends Component {
     isOpen: PropTypes.bool,
     hasArrow: PropTypes.bool,
     hasBackground: PropTypes.bool,
-    // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
     tetherOptions: PropTypes.object,
     // used to prevent popovers from being taller than the screen
     sizeToFit: PropTypes.bool,
@@ -55,6 +52,21 @@ export default class Popover extends Component {
     alignHorizontalEdge: PropTypes.bool,
     // don't wrap the popover in an OnClickOutsideWrapper
     noOnClickOutsideWrapper: PropTypes.bool,
+    targetOffsetX: PropTypes.number,
+    targetOffsetY: PropTypes.number,
+    onClose: PropTypes.func,
+    className: PropTypes.string,
+    style: PropTypes.object,
+    children: PropTypes.oneOfType([
+      PropTypes.element,
+      PropTypes.func,
+      PropTypes.array,
+    ]),
+    dismissOnClickOutside: PropTypes.func,
+    dismissOnEscape: PropTypes.func,
+    target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
+    targetEvent: PropTypes.object,
+    role: PropTypes.string,
   };
 
   static defaultProps = {
@@ -136,6 +148,7 @@ export default class Popover extends Component {
           // TODO kdoh 10/16/2017 we should eventually remove this
           this.props.className,
         )}
+        role={this.props.role}
         style={this.props.style}
       >
         {typeof this.props.children === "function"
@@ -290,95 +303,104 @@ export default class Popover extends Component {
         this,
         <span>{isOpen ? this._popoverComponent() : null}</span>,
         popoverElement,
-      );
-
-      const tetherOptions = {
-        element: popoverElement,
-        target: this._getTargetElement(),
-      };
-
-      if (this.props.tetherOptions) {
-        this._setTetherOptions({
-          ...tetherOptions,
-          ...this.props.tetherOptions,
-        });
-      } else {
-        if (!this._best || !this.props.pinInitialAttachment) {
-          let best = {
-            attachmentX: "center",
-            attachmentY: "top",
-            targetAttachmentX: "center",
-            targetAttachmentY: "bottom",
-            offsetX: 0,
-            offsetY: 0,
+        () => {
+          const tetherOptions = {
+            element: popoverElement,
+            target: this._getTargetElement(),
           };
 
-          // horizontal
-          best = this._getBestAttachmentOptions(
-            tetherOptions,
-            best,
-            this.props.horizontalAttachments,
-            ["left", "right"],
-            (best, attachmentX) => ({
-              ...best,
-              attachmentX: attachmentX,
-              targetAttachmentX: this.props.alignHorizontalEdge
-                ? attachmentX
-                : "center",
-              offsetX: {
-                center: 0,
-                left: -this.props.targetOffsetX,
-                right: this.props.targetOffsetX,
-              }[attachmentX],
-            }),
-          );
+          if (!this._best || !this.props.pinInitialAttachment) {
+            let best = {
+              attachmentX: "center",
+              attachmentY: "top",
+              targetAttachmentX: "center",
+              targetAttachmentY: "bottom",
+              offsetX: 0,
+              offsetY: 0,
+            };
 
-          // vertical
-          best = this._getBestAttachmentOptions(
-            tetherOptions,
-            best,
-            this.props.verticalAttachments,
-            ["top", "bottom"],
-            (best, attachmentY) => ({
-              ...best,
-              attachmentY: attachmentY,
-              targetAttachmentY: (this.props.alignVerticalEdge
-              ? attachmentY === "bottom"
-              : attachmentY === "top")
-                ? "bottom"
-                : "top",
-              offsetY: {
-                top: this.props.targetOffsetY,
-                bottom: -this.props.targetOffsetY,
-              }[attachmentY],
-            }),
-          );
+            // horizontal
+            best = this._getBestAttachmentOptions(
+              tetherOptions,
+              best,
+              this.props.horizontalAttachments,
+              ["left", "right"],
+              (best, attachmentX) => ({
+                ...best,
+                attachmentX: attachmentX,
+                targetAttachmentX: this.props.alignHorizontalEdge
+                  ? attachmentX
+                  : "center",
+                offsetX: {
+                  center: 0,
+                  left: -this.props.targetOffsetX,
+                  right: this.props.targetOffsetX,
+                }[attachmentX],
+              }),
+            );
 
-          this._best = best;
-        }
+            // vertical
+            best = this._getBestAttachmentOptions(
+              tetherOptions,
+              best,
+              this.props.verticalAttachments,
+              ["top", "bottom"],
+              (best, attachmentY) => ({
+                ...best,
+                attachmentY: attachmentY,
+                targetAttachmentY: (this.props.alignVerticalEdge
+                ? attachmentY === "bottom"
+                : attachmentY === "top")
+                  ? "bottom"
+                  : "top",
+                offsetY: {
+                  top: this.props.targetOffsetY,
+                  bottom: -this.props.targetOffsetY,
+                }[attachmentY],
+              }),
+            );
 
-        // finally set the best options
-        this._setTetherOptions(tetherOptions, this._best);
-      }
-
-      if (this.props.sizeToFit) {
-        const body = tetherOptions.element.querySelector(".PopoverBody");
-        if (this._tether.attachment.top === "top") {
-          if (constrainToScreen(body, "bottom", PAGE_PADDING)) {
-            body.classList.add("scroll-y");
-            body.classList.add("scroll-show");
+            this._best = best;
           }
-        } else if (this._tether.attachment.top === "bottom") {
-          if (constrainToScreen(body, "top", PAGE_PADDING)) {
-            body.classList.add("scroll-y");
-            body.classList.add("scroll-show");
+
+          if (this.props.sizeToFit) {
+            if (this._best.targetAttachmentY === "top") {
+              this.constrainPopoverToBetweenViewportAndTarget(
+                tetherOptions,
+                "top",
+              );
+            } else if (this._best.targetAttachmentY === "bottom") {
+              this.constrainPopoverToBetweenViewportAndTarget(
+                tetherOptions,
+                "bottom",
+              );
+            }
           }
-        }
-      }
+
+          // finally set the best options
+          this._setTetherOptions(tetherOptions, this._best);
+        },
+      );
     } else {
       if (this._popoverElement) {
         ReactDOM.unmountComponentAtNode(this._popoverElement);
       }
+    }
+  }
+
+  constrainPopoverToBetweenViewportAndTarget(tetherOptions, direction) {
+    const body = tetherOptions.element.querySelector(".PopoverBody");
+    const target = this._getTargetElement();
+    const bodyHeight = body.getBoundingClientRect().height;
+    const space =
+      direction === "top"
+        ? target.getBoundingClientRect().top
+        : window.innerHeight - target.getBoundingClientRect().bottom;
+    const maxHeight = space - PAGE_PADDING;
+    if (bodyHeight > maxHeight) {
+      body.style.maxHeight = maxHeight + "px";
+      body.classList.add("scroll-y");
+      body.classList.add("scroll-show");
     }
   }
 

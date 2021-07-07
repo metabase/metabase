@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Box } from "grid-styled";
 import reactElementToJSXString from "react-element-to-jsx-string";
@@ -23,7 +24,7 @@ const Example = ({ children }) => {
               value={code}
             />
           </Absolute>
-          <pre>
+          <pre className="overflow-auto">
             <code>{code}</code>
           </pre>
         </Box>

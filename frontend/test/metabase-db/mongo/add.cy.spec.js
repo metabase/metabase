@@ -1,14 +1,9 @@
-import {
-  signInAsAdmin,
-  restore,
-  modal,
-  typeAndBlurUsingLabel,
-} from "__support__/cypress";
+import { restore, modal, typeAndBlurUsingLabel } from "__support__/e2e/cypress";
 
 describe("mongodb > admin > add", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.server();
   });
 
@@ -25,9 +20,7 @@ describe("mongodb > admin > add", () => {
 
     typeAndBlurUsingLabel("Name", "QA Mongo4");
     typeAndBlurUsingLabel("Host", "localhost");
-    cy.findByPlaceholderText("27017")
-      .click()
-      .type("27017");
+    typeAndBlurUsingLabel("Port", "27017");
     typeAndBlurUsingLabel("Database name", "sample");
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");

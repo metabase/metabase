@@ -1,20 +1,16 @@
-/* @flow */
-
 // TODO: merge with metabase/dashboard/containers/Dashboard.jsx
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
 import DashboardHeader from "./DashboardHeader";
 import DashboardGrid from "./DashboardGrid";
-import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
-import Parameters from "metabase/parameters/components/Parameters";
-import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
-import SharingSidebar from "metabase/sharing/components/SharingSidebar";
+import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import EmptyState from "metabase/components/EmptyState";
+import { DashboardSidebars } from "./DashboardSidebars";
 
 import DashboardControls from "../hoc/DashboardControls";
 
@@ -53,6 +49,7 @@ type Props = {
   isEditable: boolean,
   isEditing: boolean,
   isEditingParameter: boolean,
+  isSharing: boolean,
 
   parameters: Parameter[],
   parameterValues: ParameterValues,
@@ -135,6 +132,7 @@ export default class Dashboard extends Component {
   props: Props;
   state: State = {
     error: null,
+    showAddQuestionSidebar: false,
   };
 
   static propTypes = {
@@ -174,7 +172,7 @@ export default class Dashboard extends Component {
     this.loadDashboard(this.props.dashboardId);
   }
 
-  componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (this.props.dashboardId !== nextProps.dashboardId) {
       this.loadDashboard(nextProps.dashboardId);
     } else if (
@@ -220,6 +218,10 @@ export default class Dashboard extends Component {
   setEditing = (isEditing: false | DashboardWithCards) => {
     this.props.onRefreshPeriodChange(null);
     this.props.setEditingDashboard(isEditing);
+
+    this.setState({
+      showAddQuestionSidebar: false,
+    });
   };
 
   setDashboardAttribute = (attribute: string, value: any) => {
@@ -227,6 +229,12 @@ export default class Dashboard extends Component {
       id: this.props.dashboard.id,
       attributes: { [attribute]: value },
     });
+  };
+
+  onToggleAddQuestionSidebar = () => {
+    this.setState(prev => ({
+      showAddQuestionSidebar: !prev.showAddQuestionSidebar,
+    }));
   };
 
   onCancel = () => {
@@ -249,9 +257,10 @@ export default class Dashboard extends Component {
       location,
       isFullscreen,
       isNightMode,
+      isSharing,
       hideParameters,
     } = this.props;
-    const { error } = this.state;
+    const { error, showAddQuestionSidebar } = this.state;
     isNightMode = isNightMode && isFullscreen;
 
     let parametersWidget;
@@ -285,7 +294,7 @@ export default class Dashboard extends Component {
         className={cx("Dashboard flex-full", {
           "Dashboard--fullscreen": isFullscreen,
           "Dashboard--night": isNightMode,
-          "full-height": isEditing, // prevents header from scrolling so we can have a fixed sidebar
+          "full-height": isEditing || isSharing, // prevents header from scrolling so we can have a fixed sidebar
         })}
         loading={!dashboard}
         error={error}
@@ -304,11 +313,13 @@ export default class Dashboard extends Component {
                 parametersWidget={parametersWidget}
                 onSharingClick={this.onSharingClick}
                 onEmbeddingClick={this.onEmbeddingClick}
+                onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
+                showAddQuestionSidebar={showAddQuestionSidebar}
               />
             </header>
             <div
               className={cx("flex shrink-below-content-size flex-full", {
-                "flex-basis-none": isEditing,
+                "flex-basis-none": isEditing || isSharing,
               })}
             >
               <div className="flex-auto overflow-x-hidden">
@@ -336,83 +347,15 @@ export default class Dashboard extends Component {
                   )}
                 </div>
               </div>
-              <Sidebars {...this.props} onCancel={this.onCancel} />
+              <DashboardSidebars
+                {...this.props}
+                onCancel={this.onCancel}
+                showAddQuestionSidebar={showAddQuestionSidebar}
+              />
             </div>
           </div>
         )}
       </LoadingAndErrorWrapper>
     );
   }
-}
-
-function Sidebars(props) {
-  const {
-    dashboard,
-    parameters,
-    showAddParameterPopover,
-    removeParameter,
-    editingParameter,
-    isEditingParameter,
-    clickBehaviorSidebarDashcard,
-    onReplaceAllDashCardVisualizationSettings,
-    onUpdateDashCardVisualizationSettings,
-    onUpdateDashCardColumnSettings,
-    hideClickBehaviorSidebar,
-    setEditingParameter,
-    setParameter,
-    setParameterName,
-    setParameterDefaultValue,
-    dashcardData,
-    setParameterFilteringParameters,
-    isSharing,
-  } = props;
-  if (clickBehaviorSidebarDashcard) {
-    return (
-      <ClickBehaviorSidebar
-        dashboard={dashboard}
-        dashcard={clickBehaviorSidebarDashcard}
-        parameters={parameters}
-        dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
-        onUpdateDashCardVisualizationSettings={
-          onUpdateDashCardVisualizationSettings
-        }
-        onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-        hideClickBehaviorSidebar={hideClickBehaviorSidebar}
-        onReplaceAllDashCardVisualizationSettings={
-          onReplaceAllDashCardVisualizationSettings
-        }
-      />
-    );
-  }
-
-  if (isEditingParameter) {
-    const { id: editingParameterId } = editingParameter || {};
-    const [[parameter], otherParameters] = _.partition(
-      parameters,
-      p => p.id === editingParameterId,
-    );
-    return (
-      <ParameterSidebar
-        parameter={parameter}
-        otherParameters={otherParameters}
-        remove={() => removeParameter(editingParameterId)}
-        done={() => setEditingParameter(null)}
-        showAddParameterPopover={showAddParameterPopover}
-        setParameter={setParameter}
-        setName={name => setParameterName(editingParameterId, name)}
-        setDefaultValue={value =>
-          setParameterDefaultValue(editingParameterId, value)
-        }
-        setFilteringParameters={ids =>
-          setParameterFilteringParameters(editingParameterId, ids)
-        }
-      />
-    );
-  }
-
-  if (isSharing) {
-    return <SharingSidebar {...props} />;
-  }
-
-  return null;
 }

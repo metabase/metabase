@@ -1,15 +1,14 @@
 import {
   restore,
-  signInAsNormalUser,
   popover,
   modal,
   openOrdersTable,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
     restore();
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
@@ -39,7 +38,7 @@ describe("scenarios > question > saved", () => {
 
     modal().within(() => {
       cy.findByText("Save question");
-      cy.findByRole("button", { name: /save/i }).as("saveButton");
+      cy.button("Save").as("saveButton");
       cy.get("@saveButton").should("not.be.disabled");
 
       cy.log(
@@ -85,5 +84,45 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Showing first 2,000 rows"); // query updated
     cy.findByText("Started from").should("not.exist");
     cy.findByText("Quantity is equal to 100").should("not.exist");
+  });
+
+  it("should duplicate a saved question", () => {
+    cy.server();
+    cy.route("POST", "/api/card").as("cardCreate");
+    cy.route("POST", "/api/card/1/query").as("query");
+
+    cy.visit("/question/1");
+    cy.wait("@query");
+
+    cy.get(".Icon-pencil").click();
+    cy.findByText("Duplicate this question").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
+  });
+
+  it.skip("should be able to use integer filter on a saved native query (metabase#15808)", () => {
+    cy.createNativeQuestion({
+      name: "15808",
+      native: { query: "select * from products" },
+    });
+    cy.visit("/question/new");
+    cy.findByText("Simple question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("15808").click();
+    cy.findByText("Filter").click();
+    cy.findByTestId("sidebar-right")
+      .findByText(/Rating/i)
+      .click();
+    cy.get(".AdminSelect").findByText("Equal to");
+    cy.findByPlaceholderText("Enter a number").type("4");
+    cy.button("Add filter")
+      .should("not.be.disabled")
+      .click();
+    cy.findByText("Synergistic Granite Chair");
+    cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 });

@@ -1,5 +1,5 @@
 /*global ace*/
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -26,7 +26,7 @@ export default class TextEditor extends Component {
     theme: null,
   };
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (
       this._editor &&
       nextProps.value != null &&

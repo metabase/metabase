@@ -1,13 +1,13 @@
 (ns metabuild-common.core
-  (:require [metabuild-common
-             [aws :as aws]
-             [entrypoint :as entrypoint]
-             [env :as build.env]
-             [files :as files]
-             [input :as input]
-             [output :as output]
-             [shell :as shell]
-             [steps :as steps]]
+  (:require [metabuild-common.aws :as aws]
+            [metabuild-common.entrypoint :as entrypoint]
+            [metabuild-common.env :as build.env]
+            [metabuild-common.files :as files]
+            [metabuild-common.input :as input]
+            [metabuild-common.misc :as misc]
+            [metabuild-common.output :as output]
+            [metabuild-common.shell :as shell]
+            [metabuild-common.steps :as steps]
             [potemkin :as p]))
 
 ;; since this file is used pretty much everywhere, this seemed like a good place to put this.
@@ -18,6 +18,7 @@
          build.env/env
          files/keep-me
          input/keep-me
+         misc/keep-me
          output/keep-me
          shell/keep-me
          steps/keep-me)
@@ -41,9 +42,12 @@
   delete-file-if-exists!
   download-file!
   file-exists?
+  file-size
   filename
   find-files
-  project-root-directory]
+  nio-path
+  project-root-directory
+  temporary-file]
 
  [input
   interactive?
@@ -51,9 +55,13 @@
   read-line-with-prompt
   yes-or-no-prompt]
 
+ [misc
+  varargs]
+
  [output
   announce
   error
+  format-bytes
   pretty-print-exception
   safe-println]
 

@@ -1,5 +1,3 @@
-// @flow
-
 import d3 from "d3";
 import Color from "color";
 import { Harmonizer } from "color-harmony";
@@ -128,7 +126,6 @@ function syncDeprecatedColorFamilies() {
 }
 
 export const getRandomColor = (family: ColorFamily): ColorString => {
-  // $FlowFixMe: Object.values doesn't preserve the type :-/
   const colors: ColorString[] = Object.values(family);
   return colors[Math.floor(Math.random() * colors.length)];
 };

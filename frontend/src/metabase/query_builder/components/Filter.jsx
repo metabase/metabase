@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import Value from "metabase/components/Value";
@@ -18,10 +17,10 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
 
 export type FilterRenderer = ({
-  field?: ?React$Element<any>,
+  field?: React.Element,
   operator: ?string,
-  values: (React$Element<any> | string)[],
-}) => React$Element<any>;
+  values: (React.Element | string)[],
+}) => React.Element;
 
 type Props = {
   filter: FilterObject | FilterWrapper,
@@ -46,7 +45,7 @@ const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
       {items
         .filter(f => f)
         .map((item, index, array) => (
-          <span>
+          <span key={index}>
             {item}
             {index < array.length - 1 ? " " : null}
           </span>
@@ -62,7 +61,6 @@ export const OperatorFilter = ({
   children = DEFAULT_FILTER_RENDERER,
 }: Props) => {
   const [op, field] = filter;
-  // $FlowFixMe
   const values: ValueType[] = hasFilterOptions(filter)
     ? filter.slice(2, -1)
     : filter.slice(2);
@@ -75,7 +73,6 @@ export const OperatorFilter = ({
   const operator = dimension.filterOperator(op);
 
   let formattedValues;
-  // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
   if (operator && operator.multi && values.length > maxDisplayValues) {
     const n = values.length;
     formattedValues = [ngettext(msgid`${n} selection`, `${n} selections`, n)];

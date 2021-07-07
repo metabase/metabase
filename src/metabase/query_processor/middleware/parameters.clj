@@ -1,18 +1,15 @@
 (ns metabase.query-processor.middleware.parameters
   "Middleware for substituting parameters in queries."
-  (:require [clojure
-             [data :as data]
-             [set :as set]]
+  (:require [clojure.data :as data]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.mbql
-             [normalize :as normalize]
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as i]
-            [metabase.query-processor.middleware.parameters
-             [mbql :as params.mbql]
-             [native :as params.native]]
+            [metabase.query-processor.middleware.parameters.mbql :as params.mbql]
+            [metabase.query-processor.middleware.parameters.native :as params.native]
             [metabase.util :as u]
             [schema.core :as s]))
 
@@ -33,7 +30,7 @@
       (-> (update-in join [:source-query :filter] mbql.u/combine-filter-clauses filter-clause)
           (dissoc :filter)))))
 
-(defn- expand-mbql-params [outer-query {:keys [parameters] :as m}]
+(defn- expand-mbql-params [outer-query {:keys [parameters], :as m}]
   ;; HACK `params.mbql/expand` assumes it's operating on an outer query so wrap `m` to look like an outer query. TODO
   ;; - fix `params.mbql` to operate on abitrary maps instead of only on top-level queries.
   (let [wrapped           (assoc outer-query :query m)

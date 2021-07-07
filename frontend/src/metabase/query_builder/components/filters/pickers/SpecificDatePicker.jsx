@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -100,7 +98,6 @@ export default class SpecificDatePicker extends Component {
                 this.onChange(null);
               }
             }}
-            ref="value"
           />
 
           {calendar && (

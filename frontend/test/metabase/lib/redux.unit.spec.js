@@ -21,7 +21,7 @@ describe("Metadata", () => {
       },
       test: { path: existingData },
     }),
-    dispatch = jasmine.createSpy("dispatch"),
+    dispatch = jest.fn(),
     getData = () => Promise.resolve(newData),
     putData = () => Promise.resolve(newData),
   } = {}) => ({
@@ -50,7 +50,7 @@ describe("Metadata", () => {
       const argsDefault = getDefaultArgs({});
       const data = await fetchData(argsDefault);
       await delay(10);
-      expect(argsDefault.dispatch.calls.count()).toEqual(2);
+      expect(argsDefault.dispatch.mock.calls.length).toEqual(2);
       expect(data).toEqual(args.newData);
     });
 
@@ -59,14 +59,14 @@ describe("Metadata", () => {
         requestState: args.requestStateLoading,
       });
       const dataLoading = await fetchData(argsLoading);
-      expect(argsLoading.dispatch.calls.count()).toEqual(0);
+      expect(argsLoading.dispatch.mock.calls.length).toEqual(0);
       expect(dataLoading).toEqual(args.existingData);
 
       const argsLoaded = getDefaultArgs({
         requestState: args.requestStateLoaded,
       });
       const dataLoaded = await fetchData(argsLoaded);
-      expect(argsLoaded.dispatch.calls.count()).toEqual(0);
+      expect(argsLoaded.dispatch.mock.calls.length).toEqual(0);
       expect(dataLoaded).toEqual(args.existingData);
     });
 
@@ -76,7 +76,7 @@ describe("Metadata", () => {
       });
       const dataError = await fetchData(argsError);
       await delay(10);
-      expect(argsError.dispatch.calls.count()).toEqual(2);
+      expect(argsError.dispatch.mock.calls.length).toEqual(2);
       expect(dataError).toEqual(args.newData);
     });
 
@@ -92,7 +92,7 @@ describe("Metadata", () => {
         const dataFail = await fetchData(argsFail).catch(error =>
           console.log(error),
         );
-        expect(argsFail.dispatch.calls.count()).toEqual(2);
+        expect(argsFail.dispatch.mock.calls.length).toEqual(2);
         expect(dataFail).toEqual(args.existingData);
       } catch (error) {
         return;
@@ -104,28 +104,28 @@ describe("Metadata", () => {
     it("should return new data regardless of previous request state", async () => {
       const argsDefault = getDefaultArgs({});
       const data = await updateData(argsDefault);
-      expect(argsDefault.dispatch.calls.count()).toEqual(2);
+      expect(argsDefault.dispatch.mock.calls.length).toEqual(2);
       expect(data).toEqual(args.newData);
 
       const argsLoading = getDefaultArgs({
         requestState: args.requestStateLoading,
       });
       const dataLoading = await updateData(argsLoading);
-      expect(argsLoading.dispatch.calls.count()).toEqual(2);
+      expect(argsLoading.dispatch.mock.calls.length).toEqual(2);
       expect(dataLoading).toEqual(args.newData);
 
       const argsLoaded = getDefaultArgs({
         requestState: args.requestStateLoaded,
       });
       const dataLoaded = await updateData(argsLoaded);
-      expect(argsLoaded.dispatch.calls.count()).toEqual(2);
+      expect(argsLoaded.dispatch.mock.calls.length).toEqual(2);
       expect(dataLoaded).toEqual(args.newData);
 
       const argsError = getDefaultArgs({
         requestState: args.requestStateError,
       });
       const dataError = await updateData(argsError);
-      expect(argsError.dispatch.calls.count()).toEqual(2);
+      expect(argsError.dispatch.mock.calls.length).toEqual(2);
       expect(dataError).toEqual(args.newData);
     });
 
@@ -137,7 +137,7 @@ describe("Metadata", () => {
       });
       const data = await updateData(argsFail);
       await delay(10);
-      expect(argsFail.dispatch.calls.count()).toEqual(2);
+      expect(argsFail.dispatch.mock.calls.length).toEqual(2);
       expect(data).toEqual(args.existingData);
     });
   });

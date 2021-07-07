@@ -1,12 +1,11 @@
 (ns metabase.driver.google
   "Shared logic for various Google drivers, including BigQuery and Google Analytics."
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]
             [toucan.db :as db])

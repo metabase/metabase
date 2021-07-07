@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import ColorPicker from "metabase/components/ColorPicker";
@@ -61,7 +62,7 @@ const ColorSchemeWidget = ({ setting, onChange }) => {
           {THEMEABLE_COLORS.map(name => {
             const properties = COLOR_DISPLAY_PROPERTIES[name] || {};
             return (
-              <tr>
+              <tr key={name}>
                 <td>{properties.name || humanize(name)}:</td>
                 <td>
                   <span className="mx1">

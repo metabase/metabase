@@ -1,12 +1,10 @@
 (ns metabase.sync.sync-metadata.fields.common
   "Schemas and functions shared by different `metabase.sync.sync-metadata.fields.*` namespaces."
   (:require [clojure.string :as str]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def ParentID
@@ -27,25 +25,24 @@
     (s/optional-key :id)            su/IntGreaterThanZero
     (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithOptionalID)}))
 
-
 (s/defn field-metadata-name-for-logging :- s/Str
   "Return a 'name for logging' for a map that conforms to the `TableMetadataField` schema.
 
       (field-metadata-name-for-logging table field-metadata) ; -> \"Table 'venues' Field 'name'\""
-  [table :- i/TableInstance, field-metadata :- TableMetadataFieldWithOptionalID]
+  [table :- i/TableInstance field-metadata :- TableMetadataFieldWithOptionalID]
   (format "%s %s '%s'" (sync-util/name-for-logging table) (trs "Field") (:name field-metadata)))
 
 (defn canonical-name
   "Return the lower-cased 'canonical' name that should be used to uniquely identify `field` -- this is done to ignore
-  case differences when syncing, e.g. we will consider `FIELD` and `field` to mean the same thing."
+  case differences when syncing, e.g. we will consider `field` and `field` to mean the same thing."
   [field]
   (str/lower-case (:name field)))
 
-(s/defn special-type :- (s/maybe su/FieldType)
-  "Determine a the appropriate `special-type` for a Field with `field-metadata`."
+(s/defn semantic-type :- (s/maybe su/FieldSemanticOrRelationType)
+  "Determine a the appropriate `semantic-type` for a Field with `field-metadata`."
   [field-metadata :- (s/maybe i/TableMetadataField)]
   (and field-metadata
-       (or (:special-type field-metadata)
+       (or (:semantic-type field-metadata)
            (when (:pk? field-metadata) :type/PK))))
 
 (s/defn matching-field-metadata :- (s/maybe TableMetadataFieldWithOptionalID)

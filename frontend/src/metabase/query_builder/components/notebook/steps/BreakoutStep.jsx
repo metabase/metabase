@@ -1,9 +1,22 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
 import ClauseStep from "./ClauseStep";
 
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
+
+const breakoutTetherOptions = {
+  attachment: "top left",
+  targetAttachment: "bottom left",
+  offset: "10px 0",
+  constraints: [
+    {
+      to: "scrollParent",
+      attachment: "together",
+    },
+  ],
+};
 
 export default function BreakoutStep({
   color,
@@ -17,6 +30,7 @@ export default function BreakoutStep({
       color={color}
       initialAddText={t`Pick a column to group by`}
       items={query.breakouts()}
+      tetherOptions={breakoutTetherOptions}
       renderPopover={breakout => (
         <BreakoutPopover
           query={query}

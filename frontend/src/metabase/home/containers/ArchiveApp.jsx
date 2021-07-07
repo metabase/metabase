@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -8,7 +9,7 @@ import ArchivedItem from "../../components/ArchivedItem";
 import Button from "metabase/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
-import PageHeading from "metabase/components/PageHeading";
+import PageHeading from "metabase/components/type/PageHeading";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import VirtualizedList from "metabase/components/VirtualizedList";
 

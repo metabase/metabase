@@ -71,6 +71,7 @@ export function setLocalization(translationsObject) {
 
   // add and set locale with C-3PO
   addLocale(locale, translationsObject);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useLocale(locale);
 
   moment.locale(locale);

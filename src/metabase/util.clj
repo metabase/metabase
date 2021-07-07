@@ -1,28 +1,51 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure
-             [data :as data]
-             [pprint :refer [pprint]]
-             [set :as set]
-             [string :as str]
-             [walk :as walk]]
+  (:require [clojure.data :as data]
             [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
+            [clojure.pprint :refer [pprint]]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
+            [clojure.walk :as walk]
             [colorize.core :as colorize]
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
+            [metabase.shared.util :as shared.u]
             [metabase.util.i18n :refer [trs tru]]
+            [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
   (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
+           (java.util Locale PriorityQueue)
            java.util.concurrent.TimeoutException
-           java.util.Locale
            javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
+
+(comment shared.u/keep-me)
+
+(p/import-vars
+ [shared.u
+  qualified-name])
+
+(defn lower-case-en
+  "Locale-agnostic version of `clojure.string/lower-case`.
+  `clojure.string/lower-case` uses the default locale in conversions, turning
+  `ID` into `ıd`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toLowerCase (Locale/US))))
+
+(defn upper-case-en
+  "Locale-agnostic version of `clojure.string/upper-case`.
+  `clojure.string/upper-case` uses the default locale in conversions, turning
+  `id` into `İD`, in the Turkish locale. This function always uses the
+  `Locale/US` locale."
+  [^CharSequence s]
+  (.. s toString (toUpperCase (Locale/US))))
 
 (defn format-bytes
   "Nicely format `num-bytes` as kilobytes/megabytes/etc.
@@ -39,9 +62,8 @@
 (when-not *compile-files*
   (log/info (trs "Maximum memory available to JVM: {0}" (format-bytes (.maxMemory (Runtime/getRuntime))))))
 
-;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space
-;; for pprinting huge things like expanded queries
-(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 200))
+;; Set the default width for pprinting to 120 instead of 72. The default width is too narrow and wastes a lot of space
+(alter-var-root #'clojure.pprint/*print-right-margin* (constantly 120))
 
 (defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
@@ -84,7 +106,7 @@
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (str/lower-case s)))))
+                         (lower-case-en s)))))
 
 (defn state?
   "Is `s` a state string?"
@@ -101,7 +123,7 @@
                    "ak" "al" "ar" "az" "ca" "co" "ct" "de" "fl" "ga" "hi" "ia" "id" "il" "in" "ks" "ky" "la"
                    "ma" "md" "me" "mi" "mn" "mo" "ms" "mt" "nc" "nd" "ne" "nh" "nj" "nm" "nv" "ny" "oh" "ok"
                    "or" "pa" "ri" "sc" "sd" "tn" "tx" "ut" "va" "vt" "wa" "wi" "wv" "wy"}
-                 (str/lower-case s)))))
+                 (lower-case-en s)))))
 
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
@@ -408,6 +430,11 @@
   (^String [s max-length]
    (str/join (take max-length (slugify s)))))
 
+(defn full-exception-chain
+  "Gather the full exception chain into a single vector."
+  [e]
+  (take-while some? (iterate #(.getCause ^Throwable %) e)))
+
 (defn all-ex-data
   "Like `ex-data`, but merges `ex-data` from causes. If duplicate keys exist, the keys from the highest level are
   preferred.
@@ -424,7 +451,7 @@
    (fn [data e]
      (merge (ex-data e) data))
    nil
-   (take-while some? (iterate #(.getCause ^Throwable %) e))))
+   (full-exception-chain e)))
 
 (defn do-with-auto-retries
   "Execute `f`, a function that takes no arguments, and return the results.
@@ -465,33 +492,19 @@
   [f coll]
   (into {} (map (juxt f identity)) coll))
 
-(defn qualified-name
-  "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well
-  (also unlike `name`).
-
-     (u/qualified-name :type/FK) -> \"type/FK\""
-  [k]
-  (when (some? k)
-    (if-let [namespac (when (instance? clojure.lang.Named k)
-                        (namespace k))]
-      (str namespac "/" (name k))
-      (name k))))
-
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
   Otherwise returns `nil`.
 
   Provided as a convenience to allow model-layer functions to easily accept either an object or raw ID. Use this in
-  cases where the ID/object is allowed to be `nil`. Use `get-id` below in cases where you would also like to guarantee
+  cases where the ID/object is allowed to be `nil`. Use `the-id` below in cases where you would also like to guarantee
   it is non-`nil`."
   ^Integer [object-or-id]
   (cond
     (map? object-or-id)     (recur (:id object-or-id))
     (integer? object-or-id) object-or-id))
 
-;; TODO - now that I think about this, I think this should be called `the-id` instead, because the idea is similar to
-;; `clojure.core/the-ns`
-(defn get-id
+(defn the-id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
   Otherwise, throws an Exception.
 
@@ -742,22 +755,6 @@
                           (concat independent sorted))))))
               g)))
 
-(defn lower-case-en
-  "Locale-agnostic version of `clojure.string/lower-case`.
-  `clojure.string/lower-case` uses the default locale in conversions, turning
-  `ID` into `ıd`, in the Turkish locale. This function always uses the
-  `Locale/US` locale."
-  [^CharSequence s]
-  (.. s toString (toLowerCase (Locale/US))))
-
-(defn upper-case-en
-  "Locale-agnostic version of `clojure.string/upper-case`.
-  `clojure.string/upper-case` uses the default locale in conversions, turning
-  `id` into `İD`, in the Turkish locale. This function always uses the
-  `Locale/US` locale."
-  [^CharSequence s]
-  (.. s toString (toUpperCase (Locale/US))))
-
 (defn lower-case-map-keys
   "Changes the keys of a given map to lower case."
   [m]
@@ -794,18 +791,45 @@
   ^String [seconds]
   (format-milliseconds (* 1000.0 seconds)))
 
+(def ^:dynamic *profile-level*
+  "Impl for `profile` macro -- don't use this directly. Nesting-level for the `profile` macro e.g. 0 for a top-level
+  `profile` form or 1 for a form inside that."
+  0)
+
+(defn profile-print-time
+  "Impl for `profile` macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
+  `profile`d form."
+  [message start-time]
+  ;; indent the message according to `*profile-level*` and add a little down-left arrow so it (hopefully) points to
+  ;; the parent form
+  (println (format-color :green "%s%s took %s"
+             (if (pos? *profile-level*)
+               (str (str/join (repeat (dec *profile-level*) "  ")) " ↙ ")
+               "")
+             message
+             (format-nanoseconds (- (System/nanoTime) start-time)))))
+
 (defmacro profile
-  "Like `clojure.core/time`, but lets you specify a `message` that gets printed with the total time, and formats the
-  time nicely using `format-nanoseconds`."
+  "Like `clojure.core/time`, but lets you specify a `message` that gets printed with the total time, formats the
+  time nicely using `format-nanoseconds`, and indents nested calls to `profile`.
+
+    (profile \"top-level\"
+      (Thread/sleep 500)
+      (profile \"nested\"
+        (Thread/sleep 100)))
+    ;; ->
+     ↙ nested took 100.1 ms
+    top-level took 602.8 ms"
   {:style/indent 1}
   ([form]
    `(profile ~(str form) ~form))
   ([message & body]
-   `(let [start-time# (System/nanoTime)]
-      (prog1 (do ~@body)
-        (println (format-color '~'green "%s took %s"
-                   ~message
-                   (format-nanoseconds (- (System/nanoTime) start-time#))))))))
+   `(let [message#    ~message
+          start-time# (System/nanoTime)
+          result#     (binding [*profile-level* (inc *profile-level*)]
+                        ~@body)]
+      (profile-print-time message# start-time#)
+      result#)))
 
 (defn seconds->ms
   "Convert `seconds` to milliseconds. More readable than doing this math inline."
@@ -862,3 +886,39 @@
       (if (pred# x#)
         x#
         (or-with pred# ~@more)))))
+
+(defn ip-address?
+  "Whether string `s` is a valid IP (v4 or v6) address."
+  [^String s]
+  (and (string? s)
+       (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) s)))
+
+(defn sorted-take
+  "A reducing function that maintains a queue of the largest items as determined by `kompare`. The queue is bounded
+  in size by `size`. Useful if you are interested in the largest `size` number of items without keeping the entire
+  collection in memory.
+
+  In general,
+  (=
+    (take-last 2 (sort-by identity kompare coll))
+    (transduce (map identity) (u/sorted-take 2 kompare) coll))
+  But the entire collection is not in memory, just at most
+  "
+  [size kompare]
+  (fn bounded-heap-acc
+    ([] (PriorityQueue. size kompare))
+    ([^PriorityQueue q]
+     (loop [acc []]
+       (if-let [x (.poll q)]
+         (recur (conj acc x))
+         acc)))
+    ([^PriorityQueue q item]
+     (if (>= (.size q) size)
+       (let [smallest (.peek q)]
+         (if (pos? (kompare item smallest))
+           (doto q
+             (.poll)
+             (.offer item))
+           q))
+       (doto q
+         (.offer item))))))

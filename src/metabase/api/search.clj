@@ -3,55 +3,43 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET]]
             [flatland.ordered.map :as ordered-map]
-            [honeysql
-             [core :as hsql]
-             [helpers :as h]]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
+            [honeysql.core :as hsql]
+            [honeysql.helpers :as h]
             [metabase.api.common :as api]
-            [metabase.models
-             [card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
-             [collection :as coll :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-favorite :refer [DashboardFavorite]]
-             [interface :as mi]
-             [metric :refer [Metric]]
-             [permissions :as perms]
-             [pulse :refer [Pulse]]
-             [segment :refer [Segment]]
-             [table :refer [Table]]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [schema :as su]]
+            [metabase.db :as mdb]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.card-favorite :refer [CardFavorite]]
+            [metabase.models.collection :as coll :refer [Collection]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.table :refer [Table]]
+            [metabase.search.config :as search-config]
+            [metabase.search.scoring :as scoring]
+            [metabase.server.middleware.offset-paging :as offset-paging]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private ^:const search-max-results
-  "Absolute maximum number of search results to return. This number is in place to prevent massive application DB load
-  by returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
-  that results are truncated."
-  1000)
-
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
-  {:search-string      (s/maybe su/NonBlankString)
-   :archived?          s/Bool
-   :current-user-perms #{perms/UserPath}})
-
-(def ^:private searchable-models
-  "Models that can be searched. Results also come back in this order (i.e., all matching Cards, followed by all matching
-  Dashboards, etc.)"
-  [Card Dashboard Pulse Collection Segment Metric Table])
-
-(def ^:private model->sort-position
-  (into {} (map-indexed (fn [i model]
-                          [(str/lower-case (name model)) i])
-                        searchable-models)))
+  {:search-string                (s/maybe su/NonBlankString)
+   :archived?                    s/Bool
+   :current-user-perms           #{perms/UserPath}
+   (s/optional-key :models)      (s/maybe #{su/NonBlankString})
+   (s/optional-key :table-db-id) (s/maybe s/Int)
+   (s/optional-key :limit-int)   (s/maybe s/Int)
+   (s/optional-key :offset-int)  (s/maybe s/Int)})
 
 (def ^:private SearchableModel
-  (apply s/enum searchable-models))
+  (apply s/enum search-config/searchable-models))
 
 (def ^:private HoneySQLColumn
   (s/cond-pre
@@ -87,75 +75,21 @@
    ;; returned for Card, Dashboard, Pulse, and Collection
    :collection_id       :integer
    :collection_name     :text
+   :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
    :favorite            :boolean
+   ;; returned for everything except Collection
+   :updated_at          :timestamp
+   ;; returned for Card only
+   :dashboardcard_count :integer
+   :dataset_query       :text
    ;; returned for Metric and Segment
    :table_id            :integer
    :database_id         :integer
    :table_schema        :text
    :table_name          :text
    :table_description   :text))
-
-;; below are the actual columns returned for any given entity
-
-(def ^:private default-columns
-  "Columns returned for all models."
-  [:id :name :description :archived])
-
-(def ^:private favorite-col
-  "Case statement to return boolean values of `:favorite` for Card and Dashboard."
-  [(hsql/call :case [:not= :fave.id nil] true :else false) :favorite])
-
-(def ^:private table-columns
-  "Columns containing information about the Table this model references. Returned for Metrics and Segments."
-  [:table_id
-   [:table.db_id       :database_id]
-   [:table.schema      :table_schema]
-   [:table.name        :table_name]
-   [:table.description :table_description]])
-
-(defmulti ^:private columns-for-model
-  "The columns that will be returned by the query for `model`, excluding `:model`, which is added automatically."
-  {:arglists '([model])}
-  class)
-
-(defmethod columns-for-model (class Card)
-  [_]
-  (conj default-columns :collection_id :collection_position [:collection.name :collection_name] favorite-col))
-
-(defmethod columns-for-model (class Dashboard)
-  [_]
-  (conj default-columns :collection_id :collection_position [:collection.name :collection_name] favorite-col))
-
-(defmethod columns-for-model (class Pulse)
-  [_]
-  [:id :name :collection_id [:collection.name :collection_name]])
-
-(defmethod columns-for-model (class Collection)
-  [_]
-  (conj default-columns [:id :collection_id] [:name :collection_name]))
-
-(defmethod columns-for-model (class Segment)
-  [_]
-  (into default-columns table-columns))
-
-(defmethod columns-for-model (class Metric)
-  [_]
-  (into default-columns table-columns))
-
-(defmethod columns-for-model (class Table)
-  [_]
-  [:id
-   :name
-   :display_name
-   :description
-   [:id :table_id]
-   [:db_id :database_id]
-   [:schema :table_schema]
-   [:name :table_name]
-   [:description :table_description]])
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -199,8 +133,7 @@
       ;;
       ;; For MySQL, this is not needed.
       :else
-      [(if (= (mdb/db-type) :mysql)
-         nil
+      [(when-not (= (mdb/db-type) :mysql)
          (hx/cast col-type nil))
        search-col])))
 
@@ -209,7 +142,7 @@
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `all-search-columns`."
   [model :- SearchableModel]
-  (let [entity-columns                (columns-for-model model)
+  (let [entity-columns                (search-config/columns-for-model model)
         column-alias->honeysql-clause (u/key-by ->column-alias entity-columns)
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
@@ -227,6 +160,11 @@
   [model archived?]
   [:= (hsql/qualify (model->alias model) :archived) archived?])
 
+;; Databases can't be archived
+(defmethod archived-where-clause (class Database)
+  [model archived?]
+  [:= 1 (if archived? 2 1)])
+
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause (class Table)
   [model archived?]
@@ -234,15 +172,28 @@
     [:= 1 0]  ; No tables should appear in archive searches
     [:= (hsql/qualify (model->alias model) :active) true]))
 
+(defn- wildcard-match
+  [s]
+  (str "%" s "%"))
+
+(defn- search-string-clause
+  [query searchable-columns]
+  (when query
+    (into [:or]
+          (for [column searchable-columns
+                token (scoring/tokenize (scoring/normalize query))]
+            [:like
+             (hsql/call :lower column)
+             (wildcard-match token)]))))
+
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
-  (let [archived-clause      (archived-where-clause model archived?)
-        search-string-clause (when (seq search-string)
-                               [:like
-                                (hsql/call :lower (hsql/qualify (model->alias model) :name))
-                                (str "%" (str/lower-case search-string) "%")])]
-    (if search-string-clause
-      [:and archived-clause search-string-clause]
+  (let [archived-clause (archived-where-clause model archived?)
+        search-clause   (search-string-clause search-string
+                                              (map (partial hsql/qualify (model->alias model))
+                                                   (search-config/searchable-columns-for-model model)))]
+    (if search-clause
+      [:and archived-clause search-clause]
       archived-clause)))
 
 (s/defn ^:private base-query-for-model :- {:select s/Any, :from s/Any, :where s/Any}
@@ -270,6 +221,19 @@
       (h/merge-left-join [Collection :collection]
                          [:= collection-id-column :collection.id]))))
 
+(s/defn ^:private add-table-db-id-clause
+  "Add a WHERE clause to only return tables with the given DB id.
+  Used in data picker for joins because we can't join across DB's."
+  [query :- su/Map, id :- (s/maybe s/Int)]
+  (if (some? id) (h/merge-where query [:= id :db_id]) query))
+
+(s/defn ^:private add-card-db-id-clause
+  "Add a WHERE clause to only return cards with the given DB id.
+  Used in data picker for joins because we can't join across DB's."
+  [query :- su/Map, id :- (s/maybe s/Int)]
+  (if (some? id)
+    (h/merge-where query [:= id :database_id])
+    query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
@@ -286,12 +250,17 @@
                    [:and
                     [:= :card.id :fave.card_id]
                     [:= :fave.owner_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :card.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses :card.collection_id search-ctx)
+      (add-card-db-id-clause (:table-db-id search-ctx))))
 
 (s/defmethod search-query-for-model (class Collection)
   [_ search-ctx :- SearchContext]
   (-> (base-query-for-model Collection search-ctx)
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
+
+(s/defmethod search-query-for-model (class Database)
+  [_ search-ctx :- SearchContext]
+  (base-query-for-model Database search-ctx))
 
 (s/defmethod search-query-for-model (class Dashboard)
   [_ search-ctx :- SearchContext]
@@ -308,7 +277,9 @@
   (-> (base-query-for-model Pulse search-ctx)
       (add-collection-join-and-where-clauses :pulse.collection_id search-ctx)
       ;; We don't want alerts included in pulse results
-      (h/merge-where [:= :alert_condition nil])))
+      (h/merge-where [:and
+                      [:= :alert_condition nil]
+                      [:= :pulse.dashboard_id nil]])))
 
 (s/defmethod search-query-for-model (class Metric)
   [_ search-ctx :- SearchContext]
@@ -321,27 +292,45 @@
       (h/left-join [Table :table] [:= :segment.table_id :table.id])))
 
 (s/defmethod search-query-for-model (class Table)
-  [_ {:keys [current-user-perms], :as search-ctx} :- SearchContext]
+  [_ {:keys [current-user-perms table-db-id], :as search-ctx} :- SearchContext]
   (when (seq current-user-perms)
     (let [base-query (base-query-for-model Table search-ctx)]
-      (if (contains? current-user-perms "/")
-        base-query
-        (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
-          (when (seq data-perms)
-            {:select (:select base-query)
-             :from   [[(merge
-                        base-query
-                        {:select [:id :schema :db_id :name :description :display_name
-                                  [(hx/concat (hx/literal "/db/") :db_id
-                                              (hx/literal "/schema/") (hsql/call :case
-                                                                        [:not= :schema nil] :schema
-                                                                        :else               (hx/literal ""))
-                                              (hx/literal "/table/") :id
-                                              (hx/literal "/read/"))
-                                   :path]]})
-                       :table]]
-             :where  (into [:or] (for [path data-perms]
-                                   [:like :path (str path "%")]))}))))))
+      (add-table-db-id-clause
+        (if (contains? current-user-perms "/")
+          base-query
+          (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
+            (when (seq data-perms)
+              {:select (:select base-query)
+               :from   [[(merge
+                           base-query
+                           {:select [:id :schema :db_id :name :description :display_name :updated_at
+                                     [(hx/concat (hx/literal "/db/")
+                                                 :db_id
+                                                 (hx/literal "/schema/")
+                                                 (hsql/call :case
+                                                            [:not= :schema nil] :schema
+                                                            :else               (hx/literal ""))
+                                                 (hx/literal "/table/") :id
+                                                 (hx/literal "/read/"))
+                                      :path]]})
+                         :table]]
+               :where  (into [:or] (for [path data-perms]
+                                     [:like :path (str path "%")]))})))
+        table-db-id))))
+
+(defn order-clause
+  "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
+  [query]
+  (let [match             (wildcard-match (scoring/normalize query))
+        columns-to-search (->> all-search-columns
+                               (filter (fn [[k v]] (= v :text)))
+                               (map first)
+                               (remove #{:collection_authority_level}))
+        case-clauses      (as-> columns-to-search <>
+                                (map (fn [col] [:like (hsql/call :lower col) match]) <>)
+                                (interleave <> (repeat 0))
+                                (concat <> [:else 1] ))]
+    (apply hsql/call :case case-clauses)))
 
 (defmulti ^:private check-permissions-for-model
   {:arglists '([search-result])}
@@ -360,6 +349,40 @@
   [{:keys [id]}]
   (-> id Segment mi/can-read?))
 
+(defn- models-to-search
+  [{:keys [models]} default]
+  (if models
+    (vec (map search-config/model-name->instance models))
+    default))
+
+(defn- query-model-set
+  "Queries all models with respect to query for one result, to see if we get a result or not"
+  [search-ctx]
+  (map #((first %) :model)
+       (filter not-empty
+               (for [model search-config/searchable-models]
+                 (let [search-query (search-query-for-model model search-ctx)
+                       query-with-limit (h/limit search-query 1)]
+                   (db/query query-with-limit))))))
+
+(defn- full-search-query
+  "Postgres 9 is not happy with the type munging it needs to do
+  to make the union-all degenerate down to trivial case of one model without errors.
+  Therefore, we degenerate it down for it"
+  [search-ctx]
+  (let [models       (models-to-search search-ctx search-config/searchable-models)
+        sql-alias    :alias_is_required_by_sql_but_not_needed_here
+        order-clause [((fnil order-clause "") (:search-string search-ctx))]]
+    (if (= (count models) 1)
+      (search-query-for-model (first models) search-ctx)
+      {:select [:*]
+       :from [[{:union-all (for [model models
+                                 :let  [query (search-query-for-model model search-ctx)]
+                                 :when (seq query)]
+                             query)} sql-alias]]
+       :order-by order-clause})))
+
+
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [search-ctx :- SearchContext]
@@ -367,38 +390,79 @@
             (if (number? v)
               (not (zero? v))
               v))]
-    (let [search-query {:union-all (for [model searchable-models
-                                         :let  [query (search-query-for-model model search-ctx)]
-                                         :when (seq query)]
-                                     query)}
-          _            (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          ;; sort results by [model name]
-          results      (sort-by (juxt (comp model->sort-position :model)
-                                      :name)
-                                (db/query search-query :max-rows search-max-results))]
-      (for [row results
-            :when (check-permissions-for-model row)]
-        ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
-        (-> row
-            (update :favorite bit->boolean)
-            (update :archived bit->boolean))))))
-
+    (let [search-query      (full-search-query search-ctx)
+          _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
+          reducible-results (db/reducible-query search-query :max-rows search-config/db-max-results)
+          xf                (comp
+                             (filter check-permissions-for-model)
+                             ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
+                             (map #(update % :favorite bit->boolean))
+                             (map #(update % :archived bit->boolean))
+                             (map (partial scoring/score-and-result (:search-string search-ctx)))
+                             (filter some?))
+          total-results     (scoring/top-results reducible-results xf)]
+      ;; We get to do this slicing and dicing with the result data because
+      ;; the pagination of search is for UI improvement, not for performance.
+      ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
+      { :total             (count total-results)
+        :data              (cond->> total-results
+                             (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                             (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+        :available_models  (query-model-set search-ctx)
+        :limit             (:limit-int search-ctx)
+        :offset            (:offset-int search-ctx)
+        :table_db_id       (:table-db-id search-ctx)
+        :models            (:models search-ctx) })))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+; This is basically a union type. defendpoint splits the string if it only gets one
+(def ^:private models-schema (s/conditional #(vector? %) [su/NonBlankString] :else su/NonBlankString))
+
 (s/defn ^:private search-context :- SearchContext
-  [search-string :- (s/maybe su/NonBlankString), archived-string :- (s/maybe su/BooleanString)]
-  {:search-string      search-string
-   :archived?          (Boolean/parseBoolean archived-string)
-   :current-user-perms @api/*current-user-permissions-set*})
+  [search-string :-   (s/maybe su/NonBlankString),
+   archived-string :- (s/maybe su/BooleanString)
+   table-db-id :-     (s/maybe su/IntGreaterThanZero)
+   models :-          (s/maybe models-schema)
+   limit :-           (s/maybe su/IntGreaterThanZero)
+   offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
+  (cond-> {:search-string     search-string
+          :archived?          (Boolean/parseBoolean archived-string)
+          :current-user-perms @api/*current-user-permissions-set*}
+    (some? table-db-id) (assoc :table-db-id table-db-id)
+    (some? models)      (assoc :models
+                               (apply hash-set (if (vector? models) models [models])))
+    (some? limit)       (assoc :limit-int limit)
+    (some? offset)      (assoc :offset-int offset)))
+
+(api/defendpoint GET "/models"
+  "Get the set of models that a search query will return"
+  [q archived-string table-db-id] (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
 (api/defendpoint GET "/"
-  "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
-  [q archived]
-  {q        (s/maybe su/NonBlankString)
-   archived (s/maybe su/BooleanString)}
-  (search (search-context q archived)))
+  "Search within a bunch of models for the substring `q`.
+  For the list of models, check `metabase.search.config/searchable-models.
+
+  To search in archived portions of models, pass in `archived=true`.
+  If you want, while searching tables, only tables of a certain DB id,
+  pass in a DB id value to `table_db_id`.
+
+  To specify a list of models, pass in an array to `models`.
+  "
+  [q archived table_db_id models]
+  {q            (s/maybe su/NonBlankString)
+   archived     (s/maybe su/BooleanString)
+   table_db_id  (s/maybe su/IntGreaterThanZero)
+   models       (s/maybe models-schema)}
+  (api/check-valid-page-params offset-paging/*limit* offset-paging/*offset*)
+  (search (search-context
+            q
+            archived
+            table_db_id
+            models
+            offset-paging/*limit*
+            offset-paging/*offset*)))
 
 (api/define-routes)

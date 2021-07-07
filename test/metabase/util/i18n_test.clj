@@ -1,7 +1,6 @@
 (ns metabase.util.i18n-test
-  (:require [clojure
-             [test :refer :all]
-             [walk :as walk]]
+  (:require [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]))
 

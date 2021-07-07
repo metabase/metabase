@@ -1,5 +1,3 @@
-/* @flow */
-
 import { noNullValues, add, update, remove, clear } from "./util";
 import * as FieldRef from "./field_ref";
 import { STANDARD_AGGREGATIONS } from "metabase/lib/expressions";
@@ -138,7 +136,7 @@ export function setName(
   return [
     "aggregation-options",
     getContent(aggregation),
-    { "display-name": name, ...getOptions(aggregation) },
+    { name, "display-name": name, ...getOptions(aggregation) },
   ];
 }
 export function setContent(

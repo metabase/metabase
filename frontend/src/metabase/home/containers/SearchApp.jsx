@@ -1,201 +1,196 @@
-import React from "react";
+import React, { useState } from "react";
+import PropTypes from "prop-types";
 
 import { t, jt } from "ttag";
-import _ from "underscore";
 import Link from "metabase/components/Link";
 
 import { Box, Flex } from "grid-styled";
 
 import Search from "metabase/entities/search";
-import Database from "metabase/entities/databases";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import EntityItem from "metabase/components/EntityItem";
+import SearchResult from "metabase/search/components/SearchResult";
 import Subhead from "metabase/components/type/Subhead";
-import { FILTERS } from "metabase/components/ItemTypeFilterBar";
 
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import NoResults from "assets/img/no_results.svg";
+import PaginationControls from "metabase/components/PaginationControls";
+import { usePagination } from "metabase/hooks/use-pagination";
 
 const PAGE_PADDING = [1, 2, 4];
 
-export default class SearchApp extends React.Component {
-  render() {
-    const { location } = this.props;
-    return (
-      <Box mx={PAGE_PADDING}>
-        {location.query.q && (
-          <Flex align="center" py={[2, 3]}>
-            <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
-          </Flex>
-        )}
-        <Box>
-          <Search.ListLoader query={location.query} wrapped>
-            {({ list }) => {
-              if (list.length === 0) {
-                return (
+const PAGE_SIZE = 50;
+
+const SEARCH_FILTERS = [
+  {
+    name: t`Dashboards`,
+    filter: "dashboard",
+    icon: "dashboard",
+  },
+  {
+    name: t`Collections`,
+    filter: "collection",
+    icon: "all",
+  },
+  {
+    name: t`Databases`,
+    filter: "database",
+    icon: "database",
+  },
+  {
+    name: t`Tables`,
+    filter: "table",
+    icon: "table",
+  },
+  {
+    name: t`Questions`,
+    filter: "card",
+    icon: "bar",
+  },
+  {
+    name: t`Pulses`,
+    filter: "pulse",
+    icon: "pulse",
+  },
+  {
+    name: t`Metrics`,
+    filter: "metric",
+    icon: "sum",
+  },
+  {
+    name: t`Segments`,
+    filter: "segment",
+    icon: "segment",
+  },
+];
+
+export default function SearchApp({ location }) {
+  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
+  const [filter, setFilter] = useState(location.query.type);
+
+  const handleFilterChange = filterItem => {
+    setFilter(filterItem && filterItem.filter);
+    setPage(0);
+  };
+
+  const query = {
+    q: location.query.q,
+    limit: PAGE_SIZE,
+    offset: PAGE_SIZE * page,
+  };
+
+  if (filter) {
+    query.models = filter;
+  }
+
+  return (
+    <Box mx={PAGE_PADDING}>
+      {location.query.q && (
+        <Flex align="center" py={[2, 3]}>
+          <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
+        </Flex>
+      )}
+      <Box>
+        <Search.ListLoader query={query} wrapped>
+          {({ list, metadata }) => {
+            if (list.length === 0) {
+              return (
+                <Box w={2 / 3}>
                   <Card>
                     <EmptyState
-                      title={t`No results`}
-                      message={t`Metabase couldn't find any results for your search.`}
+                      title={t`Didn't find anything`}
+                      message={t`There weren't any results for your search.`}
                       illustrationElement={<img src={NoResults} />}
                     />
                   </Card>
-                );
-              }
+                </Box>
+              );
+            }
 
-              const resultsByType = _.chain(list)
-                .groupBy("model")
-                .value();
+            const availableModels = metadata.available_models || [];
 
-              // either use the specified filter type or order the full set according to our preferred order
-              // (this should probably just be the default return from the endpoint no?
-              const resultDisplay = resultsByType[location.query.type] || [
-                ...(resultsByType.dashboard || []),
-                ...(resultsByType.metric || []),
-                ...(resultsByType.table || []),
-                ...(resultsByType.segment || []),
-                ...(resultsByType.card || []),
-                ...(resultsByType.collection || []),
-                ...(resultsByType.pulse || []),
-              ];
+            const filters = SEARCH_FILTERS.filter(f =>
+              availableModels.includes(f.filter),
+            );
 
-              const searchFilters = FILTERS.concat(
-                {
-                  name: t`Metrics`,
-                  filter: "metric",
-                  icon: "sum",
-                },
-                {
-                  name: t`Segments`,
-                  filter: "segment",
-                  icon: "segment",
-                },
-                {
-                  name: t`Collections`,
-                  filter: "collection",
-                  icon: "all",
-                },
-                {
-                  name: t`Tables`,
-                  filter: "table",
-                  icon: "table",
-                },
-              ).filter(f => {
-                // check that results exist for a filter before displaying it
-                if (
-                  resultsByType[f.filter] &&
-                  resultsByType[f.filter].length > 0
-                ) {
-                  return f;
-                }
-              });
-
-              return (
-                <Flex align="top">
-                  <Box w={2 / 3}>
-                    <SearchResultSection items={resultDisplay} />
-                  </Box>
-                  <Box ml={[1, 2]} pt={2} px={2}>
+            return (
+              <Flex align="top">
+                <Box w={2 / 3}>
+                  <React.Fragment>
+                    <SearchResultSection items={list} />
+                    <div className="flex justify-end my2">
+                      <PaginationControls
+                        showTotal
+                        pageSize={PAGE_SIZE}
+                        page={page}
+                        itemsLength={list.length}
+                        total={metadata.total}
+                        onNextPage={handleNextPage}
+                        onPreviousPage={handlePreviousPage}
+                      />
+                    </div>
+                  </React.Fragment>
+                </Box>
+                <Box ml={[1, 2]} pt={2} px={2}>
+                  {filters.length > 0 ? (
                     <Link
                       className="flex align-center"
                       mb={3}
-                      color={!location.query.type ? color("brand") : "inherit"}
+                      color={filter == null ? color("brand") : "inherit"}
+                      onClick={() => handleFilterChange(null)}
                       to={{
                         pathname: location.pathname,
-                        query: { ...location.query, type: null },
+                        query: { ...location.query, type: undefined },
                       }}
                     >
                       <Icon name="search" mr={1} />
                       <h4>{t`All results`}</h4>
                     </Link>
-                    {searchFilters.map(f => {
-                      let isActive =
-                        location && location.query.type === f.filter;
-                      if (!location.query.type && !f.filter) {
-                        isActive = true;
-                      }
+                  ) : null}
+                  {filters.map(f => {
+                    const isActive = filter === f.filter;
 
-                      return (
-                        <Link
-                          className="flex align-center"
-                          mb={3}
-                          color={color(isActive ? "brand" : "text-medium")}
-                          to={{
-                            pathname: location.pathname,
-                            query: { ...location.query, type: f.filter },
-                          }}
-                        >
-                          <Icon mr={1} name={f.icon} />
-                          <h4>{f.name}</h4>
-                        </Link>
-                      );
-                    })}
-                  </Box>
-                </Flex>
-              );
-            }}
-          </Search.ListLoader>
-        </Box>
+                    return (
+                      <Link
+                        key={f.filter}
+                        className="flex align-center"
+                        mb={3}
+                        onClick={() => handleFilterChange(f)}
+                        color={color(isActive ? "brand" : "text-medium")}
+                        to={{
+                          pathname: location.pathname,
+                          query: { ...location.query, type: f.filter },
+                        }}
+                      >
+                        <Icon mr={1} name={f.icon} />
+                        <h4>{f.name}</h4>
+                      </Link>
+                    );
+                  })}
+                </Box>
+              </Flex>
+            );
+          }}
+        </Search.ListLoader>
       </Box>
-    );
-  }
+    </Box>
+  );
 }
 
-const SearchResultSection = ({ title, items }) => (
-  <Card>
-    {items.map(item => {
-      let extraInfo;
-      switch (item.model) {
-        case "table":
-        case "segment":
-        case "metric":
-          extraInfo = (
-            <Flex align="center" color={color("text-medium")}>
-              <Icon name="database" size={8} mr="4px" />
-              <span className="text-small text-bold" style={{ lineHeight: 1 }}>
-                <Database.Name id={item.database_id} />
-              </span>
-            </Flex>
-          );
-          break;
-        case "collection":
-          break;
-        default:
-          extraInfo = (
-            <div className="inline-block">
-              <Flex align="center" color={color("text-medium")}>
-                <Icon name="folder" size={10} mr="4px" />
-                <span
-                  className="text-small text-bold"
-                  style={{ lineHeight: 1 }}
-                >
-                  {item.collection_name || t`Our Analytics`}
-                </span>
-              </Flex>
-            </div>
-          );
-          break;
-      }
+SearchApp.propTypes = {
+  location: PropTypes.object,
+};
 
-      return (
-        <Link
-          to={item.getUrl()}
-          key={item.id}
-          data-metabase-event={`Search Results;Item Click;${item.model}`}
-        >
-          <EntityItem
-            variant="list"
-            name={item.getName()}
-            iconName={item.getIcon()}
-            iconColor={item.getColor()}
-            item={item}
-            extraInfo={extraInfo}
-          />
-        </Link>
-      );
+const SearchResultSection = ({ items }) => (
+  <Card pt={2}>
+    {items.map(item => {
+      return <SearchResult key={`${item.id}__${item.model}`} result={item} />;
     })}
   </Card>
 );
+
+SearchResultSection.propTypes = {
+  items: PropTypes.array,
+};

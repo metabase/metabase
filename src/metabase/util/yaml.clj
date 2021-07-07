@@ -1,13 +1,10 @@
 (ns metabase.util.yaml
-  (:refer-clojure
-   :exclude
-   [load])
+  (:refer-clojure :exclude [load])
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
-            [metabase.util
-             [files :as files]
-             [i18n :refer [trs]]]
+            [metabase.util.files :as files]
+            [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
   (:import [java.nio.file Files Path]))
 

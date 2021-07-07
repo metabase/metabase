@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -68,7 +66,7 @@ type Props = {
   noLink: boolean,
 };
 
-export default (ComposedComponent: ReactClass<any>) =>
+export default (ComposedComponent: React.Class) =>
   connect(
     mapStateToProps,
     mapDispatchToProps,
@@ -96,7 +94,7 @@ export default (ComposedComponent: ReactClass<any>) =>
         }
       }
 
-      componentWillMount() {
+      UNSAFE_componentWillMount() {
         this.load(this.props);
       }
 
@@ -104,7 +102,7 @@ export default (ComposedComponent: ReactClass<any>) =>
         this.props.cancelFetchDashboardCardData();
       }
 
-      componentWillReceiveProps(nextProps: Props) {
+      UNSAFE_componentWillReceiveProps(nextProps: Props) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
         } else if (

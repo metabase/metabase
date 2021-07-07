@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -81,7 +82,7 @@ export default class Revision extends Component {
               {moment(revision.timestamp).format("MMMM DD, YYYY")}
             </span>
           </div>
-          {message && <p>"{message}"</p>}
+          {message && <p>&quot;{message}&quot;</p>}
           {diffKeys.map(key => (
             <RevisionDiff
               key={key}

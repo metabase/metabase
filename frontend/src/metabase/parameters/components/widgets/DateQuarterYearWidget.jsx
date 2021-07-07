@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import YearPicker from "./YearPicker";
@@ -66,6 +67,7 @@ export default class DateQuarterYearWidget extends Component {
         >
           {_.range(1, 5).map(q => (
             <Quarter
+              key={q}
               quarter={q}
               selected={q === quarter}
               onClick={() => this.setState({ quarter: q }, onClose)}

@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import ParameterTargetWidget from "metabase/parameters/components/ParameterTargetWidget";
@@ -22,7 +21,6 @@ export default class QuestionParameterTargetWidget extends React.Component {
   props: Props;
 
   render() {
-    // $FlowFixMe: question provided by HOC
     const { question, ...props } = this.props;
     const mappingOptions = question
       ? Dashboard.getParameterMappingOptions(

@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -22,7 +21,6 @@ type Props = VisualizationProps & {
 
 // We track this as part of the render loop.
 // It's throttled to prevent pounding GA on every prop update.
-// $FlowFixMe
 const trackEventThrottled = _.throttle(MetabaseAnalytics.trackEvent, 10000);
 
 @ExplicitSize({ wrapped: true })

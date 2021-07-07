@@ -1,15 +1,13 @@
 (ns metabase.driver.sql-jdbc-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table :refer [Table]]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :as table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]
             [metabase.test.util.log :as tu.log]))
 
 (deftest describe-database-test

@@ -1,11 +1,9 @@
 (ns metabase.transforms.materialize
-  (:require [metabase
-             [query-processor :as qp]
-             [util :as u]]
-            [metabase.api.common :as api]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [collection :as collection :refer [Collection]]]
+  (:require [metabase.api.common :as api]
+            [metabase.models.card :as card :refer [Card]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.query-processor :as qp]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (declare get-or-create-root-container-collection!)
@@ -30,7 +28,7 @@
   ([collection-name color description]
    (create-collection! collection-name color description (root-container-location)))
   ([collection-name color description location]
-   (u/get-id
+   (u/the-id
     (db/insert! Collection
       {:name        collection-name
        :color       color

@@ -5,9 +5,8 @@
             [metabase.email.messages :as email]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.util.UUID))

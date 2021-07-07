@@ -1,11 +1,6 @@
-import {
-  signInAsAdmin,
-  restore,
-  popover,
-  visitAlias,
-} from "__support__/cypress";
+import { restore, popover, visitAlias } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS_ID } = SAMPLE_DATASET;
 
@@ -15,7 +10,7 @@ const SAMPLE_DB_URL = "/admin/datamodel/database/1";
 describe.skip("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     cy.server();
     cy.route("PUT", "/api/table/*").as("tableUpdate");
     cy.route("PUT", "/api/field/*").as("fieldUpdate");
@@ -133,11 +128,11 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     field("Created At");
   });
 
-  it("should allow changing of special type and currency", () => {
+  it("should allow changing of semantic type and currency", () => {
     visitAlias("@ORDERS_URL");
 
     field("Tax").as("tax");
-    testSelect("@tax", "No special type", "Currency");
+    testSelect("@tax", "No semantic type", "Currency");
     testSelect("@tax", "US Dollar", "Canadian Dollar");
   });
 

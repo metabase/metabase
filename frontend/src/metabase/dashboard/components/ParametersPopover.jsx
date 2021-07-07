@@ -1,7 +1,9 @@
-/* @flow */
 import React, { Component } from "react";
 import { t } from "ttag";
-import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";
+import { getParameterSections } from "metabase/meta/Dashboard";
+import Icon from "metabase/components/Icon";
+import { getParameterIconName } from "metabase/meta/Parameter";
+import styled from "styled-components";
 
 import type {
   Parameter,
@@ -11,6 +13,10 @@ import type {
 import _ from "underscore";
 
 import type { ParameterSection } from "metabase/meta/Dashboard";
+
+const PopoverBody = styled.div`
+  max-width: 300px;
+`;
 
 export default class ParametersPopover extends Component {
   props: {
@@ -26,15 +32,17 @@ export default class ParametersPopover extends Component {
     this.state = {};
   }
 
+  PARAMETER_SECTIONS = getParameterSections();
+
   render() {
     const { section } = this.state;
     const { onClose, onAddParameter } = this.props;
     if (section == null) {
       return (
         <ParameterOptionsSectionsPane
-          sections={PARAMETER_SECTIONS}
+          sections={this.PARAMETER_SECTIONS}
           onSelectSection={selectedSection => {
-            const parameterSection = _.findWhere(PARAMETER_SECTIONS, {
+            const parameterSection = _.findWhere(this.PARAMETER_SECTIONS, {
               id: selectedSection.id,
             });
             if (parameterSection && parameterSection.options.length === 1) {
@@ -47,7 +55,9 @@ export default class ParametersPopover extends Component {
         />
       );
     } else {
-      const parameterSection = _.findWhere(PARAMETER_SECTIONS, { id: section });
+      const parameterSection = _.findWhere(this.PARAMETER_SECTIONS, {
+        id: section,
+      });
       return (
         <ParameterOptionsPane
           options={parameterSection && parameterSection.options}
@@ -69,7 +79,11 @@ export const ParameterOptionsSection = ({
   onClick: () => any,
 }) => (
   <li onClick={onClick} className="p1 px3 cursor-pointer brand-hover">
-    <div className="text-brand text-bold" style={{ marginBottom: 4 }}>
+    <div
+      className="text-brand text-bold flex align-center"
+      style={{ marginBottom: 4 }}
+    >
+      <Icon size="16" name={getParameterIconName(section.id)} className="mr1" />
       {section.name}
     </div>
     <div className="text-medium">{section.description}</div>
@@ -83,17 +97,18 @@ export const ParameterOptionsSectionsPane = ({
   sections: Array<ParameterSection>,
   onSelectSection: ParameterSection => any,
 }) => (
-  <div className="pb2">
+  <PopoverBody className="pb2">
     <h3 className="pb2 pt3 px3">{t`What do you want to filter?`}</h3>
     <ul>
       {sections.map(section => (
         <ParameterOptionsSection
+          key={section.id}
           section={section}
           onClick={() => onSelectSection(section)}
         />
       ))}
     </ul>
-  </div>
+  </PopoverBody>
 );
 
 export const ParameterOptionItem = ({
@@ -118,16 +133,17 @@ export const ParameterOptionsPane = ({
   options: ?Array<ParameterOption>,
   onSelectOption: ParameterOption => any,
 }) => (
-  <div className="pb2">
+  <PopoverBody className="pb2">
     <h3 className="pb2 pt3 px3">{t`What kind of filter?`}</h3>
     <ul>
       {options &&
         options.map(option => (
           <ParameterOptionItem
+            key={option.menuName || option.name}
             option={option}
             onClick={() => onSelectOption(option)}
           />
         ))}
     </ul>
-  </div>
+  </PopoverBody>
 );

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
@@ -66,6 +67,7 @@ export default class LanguageStep extends React.Component {
               ).map(([code, name]) => (
                 <li
                   key={code}
+                  data-testid={`language-option-${code}`}
                   className={cx(
                     "p1 rounded bg-brand-hover text-white-hover cursor-pointer",
                     {

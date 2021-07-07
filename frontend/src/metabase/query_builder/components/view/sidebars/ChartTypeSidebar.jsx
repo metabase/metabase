@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
@@ -11,9 +12,9 @@ import { color, lighten } from "metabase/lib/colors";
 import visualizations from "metabase/visualizations";
 
 const FIXED_LAYOUT = [
-  ["line", "bar", "combo", "area", "waterfall", "row"],
+  ["line", "bar", "combo", "area", "row", "waterfall"],
   ["scatter", "pie", "funnel", "smartscalar", "progress", "gauge"],
-  ["scalar", "table", "map"],
+  ["scalar", "table", "pivot", "map"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 
@@ -44,20 +45,21 @@ const ChartTypeSidebar = ({
       title={t`Choose a visualization`}
       onDone={onCloseChartType}
     >
-      {layout.map(row => (
-        <Flex mx={2} mb={1} className="flex-wrap">
+      {layout.map((row, index) => (
+        <Flex key={index} mx={2} mb={1} className="flex-wrap">
           {row.map(type => {
             const visualization = visualizations.get(type);
             return (
               visualization && (
                 <ChartTypeOption
+                  key={type}
                   visualization={visualization}
                   isSelected={type === question.display()}
                   isSensible={
                     result &&
                     result.data &&
                     visualization.isSensible &&
-                    visualization.isSensible(result.data)
+                    visualization.isSensible(result.data, props.query)
                   }
                   onClick={() => {
                     question

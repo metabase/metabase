@@ -1,5 +1,3 @@
-/* @flow weak */
-
 function getElementIndex(e) {
   return (
     e &&

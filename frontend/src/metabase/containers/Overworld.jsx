@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
 import { Box, Flex } from "grid-styled";
@@ -19,7 +20,6 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/type/Subhead";
-import RetinaImage from "react-retina-image";
 
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -62,6 +62,11 @@ const getParitionedCollections = createSelector(
   },
 );
 
+const getGreeting = createSelector(
+  [getUser],
+  user => Greeting.sayHello(user.first_name),
+);
+
 //class Overworld extends Zelda
 @Search.loadList({
   query: { collection: "root" },
@@ -74,12 +79,14 @@ const getParitionedCollections = createSelector(
     user: getUser(state, props),
     showHomepageData: getShowHomepageData(state),
     showHomepageXrays: getShowHomepageXrays(state),
+    greeting: getGreeting(state, props),
   }),
   { updateSetting },
 )
 class Overworld extends React.Component {
   render() {
     const {
+      greeting,
       user,
       showHomepageData,
       showHomepageXrays,
@@ -92,7 +99,7 @@ class Overworld extends React.Component {
             <MetabotLogo />
           </Tooltip>
           <Box ml={2}>
-            <Subhead>{Greeting.sayHello(user.first_name)}</Subhead>
+            <Subhead>{greeting}</Subhead>
           </Box>
         </Flex>
         <CollectionItemsLoader collectionId="root">
@@ -187,7 +194,7 @@ class Overworld extends React.Component {
                       >
                         <Link
                           data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${pin.model}`}
-                          to={Urls.dashboard(pin.id)}
+                          to={Urls.dashboard(pin)}
                           hover={{ color: color("brand") }}
                         >
                           <Card hoverable p={3}>
@@ -224,8 +231,12 @@ class Overworld extends React.Component {
             ) : (
               <Box className="text-centered">
                 <Box style={{ opacity: 0.5 }}>
-                  <RetinaImage
+                  <img
                     src="app/img/empty.png"
+                    srcSet="
+                      app/img/empty.png 1x,
+                      app/img/empty@2x.png 2x
+                    "
                     className="block ml-auto mr-auto"
                   />
                 </Box>
@@ -306,7 +317,7 @@ class Overworld extends React.Component {
                       {databases.map(database => (
                         <GridItem w={[1, 1 / 3]} key={database.id}>
                           <Link
-                            to={`browse/${database.id}`}
+                            to={Urls.browseDatabase(database)}
                             hover={{ color: color("brand") }}
                             data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${database.engine}`}
                           >
@@ -376,7 +387,11 @@ export class AdminPinMessage extends React.Component {
     }
 
     const link = (
-      <Link className="link" to={Urls.collection()}>{t`Our analytics`}</Link>
+      <Link
+        className="link"
+        key="link-root"
+        to={Urls.collection({ id: "root" })}
+      >{t`Our analytics`}</Link>
     );
 
     return (

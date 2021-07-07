@@ -6,6 +6,14 @@
   (:import clojure.lang.Keyword
            java.util.UUID))
 
+;; this existed long before 0.39.0, but that's when it was made public
+(def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
+  (try
+    (classloader/require 'metabase-enterprise.core)
+    true
+    (catch Throwable _
+      false)))
+
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
   (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
@@ -24,6 +32,7 @@
    ;; other application settings
    :mb-password-complexity "normal"
    :mb-version-info-url    "http://static.metabase.com/version-info.json"
+   :mb-version-info-ee-url "http://static.metabase.com/version-info-ee.json"
    :mb-ns-trace            ""                                             ; comma-separated namespaces to trace
    :max-session-age        "20160"                                        ; session length in minutes (14 days)
    :mb-colorize-logs       (str (not is-windows?))                        ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
@@ -102,6 +111,11 @@
                 will have its own ID, making this different from the `site-uuid` Setting."}
   local-process-uuid
   (str (UUID/randomUUID)))
+
+(defonce
+  ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
+  mb-version-and-process-identifier
+  (format "%s [%s]" mb-app-id-string local-process-uuid))
 
 (defn- mb-session-cookie-samesite*
   []

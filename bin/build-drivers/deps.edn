@@ -6,6 +6,7 @@
   commons-codec/commons-codec {:mvn/version "1.14"}
   hiccup/hiccup               {:mvn/version "1.0.5"}
   io.forward/yaml             {:mvn/version "1.0.9"}  ; don't upgrade to 1.0.10 -- doesn't work on Java 8 (!)
+  leiningen/leiningen         {:mvn/version "2.9.5"}  ; for parsing Leiningen projects
   org.flatland/ordered        {:mvn/version "1.5.9"}  ; used by io.forward/yaml -- need the newer version
   stencil/stencil             {:mvn/version "0.5.0"}}
 

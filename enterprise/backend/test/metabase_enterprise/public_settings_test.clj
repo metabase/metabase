@@ -1,11 +1,8 @@
 (ns metabase-enterprise.public-settings-test
   (:require [clojure.test :refer :all]
             [metabase.public-settings :as public-settings]
-            [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase.api.session :as session]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]))
+            [metabase.test.fixtures :as fixtures]
+            [metabase.test.util :as tu]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

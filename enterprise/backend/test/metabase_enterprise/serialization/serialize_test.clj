@@ -1,11 +1,10 @@
 (ns metabase-enterprise.serialization.serialize-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase-enterprise.serialization
-             [serialize :as serialize]
-             [test-util :as ts]]
-            [metabase.models :refer [Card Collection Dashboard Database Field Metric Segment Table]]))
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase-enterprise.serialization.serialize :as serialize]
+            [metabase-enterprise.serialization.test-util :as ts]
+            [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet Segment
+                                     Table]]))
 
 (defn- all-ids-are-fully-qualified-names?
   [m]
@@ -19,7 +18,8 @@
   [[_ & ids]]
   (testing (format "\nids = %s" (pr-str ids))
     (doseq [id ids]
-      (is (string? id)))))
+      (cond (map? id) (all-ids-are-fully-qualified-names? id)
+            (some? id) (is (string? id))))))
 
 (deftest serialization-test
   (ts/with-world
@@ -30,7 +30,8 @@
                         [Dashboard dashboard-id]
                         [Table table-id]
                         [Field numeric-field-id]
-                        [Database db-id]]]
+                        [Database db-id]
+                        [NativeQuerySnippet snippet-id]]]
       (testing (name model)
         (let [serialization (serialize/serialize (model id))]
           (testing (format "\nserialization = %s" (pr-str serialization))

@@ -8,26 +8,23 @@
             [hiccup.core :refer [html]]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [email :as email]
-             [public-settings :as public-settings]
-             [util :as u]]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
+            [metabase.email :as email]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render :as render]
-            [metabase.pulse.render
-             [body :as render.body]
-             [style :as render.style]]
+            [metabase.pulse.render.body :as render.body]
+            [metabase.pulse.render.style :as render.style]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
-            [metabase.util
-             [i18n :refer [deferred-trs trs tru]]
-             [quotation :as quotation]
-             [urls :as url]]
-            [stencil
-             [core :as stencil]
-             [loader :as stencil-loader]]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
+            [metabase.util.quotation :as quotation]
+            [metabase.util.urls :as url]
+            [stencil.core :as stencil]
+            [stencil.loader :as stencil-loader]
             [toucan.db :as db])
   (:import [java.io File IOException OutputStream]))
 
@@ -55,8 +52,8 @@
           svg    (u/decode-base64 base64)
           themed (str/replace svg #"<svg\b([^>]*)( fill=\"[^\"]*\")([^>]*)>" (str "<svg$1$3 fill=\"" color "\">"))]
       (str "data:image/svg+xml;base64," (u/encode-base64 themed)))
-  (catch Throwable e
-    url)))
+    (catch Throwable e
+      url)))
 
 (defn- logo-url []
   (let [url   (public-settings/application-logo-url)
@@ -167,24 +164,47 @@
                               :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
                              (random-quote-context))))))
 
-
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? hostname password-reset-url]
+  [email google-auth? hostname password-reset-url is-active?]
   {:pre [(m/boolean? google-auth?)
          (u/email? email)
          (string? hostname)
          (string? password-reset-url)]}
-  (let [message-body (stencil/render-file "metabase/email/password_reset"
-                       (merge (common-context)
-                              {:emailType        "password_reset"
-                               :hostname         hostname
-                               :sso              google-auth?
-                               :passwordResetUrl password-reset-url
-                               :logoHeader       true}))]
+  (let [message-body (stencil/render-file
+                      "metabase/email/password_reset"
+                      (merge (common-context)
+                             {:emailType        "password_reset"
+                              :hostname         hostname
+                              :sso              google-auth?
+                              :passwordResetUrl password-reset-url
+                              :logoHeader       true
+                              :isActive         is-active?
+                              :adminEmail       (public-settings/admin-email)
+                              :adminEmailSet    (boolean (public-settings/admin-email))}))]
     (email/send-message!
       :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
+      :message-type :html
+      :message      message-body)))
+
+(defn send-login-from-new-device-email!
+  "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
+  login history infomation as returned by `metabase.models.login-history/human-friendly-infos`."
+  [{user-id :user_id, :keys [timestamp], :as login-history}]
+  (let [user-info    (db/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+        user-locale  (or (:locale user-info) (i18n/site-locale))
+        timestamp    (u.date/format-human-readable timestamp user-locale)
+        context      (merge (common-context)
+                            {:first-name (:first-name user-info)
+                             :device     (:device_description login-history)
+                             :location   (:location login-history)
+                             :timestamp  timestamp})
+        message-body (stencil/render-file "metabase/email/login_from_new_device"
+                       context)]
+    (email/send-message!
+      :subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
+      :recipients   [(:email user-info)]
       :message-type :html
       :message      message-body)))
 
@@ -254,6 +274,12 @@
    :content-type "image/png"
    :content      url})
 
+(defn- pulse-link-context
+  [{:keys [cards dashboard_id]}]
+  (when-let [dashboard-id (or dashboard_id
+                              (some :dashboard_id cards))]
+    {:pulseLink (url/dashboard-url dashboard-id)}))
+
 (defn- pulse-context [pulse]
   (merge (common-context)
          {:emailType    "pulse"
@@ -261,6 +287,7 @@
           :sectionStyle (render.style/style (render.style/section-style))
           :colorGrey4   render.style/color-gray-4
           :logoFooter   true}
+         (pulse-link-context pulse)
          (random-quote-context)))
 
 (defn- create-temp-file
@@ -361,7 +388,6 @@
 
 (defn- render-message-body [message-template message-context timezone results]
   (let [rendered-cards (binding [render/*include-title* true]
-                         ;; doall to ensure we haven't exited the binding before the valures are created
                          (mapv #(render/render-pulse-section timezone %) results))
         message-body   (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards)))))
         attachments    (apply merge (map :attachments rendered-cards))]

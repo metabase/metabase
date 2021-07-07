@@ -1,20 +1,14 @@
 // Ported from `segments.e2e.spec.js`
-import {
-  restore,
-  signInAsAdmin,
-  popover,
-  modal,
-  sidebar,
-} from "__support__/cypress";
+import { restore, popover, modal } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > segments", () => {
-  before(restore);
   beforeEach(() => {
-    signInAsAdmin();
+    restore();
+    cy.signInAsAdmin();
     cy.viewport(1400, 860);
   });
 
@@ -36,7 +30,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       });
       cy.findByText("Add filters to narrow your answer").click();
 
-      cy.log("**Fails in v0.36.0 and v0.36.3. It exists in v0.35.4**");
+      cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
       popover().within(() => {
         cy.findByText("Custom Expression");
       });
@@ -52,9 +46,7 @@ describe("scenarios > admin > datamodel > segments", () => {
   describe("with segment", () => {
     const SEGMENT_NAME = "Orders < 100";
 
-    before(() => {
-      signInAsAdmin();
-
+    beforeEach(() => {
       // Create a segment through API
       cy.request("POST", "/api/segment", {
         name: SEGMENT_NAME,
@@ -63,7 +55,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
-          filter: ["<", ["field-id", ORDERS.TOTAL], 100],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });
     });
@@ -113,7 +105,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findAllByText("Filter")
         .first()
         .click();
-      sidebar().within(() => {
+      cy.findByTestId("sidebar-right").within(() => {
         cy.contains("Product ID").click();
       });
       cy.findByText("Cancel");
@@ -143,6 +135,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.contains(SEGMENT_NAME)
         .parent()
         .parent()
+        .parent()
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Edit Segment").click();
@@ -165,7 +158,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         .click();
 
       // confirm that the preview updated
-      cy.contains("18703 rows");
+      cy.contains("18758 rows");
 
       // update name and description, set a revision note, and save the update
       cy.get('[name="name"]')
@@ -183,6 +176,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       // clean up
       cy.contains("Orders > 10")
+        .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")

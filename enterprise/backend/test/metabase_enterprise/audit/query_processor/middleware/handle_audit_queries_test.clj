@@ -1,10 +1,9 @@
 (ns metabase-enterprise.audit.query-processor.middleware.handle-audit-queries-test
   "Additional tests for this namespace can be found in `metabase-enterprise.audit.pages-test`."
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
-            [metabase.public-settings.metastore-test :as metastore-test]))
+            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]))
 
 (defn- run-query
   [varr & {:as additional-query-params}]

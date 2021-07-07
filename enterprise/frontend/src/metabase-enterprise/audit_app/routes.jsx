@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import { Route } from "metabase/hoc/Title";
@@ -50,7 +48,7 @@ function getPageRoutes(path, page: Page) {
   if (page.tabs) {
     subRoutes.push(
       ...page.tabs.map(tab => (
-        <Route path={tab.path} component={tab.component} />
+        <Route key={tab.path} path={tab.path} component={tab.component} />
       )),
     );
   }

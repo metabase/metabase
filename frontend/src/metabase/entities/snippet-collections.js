@@ -1,4 +1,3 @@
-/* @flow */
 import _ from "underscore";
 import { t } from "ttag";
 import { createSelector } from "reselect";
@@ -38,7 +37,6 @@ const SnippetCollections = createEntity({
       ),
 
     // NOTE: DELETE not currently implemented
-    // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
   },
 
@@ -46,7 +44,10 @@ const SnippetCollections = createEntity({
     getExpandedCollectionsById: createSelector(
       [
         state => state.entities.snippetCollections,
-        state => state.entities.snippetCollections_list[null] || [],
+        state => {
+          const { list } = state.entities.snippetCollections_list[null] || {};
+          return list || [];
+        },
       ],
       (collections, collectionsIds) =>
         getExpandedCollectionsById(

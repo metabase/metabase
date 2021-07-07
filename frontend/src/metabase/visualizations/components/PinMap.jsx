@@ -1,5 +1,3 @@
-/* @flow */
-
 import React, { Component } from "react";
 import { t } from "ttag";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
@@ -76,7 +74,7 @@ export default class PinMap extends Component {
     };
   }
 
-  componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps: Props) {
     const SETTINGS_KEYS = [
       "map.latitude_column",
       "map.longitude_column",
@@ -85,9 +83,7 @@ export default class PinMap extends Component {
     if (
       newProps.series[0].data !== this.props.series[0].data ||
       !_.isEqual(
-        // $FlowFixMe
         _.pick(newProps.settings, ...SETTINGS_KEYS),
-        // $FlowFixMe
         _.pick(this.props.settings, ...SETTINGS_KEYS),
       )
     ) {

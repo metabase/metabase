@@ -2,10 +2,9 @@
   "Common test extension functionality for all SQL drivers."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]]
+            [metabase.driver :as driver]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx])
   (:import metabase.test.data.interface.FieldDefinition))
@@ -206,12 +205,23 @@
             pk-field-name (pk-sql-type driver)
             (str/join
              ", "
-             (for [{:keys [field-name base-type field-comment]} field-definitions]
+             (for [{:keys [field-name base-type field-comment] :as field} field-definitions]
                (str (format "%s %s"
                             (quot field-name)
-                            (if (map? base-type)
-                              (:native base-type)
-                              (field-base-type->sql-type driver base-type)))
+                            (or (cond
+                                  (and (map? base-type) (contains? base-type :native))
+                                  (:native base-type)
+
+                                  (and (map? base-type) (contains? base-type :natives))
+                                  (get-in base-type [:natives driver])
+
+                                  base-type
+                                  (field-base-type->sql-type driver base-type))
+                                (throw (ex-info (format "Missing datatype for field %s for driver: %s"
+                                                        field-name driver)
+                                                {:field field
+                                                 :driver driver
+                                                 :database-name database-name}))))
                     (when-let [comment (inline-column-comment-sql driver field-comment)]
                       (str " " comment)))))
             pk-field-name

@@ -1,11 +1,10 @@
 (ns metabase.models.pulse-card-test
   (:require [clojure.test :refer :all]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer :all]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse-card :refer :all]
             [toucan.util.test :as tt]))
 
 (deftest test-next-position-for

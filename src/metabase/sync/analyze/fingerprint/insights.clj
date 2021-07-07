@@ -1,17 +1,15 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
   (:require [java-time :as t]
-            [kixi.stats
-             [core :as stats]
-             [math :as math]]
+            [kixi.stats.core :as stats]
+            [kixi.stats.math :as math]
             [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.sync.util :as sync-util]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [trs]]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [trs]]
             [redux.core :as redux])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
@@ -228,15 +226,17 @@
   (let [cols-by-type (->> cols
                           (map-indexed (fn [idx col]
                                          (assoc col :position idx)))
-                          (group-by (fn [{:keys [base_type special_type unit] :as field}]
+                          (group-by (fn [{base-type      :base_type
+                                          effective-type :effective_type
+                                          semantic-type  :semantic_type
+                                          unit           :unit}]
                                       (cond
-                                        (#{:type/FK :type/PK} special_type) :others
-                                        (= unit :year)                      :datetimes
-                                        (u.date/extract-units unit)         :numbers
-                                        (field/unix-timestamp? field)       :datetimes
-                                        (isa? base_type :type/Number)       :numbers
-                                        (isa? base_type :type/Temporal)     :datetimes
-                                        :else                               :others))))]
+                                        (isa? semantic-type :Relation/*)                    :others
+                                        (= unit :year)                                      :datetimes
+                                        (u.date/extract-units unit)                         :numbers
+                                        (isa? (or effective-type base-type) :type/Temporal) :datetimes
+                                        (isa? base-type :type/Number)                       :numbers
+                                        :else                                               :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
       :else                      (f/constant-fingerprinter nil))))

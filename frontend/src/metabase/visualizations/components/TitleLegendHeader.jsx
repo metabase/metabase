@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -10,7 +11,6 @@ export default function TitleLegendHeader({
   onChangeCardAndRun,
   actionButtons,
 }) {
-  // $FlowFixMe
   const originalSeries = series._raw || series;
   const cardIds = _.uniq(originalSeries.map(s => s.card.id));
   const isComposedOfMultipleQuestions = cardIds.length > 1;

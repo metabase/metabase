@@ -2,17 +2,14 @@
   (:require [cheshire.core :as json]
             [clj-ldap.client :as ldap]
             [clojure.tools.logging :as log]
-            [metabase.integrations.ldap
-             [default-implementation :as default-impl]
-             [interface :as i]]
-            [metabase.models
-             [setting :as setting :refer [defsetting]]
-             [user :refer [User]]]
+            [metabase.integrations.ldap.default-implementation :as default-impl]
+            [metabase.integrations.ldap.interface :as i]
+            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [deferred-tru tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import [com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException]))
 
@@ -47,11 +44,11 @@
   (deferred-tru "Search base for users. (Will be searched recursively)"))
 
 (defsetting ldap-user-filter
-  (deferred-tru "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login.")
+  (deferred-tru "User lookup filter. The placeholder '{login}' will be replaced by the user supplied login.")
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
-  (deferred-tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
+  (deferred-tru "Attribute to use for the user''s email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default "mail"
   :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-email))))
 
@@ -71,7 +68,7 @@
   :default false)
 
 (defsetting ldap-group-base
-  (deferred-tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
+  (deferred-tru "Search base for groups. Not required for LDAP directories that provide a ''memberOf'' overlay, such as Active Directory. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
@@ -82,21 +79,15 @@
   :getter  (fn []
              (json/parse-string (setting/get-string :ldap-group-mappings) #(DN. (str %))))
   :setter  (fn [new-value]
-             (doseq [k (keys new-value)]
-               (when-not (DN/isValidDN (name k))
-                 (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
-             (setting/set-json! :ldap-group-mappings new-value)))
+             (cond
+               (string? new-value)
+               (recur (json/parse-string new-value))
 
-(defsetting ldap-sync-user-attributes
-  (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
-  :type :boolean
-  :default true)
-
-;; TODO - maybe we want to add a csv setting type?
-(defsetting ldap-sync-user-attributes-blacklist
-  (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
-  :default "userPassword,dn,distinguishedName"
-  :type    :csv)
+               (map? new-value)
+               (do (doseq [k (keys new-value)]
+                     (when-not (DN/isValidDN (name k))
+                       (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
+                   (setting/set-json! :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
@@ -207,10 +198,10 @@
    :last-name-attribute  (ldap-attribute-lastname)
    :email-attribute      (ldap-attribute-email)
    :sync-groups?         (ldap-group-sync)
-   :group-base           (ldap-group-base)
-   :group-mappings       (ldap-group-mappings)
    :user-base            (ldap-user-base)
-   :user-filter          (ldap-user-filter)})
+   :user-filter          (ldap-user-filter)
+   :group-base           (ldap-group-base)
+   :group-mappings       (ldap-group-mappings)})
 
 (s/defn find-user :- (s/maybe i/UserInfo)
   "Get user information for the supplied username."

@@ -1,19 +1,18 @@
 (ns metabase.api.util-test
   "Tests for /api/util"
-  (:require [expectations :refer :all]
-            [metabase.http-client :refer [client]]))
+  (:require [clojure.test :refer :all]
+            [metabase.test :as mt]))
 
+(deftest password-check-test
+  (testing "POST /api/util/password_check"
+    (testing "Test for required params"
+      (is (= {:errors {:password "password is too common."}}
+             (mt/client :post 400 "util/password_check" {}))))
 
-;; ## POST /api/util/password_check
+    (testing "Test complexity check"
+      (is (= {:errors {:password "password is too common."}}
+             (mt/client :post 400 "util/password_check" {:password "blah"}))))
 
-;; Test for required params
-(expect {:errors {:password "Insufficient password strength"}}
-  (client :post 400 "util/password_check" {}))
-
-;; Test complexity check
-(expect {:errors {:password "Insufficient password strength"}}
-  (client :post 400 "util/password_check" {:password "blah"}))
-
-;; Should be a valid password
-(expect {:valid true}
-  (client :post 200 "util/password_check" {:password "something1"}))
+    (testing "Should be a valid password"
+      (is (= {:valid true}
+             (mt/client :post 200 "util/password_check" {:password "something123"}))))))

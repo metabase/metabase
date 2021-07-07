@@ -1,9 +1,8 @@
 (ns metabase.query-processor-test.order-by-test
   "Tests for the `:order-by` clause."
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]))
+            [metabase.driver :as driver]
+            [metabase.test :as mt]))
 
 (deftest order-by-test
   (mt/test-drivers (mt/normal-drivers)

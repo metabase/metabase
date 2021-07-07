@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
@@ -44,13 +45,15 @@ class CollectionList extends React.Component {
                       item={collection}
                       collection={currentCollection}
                     >
-                      <CollectionItem
-                        collection={collection}
-                        highlighted={highlighted}
-                        hovered={hovered}
-                        event={`${analyticsContext};Collection List;Collection click`}
-                        asCard={asCards}
-                      />
+                      <div>
+                        <CollectionItem
+                          collection={collection}
+                          highlighted={highlighted}
+                          hovered={hovered}
+                          event={`${analyticsContext};Collection List;Collection click`}
+                          asCard={asCards}
+                        />
+                      </div>
                     </ItemDragSource>
                   )}
                 </CollectionDropTarget>

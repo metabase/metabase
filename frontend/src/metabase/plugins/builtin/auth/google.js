@@ -4,6 +4,7 @@ import { updateIn } from "icepick";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
 } from "metabase/plugins";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -11,7 +12,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import GoogleButton from "metabase/auth/components/GoogleButton";
 
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
-import SettingsSingleSignOnForm from "metabase/admin/settings/components/SettingsSingleSignOnForm";
+import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
 
 const GOOGLE_PROVIDER = {
   name: "google",
@@ -40,11 +41,20 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
-    component: SettingsSingleSignOnForm,
+    component: SettingsGoogleForm,
     sidebar: false,
     settings: [
-      { key: "google-auth-client-id" },
-      { key: "google-auth-auto-create-accounts-domain" },
+      {
+        key: "google-auth-client-id",
+      },
+      {
+        key: "google-auth-auto-create-accounts-domain",
+        description:
+          "Allow users to sign up on their own if their Google account email address is from:",
+        placeholder: "mycompany.com",
+      },
     ],
   },
 }));
+
+PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(user => !user.google_auth);

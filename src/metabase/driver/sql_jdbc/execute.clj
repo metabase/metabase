@@ -8,23 +8,23 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
             [metabase.driver.sql-jdbc.execute.old-impl :as execute.old]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor
-             [context :as context]
-             [interface :as qp.i]
-             [reducible :as qp.reducible]
-             [store :as qp.store]
-             [timezone :as qp.timezone]
-             [util :as qputil]]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin :as p])
-  (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Types]
+  (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            javax.sql.DataSource))
 
@@ -73,10 +73,35 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti execute-query!
+(defmulti ^Statement statement-supported?
+  "Indicates whether the given driver supports creating a java.sql.Statement, via the Connection. By default, this is
+  true for all :sql-jdbc drivers.  If the underlying driver does not support Statement creation, override this as
+  false."
+  {:added "0.39.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti ^Statement statement
+  "Create a Statement object using the given connection. Only called if statement-supported? above returns true. This
+  is to be used to execute native queries, which implies there are no parameters. As with prepared-statement, you
+  shouldn't need to override the default implementation for this method; if you do, take care to set options to maximize
+  result set read performance (e.g. `ResultSet/TYPE_FORWARD_ONLY`); refer to the default implementation."
+  {:added "0.39.0", :arglists '(^java.sql.Statement [driver ^java.sql.Connection connection])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti execute-prepared-statement!
   "Execute a `PreparedStatement`, returning a `ResultSet`. Default implementation simply calls `.executeQuery()`. It is
-  unlikely you will need to override this."
-  {:added "0.35.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.PreparedStatement stmt])}
+  unlikely you will need to override this. Prior to 0.39, this was named execute-query!"
+  {:added "0.39.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.PreparedStatement stmt])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti execute-statement!
+  "Runs a SQL select query with a given `Statement`, returning a `ResultSet`. Default implementation simply calls
+  `.execute()` for the given sql on the given statement, and then `.getResultSet()` if that returns true (throwing an
+  exception if not). It is unlikely you will need to override this."
+  {:added "0.39.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.Statement stmt ^String sql])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -108,6 +133,15 @@
   {:added "0.35.0"}
   ^DataSource [database]
   (:datasource (sql-jdbc.conn/db->pooled-connection-spec database)))
+
+(defn datasource-with-diagnostic-info!
+  "Fetch the connection pool `DataSource` associated with `database`, while also recording diagnostic info for the
+  pool. To be used in conjunction with `sql-jdbc.execute.diagnostic/capturing-diagnostic-info`."
+  {:added "0.40.0"}
+  ^DataSource [driver database]
+  (let [ds (datasource database)]
+    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool driver (u/the-id database) ds)
+    ds))
 
 (defn set-time-zone-if-supported!
   "Execute `set-timezone-sql`, if implemented by driver, to set the session time zone. This way of setting the time zone
@@ -153,7 +187,7 @@
 
 (defmethod connection-with-timezone :sql-jdbc
   [driver database ^String timezone-id]
-  (let [conn (.getConnection (datasource database))]
+  (let [conn (.getConnection (datasource-with-diagnostic-info! driver database))]
     (try
       (set-best-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn timezone-id)
@@ -235,7 +269,8 @@
 
 (defmethod prepared-statement :sql-jdbc
   [driver ^Connection conn ^String sql params]
-  (let [stmt (.prepareStatement conn sql
+  (let [stmt (.prepareStatement conn
+                                sql
                                 ResultSet/TYPE_FORWARD_ONLY
                                 ResultSet/CONCUR_READ_ONLY
                                 ResultSet/CLOSE_CURSORS_AT_COMMIT)]
@@ -243,8 +278,29 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
       (set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
+
+;; by default, drivers support .createStatement
+(defmethod statement-supported? :sql-jdbc
+  [_]
+  true)
+
+(defmethod statement :sql-jdbc
+  [_ ^Connection conn]
+  (let [stmt (.createStatement conn
+                               ResultSet/TYPE_FORWARD_ONLY
+                               ResultSet/CONCUR_READ_ONLY
+                               ResultSet/CLOSE_CURSORS_AT_COMMIT)]
+    (try
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -261,9 +317,40 @@
           (.cancel stmt))))
     stmt))
 
-(defmethod execute-query! :sql-jdbc
+(defn- use-statement? [driver params]
+  (and (statement-supported? driver) (empty? params)))
+
+(defn- statement* ^Statement [driver conn canceled-chan]
+  ;; if canceled-chan gets a message, cancel the Statement
+  (let [^Statement stmt (statement driver conn)]
+    (a/go
+      (when (a/<! canceled-chan)
+        (log/debug (trs "Query canceled, calling Statement.cancel()"))
+        (u/ignore-exceptions
+         (.cancel stmt))))
+    stmt))
+
+(defn- statement-or-prepared-statement ^Statement [driver conn sql params canceled-chan]
+  (if (use-statement? driver params)
+    (statement* driver conn canceled-chan)
+    (prepared-statement* driver conn sql params canceled-chan)))
+
+(defmethod execute-prepared-statement! :sql-jdbc
   [_ ^PreparedStatement stmt]
   (.executeQuery stmt))
+
+(defmethod execute-statement! :sql-jdbc
+  [driver ^Statement stmt ^String sql]
+  (if (.execute stmt sql)
+    (.getResultSet stmt)
+    (throw (ex-info (str (tru "Select statement did not produce a ResultSet for native query"))
+                    {:sql sql :driver driver}))))
+
+(defn- execute-statement-or-prepared-statement! ^ResultSet [driver ^Statement stmt max-rows params sql]
+  (let [st (doto stmt (.setMaxRows max-rows))]
+    (if (use-statement? driver params)
+      (execute-statement! driver st sql)
+      (execute-prepared-statement! driver st))))
 
 (defmethod read-column-thunk :default
   [driver ^ResultSet rs rsmeta ^long i]
@@ -385,13 +472,18 @@
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
-   (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-               stmt (doto (prepared-statement* driver conn sql params (context/canceled-chan context))
-                      (.setMaxRows max-rows))
-               rs   (execute-query! driver stmt)]
+   (with-open [conn          (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
+               stmt          (statement-or-prepared-statement driver conn sql params (context/canceled-chan context))
+               ^ResultSet rs (try
+                               (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
+                               (catch Throwable e
+                                 (throw (ex-info (tru "Error executing query")
+                                                 {:sql sql, :params params, :type qp.error-type/invalid-query}
+                                                 e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |

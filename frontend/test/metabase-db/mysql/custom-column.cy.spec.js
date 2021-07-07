@@ -1,9 +1,8 @@
 import {
   restore,
-  signInAsAdmin,
   addMySQLDatabase,
   withDatabase,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
@@ -11,7 +10,7 @@ const MYSQL_DB_NAME = "QA MySQL8";
 describe.skip("mysql > user > question > custom column", () => {
   beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addMySQLDatabase(MYSQL_DB_NAME);
   });
 
@@ -20,29 +19,22 @@ describe.skip("mysql > user > question > custom column", () => {
     const CC_NAME = "Abbr";
 
     withDatabase(2, ({ PEOPLE, PEOPLE_ID }) => {
-      cy.log(
-        "**--1. Create a question with `Source` column and abbreviated CC--**",
-      );
-      cy.request("POST", "/api/card", {
+      cy.log("Create a question with `Source` column and abbreviated CC");
+      cy.createQuestion({
         name: "12445",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": PEOPLE_ID,
-            breakout: [["expression", CC_NAME]],
-            expressions: {
-              [CC_NAME]: [
-                "substring",
-                ["field-id", PEOPLE.SOURCE],
-                0,
-                4, // we want 4 letter abbreviation
-              ],
-            },
+        query: {
+          "source-table": PEOPLE_ID,
+          breakout: [["expression", CC_NAME]],
+          expressions: {
+            [CC_NAME]: [
+              "substring",
+              ["field", PEOPLE.SOURCE, null],
+              0,
+              4, // we want 4 letter abbreviation
+            ],
           },
-          database: 2,
         },
-        display: "table",
-        visualization_settings: {},
+        database: 2,
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.server();
         cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");

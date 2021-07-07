@@ -1,23 +1,18 @@
 (ns metabase-enterprise.sso.integrations.jwt-test
-  (:require [buddy.sign
-             [jwt :as jwt]
-             [util :as buddy-util]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [buddy.sign.jwt :as jwt]
+            [buddy.sign.util :as buddy-util]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [crypto.random :as crypto-random]
-            [metabase
-             [test :as mt]
-             [util :as u]]
-            [metabase-enterprise.sso.integrations
-             [jwt :as mt.jwt]
-             [saml-test :as saml-test]]
-            [metabase.models
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [permissions-group-membership :refer [PermissionsGroupMembership]]
-             [user :refer [User]]]
+            [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
+            [metabase-enterprise.sso.integrations.saml-test :as saml-test]
+            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.user :refer [User]]
             [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -108,7 +103,7 @@
   (testing "Check an expired JWT"
     (with-jwt-default-setup
       (is (= "Token is older than max-age (180)"
-             (:message (saml-test/client :get 500 "/auth/sso" {:request-options {:redirect-strategy :none}}
+             (:message (saml-test/client :get 401 "/auth/sso" {:request-options {:redirect-strategy :none}}
                                          :return_to default-redirect-uri
                                          :jwt (jwt/sign {:email "test@metabase.com", :first_name "Test" :last_name "User"
                                                          :iat   (- (buddy-util/now) (u/minutes->seconds 5))}
@@ -167,7 +162,7 @@
                (#'mt.jwt/group-names->ids ["group_2" "group_3"])))))))
 
 (defn- group-memberships [user-or-id]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/get-id user-or-id)))]
+  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
     (db/select-field :name PermissionsGroup :id [:in group-ids])))
 
 (deftest login-sync-group-memberships-test
@@ -175,7 +170,7 @@
     (with-jwt-default-setup
       (tt/with-temp PermissionsGroup [my-group {:name (str ::my-group)}]
         (mt/with-temporary-setting-values [jwt-group-sync       true
-                                           jwt-group-mappings   {"my_group" [(u/get-id my-group)]}
+                                           jwt-group-mappings   {"my_group" [(u/the-id my-group)]}
                                            jwt-attribute-groups "GrOuPs"]
           (with-users-with-email-deleted "newuser@metabase.com"
             (let [response    (saml-test/client-full-response :get 302 "/auth/sso"
@@ -191,4 +186,4 @@
               (is (saml-test/successful-login? response))
               (is (= #{"All Users"
                        ":metabase-enterprise.sso.integrations.jwt-test/my-group"}
-                     (group-memberships (u/get-id (db/select-one-id User :email "newuser@metabase.com"))))))))))))
+                     (group-memberships (u/the-id (db/select-one-id User :email "newuser@metabase.com"))))))))))))

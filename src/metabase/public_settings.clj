@@ -2,19 +2,14 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase
-             [config :as config]
-             [types :as types]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [common :as common]
-             [setting :as setting :refer [defsetting]]]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore :as metastore]
-            [metabase.util
-             [i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
-             [password :as password]]
+            [metabase.util :as u]
+            [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
+            [metabase.util.password :as password]
             [toucan.db :as db])
   (:import java.util.UUID))
 
@@ -51,6 +46,12 @@
   :type    :json
   :default {})
 
+(defsetting version-info-last-checked
+  (deferred-tru "Indicates when Metabase last checked for new versions.")
+  :visibility :public
+  :type       :timestamp
+  :default    nil)
+
 (defsetting site-name
   (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")
@@ -85,7 +86,9 @@
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
-  (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  (str (deferred-tru "This URL is used for things like creating links in emails, auth redirects,")
+       " "
+       (deferred-tru "and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :getter (fn []
             (try
@@ -94,7 +97,7 @@
                 (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
             (let [new-value (some-> new-value normalize-site-url)
-                  https?    (some-> new-value (str/starts-with?  "https:" ))]
+                  https?    (some-> new-value (str/starts-with?  "https:"))]
               ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
               (when-not https?
                 (redirect-all-requests-to-https false))
@@ -241,7 +244,7 @@
   (deferred-tru "The url or image that you want to use as the favicon.")
   :visibility :public
   :type       :string
-  :default    "frontend_client/favicon.ico")
+  :default    "/app/assets/img/favicon.ico")
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
@@ -288,8 +291,9 @@
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
-  :getter (fn [] (some-> (setting/get-string :source-address-header)
-                         u/lower-case-en)))
+  :default "X-Forwarded-For"
+  :getter  (fn [] (some-> (setting/get-string :source-address-header)
+                          u/lower-case-en)))
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it
@@ -319,25 +323,13 @@
   "Available report timezone options"
   :visibility :public
   :setter     :none
-  :getter     (constantly common/timezones))
+  :getter     (comp sort t/available-zone-ids))
 
 (defsetting engines
   "Available database engines"
   :visibility :public
   :setter     :none
   :getter     driver.u/available-drivers-info)
-
-(defsetting types
-  "Field types"
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (types/types->parents :type/*)))
-
-(defsetting entities
-  "Entity types"
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (types/types->parents :entity/*)))
 
 (defsetting has-sample-dataset?
   "Whether this instance has a Sample Dataset database"
@@ -349,7 +341,13 @@
   "Current password complexity requirements"
   :visibility :public
   :setter     :none
-  :getter     (constantly password/active-password-complexity))
+  :getter     password/active-password-complexity)
+
+(defsetting session-cookies
+  (deferred-tru "When set, enforces the use of session cookies for all users which expire when the browser is closed.")
+  :type       :boolean
+  :visibility :public
+  :default    nil)
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
@@ -393,3 +391,15 @@
   :visibility :public
   :type       :keyword
   :default    "sunday")
+
+(defsetting ssh-heartbeat-interval-sec
+  (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
+  :visibility :public
+  :type       :integer
+  :default    180)
+
+(defsetting redshift-fetch-size
+  (deferred-tru "Controls the fetch size used for Redshift queries (in PreparedStatement), via defaultRowFetchSize.")
+  :visibility :public
+  :type       :integer
+  :default    5000)

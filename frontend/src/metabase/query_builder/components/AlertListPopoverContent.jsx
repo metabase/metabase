@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
@@ -78,6 +79,7 @@ export default class AlertListPopoverContent extends Component {
         <ul>
           {Object.values(sortedQuestionAlerts).map(alert => (
             <AlertListItem
+              key={alert.id}
               alert={alert}
               setMenuFreeze={setMenuFreeze}
               closeMenu={closeMenu}

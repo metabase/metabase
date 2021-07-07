@@ -33,8 +33,8 @@
 
 (defn- release-title []
   (case (c/edition)
-    :ce (format "Metabase v%s" (c/version))
-    :ee (format "Metabase® Enterprise Edition™ v%s" (c/version))))
+    :oss (format "Metabase v%s" (c/version))
+    :ee  (format "Metabase® Enterprise Edition™ v%s" (c/version))))
 
 (defn- upload-draft-changelog! [changelog]
   (u/step "Upload draft changelog (create draft release)"

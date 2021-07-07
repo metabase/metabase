@@ -5,44 +5,40 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
-            [metabase
-             [events :as events]
-             [public-settings :as public-settings]
-             [query-processor :as qp]
-             [related :as related]
-             [util :as u]]
-            [metabase.api
-             [common :as api]
-             [dataset :as dataset-api]]
+            [metabase.api.common :as api]
+            [metabase.api.dataset :as dataset-api]
             [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
-            [metabase.models
-             [card :as card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
-             [collection :as collection :refer [Collection]]
-             [database :refer [Database]]
-             [interface :as mi]
-             [pulse :as pulse :refer [Pulse]]
-             [query :as query]
-             [table :refer [Table]]
-             [view-log :refer [ViewLog]]]
+            [metabase.events :as events]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.card :as card :refer [Card]]
+            [metabase.models.card-favorite :refer [CardFavorite]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
+            [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.query-processor
-             [async :as qp.async]
-             [streaming :as qp.streaming]
-             [util :as qputil]]
-            [metabase.query-processor.middleware
-             [cache :as cache]
-             [constraints :as constraints]
-             [results-metadata :as results-metadata]]
+            [metabase.models.revision.last-edit :as last-edit]
+            [metabase.models.table :refer [Table]]
+            [metabase.models.view-log :refer [ViewLog]]
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.async :as qp.async]
+            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.pivot :as qp.pivot]
+            [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.util :as qputil]
+            [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
-            [metabase.util
-             [i18n :refer [trs tru]]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [hydrate :refer [hydrate]]])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            java.util.UUID
            metabase.models.card.CardInstance))
@@ -156,16 +152,22 @@
       (case f
         :database (api/read-check Database model_id)
         :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
-    (->> (cards-for-filter-option f model_id)
-         ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
-         (filterv mi/can-read?))))
+    (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
+          last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
+      (into []
+            (map (fn [{:keys [id] :as card}]
+                   (if-let [edit-info (get last-edit-info id)]
+                     (assoc card :last-edit-info edit-info)
+                     card)))
+            cards))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
                (hydrate :creator :dashboard_count :can_write :collection)
-               api/read-check)
+               api/read-check
+               (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
@@ -193,15 +195,29 @@
       (qp.async/result-metadata-for-query-async query))))
 
 (defn check-data-permissions-for-query
-  "Check that we have *data* permissions to run the QUERY in question."
+  "Make sure the Current User has the appropriate *data* permissions to run `query`. We don't want Users saving Cards
+  with queries they wouldn't be allowed to run!"
   [query]
   {:pre [(map? query)]}
-  (api/check-403 (query-perms/can-run-query? query)))
+  (when-not (query-perms/can-run-query? query)
+    (let [required-perms (try
+                           (query-perms/perms-set query :throw-exceptions? true)
+                           (catch Throwable e
+                             e))]
+      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                      {:status-code    403
+                       :query          query
+                       :required-perms (if (instance? Throwable required-perms)
+                                         :error
+                                         required-perms)
+                       :actual-perms   @api/*current-user-permissions-set*}
+                      (when (instance? Throwable required-perms)
+                        required-perms))))))
 
 (defn- save-new-card-async!
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
   will cancel the save."
-  [card-data]
+  [card-data user]
   (async.u/cancelable-thread
     (let [card (db/transaction
                  ;; Adding a new card at `collection_position` could cause other cards in this
@@ -211,7 +227,9 @@
       (events/publish-event! :card-create card)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
       ;; currently has with returned one -- See #4283
-      (hydrate card :creator :dashboard_count :can_write :collection))))
+      (-> card
+          (hydrate :creator :dashboard_count :can_write :collection)
+          (assoc :last-edit-info (last-edit/edit-information-for-user user))))))
 
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
@@ -231,13 +249,12 @@
           (a/close! result-metadata-chan)
           ;; now do the actual saving on a separate thread so we don't tie up our precious core.async thread. Pipe the
           ;; result into `out-chan`.
-          (async.u/promise-pipe (save-new-card-async! card-data) out-chan))
+          (async.u/promise-pipe (save-new-card-async! card-data @api/*current-user*) out-chan))
         (catch Throwable e
           (a/put! out-chan e)
           (a/close! out-chan))))
     ;; Return a channel
     out-chan))
-
 
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
@@ -264,15 +281,9 @@
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates card-updates]
-  (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-    (check-data-permissions-for-query (:dataset_query card-updates))))
-
-(defn- check-allowed-to-unarchive
-  "When unarchiving a Card, make sure we have data permissions for the Card query before doing so."
-  [card-before-updates card-updates]
-  (when (and (api/column-will-change? :archived card-before-updates card-updates)
-             (:archived card-before-updates))
-    (check-data-permissions-for-query (:dataset_query card-before-updates))))
+  (let [card-updates (m/update-existing card-updates :dataset_query mbql.normalize/normalize)]
+    (when (api/column-will-change? :dataset_query card-before-updates card-updates)
+      (check-data-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -282,7 +293,6 @@
             (api/column-will-change? :embedding_params card-before-updates card-updates))
     (api/check-embedding-enabled)
     (api/check-superuser)))
-
 
 (defn- result-metadata-for-updating-async
   "If `card`'s query is being updated, return the value that should be saved for `result_metadata`. This *should* be
@@ -415,7 +425,9 @@
       (publish-card-update! card archived)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
       ;; has with returned one -- See #4142
-      (hydrate card :creator :dashboard_count :can_write :collection))))
+      (-> card
+          (hydrate :creator :dashboard_count :can_write :collection)
+          (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
@@ -438,7 +450,6 @@
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
     (check-allowed-to-modify-query                 card-before-update card-updates)
-    (check-allowed-to-unarchive                    card-before-update card-updates)
     (check-allowed-to-change-embedding             card-before-update card-updates)
     ;; make sure we have the correct `result_metadata`
     (let [result-metadata-chan (result-metadata-for-updating-async
@@ -514,7 +525,7 @@
             (api/reconcile-position-for-collection! collection_id collection_position nil)
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
-            (db/update! Card (u/get-id card)
+            (db/update! Card (u/the-id card)
               :collection_position idx
               :collection_id       new-collection-id-or-nil))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
@@ -554,7 +565,7 @@
         ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
-                                                 (u/get-id card)))]
+                                                 (u/the-id card)))]
           (db/update-where! Card {:id [:in (set cards-without-position)]}
             :collection_id new-collection-id-or-nil))))))
 
@@ -603,19 +614,23 @@
   be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
   not met before returning the `StreamingResponse`."
   [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware run]
+   & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
       :or   {constraints constraints/default-query-constraints
              context     :question
-             ;; param `run` can be used to control how the query is ran, e.g. if you need to
-             ;; customize the `context` passed to the QP
-             run         (^:once fn* [query info]
-                          (qp.streaming/streaming-response [context export-format]
-                            (qp/process-query-and-save-execution! query info context)))}}]
+             qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(u/maybe? sequential? parameters)]}
-  (let [card  (api/read-check (Card card-id))
+  (let [run   (or run
+                  ;; param `run` can be used to control how the query is ran, e.g. if you need to
+                  ;; customize the `context` passed to the QP
+                  (^:once fn* [query info]
+                   (qp.streaming/streaming-response [context export-format]
+                     (binding [qp.perms/*card-id* card-id]
+                       (qp-runner query info context)))))
+        card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)
                          :async? true)
-                  (assoc-in [:middleware :js-int-to-string?] true))
+                  (update :middleware merge {:js-int-to-string?      true
+                                             :ignore-cached-results? ignore_cache}))
         info  {:executed-by  api/*current-user-id*
                :context      context
                :card-id      card-id
@@ -627,8 +642,7 @@
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
-  (binding [cache/*ignore-cached-results* ignore_cache]
-    (run-query-for-card-async card-id :api, :parameters parameters)))
+  (run-query-for-card-async card-id :api, :parameters parameters, :ignore_cache ignore_cache))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format. Note that this
@@ -636,15 +650,15 @@
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
-  (binding [cache/*ignore-cached-results* true]
-    (run-query-for-card-async
-     card-id export-format
-     :parameters  (json/parse-string parameters keyword)
-     :constraints nil
-     :context     (dataset-api/export-format->context export-format)
-     :middleware  {:skip-results-metadata? true
-                   :format-rows?           false
-                   :js-int-to-string?      false})))
+  (run-query-for-card-async
+   card-id export-format
+   :parameters  (json/parse-string parameters keyword)
+   :constraints nil
+   :context     (dataset-api/export-format->context export-format)
+   :middleware  {:skip-results-metadata? true
+                 :ignore-cached-results? true
+                 :format-rows?           false
+                 :js-int-to-string?      false}))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
@@ -698,5 +712,15 @@
   "Return related entities for an ad-hoc query."
   [:as {query :body}]
   (related/related (query/adhoc-query query)))
+
+(api/defendpoint ^:streaming POST "/pivot/:card-id/query"
+  "Run the query associated with a Card."
+  [card-id :as {{:keys [parameters ignore_cache]
+                 :or   {ignore_cache false}} :body}]
+  {ignore_cache (s/maybe s/Bool)}
+  (run-query-for-card-async card-id :api
+                            :parameters parameters,
+                            :qp-runner qp.pivot/run-pivot-query
+                            :ignore_cache ignore_cache))
 
 (api/define-routes)

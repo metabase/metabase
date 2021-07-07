@@ -1,5 +1,5 @@
 import React from "react";
-import { shallow, mount } from "enzyme";
+import { render } from "@testing-library/react";
 
 import Question from "metabase-lib/lib/Question";
 import { delay } from "metabase/lib/promise";
@@ -30,18 +30,18 @@ describe("SavedQuestionLoader", () => {
     const q = Question.create({ databaseId: 1, tableId: 2 });
     jest.spyOn(CardApi, "get").mockReturnValue(q.card());
 
-    const wrapper = mount(
+    render(
       <SavedQuestionLoader
         questionId={questionId}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </SavedQuestionLoader>,
     );
     expect(mockChild.mock.calls[0][0].loading).toEqual(true);
     expect(mockChild.mock.calls[0][0].error).toEqual(null);
 
     // stuff happens asynchronously
-    wrapper.update();
     await delay(0);
 
     expect(loadQuestionSpy).toHaveBeenCalledWith(questionId);
@@ -57,18 +57,26 @@ describe("SavedQuestionLoader", () => {
     const originalQuestionId = 1;
     const newQuestionId = 2;
 
-    const wrapper = shallow(
+    const { rerender } = render(
       <SavedQuestionLoader
         questionId={originalQuestionId}
         loadMetadataForCard={loadMetadataSpy}
-        children={mockChild}
-      />,
+      >
+        {mockChild}
+      </SavedQuestionLoader>,
     );
 
     expect(loadQuestionSpy).toHaveBeenCalledWith(originalQuestionId);
 
     // update the question ID, a new question id param in the url would do this
-    wrapper.setProps({ questionId: newQuestionId });
+    rerender(
+      <SavedQuestionLoader
+        questionId={newQuestionId}
+        loadMetadataForCard={loadMetadataSpy}
+      >
+        {mockChild}
+      </SavedQuestionLoader>,
+    );
 
     // question loading should begin with the new ID
     expect(loadQuestionSpy).toHaveBeenCalledWith(newQuestionId);

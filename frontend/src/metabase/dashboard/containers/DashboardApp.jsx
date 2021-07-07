@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -33,12 +32,13 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as dashboardActions from "../dashboard";
 import { parseHashOptions } from "metabase/lib/browser";
+import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
 const mapStateToProps = (state, props) => {
   return {
-    dashboardId: props.dashboardId || props.params.dashboardId,
+    dashboardId: props.dashboardId || Urls.extractEntityId(props.params.slug),
 
     isAdmin: getUserIsAdmin(state, props),
     isEditing: getIsEditing(state, props),
@@ -85,7 +85,7 @@ export default class DashboardApp extends Component {
     addCardOnLoad: null,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const options = parseHashOptions(window.location.hash);
     if (options.add) {
       this.setState({ addCardOnLoad: parseInt(options.add) });

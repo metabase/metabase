@@ -1,5 +1,4 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
@@ -111,7 +110,6 @@ export class ExtendedOptionsPopover extends Component {
           <AddClauseButton
             text={t`Pick a field to sort by`}
             onClick={() => {
-              // $FlowFixMe: shouldn't be adding a sort with null field
               query.sort(["asc", null]).update(setDatasetQuery);
             }}
           />

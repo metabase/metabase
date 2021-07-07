@@ -5,9 +5,8 @@
             [metabase.api.common :as api]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -63,7 +62,6 @@
   (api/check-404 (GroupTableAccessPolicy id))
   (db/delete! GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
-
 
 (defn- +check-sandboxes-enabled
   "Wrap the Ring handler to make sure sandboxes are enabled before allowing access to the API endpoints."

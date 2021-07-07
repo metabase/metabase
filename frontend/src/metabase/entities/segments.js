@@ -1,5 +1,3 @@
-/* @flow */
-
 import { createEntity } from "metabase/lib/entities";
 
 import { SegmentSchema } from "metabase/schema";
@@ -22,7 +20,6 @@ const Segments = createEntity({
     ) => Segments.actions.update({ id }, { archived, revision_message }),
 
     // NOTE: DELETE not currently implemented
-    // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
   },
 

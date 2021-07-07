@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 const Props = ({ of }) => {
@@ -13,7 +14,7 @@ const Props = ({ of }) => {
       <tbody>
         {Object.keys(component.propTypes).map(prop => {
           return (
-            <tr>
+            <tr key={prop}>
               <td>{prop}</td>
               <td></td>
               <td>

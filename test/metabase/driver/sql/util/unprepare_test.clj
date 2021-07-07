@@ -1,7 +1,6 @@
 (ns metabase.driver.sql.util.unprepare-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql.util.unprepare :as unprepare]

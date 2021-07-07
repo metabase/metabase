@@ -2,6 +2,7 @@
 
 import d3 from "d3";
 import moment from "moment";
+import { getIn } from "icepick";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -23,7 +24,7 @@ export function getClickHoverObject(
     settings,
   },
 ) {
-  let { cols } = series[0].data;
+  let { cols } = series[seriesIndex].data;
   const { card } = series[seriesIndex];
 
   const isMultiseries = series.length > 1;
@@ -31,14 +32,14 @@ export function getClickHoverObject(
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
 
-  // always format the second column as the series name?
   function getColumnDisplayName(col) {
+    const title = getIn(settings, ["series_settings", col.name, "title"]);
     // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
-    if (col === cols[1] && !isBreakoutMultiseries && seriesTitle) {
-      return seriesTitle;
-    } else {
-      return getFriendlyName(col);
+    if (!isBreakoutMultiseries && title) {
+      return title;
     }
+
+    return getFriendlyName(col);
   }
 
   let data = [];
@@ -83,16 +84,23 @@ export function getClickHoverObject(
     const { key } = d.data;
 
     // We look through the rows to match up they key in d.data to the x value
-    // from some row.
-    const row = datas[seriesIndex].find(
+    // from some rows. There might be multiple rows in case of unaggregated data.
+    const rows = datas[seriesIndex].filter(
       ([x]) => key === x || (moment.isMoment(key) && key.isSame(x)),
     );
 
-    // try to get row from _origin but fall back to the row we already have
-    const rawRow = (row && row._origin && row._origin.row) || row;
+    // try to get rows from _origin
+    const rawRows = rows
+      .map(row => {
+        return row._origin && row._origin.row;
+      })
+      .filter(Boolean);
+
+    // aggregate rows to show correct values from unaggregated data
+    const aggregatedRow = aggregateRows(rawRows.length > 0 ? rawRows : rows);
 
     // Loop over *all* of the columns and create the new array
-    if (rawRow) {
+    if (aggregatedRow) {
       data = rawCols.map((col, i) => {
         if (isNormalized && cols[1].field_ref === col.field_ref) {
           return {
@@ -107,11 +115,14 @@ export function getClickHoverObject(
         }
         return {
           key: getColumnDisplayName(col),
-          value: formatNull(rawRow[i]),
+          value: formatNull(aggregatedRow[i]),
           col: col,
         };
       });
-      dimensions = rawCols.map((column, i) => ({ column, value: rawRow[i] }));
+      dimensions = rawCols.map((column, i) => ({
+        column,
+        value: aggregatedRow[i],
+      }));
     }
   } else if (isBreakoutMultiseries) {
     // an area doesn't have any data, but might have a breakout series to show
@@ -174,6 +185,7 @@ export function getClickHoverObject(
     value,
     column,
     settings,
+    seriesIndex,
   };
 }
 
@@ -186,6 +198,27 @@ function parseBooleanStringValue({ column, value }) {
     }
   }
   return value;
+}
+
+function aggregateRows(rows) {
+  if (!rows.length) {
+    return null;
+  }
+
+  const aggregatedRow = [...rows[0]];
+
+  for (let i = 1; i < rows.length; i++) {
+    // The first element is the X-axis value and should not be aggregated
+    for (let colIndex = 1; colIndex < rows[i].length; colIndex++) {
+      const value = rows[i][colIndex];
+
+      if (typeof value === "number") {
+        aggregatedRow[colIndex] += value;
+      }
+    }
+  }
+
+  return aggregatedRow;
 }
 
 export function setupTooltips(

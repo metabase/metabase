@@ -40,3 +40,12 @@
     (println (colorize/red (str "Step failed: " (.getMessage e))))
     (binding [pprint/*print-right-margin* 120]
       (pprint/pprint e-map))))
+
+(defn format-bytes
+  "Nicely format `num-bytes` in a human-readable way (e.g. KB/MB/etc.)"
+  [num-bytes]
+  (loop [n num-bytes [suffix & more] ["B" "KB" "MB" "GB"]]
+    (if (and (seq more)
+             (>= n 1024))
+      (recur (/ n 1024.0) more)
+      (format "%.1f %s" n suffix))))

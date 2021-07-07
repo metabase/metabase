@@ -1,13 +1,11 @@
 (ns metabase-enterprise.audit.pages.user-detail
   (:require [honeysql.core :as hsql]
             [metabase-enterprise.audit.pages.common :as common]
-            [metabase-enterprise.audit.pages.common
-             [cards :as cards]
-             [dashboards :as dashboards]]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [schema :as su]
-             [urls :as urls]]
+            [metabase-enterprise.audit.pages.common.cards :as cards]
+            [metabase-enterprise.audit.pages.common.dashboards :as dashboards]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.schema :as su]
+            [metabase.util.urls :as urls]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 

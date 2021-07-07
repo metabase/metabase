@@ -2,15 +2,13 @@
   "Logic responsible for doing deep 'analysis' of the data inside a database.
    This is significantly more expensive than the basic sync-metadata step, and involves things
    like running MBQL queries and fetching values to do things like determine Table row counts
-   and infer field special types."
+   and infer field semantic types."
   (:require [clojure.tools.logging :as log]
             [metabase.models.field :refer [Field]]
-            [metabase.sync
-             [interface :as i]
-             [util :as sync-util]]
-            [metabase.sync.analyze
-             [classify :as classify]
-             [fingerprint :as fingerprint]]
+            [metabase.sync.analyze.classify :as classify]
+            [metabase.sync.analyze.fingerprint :as fingerprint]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]
@@ -40,7 +38,7 @@
 ;; 3.  CLASSIFICATION
 ;;
 ;;     All Fields that have the latest fingerprint version but a `nil` `last_analyzed` time need to be re-classified.
-;;     Classification takes place for these Fields and special types and the like are updated as needed.
+;;     Classification takes place for these Fields and semantic types and the like are updated as needed.
 ;;
 ;; 4.  MARKING FIELDS AS RECENTLY ANALYZED
 ;;
@@ -56,7 +54,7 @@
 
 (s/defn ^:private update-last-analyzed!
   [tables :- [i/TableInstance]]
-  (when-let [ids (seq (map u/get-id tables))]
+  (when-let [ids (seq (map u/the-id tables))]
     ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
     (db/update-where! Field {:table_id            [:in ids]
                              :fingerprint_version i/latest-fingerprint-version

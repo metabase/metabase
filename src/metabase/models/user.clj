@@ -1,26 +1,21 @@
 (ns metabase.models.user
   (:require [cemerick.friend.credentials :as creds]
-            [clojure
-             [data :as data]
-             [string :as str]]
+            [clojure.data :as data]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.models
-             [collection :as collection]
-             [permissions :as perms]
-             [permissions-group :as group]
-             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
-             [session :refer [Session]]]
+            [metabase.models.collection :as collection]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.session :refer [Session]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util
-             [i18n :as i18n :refer [deferred-tru trs]]
-             [schema :as su]]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
+            [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan
-             [db :as db]
-             [models :as models]])
+            [toucan.db :as db]
+            [toucan.models :as models])
   (:import java.util.UUID))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -80,7 +75,7 @@
         (and is_superuser
              (not membership-exists?))
         (db/insert! PermissionsGroupMembership
-          :group_id (u/get-id (group/admin))
+          :group_id (u/the-id (group/admin))
           :user_id  id)
 
         ;; don't use `delete!` here because that does the opposite and tries to update this user
@@ -89,7 +84,7 @@
         (and (not is_superuser)
              membership-exists?)
         (db/simple-delete! PermissionsGroupMembership
-          :group_id (u/get-id (group/admin))
+          :group_id (u/the-id (group/admin))
           :user_id  id))))
   (when email
     (assert (u/email? email)))
@@ -123,7 +118,7 @@
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
   other Users at all? I honestly would prefer they couldn't, but we need to give them a list of emails to power
   Pulses."
-  [:id :email :first_name :last_name])
+  [:core_user.id :email :first_name :last_name])
 
 (u/strict-extend (class User)
   models/IModel
@@ -141,7 +136,7 @@
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
   (when user-or-id
-    (db/select-field :group_id PermissionsGroupMembership :user_id (u/get-id user-or-id))))
+    (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
 
 (defn add-group-ids
   "Efficiently add PermissionsGroup `group_ids` to a collection of `users`."
@@ -149,9 +144,9 @@
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id :group_id]
-                                                    :user_id [:in (set (map u/get-id users))]))]
+                                                    :user_id [:in (set (map u/the-id users))]))]
       (for [user users]
-        (assoc user :group_ids (set (map :group_id (user-id->memberships (u/get-id user)))))))))
+        (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
@@ -159,7 +154,7 @@
 (declare form-password-reset-url set-password-reset-token!)
 
 (defn- send-welcome-email! [new-user invitor]
-  (let [reset-token (set-password-reset-token! (u/get-id new-user))
+  (let [reset-token (set-password-reset-token! (u/the-id new-user))
         ;; the new user join url is just a password reset with an indicator that this is a first time user
         join-url    (str (form-password-reset-url reset-token) "#new")]
     (classloader/require 'metabase.email.messages)
@@ -251,9 +246,9 @@
   "Set the user's group memberships to equal the supplied group IDs. Returns `true` if updates were made, `nil`
   otherwise."
   [user-or-id new-groups-or-ids]
-  (let [user-id            (u/get-id user-or-id)
+  (let [user-id            (u/the-id user-or-id)
         old-group-ids      (group-ids user-id)
-        new-group-ids      (set (map u/get-id new-groups-or-ids))
+        new-group-ids      (set (map u/the-id new-groups-or-ids))
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (db/transaction
@@ -272,7 +267,7 @@
 (defn permissions-set
   "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"
   [user-or-id]
-  (set (when-let [user-id (u/get-id user-or-id)]
+  (set (when-let [user-id (u/the-id user-or-id)]
          (concat
           ;; Current User always gets readwrite perms for their Personal Collection and for its descendants! (1 DB Call)
           (map perms/collection-readwrite-path (collection/user->personal-collection-and-descendant-ids user-or-id))

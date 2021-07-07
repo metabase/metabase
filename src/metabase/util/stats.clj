@@ -5,17 +5,15 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
-            [metabase
-             [config :as config]
-             [driver :as driver]
-             [email :as email]
-             [models :refer [Card Collection Dashboard DashboardCard Database Field Metric PermissionsGroup Pulse
-                             PulseCard PulseChannel QueryCache QueryExecution Segment Table User]]
-             [public-settings :as public-settings]
-             [util :as u]]
-            [metabase.api.session :as session-api]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.email :as email]
+            [metabase.integrations.google :as google]
             [metabase.integrations.slack :as slack]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric PermissionsGroup Pulse PulseCard PulseChannel QueryCache QueryExecution Segment Table User]]
             [metabase.models.humanization :as humanization]
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -116,10 +114,11 @@
    :check_for_updates    (public-settings/check-for-updates)
    :site_name            (not= (public-settings/site-name) "Metabase")
    :report_timezone      (driver/report-timezone)
+   ; We deprecated advanced humanization but have this here anyways
    :friendly_names       (= (humanization/humanization-strategy) "advanced")
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
-   :sso_configured       (boolean (session-api/google-auth-client-id))
+   :sso_configured       (boolean (google/google-auth-client-id))
    :instance_started     (instance-start-date)
    :has_sample_data      (db/exists? Database, :is_sample true)})
 

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 import Humanize from "humanize-plus";
@@ -16,7 +17,7 @@ export default class ExpandableString extends Component {
     length: 140,
   };
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (newProps.expanded !== undefined) {
       this.setState({
         expanded: newProps.expanded,

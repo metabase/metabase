@@ -6,23 +6,37 @@
             [release.common :as c]
             [release.common.github :as github]))
 
-(defn- version-info-url []
+(defn- version-info-filename []
   (case (c/edition)
-    :ce "static.metabase.com/version-info.json"
+    :oss "version-info.json"
+    :ee  "version-info-ee.json"
     nil))
 
-(def ^:private tmp-version-info-filename
-  "/tmp/version-info.json")
+(defn- version-info-url
+  "The base name of the version-info.json file, which includes an -ee suffix for :ee edition."
+  []
+  (format "static.metabase.com/%s" (version-info-filename)))
+
+(defn- tmp-version-info-filename
+  "The name of the temp file to create for generating the current version info file."
+  []
+  (format "/tmp/%s" (version-info-filename)))
 
 (defn- current-version-info
-  "Fetch the current version of `version-info.json`."
+  "Fetch the current version of the version info file via HTTP."
   []
-  (-> (http/get (str "http://" (version-info-url)))
-      :body
-      (json/parse-string true)))
+  (u/step "Fetch existing version info file"
+    (let [{:keys [status body], :as response} (http/get (str "http://" (version-info-url)))]
+      (when (>= status 400)
+        (throw (ex-info (format "Error fetching version info: status code %d" status)
+                        (try
+                          {:body (json/parse-string body true)}
+                          (catch Throwable _
+                            {:body body})))))
+      (json/parse-string body true))))
 
 (defn- info-for-new-version
-  "The info map for the version we're currently releasing to add to `version-info.json`."
+  "The info map for the version we're currently releasing to add to the version info file."
   []
   {:version    (str "v" (c/version))
    :released   (str (java.time.LocalDate/now))
@@ -31,54 +45,45 @@
    :highlights (mapv :title (github/milestone-issues))})
 
 (defn- generate-version-info! []
-  (u/step "Generate version-info.json"
-    (u/step (format "Generate %s" tmp-version-info-filename)
-      (u/delete-file-if-exists! tmp-version-info-filename)
-      (let [{:keys [latest], :as info} (current-version-info)]
-        (spit tmp-version-info-filename (-> info
-                                            ;; move the current `:latest` to the beginning of `:older`
-                                            (update :older (fn [older]
-                                                             (cons latest older)))
-                                            (assoc :latest (info-for-new-version))
-                                            json/generate-string))))))
+  (let [filename (version-info-filename)
+        tmpname  (tmp-version-info-filename)]
+    (u/step (format "Generate %s" filename)
+      (u/step (format "Delete and create %s" tmpname)
+        (u/delete-file-if-exists! tmpname)
+        (let [{:keys [latest], :as info} (current-version-info)]
+          (spit tmpname (-> info
+                            ;; move the current `:latest` to the beginning of `:older`
+                            (update :older (fn [older]
+                                             (distinct (cons latest older))))
+                            (assoc :latest (info-for-new-version))
+                            json/generate-string)))))))
 
 (defn- upload-version-info! []
   (u/step "Upload version info"
     (u/s3-copy! (format "s3://%s" (version-info-url)) (format "s3://%s.previous" (version-info-url)))
-    (u/s3-copy! (u/assert-file-exists tmp-version-info-filename) (format "s3://%s" (version-info-url)))))
+    (u/s3-copy! (u/assert-file-exists (tmp-version-info-filename)) (format "s3://%s" (version-info-url)))))
 
 (defn- validate-version-info []
   (u/step (format "Validate version info at %s" (version-info-url))
-    (let [info           (u/step "Fetch version info"
-                           (let [{:keys [status body], :as response} (http/get (str "http://" (version-info-url)))]
-                             (when (>= status 400)
-                               (throw (ex-info (format "Error fetching version info: status code %d" status)
-                                               (try
-                                                 {:body (json/parse-string body true)}
-                                                 (catch Throwable _
-                                                   {:body body})))))
-                             (json/parse-string body true)))
+    (let [info           (current-version-info)
           latest-version (-> info :latest :version)]
       (u/announce "Latest version from %s is %s" (version-info-url) latest-version)
       (when-not (= latest-version (str "v" (c/version)))
         (throw (ex-info "Latest version is %s; expected %s" latest-version (str "v" (c/version))
                         {:version-info info})))
-      (u/announce "version-info.json is valid."))))
+      (u/announce (format "%s is valid." (version-info-filename))))))
 
 (defn- update-version-info!* []
   (generate-version-info!)
   (upload-version-info!)
   (validate-version-info)
-  (u/announce "version-info.json updated."))
+  (u/announce (format "%s updated." (version-info-filename))))
 
 (defn update-version-info! []
-  (u/step "Update version-info.json"
+  (u/step (format "Update %s" (version-info-filename))
     (cond
       (c/pre-release-version?)
       (u/announce "Pre-release version, not updating version-info.json")
-
-      (= (c/edition) :ee)
-      (u/announce "Enterprise Edition release, not updating version-info.json")
 
       (not (c/latest-version?))
       (u/announce "Not the latest version, not updating version-info.json")

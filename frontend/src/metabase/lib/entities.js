@@ -1,5 +1,3 @@
-/* @flow */
-
 import {
   combineReducers,
   handleEntities,
@@ -185,7 +183,6 @@ export type Entity = {
 };
 
 export function createEntity(def: EntityDefinition): Entity {
-  // $FlowFixMe
   const entity: Entity = { ...def };
 
   if (!entity.nameOne) {
@@ -353,7 +350,6 @@ export function createEntity(def: EntityDefinition): Entity {
         if (notify) {
           if (notify.undo) {
             // pick only the attributes that were updated
-            // $FlowFixMe
             const undoObject = _.pick(
               originalObject,
               ...Object.keys(updatedObject || {}),
@@ -409,12 +405,24 @@ export function createEntity(def: EntityDefinition): Entity {
       // for now at least paginated endpoints have a 'data' property that
       // contains the actual entries, if that is on the response we should
       // use that as the 'results'
-      const results = fetched.data ? fetched.data : fetched;
+
+      let results;
+      let metadata = {};
+
+      if (fetched.data) {
+        const { data, ...rest } = fetched;
+        results = data;
+        metadata = rest;
+      } else {
+        results = fetched;
+      }
+
       if (!Array.isArray(results)) {
         throw `Invalid response listing ${entity.name}`;
       }
       return {
         ...entity.normalizeList(results),
+        metadata,
         entityQuery,
       };
     }),
@@ -481,9 +489,19 @@ export function createEntity(def: EntityDefinition): Entity {
     entities => entities[`${entity.name}_list`],
   );
 
-  const getEntityIds = createSelector(
+  const getEntityList = createSelector(
     [getEntityQueryId, getEntityLists],
     (entityQueryId, lists) => lists[entityQueryId],
+  );
+
+  const getEntityIds = createSelector(
+    [getEntityList],
+    entities => entities && entities.list,
+  );
+
+  const getListMetadata = createSelector(
+    [getEntityList],
+    entities => entities && entities.metadata,
   );
 
   const getList = createSelector(
@@ -540,6 +558,7 @@ export function createEntity(def: EntityDefinition): Entity {
     getLoading,
     getLoaded,
     getError,
+    getListMetadata,
   };
   entity.selectors = {
     ...defaultSelectors,
@@ -556,6 +575,9 @@ export function createEntity(def: EntityDefinition): Entity {
     },
     getColor(object) {
       return undefined;
+    },
+    getCollection(object) {
+      return object.collection;
     },
     ...(def.objectSelectors || {}),
   };
@@ -579,9 +601,13 @@ export function createEntity(def: EntityDefinition): Entity {
     }
     if (type === FETCH_LIST_ACTION) {
       if (payload && payload.result) {
+        const { entityQuery, metadata, result: list } = payload;
         return {
           ...state,
-          [getIdForQuery(payload.entityQuery)]: payload.result,
+          [getIdForQuery(entityQuery)]: {
+            list,
+            metadata,
+          },
         };
       }
       // NOTE: only add/remove from the "default" list (no entityQuery)
@@ -644,9 +670,7 @@ export function createEntity(def: EntityDefinition): Entity {
     // object selectors
     for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
       if (method) {
-        // $FlowFixMe
         EntityWrapper.prototype[methodName] = function(...args) {
-          // $FlowFixMe
           return method(this, ...args);
         };
       }
@@ -654,15 +678,12 @@ export function createEntity(def: EntityDefinition): Entity {
     // object actions
     for (const [methodName, method] of Object.entries(entity.objectActions)) {
       if (method) {
-        // $FlowFixMe
         EntityWrapper.prototype[methodName] = function(...args) {
           if (this._dispatch) {
             // if dispatch was provided to the constructor go ahead and dispatch
-            // $FlowFixMe
             return this._dispatch(method(this, ...args));
           } else {
             // otherwise just return the action
-            // $FlowFixMe
             return method(this, ...args);
           }
         };

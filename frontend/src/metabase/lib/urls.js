@@ -1,6 +1,12 @@
+import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
+
+function appendSlug(path, slug) {
+  return slug ? `${path}-${slug}` : path;
+}
 
 // provides functions for building urls to things we care about
 
@@ -18,7 +24,7 @@ export const newPulse = () => `/pulse/create`;
 export const newCollection = collectionId =>
   `collection/${collectionId}/new_collection`;
 
-export function question(cardId, hash = "", query = "") {
+export function question(card, hash = "", query = "") {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
   }
@@ -33,10 +39,18 @@ export function question(cardId, hash = "", query = "") {
   if (query && query.charAt(0) !== "?") {
     query = "?" + query;
   }
-  // NOTE that this is for an ephemeral card link, not an editable card
-  return cardId != null
-    ? `/question/${cardId}${query}${hash}`
-    : `/question${query}${hash}`;
+  if (!card || !card.id) {
+    return `/question${query}${hash}`;
+  }
+  if (!card.name) {
+    return `/question/${card.id}${query}${hash}`;
+  }
+  const path = appendSlug(`/question/${card.id}`, slugg(card.name));
+  return `${path}${query}${hash}`;
+}
+
+export function serializedQuestion(card) {
+  return question(null, card);
 }
 
 export const extractQueryParams = (query: Object): Array => {
@@ -60,22 +74,33 @@ export function newQuestion({ mode, ...options } = {}) {
   }
 }
 
-export function dashboard(dashboardId, { addCardWithId } = {}) {
+export function dashboard(dashboard, { addCardWithId } = {}) {
+  const path = appendSlug(dashboard.id, slugg(dashboard.name));
   return addCardWithId != null
     ? // NOTE: no-color-literals rule thinks #add is a color, oops
       // eslint-disable-next-line no-color-literals
-      `/dashboard/${dashboardId}#add=${addCardWithId}`
-    : `/dashboard/${dashboardId}`;
+      `/dashboard/${path}#add=${addCardWithId}`
+    : `/dashboard/${path}`;
 }
 
-export function modelToUrl(model, modelId) {
-  switch (model) {
+function prepareModel(item) {
+  if (item.model_object) {
+    return item.model_object;
+  }
+  return {
+    id: item.model_id,
+    ...item.details,
+  };
+}
+
+export function modelToUrl(item) {
+  switch (item.model) {
     case "card":
-      return question(modelId);
+      return question(prepareModel(item));
     case "dashboard":
-      return dashboard(modelId);
+      return dashboard(prepareModel(item));
     case "pulse":
-      return pulse(modelId);
+      return pulse(item.model_id);
     default:
       return null;
   }
@@ -103,12 +128,45 @@ export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
   return question(null, query);
 }
 
-export function collection(collectionId) {
-  return `/collection/${collectionId || "root"}`;
+function slugifyPersonalCollection(collection) {
+  // Current user's personal collection name is replaced with "Your personal collection"
+  // `originalName` keeps the original name like "John Doe's Personal Collection"
+  const name = collection.originalName || collection.name;
+
+  // Will keep single quote characters,
+  // so "John's" can be converted to `john-s` instead of `johns`
+  let slug = slugg(name, {
+    toStrip: /["”“]/g,
+  });
+
+  // If can't build a slug out of user's name (e.g. if it contains only emojis)
+  // removes the "s-" part of a slug
+  if (slug === "s-personal-collection") {
+    slug = slug.replace("s-", "");
+  }
+
+  return slug;
 }
 
-export function collectionPermissions(collectionId) {
-  return `/collection/${collectionId || "root"}/permissions`;
+export function collection(collection) {
+  const isSystemCollection =
+    !collection || collection.id === null || typeof collection.id === "string";
+
+  if (isSystemCollection) {
+    const id = collection && collection.id ? collection.id : "root";
+    return `/collection/${id}`;
+  }
+
+  const isPersonalCollection = typeof collection.personal_owner_id === "number";
+  const slug = isPersonalCollection
+    ? slugifyPersonalCollection(collection)
+    : slugg(collection.name);
+
+  return appendSlug(`/collection/${collection.id}`, slug);
+}
+
+export function isCollectionPath(path) {
+  return /collection\/.*/.test(path);
 }
 
 export function label(label) {
@@ -133,10 +191,6 @@ export function embedCard(token, type = null) {
 export function embedDashboard(token) {
   const siteUrl = MetabaseSettings.get("site-url");
   return `${siteUrl}/embed/dashboard/${token}`;
-}
-
-export function userCollection(userCollectionId) {
-  return `/collection/${userCollectionId}/`;
 }
 
 export function accountSettings() {
@@ -168,7 +222,12 @@ export function reactivateUser(userId) {
 }
 
 export function browseDatabase(database) {
-  return `/browse/${database.id}`;
+  const name =
+    database.id === SAVED_QUESTIONS_VIRTUAL_DB_ID
+      ? "Saved Questions"
+      : database.name;
+
+  return appendSlug(`/browse/${database.id}`, slugg(name));
 }
 
 export function browseSchema(table) {
@@ -177,4 +236,16 @@ export function browseSchema(table) {
 
 export function browseTable(table) {
   return `/browse/${table.db.id}/schema/${table.schema_name}`;
+}
+
+export function extractEntityId(slug) {
+  const id = parseInt(slug, 10);
+  return Number.isSafeInteger(id) ? id : undefined;
+}
+
+export function extractCollectionId(slug) {
+  if (slug === "root" || slug === "users") {
+    return slug;
+  }
+  return extractEntityId(slug);
 }

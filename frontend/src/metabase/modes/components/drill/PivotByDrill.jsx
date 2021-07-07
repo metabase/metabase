@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 import { jt } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
@@ -28,9 +26,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
   // Click target types: metric value
   if (
     clicked &&
-    (clicked.value === undefined ||
-      // $FlowFixMe
-      clicked.column.source !== "aggregation")
+    (clicked.value === undefined || clicked.column.source !== "aggregation")
   ) {
     return [];
   }

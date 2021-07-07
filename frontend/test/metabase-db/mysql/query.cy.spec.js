@@ -1,22 +1,16 @@
-import {
-  signInAsAdmin,
-  restore,
-  modal,
-  signInAsNormalUser,
-  addMySQLDatabase,
-} from "__support__/cypress";
+import { restore, modal, addMySQLDatabase } from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
 describe("mysql > user > query", () => {
   before(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addMySQLDatabase(MYSQL_DB_NAME);
   });
 
   beforeEach(() => {
-    signInAsNormalUser();
+    cy.signInAsNormalUser();
   });
 
   it("can query a MySQL database as a user", () => {
@@ -91,6 +85,6 @@ describe("mysql > user > query", () => {
     cy.findByText("Not now").click();
 
     cy.contains("Save").should("not.exist");
-    cy.url().should("match", /\/question\/\d+$/);
+    cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
   });
 });

@@ -3,14 +3,12 @@
             [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
             [java-time :as t]
-            [metabase
-             [models :refer [Database]]
-             [util :as u]]
             [metabase.driver.googleanalytics.metadata :as metadata]
+            [metabase.models :refer [Database]]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.date-2
-             [common :as u.date.common]
-             [parse :as u.date.parse]]
+            [metabase.util.date-2.common :as u.date.common]
+            [metabase.util.date-2.parse :as u.date.parse]
             [metabase.util.date-2.parse.builder :as u.date.builder])
   (:import [com.google.api.services.analytics.model Column GaData GaData$ColumnHeaders]
            java.time.DayOfWeek
@@ -21,7 +19,7 @@
   (some (fn [^Column column]
           (when (= (.getId column) (name column-name))
             column))
-        (metadata/columns (Database (u/get-id database-or-id)) {:status "PUBLIC"})))
+        (metadata/columns (Database (u/the-id database-or-id)) {:status "PUBLIC"})))
 
 (defn- column-metadata [database-id column-name]
   (when-let [ga-column (column-with-name database-id column-name)]
@@ -41,7 +39,10 @@
   (memoize column-metadata))
 
 (defn- add-col-metadata [{database-id :database} col]
-  (merge col (memoized-column-metadata (u/get-id database-id) (:name col))))
+  (let [{:keys [base_type] :as metadata} (merge col (memoized-column-metadata (u/the-id database-id) (:name col)))]
+    (cond-> metadata
+      (and base_type (not (:effective_type metadata)))
+      (assoc :effective_type base_type))))
 
 (def ^:const ga-type->base-type
   "Map of Google Analytics field types to Metabase types."

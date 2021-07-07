@@ -1,5 +1,3 @@
-/* @flow */
-
 import React from "react";
 
 import Icon from "metabase/components/Icon";
@@ -17,6 +15,7 @@ const EmbedSelect = ({ className, value, onChange, options }: Props) => (
   <div className={cx(className, "flex")}>
     {options.map(option => (
       <div
+        key={option.value}
         className={cx(
           "flex-full flex layout-centered mx1 p1 border-bottom border-medium",
           {

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
@@ -13,6 +14,7 @@ import { getDashboardComplete } from "../selectors";
 const mapStateToProps = (state, props) => ({
   dashboard: getDashboardComplete(state, props),
 });
+
 const mapDispatchToProps = { setDashboardAttributes };
 
 @withRouter
@@ -39,8 +41,9 @@ class DashboardDetailsModal extends React.Component {
           // hack: dashboards are stored both in entities.dashboards and dashboard.dashboards
           // calling setDashboardAttributes sync this change made using the entity form into dashboard.dashboards
           setDashboardAttributes({ id, attributes });
-          onChangeLocation(Urls.dashboard(id));
+          onChangeLocation(Urls.dashboard(dashboard));
         }}
+        overwriteOnInitialValuesChange
         {...props}
       />
     );

@@ -1,23 +1,20 @@
 (ns metabase.sync.sync-metadata.metabase-metadata
   "Logic for syncing the special `_metabase_metadata` table, which is a way for datasets such as the Sample Dataset to
-  specific properties such as special types that should be applied during sync.
+  specific properties such as semantic types that should be applied during sync.
 
   Currently, this is only used by the Sample Dataset, but theoretically in the future we could add additional sample
   datasets and preconfigure them by populating this Table; or 3rd-party applications or users can add this table to
   their database for an enhanced Metabase experience out-of-the box."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
-            [metabase.sync
-             [fetch-metadata :as fetch-metadata]
-             [interface :as i]
-             [util :as sync-util]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync.fetch-metadata :as fetch-metadata]
+            [metabase.sync.interface :as i]
+            [metabase.sync.util :as sync-util]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -48,7 +45,7 @@
      ;; fetch the corresponding Table, then set the Table or Field property
      (when-let [table-id (db/select-one-id Table
                            ;; TODO: this needs to support schemas
-                           :db_id  (u/get-id database)
+                           :db_id  (u/the-id database)
                            :name   table-name
                            :active true)]
        (if field-name

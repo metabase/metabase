@@ -2,17 +2,14 @@
   "Non-identifying fingerprinters for various field types."
   (:require [bigml.histogram.core :as hist]
             [java-time :as t]
-            [kixi.stats
-             [core :as stats]
-             [math :as math]]
+            [kixi.stats.core :as stats]
+            [kixi.stats.math :as math]
             [medley.core :as m]
-            [metabase.models.field :as field]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [deferred-trs trs]]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [deferred-trs trs]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
@@ -98,15 +95,24 @@
 (defmulti fingerprinter
   "Return a fingerprinter transducer for a given field based on the field's type."
   {:arglists '([field])}
-  (fn [{:keys [base_type special_type unit] :as field}]
+  (fn [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [unit], :as field}]
     [(cond
-       (u.date/extract-units unit)     :type/Integer
-       (field/unix-timestamp? field)   :type/DateTime
+       (u.date/extract-units unit)
+       :type/Integer
+
        ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
        ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
-       (isa? base_type :type/Temporal) :type/DateTime
-       :else                           base_type)
-     (or special_type :type/*)]))
+       (isa? (or effective-type base-type) :type/Temporal)
+       :type/DateTime
+
+       :else
+       base-type)
+     (if (isa? semantic-type :Semantic/*)
+       semantic-type
+       :Semantic/*)
+     (if (isa? semantic-type :Relation/*)
+       semantic-type
+       :Relation/*)]))
 
 (def ^:private global-fingerprinter
   (redux/post-complete
@@ -118,20 +124,20 @@
   [_]
   global-fingerprinter)
 
-(defmethod fingerprinter [:type/* :type/FK]
+(defmethod fingerprinter [:type/* :Semantic/* :type/FK]
   [_]
   global-fingerprinter)
 
-(defmethod fingerprinter [:type/* :type/PK]
+(defmethod fingerprinter [:type/* :Semantic/* :type/PK]
   [_]
   (constant-fingerprinter nil))
 
-(prefer-method fingerprinter [:type/* :type/FK] [:type/Number :type/*])
-(prefer-method fingerprinter [:type/* :type/FK] [:type/Text :type/*])
-(prefer-method fingerprinter [:type/* :type/PK] [:type/Number :type/*])
-(prefer-method fingerprinter [:type/* :type/PK] [:type/Text :type/*])
-(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/PK])
-(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/FK])
+(prefer-method fingerprinter [:type/*        :Semantic/* :type/FK]    [:type/Number :Semantic/* :Relation/*])
+(prefer-method fingerprinter [:type/*        :Semantic/* :type/FK]    [:type/Text   :Semantic/* :Relation/*])
+(prefer-method fingerprinter [:type/*        :Semantic/* :type/PK]    [:type/Number :Semantic/* :Relation/*])
+(prefer-method fingerprinter [:type/*        :Semantic/* :type/PK]    [:type/Text   :Semantic/* :Relation/*])
+(prefer-method fingerprinter [:type/DateTime :Semantic/* :Relation/*] [:type/*      :Semantic/* :type/PK])
+(prefer-method fingerprinter [:type/DateTime :Semantic/* :Relation/*] [:type/*      :Semantic/* :type/FK])
 
 (defn- with-global-fingerprinter
   [fingerprinter]
@@ -145,9 +151,8 @@
 
 (defmacro ^:private deffingerprinter
   [field-type transducer]
-  (let [field-type (if (vector? field-type)
-                     field-type
-                     [field-type :type/*])]
+  {:pre [(keyword? field-type)]}
+  (let [field-type [field-type :Semantic/* :Relation/*]]
     `(defmethod fingerprinter ~field-type
        [field#]
        (with-error-handling
@@ -190,7 +195,8 @@
   Integer  (->temporal [this] (->temporal (t/instant this)))
   ChronoLocalDateTime (->temporal [this] (.toInstant this (ZoneOffset/UTC)))
   ChronoZonedDateTime (->temporal [this] (.toInstant this))
-  Temporal (->temporal [this] this))
+  Temporal (->temporal [this] this)
+  java.util.Date (->temporal [this] (t/instant this)))
 
 (deffingerprinter :type/DateTime
   ((map ->temporal)
@@ -256,5 +262,5 @@
                     (fingerprinter
                      (cond-> field
                        ;; Try to get a better guestimate of what we're dealing with on first sync
-                       (every? nil? ((juxt :special_type :last_analyzed) field))
-                       (assoc :special_type (classify.name/infer-special-type field)))))))
+                       (every? nil? ((juxt :semantic_type :last_analyzed) field))
+                       (assoc :semantic_type (classify.name/infer-semantic-type field)))))))

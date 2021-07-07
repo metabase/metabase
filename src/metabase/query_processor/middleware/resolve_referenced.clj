@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.resolve-referenced
   (:require [metabase.models.card :refer [Card]]
-            [metabase.query-processor.middleware
-             [resolve-fields :as qp.resolve-fields]
-             [resolve-source-table :as qp.resolve-tables]]
-            [metabase.util.i18n :refer [deferred-tru]]
+            [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
+            [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-tables]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]
             [weavejester.dependency :as dep])
@@ -22,16 +21,16 @@
   [query]
   (mapv
    (fn [card-id]
-     (if-let [card (db/select-one 'Card :id card-id)]
+     (if-let [card (db/select-one Card :id card-id)]
        card
-       (throw (ex-info (str (deferred-tru "Referenced question #{0} could not be found" (str card-id)))
+       (throw (ex-info (tru "Referenced question #{0} could not be found" (str card-id))
                        {:card-id card-id}))))
    (query->tag-card-ids query)))
 
 (defn- check-query-database-id=
   [query database-id]
   (when-not (= (:database query) database-id)
-    (throw (ex-info (str (deferred-tru "Referenced query is from a different database"))
+    (throw (ex-info (tru "Referenced query is from a different database")
                     {:referenced-query     query
                      :expected-database-id database-id}))))
 
@@ -56,10 +55,10 @@
 
 (defn- circular-ref-error
   [from-card to-card]
-  (let [[from-name to-name] (map :name (db/select ['Card :name] :id [:in [from-card to-card]]))]
+  (let [[from-name to-name] (map :name (db/select [Card :name] :id [:in [from-card to-card]]))]
     (str
-     (deferred-tru "This query has circular referencing sub-queries. ")
-     (deferred-tru "These questions seem to be part of the problem: \"{0}\" and \"{1}\"." from-name to-name))))
+     (tru "This query has circular referencing sub-queries. ")
+     (tru "These questions seem to be part of the problem: \"{0}\" and \"{1}\"." from-name to-name))))
 
 (defn- check-for-circular-references!
   [query]

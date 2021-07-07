@@ -1,15 +1,14 @@
 (ns metabase.models.collection.graph
   (:require [clojure.data :as data]
             [metabase.api.common :as api :refer [*current-user-id*]]
-            [metabase.models
-             [collection :as collection :refer [Collection]]
-             [collection-revision :as collection-revision :refer [CollectionRevision]]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :refer [PermissionsGroup]]]
+            [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.collection-permission-graph-revision :as c-perm-revision
+             :refer [CollectionPermissionGraphRevision]]
+            [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.util :as u]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [schema :as su]]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -86,7 +85,7 @@
   ([collection-namespace :- (s/maybe su/KeywordOrString)]
    (let [group-id->perms (group-id->permissions-set)
          collection-ids  (non-personal-collection-ids collection-namespace)]
-     {:revision (collection-revision/latest-id)
+     {:revision (c-perm-revision/latest-id)
       :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
                            {group-id (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)}))})))
 
@@ -125,7 +124,7 @@
   (when *current-user-id*
     ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
     ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-    (db/insert! CollectionRevision
+    (db/insert! CollectionPermissionGraphRevision
       :id     (inc current-revision)
       :before  (assoc before-graph :namespace collection-namespace)
       :after   changes

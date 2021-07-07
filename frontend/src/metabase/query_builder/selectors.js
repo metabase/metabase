@@ -14,6 +14,7 @@ import {
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getParametersWithExtras } from "metabase/meta/Card";
+import { normalizeParameterValue } from "metabase/meta/Parameter";
 
 import Utils from "metabase/lib/utils";
 
@@ -144,7 +145,20 @@ const getLastRunParameterValues = createSelector(
 const getNextRunParameterValues = createSelector(
   [getParameters],
   parameters =>
-    parameters.map(parameter => parameter.value).filter(p => p !== undefined),
+    parameters
+      .filter(
+        // parameters with an empty value get filtered out before a query run,
+        // so in order to compare current parameters to previously-used parameters we need
+        // to filter them here as well
+        parameter => parameter.value != null,
+      )
+      .map(parameter =>
+        // parameters are "normalized" immediately before a query run, so in order
+        // to compare current parameters to previously-used parameters we need
+        // to run parameters through this normalization function
+        normalizeParameterValue(parameter.type, parameter.value),
+      )
+      .filter(p => p !== undefined),
 );
 
 // Certain differences in a query should be ignored. `normalizeQuery`
@@ -159,7 +173,7 @@ function normalizeQuery(query, tableMetadata) {
         ? // if the query has fields, copy them before sorting
           [...fields]
         : // if the fields aren't set, we get them from the table metadata
-          tableMetadata.fields.map(({ id }) => ["field-id", id]);
+          tableMetadata.fields.map(({ id }) => ["field", id, null]);
       return fields.sort((a, b) =>
         JSON.stringify(b).localeCompare(JSON.stringify(a)),
       );
@@ -227,7 +241,7 @@ export const getIsObjectDetail = createSelector(
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
   (question, originalQuestion) =>
-    question && question.isDirtyComparedTo(originalQuestion),
+    question && question.isDirtyComparedToWithoutParameters(originalQuestion),
 );
 
 export const getQuery = createSelector(

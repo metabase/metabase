@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { Flex } from "grid-styled";
@@ -122,6 +123,8 @@ class JoinClause extends React.Component {
         </PopoverWithTrigger>
 
         <DatabaseSchemaAndTableDataSelector
+          hasTableSearch
+          canChangeDatabase={false}
           databases={[
             query.database(),
             query.database().savedQuestionsDatabase(),
@@ -221,6 +224,7 @@ function JoinTypeSelect({ value, onChange, options }) {
       {options.map(option => (
         <JoinTypeOption
           {...option}
+          key={option.value}
           selected={value === option.value}
           onChange={onChange}
         />

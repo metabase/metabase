@@ -4,9 +4,8 @@
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util
-             [date-2 :as u.date]
-             [i18n :refer [tru]]]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.i18n :refer [tru]]
             [potemkin.types :as p.types])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId]))
 

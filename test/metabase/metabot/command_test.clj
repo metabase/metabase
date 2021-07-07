@@ -1,21 +1,16 @@
 (ns metabase.metabot.command-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [metabase
-             [test :as mt]
-             [util :as u]]
-            [metabase.metabot
-             [command :as metabot.cmd]
-             [test-util :as metabot.test.u]]
-            [metabase.models
-             [card :refer [Card]]
-             [collection :refer [Collection]]
-             [permissions :as perms]
-             [permissions-group :as group]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
+            [metabase.metabot.command :as metabot.cmd]
+            [metabase.metabot.test-util :as metabot.test.u]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 
@@ -84,7 +79,7 @@
            (command "show" "Cam's Card that doesn't exist at all"))))
   (testing "with no permission to see the card"
     (mt/with-temp* [Collection [collection]
-                    Card       [{card-id :id} {:collection_id (u/get-id collection), :dataset_query (venues-count-query)}]]
+                    Card       [{card-id :id} {:collection_id (u/the-id collection), :dataset_query (venues-count-query)}]]
       (perms/revoke-collection-permissions! (group/metabot) collection)
       (is (= {:response '(Exception. "You don't have permissions to do that.")
               :messages []}

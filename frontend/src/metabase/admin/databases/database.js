@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import { createAction } from "redux-actions";
 import {
   handleActions,
@@ -39,6 +37,10 @@ export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
 export const INITIALIZE_DATABASE =
   "metabase/admin/databases/INITIALIZE_DATABASE";
 export const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
+export const ADD_SAMPLE_DATASET_FAILED =
+  "metabase/admin/databases/ADD_SAMPLE_DATASET_FAILED";
+export const ADDING_SAMPLE_DATASET =
+  "metabase/admin/databases/ADDING_SAMPLE_DATASET";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 export const SYNC_DATABASE_SCHEMA =
   "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
@@ -68,7 +70,10 @@ export const DELETE_DATABASE_FAILED =
   "metabase/admin/databases/DELETE_DATABASE_FAILED";
 export const MIGRATE_TO_NEW_SCHEDULING_SETTINGS =
   "metabase/admin/databases/MIGRATE_TO_NEW_SCHEDULING_SETTINGS";
-
+export const INITIALIZE_DATABASE_ERROR =
+  "metabase/admin/databases/INITIALIZE_DATABASE_ERROR";
+export const CLEAR_INITIALIZE_DATABASE_ERROR =
+  "metabase/admin/databases/CLEAR_INITIALIZE_DATABASE_ERROR";
 // NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
 
 export const reset = createAction(RESET);
@@ -101,6 +106,8 @@ const migrateDatabaseToNewSchedulingSettings = database => {
 // initializeDatabase
 export const initializeDatabase = function(databaseId) {
   return async function(dispatch, getState) {
+    dispatch.action(CLEAR_INITIALIZE_DATABASE_ERROR);
+
     if (databaseId) {
       try {
         const action = await dispatch(
@@ -114,15 +121,13 @@ export const initializeDatabase = function(databaseId) {
           dispatch(migrateDatabaseToNewSchedulingSettings(database));
         }
       } catch (error) {
-        if (error.status === 404) {
-          //$location.path('/admin/databases/');
-        } else {
-          console.error("error fetching database", databaseId, error);
-        }
+        console.error("error fetching database", databaseId, error);
+        dispatch.action(INITIALIZE_DATABASE_ERROR, error);
       }
     } else {
       const newDatabase = {
         name: "",
+        auto_run_queries: true,
         engine: Object.keys(MetabaseSettings.get("engines"))[0],
         details: {},
         created: false,
@@ -132,18 +137,23 @@ export const initializeDatabase = function(databaseId) {
   };
 };
 
-// addSampleDataset
 export const addSampleDataset = createThunkAction(
   ADD_SAMPLE_DATASET,
   function() {
     return async function(dispatch, getState) {
       try {
+        dispatch.action(ADDING_SAMPLE_DATASET);
         const sampleDataset = await MetabaseApi.db_add_sample_dataset();
-        dispatch(Databases.actions.fetchList(undefined, { reload: true }));
+        await dispatch(
+          Databases.actions.fetchList(undefined, {
+            reload: true,
+          }),
+        );
         MetabaseAnalytics.trackEvent("Databases", "Add Sample Data");
         return sampleDataset;
       } catch (error) {
         console.error("error adding sample dataset", error);
+        dispatch.action(ADD_SAMPLE_DATASET_FAILED, { error });
         return error;
       }
     };
@@ -318,6 +328,14 @@ const editingDatabase = handleActions(
   null,
 );
 
+const initializeError = handleActions(
+  {
+    [INITIALIZE_DATABASE_ERROR]: (state, { payload }) => payload,
+    [CLEAR_INITIALIZE_DATABASE_ERROR]: () => null,
+  },
+  null,
+);
+
 const deletes = handleActions(
   {
     [DELETE_DATABASE_STARTED]: (state, { payload: { databaseId } }) =>
@@ -345,9 +363,20 @@ const databaseCreationStep = handleActions(
   DB_EDIT_FORM_CONNECTION_TAB,
 );
 
+const sampleDataset = handleActions(
+  {
+    [ADDING_SAMPLE_DATASET]: () => ({ loading: true }),
+    [ADD_SAMPLE_DATASET]: state => ({ ...state, loading: false }),
+    [ADD_SAMPLE_DATASET_FAILED]: (state, { payload: { error } }) => ({ error }),
+  },
+  { error: undefined, loading: false },
+);
+
 export default combineReducers({
   editingDatabase,
+  initializeError,
   deletionError,
   databaseCreationStep,
   deletes,
+  sampleDataset,
 });

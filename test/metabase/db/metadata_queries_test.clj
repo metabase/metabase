@@ -1,17 +1,13 @@
 (ns metabase.db.metadata-queries-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [driver :as driver]
-             [models :as models :refer [Field Table]]
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.models
-             [database :as database]
-             [field :as field]
-             [table :as table]]
-            [schema.core :as s]))
+            [metabase.models :as models :refer [Field Table]]
+            [metabase.models.database :as database]
+            [metabase.models.field :as field]
+            [metabase.models.table :as table]
+            [metabase.test :as mt]))
 
 ;; Redshift tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
 (defn- metadata-queries-test-drivers []
@@ -75,7 +71,7 @@
               (is (empty? (get-in query [:query :expressions])))))))
       (testing "pre-existing json fields are still marked as `:type/Text`"
         (let [table (table/map->TableInstance {:id 1234})
-              fields [(field/map->FieldInstance {:id 4321, :base_type :type/Text, :special_type :type/SerializedJSON})]]
+              fields [(field/map->FieldInstance {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
           (with-redefs [driver/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
@@ -83,10 +79,10 @@
 (deftest text-field?-test
   (testing "recognizes fields suitable for fingerprinting"
     (doseq [field [{:base_type :type/Text}
-                   {:base_type :type/Text :special_type :type/State}
-                   {:base_type :type/Text :special_type :type/URL}]]
+                   {:base_type :type/Text :semantic_type :type/State}
+                   {:base_type :type/Text :semantic_type :type/URL}]]
       (is (#'metadata-queries/text-field? field)))
     (doseq [field [{:base_type :type/Structured} ; json fields in pg
-                   {:base_type :type/Text :special_type :type/SerializedJSON} ; "legacy" json fields in pg
-                   {:base_type :type/Text :special_type :type/XML}]]
+                   {:base_type :type/Text :semantic_type :type/SerializedJSON} ; "legacy" json fields in pg
+                   {:base_type :type/Text :semantic_type :type/XML}]]
       (is (not (#'metadata-queries/text-field? field))))))

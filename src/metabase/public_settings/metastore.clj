@@ -6,13 +6,11 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [schema :as su]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -146,7 +144,8 @@
     (or (some-> (premium-embedding-token) valid-token->features)
         #{})
     (catch Throwable e
-      (log/error e (trs "Error validating token"))
+      (log/error (trs "Error validating token") ":" (ex-message e))
+      (log/debug e (trs "Error validating token"))
       #{})))
 
 (defsetting hide-embed-branding?
@@ -162,28 +161,28 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "whitelabel"))))
+  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "whitelabel")))))
 
 (defsetting enable-audit-app?
   "Should we allow use of the audit app?"
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "audit-app"))))
+  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "audit-app")))))
 
 (defsetting enable-sandboxes?
   "Should we enable data sandboxes (row and column-level permissions?"
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "sandboxes"))))
+  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "sandboxes")))))
 
 (defsetting enable-sso?
   "Should we enable SAML/JWT sign-in?"
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "sso"))))
+  :getter     (fn [] (and config/ee-available? (boolean ((token-features) "sso")))))
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
@@ -196,4 +195,4 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean (seq (token-features)))))
+  :getter     (fn [] (and config/ee-available? (boolean (seq (token-features))))))

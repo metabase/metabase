@@ -1,18 +1,16 @@
 (ns metabase-enterprise.audit.pages-test
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
-            [clojure.java.classpath :as classpath]
+  (:require [clojure.java.classpath :as classpath]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [clojure.tools.namespace.find :as ns-find]
-            [metabase
-             [models :refer [Card Dashboard DashboardCard Database Table]]
-             [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
+            [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qp-util]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
@@ -57,11 +55,11 @@
      :args (for [arg arglist]
              (case arg
                :datetime-unit "day"
-               :dashboard-id  (u/get-id dash)
-               :card-id       (u/get-id card)
+               :dashboard-id  (u/the-id dash)
+               :card-id       (u/the-id card)
                :user-id       (mt/user->id :crowberto)
-               :database-id   (u/get-id database)
-               :table-id      (u/get-id table)
+               :database-id   (u/the-id database)
+               :table-id      (u/the-id table)
                :model         "card"
                :query-hash    (codec/base64-encode (qp-util/query-hash {:database 1, :type :native}))))}))
 
@@ -76,10 +74,10 @@
 
 (defn- do-with-temp-objects [f]
   (mt/with-temp* [Database      [database]
-                  Table         [table {:db_id (u/get-id database)}]
-                  Card          [card {:table_id (u/get-id table), :database_id (u/get-id database)}]
+                  Table         [table {:db_id (u/the-id database)}]
+                  Card          [card {:table_id (u/the-id table), :database_id (u/the-id database)}]
                   Dashboard     [dash]
-                  DashboardCard [_ {:card_id (u/get-id card), :dashboard_id (u/get-id dash)}]]
+                  DashboardCard [_ {:card_id (u/the-id card), :dashboard_id (u/the-id dash)}]]
     (f {:database database, :table table, :card card, :dash dash})))
 
 (defmacro ^:private with-temp-objects [[objects-binding] & body]

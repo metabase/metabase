@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Box } from "grid-styled";
 
@@ -42,7 +43,9 @@ const ModalsPage = () => (
       <DeleteModalWithConfirm
         title={"This will be deleted"}
         confirmItems={[
-          <span>This will happen, please be sure you know about it</span>,
+          <span key="0">
+            This will happen, please be sure you know about it
+          </span>,
         ]}
       />
     </Section>

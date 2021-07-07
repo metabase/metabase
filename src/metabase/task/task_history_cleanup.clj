@@ -1,9 +1,8 @@
 (ns metabase.task.task-history-cleanup
   (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite
-             [jobs :as jobs]
-             [triggers :as triggers]]
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clojurewerkz.quartzite.triggers :as triggers]
             [metabase.models.task-history :as task-history]
             [metabase.task :as task]
             [metabase.util.i18n :refer [trs]]))
@@ -12,7 +11,9 @@
   "Maximum number of TaskHistory rows."
   100000)
 
-(defn- task-history-cleanup! []
+(defn- task-history-cleanup!
+  "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."
+  []
   (log/debug (trs "Cleaning up task history"))
   (task-history/with-task-history {:task "task-history-cleanup"}
     (let [deleted-rows? (task-history/cleanup-task-history! history-rows-to-keep)]

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -32,7 +33,7 @@ export default class MetadataTable extends Component {
     updateField: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     const { database } = this.props;
     if (database) {
       database.fetchIdfields();

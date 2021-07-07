@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import SaveStatus from "metabase/components/SaveStatus";
@@ -10,7 +11,7 @@ export default class AdminHeader extends Component {
           {this.props.title}
         </div>
         <div className="MetadataEditor-headerSection absolute right float-right top bottom flex layout-centered">
-          <SaveStatus ref="status" />
+          <SaveStatus ref={this.props.saveStatusRef} />
         </div>
       </div>
     );

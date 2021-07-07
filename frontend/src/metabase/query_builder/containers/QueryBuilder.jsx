@@ -1,7 +1,5 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -175,7 +173,7 @@ export default class QueryBuilder extends Component {
     this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.initializeQB(this.props.location, this.props.params);
   }
 
@@ -183,7 +181,7 @@ export default class QueryBuilder extends Component {
     window.addEventListener("resize", this.handleResize);
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (
       nextProps.uiControls.isShowingDataReference !==
         this.props.uiControls.isShowingDataReference ||
@@ -213,13 +211,6 @@ export default class QueryBuilder extends Component {
     }
   }
 
-  componentDidUpdate() {
-    const viz = ReactDOM.findDOMNode(this.refs.viz);
-    if (viz) {
-      viz.style.opacity = 1.0;
-    }
-  }
-
   componentWillUnmount() {
     // cancel the query if one is running
     this.props.cancelQuery();
@@ -235,10 +226,6 @@ export default class QueryBuilder extends Component {
   // Debounce the function to improve resizing performance.
   handleResize = e => {
     this.forceUpdateDebounced();
-    const viz = ReactDOM.findDOMNode(this.refs.viz);
-    if (viz) {
-      viz.style.opacity = 0.2;
-    }
   };
 
   // NOTE: these were lifted from QueryHeader. Move to Redux?

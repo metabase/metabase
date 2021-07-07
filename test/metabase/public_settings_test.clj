@@ -1,10 +1,8 @@
 (ns metabase.public-settings-test
   (:require [clojure.test :refer :all]
-            [environ.core :as env]
-            [metabase
-             [public-settings :as public-settings]
-             [test :as mt]]
             [metabase.models.setting :as setting]
+            [metabase.public-settings :as public-settings]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util.i18n :as i18n :refer [tru]]))
 
@@ -59,7 +57,7 @@
 
 (deftest site-url-settings-normalize
   (testing "We should normalize `site-url` when set via env var we should still normalize it (#9764)"
-    (with-redefs [env/env (assoc env/env :mb-site-url "localhost:3000/")]
+    (mt/with-temp-env-var-value [mb-site-url "localhost:3000/"]
       (mt/with-temporary-setting-values [site-url nil]
         (is (= "localhost:3000/"
                (setting/get-string :site-url)))
@@ -70,7 +68,7 @@
   (testing (str "If `site-url` is set via an env var, and it's invalid, we should return `nil` rather than having the"
                 " whole instance break")
     (mt/suppress-output
-      (with-redefs [env/env (assoc env/env :mb-site-url "asd_12w31%$;")]
+      (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
         (mt/with-temporary-setting-values [site-url nil]
           (is (= "asd_12w31%$;"
                  (setting/get-string :site-url)))

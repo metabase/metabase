@@ -3,14 +3,12 @@
   -- Consider whether there's a place to put this to consolidate things."
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
             [metabase.api.common :as api]
-            [metabase.query-processor
-             [context :as context]
-             [interface :as qpi]
-             [util :as qputil]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))

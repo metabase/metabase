@@ -230,9 +230,10 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload }) => ({
+      next: (state, { payload: { card } }) => ({
         ...state,
-        display: payload.card.display,
+        display: card.display,
+        visualization_settings: card.visualization_settings,
       }),
     },
 

@@ -7,9 +7,8 @@
             [medley.core :as m]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [deferred-tru trs tru]]
-             [schema :as su]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 ;; Define a setting which captures our Slack api token

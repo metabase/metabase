@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
@@ -82,8 +81,7 @@ export default class PublicQuestion extends Component {
     };
   }
 
-  // $FlowFixMe
-  async componentWillMount() {
+  async UNSAFE_componentWillMount() {
     const {
       setErrorPage,
       params: { uuid, token },
@@ -125,19 +123,18 @@ export default class PublicQuestion extends Component {
     }
   }
 
-  setParameterValue = (id: string, value: string) => {
+  setParameterValue = parameterValues => {
     this.setState(
       {
         parameterValues: {
           ...this.state.parameterValues,
-          [id]: value,
+          ...parameterValues,
         },
       },
       this.run,
     );
   };
 
-  // $FlowFixMe: setState expects return type void
   run = async (): void => {
     const {
       setErrorPage,
@@ -157,7 +154,7 @@ export default class PublicQuestion extends Component {
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await EmbedApi.cardQuery({
+        newResult = await maybeUsePivotEndpoint(EmbedApi.cardQuery, card)({
           token,
           ...getParametersBySlug(parameters, parameterValues),
         });
@@ -218,7 +215,6 @@ export default class PublicQuestion extends Component {
               className="full flex-full z1"
               onUpdateVisualizationSettings={settings =>
                 this.setState({
-                  // $FlowFixMe
                   result: updateIn(
                     result,
                     ["card", "visualization_settings"],
@@ -230,7 +226,6 @@ export default class PublicQuestion extends Component {
               showTitle={false}
               isDashboard
               mode={PublicMode}
-              // $FlowFixMe: metadata provided by @connect
               metadata={this.props.metadata}
               onChangeCardAndRun={() => {}}
             />

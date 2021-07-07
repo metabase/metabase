@@ -1,16 +1,17 @@
 import {
-  signInAsAdmin,
   restore,
   addPostgresDatabase,
-  popover,
-} from "__support__/cypress";
+  withDatabase,
+  visitQuestionAdhoc,
+} from "__support__/e2e/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
+const PG_DB_ID = 2;
 
 describe("postgres > user > query", () => {
-  before(() => {
+  beforeEach(() => {
     restore();
-    signInAsAdmin();
+    cy.signInAsAdmin();
     addPostgresDatabase(PG_DB_NAME);
   });
 
@@ -31,46 +32,41 @@ describe("postgres > user > query", () => {
     cy.get(".LoadingSpinner").should("not.exist");
 
     // Assertions
-    cy.log("**Fails in v0.36.6**");
+    cy.log("Fails in v0.36.6");
     // This could be omitted because real test is searching for "37.65" on the page
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.contains("37.65");
   });
 
-  it.skip("should properly switch visualization to pivot table (metabase#14148)", () => {
+  it("should display pivot tables (metabase#14148)", () => {
     cy.server();
-    cy.route("POST", "/api/advanced_computation/pivot/dataset").as(
-      "pivotDataset",
+    cy.route("POST", "/api/dataset/pivot").as("pivotDataset");
+
+    withDatabase(PG_DB_ID, ({ PEOPLE, PEOPLE_ID }) =>
+      visitQuestionAdhoc({
+        display: "pivot",
+        dataset_query: {
+          type: "query",
+          database: PG_DB_ID,
+          query: {
+            "source-table": PEOPLE_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PEOPLE.SOURCE, null],
+              ["field", PEOPLE.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+        },
+      }),
     );
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
-    cy.findByText(PG_DB_NAME).click();
-    cy.findByText("Products").click();
-    cy.findByText("Pick the metric you want to see").click();
-    cy.findByText("Count of rows").click();
-    cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
-      cy.findByText("Category").click();
-    });
-    cy.get(".Icon-add")
-      .last()
-      .click();
-    popover().within(() => {
-      cy.findByText("Created At").click();
-    });
-
-    cy.findByText("Visualize").click();
-
-    cy.findByText("Visualization").click();
-    cy.get(".Icon-pivot_table").click({ force: true });
     cy.log(
-      "**Reported failing on v0.38.0-rc1 querying Postgres, Redshift and BigQuery. It works on MySQL and H2.**",
+      "Reported failing on v0.38.0-rc1 querying Postgres, Redshift and BigQuery. It works on MySQL and H2.",
     );
     cy.wait("@pivotDataset").then(xhr => {
-      expect(xhr.response.body.cause).not.to.contain("ERROR");
+      expect(xhr.response.body.cause || "").not.to.contain("ERROR");
     });
     cy.findByText(/Grand totals/i);
-    cy.findByText("200");
+    cy.findByText("2,500");
   });
 });

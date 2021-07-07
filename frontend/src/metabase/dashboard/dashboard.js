@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import {
   assoc,
   dissoc,
@@ -34,6 +32,7 @@ import {
 } from "metabase/meta/Dashboard";
 import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import { getParametersBySlug } from "metabase/meta/Parameter";
+import * as Urls from "metabase/lib/urls";
 
 import type {
   DashboardWithCards,
@@ -99,6 +98,8 @@ export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
 export const REMOVE_CARD_FROM_DASH = "metabase/dashboard/REMOVE_CARD_FROM_DASH";
 export const SET_DASHCARD_ATTRIBUTES =
   "metabase/dashboard/SET_DASHCARD_ATTRIBUTES";
+export const SET_MULTIPLE_DASHCARD_ATTRIBUTES =
+  "metabase/dashboard/SET_MULTIPLE_DASHCARD_ATTRIBUTES";
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS =
   "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN =
@@ -176,6 +177,9 @@ export const hideClickBehaviorSidebar = createAction(
 // these operations don't get saved to server immediately
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
 export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
+export const setMultipleDashCardAttributes = createAction(
+  SET_MULTIPLE_DASHCARD_ATTRIBUTES,
+);
 
 export const addCardToDashboard = ({
   dashId,
@@ -570,7 +574,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "public") {
       result = await fetchDataOrError(
-        PublicApi.dashboardCardQuery(
+        maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
           {
             uuid: dashcard.dashboard_id,
             cardId: card.id,
@@ -584,7 +588,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "embed") {
       result = await fetchDataOrError(
-        EmbedApi.dashboardCardQuery(
+        maybeUsePivotEndpoint(EmbedApi.dashboardCardQuery, card)(
           {
             token: dashcard.dashboard_id,
             dashcardId: dashcard.id,
@@ -974,23 +978,29 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       previousCard,
     );
 
-    // clicking graph title with a filter applied loses display type and visualization settings; see #5278
-    const cardWithVizSettings = {
-      ...cardAfterClick,
-      display: cardAfterClick.display || previousCard.display,
-      visualization_settings:
-        cardAfterClick.visualization_settings ||
-        previousCard.visualization_settings,
-    };
+    const question = new Question(cardAfterClick, metadata);
 
-    const url = questionUrlWithParameters(
-      cardWithVizSettings,
-      metadata,
-      dashboard.parameters,
-      parameterValues,
-      dashcard && dashcard.parameter_mappings,
-      cardIsDirty,
-    );
+    const cardWithVizSettings = question
+      .setDisplay(cardAfterClick.display || previousCard.display)
+      .setSettings(
+        cardAfterClick.visualization_settings ||
+          previousCard.visualization_settings,
+      )
+      .lockDisplay()
+      .card();
+
+    // when the query is for a specific object it does not make sense to apply parameter filters
+    // because we'll be navigating to the details view of a specific row on a table
+    const url = question.isObjectDetail()
+      ? Urls.serializedQuestion(cardWithVizSettings)
+      : questionUrlWithParameters(
+          cardWithVizSettings,
+          metadata,
+          dashboard.parameters,
+          parameterValues,
+          dashcard && dashcard.parameter_mappings,
+          cardIsDirty,
+        );
 
     open(url, {
       blankOnMetaKey: true,
@@ -1127,6 +1137,19 @@ const dashcards = handleActions(
         ...state,
         [id]: { ...state[id], ...attributes, isDirty: true },
       }),
+    },
+    [SET_MULTIPLE_DASHCARD_ATTRIBUTES]: {
+      next: (state, { payload: dashcards }) => {
+        const nextState = { ...state };
+        dashcards.forEach(({ id, attributes }) => {
+          nextState[id] = {
+            ...state[id],
+            ...attributes,
+            isDirty: true,
+          };
+        });
+        return nextState;
+      },
     },
     [UPDATE_DASHCARD_VISUALIZATION_SETTINGS]: {
       next: (state, { payload: { id, settings } }) =>

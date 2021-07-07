@@ -1,9 +1,13 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
+import _ from "underscore";
 
+import ListSearchField from "metabase/components/ListSearchField";
+import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/components/AccordionList";
@@ -14,10 +18,17 @@ import MetabaseSettings from "metabase/lib/settings";
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
+import {
+  SearchResults,
+  convertSearchResultToTableLikeItem,
+  isSavedQuestion,
+} from "./data-search";
+import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getSchemaName } from "metabase/schema";
 
-import _ from "underscore";
+const MIN_SEARCH_LENGTH = 2;
 
 // chooses a database
 const DATABASE_STEP = "DATABASE";
@@ -143,6 +154,8 @@ export class UnconnectedDataSelector extends Component {
       selectedSchemaId: props.selectedSchemaId,
       selectedTableId: props.selectedTableId,
       selectedFieldId: props.selectedFieldId,
+      searchText: "",
+      isSavedQuestionPickerShown: false,
     };
     const computedState = this._getComputedState(props, state);
     this.state = {
@@ -152,6 +165,7 @@ export class UnconnectedDataSelector extends Component {
       ...state,
       ...computedState,
     };
+    this.popover = React.createRef();
   }
 
   static propTypes = {
@@ -170,6 +184,8 @@ export class UnconnectedDataSelector extends Component {
     isInitiallyOpen: PropTypes.bool,
     renderAsSelect: PropTypes.bool,
     tableFilter: PropTypes.func,
+    hasTableSearch: PropTypes.bool,
+    canChangeDatabase: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -179,6 +195,8 @@ export class UnconnectedDataSelector extends Component {
     useOnlyAvailableSchema: true,
     hideSingleSchema: true,
     hideSingleDatabase: false,
+    hasTableSearch: false,
+    canChangeDatabase: true,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -219,7 +237,7 @@ export class UnconnectedDataSelector extends Component {
       if (!schemas && database) {
         schemas = database.schemas;
       }
-      if (!tables && schemas.length === 1) {
+      if (!tables && Array.isArray(schemas) && schemas.length === 1) {
         tables = schemas[0].tables;
       }
     }
@@ -290,11 +308,11 @@ export class UnconnectedDataSelector extends Component {
     });
   }
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.hydrateActiveStep();
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     const newState = {};
     for (const propName of [
       "selectedDatabaseId",
@@ -316,6 +334,15 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
+  async componentDidMount() {
+    if (this.props.selectedTableId) {
+      await this.props.fetchFields(this.props.selectedTableId);
+      if (this.isSavedQuestionSelected()) {
+        this.showSavedQuestionPicker();
+      }
+    }
+  }
+
   async componentDidUpdate() {
     // this logic cleans up invalid states, e.x. if a selectedSchema's database
     // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
@@ -328,10 +355,12 @@ export class UnconnectedDataSelector extends Component {
     const invalidSchema =
       selectedDatabase &&
       selectedSchema &&
-      selectedSchema.database.id !== selectedDatabase.id;
+      selectedSchema.database.id !== selectedDatabase.id &&
+      !selectedSchema.database.is_saved_questions;
     const invalidTable =
       selectedSchema &&
       selectedTable &&
+      !isSavedQuestion(selectedTable.id) &&
       selectedTable.schema.id !== selectedSchema.id;
     const invalidField =
       selectedTable &&
@@ -356,7 +385,9 @@ export class UnconnectedDataSelector extends Component {
 
   async hydrateActiveStep() {
     const { steps } = this.props;
-    if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
+    if (this.isSavedQuestionSelected()) {
+      await this.switchToStep(DATABASE_STEP);
+    } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
     } else if (this.state.selectedSchemaId && steps.includes(TABLE_STEP)) {
       await this.switchToStep(TABLE_STEP);
@@ -430,7 +461,7 @@ export class UnconnectedDataSelector extends Component {
     const nextStep = this.getNextStep();
     if (!nextStep) {
       await this.setStateWithComputedState(stateChange);
-      this.refs.popover.toggle();
+      this.popover.current.toggle();
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
     }
@@ -544,7 +575,15 @@ export class UnconnectedDataSelector extends Component {
     }
   };
 
+  showSavedQuestionPicker = () =>
+    this.setState({ isSavedQuestionPickerShown: true });
+
   onChangeDatabase = async database => {
+    if (database.is_saved_questions) {
+      this.showSavedQuestionPicker();
+      return;
+    }
+
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
     }
@@ -620,8 +659,13 @@ export class UnconnectedDataSelector extends Component {
       : "flex align-center";
   }
 
+  handleSavedQuestionPickerClose = () =>
+    this.setState({
+      isSavedQuestionPickerShown: false,
+    });
+
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps } = this.props;
+    const { combineDatabaseSchemaSteps, hasTableSearch } = this.props;
     const props = {
       ...this.state,
 
@@ -634,6 +678,7 @@ export class UnconnectedDataSelector extends Component {
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
+      hasFiltering: !hasTableSearch,
     };
 
     switch (this.state.activeStep) {
@@ -658,11 +703,68 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
+  isSavedQuestionSelected = () => isSavedQuestion(this.props.selectedTableId);
+
+  handleSavedQuestionSelect = async table => {
+    if (this.props.setSourceTableFn) {
+      this.props.setSourceTableFn(table.id);
+    }
+    this.popover.current.toggle();
+    this.handleClose();
+  };
+
+  showTableSearch = () => {
+    const { hasTableSearch, steps } = this.props;
+    const { activeStep } = this.state;
+    const hasTableStep = steps.includes(TABLE_STEP);
+    const isAllowedToShowOnActiveStep = [SCHEMA_STEP, DATABASE_STEP].includes(
+      activeStep,
+    );
+
+    return hasTableSearch && hasTableStep && isAllowedToShowOnActiveStep;
+  };
+
+  handleSearchTextChange = searchText =>
+    this.setState({
+      searchText,
+    });
+
+  handleSearchItemSelect = async item => {
+    const table = convertSearchResultToTableLikeItem(item);
+    await this.props.fetchFields(table.id);
+    if (this.props.setSourceTableFn) {
+      this.props.setSourceTableFn(table.id);
+    }
+    this.popover.current.toggle();
+    this.handleClose();
+  };
+
+  handleClose = () => {
+    this.setState({ searchText: "" });
+  };
+
   render() {
+    const {
+      searchText,
+      isSavedQuestionPickerShown,
+      selectedTable,
+    } = this.state;
+    const { canChangeDatabase, selectedDatabaseId } = this.props;
+    const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
+
+    const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
+
+    const searchPlaceholder = isSavedQuestionPickerShown
+      ? t`Search for a question`
+      : t`Search for a table...`;
+    const searchModels = isSavedQuestionPickerShown
+      ? ["card"]
+      : ["card", "table"];
+
     return (
       <PopoverWithTrigger
         id="DataPopover"
-        ref="popover"
+        ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
         triggerElement={this.getTriggerElement()}
         triggerClasses={this.getTriggerClasses()}
@@ -671,8 +773,42 @@ export class UnconnectedDataSelector extends Component {
         tetherOptions={this.props.tetherOptions}
         sizeToFit
         isOpen={this.props.isOpen}
+        onClose={this.handleClose}
       >
-        {this.renderActiveStep()}
+        {this.showTableSearch() && (
+          <ListSearchField
+            hasClearButton
+            className="bg-white m1"
+            onChange={this.handleSearchTextChange}
+            value={searchText}
+            placeholder={searchPlaceholder}
+            autoFocus
+          />
+        )}
+        {isSearchActive && (
+          <SearchResults
+            searchModels={searchModels}
+            searchQuery={searchText.trim()}
+            databaseId={currentDatabaseId}
+            onSelect={this.handleSearchItemSelect}
+          />
+        )}
+        {!isSearchActive &&
+          (isSavedQuestionPickerShown ? (
+            <SavedQuestionPicker
+              collectionName={
+                selectedTable &&
+                selectedTable.schema &&
+                getSchemaName(selectedTable.schema.id)
+              }
+              tableId={selectedTable && selectedTable.id}
+              databaseId={currentDatabaseId}
+              onSelect={this.handleSavedQuestionSelect}
+              onBack={this.handleSavedQuestionPickerClose}
+            />
+          ) : (
+            this.renderActiveStep()
+          ))}
       </PopoverWithTrigger>
     );
   }
@@ -721,6 +857,7 @@ const SchemaPicker = ({
   selectedSchemaId,
   onChangeSchema,
   hasNextStep,
+  hasFiltering,
 }) => {
   const sections = [
     {
@@ -737,7 +874,7 @@ const SchemaPicker = ({
         key="schemaPicker"
         className="text-brand"
         sections={sections}
-        searchable
+        searchable={hasFiltering}
         onChange={item => onChangeSchema(item.schema)}
         itemIsSelected={item => item && item.schema.id === selectedSchemaId}
         renderItemIcon={() => <Icon name="folder" size={16} />}
@@ -763,7 +900,7 @@ const DatabaseSchemaPicker = ({
   const sections = databases.map(database => ({
     name: database.name,
     items:
-      database.schemas.length > 1
+      !database.is_saved_questions && database.schemas.length > 1
         ? database.schemas.map(schema => ({
             schema,
             name: schema.displayName(),
@@ -799,15 +936,7 @@ const DatabaseSchemaPicker = ({
       className="text-brand"
       sections={sections}
       onChange={item => onChangeSchema(item.schema)}
-      onChangeSection={(section, sectionIndex) => {
-        if (
-          selectedDatabase &&
-          selectedDatabase.id === databases[sectionIndex].id
-        ) {
-          // You can't change to the current database. If you click on that,
-          // still return "true" to let the AccordionList collapse that section.
-          return true;
-        }
+      onChangeSection={(_section, sectionIndex) => {
         onChangeDatabase(databases[sectionIndex]);
         return true;
       }}
@@ -833,6 +962,7 @@ const TablePicker = ({
   hasNextStep,
   onBack,
   isLoading,
+  hasFiltering,
 }) => {
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
@@ -883,7 +1013,7 @@ const TablePicker = ({
           sections={sections}
           maxHeight={Infinity}
           width={"100%"}
-          searchable
+          searchable={hasFiltering}
           onChange={item => onChangeTable(item.table)}
           itemIsSelected={item =>
             item.table && selectedTable
@@ -899,14 +1029,16 @@ const TablePicker = ({
         {isSavedQuestionList && (
           <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
-            <a
+            <ExternalLink
               href={MetabaseSettings.docsUrl(
                 "users-guide/custom-questions",
                 "picking-your-starting-data",
               )}
               target="_blank"
               className="block link"
-            >{t`Learn more about nested queries`}</a>
+            >
+              {t`Learn more about nested queries`}
+            </ExternalLink>
           </div>
         )}
       </div>
@@ -938,6 +1070,7 @@ class FieldPicker extends Component {
       selectedField,
       onChangeField,
       onBack,
+      hasFiltering,
     } = this.props;
 
     const header = (
@@ -977,7 +1110,7 @@ class FieldPicker extends Component {
           sections={sections}
           maxHeight={Infinity}
           width={"100%"}
-          searchable
+          searchable={hasFiltering}
           onChange={item => onChangeField(item.field)}
           itemIsSelected={item =>
             item.field && selectedField

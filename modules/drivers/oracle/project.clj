@@ -1,4 +1,4 @@
-(defproject metabase/oracle-driver "1.0.0"
+(defproject metabase/oracle-driver "1.1.0"
   :min-lein-version "2.5.0"
 
   :include-drivers-dependencies [#"^ojdbc\d+\.jar$"]
@@ -10,6 +10,13 @@
      ;; can't ship it as part of MB!
      [com.oracle.ojdbc/ojdbc8 "19.3.0.0"]
      [metabase-core "1.0.0-SNAPSHOT"]]}
+
+   :ee
+   {:dependencies
+    [[com.oracle.ojdbc/ojdbc8 "19.3.0.0"]]
+
+    :resource-paths
+    ^:replace ["resources-ee"]}
 
    :uberjar
    {:auto-clean    true

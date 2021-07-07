@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -18,6 +17,10 @@ import {
   updateEmbeddingParams,
 } from "../dashboard";
 
+const defaultProps = {
+  isLinkEnabled: true,
+};
+
 const mapDispatchToProps = {
   createPublicLink,
   deletePublicLink,
@@ -25,11 +28,7 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
-export default class DashboardSharingEmbeddingModal extends Component {
+class DashboardSharingEmbeddingModal extends Component {
   _modal: ?ModalWithTrigger;
 
   render() {
@@ -42,6 +41,7 @@ export default class DashboardSharingEmbeddingModal extends Component {
       enabled,
       linkClassNames,
       linkText,
+      isLinkEnabled,
       updateEnableEmbedding,
       updateEmbeddingParams,
       ...props
@@ -53,15 +53,19 @@ export default class DashboardSharingEmbeddingModal extends Component {
       <ModalWithTrigger
         ref={m => (this._modal = m)}
         full
+        disabled={!isLinkEnabled}
         triggerElement={
           <a
             className={linkClassNames}
+            aria-disabled={!isLinkEnabled}
             onClick={() => {
-              MetabaseAnalytics.trackEvent(
-                "Sharing / Embedding",
-                "dashboard",
-                "Sharing Link Clicked",
-              );
+              if (isLinkEnabled) {
+                MetabaseAnalytics.trackEvent(
+                  "Sharing / Embedding",
+                  "dashboard",
+                  "Sharing Link Clicked",
+                );
+              }
             }}
           >
             {linkText}
@@ -94,3 +98,10 @@ export default class DashboardSharingEmbeddingModal extends Component {
     );
   }
 }
+
+DashboardSharingEmbeddingModal.defaultProps = defaultProps;
+
+export default connect(
+  null,
+  mapDispatchToProps,
+)(DashboardSharingEmbeddingModal);

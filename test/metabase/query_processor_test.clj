@@ -2,20 +2,21 @@
   "Helper functions for various query processor tests. The tests themselves can be found in various
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [query-processor :as qp]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.add-implicit-joins :as joins]
             [metabase.test.data :as data]
-            [metabase.test.data
-             [env :as tx.env]
-             [interface :as tx]]
+            [metabase.test.data.env :as tx.env]
+            [metabase.test.data.interface :as tx]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
@@ -40,11 +41,15 @@
                :when  (set/subset? features (driver.u/features driver))]
            driver))))
 
+(alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
+
 (defn normal-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid and Google Analytics) that DO NOT support
   `feature`."
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
+
+(alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
 
 (defn normal-drivers-except
   "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
@@ -68,12 +73,13 @@
   [table-kw field-kw]
   (merge
    (col-defaults)
-   (db/select-one [Field :id :table_id :special_type :base_type :name :display_name :fingerprint]
+   (db/select-one [Field :id :table_id :semantic_type :base_type :effective_type
+                   :coercion_strategy :name :display_name :fingerprint]
      :id (data/id table-kw field-kw))
-   {:field_ref [:field-id (data/id table-kw field-kw)]}
+   {:field_ref [:field (data/id table-kw field-kw) nil]}
    (when (#{:last_login :date} field-kw)
      {:unit      :default
-      :field_ref [:datetime-field [:field-id (data/id table-kw field-kw)] :default]})))
+      :field_ref [:field (data/id table-kw field-kw) {:temporal-unit :default}]})))
 
 (defn- expected-column-names
   "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."
@@ -135,7 +141,7 @@
   {:arglists '([col] [table-kw field-kw])}
   ([{field-name :name, base-type :base_type, unit :unit, :as col}]
    (-> col
-       (assoc :field_ref [:field-literal field-name base-type]
+       (assoc :field_ref [:field field-name {:base-type base-type}]
               :source    :fields)
        (dissoc :description :parent_id :visibility_type)))
 
@@ -153,7 +159,7 @@
   {:arglists '([col] [table-kw field-kw])}
   ([{field-name :name, base-type :base_type, unit :unit, :as col}]
    (assoc col
-          :field_ref [:field-literal field-name base-type]
+          :field_ref [:field field-name {:base-type base-type}]
           :source    :fields))
 
   ([table-kw field-kw]
@@ -166,8 +172,10 @@
         dest-col   (col dest-table-kw dest-field-kw)]
     (-> dest-col
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
-        (assoc :field_ref   [:fk-> [:field-id (:id source-col)] [:field-id (:id dest-col)]]
-               :fk_field_id (:id source-col)))))
+        (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
+               :fk_field_id  (:id source-col)
+               :source_alias (#'joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
+                                                 (:name source-col))))))
 
 (declare cols)
 
@@ -183,7 +191,7 @@
                       {:database db-id
                        :type     :query
                        :query    {:source-table table-id
-                                  :fields       [[:field_id field-id]]
+                                  :fields       [[:field field-id nil]]
                                   :limit        1}})}))))))
 
 (defn native-query-col
@@ -291,12 +299,12 @@
                (for [row rows]
                  (vec
                   (for [[f v] (partition 2 (interleave format-fns row))]
-                    (when (or v format-nil-values?)
+                    (when (or (some? v) format-nil-values?)
                       (try
                         (f v)
                         (catch Throwable e
                           (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
-                                   {:f f, :v v}
+                                   {:f f, :v v, :format-nil-values? format-nil-values?}
                                    e)))))))))
 
               :else
@@ -304,23 +312,22 @@
 
 (defn data
   "Return the result `data` from a successful query run, or throw an Exception if processing failed."
-  {:style/indent 0}
   [results]
   (when (#{:failed "failed"} (:status results))
     (throw (ex-info (str (or (:error results) "Error running query"))
-             (if (map? results) results {:results results}))))
+                    (if (map? results) results {:results results}))))
   (:data results))
 
 (defn rows
   "Return the result rows from query `results`, or throw an Exception if they're missing."
-  {:style/indent 0}
   [results]
   (or (some-> (data results) :rows vec)
-      (throw (ex-info "Query does not have any :rows in results." results))))
+      (throw (ex-info "Query does not have any :rows in results."
+                      (if (map? results) results {:result results})))))
 
 (defn formatted-rows
   "Combines `rows` and `format-rows-by`."
-  {:style/indent 1}
+  {:style/indent :defn}
   ([format-fns response]
    (format-rows-by format-fns (rows response)))
 
@@ -329,7 +336,6 @@
 
 (defn first-row
   "Return the first row in the `results` of a query, or throw an Exception if they're missing."
-  {:style/indent 0}
   [results]
   (first (rows results)))
 
@@ -340,7 +346,6 @@
 
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
-  {:style/indent 0}
   [results]
   (or (some->> (data results) :cols (mapv #(into {} %)))
       (throw (ex-info "Query does not have any :cols in results." results))))
@@ -349,13 +354,11 @@
   "Return both `:rows` and `:cols` from the results. Equivalent to
 
     {:rows (rows results), :cols (cols results)}"
-  {:style/indent 0}
   [results]
   {:rows (rows results), :cols (cols results)})
 
 (defn rows+column-names
   "Return the result rows and column names from query `results`, or throw an Exception if they're missing."
-  {:style/indent 0}
   [results]
   {:rows (rows results), :columns (map :name (cols results))})
 
@@ -368,3 +371,65 @@
   [driver]
   ;; TIMEZONE FIXME — remove this and fix the drivers
   (contains? #{:snowflake :oracle :redshift} driver))
+
+(defn nest-query
+  "Nest an MBQL/native query by `n-levels`. Useful for testing how nested queries behave."
+  [outer-query n-levels]
+  (if-not (pos? n-levels)
+    outer-query
+    (let [nested (case (:type outer-query)
+                   :native
+                   (-> outer-query
+                       (dissoc :native :type)
+                       (assoc :type :query
+                              :query {:source-query (set/rename-keys (:native outer-query) {:query :native})}))
+
+                   :query
+                   (assoc outer-query :query {:source-query (:query outer-query)}))]
+      (recur nested (dec n-levels)))))
+
+(deftest nest-query-test
+  (testing "MBQL"
+    (is (= {:database 1, :type :query, :query {:source-table 2}}
+           {:database 1, :type :query, :query {:source-table 2}}))
+    (is (= {:database 1, :type :query, :query {:source-query {:source-table 2}}}
+           (nest-query {:database 1, :type :query, :query {:source-table 2}} 1)))
+    (is (= {:database 1, :type :query, :query {:source-query {:source-query {:source-table 2}}}}
+           (nest-query {:database 1, :type :query, :query {:source-table 2}} 2)))
+    (is (= {:database 1, :type :query, :query {:source-query {:source-query {:source-table 2}}}}
+           (nest-query {:database 1, :type :query, :query {:source-query {:source-table 2}}} 1))))
+  (testing "native"
+    (is (= {:database 1, :type :native, :native {:query "wow"}}
+           (nest-query {:database 1, :type :native, :native {:query "wow"}} 0)))
+    (is (= {:database 1, :type :query, :query {:source-query {:native "wow"}}}
+           (nest-query {:database 1, :type :native, :native {:query "wow"}} 1)))
+    (is (= {:database 1, :type :query, :query {:source-query {:source-query {:native "wow"}}}}
+           (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
+
+(defn do-with-bigquery-fks [f]
+  (if-not (= driver/*driver* :bigquery)
+    (f)
+    (let [supports? driver/supports?]
+      (with-redefs [driver/supports? (fn [driver feature]
+                                       (if (= [driver feature] [:bigquery :foreign-keys])
+                                         true
+                                         (supports? driver feature)))]
+        (let [thunk (reduce
+                     (fn [thunk [source dest]]
+                       (fn []
+                         (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
+                                                                                :semantic_type      "type/FK"}
+                           (thunk))))
+                     f
+                     {[:checkins :user_id]   [:users :id]
+                      [:checkins :venue_id]  [:venues :id]
+                      [:venues :category_id] [:categories :id]})]
+          (thunk))))))
+
+(defmacro with-bigquery-fks
+  "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` marked as foreign
+  keys and with `:foreign-keys` a supported feature when testing against BigQuery. BigQuery does not support Foreign
+  Key constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody
+  has manually marked FK relationships for BigQuery."
+  [& body]
+  `(do-with-bigquery-fks (fn [] ~@body)))

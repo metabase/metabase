@@ -1,34 +1,25 @@
 (ns metabase.core
   (:gen-class)
   (:require [clojure.string :as str]
-            [clojure.tools
-             [logging :as log]
-             [trace :as trace]]
-            [metabase
-             [config :as config]
-             [db :as mdb]
-             [events :as events]
-             [handler :as handler]
-             [metabot :as metabot]
-             [plugins :as plugins]
-             [sample-data :as sample-data]
-             [server :as server]
-             [setup :as setup]
-             [task :as task]
-             [troubleshooting :as troubleshooting]
-             [util :as u]]
+            [clojure.tools.logging :as log]
+            [clojure.tools.trace :as trace]
+            [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
+            [metabase.db :as mdb]
+            [metabase.events :as events]
+            [metabase.metabot :as metabot]
             [metabase.models.user :refer [User]]
+            [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
+            [metabase.sample-data :as sample-data]
+            [metabase.server :as server]
+            [metabase.server.handler :as handler]
+            [metabase.setup :as setup]
+            [metabase.task :as task]
+            [metabase.troubleshooting :as troubleshooting]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
-
-(def ^:private ee-available?
-  (try
-    (classloader/require 'metabase-enterprise.core)
-    true
-    (catch Throwable _
-      false)))
 
 ;; don't i18n this, it's legalese
 (log/info
@@ -37,7 +28,7 @@
  (format "\n\nCopyright © %d Metabase, Inc." (.getYear (java.time.LocalDate/now)))
 
  (str "\n\n"
-      (if ee-available?
+      (if config/ee-available?
         (str (deferred-trs "Metabase Enterprise Edition extensions are PRESENT.")
              "\n\n"
              (deferred-trs "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License.")

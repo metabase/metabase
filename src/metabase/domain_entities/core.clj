@@ -3,15 +3,14 @@
             [medley.core :as m]
             [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models
-             [card :refer [Card]]
-             [table :as table :refer [Table]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.util :as u]
             [schema.core :as s]))
 
 (def ^:private ^{:arglists '([field])} field-type
   "Return the most specific type of a given field."
-  (some-fn :special_type :base_type))
+  (some-fn :semantic_type :base_type))
 
 (def SourceName
   "A reference to a `SourceEntity`."
@@ -36,8 +35,9 @@
   [bindings :- Bindings, source :- SourceName, dimension-reference :- DimensionReference]
   (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
     (if maybe-dimension
-      (cond->> (get-in bindings [table-or-dimension :dimensions maybe-dimension])
-        (not= source table-or-dimension) (vector :joined-field table-or-dimension))
+      (let [field-clause (get-in bindings [table-or-dimension :dimensions maybe-dimension])]
+        (cond-> field-clause
+          (not= source table-or-dimension) (mbql.u/assoc-field-options :join-alias table-or-dimension)))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
 (s/defn resolve-dimension-clauses
@@ -52,8 +52,8 @@
   "Return MBQL clause for a given field-like object."
   [{:keys [id name base_type]}]
   (if id
-    [:field-id id]
-    [:field-literal name base_type]))
+    [:field id nil]
+    [:field name {:base-type base_type}]))
 
 (defn- has-attribute?
   [entity {:keys [field domain_entity has_many]}]
@@ -95,7 +95,7 @@
      :dimensions          dimensions
      :type                type
      :description         description
-     :source_table        (u/get-id table)
+     :source_table        (u/the-id table)
      :name                name}))
 
 (defn domain-entity-for-table

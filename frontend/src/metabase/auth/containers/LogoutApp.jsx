@@ -1,4 +1,5 @@
 import { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import { logout } from "../auth";
@@ -14,7 +15,7 @@ const mapDispatchToProps = {
   mapDispatchToProps,
 )
 export default class LogoutApp extends Component {
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     this.props.logout();
   }
 
@@ -22,3 +23,7 @@ export default class LogoutApp extends Component {
     return null;
   }
 }
+
+LogoutApp.propTypes = {
+  logout: PropTypes.func.isRequired,
+};

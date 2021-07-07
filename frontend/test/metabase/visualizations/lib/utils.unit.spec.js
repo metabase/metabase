@@ -17,14 +17,14 @@ const baseQuery = {
   query: {
     "source-table": 2,
     aggregation: [["count"]],
-    breakout: [["field-id", 2]],
+    breakout: [["field", 2, null]],
   },
 };
 const derivedQuery = {
   ...baseQuery,
   query: {
     ...baseQuery.query,
-    filter: ["time-interval", ["field-id", 1], -7, "day"],
+    filter: ["time-interval", ["field", 1, null], -7, "day"],
   },
 };
 
@@ -34,7 +34,7 @@ const breakoutMultiseriesQuery = {
     ...baseQuery.query,
     breakout: [
       ...baseQuery.query.breakout,
-      ["fk->", ["field-id", 1], ["field-id", 10]],
+      ["field", 10, { "source-field": 1 }],
     ],
   },
 };
@@ -42,7 +42,7 @@ const derivedBreakoutMultiseriesQuery = {
   ...breakoutMultiseriesQuery,
   query: {
     ...breakoutMultiseriesQuery.query,
-    filter: ["time-interval", ["field-id", 1], -7, "day"],
+    filter: ["time-interval", ["field", 1, null], -7, "day"],
   },
 };
 

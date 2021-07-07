@@ -1,53 +1,47 @@
 (ns metabase.api.routes
-  (:require [compojure
-             [core :refer [context defroutes]]
-             [route :as route]]
-            [metabase
-             [config :as config]
-             [util :as u]]
-            [metabase.api
-             [activity :as activity]
-             [alert :as alert]
-             [automagic-dashboards :as magic]
-             [card :as card]
-             [collection :as collection]
-             [dashboard :as dashboard]
-             [database :as database]
-             [dataset :as dataset]
-             [email :as email]
-             [embed :as embed]
-             [field :as field]
-             [geojson :as geojson]
-             [ldap :as ldap]
-             [metastore :as metastore]
-             [metric :as metric]
-             [native-query-snippet :as native-query-snippet]
-             [notify :as notify]
-             [permissions :as permissions]
-             [preview-embed :as preview-embed]
-             [public :as public]
-             [pulse :as pulse]
-             [revision :as revision]
-             [search :as search]
-             [segment :as segment]
-             [session :as session]
-             [setting :as setting]
-             [setup :as setup]
-             [slack :as slack]
-             [table :as table]
-             [task :as task]
-             [testing :as testing]
-             [tiles :as tiles]
-             [transform :as transform]
-             [user :as user]
-             [util :as util]]
-            [metabase.api.advanced-computation
-             [authenticated :as advcomp-auth]
-             [public :as advcomp-public]]
-            [metabase.middleware
-             [auth :as middleware.auth]
-             [exceptions :as middleware.exceptions]]
+  (:require [compojure.core :refer [context defroutes]]
+            [compojure.route :as route]
+            [metabase.api.activity :as activity]
+            [metabase.api.alert :as alert]
+            [metabase.api.automagic-dashboards :as magic]
+            [metabase.api.card :as card]
+            [metabase.api.collection :as collection]
+            [metabase.api.dashboard :as dashboard]
+            [metabase.api.database :as database]
+            [metabase.api.dataset :as dataset]
+            [metabase.api.email :as email]
+            [metabase.api.embed :as embed]
+            [metabase.api.field :as field]
+            [metabase.api.geojson :as geojson]
+            [metabase.api.ldap :as ldap]
+            [metabase.api.login-history :as login-history]
+            [metabase.api.metastore :as metastore]
+            [metabase.api.metric :as metric]
+            [metabase.api.native-query-snippet :as native-query-snippet]
+            [metabase.api.notify :as notify]
+            [metabase.api.permissions :as permissions]
+            [metabase.api.preview-embed :as preview-embed]
+            [metabase.api.public :as public]
+            [metabase.api.pulse :as pulse]
+            [metabase.api.revision :as revision]
+            [metabase.api.search :as search]
+            [metabase.api.segment :as segment]
+            [metabase.api.session :as session]
+            [metabase.api.setting :as setting]
+            [metabase.api.setup :as setup]
+            [metabase.api.slack :as slack]
+            [metabase.api.table :as table]
+            [metabase.api.task :as task]
+            [metabase.api.testing :as testing]
+            [metabase.api.tiles :as tiles]
+            [metabase.api.transform :as transform]
+            [metabase.api.user :as user]
+            [metabase.api.util :as util]
+            [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
+            [metabase.server.middleware.auth :as middleware.auth]
+            [metabase.server.middleware.exceptions :as middleware.exceptions]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru]]))
 
 (u/ignore-exceptions (classloader/require '[metabase-enterprise.sandbox.api.routes :as ee.sandbox.routes]))
@@ -74,45 +68,43 @@
   (or (some-> (resolve 'ee.sandbox.routes/routes) var-get)
       (fn [_ respond _]
         (respond nil)))
-  (context "/activity"                    [] (+auth activity/routes))
-  ;; order is important here! the /public version must appear first, otherwise
-  ;; it does not apply.
-  (context "/advanced_computation/public" [] (+generic-exceptions advcomp-public/routes))
-  (context "/advanced_computation"        [] (+auth advcomp-auth/routes))
-  (context "/alert"                       [] (+auth alert/routes))
-  (context "/automagic-dashboards"        [] (+auth magic/routes))
-  (context "/card"                        [] (+auth card/routes))
-  (context "/collection"                  [] (+auth collection/routes))
-  (context "/dashboard"                   [] (+auth dashboard/routes))
-  (context "/database"                    [] (+auth database/routes))
-  (context "/dataset"                     [] (+auth dataset/routes))
-  (context "/email"                       [] (+auth email/routes))
-  (context "/embed"                       [] (+message-only-exceptions embed/routes))
-  (context "/field"                       [] (+auth field/routes))
-  (context "/geojson"                     [] geojson/routes)
-  (context "/ldap"                        [] (+auth ldap/routes))
-  (context "/metastore"                   [] (+auth metastore/routes))
-  (context "/metric"                      [] (+auth metric/routes))
-  (context "/native-query-snippet"        [] (+auth native-query-snippet/routes))
-  (context "/notify"                      [] (+apikey notify/routes))
-  (context "/permissions"                 [] (+auth permissions/routes))
-  (context "/preview_embed"               [] (+auth preview-embed/routes))
-  (context "/public"                      [] (+generic-exceptions public/routes))
-  (context "/pulse"                       [] (+auth pulse/routes))
-  (context "/revision"                    [] (+auth revision/routes))
-  (context "/search"                      [] (+auth search/routes))
-  (context "/segment"                     [] (+auth segment/routes))
-  (context "/session"                     [] session/routes)
-  (context "/setting"                     [] (+auth setting/routes))
-  (context "/setup"                       [] setup/routes)
-  (context "/slack"                       [] (+auth slack/routes))
-  (context "/table"                       [] (+auth table/routes))
-  (context "/task"                        [] (+auth task/routes))
-  (context "/testing"                     [] (if (config/config-bool :mb-enable-test-endpoints)
-                                               testing/routes
-                                               (fn [_ respond _] (respond nil))))
-  (context "/tiles"                       [] (+auth tiles/routes))
-  (context "/transform"                   [] (+auth transform/routes))
-  (context "/user"                        [] (+auth user/routes))
-  (context "/util"                        [] util/routes)
+  (context "/activity"             [] (+auth activity/routes))
+  (context "/alert"                [] (+auth alert/routes))
+  (context "/automagic-dashboards" [] (+auth magic/routes))
+  (context "/card"                 [] (+auth card/routes))
+  (context "/collection"           [] (+auth collection/routes))
+  (context "/dashboard"            [] (+auth dashboard/routes))
+  (context "/database"             [] (+auth database/routes))
+  (context "/dataset"              [] (+auth dataset/routes))
+  (context "/email"                [] (+auth email/routes))
+  (context "/embed"                [] (+message-only-exceptions embed/routes))
+  (context "/field"                [] (+auth field/routes))
+  (context "/geojson"              [] geojson/routes)
+  (context "/ldap"                 [] (+auth ldap/routes))
+  (context "/login-history"        [] (+auth login-history/routes))
+  (context "/metastore"            [] (+auth metastore/routes))
+  (context "/metric"               [] (+auth metric/routes))
+  (context "/native-query-snippet" [] (+auth native-query-snippet/routes))
+  (context "/notify"               [] (+apikey notify/routes))
+  (context "/permissions"          [] (+auth permissions/routes))
+  (context "/preview_embed"        [] (+auth preview-embed/routes))
+  (context "/public"               [] (+generic-exceptions public/routes))
+  (context "/pulse"                [] (+auth pulse/routes))
+  (context "/revision"             [] (+auth revision/routes))
+  (context "/search"               [] (+auth search/routes))
+  (context "/segment"              [] (+auth segment/routes))
+  (context "/session"              [] session/routes)
+  (context "/setting"              [] (+auth setting/routes))
+  (context "/setup"                [] setup/routes)
+  (context "/slack"                [] (+auth slack/routes))
+  (context "/table"                [] (+auth table/routes))
+  (context "/task"                 [] (+auth task/routes))
+  (context "/testing"              [] (if (or (not config/is-prod?)
+                                              (config/config-bool :mb-enable-test-endpoints))
+                                        testing/routes
+                                        (fn [_ respond _] (respond nil))))
+  (context "/tiles"                [] (+auth tiles/routes))
+  (context "/transform"            [] (+auth transform/routes))
+  (context "/user"                 [] (+auth user/routes))
+  (context "/util"                 [] util/routes)
   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")})))

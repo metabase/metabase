@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -391,7 +390,6 @@ function transformSingleSeries(s, series, seriesIndex) {
       }
 
       const newRow = rowColumnIndexes.map(columnIndex => row[columnIndex]);
-      // $FlowFixMe: _origin not typed
       newRow._origin = { seriesIndex, rowIndex, row, cols };
       seriesRows.push(newRow);
     }
@@ -459,7 +457,6 @@ function transformSingleSeries(s, series, seriesIndex) {
         data: {
           rows: rows.map((row, rowIndex) => {
             const newRow = rowColumnIndexes.map(i => row[i]);
-            // $FlowFixMe: _origin not typed
             newRow._origin = { seriesIndex, rowIndex, row, cols };
             return newRow;
           }),

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
@@ -35,6 +36,7 @@ const LegacyChoropleth = ({
           >
             {geoJson.features.map((feature, index) => (
               <path
+                key={index}
                 d={geo(feature, index)}
                 stroke="white"
                 strokeWidth={1}

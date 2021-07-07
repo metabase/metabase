@@ -4,16 +4,15 @@
             [clojure.tools.logging :as log]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [dependency :refer [Dependency]]
-             [metric :refer [Metric]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [segment :refer [Segment]]
-             [user :refer [User]]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.dependency :refer [Dependency]]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.user :refer [User]]
             [toucan.db :as db]))
 
 (def ^:const notifications-topics

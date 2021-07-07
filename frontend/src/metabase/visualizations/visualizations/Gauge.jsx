@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
@@ -273,6 +272,7 @@ export default class Gauge extends Component {
                   column={column}
                   settings={settings}
                   onHoverChange={!showLabels ? this.props.onHoverChange : null}
+                  testId={"gauge-arc-" + index}
                 />
               ))}
               {/* NEEDLE */}
@@ -284,6 +284,7 @@ export default class Gauge extends Component {
               {showLabels &&
                 numberLabels.map((value, index) => (
                   <GaugeSegmentLabel
+                    key={index}
                     position={valuePosition(
                       value,
                       OUTER_RADIUS * LABEL_OFFSET_PERCENT,
@@ -295,7 +296,7 @@ export default class Gauge extends Component {
               {/* TEXT LABELS */}
               {showLabels &&
                 textLabels.map(({ label, value }, index) => (
-                  <HideIfOverlowingSVG>
+                  <HideIfOverlowingSVG key={index}>
                     <GaugeSegmentLabel
                       position={valuePosition(
                         value,
@@ -341,6 +342,7 @@ const GaugeArc = ({
   onHoverChange,
   settings,
   column,
+  testId,
 }) => {
   const arc = d3.svg
     .arc()
@@ -353,6 +355,7 @@ const GaugeArc = ({
         endAngle: end,
       })}
       fill={fill}
+      data-testid={testId}
       onMouseMove={e => {
         if (onHoverChange) {
           const options =
