@@ -3,9 +3,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
+import { t } from "ttag";
+
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
 import AdminLayout from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
 
@@ -161,6 +163,7 @@ export default class SettingsEditorApp extends Component {
 
   renderSettingsSections() {
     const { sections, activeSectionName, newVersionAvailable } = this.props;
+    console.log("🚀", this.props);
 
     const renderedSections = Object.entries(sections).map(
       ([slug, section], idx) => {
@@ -185,8 +188,14 @@ export default class SettingsEditorApp extends Component {
         );
 
         // if this is the Updates section && there is a new version then lets add a little indicator
+        const shouldDisplayNewVersionIndicator =
+          slug === "updates" &&
+          newVersionAvailable &&
+          !MetabaseSettings.isHosted();
+
         let newVersionIndicator;
-        if (slug === "updates" && newVersionAvailable) {
+
+        if (shouldDisplayNewVersionIndicator) {
           newVersionIndicator = (
             <span
               style={{ padding: "4px 8px 4px 8px" }}

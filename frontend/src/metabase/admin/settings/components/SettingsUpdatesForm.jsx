@@ -99,7 +99,7 @@ export default class SettingsUpdatesForm extends Component {
 
     return (
       <div style={{ width: "585px" }}>
-        <ul>{settings}</ul>
+        {!MetabaseSettings.isHosted() && <ul>{settings}</ul>}
 
         <div className="px2">
           <div className="pt3 border-top">
