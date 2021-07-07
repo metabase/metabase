@@ -17,6 +17,12 @@ export default class SettingsUpdatesForm extends Component {
   };
 
   renderVersionUpdateNotice() {
+    if (MetabaseSettings.isHosted()) {
+      return (
+        <div>{t`Metabase Cloud keeps your instance up to date. Thanks for being a customer!`}</div>
+      );
+    }
+
     if (MetabaseSettings.versionIsLatest()) {
       const currentVersion = MetabaseSettings.currentVersion();
       return (
@@ -75,10 +81,7 @@ export default class SettingsUpdatesForm extends Component {
         </div>
       );
     } else {
-      return (
-        <div>{t`Sorry, we were unable to check for updates at this time. Last successful check was
-         ${MetabaseSettings.versionInfoLastChecked()}.`}</div>
-      );
+      return <div>{t`No successful checks yet.`}</div>;
     }
   }
 
@@ -131,6 +134,10 @@ function Version({ version }) {
 }
 
 function HostingCTA() {
+  if (MetabaseSettings.isEnterprise()) {
+    return null;
+  }
+
   return (
     <Flex
       justifyContent="space-between"
