@@ -33,9 +33,8 @@ export const examples = {
   Label: (
     <div>
       <StackedCheckBoxDemo label="Confirm Stuff" />
-      <StackedCheckBoxDemo
-        label={<h3 style={{ marginLeft: "8px" }}>Custom element label</h3>}
-      />
+      <br />
+      <StackedCheckBoxDemo label={<h3>Custom element label</h3>} />
     </div>
   ),
   Disabled: (
