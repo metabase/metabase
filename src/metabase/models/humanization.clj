@@ -54,6 +54,11 @@
                          :when (not (str/blank? part))]
                      (capitalize-word part))))))
 
+;; actual advanced method has been excised. this one just calls out to simple
+(defmethod name->human-readable-name :advanced
+  ([s] (name->human-readable-name :simple s))
+  ([_, ^String s] (name->human-readable-name :simple s)))
+
 ;; :none is just an identity implementation
 (defmethod name->human-readable-name :none
   ([s]   s)
