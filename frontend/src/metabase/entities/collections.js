@@ -134,6 +134,7 @@ const Collections = createEntity({
         name: "name",
         title: t`Name`,
         placeholder: t`My new fantastic collection`,
+        autoFocus: true,
         validate: name =>
           (!name && t`Name is required`) ||
           (name && name.length > 100 && t`Name must be 100 characters or less`),
