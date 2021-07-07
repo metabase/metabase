@@ -83,7 +83,10 @@ export default class SettingsUpdatesForm extends Component {
         </div>
       );
     } else {
-      return <div>{t`No successful checks yet.`}</div>;
+      return (
+        <div>{t`Sorry, we were unable to check for updates at this time. Last successful check was
+         ${MetabaseSettings.versionInfoLastChecked()}.`}</div>
+      );
     }
   }
 

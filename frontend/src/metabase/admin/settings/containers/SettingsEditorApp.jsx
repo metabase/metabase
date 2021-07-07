@@ -163,7 +163,6 @@ export default class SettingsEditorApp extends Component {
 
   renderSettingsSections() {
     const { sections, activeSectionName, newVersionAvailable } = this.props;
-    console.log("🚀", this.props);
 
     const renderedSections = Object.entries(sections).map(
       ([slug, section], idx) => {
