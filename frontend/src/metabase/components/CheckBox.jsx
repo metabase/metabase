@@ -9,7 +9,7 @@ import { color } from "metabase/lib/colors";
 const propTypes = {
   checked: PropTypes.bool,
   indeterminate: PropTypes.bool,
-  label: PropTypes.string,
+  label: PropTypes.node,
   disabled: PropTypes.bool,
   onChange: PropTypes.func,
   onFocus: PropTypes.func,

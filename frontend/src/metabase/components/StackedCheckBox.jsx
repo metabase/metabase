@@ -10,7 +10,7 @@ import CheckBox, {
 import { color } from "metabase/lib/colors";
 
 const propTypes = {
-  label: PropTypes.string,
+  label: PropTypes.node,
   checked: PropTypes.bool,
   disabled: PropTypes.bool,
   checkedColor: PropTypes.string,
