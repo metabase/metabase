@@ -19,20 +19,19 @@ export default class SettingsUpdatesForm extends Component {
   };
 
   renderVersionUpdateNotice() {
+    const currentVersion = formatVersion(MetabaseSettings.currentVersion());
+
     if (MetabaseSettings.isHosted()) {
       return (
-        <div>{t`Metabase Cloud keeps your instance up to date. Thanks for being a customer!`}</div>
+        <div>{t`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}</div>
       );
     }
 
     if (MetabaseSettings.versionIsLatest()) {
-      const currentVersion = MetabaseSettings.currentVersion();
       return (
         <div>
           <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
-            {jt`You're running Metabase ${formatVersion(
-              currentVersion,
-            )} which is the latest and greatest!`}
+            {jt`You're running Metabase ${currentVersion} which is the latest and greatest!`}
           </div>
           {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
             <HostingCTA />
@@ -40,7 +39,6 @@ export default class SettingsUpdatesForm extends Component {
         </div>
       );
     } else if (MetabaseSettings.newVersionAvailable()) {
-      const currentVersion = MetabaseSettings.currentVersion();
       const latestVersion = MetabaseSettings.latestVersion();
       const versionInfo = MetabaseSettings.versionInfo();
       return (
@@ -48,7 +46,7 @@ export default class SettingsUpdatesForm extends Component {
           <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
             <span className="text-white text-bold">
               {jt`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
-              {jt`You're running ${formatVersion(currentVersion)}`}
+              {jt`You're running ${currentVersion}`}
             </span>
             <ExternalLink
               data-metabase-event={
