@@ -37,6 +37,7 @@ import {
 } from "metabase/selectors/settings";
 
 const PAGE_PADDING = [1, 2, 4];
+const ROOT_COLLECTIONS_LOAD_LIMIT = 500;
 
 const getGreeting = createSelector(
   [getUser],
@@ -45,7 +46,11 @@ const getGreeting = createSelector(
 
 //class Overworld extends Zelda
 @Search.loadList({
-  query: { collection: "root", models: "collection" },
+  query: {
+    collection: "root",
+    models: "collection",
+    limit: ROOT_COLLECTIONS_LOAD_LIMIT,
+  },
   wrapped: true,
 })
 @connect(

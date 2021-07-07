@@ -3,6 +3,8 @@ import React from "react";
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
+const PINNED_DASHBOARDS_LOAD_LIMIT = 500;
+
 type Props = {
   collectionId: number,
   children: () => void,
@@ -19,7 +21,7 @@ const CollectionItemsLoader = ({ collectionId, children, ...props }: Props) => (
           sort_column: "name",
           sort_direction: "asc",
           models: "dashboard",
-          limit: 200,
+          limit: PINNED_DASHBOARDS_LOAD_LIMIT,
         }}
         wrapped
       >
