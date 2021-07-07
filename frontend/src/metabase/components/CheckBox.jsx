@@ -1,10 +1,13 @@
 import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
-import styled, { css } from "styled-components";
-
-import Icon from "metabase/components/Icon";
-
-import { color } from "metabase/lib/colors";
+import {
+  CheckboxRoot,
+  Container,
+  VisibleBox,
+  Input,
+  CheckboxIcon,
+  LabelText,
+} from "./CheckBox.styled";
 
 const propTypes = {
   checked: PropTypes.bool,
@@ -122,71 +125,6 @@ function Checkbox({
     </CheckboxRoot>
   );
 }
-
-const CheckboxRoot = styled.label`
-  display: block;
-  cursor: pointer;
-
-  ${props =>
-    props.disabled &&
-    css`
-      opacity: 0.4;
-      pointer-events: none;
-    `}
-`;
-
-const Container = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-const VisibleBox = styled.span`
-  display: flex;
-  align-items: center;
-  justify-center: center;
-  position: relative;
-  width: ${props => `${props.size}px`};
-  height: ${props => `${props.size}px`};
-
-  background-color: ${props =>
-    props.checked ? color(props.checkedColor) : color("bg-white")};
-
-  border: 2px solid
-    ${props =>
-      props.checked ? color(props.checkedColor) : color(props.uncheckedColor)};
-
-  border-radius: 4px;
-
-  ${props =>
-    props.isFocused &&
-    !props.checked &&
-    css`
-      outline: 1px auto ${color(props.checkedColor)};
-    `}
-`;
-
-const Input = styled.input.attrs({ type: "checkbox" })`
-  cursor: inherit;
-  position: absolute;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  margin: 0;
-  padding: 0;
-  z-index: 1;
-`;
-
-const CheckboxIcon = styled(Icon)`
-  position: absolute;
-  color: ${props =>
-    props.checked ? color("white") : color(props.uncheckedColor)};
-`;
-
-const LabelText = styled.span`
-  margin-left: 8px;
-`;
 
 Checkbox.propTypes = propTypes;
 Checkbox.Label = LabelText;
