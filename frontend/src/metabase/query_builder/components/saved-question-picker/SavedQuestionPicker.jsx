@@ -37,7 +37,7 @@ const propTypes = {
 
 const OUR_ANALYTICS_COLLECTION = {
   ...ROOT_COLLECTION,
-  schemaName: "Everything else",
+  schemaName: t`Everything else`,
   icon: "folder",
 };
 
@@ -110,7 +110,7 @@ function SavedQuestionPicker({
       <CollectionsContainer>
         <BackButton onClick={onBack}>
           <Icon name="chevronleft" className="mr1" />
-          {t`Saved questions`}
+          {t`Saved Questions`}
         </BackButton>
         <Box my={1}>
           <Tree
