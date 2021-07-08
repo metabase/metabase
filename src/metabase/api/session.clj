@@ -82,8 +82,8 @@
 (def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
 
 ;; Fake salt & hash used to run bcrypt hash if user doesn't exist, to avoid timing attacks (Metaboat #134)
-(def ^:private fake-salt (str (UUID/randomUUID)))
-(def ^:private fake-hashed-password (creds/hash-bcrypt (str fake-salt "fake-password")))
+(def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
+(def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
 (s/defn ^:private ldap-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
