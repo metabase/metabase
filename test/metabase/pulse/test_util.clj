@@ -1,5 +1,6 @@
 (ns metabase.pulse.test-util
   (:require [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.integrations.slack :as slack]
             [metabase.models.pulse :as models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
@@ -142,4 +143,6 @@
 
 (defn thunk->boolean [{:keys [attachments] :as result}]
   (assoc result :attachments (for [attachment-info attachments]
-                               (update attachment-info :attachment-bytes-thunk fn?))))
+                               (-> attachment-info
+                                   (update :rendered-info (fn [ri]
+                                                            (m/map-vals some? ri)))))))

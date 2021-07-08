@@ -220,12 +220,14 @@
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id card {:keys [cols rows]}]
-  {:attachments
-   nil
+  (let [value (format-cell timezone-id (ffirst rows) (first cols))]
+    {:attachments
+     nil
 
-   :content
-   [:div {:style (style/style (style/scalar-style))}
-    (h (format-cell timezone-id (ffirst rows) (first cols)))]})
+     :content
+     [:div {:style (style/style (style/scalar-style))}
+      (h value)]
+     :render/text (str value)}))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card {:keys [rows cols] :as data}]

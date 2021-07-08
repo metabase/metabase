@@ -8,6 +8,7 @@
             [metabase.models.permissions-group :as group]
             [metabase.models.pulse :as models.pulse]
             [metabase.pulse :as pulse]
+            [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.test-util :refer :all]
             [metabase.query-processor.middleware.constraints :as constraints]
@@ -133,8 +134,10 @@
 (def ^:private test-card-regex  (re-pattern card-name))
 
 
-(defn- produces-bytes? [{:keys [attachment-bytes-thunk]}]
-  (pos? (alength ^bytes (attachment-bytes-thunk))))
+(defn- produces-bytes? [{:keys [rendered-info]}]
+  (when rendered-info
+    (pos? (alength ^bytes (or (render/png-from-render-info rendered-info)
+                              (byte-array 0))))))
 
 (defn- email-body? [{message-type :type, ^String content :content}]
   (and (= "text/html; charset=utf-8" message-type)
@@ -172,12 +175,13 @@
        (is (= {:channel-id "#general"
                :message    "Pulse: Pulse Name"
                :attachments
-               [{:title                  card-name
-                 :attachment-bytes-thunk true
-                 :title_link             (str "https://metabase.com/testmb/question/" card-id)
-                 :attachment-name        "image.png"
-                 :channel-id             "FOO"
-                 :fallback               card-name}]}
+               [{:title           card-name
+                 :rendered-info   {:attachments false
+                                   :content     true}
+                 :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                 :attachment-name "image.png"
+                 :channel-id      "FOO"
+                 :fallback        card-name}]}
               (thunk->boolean pulse-results))))}}))
 
 (deftest basic-table-test
@@ -205,20 +209,18 @@
 
       :slack
       (fn [{:keys [card-id]} [pulse-results]]
-        ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be
-        ;; called
-        (force-bytes-thunk pulse-results)
         (testing "\"more results in attachment\" text should not be present for Slack Pulses"
           (testing "Pulse results"
             (is (= {:channel-id "#general"
                     :message    "Pulse: Pulse Name"
                     :attachments
-                    [{:title                  card-name
-                      :attachment-bytes-thunk true
-                      :title_link             (str "https://metabase.com/testmb/question/" card-id)
-                      :attachment-name        "image.png"
-                      :channel-id             "FOO"
-                      :fallback               card-name}]}
+                    [{:title           card-name
+                      :rendered-info   {:attachments false
+                                        :content     true}
+                      :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                      :attachment-name "image.png"
+                      :channel-id      "FOO"
+                      :fallback        card-name}]}
                    (thunk->boolean pulse-results))))
           (testing "attached-results-text should be invoked exactly once"
             (is (= 1
@@ -423,7 +425,8 @@
           (is (= {:channel-id  "#general",
                   :message     "Alert: Test card",
                   :attachments [{:title                  card-name
-                                 :attachment-bytes-thunk true
+                                 :rendered-info          {:attachments false
+                                                          :content     true}
                                  :title_link             (str "https://metabase.com/testmb/question/" card-id)
                                  :attachment-name        "image.png"
                                  :channel-id             "FOO"
@@ -633,13 +636,15 @@
                  :message    "Pulse: Pulse Name",
                  :attachments
                  [{:title                  card-name,
-                   :attachment-bytes-thunk true,
+                   :rendered-info          {:attachments false
+                                            :content     true}
                    :title_link             (str "https://metabase.com/testmb/question/" card-id-1),
                    :attachment-name        "image.png",
                    :channel-id             "FOO",
                    :fallback               card-name}
                   {:title                  "Test card 2",
-                   :attachment-bytes-thunk true
+                   :rendered-info          {:attachments false
+                                            :content     true}
                    :title_link             (str "https://metabase.com/testmb/question/" card-id-2),
                    :attachment-name        "image.png",
                    :channel-id             "FOO",
@@ -663,14 +668,16 @@
                  email-data (m/find-first #(contains? % :subject) pulse-data)]
              (is (= {:channel-id  "#general"
                      :message     "Pulse: Pulse Name"
-                     :attachments [{:title                  card-name
-                                    :attachment-bytes-thunk true
-                                    :title_link             (str "https://metabase.com/testmb/question/" card-id)
-                                    :attachment-name        "image.png"
-                                    :channel-id             "FOO"
-                                    :fallback               card-name}]}
+                     :attachments [{:title           card-name
+                                    :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                                    :rendered-info   {:attachments false
+                                                      :content     true}
+                                    :attachment-name "image.png"
+                                    :channel-id      "FOO"
+                                    :fallback        card-name}]}
                     (thunk->boolean slack-data)))
-             (is (every? produces-bytes? (:attachments slack-data)))
+             (is (= [true]
+                    (map (comp some? :content :rendered-info) (:attachments slack-data))))
              (is (= {:subject "Pulse: Pulse Name", :recipients ["rasta@metabase.com"], :message-type :attachments}
                     (select-keys email-data [:subject :recipients :message-type])))
              (is (= 2
