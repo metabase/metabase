@@ -37,7 +37,7 @@ const propTypes = {
 
 const OUR_ANALYTICS_COLLECTION = {
   ...ROOT_COLLECTION,
-  schemaName: "Everything else",
+  schemaName: t`Everything else`,
   icon: "folder",
 };
 
