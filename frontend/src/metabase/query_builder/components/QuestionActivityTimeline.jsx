@@ -40,7 +40,7 @@ function RevisionEventFooter({ revision, onRevisionClick }) {
     <div>
       <RevertButton
         actionFn={() => onRevisionClick(revision)}
-        normalText={t`Revert back`}
+        normalText={t`Revert`}
         activeText={t`Reverting…`}
         failedText={t`Revert failed`}
         successText={t`Reverted`}
