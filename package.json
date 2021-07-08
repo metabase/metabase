@@ -58,7 +58,7 @@
     "react-element-to-jsx-string": "^13.1.0",
     "react-grid-layout": "^1.2.5",
     "react-hot-loader": "^4.13.0",
-    "react-markdown": "^3.6.0",
+    "react-markdown": "^6.0.2",
     "react-motion": "^0.4.5",
     "react-redux": "^5.0.4",
     "react-resizable": "^1.9.0",

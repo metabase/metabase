@@ -112,8 +112,9 @@ export default class Text extends Component {
                 styles["text-card-markdown"],
                 getSettingsStyle(settings),
               )}
-              source={settings.text}
-            />
+            >
+              {settings.text}
+            </ReactMarkdown>
           ) : (
             <textarea
               className={cx(
@@ -144,8 +145,9 @@ export default class Text extends Component {
               styles["text-card-markdown"],
               getSettingsStyle(settings),
             )}
-            source={settings.text}
-          />
+          >
+            {settings.text}
+          </ReactMarkdown>
         </div>
       );
     }
