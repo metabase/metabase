@@ -28,14 +28,13 @@ export default class SettingsUpdatesForm extends Component {
     }
 
     if (MetabaseSettings.versionIsLatest()) {
+      const shouldShowHostedCta = !MetabaseSettings.isEnterprise();
       return (
         <div>
           <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
             {jt`You're running Metabase ${currentVersion} which is the latest and greatest!`}
           </div>
-          {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
-            <HostingCTA />
-          )}
+          {shouldShowHostedCta && <HostingCTA />}
         </div>
       );
     } else if (MetabaseSettings.newVersionAvailable()) {

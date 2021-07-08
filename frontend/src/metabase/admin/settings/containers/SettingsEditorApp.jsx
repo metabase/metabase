@@ -192,18 +192,14 @@ export default class SettingsEditorApp extends Component {
           newVersionAvailable &&
           !MetabaseSettings.isHosted();
 
-        let newVersionIndicator;
-
-        if (shouldDisplayNewVersionIndicator) {
-          newVersionIndicator = (
-            <span
-              style={{ padding: "4px 8px 4px 8px" }}
-              className="bg-brand rounded text-white text-bold h6"
-            >
-              1
-            </span>
-          );
-        }
+        const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
+          <span
+            style={{ padding: "4px 8px 4px 8px" }}
+            className="bg-brand rounded text-white text-bold h6"
+          >
+            1
+          </span>
+        ) : null;
 
         return (
           <li key={slug}>
