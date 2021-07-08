@@ -689,7 +689,7 @@ function formatStringFallback(value: Value, options: FormattingOptions = {}) {
 
 const MARKDOWN_RENDERERS = {
   // eslint-disable-next-line react/display-name
-  link: ({ href, children }) => (
+  a: ({ href, children }) => (
     <ExternalLink href={href}>{children}</ExternalLink>
   ),
 };
@@ -714,7 +714,11 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         value: formatted,
         raw: value,
       });
-      return <ReactMarkdown source={markdown} renderers={MARKDOWN_RENDERERS} />;
+      return (
+        <ReactMarkdown components={MARKDOWN_RENDERERS}>
+          {markdown}
+        </ReactMarkdown>
+      );
     } else {
       // FIXME: render and get the innerText?
       console.warn(
