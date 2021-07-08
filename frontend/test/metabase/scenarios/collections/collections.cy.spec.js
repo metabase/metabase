@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   restore,
   setupLocalHostEmail,
@@ -6,7 +7,6 @@ import {
   openOrdersTable,
   sidebar,
 } from "__support__/e2e/cypress";
-import _ from "underscore";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { nocollection } = USERS;
@@ -580,7 +580,7 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    it.skip("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
+    it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
       // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
       // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
       _.times(50, i => cy.createDashboard(`Dashboard ${i}`));
