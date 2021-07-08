@@ -899,7 +899,7 @@ const DatabaseSchemaPicker = ({
   }
 
   const sections = databases.map(database => ({
-    name: database.name,
+    name: database.is_saved_questions ? t`Saved Questions` : database.name,
     items:
       !database.is_saved_questions && database.schemas.length > 1
         ? database.schemas.map(schema => ({
