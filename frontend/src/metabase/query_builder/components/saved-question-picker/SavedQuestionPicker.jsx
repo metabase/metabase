@@ -110,7 +110,7 @@ function SavedQuestionPicker({
       <CollectionsContainer>
         <BackButton onClick={onBack}>
           <Icon name="chevronleft" className="mr1" />
-          {t`Saved questions`}
+          {t`Saved Questions`}
         </BackButton>
         <Box my={1}>
           <Tree
