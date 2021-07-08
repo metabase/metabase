@@ -6,7 +6,7 @@ import moment from "moment";
 
 import { getUser } from "metabase/selectors/user";
 
-import { TextButton } from "metabase/components/Button.styled";
+import Badge from "metabase/components/Badge";
 
 function mapStateToProps(state) {
   return {
@@ -45,11 +45,11 @@ function LastEditInfoLabel({ item, user, onClick, ...props }) {
     editorId === user.id ? t`you` : formatEditorName(first_name, last_name);
 
   return (
-    <TextButton
+    <Badge
       onClick={onClick}
       data-testid="revision-history-button"
       {...props}
-    >{t`Edited ${time} by ${editor}`}</TextButton>
+    >{t`Edited ${time} by ${editor}`}</Badge>
   );
 }
 
