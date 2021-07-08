@@ -29,13 +29,13 @@ msgid "Select a database type"
 msgstr "Selecciona un tipo de base de datos"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:267
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:182
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:191
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:432
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:113
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:133
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:207
 #: frontend/src/metabase/components/ActionButton.jsx:49
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:7
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:155
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:156
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:175
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:47
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:16
@@ -102,7 +102,7 @@ msgstr "Cuando un usuario añade un nuevo filtro o una pregunta SQL al Dashboard
 msgid "Never, I'll do this manually if I need to"
 msgstr "Nunca, lo haré manualmente si lo necesito"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:28
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:30
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:228
 #: frontend/src/metabase/components/ActionButton.jsx:50
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
@@ -147,12 +147,12 @@ msgstr "en esta casilla:"
 #: frontend/src/metabase/admin/people/components/AddRow.jsx:28
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:50
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:53
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:99
-#: frontend/src/metabase/admin/permissions/selectors.js:161
-#: frontend/src/metabase/admin/permissions/selectors.js:171
-#: frontend/src/metabase/admin/permissions/selectors.js:186
-#: frontend/src/metabase/admin/permissions/selectors.js:225
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:362
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:119
+#: frontend/src/metabase/admin/permissions/selectors.js:160
+#: frontend/src/metabase/admin/permissions/selectors.js:170
+#: frontend/src/metabase/admin/permissions/selectors.js:185
+#: frontend/src/metabase/admin/permissions/selectors.js:224
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:399
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:206
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:273
 #: frontend/src/metabase/components/ArchiveModal.jsx:38
@@ -172,7 +172,7 @@ msgstr "en esta casilla:"
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:33
 #: frontend/src/metabase/reference/components/EditHeader.jsx:34
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:58
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:335
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:350
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:465
 msgid "Cancel"
 msgstr "Cancelar"
@@ -185,11 +185,11 @@ msgstr "Cancelar"
 msgid "Delete"
 msgstr "Eliminar"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:151
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:157
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:96
-#: frontend/src/metabase/admin/permissions/selectors.js:339
-#: frontend/src/metabase/admin/permissions/selectors.js:346
-#: frontend/src/metabase/admin/permissions/selectors.js:457
+#: frontend/src/metabase/admin/permissions/selectors.js:343
+#: frontend/src/metabase/admin/permissions/selectors.js:350
+#: frontend/src/metabase/admin/permissions/selectors.js:461
 #: frontend/src/metabase/admin/routes.jsx:60
 #: frontend/src/metabase/home/containers/SearchApp.jsx:38
 #: frontend/src/metabase/nav/containers/Navbar.jsx:132
@@ -198,23 +198,23 @@ msgstr "Eliminar"
 msgid "Databases"
 msgstr "Bases de datos"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:152
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:158
 msgid "Add Database"
 msgstr "Añadir base de datos"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:74
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:79
 msgid "Connection"
 msgstr "Conexión"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:78
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:83
 msgid "Scheduling"
 msgstr "Programación"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:185
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:182
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:191
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:63
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:81
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:27
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:29
 #: frontend/src/metabase/admin/settings/components/SettingsGoogleForm.jsx:82
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:227
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:225
@@ -223,18 +223,18 @@ msgstr "Programación"
 msgid "Save changes"
 msgstr "Guardar cambios"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:222
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:231
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:31
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:31
 msgid "Actions"
 msgstr "Acciones"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:230
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:239
 msgid "Sync database schema now"
 msgstr "Sincronizar el esquema de la base de datos ahora"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:231
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:243
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:240
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:252
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:16
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:24
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:91
@@ -242,41 +242,41 @@ msgstr "Sincronizar el esquema de la base de datos ahora"
 msgid "Starting…"
 msgstr "Empezando…"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:232
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:241
 msgid "Failed to sync"
 msgstr "No se ha podido sincronizar"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:233
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:242
 msgid "Sync triggered!"
 msgstr "¡Sincronización iniciada!"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:242
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:251
 msgid "Re-scan field values now"
 msgstr "Vuelva a escanear los valores de campo ahora"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:244
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:253
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:92
 msgid "Failed to start scan"
 msgstr "No se ha podido iniciar la exploración"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:245
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:254
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:18
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:93
 msgid "Scan triggered!"
 msgstr "¡Exploración iniciada!"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:252
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:261
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:418
 msgid "Danger Zone"
 msgstr "Zona Peligrosa"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:258
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:261
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:267
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:270
 msgid "Discard saved field values"
 msgstr "Descartar valores de campos guardados"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:276
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:285
 msgid "Remove this database"
 msgstr "Eliminar esta base de datos"
 
@@ -288,18 +288,18 @@ msgstr "Añadir base de datos"
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:29
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:29
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:120
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:188
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:218
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:89
 #: frontend/src/metabase/collections/components/BaseItemsTable.jsx:143
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:133
-#: frontend/src/metabase/entities/collections.js:134
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:134
+#: frontend/src/metabase/entities/collections.js:135
 #: frontend/src/metabase/entities/dashboards.js:144
 #: frontend/src/metabase/entities/databases/forms.js:300
 #: frontend/src/metabase/entities/questions.js:88
 #: frontend/src/metabase/entities/questions.js:104
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:480
 #: frontend/src/metabase/visualizations/lib/settings/column.js:344
-#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:89
+#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:90
 msgid "Name"
 msgstr "Nombre"
 
@@ -319,7 +319,7 @@ msgstr "Cargando..."
 msgid "Bring the sample dataset back"
 msgstr "Recuperar la base de datos de prueba"
 
-#: frontend/src/metabase/admin/databases/database.js:175
+#: frontend/src/metabase/admin/databases/database.js:177
 msgid "Couldn't connect to the database. Please check the connection details."
 msgstr "No se ha podido conectar a la base de datos. Por favor, comprueba los detalles de la conexión."
 
@@ -713,13 +713,13 @@ msgstr "Error al descartar valores"
 msgid "Discard triggered!"
 msgstr "¡Limpieza iniciada!"
 
-#: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:113
+#: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:123
 msgid "Select any table to see its schema and add or edit metadata."
 msgstr "Selecciona cualquier tabla para ver su esquema y añadir o editar metadatos."
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:32
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:31
-#: frontend/src/metabase/entities/collections.js:137
+#: frontend/src/metabase/entities/collections.js:139
 #: frontend/src/metabase/entities/snippet-collections.js:76
 msgid "Name is required"
 msgstr "Nombre es obligatorio"
@@ -843,7 +843,7 @@ msgstr "Esto aparecerá en el historial de revisiones de este segmento para ayud
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:70
 #: frontend/src/metabase/admin/routes.jsx:137
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:222
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:226
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:104
 #: frontend/src/metabase/nav/containers/Navbar.jsx:114
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:19
@@ -873,7 +873,7 @@ msgstr "Formato de Email incorrecto"
 msgid "First name"
 msgstr "Nombre"
 
-#: frontend/src/metabase/entities/users/forms.js:20
+#: frontend/src/metabase/entities/users/forms.js:21
 msgid "Last name"
 msgstr "Apellidos"
 
@@ -913,7 +913,7 @@ msgstr "Miembros"
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:122
 #: frontend/src/metabase/admin/people/components/group-members/GroupMembersTable.jsx:54
 #: frontend/src/metabase/admin/settings/selectors.js:126
-#: frontend/src/metabase/entities/users/forms.js:26
+#: frontend/src/metabase/entities/users/forms.js:27
 #: frontend/src/metabase/lib/core.js:146
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:298
 msgid "Email"
@@ -992,7 +992,7 @@ msgstr "Borrar Grupo"
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:84
 #: frontend/src/metabase/query_builder/components/SidebarContent.jsx:18
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:119
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:341
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:356
 msgid "Done"
 msgstr "Hecho"
 
@@ -1006,7 +1006,7 @@ msgstr "Nombre Grupo"
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:22
 #: frontend/src/metabase/admin/routes.jsx:97
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:173
-#: frontend/src/metabase/entities/users/forms.js:70
+#: frontend/src/metabase/entities/users/forms.js:71
 msgid "Groups"
 msgstr "Grupos"
 
@@ -1225,7 +1225,7 @@ msgstr "No se realizarán cambios en los permisos."
 msgid "You've made changes to permissions."
 msgstr "Has realizado cambios en los permisos."
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:84
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:104
 msgid "Permissions for this collection"
 msgstr "Permisos de esta colección"
 
@@ -1241,127 +1241,127 @@ msgstr "¿Quieres abandonar esta página y descartar tus cambios?"
 msgid "Sorry, an error occurred."
 msgstr "Lo siento, ocurrió un error."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:69
+#: frontend/src/metabase/admin/permissions/selectors.js:68
 msgid "Administrators always have the highest level of access to everything in Metabase."
 msgstr "Los administradores siempre tienen el más alto nivel de acceso a todo en Metabase."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:71
+#: frontend/src/metabase/admin/permissions/selectors.js:70
 msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
 msgstr "Todos los usuarios de Metabase pertenecen al grupo All Users. Si quieres limitar o restringir el acceso de un grupo a algo, asegúrate de que el grupo All Users tenga un nivel de acceso igual o inferior."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:73
+#: frontend/src/metabase/admin/permissions/selectors.js:72
 msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
 msgstr "MetaBot es el bot de Slack de Metabase. Puedes elegir a qué tiene acceso aquí."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:126
+#: frontend/src/metabase/admin/permissions/selectors.js:125
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
 msgstr "El grupo \"{0}\" puede tener acceso a un conjunto diferente de {1} que este grupo, lo que puede darle a este grupo acceso adicional a algún {2}."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:129
+#: frontend/src/metabase/admin/permissions/selectors.js:128
 msgid "The \"{0}\" group has a higher level of access than this, which will override this setting. You should limit or revoke the \"{1}\" group's access to this item."
 msgstr "El grupo \"{0}\" tiene un mayor nivel de acceso que este, lo que anulará esta configuración. Debes limitar o revocar el acceso del grupo \"{1}\" a este elemento."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:155
+#: frontend/src/metabase/admin/permissions/selectors.js:154
 msgid "Limit"
 msgstr "¿Limitar"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:155
+#: frontend/src/metabase/admin/permissions/selectors.js:154
 msgid "Revoke"
 msgstr "¿Revocar"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:157
+#: frontend/src/metabase/admin/permissions/selectors.js:156
 msgid "access even though \"{0}\" has greater access?"
 msgstr "el acceso a pesar de que el grupo \"{0}\" tiene mayor acceso?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:160
-#: frontend/src/metabase/admin/permissions/selectors.js:259
+#: frontend/src/metabase/admin/permissions/selectors.js:159
+#: frontend/src/metabase/admin/permissions/selectors.js:258
 msgid "Limit access"
 msgstr "Limitar el acceso"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:160
-#: frontend/src/metabase/admin/permissions/selectors.js:224
-#: frontend/src/metabase/admin/permissions/selectors.js:267
-#: frontend/src/metabase/admin/permissions/selectors.js:307
+#: frontend/src/metabase/admin/permissions/selectors.js:159
+#: frontend/src/metabase/admin/permissions/selectors.js:223
+#: frontend/src/metabase/admin/permissions/selectors.js:266
+#: frontend/src/metabase/admin/permissions/selectors.js:306
 msgid "Revoke access"
 msgstr "Revocar el acceso"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:169
+#: frontend/src/metabase/admin/permissions/selectors.js:168
 msgid "Change access to this database to limited?"
 msgstr "¿Cambiar el acceso a esta base de datos a limitado?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:170
+#: frontend/src/metabase/admin/permissions/selectors.js:169
 msgid "Change"
 msgstr "Cambiar"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:183
+#: frontend/src/metabase/admin/permissions/selectors.js:182
 msgid "Allow Raw Query Writing?"
 msgstr "Permitir escritura de consultas directas"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:184
+#: frontend/src/metabase/admin/permissions/selectors.js:183
 msgid "This will also change this group's data access to Unrestricted for this database."
 msgstr "Esto también cambiará el acceso de datos de este grupo a Sin restricciones para esta base de datos."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:185
+#: frontend/src/metabase/admin/permissions/selectors.js:184
 msgid "Allow"
 msgstr "Permitir"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:222
+#: frontend/src/metabase/admin/permissions/selectors.js:221
 msgid "Revoke access to all tables?"
 msgstr "¿Revoca el acceso a todas las tablas?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:223
+#: frontend/src/metabase/admin/permissions/selectors.js:222
 msgid "This will also revoke this group's access to raw queries for this database."
 msgstr "Esto también revocará el acceso de este grupo a consultas sin formato para esta base de datos."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:252
+#: frontend/src/metabase/admin/permissions/selectors.js:251
 msgid "Grant unrestricted access"
 msgstr "Conceder acceso sin restricciones"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:253
+#: frontend/src/metabase/admin/permissions/selectors.js:252
 msgid "Unrestricted access"
 msgstr "Acceso no restingido"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:260
+#: frontend/src/metabase/admin/permissions/selectors.js:259
 msgid "Limited access"
 msgstr "Acceso limitado"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:268
+#: frontend/src/metabase/admin/permissions/selectors.js:267
 msgid "No access"
 msgstr "Sin acceso"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:274
+#: frontend/src/metabase/admin/permissions/selectors.js:273
 msgid "Write raw queries"
 msgstr "Escribir consultas directas"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:275
+#: frontend/src/metabase/admin/permissions/selectors.js:274
 msgid "Can write raw queries"
 msgstr "Puede escribir consultas directas"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:282
+#: frontend/src/metabase/admin/permissions/selectors.js:281
 msgid "Curate collection"
 msgstr "Mima la colección"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:289
+#: frontend/src/metabase/admin/permissions/selectors.js:288
 msgid "View collection"
 msgstr "Ver colección"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:350
-#: frontend/src/metabase/admin/permissions/selectors.js:461
-#: frontend/src/metabase/admin/permissions/selectors.js:574
+#: frontend/src/metabase/admin/permissions/selectors.js:354
+#: frontend/src/metabase/admin/permissions/selectors.js:465
+#: frontend/src/metabase/admin/permissions/selectors.js:578
 msgid "Data Access"
 msgstr "Acceso a Datos"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:526
-#: frontend/src/metabase/admin/permissions/selectors.js:681
-#: frontend/src/metabase/admin/permissions/selectors.js:686
+#: frontend/src/metabase/admin/permissions/selectors.js:530
+#: frontend/src/metabase/admin/permissions/selectors.js:685
+#: frontend/src/metabase/admin/permissions/selectors.js:690
 msgid "View tables"
 msgstr "Ver tablas"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:622
+#: frontend/src/metabase/admin/permissions/selectors.js:626
 msgid "SQL Queries"
 msgstr "Consultas SQL"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:692
+#: frontend/src/metabase/admin/permissions/selectors.js:696
 msgid "View schemas"
 msgstr "Ver esquemas"
 
@@ -1394,23 +1394,23 @@ msgstr "LDAP"
 msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
 msgstr "Permite a los usuarios de tu directorio LDAP iniciar sesión en la Metabase con sus credenciales LDAP, y permite la asignación automática de grupos LDAP a grupos de metabase."
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:18
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:20
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:75
 #: frontend/src/metabase/admin/settings/selectors.js:174
 msgid "That's not a valid email address"
 msgstr "Esa no es una dirección de correo electrónico válida"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:22
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:24
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:79
 msgid "That's not a valid integer"
 msgstr "Ese no es un entero válido"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:29
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:31
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:229
 msgid "Changes saved!"
 msgstr "¡Cambios guardados!"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:186
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:188
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:138
 msgid "Looks like we ran into some problems"
 msgstr "Parece que nos encontramos con algunos problemas"
@@ -1501,7 +1501,7 @@ msgstr "Crear un usuario de Slack Bot para MetaBot"
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
 msgstr "Una vez que estés allí, asígnele un nombre y haz clic en {0}. Luego, copia y pega el API Token del Bot en el campo a continuación. En cuanto hayas terminado, crea un canal \"metabase_files\" en Slack. Metabase necesita ese para subir gráficos."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:25
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:35
 msgid "You're running Metabase {0} which is the latest and greatest!"
 msgstr "¡Estás ejecutando Metabase {0} que es lo último y lo mejor!"
 
@@ -1509,21 +1509,21 @@ msgstr "¡Estás ejecutando Metabase {0} que es lo último y lo mejor!"
 msgid "Metabase {0} is available.  You're running {1}"
 msgstr "Metabase {0} está disponible.  Estás ejecutando {1}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:56
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:61
 #: frontend/src/metabase/components/form/StandardForm.jsx:19
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:119
 msgid "Update"
 msgstr "Actualiza"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:64
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:69
 msgid "What's Changed:"
 msgstr "Qué ha cambiado:"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:136
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:166
 msgid "Add a map"
 msgstr "Añade un mapa"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:189
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:219
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:125
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:568
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:605
@@ -1531,14 +1531,14 @@ msgstr "Añade un mapa"
 msgid "URL"
 msgstr "URL"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:206
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:236
 msgid "Delete custom map"
 msgstr "Elimina mapa personalizado"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:208
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:238
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:335
-#: frontend/src/metabase/containers/Overworld.jsx:153
-#: frontend/src/metabase/containers/Overworld.jsx:304
+#: frontend/src/metabase/containers/Overworld.jsx:128
+#: frontend/src/metabase/containers/Overworld.jsx:278
 #: frontend/src/metabase/dashboard/components/DashCard.jsx:362
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:91
@@ -1547,7 +1547,7 @@ msgstr "Elimina mapa personalizado"
 msgid "Remove"
 msgstr "Borrar"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:233
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:270
 #: frontend/src/metabase/dashboard/containers/DashCardCardParameterMapper.jsx:175
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:194
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:141
@@ -1555,59 +1555,59 @@ msgstr "Borrar"
 msgid "Select…"
 msgstr "Selecciona…"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:248
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:285
 msgid "Sample values:"
 msgstr "Valores de muestra:"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:286
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:323
 msgid "Add a new map"
 msgstr "Añade un nuevo mapa"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:286
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:323
 msgid "Edit map"
 msgstr "Editar mapa"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:287
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:324
 msgid "What do you want to call this map?"
 msgstr "¿Cómo quieres llamar a este mapa?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:292
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:329
 msgid "e.g. United Kingdom, Brazil, Mars"
 msgstr "e.g. United Kingdom, Brazil, Mars"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:299
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:336
 msgid "URL for the GeoJSON file you want to use"
 msgstr "URL para el archivo GeoJSON que quieres usar"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:305
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:342
 msgid "Like https://my-mb-server.com/maps/my-map.json"
 msgstr "Como https://my-mb-server.com/maps/my-map.json"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:316
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:353
 msgid "Refresh"
 msgstr "Actualizar"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:316
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:353
 msgid "Load"
 msgstr "Carga"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:322
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:359
 msgid "Which property specifies the region’s identifier?"
 msgstr "¿Qué propiedad especifica el identificador de la región?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:331
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:368
 msgid "Which property specifies the region’s display name?"
 msgstr "¿Qué propiedad especifica el nombre de la región?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:352
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:389
 msgid "Load a GeoJSON file to see a preview"
 msgstr "Carga un archivo GeoJSON para ver una vista previa"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:370
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:407
 msgid "Save map"
 msgstr "Guardar mapa"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:370
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:407
 msgid "Add map"
 msgstr "Añadir mapa"
 
@@ -1743,7 +1743,7 @@ msgstr "Habilitado"
 msgid "Disabled"
 msgstr "Deshabilitado"
 
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:119
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:121
 msgid "Unknown setting {0}"
 msgstr "La directiva de configuración {0} es desconocida"
 
@@ -1784,7 +1784,7 @@ msgstr "Selecciona una zona horaria"
 msgid "Not all databases support timezones, in which case this setting won't take effect."
 msgstr "No todas las bases de datos admiten zonas horarias, en cuyo caso esta configuración no tendrá efecto."
 
-#: frontend/src/metabase/entities/users/forms.js:34
+#: frontend/src/metabase/entities/users/forms.js:35
 msgid "Language"
 msgstr "Idioma"
 
@@ -1880,7 +1880,7 @@ msgstr "Nombre de Usuario o DN"
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:46
 #: frontend/src/metabase/entities/databases/forms.js:70
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:67
-#: frontend/src/metabase/user/components/UserSettings.jsx:67
+#: frontend/src/metabase/user/components/UserSettings.jsx:65
 #: src/metabase/driver/common.clj
 msgid "Password"
 msgstr "Contraseña"
@@ -2033,7 +2033,7 @@ msgstr "Volver al inicio de sesión"
 msgid "No Metabase account exists for this Google account."
 msgstr "No existe una cuenta de Metabase para esta cuenta de Google."
 
-#: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:17
+#: src/metabase/integrations/google.clj
 msgid "You'll need an administrator to create a Metabase account before you can use Google to log in."
 msgstr "Necesitará un administrador para crear una cuenta Metabase antes de poder usar Google para iniciar sesión."
 
@@ -2061,7 +2061,7 @@ msgstr "Enviar correo electrónico de restablecimiento de contraseña"
 msgid "Check your email for instructions on how to reset your password."
 msgstr "Consulta tu correo electrónico para obtener instrucciones sobre cómo restablecer tu contraseña."
 
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:28
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:31
 msgid "Sign in to Metabase"
 msgstr "Iniciar sesión en Metabase"
 
@@ -2169,7 +2169,7 @@ msgstr "Los cuadros de mando, colecciones y pulsos guardados en esta colección 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:242
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:243
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:59
-#: frontend/src/metabase/routes.jsx:195
+#: frontend/src/metabase/routes.jsx:193
 msgid "Archive"
 msgstr "Archivar"
 
@@ -2188,7 +2188,7 @@ msgstr "Desarchive este {0}"
 #: frontend/src/metabase/browse/containers/DatabaseBrowser.jsx:23
 #: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:41
 #: frontend/src/metabase/browse/containers/TableBrowser.jsx:71
-#: frontend/src/metabase/containers/Overworld.jsx:281
+#: frontend/src/metabase/containers/Overworld.jsx:255
 #: frontend/src/metabase/reference/databases/DatabaseList.jsx:48
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:39
 msgid "Our data"
@@ -2294,7 +2294,7 @@ msgstr "Pins"
 msgid "Drag something here to pin it to the top"
 msgstr "Arrastra algo aquí para pegarlo arriba"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:780
+#: frontend/src/metabase/admin/permissions/selectors.js:784
 #: frontend/src/metabase/home/containers/SearchApp.jsx:33
 msgid "Collections"
 msgstr "Colecciones"
@@ -2339,7 +2339,7 @@ msgstr "Archivar esta colección"
 msgid "My personal collection"
 msgstr "Mi colección personal"
 
-#: frontend/src/metabase/collections/components/Header.jsx:53
+#: frontend/src/metabase/collections/components/Header/Header.jsx:67
 #: frontend/src/metabase/components/CollectionList.jsx:110
 msgid "New collection"
 msgstr "Nueva colección"
@@ -2404,7 +2404,7 @@ msgstr "{0} para ir a la consola si aún no lo has hecho."
 msgid "How would you like to refer to this database?"
 msgstr "¿Cómo te gustaría llamar esta base de datos?"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:195
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:204
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:254
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:146
 #: frontend/src/metabase/setup/components/DatabaseSchedulingStep.jsx:70
@@ -2469,7 +2469,7 @@ msgstr "Descarga los resultados"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:53
 #: frontend/src/metabase/components/EntityMenu.info.js:105
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:99
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:107
 msgid "Sharing and embedding"
 msgstr "Compartiendo y Incrustando"
 
@@ -2515,35 +2515,35 @@ msgstr "Basado en el esquema"
 msgid "A look at your"
 msgstr "Una vista a tus"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:406
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:228
 msgid "Search the list"
 msgstr "Busca la lista"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:415
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:200
 msgid "Search by {0}"
 msgstr "Buscar por {0}"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:417
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:202
 msgid " or enter an ID"
 msgstr "o introduce un ID"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:422
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:210
 msgid "Enter an ID"
 msgstr "Introduce un ID"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:424
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:212
 msgid "Enter a number"
 msgstr "Introduce un número"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:426
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:214
 msgid "Enter some text"
 msgstr "Introduce un texto"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:542
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:563
 msgid "No matching {0} found."
 msgstr "No se encontraron {0} coincidentes."
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:551
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:572
 msgid "Including every option in your filter probably won’t do much…"
 msgstr "Incluir cada opción en tu filtro probablemente no hará mucho…"
 
@@ -2640,7 +2640,7 @@ msgid "Questions"
 msgstr "Preguntas"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:53
-#: frontend/src/metabase/routes.jsx:316
+#: frontend/src/metabase/routes.jsx:314
 msgid "Pulses"
 msgstr "Pulsos"
 
@@ -2687,14 +2687,14 @@ msgstr "Contraseña Temporal"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:227
 #: frontend/src/metabase/components/PasswordReveal.jsx:67
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:454
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:469
 msgid "Hide"
 msgstr "Esconder"
 
 #: frontend/src/metabase/components/PasswordReveal.jsx:67
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:471
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
 msgid "Show"
 msgstr "Mostrar"
 
@@ -2842,7 +2842,7 @@ msgid "Creator"
 msgstr "Creador"
 
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:244
-#: frontend/src/metabase/query_builder/components/data-search/SearchResults.jsx:31
+#: frontend/src/metabase/query_builder/components/data-search/SearchResults.jsx:45
 msgid "No results found"
 msgstr "No se han encontrado resultados"
 
@@ -2858,7 +2858,7 @@ msgstr "Ver por"
 msgid "of"
 msgstr "de"
 
-#: frontend/src/metabase/containers/Overworld.jsx:98
+#: frontend/src/metabase/containers/Overworld.jsx:77
 msgid "Don't tell anyone, but you're my favorite."
 msgstr "No se lo digas a nadie, pero eres mi favorito."
 
@@ -2866,19 +2866,19 @@ msgstr "No se lo digas a nadie, pero eres mi favorito."
 msgid "Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data."
 msgstr "En cuanto conectas tus propios datos, puedo mostrarte algunas exploraciones automáticas llamadas rayos-X. Aquí hay algunos ejemplos con datos de muestra."
 
-#: frontend/src/metabase/containers/Overworld.jsx:187
-#: frontend/src/metabase/containers/Overworld.jsx:398
+#: frontend/src/metabase/containers/Overworld.jsx:162
+#: frontend/src/metabase/containers/Overworld.jsx:373
 msgid "Start here"
 msgstr "Empieza aquí"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:98
-#: frontend/src/metabase/containers/Overworld.jsx:393
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:93
+#: frontend/src/metabase/containers/Overworld.jsx:368
 #: frontend/src/metabase/entities/collections.js:20
 #: src/metabase/models/collection.clj
 msgid "Our analytics"
 msgstr "Nuestra Analítica"
 
-#: frontend/src/metabase/containers/Overworld.jsx:259
+#: frontend/src/metabase/containers/Overworld.jsx:233
 msgid "Browse all items"
 msgstr "Ver todos los elementos"
 
@@ -2886,11 +2886,11 @@ msgstr "Ver todos los elementos"
 msgid "Replace or save as new?"
 msgstr "¿Reemplazar o guardar como nuevo?"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:169
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:170
 msgid "Replace original question, \"{0}\""
 msgstr "Reemplazar la pregunta original, \"{0}\""
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:173
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:174
 msgid "Save as new question"
 msgstr "Guardar como nueva pregunta"
 
@@ -2902,15 +2902,15 @@ msgstr "Primero, guarda tu pregunta"
 msgid "Save question"
 msgstr "Guardar pregunta"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:134
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:135
 msgid "What is the name of your card?"
 msgstr "¿Cuál es el nombre de tu tarjeta?"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:19
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:144
-#: frontend/src/metabase/entities/collections.js:142
-#: frontend/src/metabase/entities/dashboards.js:150
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:145
+#: frontend/src/metabase/entities/collections.js:144
+#: frontend/src/metabase/entities/dashboards.js:151
 #: frontend/src/metabase/entities/questions.js:91
 #: frontend/src/metabase/entities/questions.js:107
 #: frontend/src/metabase/lib/core.js:38
@@ -2924,18 +2924,18 @@ msgstr "¿Cuál es el nombre de tu tarjeta?"
 msgid "Description"
 msgstr "Descripción"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:145
-#: frontend/src/metabase/entities/collections.js:144
-#: frontend/src/metabase/entities/dashboards.js:152
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:146
+#: frontend/src/metabase/entities/collections.js:146
+#: frontend/src/metabase/entities/dashboards.js:153
 #: frontend/src/metabase/entities/questions.js:93
 #: frontend/src/metabase/entities/questions.js:109
 #: frontend/src/metabase/entities/snippet-collections.js:83
-#: frontend/src/metabase/entities/snippets.js:27
+#: frontend/src/metabase/entities/snippets.js:28
 msgid "It's optional but oh, so helpful"
 msgstr "Es opcional pero, tan útil"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:149
-#: frontend/src/metabase/entities/dashboards.js:156
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:150
+#: frontend/src/metabase/entities/dashboards.js:157
 msgid "Which collection should this go in?"
 msgstr "¿En qué colección debería ir esto?"
 
@@ -2960,6 +2960,7 @@ msgid "That question isn't compatible"
 msgstr "Esa pregunta no es compatible"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:310
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:758
 msgid "Search for a question"
 msgstr "Busca una pregunta"
 
@@ -2983,19 +2984,19 @@ msgstr "Este cuadro de mando parece estar vacío."
 msgid "Add a question to start making it useful!"
 msgstr "¡Añade una pregunta para hacerlo útil!"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:125
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:169
 msgid "Daytime mode"
 msgstr "Modo Diurno"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:125
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:169
 msgid "Nighttime mode"
 msgstr "Modo Nocturno"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:145
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:189
 msgid "Exit fullscreen"
 msgstr "Desactivar Pantalla Completa"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:145
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:189
 msgid "Enter fullscreen"
 msgstr "Activar Pantalla Completa"
 
@@ -3134,12 +3135,12 @@ msgstr "Los valores en este campo no coinciden con los valores de ningún otro c
 msgid "No valid fields"
 msgstr "No hay campos válidos"
 
-#: frontend/src/metabase/entities/collections.js:138
+#: frontend/src/metabase/entities/collections.js:140
 #: frontend/src/metabase/entities/snippet-collections.js:77
 msgid "Name must be 100 characters or less"
 msgstr "El nombre debe tener 100 caracteres o menos"
 
-#: frontend/src/metabase/entities/collections.js:152
+#: frontend/src/metabase/entities/collections.js:154
 #: frontend/src/metabase/entities/snippet-collections.js:91
 msgid "Color is required"
 msgstr "Color es obligatorio"
@@ -3200,6 +3201,9 @@ msgstr "recibido los últimos datos de"
 #: frontend/src/metabase/home/components/Activity.jsx:253
 #: frontend/src/metabase/lib/query_time.js:185
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:334
+#: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/jwt.clj
+#: src/metabase/integrations/ldap/default_implementation.clj
 msgid "Unknown"
 msgstr "Desconocido"
 
@@ -3384,20 +3388,20 @@ msgid "Common"
 msgstr "Común"
 
 #: frontend/src/metabase/lib/core.js:28
-#: frontend/src/metabase/meta/Dashboard.js:54
+#: frontend/src/metabase/meta/Dashboard.js:55
 #: frontend/src/metabase/meta/Parameter.js:178
 #: frontend/src/metabase/modes/components/drill/PivotByCategoryDrill.jsx:8
 msgid "Category"
 msgstr "Categoría"
 
 #: frontend/src/metabase/lib/core.js:55
-#: frontend/src/metabase/meta/Dashboard.js:39
+#: frontend/src/metabase/meta/Dashboard.js:40
 #: frontend/src/metabase/meta/Parameter.js:181
 msgid "City"
 msgstr "Ciudad"
 
 #: frontend/src/metabase/lib/core.js:60
-#: frontend/src/metabase/meta/Dashboard.js:51
+#: frontend/src/metabase/meta/Dashboard.js:52
 #: frontend/src/metabase/meta/Parameter.js:193
 msgid "Country"
 msgstr "País"
@@ -3423,17 +3427,17 @@ msgid "Longitude"
 msgstr "Longitud"
 
 #: frontend/src/metabase/lib/core.js:43
-#: frontend/src/metabase/meta/Dashboard.js:104
-#: frontend/src/metabase/meta/Dashboard.js:110
+#: frontend/src/metabase/meta/Dashboard.js:105
+#: frontend/src/metabase/meta/Dashboard.js:111
 #: frontend/src/metabase/meta/Parameter.js:163
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:145
-#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:43
+#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:44
 msgid "Number"
 msgstr "Número"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:20
 #: frontend/src/metabase/lib/core.js:75
-#: frontend/src/metabase/meta/Dashboard.js:43
+#: frontend/src/metabase/meta/Dashboard.js:44
 #: frontend/src/metabase/meta/Parameter.js:185
 msgid "State"
 msgstr "Provincia"
@@ -3595,7 +3599,7 @@ msgstr "Metabase nunca recuperará este campo. Úsalo para información sensible
 
 #: frontend/src/metabase/lib/query/description.js:77
 #: frontend/src/metabase/lib/query/description.js:262
-#: frontend/src/metabase/lib/schema_metadata.js:578
+#: frontend/src/metabase/lib/schema_metadata.js:583
 #: frontend/src/metabase/visualizations/lib/utils.js:127
 #: src/metabase/query_processor/middleware/annotate.clj
 #: resources/automagic_dashboards/field/DateTime.yaml
@@ -3610,7 +3614,7 @@ msgstr "Contar"
 msgid "CumulativeCount"
 msgstr "RecuentoAcumulativo"
 
-#: frontend/src/metabase/lib/schema_metadata.js:587
+#: frontend/src/metabase/lib/schema_metadata.js:592
 #: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:17
 #: frontend/src/metabase/visualizations/lib/utils.js:128
 msgid "Sum"
@@ -3629,20 +3633,20 @@ msgstr "Distinto"
 msgid "StandardDeviation"
 msgstr "DesviacionEstandar"
 
-#: frontend/src/metabase/lib/schema_metadata.js:596
+#: frontend/src/metabase/lib/schema_metadata.js:601
 #: frontend/src/metabase/visualizations/lib/utils.js:126
 msgid "Average"
 msgstr "Media"
 
-#: frontend/src/metabase/lib/schema_metadata.js:641
+#: frontend/src/metabase/lib/schema_metadata.js:646
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:484
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:483
 msgid "Min"
 msgstr "Mín"
 
-#: frontend/src/metabase/lib/schema_metadata.js:650
+#: frontend/src/metabase/lib/schema_metadata.js:655
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:492
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:491
 msgid "Max"
 msgstr "Máx"
 
@@ -3697,7 +3701,7 @@ msgstr "¿Qué quieres saber?"
 
 #: frontend/src/metabase/lib/query/description.js:75
 #: frontend/src/metabase/lib/query/description.js:260
-#: frontend/src/metabase/lib/schema_metadata.js:569
+#: frontend/src/metabase/lib/schema_metadata.js:574
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:72
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:243
 msgid "Raw data"
@@ -3705,7 +3709,7 @@ msgstr "Datos brutos"
 
 #: frontend/src/metabase/lib/query/description.js:79
 #: frontend/src/metabase/lib/query/description.js:264
-#: frontend/src/metabase/lib/schema_metadata.js:623
+#: frontend/src/metabase/lib/schema_metadata.js:628
 msgid "Cumulative count"
 msgstr "Recuento acumulativo"
 
@@ -3794,7 +3798,7 @@ msgstr "Longitud Derecha"
 #: frontend/src/metabase/lib/schema_metadata.js:444
 #: frontend/src/metabase/lib/schema_metadata.js:452
 #: frontend/src/metabase/lib/schema_metadata.js:462
-#: frontend/src/metabase/lib/schema_metadata.js:467
+#: frontend/src/metabase/lib/schema_metadata.js:472
 msgid "Is"
 msgstr "Es"
 
@@ -3815,7 +3819,7 @@ msgstr "No es"
 #: frontend/src/metabase/lib/schema_metadata.js:440
 #: frontend/src/metabase/lib/schema_metadata.js:448
 #: frontend/src/metabase/lib/schema_metadata.js:454
-#: frontend/src/metabase/lib/schema_metadata.js:468
+#: frontend/src/metabase/lib/schema_metadata.js:473
 msgid "Is empty"
 msgstr "Vacío"
 
@@ -3826,7 +3830,7 @@ msgstr "Vacío"
 #: frontend/src/metabase/lib/schema_metadata.js:441
 #: frontend/src/metabase/lib/schema_metadata.js:449
 #: frontend/src/metabase/lib/schema_metadata.js:455
-#: frontend/src/metabase/lib/schema_metadata.js:469
+#: frontend/src/metabase/lib/schema_metadata.js:474
 msgid "Not empty"
 msgstr "No Vacío"
 
@@ -3842,17 +3846,20 @@ msgstr "Distinto a"
 
 #: frontend/src/metabase/lib/schema_metadata.js:401
 #: frontend/src/metabase/lib/schema_metadata.js:415
+#: frontend/src/metabase/lib/schema_metadata.js:465
 msgid "Greater than"
 msgstr "Mayor que"
 
 #: frontend/src/metabase/lib/schema_metadata.js:402
 #: frontend/src/metabase/lib/schema_metadata.js:416
+#: frontend/src/metabase/lib/schema_metadata.js:466
 msgid "Less than"
 msgstr "Menor que"
 
 #: frontend/src/metabase/lib/schema_metadata.js:403
 #: frontend/src/metabase/lib/schema_metadata.js:417
 #: frontend/src/metabase/lib/schema_metadata.js:447
+#: frontend/src/metabase/lib/schema_metadata.js:467
 #: frontend/src/metabase/meta/Parameter.js:60
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:301
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:99
@@ -3861,12 +3868,14 @@ msgstr "Entre"
 
 #: frontend/src/metabase/lib/schema_metadata.js:404
 #: frontend/src/metabase/lib/schema_metadata.js:418
+#: frontend/src/metabase/lib/schema_metadata.js:468
 #: frontend/src/metabase/meta/Parameter.js:65
 msgid "Greater than or equal to"
 msgstr "Mayor o igual a"
 
 #: frontend/src/metabase/lib/schema_metadata.js:405
 #: frontend/src/metabase/lib/schema_metadata.js:419
+#: frontend/src/metabase/lib/schema_metadata.js:469
 #: frontend/src/metabase/meta/Parameter.js:70
 msgid "Less than or equal to"
 msgstr "Menos o igual a"
@@ -3911,43 +3920,43 @@ msgstr "Después"
 msgid "Inside"
 msgstr "Dentro"
 
-#: frontend/src/metabase/lib/schema_metadata.js:570
+#: frontend/src/metabase/lib/schema_metadata.js:575
 msgid "Just a table with the rows in the answer, no additional operations."
 msgstr "Solo una tabla con las filas en la respuesta, sin operaciones adicionales."
 
-#: frontend/src/metabase/lib/schema_metadata.js:577
+#: frontend/src/metabase/lib/schema_metadata.js:582
 msgid "Count of rows"
 msgstr "Número de filas"
 
-#: frontend/src/metabase/lib/schema_metadata.js:579
+#: frontend/src/metabase/lib/schema_metadata.js:584
 msgid "Total number of rows in the answer."
 msgstr "Número total de filas en la respuesta."
 
-#: frontend/src/metabase/lib/schema_metadata.js:586
+#: frontend/src/metabase/lib/schema_metadata.js:591
 msgid "Sum of ..."
 msgstr "Suma de ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:588
+#: frontend/src/metabase/lib/schema_metadata.js:593
 msgid "Sum of all the values of a column."
 msgstr "Suma de todos los valores de una columna."
 
-#: frontend/src/metabase/lib/schema_metadata.js:595
+#: frontend/src/metabase/lib/schema_metadata.js:600
 msgid "Average of ..."
 msgstr "Media de ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:597
+#: frontend/src/metabase/lib/schema_metadata.js:602
 msgid "Average of all the values of a column"
 msgstr "Promedio de todos los valores de una columna"
 
-#: frontend/src/metabase/lib/schema_metadata.js:604
+#: frontend/src/metabase/lib/schema_metadata.js:609
 msgid "Number of distinct values of ..."
 msgstr "Número de valores distintos de ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:606
+#: frontend/src/metabase/lib/schema_metadata.js:611
 msgid "Number of unique values of a column among all the rows in the answer."
 msgstr "Número de valores únicos de una columna entre todas las filas en la respuesta."
 
-#: frontend/src/metabase/lib/schema_metadata.js:613
+#: frontend/src/metabase/lib/schema_metadata.js:618
 msgid "Cumulative sum of ..."
 msgstr "Suma acumulada de ..."
 
@@ -3956,7 +3965,7 @@ msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over t
 msgstr "Suma aditiva de todos los valores de una columna.\n"
 " e.g. los ingresos totales a lo largo del tiempo"
 
-#: frontend/src/metabase/lib/schema_metadata.js:622
+#: frontend/src/metabase/lib/schema_metadata.js:627
 msgid "Cumulative count of rows"
 msgstr "Recuento acumulado de filas"
 
@@ -3965,27 +3974,27 @@ msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over
 msgstr "Recuento aditiva del número de filas.\n"
 " e.g. número total de ventas en el tiempo"
 
-#: frontend/src/metabase/lib/schema_metadata.js:631
+#: frontend/src/metabase/lib/schema_metadata.js:636
 msgid "Standard deviation of ..."
 msgstr "Desviación estándar de ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:633
+#: frontend/src/metabase/lib/schema_metadata.js:638
 msgid "Number which expresses how much the values of a column vary among all rows in the answer."
 msgstr "Número que expresa cuánto varían los valores de una columna entre todas las filas en la respuesta."
 
-#: frontend/src/metabase/lib/schema_metadata.js:640
+#: frontend/src/metabase/lib/schema_metadata.js:645
 msgid "Minimum of ..."
 msgstr "Mínimo de ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:642
+#: frontend/src/metabase/lib/schema_metadata.js:647
 msgid "Minimum value of a column"
 msgstr "Valor mínimo de una columna"
 
-#: frontend/src/metabase/lib/schema_metadata.js:649
+#: frontend/src/metabase/lib/schema_metadata.js:654
 msgid "Maximum of ..."
 msgstr "Máximo de ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:651
+#: frontend/src/metabase/lib/schema_metadata.js:656
 msgid "Maximum value of a column"
 msgstr "Valor máximo de una columna"
 
@@ -4120,35 +4129,35 @@ msgstr "Todas las Opciones"
 msgid "Contains all of the above"
 msgstr "Contiene todo lo anterior"
 
-#: frontend/src/metabase/meta/Dashboard.js:47
+#: frontend/src/metabase/meta/Dashboard.js:48
 #: frontend/src/metabase/meta/Parameter.js:189
 msgid "ZIP or Postal Code"
 msgstr "Código Postal"
 
-#: frontend/src/metabase/meta/Dashboard.js:93
+#: frontend/src/metabase/meta/Dashboard.js:94
 #: frontend/src/metabase/meta/Parameter.js:171
 msgid "ID"
 msgstr "ID"
 
-#: frontend/src/metabase/meta/Dashboard.js:62
+#: frontend/src/metabase/meta/Dashboard.js:63
 #: frontend/src/metabase/modes/components/drill/PivotByTimeDrill.jsx:7
 msgid "Time"
 msgstr "Tiempo"
 
-#: frontend/src/metabase/meta/Dashboard.js:63
+#: frontend/src/metabase/meta/Dashboard.js:64
 msgid "Date range, relative date, time of day, etc."
 msgstr "Rango de fechas, fecha relativa, hora del día, etc."
 
 #: frontend/src/metabase/lib/core.js:56 frontend/src/metabase/lib/core.js:61
 #: frontend/src/metabase/lib/core.js:66 frontend/src/metabase/lib/core.js:71
 #: frontend/src/metabase/lib/core.js:76 frontend/src/metabase/lib/core.js:81
-#: frontend/src/metabase/meta/Dashboard.js:74
-#: frontend/src/metabase/meta/Dashboard.js:84
+#: frontend/src/metabase/meta/Dashboard.js:75
+#: frontend/src/metabase/meta/Dashboard.js:85
 #: frontend/src/metabase/modes/components/drill/PivotByLocationDrill.jsx:7
 msgid "Location"
 msgstr "Ubicación"
 
-#: frontend/src/metabase/meta/Dashboard.js:75
+#: frontend/src/metabase/meta/Dashboard.js:76
 msgid "City, State, Country, ZIP code."
 msgstr "Ciudad, Provincia, País, Código Postal."
 
@@ -4156,11 +4165,11 @@ msgstr "Ciudad, Provincia, País, Código Postal."
 msgid "User ID, product ID, event ID, etc."
 msgstr "ID Usuario, ID Productio, ID Evento, etc."
 
-#: frontend/src/metabase/meta/Dashboard.js:129
+#: frontend/src/metabase/meta/Dashboard.js:130
 msgid "Other Categories"
 msgstr "Otras Categorías"
 
-#: frontend/src/metabase/meta/Dashboard.js:130
+#: frontend/src/metabase/meta/Dashboard.js:131
 msgid "Category, Type, Model, Rating, etc."
 msgstr "Categoría, Tipo, Modelo, Clasificación, etc."
 
@@ -4628,7 +4637,7 @@ msgid "We recommend keeping pulses small and focused to help keep them digestibl
 msgstr "Recomendamos mantener los pulsos pequeños y enfocados para ayudar a mantenerlos digeribles y útiles para todo el equipo."
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:161
-#: frontend/src/metabase/query_builder/components/view/View.jsx:134
+#: frontend/src/metabase/query_builder/components/view/View.jsx:135
 msgid "Pick your data"
 msgstr "Elige tus datos"
 
@@ -4735,30 +4744,30 @@ msgstr "Ayuda a todos los de tu equipo a mantenerse sincronizados con tus datos.
 msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
 msgstr "Los pulsos te permiten enviar datos de Metabase a correo electrónico o Slack en el horario que desees."
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:94
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:91
 msgid "After {0}"
 msgstr "Después de {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:96
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:93
 msgid "Before {0}"
 msgstr "Antes de {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:98
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:95
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:311
 msgid "Is Empty"
 msgstr "Vacío"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:100
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:97
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:317
 msgid "Not Empty"
 msgstr "No Vacío"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:103
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:100
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:231
 msgid "All Time"
 msgstr "Todo el Tiempo"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:148
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:145
 msgid "Apply"
 msgstr "Aplicar"
 
@@ -5062,31 +5071,31 @@ msgid "Pick a segment or table"
 msgstr "Elige un segmento o tabla"
 
 #: frontend/src/metabase/entities/databases/forms.js:296
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:79
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:81
 msgid "Select a database"
 msgstr "Selecciona una base de datos"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:94
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:96
 msgid "Select..."
 msgstr "Seleccionar..."
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:88
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:90
 msgid "Select a table"
 msgstr "Selecciona una tabla"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1000
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1059
 msgid "No tables found in this database."
 msgstr "No se encontraron tablas en esta base de datos."
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:973
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1032
 msgid "Is a question missing?"
 msgstr "¿Falta una pregunta?"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:982
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1041
 msgid "Learn more about nested queries"
 msgstr "Obtén más información sobre consultas anidadas"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1026
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1085
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:16
 msgid "Fields"
 msgstr "Campos"
@@ -5166,7 +5175,7 @@ msgstr "Datos"
 msgid "Filtered by"
 msgstr "Filtrado por"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:92
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:95
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:360
 msgid "View"
 msgstr "Ver"
@@ -5353,7 +5362,7 @@ msgstr "Avanzado..."
 msgid "Sorry. Something went wrong."
 msgstr "Lo siento. Algo salió mal."
 
-#: frontend/src/metabase/query_builder/components/TimeGroupingPopover.jsx:42
+#: frontend/src/metabase/query_builder/components/TimeGroupingPopover.jsx:15
 msgid "Group time by"
 msgstr "Agrupar tiempo por"
 
@@ -5510,7 +5519,7 @@ msgstr "Piensa en esto como algo parecido a escribir una fórmula en un programa
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:112
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:283
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:154
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:164
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:20
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:77
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:79
@@ -5680,12 +5689,12 @@ msgstr "Filtro de Etiqueta"
 msgid "Variable type"
 msgstr "Tipo de Variable"
 
-#: frontend/src/metabase/meta/Dashboard.js:123
+#: frontend/src/metabase/meta/Dashboard.js:124
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:144
 msgid "Text"
 msgstr "Texto"
 
-#: frontend/src/metabase/meta/Dashboard.js:68
+#: frontend/src/metabase/meta/Dashboard.js:69
 #: frontend/src/metabase/meta/Parameter.js:155
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:146
 msgid "Date"
@@ -5874,7 +5883,7 @@ msgstr "Cosas a tener en cuenta acerca de esta base de datos"
 msgid "Databases and tables"
 msgstr "Bases de datos y tablas"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:71
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:74
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:28
 #: frontend/src/metabase/reference/databases/FieldSidebar.jsx:38
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:173
@@ -6250,24 +6259,24 @@ msgstr "Preguntas sobre este segmento"
 msgid "X-ray this segment"
 msgstr "Aplica rayos-X a este segmento"
 
-#: frontend/src/metabase/routes.jsx:168 frontend/src/metabase/routes.jsx:169
+#: frontend/src/metabase/routes.jsx:167 frontend/src/metabase/routes.jsx:168
 msgid "Login"
 msgstr "Iniciar sesión"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableWithSearch.jsx:18
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:412
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:196
 #: frontend/src/metabase/containers/ItemPicker.jsx:160
 #: frontend/src/metabase/nav/components/SearchBar.jsx:134
-#: frontend/src/metabase/routes.jsx:194
+#: frontend/src/metabase/routes.jsx:192
 msgid "Search"
 msgstr "Buscar"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:566
-#: frontend/src/metabase/routes.jsx:213
+#: frontend/src/metabase/routes.jsx:211
 msgid "Dashboard"
 msgstr "Cuadro de Mando"
 
-#: frontend/src/metabase/routes.jsx:228
+#: frontend/src/metabase/routes.jsx:226
 msgid "New Question"
 msgstr "Nueva Pregunta"
 
@@ -6380,13 +6389,13 @@ msgstr "¿Cómo deberíamos llamarte?"
 msgid "Hi, {0}. nice to meet you!"
 msgstr "Hola {0}, ¡Encantado de conocerte!"
 
-#: frontend/src/metabase/entities/users/forms.js:48
+#: frontend/src/metabase/entities/users/forms.js:49
 msgid "Create a password"
 msgstr "Crea una contraseña"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:47
-#: frontend/src/metabase/entities/users/forms.js:50
-#: frontend/src/metabase/entities/users/forms.js:98
+#: frontend/src/metabase/entities/users/forms.js:51
+#: frontend/src/metabase/entities/users/forms.js:99
 msgid "Shhh..."
 msgstr "Shhh..."
 
@@ -6394,11 +6403,11 @@ msgstr "Shhh..."
 msgid "Confirm password"
 msgstr "Confirma la contraseña"
 
-#: frontend/src/metabase/entities/users/forms.js:57
+#: frontend/src/metabase/entities/users/forms.js:58
 msgid "Shhh... but one more time so we get it right"
 msgstr "Shhh... otra vez, para asegurarnos que lo hacemos bien"
 
-#: frontend/src/metabase/entities/users/forms.js:86
+#: frontend/src/metabase/entities/users/forms.js:87
 msgid "Your company or team name"
 msgstr "El nombre de tu empresa o equipo"
 
@@ -6568,7 +6577,7 @@ msgstr "¡Contraseña actualizada correctamente!"
 msgid "Account updated successfully!"
 msgstr "¡Cuenta actualizada con éxito!"
 
-#: frontend/src/metabase/entities/users/forms.js:97
+#: frontend/src/metabase/entities/users/forms.js:98
 msgid "Current password"
 msgstr "Contraseña actual"
 
@@ -6580,11 +6589,11 @@ msgstr "Inicia sesión con la dirección de correo electrónico de Google"
 msgid "User Details"
 msgstr "Detalles Usuario"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:351
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:366
 msgid "Reset to defaults"
 msgstr "Restablecer los valores predeterminados"
 
-#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:167
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:166
 msgid "unknown map"
 msgstr "mapa desconocido"
 
@@ -6625,7 +6634,7 @@ msgstr "Mapa de Pin"
 msgid "Unset"
 msgstr "Desmarcar"
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:148
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:150
 msgid "Rows {0}-{1} of {2}"
 msgstr "Filas {0}-{1} de {2}"
 
@@ -6633,28 +6642,28 @@ msgstr "Filas {0}-{1} de {2}"
 msgid "Data truncated to {0} rows."
 msgstr "Datos truncados a {0} filas."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:416
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:412
 msgid "Could not find visualization"
 msgstr "No se pudo encontrar la visualización"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:423
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:419
 msgid "Could not display this chart with this data."
 msgstr "No se pudo mostrar este gráfico con esta información."
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:69
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:541
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:537
 msgid "No results!"
 msgstr "¡Sin resultados!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:562
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:558
 msgid "Still Waiting..."
 msgstr "Esperando..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:565
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:561
 msgid "This usually takes an average of {0}."
 msgstr "Esto suele tardar unos {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:567
 msgid "(This is a bit long for a dashboard)"
 msgstr "(Es un poco largo para un cuadro de mando)"
 
@@ -6925,7 +6934,7 @@ msgstr "Por favor, configura este gráfico en la configuración del gráfico"
 msgid "Edit Settings"
 msgstr "Editar Configuración"
 
-#: frontend/src/metabase/visualizations/lib/fill_data.js:39
+#: frontend/src/metabase/visualizations/lib/fill_data.js:41
 msgid "xValues missing!"
 msgstr "¡Faltan valores x!"
 
@@ -7013,79 +7022,79 @@ msgstr "Lineal Interpolado"
 msgid "X-axis scale"
 msgstr "Escala Eje-X"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:422
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:421
 msgid "Timeseries"
 msgstr "Series de tiempo"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:425
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:443
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:424
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:442
 msgid "Linear"
 msgstr "Lineal"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:427
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:426
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:443
 msgid "Power"
 msgstr "Exponente"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:428
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:445
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:427
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
 msgid "Log"
 msgstr "Logarítmico"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:430
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:429
 msgid "Histogram"
 msgstr "Histograma"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:432
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:431
 msgid "Ordinal"
 msgstr "Ordinal"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:438
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
 msgid "Y-axis scale"
 msgstr "Escala Eje-Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:451
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:450
 msgid "Show x-axis line and marks"
 msgstr "Mostrar línea y marcas del Eje-X"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:349
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:457
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
 msgid "Compact"
 msgstr "Compacto"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:458
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:457
 msgid "Rotate 45°"
 msgstr "Rotar 45°"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:459
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:458
 msgid "Rotate 90°"
 msgstr "Rotar 90°"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:466
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:465
 msgid "Show y-axis line and marks"
 msgstr "Mostrar línea y marcas del Eje-Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:478
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
 msgid "Auto y-axis range"
 msgstr "Rango del Eje-Y automático"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:522
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:521
 msgid "Use a split y-axis when necessary"
 msgstr "Utiliza un Eje-Y dividido cuando sea necesario"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:529
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:528
 msgid "Show label on x-axis"
 msgstr "Mostrar etiqueta en el Eje-X"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:535
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
 msgid "X-axis label"
 msgstr "Etiqueta Eje-X"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:544
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:543
 msgid "Show label on y-axis"
 msgstr "Mostrar etiqueta en el Eje-Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:550
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:549
 msgid "Y-axis label"
 msgstr "Etiqueta Eje-Y"
 
@@ -7233,7 +7242,7 @@ msgstr "objeto"
 
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:138
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:252
-#: frontend/src/metabase/visualizations/lib/renderer_utils.js:349
+#: frontend/src/metabase/visualizations/lib/renderer_utils.js:352
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:380
 msgid "Total"
 msgstr "Total"
@@ -7282,7 +7291,7 @@ msgstr "La visualización del progreso requiere un número."
 msgid "Progress"
 msgstr "Progreso"
 
-#: frontend/src/metabase/entities/collections.js:149
+#: frontend/src/metabase/entities/collections.js:151
 #: frontend/src/metabase/entities/snippet-collections.js:88
 #: frontend/src/metabase/visualizations/visualizations/Map.jsx:256
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:74
@@ -7622,7 +7631,7 @@ msgstr "¿Tienes muchas preguntas guardadas en {0}? Crea colecciones para ayudar
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:100
 #: frontend/src/metabase/public/components/LogoBadge.jsx:21
 #: frontend/src/metabase/routes-public.jsx:13
-#: frontend/src/metabase/routes.jsx:139 src/metabase/api/setup.clj
+#: frontend/src/metabase/routes.jsx:138 src/metabase/api/setup.clj
 #: src/metabase/email/messages.clj
 msgid "Metabase"
 msgstr "Metabase"
@@ -9138,35 +9147,35 @@ msgstr "Permisos de acceso de datos"
 msgid "Collection permissions"
 msgstr "Permisos de acceso de colecciones"
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:96
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:116
 msgid "See all collection permissions"
 msgstr "Ver todos los permisos de colecciones"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:813
+#: frontend/src/metabase/admin/permissions/selectors.js:817
 msgid "Also change sub-collections"
 msgstr "También cambiar sub-colecciones"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:283
+#: frontend/src/metabase/admin/permissions/selectors.js:282
 msgid "Can edit this collection and its contents"
 msgstr "Puede editar esta colección y sus contenidos"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:290
+#: frontend/src/metabase/admin/permissions/selectors.js:289
 msgid "Can view items in this collection"
 msgstr "Puede ver artículos en esta colección"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:792
+#: frontend/src/metabase/admin/permissions/selectors.js:796
 msgid "Collection Access"
 msgstr "Acceso a Colección"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:878
+#: frontend/src/metabase/admin/permissions/selectors.js:882
 msgid "This group has permission to view at least one subcollection of this collection."
 msgstr "Este grupo tiene permiso para ver al menos una subcolección de esta colección."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:883
+#: frontend/src/metabase/admin/permissions/selectors.js:887
 msgid "This group has permission to edit at least one subcollection of this collection."
 msgstr "Este grupo tiene permiso para editar al menos una subcolección de esta colección."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:896
+#: frontend/src/metabase/admin/permissions/selectors.js:900
 msgid "View sub-collections"
 msgstr "Ver subcolección"
 
@@ -9178,7 +9187,7 @@ msgstr "Recuerdame"
 msgid "X-ray this schema"
 msgstr "Aplica rayos-X a este esquema"
 
-#: frontend/src/metabase/collections/components/Header.jsx:34
+#: frontend/src/metabase/collections/components/Header/Header.jsx:48
 msgid "Edit the permissions for this collection"
 msgstr "Editar los permisos de acceso de esta colección"
 
@@ -9190,6 +9199,7 @@ msgstr "Añadir esta pregunta a un cuadro de mando"
 msgid "Create a new dashboard"
 msgstr "Crea un Cuadro de Mando"
 
+#: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:124
 #: frontend/src/metabase/containers/ErrorPages.jsx:47
 msgid "The page you asked for couldn't be found."
 msgstr "La página que pidió no ha sido encontrada."
@@ -9198,11 +9208,11 @@ msgstr "La página que pidió no ha sido encontrada."
 msgid "Select a {0}"
 msgstr "Seleccione un(a) {0}"
 
-#: frontend/src/metabase/containers/Overworld.jsx:245
+#: frontend/src/metabase/containers/Overworld.jsx:219
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr "Guardar cuadros de mando, preguntas, y colecciones en \"{0}\""
 
-#: frontend/src/metabase/containers/Overworld.jsx:246
+#: frontend/src/metabase/containers/Overworld.jsx:220
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr "Acceder cuadros de mando, preguntas, y colecciones en \"{0}\""
 
@@ -9222,7 +9232,7 @@ msgstr "Relacionado"
 msgid "More X-rays"
 msgstr "Más Rayos-X"
 
-#: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableVisualization.jsx:80
+#: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableVisualization.jsx:81
 #: src/metabase/pulse/render/body.clj
 msgid "No results"
 msgstr "No hay resultados"
@@ -9437,10 +9447,10 @@ msgstr "No aplica"
 msgid "Windows domain"
 msgstr "Dominio de Windows"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:528
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:543
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:549
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:527
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:533
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:542
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:548
 msgid "Labels"
 msgstr "Etiquetas"
 
@@ -9448,7 +9458,7 @@ msgstr "Etiquetas"
 msgid "Add members"
 msgstr "Añadir miembros"
 
-#: frontend/src/metabase/entities/collections.js:156
+#: frontend/src/metabase/entities/collections.js:158
 msgid "Collection it's saved in"
 msgstr "Colección que se guarda en"
 
@@ -9464,12 +9474,14 @@ msgstr "Administradores"
 msgid "MetaBot"
 msgstr "MetaBot"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:59
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:66
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:132
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:287
+#: frontend/src/metabase/query_builder/containers/QuestionEmbedWidget.jsx:99
 msgid "Sharing"
 msgstr "Compartir"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:24
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:27
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:218
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:251
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:280
@@ -9498,13 +9510,13 @@ msgid "Display"
 msgstr "Visualización"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:402
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:450
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:465
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:483
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:491
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:521
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:436
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:464
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:476
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:482
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:490
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:520
 msgid "Axes"
 msgstr "Ejes"
 
@@ -9514,7 +9526,7 @@ msgstr "Ejes"
 msgid "Formatting"
 msgstr "Formato"
 
-#: frontend/src/metabase/containers/Overworld.jsx:128
+#: frontend/src/metabase/containers/Overworld.jsx:103
 msgid "Try these x-rays based on your data."
 msgstr "Pruebe estos rayos-X en función de tus datos."
 
@@ -9534,11 +9546,11 @@ msgstr "Solo un aviso:"
 msgid "{0} without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost."
 msgstr "{0} sin el conjunto de datos de muestra, el tutorial del generador de consultas no funcionará. Siempre puede restaurar el conjunto de datos de muestra, pero cualquier pregunta que haya guardado con esta información se perderá"
 
-#: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:32
+#: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:41
 msgid "X-ray"
 msgstr "Aplica rayos-X"
 
-#: frontend/src/metabase/modes/components/drill/CompareToRestDrill.js:33
+#: frontend/src/metabase/modes/components/drill/CompareToRestDrill.js:42
 msgid "Compare to the rest"
 msgstr "Compara con el resto"
 
@@ -9552,11 +9564,11 @@ msgid "We suggest you leave this off unless you're doing manual timezone casting
 msgstr "Te sugerimos que desactives esto a menos que estés forzando manualmente la zona horaria en\n"
 "muchas o la mayoría de tus consultas con estos datos."
 
-#: frontend/src/metabase/containers/Overworld.jsx:409
+#: frontend/src/metabase/containers/Overworld.jsx:384
 msgid "Your team's most important dashboards go here"
 msgstr "Los cuadros de mando más importantes van aquí"
 
-#: frontend/src/metabase/containers/Overworld.jsx:410
+#: frontend/src/metabase/containers/Overworld.jsx:385
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr "Fija los cuadros de mando en {0} para que aparezcan en este espacio para todos"
 
@@ -9601,15 +9613,15 @@ msgstr "Opciones de Formato"
 msgid "Task details"
 msgstr "Detalles de la tarea"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:39
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:42
 msgid "Troubleshooting logs"
 msgstr "Registro de solución de problemas"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:41
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:44
 msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
 msgstr "¿Tratando de llegar al fondo de algo? Esta sección muestra los registros de las tareas en segundo plano de Metabase, que pueden ayudar a aclarar lo que está pasando."
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:65
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:68
 msgid "Task"
 msgstr "Tarea"
 
@@ -9617,15 +9629,15 @@ msgstr "Tarea"
 msgid "DB ID"
 msgstr "ID BBDD"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:68
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:71
 msgid "Started at"
 msgstr "Iniciado a las"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:69
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:72
 msgid "Ended at"
 msgstr "Terminado a las"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:70
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:73
 msgid "Duration (ms)"
 msgstr "Duración (ms)"
 
@@ -9813,23 +9825,23 @@ msgstr "Contador"
 msgid "Gauge ranges"
 msgstr "Rangos del contador"
 
-#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:105
+#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:106
 msgid "Field to show"
 msgstr "Campo a mostrar"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:143
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:144
 msgid "last {0}"
 msgstr "último {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:218
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:219
 msgid "{0} was {1} {2}"
 msgstr "{0} era {1} {2}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:73
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:74
 msgid "Group by a time field to see how this has changed over time"
 msgstr "Agrupa por un campo temporal para ver como ha cambiado a lo largo del tiempo"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:52
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:53
 msgid "Switch positive / negative colors?"
 msgstr "¿Mostrar colores positivos/negativos?"
 
@@ -11247,7 +11259,7 @@ msgstr "Cómo se distribuye esta métrica entre diferentes números."
 msgid "Sessions by page where the session began"
 msgstr "Sesiones por página donde comenzó la sesión."
 
-#: frontend/src/metabase/lib/schema_metadata.js:605
+#: frontend/src/metabase/lib/schema_metadata.js:610
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Number.yaml
@@ -11748,11 +11760,11 @@ msgstr "Inválido"
 msgid "Add a time"
 msgstr "Añade una hora"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:197
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:198
 msgid "Nothing to compare for the previous {0}."
 msgstr "Nada que comparar en el {0} anterior."
 
-#: frontend/src/metabase-lib/lib/Dimension.js:835
+#: frontend/src/metabase-lib/lib/Dimension.js:843
 msgid "by {0}"
 msgstr "por {0}."
 
@@ -12635,7 +12647,7 @@ msgstr "Ejecutar consultas automáticamente al realizar un filtrado/resumen simp
 msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "Cuando esto está activo en Metabase, se ejecutarán consultas automáticamente cuando los usuarios realicen exploraciones simples con los botones Resumir y Filtrar al ver una tabla o gráfico. Puedes desactivar esto si las consultas de esta base de datos son lentas. Esta configuración no afecta la obtención de detalles ni a las consultas SQL."
 
-#: frontend/src/metabase/containers/Overworld.jsx:340
+#: frontend/src/metabase/containers/Overworld.jsx:314
 msgid "Learn about this database"
 msgstr "Aprende cosas sobre esta base de datos"
 
@@ -12702,7 +12714,7 @@ msgstr "Indicadores básicos"
 msgid "Custom…"
 msgstr "Personalizado..."
 
-#: frontend/src/metabase/query_builder/components/DimensionList.jsx:146
+#: frontend/src/metabase/query_builder/components/DimensionList.jsx:153
 msgid "Add grouping"
 msgstr "Añadir agrupación"
 
@@ -12744,6 +12756,7 @@ msgstr "Columna personalizada"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:55
 #: frontend/src/metabase/query_builder/components/view/QuestionSummaries.jsx:61
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:224
 msgid "Summarize"
 msgstr "Resumir"
 
@@ -12764,6 +12777,7 @@ msgid "Pick a column to group by"
 msgstr "Elige una columna para agrupar"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/DataStep.jsx:30
+#: frontend/src/metabase/query_builder/components/view/NewQuestionHeader.jsx:9
 msgid "Pick your starting data"
 msgstr "Elige tus datos iniciales"
 
@@ -12898,11 +12912,11 @@ msgstr "Añadir una métrica"
 #: frontend/src/metabase/lib/core.js:137 frontend/src/metabase/lib/core.js:142
 #: frontend/src/metabase/lib/core.js:147 frontend/src/metabase/lib/core.js:152
 #: frontend/src/metabase/lib/core.js:157 frontend/src/metabase/lib/core.js:162
-#: frontend/src/metabase/user/components/UserSettings.jsx:65
+#: frontend/src/metabase/user/components/UserSettings.jsx:63
 msgid "Profile"
 msgstr "Perfil"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "Esto suele ser bastante rápido, pero parece estar tardando un poco en este momento."
 
@@ -12914,7 +12928,7 @@ msgstr "Combo"
 msgid "Row"
 msgstr "Fila"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:23
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:24
 msgid "Trend"
 msgstr "Tendencia"
 
@@ -13402,31 +13416,31 @@ msgstr "El uso de esta opción requiere que el host proporcionado sea un FQDN. S
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "De manera predeterminada, Metabase realiza una sincronización por hora y un escaneo diario intensivo de valores de campo. Si tienes una base de datos grande, recomendamos activar esto y revisar cuándo y con qué frecuencia ocurren los escaneos de valor de campo."
 
-#: frontend/src/metabase/containers/Overworld.jsx:133
+#: frontend/src/metabase/containers/Overworld.jsx:108
 msgid "Remove these suggestions"
 msgstr "Eliminar estas sugerencias"
 
-#: frontend/src/metabase/containers/Overworld.jsx:142
+#: frontend/src/metabase/containers/Overworld.jsx:117
 msgid "Remove these suggestions?"
 msgstr "Eliminar estas sugerencias?"
 
-#: frontend/src/metabase/containers/Overworld.jsx:158
+#: frontend/src/metabase/containers/Overworld.jsx:133
 msgid "These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables."
 msgstr "Estos ya no aparecerán en la página de inicio de ninguno de tus usuarios, pero siempre puedes obtener radiografías haciendo clic en Examinar datos en la navegación principal y luego haciendo clic en el icono del rayo en una de las tablas."
 
-#: frontend/src/metabase/containers/Overworld.jsx:285
+#: frontend/src/metabase/containers/Overworld.jsx:259
 msgid "Hide this section"
 msgstr "Esconder esta sección"
 
-#: frontend/src/metabase/containers/Overworld.jsx:293
+#: frontend/src/metabase/containers/Overworld.jsx:267
 msgid "Remove this section?"
 msgstr "Eliminar esta sección"
 
-#: frontend/src/metabase/containers/Overworld.jsx:309
+#: frontend/src/metabase/containers/Overworld.jsx:283
 msgid "\"Our Data\" won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation."
 msgstr "\"Nuestros datos\" ya no aparecerá en la página de inicio de ninguno de tus usuarios, pero siempre puedes navegar por tus bases de datos y tablas haciendo clic en Examinar datos en la navegación principal."
 
-#: frontend/src/metabase/entities/collections.js:135
+#: frontend/src/metabase/entities/collections.js:136
 msgid "My new fantastic collection"
 msgstr "Mi colección fantástica"
 
@@ -13466,11 +13480,11 @@ msgstr "No incluir"
 msgid "This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries."
 msgstr "Este campo no será visible o seleccionable en las preguntas creadas con la aplicación. Todavía será accesible en consultas SQL/nativas."
 
-#: frontend/src/metabase/lib/schema_metadata.js:614
+#: frontend/src/metabase/lib/schema_metadata.js:619
 msgid "Cumulative sum"
 msgstr "Suma Acumulada"
 
-#: frontend/src/metabase/lib/schema_metadata.js:632
+#: frontend/src/metabase/lib/schema_metadata.js:637
 msgid "Standard deviation"
 msgstr "Desviacion estandar"
 
@@ -13822,11 +13836,11 @@ msgstr "Para permitir a los usuarios iniciar sesión con Google, necesitas dar a
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
 msgstr "Asegúrate de incluir el ID de cliente completo, incluyendo el sufijo apps.googleusercontent.com"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:42
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:47
 msgid "Metabase {0} is available."
 msgstr "Está disponible Metabase {0} "
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:43
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:48
 msgid "You're running {0}"
 msgstr "Tienes la versión {0}"
 
@@ -13834,7 +13848,7 @@ msgstr "Tienes la versión {0}"
 msgid "Sorry, we were unable to check for updates at this time."
 msgstr "No se pueden buscar actualizaciones en este momento."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:119
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:125
 msgid "patch release"
 msgstr "Versión de arreglos"
 
@@ -13894,7 +13908,7 @@ msgstr "Por razones de seguridad, los enlaces de restablecimiento de contraseña
 msgid "Save new password"
 msgstr "Guardar nueva contraseña"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:537
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:558
 msgid "No matching result"
 msgstr "Sin resultados coincidentes"
 
@@ -13922,7 +13936,7 @@ msgstr "o"
 #: frontend/src/metabase/entities/databases/forms.js:48
 #: frontend/src/metabase/entities/databases/forms.js:271
 #: frontend/src/metabase/entities/databases/forms.js:302
-#: frontend/src/metabase/entities/users/forms.js:59
+#: frontend/src/metabase/entities/users/forms.js:60
 #: frontend/src/metabase/lib/validate.js:6
 msgid "required"
 msgstr "obligatorio"
@@ -13944,15 +13958,15 @@ msgstr "Metabase puede escanear los valores presentes en cada campo en esta base
 msgid "Collection"
 msgstr "Colección"
 
-#: frontend/src/metabase/entities/users/forms.js:55
+#: frontend/src/metabase/entities/users/forms.js:56
 msgid "Confirm your password"
 msgstr "Confirma tu contraseña"
 
-#: frontend/src/metabase/entities/users/forms.js:60
+#: frontend/src/metabase/entities/users/forms.js:61
 msgid "passwords do not match"
 msgstr "las contraseñas no coinciden"
 
-#: frontend/src/metabase/entities/users/forms.js:87
+#: frontend/src/metabase/entities/users/forms.js:88
 msgid "Department of Awesome"
 msgstr "Departamento Impresionante"
 
@@ -14499,36 +14513,36 @@ msgstr "Impulsado por {0}"
 msgid "To:"
 msgstr "A:"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:40
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:45
 msgid "This question can't be used because it's based on a different database."
 msgstr "Esta pregunta no se puede usar porque se basa en una base de datos diferente."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:44
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:49
 msgid "Couldn't find a saved question with that ID number."
 msgstr "No he podido encontrar una pregunta guardada con ese número de identificación."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:55
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:60
 msgid "Pick a saved question"
 msgstr "Elige una pregunta guardada"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:57
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:62
 msgid "Pick a different question"
 msgstr "Elige una pregunta diferente"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:162
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:62
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:160
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:67
 msgid "Loading…"
 msgstr "Cargando..."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:79
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:84
 msgid "Question #…"
 msgstr "Pregunta #..."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:81
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:86
 msgid "Question #{0}"
 msgstr "Pregunta #{0}"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:115
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:120
 msgid "Last edited {0}"
 msgstr "Última edición {0}"
 
@@ -14584,7 +14598,7 @@ msgstr "Formato de valor"
 msgid "Full"
 msgstr "Lleno"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:199
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:200
 msgid "No change from last {0}"
 msgstr "Sin cambios desde el último {0}"
 
@@ -14640,6 +14654,7 @@ msgstr "El token de autenticación de Google parece ser incorrecto."
 msgid "Double check that it matches in Google and Metabase."
 msgstr "Verifica que coincida en Google y Metabase."
 
+#: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionPicker.jsx:40
 #: src/metabase/api/table.clj
 msgid "Everything else"
 msgstr "Todo lo demás"
@@ -15056,20 +15071,20 @@ msgstr "Rellena campos individuales"
 msgid "Enter some SQL here so you can reuse it later"
 msgstr "Añade SQL aquí para que puedas reutilizarlo más tarde"
 
-#: frontend/src/metabase/entities/snippets.js:20
+#: frontend/src/metabase/entities/snippets.js:21
 msgid "Give your snippet a name"
 msgstr "Dale un nombre a tu fragmento"
 
-#: frontend/src/metabase/entities/snippets.js:21
+#: frontend/src/metabase/entities/snippets.js:22
 msgid "Current Customers"
 msgstr "Clientes Actuales"
 
 #: frontend/src/metabase/entities/snippet-collections.js:81
-#: frontend/src/metabase/entities/snippets.js:26
+#: frontend/src/metabase/entities/snippets.js:27
 msgid "Add a description"
 msgstr "Añadir una descripción"
 
-#: frontend/src/metabase/entities/users/forms.js:37
+#: frontend/src/metabase/entities/users/forms.js:38
 msgid "Use site default"
 msgstr "Utilizar el valor por defecto del sitio"
 
@@ -15881,35 +15896,35 @@ msgstr "Página de destino"
 msgid "No groups"
 msgstr "Sin grupos"
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:81
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:101
 msgid "Permissions for {0}"
 msgstr "Permisos para {0}"
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:83
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:103
 msgid "Permissions for this folder"
 msgstr "Permisos para esta carpeta"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:295
+#: frontend/src/metabase/admin/permissions/selectors.js:294
 msgid "Grant Edit access"
 msgstr "Conceder acceso de edición"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:296
+#: frontend/src/metabase/admin/permissions/selectors.js:295
 msgid "Can modify snippets in this folder"
 msgstr "Puedes modificar fragmentos en esta carpeta"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:301
+#: frontend/src/metabase/admin/permissions/selectors.js:300
 msgid "Grant View access"
 msgstr "Conceder acceso para visualizar"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:302
+#: frontend/src/metabase/admin/permissions/selectors.js:301
 msgid "Can insert and use snippets in this folder, but can't edit the SQL they contain"
 msgstr "Puedes insertar y usar fragmentos en esta carpeta, pero no puedes editar el SQL que contienen"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:308
+#: frontend/src/metabase/admin/permissions/selectors.js:307
 msgid "Can't view or insert snippets in this folder"
 msgstr "No se pueden ver o insertar fragmentos en esta carpeta"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:812
+#: frontend/src/metabase/admin/permissions/selectors.js:816
 msgid "Also change sub-folders"
 msgstr "También cambiar subcarpetas"
 
@@ -15917,7 +15932,7 @@ msgstr "También cambiar subcarpetas"
 msgid "First day of the week"
 msgstr "Primer día de la semana"
 
-#: frontend/src/metabase/auth/components/GoogleButton.jsx:75
+#: frontend/src/metabase/auth/components/GoogleButton.jsx:74
 msgid "There was an issue signing in with Google. Please contact an administrator."
 msgstr "Hubo un problema al iniciar sesión con Google. Por favor busca ayuda de un administrador."
 
@@ -15936,7 +15951,7 @@ msgstr "Abra el menú de acciones de la Metabase"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:47
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:372
-#: frontend/src/metabase/lib/click-behavior.js:168
+#: frontend/src/metabase/lib/click-behavior.js:169
 msgid "Do nothing"
 msgstr "No hacer nada"
 
@@ -16153,37 +16168,37 @@ msgid "Something short but sweet"
 msgstr "Algo corto y ameno"
 
 #: frontend/src/metabase/entities/snippet-collections.js:95
-#: frontend/src/metabase/entities/snippets.js:55
+#: frontend/src/metabase/entities/snippets.js:56
 msgid "Folder this should be in"
 msgstr "Carpeta en la que debería estar"
 
-#: frontend/src/metabase/lib/click-behavior.js:167
+#: frontend/src/metabase/lib/click-behavior.js:168
 msgid "Open the action menu"
 msgstr "Abre el menú de acciones"
 
-#: frontend/src/metabase/lib/click-behavior.js:176
+#: frontend/src/metabase/lib/click-behavior.js:177
 msgid "{0} column has custom behavior"
 msgid_plural "{0} columns have custom behavior"
 msgstr[0] "{0} columna tiene un comportamiento personalizado"
 msgstr[1] "{0} columnas tienen un comportamiento personalizado"
 
-#: frontend/src/metabase/lib/click-behavior.js:189
+#: frontend/src/metabase/lib/click-behavior.js:190
 msgid "Go to..."
 msgstr "Ir a..."
 
-#: frontend/src/metabase/lib/click-behavior.js:191
+#: frontend/src/metabase/lib/click-behavior.js:192
 msgid "Go to dashboard"
 msgstr "Ir a cuadro de mando"
 
-#: frontend/src/metabase/lib/click-behavior.js:193
+#: frontend/src/metabase/lib/click-behavior.js:194
 msgid "Go to question"
 msgstr "Ir a pregunta"
 
-#: frontend/src/metabase/lib/click-behavior.js:194
+#: frontend/src/metabase/lib/click-behavior.js:195
 msgid "Go to url"
 msgstr "Ir a URL"
 
-#: frontend/src/metabase/lib/click-behavior.js:197
+#: frontend/src/metabase/lib/click-behavior.js:198
 msgid "Filter this dashboard"
 msgstr "Filtrar este cuadro de mando"
 
@@ -16471,13 +16486,13 @@ msgstr "es nulo"
 msgid "Not null"
 msgstr "no es nulo"
 
-#: frontend/src/metabase/lib/schema_metadata.js:615
+#: frontend/src/metabase/lib/schema_metadata.js:620
 msgid "Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "Suma aditiva de todos los valores de una columna.\n"
 "ex. ingresos totales a lo largo del tiempo."
 
-#: frontend/src/metabase/lib/schema_metadata.js:624
+#: frontend/src/metabase/lib/schema_metadata.js:629
 msgid "Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "Recuento aditivo del número de filas.\n"
@@ -16908,23 +16923,23 @@ msgstr "Emisor del proveedor de identidad SAML"
 msgid "SAML Identity Provider SSO URL"
 msgstr "URL de SSO del proveedor de identidad SAML"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:69
 msgid "DB Name"
 msgstr "Nombre BBDD"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:67
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:70
 msgid "DB Engine"
 msgstr "Motor BBDD"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:83
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:86
 msgid "Unknown name"
 msgstr "Nombre desconocido"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:84
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:87
 msgid "Unknown engine"
 msgstr "Motor desconocido"
 
-#: frontend/src/metabase/collections/components/Header.jsx:46
+#: frontend/src/metabase/collections/components/Header/Header.jsx:60
 msgid "Edit collection"
 msgstr "Editar colección"
 
@@ -16932,15 +16947,15 @@ msgstr "Editar colección"
 msgid "Pinned items"
 msgstr "Elementos fijados"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:137
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:132
 msgid "Other users' personal collections"
 msgstr "Colecciones personales de otros usuarios"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:145
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:140
 msgid "View archive"
 msgstr "Ver archivo"
 
-#: frontend/src/metabase/collections/utils.js:13
+#: frontend/src/metabase/collections/utils.js:18
 msgid "Your personal collection"
 msgstr "Tu colección personal"
 
@@ -17107,7 +17122,7 @@ msgstr "Tienes que {0} primero."
 msgid "First, you'll have to {0}."
 msgstr "Primero, tienes que {0}."
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:146
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:148
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Filas {0}-{1} del primer {2}"
 
@@ -17119,7 +17134,7 @@ msgstr "Arrastra campos aquí"
 msgid "Percentage"
 msgstr "Porcentaje"
 
-#: frontend/src/metabase/lib/data_grid.js:371
+#: frontend/src/metabase/lib/data_grid.js:382
 msgid "Totals for {0}"
 msgstr "Totales de {0}"
 
@@ -17757,11 +17772,12 @@ msgstr "minutos después de la hora"
 msgid "Email sent"
 msgstr "Correo electrónico enviado"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:60
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:67
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:133
 msgid "Add data to share this dashboard"
 msgstr "Añadir datos para compartir este tablero"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:85
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:92
 msgid "Dashboard subscriptions"
 msgstr "Suscripciones a Dashboard"
 
@@ -17932,11 +17948,11 @@ msgstr "Tenga su correo electrónico configurado para usted."
 msgid "Have your server maintained for you."
 msgstr "Haga que le mantengan el servidor."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:149
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:159
 msgid "Want to have upgrades taken care of for you?"
 msgstr "¿Quieres que se encarguen de las mejoras por ti?"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:150
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:160
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:17
 msgid "Migrate to Metabase Cloud."
 msgstr "Migrar a la Nube de Metabase."
@@ -18017,7 +18033,7 @@ msgstr "Seleccione una conversión"
 msgid "Don't cast"
 msgstr "No convertir"
 
-#: frontend/src/metabase/components/ErrorCard.jsx:22
+#: frontend/src/metabase/components/AppErrorCard/AppErrorCard.jsx:39
 msgid "Something went wrong"
 msgstr "Algo salió mal"
 
@@ -18066,7 +18082,7 @@ msgstr "Se esperaba un valor booleano pero se encontró {0}"
 msgid "12:00 PM"
 msgstr "12:00 PM"
 
-#: frontend/src/metabase/meta/Dashboard.js:105
+#: frontend/src/metabase/meta/Dashboard.js:106
 msgid "Subtotal, Age, Price, Quantity, etc."
 msgstr "Subtotal, Edad, Precio, Cantidad, etc."
 
@@ -18160,7 +18176,7 @@ msgid_plural "and {0} more filters"
 msgstr[0] "y {0} filtro más"
 msgstr[1] "y {0} filtros más"
 
-#: frontend/src/metabase/user/components/UserSettings.jsx:70
+#: frontend/src/metabase/user/components/UserSettings.jsx:67
 msgid "Login History"
 msgstr "Historial de inicio de sesión"
 
@@ -18448,6 +18464,9 @@ msgid "Information about active and idle connections for all pools"
 msgstr "Información sobre conexiones activas e inactivas para todos los grupos"
 
 #: frontend/src/metabase/browse/containers/TableBrowser.jsx:60
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:902
+#: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionPicker.jsx:113
+#: src/metabase/api/database.clj
 msgid "Saved Questions"
 msgstr "Preguntas guardadas"
 
@@ -18495,11 +18514,12 @@ msgstr "Cerrar barra lateral"
 msgid "Add questions"
 msgstr "Añadir preguntas"
 
-#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionList.jsx:49
+#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionList.jsx:48
+#: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionList.jsx:37
 msgid "Nothing here"
 msgstr "No hay nada que ver aquí"
 
-#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionPicker.jsx:67
+#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionPicker.jsx:68
 msgid "Search…"
 msgstr "Buscar..."
 
@@ -18531,15 +18551,15 @@ msgstr "Falta un corchete de apertura"
 msgid "Invalid character: {0}"
 msgstr "Carácter no válido: {0}"
 
-#: frontend/src/metabase/meta/Dashboard.js:94
+#: frontend/src/metabase/meta/Dashboard.js:95
 msgid "User ID, Product ID, Event ID, etc."
 msgstr "ID de usuario, ID de producto, ID de evento, etc."
 
-#: frontend/src/metabase/meta/Dashboard.js:117
+#: frontend/src/metabase/meta/Dashboard.js:118
 msgid "Text or Category"
 msgstr "Texto o Categoría"
 
-#: frontend/src/metabase/meta/Dashboard.js:118
+#: frontend/src/metabase/meta/Dashboard.js:119
 msgid "Name, Rating, Description, etc."
 msgstr "Nombre, Clasificación, Descripción, etc."
 
@@ -18547,7 +18567,7 @@ msgstr "Nombre, Clasificación, Descripción, etc."
 msgid "String"
 msgstr "Texto"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:734
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:759
 msgid "Search for a table..."
 msgstr "Buscar una tabla..."
 
@@ -18797,4 +18817,55 @@ msgstr "el valor debe ser una estrategia de coerción válida (palabra clave o c
 #: src/metabase/util/schema.clj
 msgid "password is too common."
 msgstr "la contraseña es demasiado común."
+
+#: enterprise/frontend/src/metabase-enterprise/store/containers/StoreActivate.jsx:20
+msgid "Enter the token you received from the store"
+msgstr "Introduce el token que has recibido de la tienda"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:26
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud mantiene su instancia actualizada. Actualmente estás en la versión {0}. ¡Gracias por ser cliente!"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:83
+msgid "No successful checks yet."
+msgstr "Todavía no se han realizado comprobaciones con éxito."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:87
+#: src/metabase/api/geojson.clj
+msgid "Invalid custom GeoJSON"
+msgstr "GeoJSON personalizado no válido"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:91
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:96
+msgid "Invalid custom GeoJSON: does not contain features"
+msgstr "GeoJSON personalizado no válido: no contiene características"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:101
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:108
+msgid "Invalid custom GeoJSON: feature is misssing properties"
+msgstr "GeoJSON personalizado inválido: la característica está perdiendo propiedades"
+
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:227
+msgid "Break out by a…"
+msgstr "Salir por un..."
+
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:231
+msgid "Automatic explorations"
+msgstr "Exploraciones automáticas"
+
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:236
+msgid "Filter by this value"
+msgstr "Filtrar por este valor"
+
+#: src/metabase/api/geojson.clj
+msgid "GeoJSON URL failed to load"
+msgstr "Error en la carga de la URL GeoJSON"
+
+#: src/metabase/driver/common/parameters/values.clj
+msgid "Error determining value for parameter: {0}"
+msgstr "Error al determinar el valor del parámetro: {0}"
+
+#: src/metabase/driver/common/parameters/values.clj
+msgid "Error building query parameter map: {0}"
+msgstr "Error al construir el mapa de parámetros de consulta: {0}"
 
