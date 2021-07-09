@@ -443,7 +443,7 @@
 
 ;;; -------------------------------------------------- expression ----------------------------------------------------
 
-;; (defmulti expression some shit wtf
+;; (defmulti handle-expression some shit wtf
 ;;   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
 ;;   compiling the \"where\" clause equivalent."
 ;;   {:arglists '([clause])}
@@ -663,7 +663,8 @@
   (reduce (fn [pipeline-ctx f]
             (f inner-query pipeline-ctx))
           {:projections [], :query []}
-          [handle-filter
+          [handle-expression
+           handle-filter
            handle-breakout+aggregation
            handle-order-by
            handle-fields
