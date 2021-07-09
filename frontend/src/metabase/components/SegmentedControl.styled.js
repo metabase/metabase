@@ -1,4 +1,7 @@
+import React from "react";
 import styled from "styled-components";
+import _ from "underscore";
+import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
 const BORDER_RADIUS = "8px";
@@ -39,4 +42,12 @@ export const SegmentedControlRadio = styled.input.attrs({ type: "radio" })`
   margin: 0;
   padding: 0;
   z-index: 1;
+`;
+
+function IconWrapper(props) {
+  return <Icon {..._.omit(props, "iconOnly")} />;
+}
+
+export const ItemIcon = styled(IconWrapper)`
+  margin-right: ${props => (props.iconOnly ? 0 : "4px")};
 `;

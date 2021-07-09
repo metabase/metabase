@@ -1,15 +1,15 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import Icon from "metabase/components/Icon";
 import {
   SegmentedList,
   SegmentedItem,
   SegmentedControlRadio,
+  ItemIcon,
 } from "./SegmentedControl.styled";
 
 const optionShape = PropTypes.shape({
-  name: PropTypes.node.isRequired,
+  name: PropTypes.node,
   value: PropTypes.any.isRequired,
   icon: PropTypes.string,
 
@@ -52,7 +52,9 @@ export function SegmentedControl({
               isLast={isLast}
               selectedColor={option.selectedColor || "brand"}
             >
-              {option.icon && <Icon name={option.icon} mr={1} />}
+              {option.icon && (
+                <ItemIcon name={option.icon} iconOnly={!option.name} />
+              )}
               <SegmentedControlRadio
                 id={id}
                 name={name}
