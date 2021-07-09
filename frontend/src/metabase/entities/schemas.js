@@ -17,13 +17,23 @@ export default createEntity({
       if (!dbId) {
         throw new Error("Schemas can only be listed for a particular dbId");
       }
-      const schemaNames = await listDastabaseSchemas({ dbId });
-      return schemaNames.map(schemaName => ({
-        // NOTE: needs unqiue IDs for entities to work correctly
-        id: generateSchemaId(dbId, schemaName),
-        name: schemaName,
-        database: { id: dbId },
-      }));
+      const schemas = await listDastabaseSchemas({ dbId });
+      return schemas.map(schema => {
+        const isCollection = typeof schema === "object";
+        const schemaName = isCollection ? schema.schema : schema;
+        const schemaId = generateSchemaId(
+          dbId,
+          isCollection ? schema.collection_id : schemaName,
+        );
+
+        return {
+          // NOTE: needs unqiue IDs for entities to work correctly
+          id: schemaId,
+          name: schemaName,
+          collectionId: isCollection ? schema.collection_id : null,
+          database: { id: dbId },
+        };
+      });
     },
     get: async ({ id }) => {
       const [dbId, schemaName] = parseSchemaId(id);

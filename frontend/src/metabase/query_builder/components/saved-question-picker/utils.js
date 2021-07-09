@@ -17,28 +17,27 @@ export function buildCollectionTree(collections) {
   return collections.map(collection => ({
     id: collection.id,
     name: collection.name,
-    schemaName: collection.originalName || collection.name,
     icon: getCollectionIcon(collection),
     children: buildCollectionTree(collection.children),
   }));
 }
 
-export const findCollectionByName = (collections, name) => {
+export const findCollection = (collections, id) => {
   if (!collections || collections.length === 0) {
     return null;
   }
 
-  const collection = collections.find(c => c.schemaName === name);
+  const collection = collections.find(c => c.id === id);
 
   if (collection) {
     return collection;
   }
 
-  return findCollectionByName(
+  return findCollection(
     collections
       .map(c => c.children)
       .filter(Boolean)
       .flat(),
-    name,
+    id,
   );
 };

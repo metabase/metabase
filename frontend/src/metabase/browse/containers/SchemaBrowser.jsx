@@ -49,7 +49,8 @@ function SchemaBrowser(props) {
               {schemas.map(schema => (
                 <GridItem w={ITEM_WIDTHS} key={schema.id}>
                   <Link
-                    to={`/browse/${dbId}/schema/${schema.name}`}
+                    to={`/browse/${dbId}/schema/${schema.collectionId ||
+                      schema.name}`}
                     mb={1}
                     hover={{ color: color("accent2") }}
                     data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}

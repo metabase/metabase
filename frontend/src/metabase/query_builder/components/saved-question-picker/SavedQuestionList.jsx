@@ -22,7 +22,6 @@ const propTypes = {
       PropTypes.string.isRequired,
       PropTypes.number.isRequired,
     ]),
-    schemaName: PropTypes.string.isRequired,
   }).isRequired,
 };
 
@@ -44,10 +43,7 @@ export default function SavedQuestionList({
     <SavedQuestionListRoot>
       {!isVirtualCollection && (
         <Schemas.Loader
-          id={generateSchemaId(
-            SAVED_QUESTIONS_VIRTUAL_DB_ID,
-            collection.schemaName,
-          )}
+          id={generateSchemaId(SAVED_QUESTIONS_VIRTUAL_DB_ID, collection.id)}
         >
           {({ schema }) => {
             const tables =

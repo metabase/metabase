@@ -26,7 +26,6 @@ import {
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSchemaName } from "metabase/schema";
 
 const MIN_SEARCH_LENGTH = 2;
 
@@ -796,12 +795,7 @@ export class UnconnectedDataSelector extends Component {
         {!isSearchActive &&
           (isSavedQuestionPickerShown ? (
             <SavedQuestionPicker
-              collectionName={
-                selectedTable &&
-                selectedTable.schema &&
-                getSchemaName(selectedTable.schema.id)
-              }
-              tableId={selectedTable && selectedTable.id}
+              selectedTable={selectedTable}
               databaseId={currentDatabaseId}
               onSelect={this.handleSavedQuestionSelect}
               onBack={this.handleSavedQuestionPickerClose}
