@@ -131,19 +131,22 @@
        :fallback        card-name})))
 
 (defn create-and-upload-slack-attachments!
-  "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
-  [attachments]
-  (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
-    (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
-              (conj processed (if (:render/text rendered-info)
-                                (-> (f attachment-data)
-                                    (assoc :text (:render/text rendered-info)))
-                                (let [image-bytes (render/png-from-render-info rendered-info)
-                                      image-url (slack/upload-file! image-bytes attachment-name channel-id)]
-                                  (-> (f attachment-data)
-                                      (assoc :image_url image-url))))))
-            []
-            attachments)))
+  "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
+  it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
+  returns an image url, defaulting to slack/upload-file!."
+  ([attachments] (create-and-upload-slack-attachments! attachments slack/upload-file!))
+  ([attachments slack-attachment-uploader]
+   (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
+     (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
+               (conj processed (if (:render/text rendered-info)
+                                 (-> (f attachment-data)
+                                     (assoc :text (:render/text rendered-info)))
+                                 (let [image-bytes (render/png-from-render-info rendered-info)
+                                       image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
+                                   (-> (f attachment-data)
+                                       (assoc :image_url image-url))))))
+             []
+             attachments))))
 
 (defn- is-card-empty?
   "Check if the card is empty"

@@ -653,6 +653,47 @@
          (testing "attachments"
            (is (true? (every? produces-bytes? (:attachments slack-data))))))))))
 
+(deftest create-and-upload-slack-attachments!-test
+  (let [slack-uploader (fn [storage]
+                         (fn [_bytes attachment-name _channel-id]
+                           (swap! storage conj attachment-name)
+                           (str "http://uploaded/" attachment-name)))]
+    (testing "Uploads files"
+      (let [titles         (atom [])
+            attachments    [{:title           "a"
+                             :attachment-name "a.png"
+                             :rendered-info   {:attachments nil
+                                               :content     [:div "hi"]}
+                             :channel-id      "FOO"}
+                            {:title           "b"
+                             :attachment-name "b.png"
+                             :rendered-info   {:attachments nil
+                                               :content     [:div "hi again"]}
+                             :channel-id      "FOO"}]
+            processed      (pulse/create-and-upload-slack-attachments! attachments (slack-uploader titles))]
+        (is (= [{:title "a", :image_url "http://uploaded/a.png"}
+                {:title "b", :image_url "http://uploaded/b.png"}]
+               processed))
+        (is (= @titles ["a.png" "b.png"]))))
+    (testing "Uses the raw text when present"
+      (let [titles         (atom [])
+            attachments    [{:title           "a"
+                             :attachment-name "a.png"
+                             :rendered-info   {:attachments nil
+                                               :content     [:div "hi"]}
+                             :channel-id      "FOO"}
+                            {:title           "b"
+                             :attachment-name "b.png"
+                             :rendered-info   {:attachments nil
+                                               :content     [:div "hi again"]
+                                               :render/text "hi again"}
+                             :channel-id      "FOO"}]
+            processed      (pulse/create-and-upload-slack-attachments! attachments (slack-uploader titles))]
+        (is (= [{:title "a", :image_url "http://uploaded/a.png"}
+                {:title "b", :text "hi again"}]
+               processed))
+        (is (= @titles ["a.png"]))))))
+
 (deftest multi-channel-test
   (testing "Test with a slack channel and an email"
     (mt/with-temp Card [{card-id :id} (checkins-query-card {:breakout [!day.date]})]
