@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ButtonGroup from "metabase/components/ButtonGroup";
+import { SegmentedControl } from "metabase/components/SegmentedControl";
 import Select from "metabase/components/Select";
 
 import Settings from "metabase/lib/settings";
@@ -238,12 +238,13 @@ export default class SchedulePicker extends Component {
               this.handleChangeProperty("schedule_hour", value + amPm * 12)
             }
           />
-          <ButtonGroup
+          <SegmentedControl
             value={amPm}
             onChange={value =>
               this.handleChangeProperty("schedule_hour", hour + value * 12)
             }
             options={AM_PM_OPTIONS}
+            fullWidth
           />
         </div>
         {textBeforeSendTime && (
