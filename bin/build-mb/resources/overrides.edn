@@ -8,7 +8,13 @@
   "xalan"                            {:resource "apache2_0.txt"}
   "org.apache.hadoop"                {:resource "apache2_0.txt"}
   "org.ow2.asm"                      {:resource "BSD.txt"}
-  "org.eclipse.jetty"                {:resource "apache2_0.txt"}}
+  "org.eclipse.jetty"                {:resource "apache2_0.txt"}
+  ;; see if we can remove these if/when https://github.com/googleapis/java-core/issues/488 is done
+  "com.google.cloud"                 {:resource "apache2_0.txt"}
+  "com.google.auth"                  {:resource "apache2_0.txt"}
+  "com.google.code.gson"             {:resource "apache2_0.txt"}
+  "com.google.protobuf"              {:resource "apache2_0.txt"}
+  "com.google.http-client"           {:resource "apache2_0.txt"}}
 
  "com.google.http-client"     {"google-http-client"          {:resource "apache2_0.txt"}
                                "google-http-client-jackson2" {:resource "apache2_0.txt"}}

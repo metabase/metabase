@@ -138,7 +138,7 @@
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
                   "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
                   "different  what other SQL databases do. (#4218)")
-      (mt/with-bigquery-fks :biquery
+      (mt/with-bigquery-fks :bigquery
         (let [results (mt/run-mbql-query venues
                         {:aggregation [:count]
                          :breakout    [$category_id->categories.name]})]
