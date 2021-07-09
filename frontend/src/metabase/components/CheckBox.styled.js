@@ -2,7 +2,7 @@ import React from "react";
 import styled, { css } from "styled-components";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 
 export const CheckboxRoot = styled.label`
   display: block;
@@ -40,9 +40,12 @@ export const VisibleBox = styled.span`
 
   ${props =>
     props.isFocused &&
-    !props.checked &&
     css`
-      outline: 1px auto ${color(props.checkedColor)};
+      outline: 1px auto
+        ${props.checked
+          ? darken(color(props.checkedColor))
+          : color(props.checkedColor)};
+      outline-offset: 1px;
     `}
 `;
 
