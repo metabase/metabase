@@ -153,6 +153,22 @@
                                [:distinct $price]]
                  :limit       5})))))))
 
+(deftest expressions-test
+  (mt/test-driver :mongo
+    (testing "Should be able to deal with expressions (#9382 is for BQ but we're doing it for mongo too)"
+      (is (= {:projections ["count" "count_2"]
+              :query
+              [{"$group" {"_id" nil, "count" {"$addToSet" "$name"}, "count_2" {"$addToSet" "$price"}}}
+               {"$sort" {"_id" 1}}
+               {"$project" {"_id" false, "count" {"$size" "$count"}, "count_2" {"$size" "$count_2"}}}
+               {"$limit" 5}],
+              :collection  "venues"
+              :mbql?       true}
+             (qp/query->native
+              (mt/mbql-query venues
+                {:expression some shit here
+                 :limit       5})))))))
+
 (deftest compile-time-interval-test
   (mt/test-driver :mongo
     (testing "Make sure time-intervals work the way they're supposed to."
