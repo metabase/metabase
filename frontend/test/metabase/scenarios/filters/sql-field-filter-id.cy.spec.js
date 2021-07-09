@@ -13,7 +13,7 @@ describe("scenarios > filters > sql filters > field filter > ID", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardles of the environment where this is running.
+    // Make sure feature flag is on regardless of the environment where this is running
     mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
