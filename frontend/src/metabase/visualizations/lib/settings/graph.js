@@ -250,7 +250,7 @@ export const STACKABLE_SETTINGS = {
   "stackable.stack_display": {
     section: t`Display`,
     title: t`Stacked chart type`,
-    widget: "buttonGroup",
+    widget: "segmentedControl",
     props: {
       options: [
         { icon: "area", name: t`Area`, value: "area" },
