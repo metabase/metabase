@@ -606,64 +606,6 @@ describe("scenarios > dashboard", () => {
     cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
   });
 
-  it("user without data permissions should be able to use dashboard filter (metabase#15119)", () => {
-    cy.createQuestion({
-      name: "15119",
-      query: { "source-table": 1 },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("15119D").then(({ body: { id: DASHBOARD_ID } }) => {
-        // Add filter to the dashboard
-        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-          parameters: [
-            {
-              name: "Category",
-              slug: "category",
-              id: "ad1c877e",
-              type: "category",
-            },
-          ],
-        });
-        // Add card to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Connect filter to the card
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                sizeX: 12,
-                sizeY: 9,
-                visualization_settings: {},
-                parameter_mappings: [
-                  {
-                    parameter_id: "ad1c877e",
-                    card_id: QUESTION_ID,
-                    target: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
-                  },
-                ],
-              },
-            ],
-          });
-        });
-
-        cy.signIn("nodata");
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-
-        filterWidget()
-          .contains("Category")
-          .click();
-        cy.findByPlaceholderText("Search the list").type("Gizmo");
-        cy.button("Add filter").click();
-
-        cy.contains("Rustic Paper Wallet");
-      });
-    });
-  });
-
   it.skip("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
     cy.request("GET", "/api/user/current").then(
       ({ body: { personal_collection_id } }) => {
