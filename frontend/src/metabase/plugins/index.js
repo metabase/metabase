@@ -44,6 +44,8 @@ export const PLUGIN_SELECTORS = {
   getLogoBackgroundClass: (state, props) => "bg-white",
 };
 
+export const PLUGIN_FORM_WIDGETS = {};
+
 // snippet sidebar
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
 export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
