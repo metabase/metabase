@@ -56,12 +56,6 @@ jobs:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}-${{ hashFiles('**/deps.edn') }}
 
-    - run: yarn install --frozen-lockfile --prefer-offline
-    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+${{ matrix.edition }} deps
-
-    - run: ./bin/build version
-    - run: ./bin/build translations
-
     - name: Grab previously built front-end (if equivalent)
       if: "!contains(github.event.head_commit.message, '[ci nocache]')"
       id: frontend-cache
@@ -77,6 +71,12 @@ jobs:
       with:
         path: ./modules/drivers/**/target
         key: buildcache-${{ matrix.edition }}-drivers-${{ hashFiles('**/modules/**/*.clj', '**/metabase-plugin.yaml') }}
+
+    - run: yarn install --frozen-lockfile --prefer-offline
+    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+${{ matrix.edition }} deps
+
+    - run: ./bin/build version
+    - run: ./bin/build translations
 
     - run: ./bin/build frontend
       if: steps.frontend-cache.outputs.cache-hit != 'true'
