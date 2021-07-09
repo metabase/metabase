@@ -4,11 +4,7 @@ import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 import Tooltip from "metabase/components/Tooltip";
-import {
-  Container,
-  PrimaryButtonContainer,
-  SecondaryButtonContainer,
-} from "./QuestionActionButtons.styled";
+import { Container } from "./QuestionActionButtons.styled";
 
 export const EDIT_TESTID = "edit-details-button";
 export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
