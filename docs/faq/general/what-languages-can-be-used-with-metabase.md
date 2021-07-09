@@ -22,6 +22,7 @@ The languages you can currently pick from in Metabase are:
 - Polish
 - Portuguese
 - Russian
+- Serbian
 - Slovak
 - Spanish
 - Swedish
