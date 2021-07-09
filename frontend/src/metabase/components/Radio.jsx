@@ -5,6 +5,7 @@ import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import {
   RadioInput,
+  RadioButton,
   BubbleList,
   BubbleItem,
   NormalList,
@@ -82,9 +83,11 @@ function Radio({
       {options.map((option, index) => {
         const selected = value === optionValueFn(option);
         const last = index === options.length - 1;
+        const key = optionKeyFn(option);
+        const id = `${name}-${key}`;
         return (
           <Item
-            key={optionKeyFn(option)}
+            key={key}
             selected={selected}
             last={last}
             vertical={vertical}
@@ -96,16 +99,14 @@ function Radio({
           >
             {option.icon && <Icon name={option.icon} mr={1} />}
             <RadioInput
+              id={id}
               name={name}
               value={optionValueFn(option)}
               checked={selected}
-              id={name + "-" + optionKeyFn(option)}
               onChange={() => onChange(optionValueFn(option))}
             />
-            {showButtons && (
-              <label htmlFor={name + "-" + optionKeyFn(option)} />
-            )}
-            <span>{optionNameFn(option)}</span>
+            {showButtons && <RadioButton checked={selected} />}
+            <label htmlFor={id}>{optionNameFn(option)}</label>
           </Item>
         );
       })}

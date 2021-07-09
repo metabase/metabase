@@ -15,24 +15,21 @@ export const RadioInput = styled.input.attrs({ type: "radio" })`
   margin: 0;
   padding: 0;
   z-index: 1;
+`;
 
-  & + label {
-    cursor: pointer;
-    display: inline-block;
-    flex: 0 0 auto;
-    position: relative;
-    margin-right: 0.5rem;
-    width: 8px;
-    height: 8px;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px ${color("shadow")};
-    border-radius: 8px;
-  }
-
-  &:checked + label {
-    box-shadow: 0 0 0 2px ${color("shadow")};
-    background-color: ${color("brand")};
-  }
+export const RadioButton = styled.div`
+  cursor: pointer;
+  display: inline-block;
+  flex: 0 0 auto;
+  position: relative;
+  margin-right: 0.5rem;
+  width: 12px;
+  height: 12px;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px ${color("shadow")};
+  border-radius: 12px;
+  background-color: ${props =>
+    props.checked ? color("brand") : "transparent"};
 `;
 
 // BASE
