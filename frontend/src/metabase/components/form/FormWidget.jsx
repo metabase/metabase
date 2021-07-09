@@ -31,11 +31,16 @@ const WIDGETS = {
   textFile: FormTextFileWidget,
 };
 
+function getWidgetComponent(formField) {
+  if (typeof formField.type === "string") {
+    const widget = WIDGETS[formField.type];
+    return widget || FormInputWidget;
+  }
+  return formField.type || FormInputWidget;
+}
+
 const FormWidget = ({ field, formField, ...props }) => {
-  const Widget =
-    (typeof formField.type === "string"
-      ? WIDGETS[formField.type]
-      : formField.type) || FormInputWidget;
+  const Widget = getWidgetComponent(formField);
   return <Widget field={field} {...formField} {...props} />;
 };
 
