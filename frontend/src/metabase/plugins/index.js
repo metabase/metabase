@@ -55,3 +55,7 @@ export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,
 };
+
+export const PLUGIN_COLLECTIONS = {
+  formFields: [],
+};
