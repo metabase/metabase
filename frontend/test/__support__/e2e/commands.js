@@ -6,6 +6,7 @@ import "./commands/api/dashboard";
 import "./commands/api/dashboardFilters";
 
 import "./commands/api/composite/createQuestionAndDashboard";
+import "./commands/api/composite/createNativeQuestionAndDashboard";
 
 import "./commands/user/createUser";
 import "./commands/user/authentication";
