@@ -1,6 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import { PLUGIN_FORM_WIDGETS } from "metabase/plugins";
+
 import FormInputWidget from "./widgets/FormInputWidget";
 import FormEmailWidget from "./widgets/FormEmailWidget";
 import FormTextAreaWidget from "./widgets/FormTextAreaWidget";
@@ -33,7 +35,8 @@ const WIDGETS = {
 
 function getWidgetComponent(formField) {
   if (typeof formField.type === "string") {
-    const widget = WIDGETS[formField.type];
+    const widget =
+      WIDGETS[formField.type] || PLUGIN_FORM_WIDGETS[formField.type];
     return widget || FormInputWidget;
   }
   return formField.type || FormInputWidget;
