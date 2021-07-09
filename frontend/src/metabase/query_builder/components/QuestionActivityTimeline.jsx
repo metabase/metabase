@@ -67,7 +67,7 @@ export function QuestionActivityTimeline({
 
   return (
     <div className={className}>
-      <SidebarSectionHeader>{t`Revision history`}</SidebarSectionHeader>
+      <SidebarSectionHeader>{t`History`}</SidebarSectionHeader>
       <Timeline
         items={revisionEvents}
         renderFooter={item => {
