@@ -603,7 +603,7 @@ describe("scenarios > dashboard", () => {
     // which is actually "Include" followed by "this minute" wrapped in <strong>, so has to be clicked this way
     cy.contains("Include this minute").click();
     // make sure the checkbox was checked
-    cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
+    cy.findByRole("checkbox").should("be.checked");
   });
 
   it("user without data permissions should be able to use dashboard filter (metabase#15119)", () => {
