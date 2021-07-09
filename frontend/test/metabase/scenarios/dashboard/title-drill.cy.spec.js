@@ -48,7 +48,7 @@ describe("scenarios > dashboard > title drill", () => {
       sectionId: "string",
     };
 
-    cy.createNativeQuestion({
+    const questionDetails = {
       name: "16181",
       native: {
         query: "select count(*) from products where {{filter}}",
@@ -65,39 +65,37 @@ describe("scenarios > dashboard > title drill", () => {
         },
       },
       display: "scalar",
-    }).then(({ body: { id: card_id } }) => {
-      cy.createDashboard("16181D").then(({ body: { id: dashboard_id } }) => {
-        // Add previously created question to the dashboard
-        cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-          cardId: card_id,
-        }).then(({ body: { id } }) => {
-          cy.addFilterToDashboard({ filter, dashboard_id });
+    };
 
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                sizeX: 8,
-                sizeY: 6,
-                parameter_mappings: [
-                  {
-                    parameter_id: filter.id,
-                    card_id,
-                    target: ["dimension", ["template-tag", "filter"]],
-                  },
-                ],
-              },
-            ],
-          });
+    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        cy.addFilterToDashboard({ filter, dashboard_id });
+
+        // Connect filter to the card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              sizeX: 8,
+              sizeY: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: filter.id,
+                  card_id,
+                  target: ["dimension", ["template-tag", "filter"]],
+                },
+              ],
+            },
+          ],
         });
 
         cy.visit(`/dashboard/${dashboard_id}`);
         checkScalarResult("200");
-      });
-    });
+      },
+    );
 
     cy.findByText("Text contains").click();
     cy.findByPlaceholderText("Enter some text")
