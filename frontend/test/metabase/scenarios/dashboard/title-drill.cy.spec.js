@@ -54,10 +54,7 @@ describe("scenarios > dashboard > title drill", () => {
         cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
           cardId: card_id,
         }).then(({ body: { id } }) => {
-          // Add filter to the dashboard
-          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-            parameters: [filter],
-          });
+          cy.addFilterToDashboard({ filter, dashboard_id });
 
           cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
             cards: [
