@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import {
+  RadioInput,
   BubbleList,
   BubbleItem,
   NormalList,
@@ -91,17 +92,15 @@ function Radio({
             py={py}
             xspace={xspace}
             yspace={yspace}
-            onClick={e => onChange(optionValueFn(option))}
             aria-selected={selected}
           >
             {option.icon && <Icon name={option.icon} mr={1} />}
-            <input
-              className="Form-radio"
-              type="radio"
+            <RadioInput
               name={name}
               value={optionValueFn(option)}
               checked={selected}
               id={name + "-" + optionKeyFn(option)}
+              onChange={() => onChange(optionValueFn(option))}
             />
             {showButtons && (
               <label htmlFor={name + "-" + optionKeyFn(option)} />
