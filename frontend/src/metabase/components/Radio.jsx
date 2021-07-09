@@ -85,6 +85,7 @@ function Radio({
         const last = index === options.length - 1;
         const key = optionKeyFn(option);
         const id = `${name}-${key}`;
+        const labelId = `${id}-label`;
         return (
           <Item
             key={key}
@@ -95,7 +96,6 @@ function Radio({
             py={py}
             xspace={xspace}
             yspace={yspace}
-            aria-selected={selected}
           >
             {option.icon && <Icon name={option.icon} mr={1} />}
             <RadioInput
@@ -104,9 +104,14 @@ function Radio({
               value={optionValueFn(option)}
               checked={selected}
               onChange={() => onChange(optionValueFn(option))}
+              // Workaround for https://github.com/testing-library/dom-testing-library/issues/877
+              // TODO Try removing once jest upgraded
+              aria-labelledby={labelId}
             />
             {showButtons && <RadioButton checked={selected} />}
-            <label htmlFor={id}>{optionNameFn(option)}</label>
+            <label id={labelId} htmlFor={id}>
+              {optionNameFn(option)}
+            </label>
           </Item>
         );
       })}

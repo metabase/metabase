@@ -247,6 +247,7 @@ class ChartSettings extends Component {
         options={sectionNames}
         optionNameFn={v => v}
         optionValueFn={v => v}
+        optionKeyFn={v => v}
         variant="bubble"
       />
     );
