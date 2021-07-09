@@ -8,8 +8,8 @@ export const RadioInput = styled.input.attrs({ type: "radio" })`
   cursor: inherit;
   position: absolute;
   opacity: 0;
-  width: 100%;
-  height: 100%;
+  width: 0;
+  height: 0;
   top: 0;
   left: 0;
   margin: 0;
@@ -38,7 +38,7 @@ const BaseList = styled.ul`
   flex-direction: ${props => (props.vertical ? "column" : "row")};
 `;
 
-const BaseItem = styled.li.attrs({
+const BaseItem = styled.label.attrs({
   mr: props => (!props.vertical && !props.last ? props.xspace : null),
   mb: props => (props.vertical && !props.last ? props.yspace : null),
 })`

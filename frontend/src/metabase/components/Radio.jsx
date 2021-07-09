@@ -56,7 +56,7 @@ const VARIANTS = {
 
 function Radio({
   name: nameFromProps,
-  value,
+  value: currentValue,
   options,
   onChange,
   optionNameFn = defaultNameGetter,
@@ -75,7 +75,7 @@ function Radio({
 
   const [List, Item] = VARIANTS[variant] || VARIANTS.normal;
 
-  if (variant === "underlined" && value === undefined) {
+  if (variant === "underlined" && currentValue === undefined) {
     console.warn(
       "Radio can't underline selected option when no value is given.",
     );
@@ -84,38 +84,39 @@ function Radio({
   return (
     <List {...props} vertical={vertical} showButtons={showButtons}>
       {options.map((option, index) => {
-        const selected = value === optionValueFn(option);
+        const value = optionValueFn(option);
+        const selected = currentValue === value;
         const last = index === options.length - 1;
         const key = optionKeyFn(option);
         const id = `${name}-${key}`;
         const labelId = `${id}-label`;
         return (
-          <Item
-            key={key}
-            selected={selected}
-            last={last}
-            vertical={vertical}
-            showButtons={showButtons}
-            py={py}
-            xspace={xspace}
-            yspace={yspace}
-          >
-            {option.icon && <Icon name={option.icon} mr={1} />}
-            <RadioInput
-              id={id}
-              name={name}
-              value={optionValueFn(option)}
-              checked={selected}
-              onChange={() => onChange(optionValueFn(option))}
-              // Workaround for https://github.com/testing-library/dom-testing-library/issues/877
-              // TODO Try removing once jest upgraded
-              aria-labelledby={labelId}
-            />
-            {showButtons && <RadioButton checked={selected} />}
-            <label id={labelId} htmlFor={id}>
+          <li key={key}>
+            <Item
+              id={labelId}
+              htmlFor={id}
+              selected={selected}
+              last={last}
+              vertical={vertical}
+              showButtons={showButtons}
+              py={py}
+              xspace={xspace}
+              yspace={yspace}
+            >
+              {option.icon && <Icon name={option.icon} mr={1} />}
+              <RadioInput
+                id={id}
+                name={name}
+                value={value}
+                checked={selected}
+                onChange={() => onChange(value)}
+                // Workaround for https://github.com/testing-library/dom-testing-library/issues/877
+                aria-labelledby={labelId}
+              />
+              {showButtons && <RadioButton checked={selected} />}
               {optionNameFn(option)}
-            </label>
-          </Item>
+            </Item>
+          </li>
         );
       })}
     </List>
