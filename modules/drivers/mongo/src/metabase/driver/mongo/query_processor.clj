@@ -441,13 +441,6 @@
 (defmethod compile-cond :not [[_ subclause]]
   (compile-cond (negate subclause)))
 
-;;; -------------------------------------------------- expression ----------------------------------------------------
-
-;; (defmulti handle-expression some shit wtf
-;;   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
-;;   compiling the \"where\" clause equivalent."
-;;   {:arglists '([clause])}
-;;   mbql.u/dispatch-by-clause-name-or-class)
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
@@ -652,6 +645,16 @@
                                                           {$skip offset}))
                                                       {$limit items-per-page}]))))
 
+;;; --------------------------------- process inner query to deal with expressions -----------------------------------
+
+(defn- process-inner-query
+  "Compile an mbql inner query with expression clause to inner query suitable to query mongo."
+  [{:keys [expressions] :as inner-query}]
+  (if-not (seq expressions)
+    inner-query
+    (mbql.u/replace inner-query
+                    [:expression expression-name]
+                    [:field expression-name {:base-type (:base_type (annottate/infer-expression-type &match))}])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Process & Run                                                  |
@@ -660,16 +663,16 @@
 (s/defn ^:private generate-aggregation-pipeline :- {:projections Projections, :query Pipeline}
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
-  (reduce (fn [pipeline-ctx f]
-            (f inner-query pipeline-ctx))
-          {:projections [], :query []}
-          [handle-expression
-           handle-filter
-           handle-breakout+aggregation
-           handle-order-by
-           handle-fields
-           handle-limit
-           handle-page]))
+  (let [processed-inner-query (process-inner-query inner-query)]
+    (reduce (fn [pipeline-ctx f]
+              (f inner-query pipeline-ctx))
+            {:projections [], :query []}
+            [handle-filter
+             handle-breakout+aggregation
+             handle-order-by
+             handle-fields
+             handle-limit
+             handle-page])))
 
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."
