@@ -27,7 +27,10 @@ const optionShape = PropTypes.shape({
 const propTypes = {
   name: PropTypes.string,
   value: PropTypes.any,
-  options: PropTypes.arrayOf(optionShape).isRequired,
+  options: PropTypes.oneOfType([
+    PropTypes.arrayOf(PropTypes.string),
+    PropTypes.arrayOf(optionShape),
+  ]).isRequired,
   onChange: PropTypes.func,
   optionNameFn: PropTypes.func,
   optionValueFn: PropTypes.func,
