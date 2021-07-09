@@ -3,6 +3,7 @@ import {
   popover,
   restore,
   setupLocalHostEmail,
+  modal,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -544,7 +545,9 @@ describe("smoketest > admin_setup", () => {
       cy.findByTestId("edit-details-button").click();
 
       cy.findByText("Edit question");
-      cy.findByText("Testing question description");
+      modal().within(() => {
+        cy.findByText("Testing question description");
+      });
 
       cy.findByText("Cancel").click();
 
