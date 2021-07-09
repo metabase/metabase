@@ -153,7 +153,7 @@
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query
-        {:database (u/get-id db-or-db-id)
+        {:database (u/the-id db-or-db-id)
          :type     :native
          :native   {:query (format "select datetime(TIMESTAMP \"%s\", \"%s\")" timestamp-str timezone-str)}})
       :data
@@ -227,17 +227,17 @@
     (tt/with-temp* [Database [db {:engine :bigquery-cloud-sdk
                                   :details (assoc (:details (mt/db))
                                                   :include-user-id-and-hash false)}]
-                    Table    [table {:name "venues" :db_id (u/get-id db)}]
-                    Field    [_     {:table_id (u/get-id table)
+                    Table    [table {:name "venues" :db_id (u/the-id db)}]
+                    Field    [_     {:table_id (u/the-id table)
                                     :name "id"
                                     :base_type "type/Integer"}]
-                    Field    [_     {:table_id (u/get-id table)
+                    Field    [_     {:table_id (u/the-id table)
                                     :name "name"
                                     :base_type "type/Text"}]]
       (query->native
-        {:database (u/get-id db)
+        {:database (u/the-id db)
         :type     :query
-        :query    {:source-table (u/get-id table)
+        :query    {:source-table (u/the-id table)
                     :limit        1}
         :info     {:executed-by 1000
                     :query-hash  (byte-array [1 2 3 4])}}))))))
