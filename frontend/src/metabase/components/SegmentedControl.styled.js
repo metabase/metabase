@@ -7,7 +7,7 @@ export const SegmentedList = styled.ul`
   display: flex;
 `;
 
-export const SegmentedItem = styled.li`
+export const SegmentedItem = styled.label`
   position: relative;
   display: flex;
   align-items: center;
@@ -32,8 +32,8 @@ export const SegmentedControlRadio = styled.input.attrs({ type: "radio" })`
   cursor: inherit;
   position: absolute;
   opacity: 0;
-  width: 100%;
-  height: 100%;
+  width: 0;
+  height: 0;
   top: 0;
   left: 0;
   margin: 0;
