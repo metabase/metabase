@@ -58,7 +58,35 @@ jobs:
 
     - run: yarn install --frozen-lockfile --prefer-offline
     - run: lein with-profile +include-all-drivers,+cloverage,+junit,+${{ matrix.edition }} deps
-    - run: ./bin/build
+
+    - run: ./bin/build version
+    - run: ./bin/build translations
+
+    - name: Grab previously built front-end (if equivalent)
+      if: "!contains(github.event.head_commit.message, '[ci nocache]')"
+      id: frontend-cache
+      uses: actions/cache@v2
+      with:
+        path: ./resources/frontend_client/
+        key: buildcache-${{ matrix.edition }}-frontend-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.cljc', '**/*.cljs', '**/*.json', '**/yarn.lock', '**/sample-dataset.db.mv.db', '!**/frontend/test/') }}
+
+    - name: Grab previously built drivers (if equivalent)
+      if: "!contains(github.event.head_commit.message, '[ci nocache]')"
+      id: drivers-cache
+      uses: actions/cache@v2
+      with:
+        path: ./modules/drivers/**/target
+        key: buildcache-${{ matrix.edition }}-drivers-${{ hashFiles('**/modules/**/*.clj', '**/metabase-plugin.yaml') }}
+
+    - run: ./bin/build frontend
+      if: steps.frontend-cache.outputs.cache-hit != 'true'
+
+    - run: ./bin/build drivers
+      if: steps.drivers-cache.outputs.cache-hit != 'true'
+
+    - run: ./bin/build backend-licenses
+    - run: ./bin/build frontend-licenses
+    - run: ./bin/build uberjar
 
     - name: Mark with the commit hash
       run:  git rev-parse --short HEAD > COMMIT-ID
