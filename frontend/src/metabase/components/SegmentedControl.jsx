@@ -4,6 +4,7 @@ import _ from "underscore";
 import {
   SegmentedList,
   SegmentedItem,
+  SegmentedItemLabel,
   SegmentedControlRadio,
   ItemIcon,
 } from "./SegmentedControl.styled";
@@ -24,6 +25,7 @@ const propTypes = {
   value: PropTypes.any,
   options: PropTypes.arrayOf(optionShape).isRequired,
   onChange: PropTypes.func,
+  fullWidth: PropTypes.bool,
 };
 
 export function SegmentedControl({
@@ -31,12 +33,13 @@ export function SegmentedControl({
   value,
   options,
   onChange,
+  fullWidth = false,
   ...props
 }) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
   const name = nameFromProps || id;
   return (
-    <SegmentedList {...props}>
+    <SegmentedList {...props} fullWidth={fullWidth}>
       {options.map((option, index) => {
         const isSelected = option.value === value;
         const isFirst = index === 0;
@@ -44,12 +47,15 @@ export function SegmentedControl({
         const id = `${name}-${option.value}`;
         const labelId = `${name}-${option.value}`;
         return (
-          <li key={option.value}>
-            <SegmentedItem
+          <SegmentedItem
+            key={option.value}
+            isFirst={isFirst}
+            isLast={isLast}
+            fullWidth={fullWidth}
+          >
+            <SegmentedItemLabel
               id={labelId}
               isSelected={isSelected}
-              isFirst={isFirst}
-              isLast={isLast}
               selectedColor={option.selectedColor || "brand"}
             >
               {option.icon && (
@@ -65,8 +71,8 @@ export function SegmentedControl({
                 aria-labelledby={labelId}
               />
               {option.name}
-            </SegmentedItem>
-          </li>
+            </SegmentedItemLabel>
+          </SegmentedItem>
         );
       })}
     </SegmentedList>

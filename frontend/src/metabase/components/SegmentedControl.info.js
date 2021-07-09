@@ -52,4 +52,5 @@ export const examples = {
   icons: <SegmentedControlDemo options={OPTIONS_WITH_ICONS} />,
   iconsOnly: <SegmentedControlDemo options={OPTIONS_ICONS_ONLY} />,
   colored: <SegmentedControlDemo options={OPTIONS_WITH_COLORS} />,
+  fullWidth: <SegmentedControlDemo options={OPTIONS_WITH_ICONS} fullWidth />,
 };
