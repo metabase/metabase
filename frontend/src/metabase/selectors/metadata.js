@@ -13,7 +13,7 @@ import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
 import _ from "underscore";
-import { shallowEqual } from "recompose";
+import shallowEqual from "./shallowEqual";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
 import { getIn } from "icepick";
