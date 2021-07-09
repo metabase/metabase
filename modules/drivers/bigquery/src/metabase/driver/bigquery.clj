@@ -305,7 +305,7 @@
 
 (defmethod driver/supports? [:bigquery :percentile-aggregations] [_ _] false)
 
-(defmethod driver/supports? [:bigquery :expressions] [_ _] false)
+(defmethod driver/supports? [:bigquery :expressions] [_ _] true)
 
 (defmethod driver/supports? [:bigquery :foreign-keys] [_ _] true)
 

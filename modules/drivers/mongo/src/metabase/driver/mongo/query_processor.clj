@@ -441,6 +441,13 @@
 (defmethod compile-cond :not [[_ subclause]]
   (compile-cond (negate subclause)))
 
+;;; -------------------------------------------------- expression ----------------------------------------------------
+
+;; (defmulti expression some shit wtf
+;;   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
+;;   compiling the \"where\" clause equivalent."
+;;   {:arglists '([clause])}
+;;   mbql.u/dispatch-by-clause-name-or-class)
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
