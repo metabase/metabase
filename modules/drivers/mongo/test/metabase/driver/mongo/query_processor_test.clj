@@ -166,7 +166,9 @@
               :mbql?       true}
              (qp/query->native
               (mt/mbql-query venues
-                {:expression some shit here
+                {:aggregation [[:expression "bob"] [:expression "dobbs"]]
+                 :expressions {:bob   [:distinct $name]
+                               :dobbs [:distinct $price]}
                  :limit       5})))))))
 
 (deftest compile-time-interval-test
