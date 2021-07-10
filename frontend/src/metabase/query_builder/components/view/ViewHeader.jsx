@@ -165,7 +165,7 @@ export class ViewTitleHeader extends React.Component {
                 />
               )}
             </div>
-            <ViewSubHeading className="flex align-center flex-wrap">
+            <ViewSubHeading className="flex align-center flex-wrap pt1">
               <CollectionBadge
                 className="mb1"
                 collectionId={question.collectionId()}

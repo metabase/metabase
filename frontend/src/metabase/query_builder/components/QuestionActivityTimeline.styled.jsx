@@ -27,7 +27,8 @@ export const RevertButton = styled(ActionButton).attrs({
 })`
   padding: 0;
   border: none;
-  color: ${color("accent3")};
+  color: ${color("text-dark")};
+  font-size: 0.875em;
 
   &:hover {
     background-color: transparent;

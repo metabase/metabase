@@ -40,7 +40,7 @@ function RevisionEventFooter({ revision, onRevisionClick }) {
     <div>
       <RevertButton
         actionFn={() => onRevisionClick(revision)}
-        normalText={t`Revert back`}
+        normalText={t`Revert`}
         activeText={t`Reverting…`}
         failedText={t`Revert failed`}
         successText={t`Reverted`}
@@ -67,7 +67,7 @@ export function QuestionActivityTimeline({
 
   return (
     <div className={className}>
-      <SidebarSectionHeader>{t`Activity`}</SidebarSectionHeader>
+      <SidebarSectionHeader>{t`History`}</SidebarSectionHeader>
       <Timeline
         items={revisionEvents}
         renderFooter={item => {

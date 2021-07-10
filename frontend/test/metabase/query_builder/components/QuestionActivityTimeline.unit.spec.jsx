@@ -48,7 +48,7 @@ describe("QuestionActivityTimeline", () => {
     });
 
     it("should not render revert action buttons", () => {
-      expect(() => screen.getByText("Revert back")).toThrow();
+      expect(() => screen.getByText("Revert")).toThrow();
     });
   });
 
@@ -68,11 +68,11 @@ describe("QuestionActivityTimeline", () => {
     });
 
     it("should render revert action buttons", () => {
-      expect(screen.getByText("Revert back")).toBeInTheDocument();
+      expect(screen.getByText("Revert")).toBeInTheDocument();
     });
 
-    it("should call revertToRevision when revert back button is clicked", () => {
-      screen.getByText("Revert back").click();
+    it("should call revertToRevision when revert button is clicked", () => {
+      screen.getByText("Revert").click();
       expect(revertToRevision).toHaveBeenCalled();
     });
   });
