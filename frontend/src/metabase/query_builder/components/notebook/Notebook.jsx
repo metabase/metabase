@@ -12,6 +12,7 @@ import NotebookSteps from "./NotebookSteps";
 export default function Notebook({ className, ...props }) {
   const {
     question,
+    isDirty,
     isRunnable,
     isResultDirty,
     runQuestionQuery,
@@ -26,12 +27,16 @@ export default function Notebook({ className, ...props }) {
           primary
           style={{ minWidth: 220 }}
           onClick={async () => {
-            let cleanQuestion = question.setQuery(question.query().clean());
-            if (cleanQuestion.display() === "table") {
-              cleanQuestion = cleanQuestion.setDefaultDisplay();
+            // Only update the question if it's dirty, otherwise Metabase
+            // will incorrectly display the Save button, even though there are no changes to save (#13470).
+            if (isDirty) {
+              let cleanQuestion = question.setQuery(question.query().clean());
+              if (cleanQuestion.display() === "table") {
+                cleanQuestion = cleanQuestion.setDefaultDisplay();
+              }
+              await cleanQuestion.update();
+              // switch mode before running otherwise URL update may cause it to switch back to notebook mode
             }
-            await cleanQuestion.update();
-            // switch mode before running otherwise URL update may cause it to switch back to notebook mode
             await setQueryBuilderMode("view");
             if (isResultDirty) {
               await runQuestionQuery();
