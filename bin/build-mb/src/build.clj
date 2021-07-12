@@ -133,3 +133,23 @@
     (build! (merge {:edition (edition-from-env-var)}
                    (when-let [steps (not-empty steps)]
                      {:steps steps})))))
+
+(defn list-without-license [{:keys []}]
+  (let [classpath-and-logs        (u/sh {:dir    u/project-root-directory
+                                         :quiet? true}
+                                        "lein"
+                                        "with-profile"
+                                        "-dev,+ee,+include-all-drivers"
+                                        "classpath")
+        classpath                 (last classpath-and-logs)
+        classpath-entries (license/jar-entries classpath)
+        {:keys [without-license]} (license/process*
+                                   {:classpath-entries classpath-entries
+                                    :backfill        (edn/read-string
+                                                        (slurp (io/resource "overrides.edn")))})]
+    (if (seq without-license)
+      (run! (comp (partial u/error "Missing License: %s") first)
+            without-license)
+      (u/announce "All dependencies have licenses"))
+    (shutdown-agents)
+    (System/exit (if (seq without-license) 1 0))))
