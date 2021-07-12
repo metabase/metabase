@@ -22,7 +22,6 @@
             [metabase.models.table :refer [Table]]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
-            [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.field-values :as sync-field-values]
             [metabase.sync.schedules :as sync.schedules]
@@ -220,12 +219,8 @@
                                             include-tables?))]
     {:data  (or (dbs-list :include-tables?                  include-tables?
                           :include-saved-questions-db?      include-saved-questions-db?
-                          :include-saved-questions-tables?  include-saved-questions-tables?
-                          :limit                            offset-paging/*limit*
-                          :offset                           offset-paging/*offset*)
+                          :include-saved-questions-tables?  include-saved-questions-tables?)
                 [])
-     :limit  offset-paging/*limit*
-     :offset offset-paging/*offset*
      :total  (db/count Database)}))
 
 
