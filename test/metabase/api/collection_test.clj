@@ -947,7 +947,7 @@
           (testing "\nSnippets should not come back for the default namespace"
             (is (= ["My Dashboard"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))))))
-          
+
           (testing "\nSnippets shouldn't be paginated, because FE is not ready for it yet and default pagination behavior is bad"
             (is (= ["My Snippet", "My Snippet 2"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets&limit=1&offset=0"))))))
