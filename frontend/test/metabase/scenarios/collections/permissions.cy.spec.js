@@ -300,7 +300,7 @@ describe("collection permissions", () => {
                 }
               });
 
-              describe("managing question from the question's edit dropdown (metabase#11719)", () => {
+              describe("managing question from the question's details sidebar action buttons (metabase#11719)", () => {
                 beforeEach(() => {
                   cy.route("PUT", "/api/card/1").as("updateQuestion");
                   cy.visit("/question/1");
@@ -316,6 +316,26 @@ describe("collection permissions", () => {
                   clickButton("Save");
                   assertOnRequest("updateQuestion");
                   cy.findByText("Orders1");
+                });
+
+                it("should be able to edit a question's description", () => {
+                  cy.skipOn(user === "nodata");
+
+                  cy.findByRole("button", {
+                    name: "Add a description",
+                  }).click();
+
+                  cy.findByLabelText("Description")
+                    .click()
+                    .type("foo");
+
+                  clickButton("Save");
+                  assertOnRequest("updateQuestion");
+
+                  cy.findByText("foo");
+                  cy.findByRole("button", { name: "Add a description" }).should(
+                    "not.exist",
+                  );
                 });
 
                 it("should be able to move the question (metabase#11719-2)", () => {
@@ -474,9 +494,12 @@ describe("collection permissions", () => {
               });
             });
 
-            describe("managing question from the question's edit dropdown", () => {
-              it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
+            describe("managing question from the question's details sidebar", () => {
+              beforeEach(() => {
                 cy.visit("/question/1");
+              });
+
+              it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
                 cy.findByTestId("saved-question-header-button").click();
                 cy.findByTestId("add-to-dashboard-button").click();
 
@@ -493,7 +516,6 @@ describe("collection permissions", () => {
               it("should offer personal collection as a save destination for a new dashboard", () => {
                 const { first_name, last_name } = USERS[user];
                 const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
-                cy.visit("/question/1");
                 cy.findByTestId("saved-question-header-button").click();
                 cy.findByTestId("add-to-dashboard-button").click();
 
@@ -506,6 +528,22 @@ describe("collection permissions", () => {
                 cy.url().should("match", /\/dashboard\/\d+-foo$/);
                 saveDashboard();
                 cy.get(".DashboardHeader").findByText(personalCollection);
+              });
+
+              it("should not offer a user the ability to update or clone the question", () => {
+                cy.visit("/question/1");
+                cy.findByTestId("saved-question-header-button").click();
+
+                cy.findByTestId("edit-details-button").should("not.exist");
+                cy.findByRole("button", { name: "Add a description" }).should(
+                  "not.exist",
+                );
+
+                cy.findByTestId("move-button").should("not.exist");
+                cy.findByTestId("clone-button").should("not.exist");
+                cy.findByTestId("archive-button").should("not.exist");
+
+                cy.findByText("Revert").should("not.exist");
               });
             });
 
@@ -633,7 +671,7 @@ describe("collection permissions", () => {
                 cy.findByText("This dashboard is looking empty.");
               });
 
-              it("should be able to revert the question", () => {
+              it("should be able to revert the question via the revision history modal", () => {
                 // It's possible that the mechanics of who should be able to revert the question will change (see https://github.com/metabase/metabase/issues/15131)
                 // For now that's not possible for user without data access (likely it will be again when #11719 is fixed)
                 cy.skipOn(user === "nodata");
@@ -646,6 +684,24 @@ describe("collection permissions", () => {
                   expect(xhr.cause).not.to.exist;
                 });
                 cy.findAllByText(/Revert/).should("not.exist");
+                // We need to reload the page because of #12581
+                cy.reload();
+                cy.contains(/^Orders$/);
+              });
+
+              it("should be able to revert the question via the action button found in the saved question timeline", () => {
+                cy.skipOn(user === "nodata");
+
+                cy.visit("/question/1");
+                cy.findByTestId("saved-question-header-button").click();
+                cy.findByText("Revert").click();
+
+                cy.wait("@revert").then(xhr => {
+                  expect(xhr.status).to.eq(200);
+                  expect(xhr.cause).not.to.exist;
+                });
+                cy.findByText("Reverted");
+
                 // We need to reload the page because of #12581
                 cy.reload();
                 cy.contains(/^Orders$/);
