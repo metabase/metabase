@@ -6,6 +6,10 @@ import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
+export const Table = styled.table.attrs({ className: "ContentTable" })`
+  table-layout: fixed;
+`;
+
 export const ColumnHeader = styled.th`
   font-weight: bold;
   color: ${color("text-light")};
