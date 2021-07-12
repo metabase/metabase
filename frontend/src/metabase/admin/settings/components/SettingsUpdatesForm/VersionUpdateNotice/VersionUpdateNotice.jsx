@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import { Flex, Box } from "grid-styled";
 
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
@@ -31,7 +31,7 @@ export default function VersionUpdateNotice() {
 function CloudCustomers({ currentVersion }) {
   return (
     <div>
-      {jt`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}
+      {t`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}
     </div>
   );
 }
@@ -46,7 +46,7 @@ function OnLatestVersion({ currentVersion }) {
   return (
     <div>
       <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
-        {jt`You're running Metabase ${currentVersion} which is the latest and greatest!`}
+        {t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
       </div>
       {shouldShowHostedCta && <HostingCTA />}
     </div>
@@ -65,8 +65,8 @@ function NewVersionAvailable({ currentVersion }) {
     <div>
       <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
         <span className="text-white text-bold">
-          {jt`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
-          {jt`You're running ${currentVersion}`}
+          {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
+          {t`You're running ${currentVersion}`}
         </span>
         <ExternalLink
           data-metabase-event={

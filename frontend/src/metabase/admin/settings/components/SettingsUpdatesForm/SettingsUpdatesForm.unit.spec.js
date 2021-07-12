@@ -24,7 +24,6 @@ describe("SettingsUpdatesForm", () => {
     isHostedSpy.mockImplementation(() => true);
 
     render();
-
     screen.getByText(/Metabase Cloud keeps your instance up-to-date/);
 
     isHostedSpy.mockRestore();
