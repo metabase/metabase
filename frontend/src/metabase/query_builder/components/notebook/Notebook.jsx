@@ -18,6 +18,26 @@ export default function Notebook({ className, ...props }) {
     runQuestionQuery,
     setQueryBuilderMode,
   } = props;
+
+  // When switching out of the notebook editor, cleanupQuestion accounts for
+  // post aggregation filters and otherwise nested queries with duplicate column names.
+  async function cleanupQuestion() {
+    // Only update the question if it's dirty, otherwise Metabase
+    // will incorrectly display the Save button, even though there are no changes to save.
+    if (isDirty) {
+      let cleanQuestion = question.setQuery(question.query().clean());
+      if (cleanQuestion.display() === "table") {
+        cleanQuestion = cleanQuestion.setDefaultDisplay();
+      }
+      await cleanQuestion.update();
+      // switch mode before running otherwise URL update may cause it to switch back to notebook mode
+    }
+    await setQueryBuilderMode("view");
+    if (isResultDirty) {
+      await runQuestionQuery();
+    }
+  }
+
   return (
     <Box className={cx(className, "relative mb4")} px={[2, 3]}>
       <NotebookSteps {...props} />
@@ -26,24 +46,7 @@ export default function Notebook({ className, ...props }) {
           medium
           primary
           style={{ minWidth: 220 }}
-          onClick={async () => {
-            // Only update the question if it's dirty, otherwise Metabase
-            // will incorrectly display the Save button, even though there are no changes to save.
-            if (isDirty) {
-              // Cleaning the question here accounts for post aggregation filters and otherwise nested queries
-              // with duplicate column names when switching out of the notebook editor.
-              let cleanQuestion = question.setQuery(question.query().clean());
-              if (cleanQuestion.display() === "table") {
-                cleanQuestion = cleanQuestion.setDefaultDisplay();
-              }
-              await cleanQuestion.update();
-              // switch mode before running otherwise URL update may cause it to switch back to notebook mode
-            }
-            await setQueryBuilderMode("view");
-            if (isResultDirty) {
-              await runQuestionQuery();
-            }
-          }}
+          onClick={cleanupQuestion}
         >
           {t`Visualize`}
         </Button>
