@@ -167,13 +167,9 @@
 
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
-                           include-saved-questions-tables?
-                           limit
-                           offset]}]
+                           include-saved-questions-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database
-                                                      {:order-by [:%lower.name :%lower.engine]
-                                                       :limit limit
-                                                       :offset offset})))]
+                                                      {:order-by [:%lower.name :%lower.engine]})))]
     (cond-> (add-native-perms-info dbs)
       include-tables?             add-tables
       include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
