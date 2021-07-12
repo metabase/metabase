@@ -362,15 +362,6 @@
               (is (= expected-keys
                      (set (keys db)))))))))
 
-    (doseq [query-param ["?limit=2"
-                         "?limit=2&offset=1"]]
-      (testing query-param
-        (mt/with-temp*
-          [Database [{db-id :id1, db-name :name1} {:engine (u/qualified-name ::test-driver)}]
-           Database [{db-id :id2, db-name :name2} {:engine (u/qualified-name ::test-driver)}]]
-
-          (let [db (:data ((mt/user->client :rasta) :get 200 (str "database" query-param)))]
-            (is (= 2 (count db)))))))
 
     ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
     (doseq [query-param ["?include_tables=true"
