@@ -166,9 +166,9 @@
               :mbql?       true}
              (qp/query->native
               (mt/mbql-query venues
-                {:field       [[:expression "bob"] [:expression "dobbs"]]
-                 :expressions {:bob   [:/ $price 2]
-                               :dobbs [:abs 0]}
+                {:fields      [[:expression "bob"] [:expression "dobbs"]]
+                 :expressions {:bob   [:field $latitude nil]
+                               :dobbs [:field $name nil]}
                  :limit       5})))))))
 
 (deftest compile-time-interval-test

@@ -105,6 +105,10 @@
   [field]
   (field->name field \.))
 
+(defmethod ->lvalue :expression
+  [[_ expression-name]]
+  (->lvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
+
 (defmethod ->rvalue :default
   [x]
   x)
