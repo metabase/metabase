@@ -6,7 +6,7 @@ import { Flex, Box } from "grid-styled";
 import cx from "classnames";
 
 import MetabaseSettings from "metabase/lib/settings";
-import SettingsSetting from "./SettingsSetting";
+import SettingsSetting from "../SettingsSetting";
 
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import Icon from "metabase/components/Icon";
@@ -17,72 +17,6 @@ export default class SettingsUpdatesForm extends Component {
   static propTypes = {
     elements: PropTypes.array,
   };
-
-  renderVersionUpdateNotice() {
-    const currentVersion = formatVersion(MetabaseSettings.currentVersion());
-
-    if (MetabaseSettings.isHosted()) {
-      return (
-        <div>{jt`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}</div>
-      );
-    }
-
-    if (MetabaseSettings.versionIsLatest()) {
-      const shouldShowHostedCta = !MetabaseSettings.isEnterprise();
-      return (
-        <div>
-          <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
-            {jt`You're running Metabase ${currentVersion} which is the latest and greatest!`}
-          </div>
-          {shouldShowHostedCta && <HostingCTA />}
-        </div>
-      );
-    } else if (MetabaseSettings.newVersionAvailable()) {
-      const latestVersion = MetabaseSettings.latestVersion();
-      const versionInfo = MetabaseSettings.versionInfo();
-      return (
-        <div>
-          <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
-            <span className="text-white text-bold">
-              {jt`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
-              {jt`You're running ${currentVersion}`}
-            </span>
-            <ExternalLink
-              data-metabase-event={
-                "Updates Settings; Update link clicked; " + latestVersion
-              }
-              className="Button Button--white Button--medium borderless"
-              href={
-                "https://www.metabase.com/docs/" +
-                latestVersion +
-                "/operations-guide/upgrading-metabase.html"
-              }
-            >
-              {t`Update`}
-            </ExternalLink>
-          </div>
-
-          <div
-            className="text-medium bordered rounded p2 mt2 overflow-y-scroll"
-            style={{ height: 330 }}
-          >
-            <h3 className="pb3 text-uppercase">{t`What's Changed:`}</h3>
-
-            <Version version={versionInfo.latest} />
-
-            {versionInfo.older &&
-              versionInfo.older.map((version, index) => (
-                <Version key={index} version={version} />
-              ))}
-          </div>
-
-          {!MetabaseSettings.isHosted() && <HostingCTA />}
-        </div>
-      );
-    } else {
-      return <div>{t`No successful checks yet.`}</div>;
-    }
-  }
 
   render() {
     const { elements, updateSetting } = this.props;
@@ -106,7 +40,7 @@ export default class SettingsUpdatesForm extends Component {
               "border-top": !MetabaseSettings.isHosted(),
             })}
           >
-            {this.renderVersionUpdateNotice()}
+            <VersionUpdateNotice />
           </div>
         </div>
       </div>
@@ -134,6 +68,72 @@ function Version({ version }) {
       </ul>
     </div>
   );
+}
+
+function VersionUpdateNotice() {
+  const currentVersion = formatVersion(MetabaseSettings.currentVersion());
+
+  if (MetabaseSettings.isHosted()) {
+    return (
+      <div>{jt`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}</div>
+    );
+  }
+
+  if (MetabaseSettings.versionIsLatest()) {
+    const shouldShowHostedCta = !MetabaseSettings.isEnterprise();
+    return (
+      <div>
+        <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
+          {jt`You're running Metabase ${currentVersion} which is the latest and greatest!`}
+        </div>
+        {shouldShowHostedCta && <HostingCTA />}
+      </div>
+    );
+  } else if (MetabaseSettings.newVersionAvailable()) {
+    const latestVersion = MetabaseSettings.latestVersion();
+    const versionInfo = MetabaseSettings.versionInfo();
+    return (
+      <div>
+        <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
+          <span className="text-white text-bold">
+            {jt`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
+            {jt`You're running ${currentVersion}`}
+          </span>
+          <ExternalLink
+            data-metabase-event={
+              "Updates Settings; Update link clicked; " + latestVersion
+            }
+            className="Button Button--white Button--medium borderless"
+            href={
+              "https://www.metabase.com/docs/" +
+              latestVersion +
+              "/operations-guide/upgrading-metabase.html"
+            }
+          >
+            {t`Update`}
+          </ExternalLink>
+        </div>
+
+        <div
+          className="text-medium bordered rounded p2 mt2 overflow-y-scroll"
+          style={{ height: 330 }}
+        >
+          <h3 className="pb3 text-uppercase">{t`What's Changed:`}</h3>
+
+          <Version version={versionInfo.latest} />
+
+          {versionInfo.older &&
+            versionInfo.older.map((version, index) => (
+              <Version key={index} version={version} />
+            ))}
+        </div>
+
+        {!MetabaseSettings.isHosted() && <HostingCTA />}
+      </div>
+    );
+  } else {
+    return <div>{t`No successful checks yet.`}</div>;
+  }
 }
 
 function HostingCTA() {

@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import MetabaseSettings from "../../../../metabase/lib/settings";
+import MetabaseSettings from "../../../../../metabase/lib/settings";
 import SettingsUpdatesForm from "./SettingsUpdatesForm";
 
 const elements = [
