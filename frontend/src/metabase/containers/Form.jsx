@@ -255,7 +255,6 @@ export default class Form extends React.Component {
 
   _registerFormField = (field: FormFieldDefinition) => {
     if (!_.isEqual(this.state.inlineFields[field.name], field)) {
-      // console.log("_registerFormField", field.name);
       this.setState(prevState =>
         assocIn(prevState, ["inlineFields", field.name], field),
       );
@@ -264,7 +263,6 @@ export default class Form extends React.Component {
 
   _unregisterFormField = (field: FormFieldDefinition) => {
     if (this.state.inlineFields[field.name]) {
-      // console.log("_unregisterFormField", field.name);
       // this.setState(prevState =>
       //   dissocIn(prevState, ["inlineFields", field.name]),
       // );
