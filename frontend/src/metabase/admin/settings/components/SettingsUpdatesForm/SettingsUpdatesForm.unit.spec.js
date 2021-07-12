@@ -7,15 +7,12 @@ import SettingsUpdatesForm from "./SettingsUpdatesForm";
 const elements = [
   {
     key: "key",
+    widget: "widget",
   },
 ];
 
-const updateSetting = jest.fn();
-
 const render = () => {
-  renderRTL(
-    <SettingsUpdatesForm elements={elements} updateSetting={updateSetting} />,
-  );
+  renderRTL(<SettingsUpdatesForm elements={elements} />);
 };
 
 describe("SettingsUpdatesForm", () => {

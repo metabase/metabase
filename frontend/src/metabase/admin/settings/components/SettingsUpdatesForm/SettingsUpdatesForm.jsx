@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
@@ -36,5 +36,5 @@ export default function SettingsUpdatesForm({ elements, updateSetting }) {
 
 SettingsUpdatesForm.propTypes = {
   elements: PropTypes.array,
-  updateSetting: PropTypes.func.isRequired,
+  updateSetting: PropTypes.func,
 };
