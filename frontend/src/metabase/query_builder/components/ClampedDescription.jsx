@@ -9,9 +9,19 @@ ClampedDescription.propTypes = {
   className: PropTypes.string,
   description: PropTypes.string,
   onEdit: PropTypes.func.isRequired,
+  canWrite: PropTypes.bool.isRequired,
 };
 
-export function ClampedDescription({ className, description, onEdit }) {
+export function ClampedDescription({
+  className,
+  description,
+  onEdit,
+  canWrite,
+}) {
+  if (!description && !canWrite) {
+    return null;
+  }
+
   return (
     <div className={className}>
       {description ? (
