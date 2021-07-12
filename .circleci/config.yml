@@ -939,7 +939,7 @@ workflows:
             - checkout
 
       - lein:
-          name: be-tests-java-8-<< matrix.edition >>
+          name: be-tests-<< matrix.edition >>
           requires:
             - be-deps
           e: java-8
@@ -988,26 +988,26 @@ workflows:
       - test-driver:
           name: be-tests-bigquery-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           driver: bigquery
 
       - test-driver:
           name: be-tests-druid-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e: druid
           driver: druid
 
       - test-driver:
           name: be-tests-googleanalytics-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           driver: googleanalytics
 
       - test-driver:
           name: be-tests-mongo-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e: mongo
           driver: mongo
 
@@ -1015,7 +1015,7 @@ workflows:
           name: be-tests-mysql-ee
           description: "(MySQL 5.7)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e:
             name: mysql-5-7
           driver: mysql
@@ -1024,7 +1024,7 @@ workflows:
           name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e:
             name: mysql-latest
           driver: mysql
@@ -1045,7 +1045,7 @@ workflows:
           name: be-tests-mariadb-ee
           description: "(MariaDB 10.2)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e:
             name: mariadb-10-2
           driver: mysql
@@ -1054,7 +1054,7 @@ workflows:
           name: be-tests-mariadb-latest-ee
           description: "(MariaDB latest)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e:
             name: mariadb-latest
           driver: mysql
@@ -1062,7 +1062,7 @@ workflows:
       - test-driver:
           name: be-tests-oracle-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -1079,7 +1079,7 @@ workflows:
           name: be-tests-postgres-ee
           description: "(9.6)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e: postgres-9-6
           driver: postgres
 
@@ -1087,14 +1087,14 @@ workflows:
           name: be-tests-postgres-latest-ee
           description: "(Latest)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e: postgres-latest
           driver: postgres
 
       - test-driver:
           name: be-tests-presto-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e: presto
           before-steps:
             - wait-for-port:
@@ -1104,21 +1104,21 @@ workflows:
       - test-driver:
           name: be-tests-redshift-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           driver: redshift
           timeout: 15m
 
       - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           driver: snowflake
           timeout: 115m
 
       - test-driver:
           name: be-tests-sparksql-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e: sparksql
           before-steps:
             - wait-for-port:
@@ -1128,20 +1128,20 @@ workflows:
       - test-driver:
           name: be-tests-sqlite-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           driver: sqlite
 
       - test-driver:
           name: be-tests-sqlserver-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e: sqlserver
           driver: sqlserver
 
       - test-driver:
           name: be-tests-vertica-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-ee
           e: vertica
           before-steps:
             - fetch-jdbc-driver:
