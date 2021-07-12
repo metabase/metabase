@@ -113,6 +113,10 @@
   [x]
   x)
 
+(defmethod ->rvalue :expression
+  [[_ expression-name]]
+  (->rvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
+
 (defmethod ->rvalue (class Field)
   [{coercion :coercion_strategy, :as field}]
   (let [field-name (str \$ (field->name field "."))]
