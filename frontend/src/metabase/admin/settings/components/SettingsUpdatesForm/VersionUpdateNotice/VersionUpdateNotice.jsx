@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 import { Flex, Box } from "grid-styled";
 
@@ -10,6 +10,24 @@ import Text from "metabase/components/type/Text";
 import ExternalLink from "metabase/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 
+export default function VersionUpdateNotice() {
+  const currentVersion = formatVersion(MetabaseSettings.currentVersion());
+
+  if (MetabaseSettings.isHosted()) {
+    return <CloudCustomers currentVersion={currentVersion} />;
+  }
+
+  if (MetabaseSettings.versionIsLatest()) {
+    return <OnLatestVersion currentVersion={currentVersion} />;
+  }
+
+  if (MetabaseSettings.newVersionAvailable()) {
+    return <NewVersionAvailable currentVersion={currentVersion} />;
+  }
+
+  return <div>{t`No successful checks yet.`}</div>;
+}
+
 function CloudCustomers({ currentVersion }) {
   return (
     <div>
@@ -17,6 +35,10 @@ function CloudCustomers({ currentVersion }) {
     </div>
   );
 }
+
+CloudCustomers.propTypes = {
+  currentVersion: PropTypes.string.isRequired,
+};
 
 function OnLatestVersion({ currentVersion }) {
   const shouldShowHostedCta = !MetabaseSettings.isEnterprise();
@@ -30,6 +52,10 @@ function OnLatestVersion({ currentVersion }) {
     </div>
   );
 }
+
+OnLatestVersion.propTypes = {
+  currentVersion: PropTypes.string.isRequired,
+};
 
 function NewVersionAvailable({ currentVersion }) {
   const latestVersion = MetabaseSettings.latestVersion();
@@ -76,23 +102,9 @@ function NewVersionAvailable({ currentVersion }) {
   );
 }
 
-export default function VersionUpdateNotice() {
-  const currentVersion = formatVersion(MetabaseSettings.currentVersion());
-
-  if (MetabaseSettings.isHosted()) {
-    return <CloudCustomers currentVersion={currentVersion} />;
-  }
-
-  if (MetabaseSettings.versionIsLatest()) {
-    return <OnLatestVersion currentVersion={currentVersion} />;
-  }
-
-  if (MetabaseSettings.newVersionAvailable()) {
-    return <NewVersionAvailable currentVersion={currentVersion} />;
-  }
-
-  return <div>{t`No successful checks yet.`}</div>;
-}
+NewVersionAvailable.propTypes = {
+  currentVersion: PropTypes.string.isRequired,
+};
 
 function HostingCTA() {
   if (MetabaseSettings.isEnterprise()) {
@@ -147,6 +159,10 @@ function Version({ version }) {
     </div>
   );
 }
+
+Version.propTypes = {
+  version: PropTypes.object.isRequired,
+};
 
 function formatVersion(versionLabel = "") {
   return versionLabel.replace(/^v/, "");

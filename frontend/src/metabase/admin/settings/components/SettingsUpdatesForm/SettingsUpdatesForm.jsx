@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
@@ -11,6 +10,7 @@ import VersionUpdateNotice from "./VersionUpdateNotice/VersionUpdateNotice";
 export default class SettingsUpdatesForm extends Component {
   static propTypes = {
     elements: PropTypes.array,
+    updateSetting: PropTypes.func.isRequired,
   };
 
   render() {
