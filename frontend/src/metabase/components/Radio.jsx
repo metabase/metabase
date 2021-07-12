@@ -32,6 +32,7 @@ const propTypes = {
     PropTypes.arrayOf(optionShape),
   ]).isRequired,
   onChange: PropTypes.func,
+  onOptionClick: PropTypes.func,
   optionNameFn: PropTypes.func,
   optionValueFn: PropTypes.func,
   optionKeyFn: PropTypes.func,
@@ -58,7 +59,13 @@ function Radio({
   name: nameFromProps,
   value: currentValue,
   options,
+
+  // onChange won't fire when you click an already checked item
+  // onOptionClick will fire in any case
+  // onOptionClick can be used for e.g. tab navigation like on the admin Permissions page)
+  onOptionClick,
   onChange,
+
   optionNameFn = defaultNameGetter,
   optionValueFn = defaultValueGetter,
   optionKeyFn = defaultValueGetter,
@@ -102,6 +109,11 @@ function Radio({
               py={py}
               xspace={xspace}
               yspace={yspace}
+              onClick={() => {
+                if (typeof onOptionClick === "function") {
+                  onOptionClick(value);
+                }
+              }}
             >
               {option.icon && <Icon name={option.icon} mr={1} />}
               <RadioInput
@@ -109,7 +121,11 @@ function Radio({
                 name={name}
                 value={value}
                 checked={selected}
-                onChange={() => onChange(value)}
+                onChange={() => {
+                  if (typeof onChange === "function") {
+                    onChange(value);
+                  }
+                }}
                 // Workaround for https://github.com/testing-library/dom-testing-library/issues/877
                 aria-labelledby={labelId}
               />
