@@ -652,9 +652,23 @@
   [{:keys [expressions] :as inner-query}]
   (if-not (seq expressions)
     inner-query
-    (mbql.u/replace inner-query
-                    [:expression expression-name]
-                    [:field expression-name {:base-type (:base_type (annottate/infer-expression-type &match))}])))
+    (let [subselect (-> inner-query
+                        (select-keys [:joins :source-table :source-query :source-metadata :expressions])
+                        (assoc :fields (-> (mbql.u/match (dissoc inner-query :source-query :joins)
+                                                         [:field id-or-name opts]
+                                                         [:field id-or-name (dissoc opts :temporal-unit :binning)]
+                                                         :expression
+                                                         &match)
+                                           distinct)))
+          res       (-> (mbql.u/replace inner-query
+                                        [:expression expression-name]
+                                        [:field expression-name nil]
+                                        [:field (field-id :guard int?) field-info]
+                                        [:field field-id (assoc field-info ::outer-select true)])
+                        (dissoc :source-table :joins :expressions :source-metadata)
+                        (assoc :source-query subselect))]
+      (println res)
+      res)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Process & Run                                                  |
