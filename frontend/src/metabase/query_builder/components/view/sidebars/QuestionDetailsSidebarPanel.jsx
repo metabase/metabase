@@ -23,8 +23,7 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
         <ClampedDescription
           description={description}
           visibleLines={8}
-          onEdit={() => onOpenModal("edit")}
-          canWrite={canWrite}
+          onEdit={canWrite && (() => onOpenModal("edit"))}
         />
         <QuestionActivityTimeline
           className="border-top mt2 pt4"

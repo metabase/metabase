@@ -8,17 +8,11 @@ import { TextButton } from "metabase/components/Button.styled";
 ClampedDescription.propTypes = {
   className: PropTypes.string,
   description: PropTypes.string,
-  onEdit: PropTypes.func.isRequired,
-  canWrite: PropTypes.bool.isRequired,
+  onEdit: PropTypes.func,
 };
 
-export function ClampedDescription({
-  className,
-  description,
-  onEdit,
-  canWrite,
-}) {
-  if (!description && !canWrite) {
+export function ClampedDescription({ className, description, onEdit }) {
+  if (!description && !onEdit) {
     return null;
   }
 
