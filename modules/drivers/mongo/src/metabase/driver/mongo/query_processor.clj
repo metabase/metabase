@@ -145,6 +145,22 @@
   [[_ index]]
   (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index)))
 
+(defmethod ->lvalue :abs
+  [[_ inp]]
+  (->lvalue inp))
+
+(defmethod ->rvalue :abs
+  [[_ inp]]
+  {"$abs" (->rvalue inp)})
+
+(defmethod ->lvalue :upper
+  [[_ inp]]
+  (->lvalue inp))
+
+(defmethod ->rvalue :upper
+  [[_ inp]]
+  {"$toUpper" (->rvalue inp)})
+
 (defn- with-lvalue-temporal-bucketing [field unit]
   (if (= unit :default)
     field
@@ -685,16 +701,15 @@
 (s/defn ^:private generate-aggregation-pipeline :- {:projections Projections, :query Pipeline}
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
-  (let [processed-inner-query (process-inner-query inner-query)]
-    (reduce (fn [pipeline-ctx f]
-              (f inner-query pipeline-ctx))
-            {:projections [], :query []}
-            [handle-filter
-             handle-breakout+aggregation
-             handle-order-by
-             handle-fields
-             handle-limit
-             handle-page])))
+  (reduce (fn [pipeline-ctx f]
+            (f inner-query pipeline-ctx))
+          {:projections [], :query []}
+          [handle-filter
+           handle-breakout+aggregation
+           handle-order-by
+           handle-fields
+           handle-limit
+           handle-page]))
 
 (defn- query->collection-name
   "Return `:collection` from a source query, if it exists."

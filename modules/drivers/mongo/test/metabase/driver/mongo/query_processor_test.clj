@@ -174,7 +174,7 @@
              (qp/query->native
                (mt/mbql-query venues
                               {:filters     [[:expression "bob"] [:expression "dobbs"]]
-                               :expressions {:bob   [:+ $latitude 3]
+                               :expressions {:bob   [:abs $latitude]
                                              :dobbs [:upper $name]}
                                :limit       5})))))))
 
