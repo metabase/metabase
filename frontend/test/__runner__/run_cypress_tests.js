@@ -90,11 +90,6 @@ const init = async () => {
   // See: https://docs.cypress.io/guides/references/configuration#Command-Line
   const commandLineConfig = JSON.stringify(config);
 
-  // These env vars provide the token to the backend.
-  // If they're not present, we skip some tests that depend on a valid token.
-  const hasEnterpriseToken =
-    process.env["ENTERPRISE_TOKEN"] && process.env["MB_EDITION"] === "ee";
-
   const cypressProcess = spawn(
     "yarn",
     [
@@ -112,7 +107,6 @@ const init = async () => {
             "mochaFile=cypress/results/results-[hash].xml",
           ]
         : []),
-      ...(hasEnterpriseToken ? ["--env", "HAS_ENTERPRISE_TOKEN=true"] : []),
     ],
     { stdio: "inherit" },
   );
