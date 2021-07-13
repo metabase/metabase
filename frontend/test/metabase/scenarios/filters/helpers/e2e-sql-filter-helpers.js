@@ -86,6 +86,16 @@ export function runQuery(xhrAlias = "dataset") {
 }
 
 /**
+ * Reruns native query and waits for the results to load.
+ * @param {string} [xhrAlias ="dataset"]
+ */
+export function rerunQuery(xhrAlias = "dataset") {
+  cy.get(".NativeQueryEditor .Icon-refresh").click();
+  cy.wait("@" + xhrAlias);
+  cy.icon("refresh");
+}
+
+/**
  * Enters parameterized native query into native editor.
  *
  * @param {string} query
