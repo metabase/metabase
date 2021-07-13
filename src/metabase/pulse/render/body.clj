@@ -11,21 +11,22 @@
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
             [metabase.types :as types]
-            [metabase.util.i18n :refer [tru trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s])
   (:import java.text.DecimalFormat))
 
 (def error-rendered-info
-  {:attachments
-   nil
+  "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
+  (delay {:attachments
+          nil
 
-   :content
-   [:div {:style (style/style
-                  (style/font-style)
-                  {:color       style/color-error
-                   :font-weight 700
-                   :padding     :16px})}
-    (trs "An error occurred while displaying this card.")]})
+          :content
+          [:div {:style (style/style
+                         (style/font-style)
+                         {:color       style/color-error
+                          :font-weight 700
+                          :padding     :16px})}
+           (trs "An error occurred while displaying this card.")]}))
 
 (def rows-limit
   "Maximum number of rows to render in a Pulse image."
@@ -275,7 +276,7 @@
            :render/text (str value "\n"
                              adj " " (percentage last-change) "."
                              " Was " previous " last " (format-unit unit))})
-        error-rendered-info))))
+        @error-rendered-info))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card {:keys [rows cols] :as data}]
@@ -365,4 +366,4 @@
 
 (s/defmethod render :error :- common/RenderedPulseCard
   [_ _ _ _ _]
-  error-rendered-info)
+  @error-rendered-info)
