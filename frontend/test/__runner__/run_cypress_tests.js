@@ -32,18 +32,6 @@ function readFile(fileName) {
 }
 
 const init = async () => {
-  if (!isOpenMode) {
-    printYellow(
-      "If you are developing locally, prefer using `yarn test-cypress-open` instead.\n",
-    );
-  }
-
-  const logMessage = isFolderFlag
-    ? `Running tests in '${sourceFolderLocation}'`
-    : `Running '${testFiles}'`;
-
-  printBold(logMessage);
-
   try {
     const version = await readFile(
       __dirname + "/../../../resources/version.properties",
@@ -68,6 +56,17 @@ const init = async () => {
   await generateSnapshots();
 
   printBold("Starting Cypress");
+  if (!isOpenMode) {
+    printYellow(
+      "If you are developing locally, prefer using `yarn test-cypress-open` instead.\n",
+    );
+  }
+
+  const logMessage = isFolderFlag
+    ? `Running tests in '${sourceFolderLocation}'`
+    : `Running '${testFiles}'`;
+
+  printBold(logMessage);
   const baseConfig = { baseUrl: server.host };
   const folderConfig = isFolderFlag && {
     integrationFolder: sourceFolderLocation,
