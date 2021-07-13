@@ -1,5 +1,5 @@
 // ***********************************************************
-// This file can be used to load plugins and register events.
+// This file can be used to load plugins and to register events.
 //
 // You can change the location of this file or turn off loading
 // the plugins file with the 'pluginsFile' configuration option.
@@ -20,6 +20,12 @@ const hasEnterpriseToken =
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 const webpack = require("@cypress/webpack-preprocessor");
+const { resolve } = require("../../../../webpack.config.js");
+
+const webpackPluginOptions = {
+  webpackOptions: { resolve },
+  watchOptions: {},
+};
 
 module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
@@ -28,13 +34,8 @@ module.exports = (on, config) => {
   /********************************************************************
    **                          WEBPACK                               **
    ********************************************************************/
-  const { resolve } = require("../../../../webpack.config.js");
-  const options = {
-    webpackOptions: { resolve },
-    watchOptions: {},
-  };
 
-  on("file:preprocessor", webpack(options));
+  on("file:preprocessor", webpack(webpackPluginOptions));
 
   /********************************************************************
    **                         BROWSERS                               **
