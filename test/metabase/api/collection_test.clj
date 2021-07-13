@@ -920,11 +920,13 @@
   (testing "GET /api/collection/root/items?namespace=snippets"
     (testing "\nNative query snippets should come back when fetching the items in the root Collection of the `:snippets` namespace"
       (mt/with-temp* [NativeQuerySnippet [{snippet-id :id}   {:name "My Snippet"}]
+                      NativeQuerySnippet [{snippet-id-2 :id} {:name "My Snippet 2"}]
                       NativeQuerySnippet [{archived-id :id}  {:name "Archived Snippet", :archived true}]
                       Dashboard          [{dashboard-id :id} {:name "My Dashboard"}]]
         (letfn [(only-test-items [results]
                   (if (sequential? results)
                     (filter #(#{["snippet" snippet-id]
+                                ["snippet" snippet-id-2]
                                 ["snippet" archived-id]
                                 ["dashboard" dashboard-id]} ((juxt :model :id) %))
                             results)
@@ -936,6 +938,9 @@
                       items)))]
           (is (= [{:id    snippet-id
                    :name  "My Snippet"
+                   :model "snippet"}
+                  {:id    snippet-id-2
+                   :name  "My Snippet 2"
                    :model "snippet"}]
                  (only-test-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets")))))
 
@@ -943,13 +948,17 @@
             (is (= ["My Dashboard"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))))))
 
+          (testing "\nSnippets shouldn't be paginated, because FE is not ready for it yet and default pagination behavior is bad"
+            (is (= ["My Snippet", "My Snippet 2"]
+                   (only-test-item-names (:data (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets&limit=1&offset=0"))))))
+
           (testing "\nShould be able to fetch archived Snippets"
             (is (= ["Archived Snippet"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200
                                                                "collection/root/items?namespace=snippets&archived=true"))))))
 
           (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
-            (is (= ["My Snippet"]
+            (is (= ["My Snippet", "My Snippet 2"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200
                                                                "collection/root/items?namespace=snippets&model=snippet")))))))))))
 
