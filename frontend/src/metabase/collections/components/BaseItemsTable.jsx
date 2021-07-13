@@ -115,11 +115,11 @@ function BaseItemsTable({
   return (
     <Table {...props}>
       <colgroup>
-        <col span="1" style={{ width: "60px" }} />
-        <col span="1" style={{ width: "60%" }} />
-        <col span="1" style={{ width: "15%" }} />
-        <col span="1" style={{ width: "15%" }} />
-        <col span="1" style={{ width: "60px" }} />
+        <col style={{ width: "60px" }} />
+        <col style={{ width: "60%" }} />
+        <col style={{ width: "15%" }} />
+        <col style={{ width: "15%" }} />
+        <col style={{ width: "60px" }} />
       </colgroup>
       {!headless && (
         <thead
