@@ -9,7 +9,7 @@ import {
   ItemIcon,
 } from "./SegmentedControl.styled";
 
-const optionShape = PropTypes.shape({
+export const optionShape = PropTypes.shape({
   name: PropTypes.node,
   value: PropTypes.any,
   icon: PropTypes.string,
