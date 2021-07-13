@@ -16,7 +16,7 @@ import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 
-import SettingsUpdatesForm from "./components/SettingsUpdatesForm";
+import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";

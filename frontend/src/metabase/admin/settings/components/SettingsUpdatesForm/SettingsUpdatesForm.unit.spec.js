@@ -1,21 +1,26 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render as renderRTL, screen } from "@testing-library/react";
 
-import MetabaseSettings from "../../../../metabase/lib/settings";
+import MetabaseSettings from "metabase/lib/settings";
 import SettingsUpdatesForm from "./SettingsUpdatesForm";
 
 const elements = [
   {
     key: "key",
+    widget: "widget",
   },
 ];
+
+const render = () => {
+  renderRTL(<SettingsUpdatesForm elements={elements} />);
+};
 
 describe("SettingsUpdatesForm", () => {
   it("shows custom message for Cloud installations", () => {
     const isHostedSpy = jest.spyOn(MetabaseSettings, "isHosted");
     isHostedSpy.mockImplementation(() => true);
 
-    render(<SettingsUpdatesForm elements={elements} />);
+    render();
     screen.getByText(/Metabase Cloud keeps your instance up-to-date/);
 
     isHostedSpy.mockRestore();
@@ -25,14 +30,14 @@ describe("SettingsUpdatesForm", () => {
     const versionIsLatestSpy = jest.spyOn(MetabaseSettings, "versionIsLatest");
     versionIsLatestSpy.mockImplementation(() => true);
 
-    render(<SettingsUpdatesForm elements={elements} />);
+    render();
     screen.getByText(/which is the latest and greatest/);
 
     versionIsLatestSpy.mockRestore();
   });
 
   it("shows correct message when no version checks have been run", () => {
-    render(<SettingsUpdatesForm elements={elements} />);
+    render();
     screen.getByText("No successful checks yet.");
   });
 
@@ -40,7 +45,7 @@ describe("SettingsUpdatesForm", () => {
     const versionIsLatestSpy = jest.spyOn(MetabaseSettings, "versionIsLatest");
     versionIsLatestSpy.mockImplementation(() => true);
 
-    render(<SettingsUpdatesForm elements={elements} />);
+    render();
     screen.getByText("Migrate to Metabase Cloud.");
 
     versionIsLatestSpy.mockRestore();
@@ -50,7 +55,7 @@ describe("SettingsUpdatesForm", () => {
     const versionIsLatestSpy = jest.spyOn(MetabaseSettings, "versionIsLatest");
     versionIsLatestSpy.mockImplementation(() => false);
 
-    render(<SettingsUpdatesForm elements={elements} />);
+    render();
     expect(screen.queryByText("Migrate to Metabase Cloud.")).toBeNull();
 
     versionIsLatestSpy.mockRestore();
