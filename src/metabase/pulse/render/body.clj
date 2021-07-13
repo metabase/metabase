@@ -263,9 +263,14 @@
               previous (format-cell timezone-id previous-value metric-col)
               adj      (if (pos? last-change) (tru "Up") (tru "Down"))]
           {:attachments nil
-           :content     [:div {:style (style/style (style/scalar-style))}
-                         (h value)
-                         [:p adj " " (percentage last-change) "."
+           :content     [:div
+                         [:div {:style (style/style (style/scalar-style))}
+                          (h value)]
+                         [:p {:style (style/style {:color         style/color-text-medium
+                                                   :font-size     :16px
+                                                   :font-weight   700
+                                                   :padding-right :16px})}
+                          adj " " (percentage last-change) "."
                           " Was " previous " last " (format-unit unit)]]
            :render/text (str value "\n"
                              adj " " (percentage last-change) "."
