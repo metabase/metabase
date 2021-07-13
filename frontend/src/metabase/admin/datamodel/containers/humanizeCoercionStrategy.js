@@ -1,3 +1,15 @@
+const LEFT_TERM_CONVERSIONS = {
+  ISO8601: "ISO 8601",
+  UNIXSeconds: "UNIX seconds",
+  UNIXMilliSeconds: "UNIX milliseconds",
+  UNIXMicroSeconds: "UNIX microseconds",
+  YYYYMMDDHHMMSSString: "YYYYMMDDHHMMSS",
+};
+
+const RIGHT_TERM_CONVERSIONS = {
+  DateTime: "Datetime",
+};
+
 /**
  * Converts -> to → and humanizes strings
  * @param {string} fullString - The coercion strategy as it comes from the back-end
@@ -21,21 +33,9 @@ function treatTermsAndJoin(left, right) {
 }
 
 function treatLeftTerm(term) {
-  const conversions = {
-    ISO8601: "ISO 8601",
-    UNIXSeconds: "UNIX seconds",
-    UNIXMilliSeconds: "UNIX milliseconds",
-    UNIXMicroSeconds: "UNIX microseconds",
-    YYYYMMDDHHMMSSString: "YYYYMMDDHHMMSS",
-  };
-
-  return conversions[term] || term;
+  return LEFT_TERM_CONVERSIONS[term] || term;
 }
 
 function treatRightTerm(term) {
-  const conversions = {
-    DateTime: "Datetime",
-  };
-
-  return conversions[term] || term;
+  return RIGHT_TERM_CONVERSIONS[term] || term;
 }
