@@ -360,17 +360,13 @@
           (doseq [db (:data ((mt/user->client :rasta) :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
-                     (set (keys db)))))))))
+                     (set (keys db))))))))
+      (testing "Make sure databases don't paginate"
+        (mt/with-temp* [Database [{db-id-1 :id} {:engine ::test-driver}]
+                        Database [{db-id-2 :id} {:engine ::test-driver}]
+                        Database [{db-id-3 :id} {:engine ::test-driver}]]
+          (is (< 1 (count (:data ((mt/user->client :rasta) :get 200 "database" :limit 1 :offset 0))))))))
 
-    (doseq [query-param ["?limit=2"
-                         "?limit=2&offset=1"]]
-      (testing query-param
-        (mt/with-temp*
-          [Database [{db-id :id1, db-name :name1} {:engine (u/qualified-name ::test-driver)}]
-           Database [{db-id :id2, db-name :name2} {:engine (u/qualified-name ::test-driver)}]]
-
-          (let [db (:data ((mt/user->client :rasta) :get 200 (str "database" query-param)))]
-            (is (= 2 (count db)))))))
 
     ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
     (doseq [query-param ["?include_tables=true"
