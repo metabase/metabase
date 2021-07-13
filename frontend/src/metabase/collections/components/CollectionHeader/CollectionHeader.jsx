@@ -22,11 +22,8 @@ function Title({
 }) {
   return (
     <Flex align="center">
-      <PageHeading className="text-wrap">
-        <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
-        {name}
-      </PageHeading>
-
+      <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
+      <PageHeading className="text-wrap">{name}</PageHeading>
       {description && (
         <Tooltip tooltip={description}>
           <DescriptionTooltipIcon />
