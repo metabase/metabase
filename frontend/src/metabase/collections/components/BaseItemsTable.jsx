@@ -115,7 +115,7 @@ function BaseItemsTable({
   return (
     <Table {...props}>
       <colgroup>
-        <col style={{ width: "60px" }} />
+        <col style={{ width: "70px" }} />
         <col style={{ width: "60%" }} />
         <col style={{ width: "15%" }} />
         <col style={{ width: "15%" }} />
