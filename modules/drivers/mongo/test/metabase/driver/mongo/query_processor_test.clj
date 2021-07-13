@@ -156,20 +156,27 @@
 (deftest expressions-test
   (mt/test-driver :mongo
     (testing "Should be able to deal with expressions (#9382 is for BQ but we're doing it for mongo too)"
-      (is (= {:projections ["count" "count_2"]
-              :query
-              [{"$group" {"_id" nil, "count" {"$addToSet" "$name"}, "count_2" {"$addToSet" "$price"}}}
-               {"$sort" {"_id" 1}}
-               {"$project" {"_id" false, "count" {"$size" "$count"}, "count_2" {"$size" "$count_2"}}}
-               {"$limit" 5}],
-              :collection  "venues"
-              :mbql?       true}
+      (is (= {:projections '("latitude" "name"),
+              :query [{"$project" {"_id" false, "latitude" "$latitude", "name" "$name"}} {"$limit" 5}],
+              :collection "venues",
+              :mbql? true}
              (qp/query->native
-              (mt/mbql-query venues
-                {:fields      [[:expression "bob"] [:expression "dobbs"]]
-                 :expressions {:bob   [:field $latitude nil]
-                               :dobbs [:field $name nil]}
-                 :limit       5})))))))
+               (mt/mbql-query venues
+                              {:fields      [[:expression "bob"] [:expression "dobbs"]]
+                               :expressions {:bob   [:field $latitude nil]
+                                             :dobbs [:field $name nil]}
+                               :limit       5})))))
+    (testing "Should be able to deal with slightly less trivial expressions"
+      (is (= {:projections '("latitude" "name"),
+              :query [{"$project" {"_id" false, "latitude" "$latitude", "name" "$name"}} {"$limit" 5}],
+              :collection "venues",
+              :mbql? true}
+             (qp/query->native
+               (mt/mbql-query venues
+                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
+                               :expressions {:bob   [:+ $latitude 3]
+                                             :dobbs [:upper $name]}
+                               :limit       5})))))))
 
 (deftest compile-time-interval-test
   (mt/test-driver :mongo
