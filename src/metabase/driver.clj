@@ -602,3 +602,17 @@
   {:added "0.39.0" :arglists '([driver db-details])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti superseded-by
+  "Returns the driver that supersedes the given `driver`.  A non-nil return value means that the given `driver` is
+  deprecated in Metabase and will eventually be replaced by the returned driver, in some future version (at which point
+  any databases using it will be migrated to the new one).
+
+  This is only used on the frontend for the purpose of showing/hiding deprecated drivers."
+  {:arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod superseded-by :default
+  [_]
+  nil)
