@@ -66,9 +66,9 @@ export function seriesSetting({
       widget: "segmentedControl",
       props: {
         options: [
-          { icon: "straight", name: t`Line`, value: "linear" },
-          { icon: "curved", name: t`Curve`, value: "cardinal" },
-          { icon: "stepped", name: t`Step`, value: "step-after" },
+          { icon: "straight", value: "linear" },
+          { icon: "curved", value: "cardinal" },
+          { icon: "stepped", value: "step-after" },
         ],
       },
       getHidden: (single, settings) =>
