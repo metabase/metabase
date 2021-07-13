@@ -1,6 +1,11 @@
 import { t } from "ttag";
-import { PLUGIN_FORM_WIDGETS, PLUGIN_COLLECTIONS } from "metabase/plugins";
+import {
+  PLUGIN_FORM_WIDGETS,
+  PLUGIN_COLLECTIONS,
+  PLUGIN_COLLECTION_COMPONENTS,
+} from "metabase/plugins";
 import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
+import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLevelIcon";
 import { OFFICIAL_COLLECTION } from "./constants";
 
 PLUGIN_COLLECTIONS.formFields = [
@@ -27,3 +32,5 @@ PLUGIN_COLLECTIONS.formFields = [
 ];
 
 PLUGIN_FORM_WIDGETS.collectionAuthorityLevel = FormCollectionAuthorityLevel;
+
+PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon = CollectionAuthorityLevelIcon;
