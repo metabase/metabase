@@ -14,8 +14,6 @@ export const SegmentedList = styled.ul`
 export const SegmentedItem = styled.li`
   display: flex;
   flex-grow: ${props => (props.fullWidth ? 1 : 0)};
-  padding: 6px 12px;
-  cursor: pointer;
 
   border: 1px solid ${color("border")};
   border-right-width: ${props => (props.isLast ? "1px" : 0)};
@@ -33,6 +31,7 @@ export const SegmentedItemLabel = styled.label`
   position: relative;
   font-weight: bold;
   color: ${props => (props.isSelected ? color(props.selectedColor) : null)};
+  padding: 6px 12px;
   cursor: pointer;
 
   :hover {
