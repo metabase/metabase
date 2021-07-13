@@ -1,19 +1,27 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { connect } from "react-redux";
+
+import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 
 import { Container, Label, VerifyButton } from "./ModerationActions.styled";
 import Tooltip from "metabase/components/Tooltip";
 
-export default ModerationActions;
+const mapStateToProps = (state, props) => ({
+  isModerator: getIsModerator(state, props),
+});
+
+export default connect(mapStateToProps)(ModerationActions);
 
 ModerationActions.propTypes = {
   className: PropTypes.string,
   onVerify: PropTypes.func.isRequired,
+  isModerator: PropTypes.bool.isRequired,
 };
 
-function ModerationActions({ className, onVerify }) {
-  return (
+export function ModerationActions({ className, onVerify, isModerator }) {
+  return isModerator ? (
     <Container className={className}>
       <Label>{t`Moderation`}</Label>
       <Tooltip tooltip={t`Verify this`}>
@@ -23,5 +31,5 @@ function ModerationActions({ className, onVerify }) {
         />
       </Tooltip>
     </Container>
-  );
+  ) : null;
 }
