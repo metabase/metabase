@@ -14,3 +14,10 @@ export function getVerifiedIcon() {
   const { icon, color } = ACTIONS["verified"];
   return { icon, iconColor: color };
 }
+
+export function getIconForReview(review) {
+  const reviewStatus = review && review.status;
+
+  const { icon, color } = ACTIONS[reviewStatus] || {};
+  return { icon, iconColor: color };
+}

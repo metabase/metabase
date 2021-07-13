@@ -3,6 +3,7 @@ import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import _ from "underscore";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
+const object = () => ({});
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -82,4 +83,6 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 export const PLUGIN_MODERATION = {
   ModerationActions: PluginPlaceholder,
   verifyItem: _.noop,
+  getVerifiedIcon: _.noop,
+  getIconForReview: object,
 };

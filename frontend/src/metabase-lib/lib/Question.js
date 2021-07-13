@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { chain, assoc, dissoc, assocIn } from "icepick";
+import { chain, assoc, dissoc, assocIn, getIn } from "icepick";
 
 // NOTE: the order of these matters due to circular dependency issues
 import StructuredQuery, {
@@ -1041,6 +1041,13 @@ export default class Question {
       : this.markDirty(); // forces use of serialized question url
     const query = this.isNative() ? this._parameterValues : undefined;
     return question.getUrl({ originalQuestion: this, query });
+  }
+
+  getModerationReviews() {
+    return getIn(this, ["_card", "moderation_reviews"]) || [];
+  }
+  getLatestModerationReview() {
+    return _.last(this.getModerationReviews());
   }
 }
 
