@@ -1,3 +1,4 @@
+const fs = require("fs");
 const chalk = require("chalk");
 
 function printBold(message) {
@@ -12,4 +13,15 @@ function printCyan(message) {
   console.log(chalk.cyan(message));
 }
 
-module.exports = { printBold, printYellow, printCyan };
+const readFile = fileName => {
+  return new Promise(function(resolve, reject) {
+    fs.readFile(fileName, "utf8", (err, data) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(data);
+    });
+  });
+};
+
+module.exports = { printBold, printYellow, printCyan, readFile };

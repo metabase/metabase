@@ -1,6 +1,7 @@
 import { spawn } from "child_process";
-import fs from "fs";
-const { printBold, printYellow, printCyan } = require("./cypress-runner-utils");
+
+const getVersion = require("./cypress-runner-get-version");
+const { printBold, printYellow } = require("./cypress-runner-utils");
 
 // Use require for BackendResource to run it after the mock afterAll has been set
 const BackendResource = require("./backend.js").BackendResource;
@@ -20,34 +21,9 @@ const specs = userArgs[userArgs.indexOf("--spec") + 1];
 const isSingleSpec = !specs || !specs.match(/,/);
 const testFiles = isSingleSpec ? specs : specs.split(",");
 
-function readFile(fileName) {
-  return new Promise(function(resolve, reject) {
-    fs.readFile(fileName, "utf8", (err, data) => {
-      if (err) {
-        reject(err);
-      }
-      resolve(data);
-    });
-  });
-}
-
 const init = async () => {
-  try {
-    const version = await readFile(
-      __dirname + "/../../../resources/version.properties",
-    );
-    printBold("Running e2e test runner with this build:");
-    printCyan(version);
-
-    printBold(
-      "If that version seems too old, please run `./bin/build version uberjar`.\n",
-    );
-  } catch (e) {
-    printBold(
-      "No version file found. Please run `./bin/build version uberjar`.",
-    );
-    process.exit(1);
-  }
+  printBold("Metabase version info");
+  await getVersion();
 
   printBold("Starting backend");
   await BackendResource.start(server);
