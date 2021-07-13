@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 import { Motion, spring } from "react-motion";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";

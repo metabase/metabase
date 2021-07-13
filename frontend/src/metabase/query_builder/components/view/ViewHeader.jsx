@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";

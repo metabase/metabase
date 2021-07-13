@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 import Icon from "metabase/components/Icon";

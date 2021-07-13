@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 
 export const CardContent = styled(Flex)`
   margin-top: ${props => (props.shouldDisplayHelpLink ? "8px" : 0)};

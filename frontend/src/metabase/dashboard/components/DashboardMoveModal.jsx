@@ -4,7 +4,7 @@ import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import Icon from "metabase/components/Icon";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 

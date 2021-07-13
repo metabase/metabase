@@ -14,7 +14,7 @@ import NextStep from "../components/NextStep";
 import * as homepageActions from "../actions";
 import { getActivity, getRecentViews, getUser } from "../selectors";
 
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 
 const mapStateToProps = (state, props) => ({
   activity: getActivity(state),

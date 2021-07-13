@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 
 import Database from "metabase/entities/databases";
 import Task from "metabase/entities/tasks";

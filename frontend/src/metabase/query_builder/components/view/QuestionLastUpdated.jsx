@@ -4,7 +4,7 @@ import React from "react";
 import moment from "moment";
 import { t } from "ttag";
 
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import Icon from "metabase/components/Icon";
 
 export default function QuestionLastUpdated({ result, ...props }) {

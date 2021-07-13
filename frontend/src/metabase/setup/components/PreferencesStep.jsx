@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import Toggle from "metabase/components/Toggle";

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import styled from "styled-components";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -11,7 +12,7 @@ import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 
 import NotebookStepPreview from "./NotebookStepPreview";
 
@@ -205,7 +206,7 @@ export default class NotebookStep extends React.Component {
   }
 }
 
-const ColorButton = Button.extend`
+const ColorButton = styled(Button)`
   border: none;
   color: ${({ color }) => (color ? color : c("text-medium"))}
   background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};

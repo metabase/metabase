@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";

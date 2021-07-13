@@ -2,7 +2,7 @@
 import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import { getXraysEnabled } from "metabase/selectors/settings";
 import { getMetadata } from "metabase/selectors/metadata";

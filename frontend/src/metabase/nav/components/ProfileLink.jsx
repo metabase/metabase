@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import { t } from "ttag";
 import _ from "underscore";

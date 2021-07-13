@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from "react";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 import _ from "underscore";
 import PropTypes from "prop-types";
 import { t } from "ttag";

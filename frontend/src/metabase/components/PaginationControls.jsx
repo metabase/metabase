@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import styled from "styled-components";
 import { t } from "ttag";
 
 import colors from "metabase/lib/colors";
@@ -54,7 +55,7 @@ export default function PaginationControls({
   );
 }
 
-const PaginationButton = IconWrapper.withComponent("button").extend`
+const PaginationButton = styled(IconWrapper).attrs({ as: "button" })`
   &:disabled {
     background-color: transparent;
     color: ${colors["text-light"]};

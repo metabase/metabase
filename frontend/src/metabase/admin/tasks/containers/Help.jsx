@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import CopyButton from "metabase/components/CopyButton";

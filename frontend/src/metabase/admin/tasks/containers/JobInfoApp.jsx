@@ -3,7 +3,7 @@ import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import AdminHeader from "metabase/components/AdminHeader";

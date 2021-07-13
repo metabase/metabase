@@ -4,7 +4,7 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 
 import SelectButton from "metabase/components/SelectButton";
 import Select from "metabase/components/Select";

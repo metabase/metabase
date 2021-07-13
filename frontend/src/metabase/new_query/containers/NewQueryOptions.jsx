@@ -8,7 +8,7 @@ import { t } from "ttag";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 import { Grid, GridItem } from "metabase/components/Grid";
 
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";

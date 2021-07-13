@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useState, useCallback } from "react";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 import _ from "underscore";
 import { connect } from "react-redux";
 

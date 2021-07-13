@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import YearPicker from "./YearPicker";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 
 import moment from "moment";
 import _ from "underscore";

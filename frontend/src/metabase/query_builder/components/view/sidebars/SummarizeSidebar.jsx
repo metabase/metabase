@@ -5,7 +5,7 @@ import cx from "classnames";
 import _ from "underscore";
 import styled from "styled-components";
 
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 
 import { color, alpha } from "metabase/lib/colors";
 

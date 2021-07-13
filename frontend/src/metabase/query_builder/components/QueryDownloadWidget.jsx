@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import { t } from "ttag";
 import { parse as urlParse } from "url";

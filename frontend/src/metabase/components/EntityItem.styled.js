@@ -1,5 +1,6 @@
+import React from "react";
 import styled from "styled-components";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 
 import { color, lighten } from "metabase/lib/colors";
 
@@ -37,10 +38,15 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
       : getBackground(props.model)};
 `;
 
-export const EntityItemWrapper = Flex.extend`
-  border-bottom: 1px solid ${color("bg-medium")};
-  align-items: center;
-  &:hover {
-    color: ${color("brand")};
-  }
-`;
+export const EntityItemWrapper = props => (
+  <Flex
+    {...props}
+    css={`
+      border-bottom: 1px solid ${color("bg-medium")};
+      align-items: center;
+      &:hover {
+        color: ${color("brand")};
+      }
+    `}
+  />
+);

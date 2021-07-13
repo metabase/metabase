@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Link } from "react-router";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import { SetupApi } from "metabase/services";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";

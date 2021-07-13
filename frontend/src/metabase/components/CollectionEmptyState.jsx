@@ -2,7 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 import { withRouter } from "react-router";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";

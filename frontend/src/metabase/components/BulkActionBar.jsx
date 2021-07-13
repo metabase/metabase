@@ -1,15 +1,20 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
 
-const FixedBottomBar = Box.extend`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-`;
+const FixedBottomBar = props => (
+  <Box
+    {...props}
+    css={`
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    `}
+  />
+);
 
 const BulkActionBar = ({ children, showing }) => (
   <Motion

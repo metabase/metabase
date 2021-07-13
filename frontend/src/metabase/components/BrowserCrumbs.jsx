@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 

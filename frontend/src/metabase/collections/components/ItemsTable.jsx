@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 
 import { color } from "metabase/lib/colors";
 

@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import styled from "styled-components";
 import { space } from "styled-system";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import { t } from "ttag";
 import { capitalize, inflect } from "metabase/lib/formatting";
 

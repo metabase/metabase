@@ -2,7 +2,7 @@
 import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
 import { assocIn } from "icepick";

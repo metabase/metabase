@@ -3,7 +3,7 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import cx from "classnames";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 

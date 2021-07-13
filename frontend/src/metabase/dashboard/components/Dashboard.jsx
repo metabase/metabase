@@ -2,7 +2,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import DashboardHeader from "./DashboardHeader";
 import DashboardGrid from "./DashboardGrid";

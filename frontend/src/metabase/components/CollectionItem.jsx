@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 
 import Card from "metabase/components/Card";
 import Ellipsified from "metabase/components/Ellipsified";

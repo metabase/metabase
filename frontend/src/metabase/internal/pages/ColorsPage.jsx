@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 import CopyToClipboard from "react-copy-to-clipboard";
 import Subhead from "metabase/components/type/Subhead";
 

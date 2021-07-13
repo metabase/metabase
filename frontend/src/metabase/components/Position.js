@@ -1,7 +1,7 @@
 import styled from "styled-components";
 
 // import Box to get its spacing props, p, m, etc
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 // gives us top, left, bottom, right props
 import { top, left, bottom, right } from "styled-system";

@@ -2,7 +2,7 @@
 import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import MetabaseSettings from "metabase/lib/settings";
 

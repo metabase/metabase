@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";

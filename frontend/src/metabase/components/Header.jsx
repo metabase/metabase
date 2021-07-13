@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 import { t } from "ttag";
 
 import { getScrollY } from "metabase/lib/dom";

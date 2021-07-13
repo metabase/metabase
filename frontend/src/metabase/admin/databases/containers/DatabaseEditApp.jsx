@@ -6,7 +6,7 @@ import { getValues } from "redux-form";
 
 import { t } from "ttag";
 
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 
 import title from "metabase/hoc/Title";
 

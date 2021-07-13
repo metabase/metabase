@@ -6,7 +6,7 @@ import MetabotLogo from "metabase/components/MetabotLogo";
 import Select, { Option } from "metabase/components/Select";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Card from "metabase/components/Card";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import { color } from "metabase/lib/colors";
 
 import { t } from "ttag";

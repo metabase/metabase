@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";

@@ -3,7 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import Button from "metabase/components/Button";
 

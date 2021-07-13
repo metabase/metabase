@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import { height } from "styled-system";
 
 import { color } from "metabase/lib/colors";

@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 
 import { t } from "ttag";
-import { Flex, Box } from "grid-styled";
+import { Flex, Box } from "@rebass/grid";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

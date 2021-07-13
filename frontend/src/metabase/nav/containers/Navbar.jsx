@@ -9,7 +9,7 @@ import { push } from "react-router-redux";
 
 import cx from "classnames";
 import { t } from "ttag";
-import { Flex, Box } from "grid-styled";
+import { Flex, Box } from "@rebass/grid";
 
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";

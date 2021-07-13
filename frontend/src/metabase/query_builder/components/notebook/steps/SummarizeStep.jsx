@@ -2,7 +2,7 @@
 import React from "react";
 
 import { t } from "ttag";
-import { Flex, Box } from "grid-styled";
+import { Flex, Box } from "@rebass/grid";
 
 import AggregateStep from "./AggregateStep";
 import BreakoutStep from "./BreakoutStep";

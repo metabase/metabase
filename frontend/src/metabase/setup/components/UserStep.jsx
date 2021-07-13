@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Flex, Box } from "grid-styled";
+import { Flex, Box } from "@rebass/grid";
 import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import ReactDOM from "react-dom";
-import { Flex } from "grid-styled";
+import { Flex } from "@rebass/grid";
 import styled from "styled-components";
 import { space } from "styled-system";
 import { t } from "ttag";
@@ -20,20 +20,25 @@ const ActiveSearchColor = lighten(color("nav"), 0.1);
 
 import Search from "metabase/entities/search";
 
-const SearchWrapper = Flex.extend`
-  position: relative;
-  background-color: ${props =>
-    props.active ? ActiveSearchColor : DefaultSearchColor};
-  border-radius: 6px;
-  flex: 1 1 auto;
-  max-width: 50em;
-  align-items: center;
-  color: white;
-  transition: background 300ms ease-in;
-  &:hover {
-    background-color: ${ActiveSearchColor};
-  }
-`;
+const SearchWrapper = props => (
+  <Flex
+    {...props}
+    css={`
+      position: relative;
+      background-color: ${props =>
+        props.active ? ActiveSearchColor : DefaultSearchColor};
+      border-radius: 6px;
+      flex: 1 1 auto;
+      max-width: 50em;
+      align-items: center;
+      color: white;
+      transition: background 300ms ease-in;
+      &:hover {
+        background-color: ${ActiveSearchColor};
+      }
+    `}
+  />
+);
 
 const SearchInput = styled.input`
   ${space};

@@ -1,8 +1,8 @@
-/*eslint-disable react/no-danger */
+/* eslint-disable react/no-danger */
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import styled from "styled-components";
-import { color, space, hover } from "styled-system";
+import { color, space } from "styled-system";
 import cx from "classnames";
 import { color as c } from "metabase/lib/colors";
 
@@ -27,7 +27,6 @@ export const IconWrapper = styled("div")`
   "> .icon.icon-share": {
     transform: translateY(-2px);
   }
-  ${hover};
   transition: all 300ms ease-in-out;
 `;
 
@@ -39,15 +38,6 @@ IconWrapper.defaultProps = {
 };
 
 class BaseIcon extends Component {
-  static props: {
-    name: string,
-    size?: string | number,
-    width?: string | number,
-    height?: string | number,
-    scale?: string | number,
-    tooltip?: string, // using Tooltipify
-  };
-
   static defaultProps = {
     defaultName: "unknown",
   };
@@ -114,7 +104,6 @@ class BaseIcon extends Component {
 const Icon = styled(BaseIcon)`
   ${space}
   ${color}
-  ${hover}
   flex-shrink: 0
 `;
 export default Tooltipify(Icon);

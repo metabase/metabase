@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";

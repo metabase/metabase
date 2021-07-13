@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";

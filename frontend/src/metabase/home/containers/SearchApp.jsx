@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 import Link from "metabase/components/Link";
 
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "@rebass/grid";
 
 import Search from "metabase/entities/search";
 

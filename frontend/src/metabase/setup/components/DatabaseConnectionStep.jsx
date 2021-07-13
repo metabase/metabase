@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { updateIn } from "icepick";
 
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 

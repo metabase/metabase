@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalContent from "metabase/components/ModalContent";

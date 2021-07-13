@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
+import { Box } from "@rebass/grid";
 
 import Schemas from "metabase/entities/schemas";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
