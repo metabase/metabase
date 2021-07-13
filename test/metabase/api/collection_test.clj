@@ -920,7 +920,7 @@
   (testing "GET /api/collection/root/items?namespace=snippets"
     (testing "\nNative query snippets should come back when fetching the items in the root Collection of the `:snippets` namespace"
       (mt/with-temp* [NativeQuerySnippet [{snippet-id :id}   {:name "My Snippet"}]
-                      NativeQuerySnippet [{snippet-id-2 :id}   {:name "My Snippet 2"}]
+                      NativeQuerySnippet [{snippet-id-2 :id} {:name "My Snippet 2"}]
                       NativeQuerySnippet [{archived-id :id}  {:name "Archived Snippet", :archived true}]
                       Dashboard          [{dashboard-id :id} {:name "My Dashboard"}]]
         (letfn [(only-test-items [results]

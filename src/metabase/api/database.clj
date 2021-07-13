@@ -212,12 +212,13 @@
         include-saved-questions-tables? (when include-saved-questions-db?
                                           (if (seq include_cards)
                                             true
-                                            include-tables?))]
-    {:data  (or (dbs-list :include-tables?                  include-tables?
-                          :include-saved-questions-db?      include-saved-questions-db?
-                          :include-saved-questions-tables?  include-saved-questions-tables?)
-                [])
-     :total  (db/count Database)}))
+                                            include-tables?))
+        db-list-res                     (or (dbs-list :include-tables?                  include-tables?
+                                                      :include-saved-questions-db?      include-saved-questions-db?
+                                                      :include-saved-questions-tables?  include-saved-questions-tables?)
+                                            [])]
+    {:data  db-list-res
+     :total (count db-list-res)}))
 
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
