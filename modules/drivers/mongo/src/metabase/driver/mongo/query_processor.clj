@@ -145,22 +145,6 @@
   [[_ index]]
   (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index)))
 
-(defmethod ->lvalue :abs
-  [[_ inp]]
-  (->lvalue inp))
-
-(defmethod ->rvalue :abs
-  [[_ inp]]
-  {"$abs" (->rvalue inp)})
-
-(defmethod ->lvalue :upper
-  [[_ inp]]
-  (->lvalue inp))
-
-(defmethod ->rvalue :upper
-  [[_ inp]]
-  {"$toUpper" (->rvalue inp)})
-
 (defn- with-lvalue-temporal-bucketing [field unit]
   (if (= unit :default)
     field
@@ -307,6 +291,25 @@
         (-> t
             (u.date/add unit amount)
             (u.date/bucket unit)))))))
+
+;;; ---------------------------------------------------- functions ---------------------------------------------------
+
+(defmethod ->lvalue :avg    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :stddev [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :sum    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :sum    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :abs    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :upper  [[_ inp]] (->lvalue inp))
+
+
+(defmethod ->rvalue :abs
+  [[_ inp]]
+  {"$abs" (->rvalue inp)})
+
+(defmethod ->rvalue :upper
+  [[_ inp]]
+  {"$toUpper" (->rvalue inp)})
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

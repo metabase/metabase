@@ -167,8 +167,16 @@
                                              :dobbs [:field $name nil]}
                                :limit       5})))))
     (testing "Should be able to deal with slightly less trivial expressions"
-      (is (= {:projections '("latitude" "name"),
-              :query [{"$project" {"_id" false, "latitude" "$latitude", "name" "$name"}} {"$limit" 5}],
+      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
+              :query
+              [{"$project"
+                {"_id" "$_id",
+                 "name" {"$toUpper" "$name"},
+                 "category_id" "$category_id",
+                 "latitude" {"$abs" "$latitude"},
+                 "longitude" "$longitude",
+                 "price" "$price"}}
+               {"$limit" 5}],
               :collection "venues",
               :mbql? true}
              (qp/query->native
