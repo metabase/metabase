@@ -138,6 +138,7 @@
     "jsonwebtoken": "^7.2.1",
     "lint-staged": "^3.3.1",
     "mockdate": "^2.0.2",
+    "mutationobserver-shim": "^0.3.7",
     "postcss-cssnext": "^2.4.0",
     "postcss-import": "^9.0.0",
     "postcss-loader": "^2.0.8",
