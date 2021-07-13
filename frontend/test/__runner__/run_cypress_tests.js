@@ -1,6 +1,7 @@
 import { spawn } from "child_process";
-import fs from "fs";
-const { printBold, printYellow, printCyan } = require("./cypress-runner-utils");
+
+const getVersion = require("./cypress-runner-get-version");
+const { printBold, printYellow, readFile } = require("./cypress-runner-utils");
 
 // Use require for BackendResource to run it after the mock afterAll has been set
 const BackendResource = require("./backend.js").BackendResource;
@@ -19,17 +20,6 @@ const sourceFolderLocation = userArgs[userArgs.indexOf("--folder") + 1];
 const specs = userArgs[userArgs.indexOf("--spec") + 1];
 const isSingleSpec = !specs || !specs.match(/,/);
 const testFiles = isSingleSpec ? specs : specs.split(",");
-
-function readFile(fileName) {
-  return new Promise(function(resolve, reject) {
-    fs.readFile(fileName, "utf8", (err, data) => {
-      if (err) {
-        reject(err);
-      }
-      resolve(data);
-    });
-  });
-}
 
 const init = async () => {
   try {
