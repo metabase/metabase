@@ -1,3 +1,4 @@
+import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 
 // functions called when the application is started
@@ -58,4 +59,8 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
 
 export const PLUGIN_COLLECTIONS = {
   formFields: [],
+};
+
+export const PLUGIN_COLLECTION_COMPONENTS = {
+  CollectionAuthorityLevelIcon: PluginPlaceholder,
 };
