@@ -124,9 +124,18 @@ describe("UNIX microseconds", () => {
 });
 
 describe("YYYYMMDDHHMMSS", () => {
-  it("converts to YYYYMMDDHHMMSS → Time", () => {
+  it("converts YYYYMMDDHHMMSSString->Temporal to YYYYMMDDHHMMSS → Time", () => {
     const original = "YYYYMMDDHHMMSSString->Temporal";
-    const expected = "YYYYMMDDHHMMSS → Temporal";
+    const expected = "YYYYMMDDHHMMSS string → Temporal";
+
+    const humanized = humanizeCoercionStrategy(original);
+
+    expect(humanized).toBe(expected);
+  });
+
+  it("converts YYYYMMDDHHMMSSBytes->Temporal to YYYYMMDDHHMMSS → Time", () => {
+    const original = "YYYYMMDDHHMMSSBytes->Temporal";
+    const expected = "YYYYMMDDHHMMSS bytes → Temporal";
 
     const humanized = humanizeCoercionStrategy(original);
 

@@ -3,7 +3,8 @@ const LEFT_TERM_CONVERSIONS = {
   UNIXSeconds: "UNIX seconds",
   UNIXMilliSeconds: "UNIX milliseconds",
   UNIXMicroSeconds: "UNIX microseconds",
-  YYYYMMDDHHMMSSString: "YYYYMMDDHHMMSS",
+  YYYYMMDDHHMMSSString: "YYYYMMDDHHMMSS string",
+  YYYYMMDDHHMMSSBytes: "YYYYMMDDHHMMSS bytes",
 };
 
 const RIGHT_TERM_CONVERSIONS = {
