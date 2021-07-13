@@ -163,7 +163,6 @@ describe("collection permissions", () => {
 
                 describe("archive page", () => {
                   it("should show archived items (metabase#15080, metabase#16617)", () => {
-                    cy.skipOn(user === "nodata");
                     cy.visit("collection/root");
                     openEllipsisMenuFor("Orders");
                     cy.findByText("Archive this item").click();
