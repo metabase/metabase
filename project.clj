@@ -171,9 +171,7 @@
   :main ^:skip-aot metabase.core
 
   :manifest
-  {;; log4j is multi-release and lein uberjar doesn't set this correctly in the manifest
-   "Multi-Release" true
-   ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
+  {;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
    "Liquibase-Package"
    #= (eval
        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
