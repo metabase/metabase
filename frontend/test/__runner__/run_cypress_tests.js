@@ -1,12 +1,14 @@
 import { spawn } from "child_process";
 
 const getVersion = require("./cypress-runner-get-version");
+const generateSnapshots = require("./generate-cypress-snapshots");
 const { printBold, printYellow } = require("./cypress-runner-utils");
 
 // Use require for BackendResource to run it after the mock afterAll has been set
 const BackendResource = require("./backend.js").BackendResource;
 
 const server = BackendResource.get({ dbKey: "" });
+const baseUrl = server.host;
 
 // We currently accept three (optional) command line arguments
 // --open - Opens the Cypress test browser
@@ -29,7 +31,7 @@ const init = async () => {
   await BackendResource.start(server);
 
   printBold("Generating snapshots");
-  await generateSnapshots();
+  await generateSnapshots(baseUrl, cleanup);
 
   printBold("Starting Cypress");
   if (!isOpenMode) {
@@ -108,22 +110,3 @@ launch();
 
 process.on("SIGTERM", cleanup);
 process.on("SIGINT", cleanup);
-
-async function generateSnapshots() {
-  const cypressProcess = spawn(
-    "yarn",
-    [
-      "cypress",
-      "run",
-      "--config-file",
-      "frontend/test/__support__/e2e/cypress-snapshots.json",
-      "--config",
-      `baseUrl=${server.host}`,
-    ],
-    { stdio: "inherit" },
-  );
-
-  return new Promise((resolve, reject) => {
-    cypressProcess.on("exit", resolve);
-  });
-}
