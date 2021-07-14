@@ -32,7 +32,7 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-i18n-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - run: yarn install
 
     - run: sudo apt install gettext
 

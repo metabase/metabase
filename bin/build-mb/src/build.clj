@@ -26,7 +26,7 @@
         (if (env/env :ci)
           (do
             (u/announce "CI run: enforce the lockfile")
-            (u/sh {:dir u/project-root-directory} "yarn" "--frozen-lockfile"))
+            (u/sh {:dir u/project-root-directory} "yarn"))
           (u/sh {:dir u/project-root-directory} "yarn")))
       ;; TODO -- I don't know why it doesn't work if we try to combine the two steps below by calling `yarn build`,
       ;; which does the same thing.

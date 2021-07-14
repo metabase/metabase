@@ -9,7 +9,7 @@ ARG MB_EDITION=oss
 WORKDIR /app/source
 
 COPY . .
-RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn --frozen-lockfile && yarn build && bin/i18n/build-translation-resources
+RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn && yarn build && bin/i18n/build-translation-resources
 
 ###################
 # STAGE 1.2: backend deps

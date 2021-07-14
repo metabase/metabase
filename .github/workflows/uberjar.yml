@@ -56,7 +56,7 @@ jobs:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}-${{ hashFiles('**/deps.edn') }}
 
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - run: yarn install
     - run: lein with-profile +include-all-drivers,+cloverage,+junit,+${{ matrix.edition }} deps
     - run: ./bin/build
 

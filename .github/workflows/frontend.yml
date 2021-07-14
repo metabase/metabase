@@ -36,7 +36,7 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - run: yarn install
     - run: yarn run lint-prettier
       name: Run Prettier formatting linter
 
@@ -59,7 +59,7 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - run: yarn install
     - run: yarn run lint-eslint
       name: Run ESLint linter
 
@@ -77,7 +77,7 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - run: yarn install
     - run: yarn run lint-docs-links
       name: Run docs links checker
 
@@ -100,7 +100,7 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - run: yarn install
     - run: yarn run test-unit
       name: Run frontend unit tests
 
@@ -123,6 +123,6 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - run: yarn install
     - run: yarn run test-timezones
       name: Run frontend timezones tests
