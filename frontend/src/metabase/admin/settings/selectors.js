@@ -16,7 +16,7 @@ import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 
-import SettingsUpdatesForm from "./components/SettingsUpdatesForm";
+import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";
@@ -90,14 +90,13 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Friendly Table and Field Names`,
         type: "select",
         options: [
-          { value: "advanced", name: t`Enabled` },
           {
             value: "simple",
-            name: t`Only replace underscores and dashes with spaces`,
+            name: t`Replace underscores and dashes with spaces`,
           },
           { value: "none", name: t`Disabled` },
         ],
-        defaultValue: "advanced",
+        defaultValue: "simple",
       },
       {
         key: "enable-nested-queries",

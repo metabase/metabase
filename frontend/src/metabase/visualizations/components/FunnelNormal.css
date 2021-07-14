@@ -1,6 +1,5 @@
 :local .Funnel {
   color: var(--color-text-medium);
-  height: 100%;
 }
 
 :local .FunnelStep {
@@ -10,7 +9,8 @@
 }
 
 :local .FunnelStep.Initial {
-  min-width: auto;
+  min-width: unset;
+  width: unset;
 }
 
 /* Display information for the initial blox */
@@ -61,12 +61,22 @@
   margin-top: 1em;
 }
 
-/* Small version */
-:local .Small .Head,
-:local .Small .Infos {
-  display: none;
+/* Narrow version */
+:local .Funnel--narrow .Head {
+  font-size: 12px;
+}
+:local .Funnel--narrow .Infos {
+  font-size: 12px;
 }
 
-:local .Small .FunnelStep {
-  border-color: white;
+:local .Funnel--narrow .Infos .Subtitle {
+  font-size: 0.875em;
+}
+
+:local .Funnel--narrow .Start .Title {
+  font-size: 0.75em;
+}
+
+:local .Funnel--narrow .Start .Subtitle {
+  font-size: 0.5em;
 }

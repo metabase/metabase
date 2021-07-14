@@ -121,6 +121,15 @@
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 
+(defmethod sql.qp/cast-temporal-string [:postgres :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (hsql/call :to_timestamp expr (hx/literal "YYYYMMDDHH24MISS")))
+
+(defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               (hsql/call :convert_from expr (hx/literal "UTF8"))))
+
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
 (defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
 

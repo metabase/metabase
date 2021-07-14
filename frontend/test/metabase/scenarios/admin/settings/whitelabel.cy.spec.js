@@ -152,7 +152,7 @@ describeWithToken("formatting > whitelabel", () => {
         `rgb(${colors.primary.rgb.join(", ")})`,
       );
 
-      cy.findByLabelText("Email address").type("some@email.com");
+      cy.findByLabelText("Email address").type("some@email.test");
       cy.findByLabelText("Password").type("1234");
       cy.get(".Button--primary").should(
         "have.css",
@@ -238,7 +238,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.visit("/admin/settings/whitelabel");
 
       cy.log("Add favicon");
-      cy.findByPlaceholderText("frontend_client/favicon.ico").type(
+      cy.findByPlaceholderText("/app/assets/img/favicon.ico").type(
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
       cy.get("ul")

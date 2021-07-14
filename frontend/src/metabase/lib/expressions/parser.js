@@ -83,7 +83,7 @@ export class ExpressionParser extends CstParser {
 
     // an expression without aggregations in it
     $.RULE("expression", () => {
-      $.SUBRULE($.relationalExpression, {
+      $.SUBRULE($.booleanExpression, {
         LABEL: "expression",
         ARGS: ["expression"],
       });
@@ -391,12 +391,10 @@ export class ExpressionParser extends CstParser {
   }
 
   canTokenTypeBeInsertedInRecovery() {
-    // console.log("insert", this.tokenRecoveryEnabled);
     return this.tokenRecoveryEnabled;
   }
 
   canRecoverWithSingleTokenDeletion() {
-    // console.log("delete", this.tokenRecoveryEnabled);
     return this.tokenRecoveryEnabled;
   }
 }

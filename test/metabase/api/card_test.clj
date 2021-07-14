@@ -352,8 +352,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [metadata  [{:base_type    :type/Integer
                         :display_name "Count Chocula"
-                        :name         "count_chocula"
-                        :semantic_type :type/Number}]
+                        :name         "count_chocula"}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -366,8 +365,7 @@
             ;; now check the metadata that was saved in the DB
             (is (= [{:base_type    :type/Integer
                      :display_name "Count Chocula"
-                     :name         "count_chocula"
-                     :semantic_type :type/Number}]
+                     :name         "count_chocula"}]
                    (db/select-one-field :result_metadata Card :name card-name)))))))))
 
 (deftest save-card-with-empty-result-metadata-test
@@ -399,9 +397,8 @@
     (let [metadata  [{:base_type    :type/Integer
                       :display_name "Count Chocula"
                       :name         "count_chocula"
-                      :semantic_type :type/Number
                       :fingerprint  {:global {:distinct-count 285},
-                                     :type {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
+                                     :type   {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
           card-name (mt/random-name)]
       (mt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -414,12 +411,11 @@
                                          :result_metadata    (map fingerprint-integers->doubles metadata)
                                          :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
             (testing "check the metadata that was saved in the DB"
-              (is (= [{:base_type    :type/Integer
-                       :display_name "Count Chocula"
-                       :name         "count_chocula"
-                       :semantic_type :type/Number
-                       :fingerprint  {:global {:distinct-count 285},
-                                      :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
+              (is (= [{:base_type     :type/Integer
+                       :display_name  "Count Chocula"
+                       :name          "count_chocula"
+                       :fingerprint   {:global {:distinct-count 285},
+                                       :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
 (deftest saving-card-fetches-correct-metadata
@@ -639,13 +635,21 @@
         (is (= false
                (set-archived! false)))))))
 
-(deftest we-shouldn-t-be-able-to-update-archived-status-if-we-don-t-have-collection--write--perms
+(deftest we-shouldn-t-be-able-to-archive-cards-if-we-don-t-have-collection--write--perms
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [collection]
                     Card       [card {:collection_id (u/the-id collection)}]]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived true}))))))
+
+(deftest we-shouldn-t-be-able-to-unarchive-cards-if-we-don-t-have-collection--write--perms
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp* [Collection [collection]
+                    Card       [card {:collection_id (u/the-id collection) :archived true}]]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+      (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived false}))))))
 
 (deftest clear-description-test
   (testing "Can we clear the description of a Card? (#4738)"
@@ -685,8 +689,7 @@
 (deftest make-sure-when-updating-a-card-the-query-metadata-is-saved--if-correct-
   (let [metadata [{:base_type    :type/Integer
                    :display_name "Count Chocula"
-                   :name         "count_chocula"
-                   :semantic_type :type/Number}]]
+                   :name         "count_chocula"}]]
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
@@ -697,8 +700,7 @@
         ;; now check the metadata that was saved in the DB
         (is (= [{:base_type    :type/Integer
                  :display_name "Count Chocula"
-                 :name         "count_chocula"
-                 :semantic_type :type/Number}]
+                 :name         "count_chocula"}]
                (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
 
 (deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
@@ -771,8 +773,8 @@
   "Call the collection endpoint for `collection-id` as `user-kwd`. Will return a map with the names of the items as
   keys and their position as the value"
   [user-kwd collection-or-collection-id]
-  (name->position (mt/user-http-request user-kwd :get 200
-                                        (format "collection/%s/items" (u/the-id collection-or-collection-id)))))
+  (name->position (:data (mt/user-http-request user-kwd :get 200
+                                               (format "collection/%s/items" (u/the-id collection-or-collection-id))))))
 
 (defmacro with-ordered-items
   "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
@@ -1465,10 +1467,10 @@
             "d" 1                       ;-> Existing cards in new collection are untouched and position unchanged
             "e" 2
             "f" 3}
-           (merge (name->position (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
-                                                        :model "card" :archived "false"))
-                  (name->position (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
-                                                        :model "card" :archived "false")))))))
+           (merge (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
+                                                               :model "card" :archived "false")))
+                  (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
+                                                               :model "card" :archived "false"))))))))
 
 (deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
   (mt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
@@ -1483,10 +1485,10 @@
     (is (= {"a" nil
             "b" 1
             "c" 2}
-           (merge (name->position (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
-                                                        :model "card" :archived "false"))
-                  (name->position (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
-                                                        :model "card" :archived "false")))))))
+           (merge (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-1)
+                                                               :model "card" :archived "false")))
+                  (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
+                                                               :model "card" :archived "false"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |

@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import pure from "recompose/pure";
 import cx from "classnames";
 
 import Popover from "./Popover";
@@ -25,6 +24,7 @@ const TooltipPopover = ({ children, constrainedWidth, ...props }) => {
       // OnClickOutsideWrapper is unecessary and causes existing popovers not to
       // be dismissed if a tooltip is visisble, so pass noOnClickOutsideWrapper
       noOnClickOutsideWrapper
+      role="tooltip"
       {...props}
     >
       {popoverContent}
@@ -37,4 +37,4 @@ TooltipPopover.defaultProps = {
   constrainedWidth: true,
 };
 
-export default pure(TooltipPopover);
+export default React.memo(TooltipPopover);

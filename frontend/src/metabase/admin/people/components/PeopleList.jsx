@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import moment from "moment";
 import _ from "underscore";
 
@@ -22,7 +22,6 @@ import Group from "metabase/entities/groups";
 
 import UserGroupSelect from "../components/UserGroupSelect";
 import { USER_STATUS } from "../constants";
-import { isLastPage } from "../utils";
 import { loadMemberships } from "../people";
 
 @Group.loadList({
@@ -62,7 +61,9 @@ export default class PeopleList extends Component {
     onNextPage: PropTypes.func,
     onPreviousPage: PropTypes.func,
     reload: PropTypes.func.isRequired,
-    total: PropTypes.number.isRequired,
+    metadata: PropTypes.shape({
+      total: PropTypes.number.isRequired,
+    }).isRequired,
   };
 
   componentDidMount() {
@@ -99,10 +100,11 @@ export default class PeopleList extends Component {
       users,
       groups,
       query,
-      total,
+      metadata,
       onNextPage,
       onPreviousPage,
     } = this.props;
+    const { total } = metadata;
 
     const { page, pageSize, status } = query;
 
@@ -217,13 +219,20 @@ export default class PeopleList extends Component {
 
         {hasUsers && (
           <div className="flex align-center justify-between p2">
-            <div className="text-medium text-underline text-bold">{t`${total} people found`}</div>
+            <div className="text-medium text-bold">
+              {ngettext(
+                msgid`${total} person found`,
+                `${total} people found`,
+                total,
+              )}
+            </div>
             <PaginationControls
               page={page}
               pageSize={pageSize}
+              total={total}
               itemsLength={users.length}
-              onNextPage={isLastPage(page, pageSize, total) ? null : onNextPage}
-              onPreviousPage={page > 0 ? onPreviousPage : null}
+              onNextPage={onNextPage}
+              onPreviousPage={onPreviousPage}
             />
           </div>
         )}

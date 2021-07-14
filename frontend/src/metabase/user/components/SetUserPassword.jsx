@@ -13,7 +13,17 @@ export default class SetUserPassword extends Component {
 
   static propTypes = {
     submitFn: PropTypes.func.isRequired,
+    validatePassword: PropTypes.func.isRequired,
     user: PropTypes.object,
+  };
+
+  handleAsyncValidate = async values => {
+    try {
+      await this.props.validatePassword(values.password);
+      return {};
+    } catch (error) {
+      return error.data.errors;
+    }
   };
 
   handleSubmit = values => {
@@ -28,6 +38,8 @@ export default class SetUserPassword extends Component {
       <User.Form
         form={User.forms.password}
         submitTitle={t`Save`}
+        asyncValidate={this.handleAsyncValidate}
+        asyncBlurFields={["password"]}
         onSubmit={this.handleSubmit}
       />
     );

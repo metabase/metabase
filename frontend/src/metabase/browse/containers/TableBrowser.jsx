@@ -9,7 +9,9 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import Table from "metabase/entities/tables";
 
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
 import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 
 import Card from "metabase/components/Card";
 import Database from "metabase/entities/databases";
@@ -21,22 +23,53 @@ import Link from "metabase/components/Link";
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "metabase/browse/constants";
 
+function getDatabaseId(props) {
+  const { params } = props;
+  const dbId =
+    parseInt(props.dbId) ||
+    parseInt(params.dbId) ||
+    Urls.extractEntityId(params.slug);
+  return Number.isSafeInteger(dbId) ? dbId : undefined;
+}
+
+function getSchemaName(props) {
+  return props.schemaName || props.params.schemaName;
+}
+
+function mapStateToProps(state, props) {
+  return {
+    dbId: getDatabaseId(props),
+    schemaName: getSchemaName(props),
+    metadata: getMetadata(state),
+    xraysEnabled: getXraysEnabled(state),
+  };
+}
+
 function TableBrowser(props) {
   const {
     tables,
     metadata,
-    params: { dbId, schemaName },
+    dbId,
+    schemaName,
     showSchemaInHeader = true,
   } = props;
+
+  const databaseCrumb =
+    dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID
+      ? {
+          title: t`Saved Questions`,
+          to: Urls.browseDatabase({ id: SAVED_QUESTIONS_VIRTUAL_DB_ID }),
+        }
+      : {
+          title: <Database.Link id={dbId} />,
+        };
+
   return (
     <Box>
       <BrowseHeader
         crumbs={[
           { title: t`Our data`, to: "browse" },
-          {
-            title: <Database.Name id={dbId} />,
-            to: `browse/${dbId}`,
-          },
+          databaseCrumb,
           showSchemaInHeader && { title: schemaName },
         ]}
       />
@@ -108,13 +141,8 @@ function TableBrowser(props) {
 }
 
 export default Table.loadList({
-  query: (state, { params: { dbId, schemaName } }) => ({
-    dbId,
-    schemaName,
+  query: (state, props) => ({
+    dbId: getDatabaseId(props),
+    schemaName: getSchemaName(props),
   }),
-})(
-  connect(state => ({
-    metadata: getMetadata(state),
-    xraysEnabled: getXraysEnabled(state),
-  }))(TableBrowser),
-);
+})(connect(mapStateToProps)(TableBrowser));

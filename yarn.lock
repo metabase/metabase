@@ -3343,11 +3343,6 @@ chalk@^4.0.0, chalk@^4.1.0:
     ansi-styles "^4.1.0"
     supports-color "^7.1.0"
 
-change-emitter@^0.1.2:
-  version "0.1.6"
-  resolved "https://registry.yarnpkg.com/change-emitter/-/change-emitter-0.1.6.tgz#e8b2fe3d7f1ab7d69a32199aff91ea6931409515"
-  integrity sha1-6LL+PX8at9aaMhma/5HqaTFAlRU=
-
 character-entities-html4@^1.0.0:
   version "1.1.4"
   resolved "https://registry.yarnpkg.com/character-entities-html4/-/character-entities-html4-1.1.4.tgz#0e64b0a3753ddbf1fdc044c5fd01d0199a02e125"
@@ -3474,6 +3469,11 @@ classlist-polyfill@^1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/classlist-polyfill/-/classlist-polyfill-1.2.0.tgz#935bc2dfd9458a876b279617514638bcaa964a2e"
   integrity sha1-k1vC39lFiodrJ5YXUUY4vKqWSi4=
+
+classnames@2.3.1:
+  version "2.3.1"
+  resolved "https://registry.yarnpkg.com/classnames/-/classnames-2.3.1.tgz#dfcfa3891e306ec1dad105d0e88f4417b8535e8e"
+  integrity sha512-OlQdbZ7gLfGarSqxesMesDa5uz7KFbID8Kpq/SxIoNGDqY8lSYs0D+hhtBXhcdB3rcbXArFr7vlHheLk1voeNA==
 
 classnames@^2.1.3, classnames@^2.2.5:
   version "2.2.6"
@@ -4315,10 +4315,10 @@ cyclist@^1.0.1:
   resolved "https://registry.yarnpkg.com/cyclist/-/cyclist-1.0.1.tgz#596e9698fd0c80e12038c2b82d6eb1b35b6224d9"
   integrity sha1-WW6WmP0MgOEgOMK4LW6xs1tiJNk=
 
-cypress-real-events@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.3.0.tgz#d737d68dd590b28c71756d63fbf36b863e936912"
-  integrity sha512-IYkhC1C9tGR7eN5d4VmT/28swyYeRmj+c+e0YcblnnbF68CVAtpc4D+v1JiENZA4il8W5XEcI/FjI64ss2lIag==
+cypress-real-events@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.4.0.tgz#39575031a4020581e0bbf105d7a306ee57d94f48"
+  integrity sha512-1s4BQN1D++vFSuaad0qKsWcoApM5tQqPBFyDJEa6JeCZIsAdgMdGLuKi5QNIdl5KTJix0jxglzFJAThyz3borQ==
 
 cypress@*, cypress@6.8.0, cypress@^6.8.0:
   version "6.8.0"
@@ -5739,7 +5739,7 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "2.1.1"
 
-fbjs@^0.8.1, fbjs@^0.8.16, fbjs@^0.8.9:
+fbjs@^0.8.16, fbjs@^0.8.9:
   version "0.8.17"
   resolved "https://registry.yarnpkg.com/fbjs/-/fbjs-0.8.17.tgz#c4d598ead6949112653d6588b01a5cdcd9f90fdd"
   integrity sha1-xNWY6taUkRJlPWWIsBpc3Nn5D90=
@@ -6826,6 +6826,11 @@ humanize-plus@^1.8.1:
   resolved "https://registry.yarnpkg.com/humanize-plus/-/humanize-plus-1.8.2.tgz#a65b34459ad6367adbb3707a82a3c9f916167030"
   integrity sha1-pls0RZrWNnrbs3B6gqPJ+RYWcDA=
 
+husky@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/husky/-/husky-6.0.0.tgz#810f11869adf51604c32ea577edbc377d7f9319e"
+  integrity sha512-SQS2gDTB7tBN486QSoKPKQItZw97BMOd+Kdb6ghfpBc0yXyzrddI0oDV5MkDAbuB4X2mO3/nj60TRMcYxwzZeQ==
+
 icepick@2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/icepick/-/icepick-2.3.0.tgz#1d1b0b28b80c1ff720a1f62359dab46392806f5c"
@@ -6867,10 +6872,10 @@ iferr@^0.1.5:
   resolved "https://registry.yarnpkg.com/iferr/-/iferr-0.1.5.tgz#c60eed69e6d8fdb6b3104a1fcbca1c192dc5b501"
   integrity sha1-xg7taebY/bazEEofy8ocGS3FtQE=
 
-iframe-resizer@^3.5.11:
-  version "3.6.6"
-  resolved "https://registry.yarnpkg.com/iframe-resizer/-/iframe-resizer-3.6.6.tgz#ece6a0b7e879cfe3783a1003261408152ff9bd9b"
-  integrity sha512-WYprloB8s18Be9wbybQZmeEWueEczJH2is/5DxDn4jH8Bs2DuaSuaOeYICe6IvmF04SBy4mQ+pX4Xc+E9FEMSg==
+iframe-resizer@^4.3.2:
+  version "4.3.2"
+  resolved "https://registry.yarnpkg.com/iframe-resizer/-/iframe-resizer-4.3.2.tgz#42dd88345d18b9e377b6044dddb98c664ab0ce6b"
+  integrity sha512-gOWo2hmdPjMQsQ+zTKbses08mDfDEMh4NneGQNP4qwePYujY1lguqP6gnbeJkf154gojWlBhIltlgnMfYjGHWA==
 
 ignore@^4.0.6:
   version "4.0.6"
@@ -8164,10 +8169,10 @@ jsprim@^1.2.2:
     json-schema "0.2.3"
     verror "1.10.0"
 
-jsrsasign@10.0.4:
-  version "10.0.4"
-  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-10.0.4.tgz#45f62cb9088c5948cd804181d3484c7ab48165e0"
-  integrity sha512-G08GDeAwgVkN5PGE9TnJ/4ixV3zkq560RigOoqrRvVc8H4GjfPVTz54/qGPLHK1KGHGP36/2eaLU1HuXmOJgug==
+jsrsasign@^10.2.0:
+  version "10.2.0"
+  resolved "https://registry.yarnpkg.com/jsrsasign/-/jsrsasign-10.2.0.tgz#960ab8046d19d3fcbb584368a57d1977cb0b7ffd"
+  integrity sha512-khMrV/10U02DRzmXhjuLQjddUF39GHndaJZ/3YiiKkbyEl1T5M6EQF9nQUq0DFVCHusmd/jl8TWl4mWt+1L5hg==
 
 "jsx-ast-utils@^2.4.1 || ^3.0.0":
   version "3.2.0"
@@ -9169,6 +9174,11 @@ mustache@^2.3.2:
   version "2.3.2"
   resolved "https://registry.yarnpkg.com/mustache/-/mustache-2.3.2.tgz#a6d4d9c3f91d13359ab889a812954f9230a3d0c5"
   integrity sha512-KpMNwdQsYz3O/SBS1qJ/o3sqUJ5wSb8gb0pul8CO0S56b9Y2ALm8zCfsjPXsqGFfoNBkDwZuZIAjhsZI03gYVQ==
+
+mutationobserver-shim@^0.3.7:
+  version "0.3.7"
+  resolved "https://registry.yarnpkg.com/mutationobserver-shim/-/mutationobserver-shim-0.3.7.tgz#8bf633b0c0b0291a1107255ed32c13088a8c5bf3"
+  integrity sha512-oRIDTyZQU96nAiz2AQyngwx1e89iApl2hN5AOYwyxLUB47UYsU3Wv9lJWqH5y/QdiYkc5HQLi23ZNB3fELdHcQ==
 
 mz@^2.6.0:
   version "2.7.0"
@@ -10848,7 +10858,7 @@ prop-types@15.5.8:
   dependencies:
     fbjs "^0.8.9"
 
-prop-types@15.x, prop-types@^15.5.10, prop-types@^15.5.4, prop-types@^15.5.6, prop-types@^15.5.7, prop-types@^15.5.8, prop-types@^15.6.0, prop-types@^15.6.1, prop-types@^15.6.2, prop-types@^15.7.2:
+prop-types@15.x, prop-types@^15.0.0, prop-types@^15.5.10, prop-types@^15.5.4, prop-types@^15.5.6, prop-types@^15.5.7, prop-types@^15.5.8, prop-types@^15.6.0, prop-types@^15.6.1, prop-types@^15.6.2, prop-types@^15.7.2:
   version "15.7.2"
   resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.7.2.tgz#52c41e75b8c87e72b9d9360e0206b99dcbffa6c5"
   integrity sha512-8QQikdH7//R2vurIJSutZ1smHYTcLpRWEOlHnzcWHmBYrOGUysKwSsrC89BCiFj3CbrfJ/nXFdJepOVrY1GCHQ==
@@ -11130,7 +11140,7 @@ react-draggable@^3.3.2:
     classnames "^2.2.5"
     prop-types "^15.6.0"
 
-react-draggable@^4.0.3:
+react-draggable@^4.0.0, react-draggable@^4.0.3:
   version "4.4.3"
   resolved "https://registry.yarnpkg.com/react-draggable/-/react-draggable-4.4.3.tgz#0727f2cae5813e36b0e4962bf11b2f9ef2b406f3"
   integrity sha512-jV4TE59MBuWm7gb6Ns3Q1mxX8Azffb7oTtDtBgFkxRvhDp38YAARmRplrj0+XGkhOJB5XziArX+4HUUABtyZ0w==
@@ -11146,6 +11156,17 @@ react-element-to-jsx-string@^13.1.0:
     is-plain-object "2.0.4"
     stringify-object "3.2.2"
 
+react-grid-layout@^1.2.5:
+  version "1.2.5"
+  resolved "https://registry.yarnpkg.com/react-grid-layout/-/react-grid-layout-1.2.5.tgz#fa40288d5a1fa783484c44ce78b1e10eb5313d26"
+  integrity sha512-P/NNWAExTX/zEq+RUh6hrIG67UBicDNCOOg9LZe8BAtSdYtCnCGgVmWBS+sIbM0C8RJIiyGsFHh5dIfCddhS/w==
+  dependencies:
+    classnames "2.3.1"
+    lodash.isequal "^4.0.0"
+    prop-types "^15.0.0"
+    react-draggable "^4.0.0"
+    react-resizable "^3.0.1"
+
 react-hot-loader@^4.13.0:
   version "4.13.0"
   resolved "https://registry.yarnpkg.com/react-hot-loader/-/react-hot-loader-4.13.0.tgz#c27e9408581c2a678f5316e69c061b226dc6a202"
@@ -11160,7 +11181,7 @@ react-hot-loader@^4.13.0:
     shallowequal "^1.1.0"
     source-map "^0.7.3"
 
-react-is@^16.12.0, react-is@^16.13.0, react-is@^16.3.1, react-is@^16.6.0, react-is@^16.7.0, react-is@^16.8.1, react-is@^16.8.4, react-is@^16.8.6:
+react-is@^16.12.0, react-is@^16.13.0, react-is@^16.3.1, react-is@^16.6.0, react-is@^16.7.0, react-is@^16.8.1, react-is@^16.8.4:
   version "16.13.1"
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
   integrity sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==
@@ -11225,6 +11246,14 @@ react-resizable@^1.9.0:
     prop-types "15.x"
     react-draggable "^4.0.3"
 
+react-resizable@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/react-resizable/-/react-resizable-3.0.1.tgz#9709831809d87d3abe861df7fe691e6103f27dc1"
+  integrity sha512-wban8GguvXrmeObSVTmhxs99G9eUgYSGugf0i32qHXyqKDTzQsCKLhm3VJW24TpTBKJvM+cybNExskOCYkYF5Q==
+  dependencies:
+    prop-types "15.x"
+    react-draggable "^4.0.3"
+
 react-router-redux@^4.0.8:
   version "4.0.8"
   resolved "https://registry.yarnpkg.com/react-router-redux/-/react-router-redux-4.0.8.tgz#227403596b5151e182377dab835b5d45f0f8054e"
@@ -11252,16 +11281,6 @@ react-sortable-hoc@^1.11.0:
     "@babel/runtime" "^7.2.0"
     invariant "^2.2.4"
     prop-types "^15.5.7"
-
-react-test-renderer@~16.14.0:
-  version "16.14.0"
-  resolved "https://registry.yarnpkg.com/react-test-renderer/-/react-test-renderer-16.14.0.tgz#e98360087348e260c56d4fe2315e970480c228ae"
-  integrity sha512-L8yPjqPE5CZO6rKsKXRO/rVPiaCOy0tQQJbC+UjPNlobl5mad59lvPjwFsQHTvL03caVDIVr9x9/OSgDe6I5Eg==
-  dependencies:
-    object-assign "^4.1.1"
-    prop-types "^15.6.2"
-    react-is "^16.8.6"
-    scheduler "^0.19.1"
 
 react-textarea-autosize@^5.2.1:
   version "5.2.1"
@@ -11463,16 +11482,6 @@ rechoir@^0.6.2:
   integrity sha1-hSBLVNuoLVdC4oyWdW70OvUOM4Q=
   dependencies:
     resolve "^1.1.6"
-
-recompose@^0.26.0:
-  version "0.26.0"
-  resolved "https://registry.yarnpkg.com/recompose/-/recompose-0.26.0.tgz#9babff039cb72ba5bd17366d55d7232fbdfb2d30"
-  integrity sha512-KwOu6ztO0mN5vy3+zDcc45lgnaUoaQse/a5yLVqtzTK13czSWnFGmXbQVmnoMgDkI5POd1EwIKSbjU1V7xdZog==
-  dependencies:
-    change-emitter "^0.1.2"
-    fbjs "^0.8.1"
-    hoist-non-react-statics "^2.3.1"
-    symbol-observable "^1.0.4"
 
 redent@^1.0.0:
   version "1.0.0"
@@ -12455,6 +12464,11 @@ slice-ansi@^2.1.0:
     astral-regex "^1.0.0"
     is-fullwidth-code-point "^2.0.0"
 
+slugg@^1.2.1:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/slugg/-/slugg-1.2.1.tgz#e752af2241af3f2714463c5de225cea47608740a"
+  integrity sha1-51KvIkGvPycURjxd4iXOpHYIdAo=
+
 snapdragon-node@^2.0.1:
   version "2.1.1"
   resolved "https://registry.yarnpkg.com/snapdragon-node/-/snapdragon-node-2.1.1.tgz#6c175f86ff14bdb0724563e8f3c1b021a286853b"
@@ -13070,7 +13084,7 @@ symbol-observable@1.0.1:
   resolved "https://registry.yarnpkg.com/symbol-observable/-/symbol-observable-1.0.1.tgz#8340fc4702c3122df5d22288f88283f513d3fdd4"
   integrity sha1-g0D8RwLDEi310iKI+IKD9RPT/dQ=
 
-symbol-observable@^1.0.3, symbol-observable@^1.0.4, symbol-observable@^1.1.0, symbol-observable@^1.2.0:
+symbol-observable@^1.0.3, symbol-observable@^1.1.0, symbol-observable@^1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/symbol-observable/-/symbol-observable-1.2.0.tgz#c22688aed4eab3cdc2dfeacbb561660560a00804"
   integrity sha512-e900nM8RRtGhlV36KGEU9k65K3mPb1WV70OdjfxlG2EAuM1noi/E/BaW/uMhL7bPEssK8QV57vN3esixjUvcXQ==

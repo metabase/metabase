@@ -85,7 +85,8 @@
     :exclusions [commons-codec
                  org.apache.httpcomponents/httpclient
                  net.sourceforge.nekohtml/nekohtml
-                 ring/ring-core]]
+                 ring/ring-core
+                 slingshot]]
    [com.clearspring.analytics/stream "2.9.6"                          ; Various sketching algorithms
     :exclusions [org.slf4j/slf4j-api
                  it.unimi.dsi/fastutil]]
@@ -152,13 +153,14 @@
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
-   [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
+   [pretty "1.0.5"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.12"]                                        ; Data schema declaration and validation library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
    [ring/ring-core "1.8.1"]
    [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
+   [slingshot "0.12.2"]                                               ; enhanced throw/catch, used by other deps
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.15.3" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
@@ -170,9 +172,11 @@
 
   :main ^:skip-aot metabase.core
 
-  ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
   :manifest
-  {"Liquibase-Package"
+  {;; log4j is multi-release and lein uberjar doesn't set this correctly in the manifest
+   "Multi-Release" true
+   ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
+   "Liquibase-Package"
    #= (eval
        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
@@ -240,14 +244,14 @@
     :env
     {:mb-run-mode       "dev"
      :mb-field-filter-operators-enabled "true"
-     :mb-test-setting-1 "ABCDEFG"}
+     :mb-test-env-setting "ABCDEFG"}
 
     :jvm-opts
     ["-Dlogfile.path=target/log"]
 
     :repl-options
     {:init-ns user ; starting in the user namespace is a lot faster than metabase.core since it has less deps
-     :timeout 180000}}
+     :timeout 240000}}
 
    ;; output test results in JUnit XML format
    :junit
@@ -295,7 +299,7 @@
      :repl-options
      {:init    (do (require 'metabase.core)
                    (metabase.core/-main))
-      :timeout 180000}}]
+      :timeout 240000}}]
 
    ;; DISABLED FOR NOW SINCE IT'S BROKEN -- SEE #12181
    ;; start the dev HTTP server with 'lein ring server'

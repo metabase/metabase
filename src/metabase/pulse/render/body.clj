@@ -1,5 +1,6 @@
 (ns metabase.pulse.render.body
   (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [hiccup.core :refer [h]]
             [medley.core :as m]
             [metabase.pulse.render.color :as color]
@@ -10,8 +11,22 @@
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
             [metabase.types :as types]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]))
+            [metabase.util.i18n :refer [trs tru]]
+            [schema.core :as s])
+  (:import java.text.DecimalFormat))
+
+(def error-rendered-info
+  "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
+  (delay {:attachments
+          nil
+
+          :content
+          [:div {:style (style/style
+                         (style/font-style)
+                         {:color       style/color-error
+                          :font-weight 700
+                          :padding     :16px})}
+           (trs "An error occurred while displaying this card.")]}))
 
 (def rows-limit
   "Maximum number of rows to render in a Pulse image."
@@ -77,19 +92,18 @@
 (defn- query-results->header-row
   "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
   [remapping-lookup card cols include-bar?]
-  {:row (for [maybe-remapped-col cols
-              :when (show-in-table? maybe-remapped-col)
-              :let [{:keys [base_type semantic_type] :as col} (if (:remapped_to maybe-remapped-col)
-                                                                (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                                                maybe-remapped-col)
-                    col-name (column-name card col)]
-              ;; If this column is remapped from another, it's already
-              ;; in the output and should be skipped
-              :when (not (:remapped_from maybe-remapped-col))]
-          (if (or (isa? base_type :type/Number)
-                  (isa? semantic_type :type/Number))
-            (common/->NumericWrapper col-name)
-            col-name))
+  {:row       (for [maybe-remapped-col cols
+                    :when              (show-in-table? maybe-remapped-col)
+                    :let               [col (if (:remapped_to maybe-remapped-col)
+                                              (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                              maybe-remapped-col)
+                                        col-name (column-name card col)]
+                    ;; If this column is remapped from another, it's already
+                    ;; in the output and should be skipped
+                    :when              (not (:remapped_from maybe-remapped-col))]
+                (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
+                  (common/->NumericWrapper col-name)
+                  col-name))
    :bar-width (when include-bar? 99)})
 
 (defn- normalize-bar-value
@@ -221,12 +235,48 @@
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id card {:keys [cols rows]}]
-  {:attachments
-   nil
+  (let [value (format-cell timezone-id (ffirst rows) (first cols))]
+    {:attachments
+     nil
 
-   :content
-   [:div {:style (style/style (style/scalar-style))}
-    (h (format-cell timezone-id (ffirst rows) (first cols)))]})
+     :content
+     [:div {:style (style/style (style/scalar-style))}
+      (h value)]
+     :render/text (str value)}))
+
+(s/defmethod render :smartscalar :- common/RenderedPulseCard
+  [_ _ timezone-id _card {:keys [cols rows insights]}]
+  (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
+                                 ;; computed and agg columns don't have an effective type
+                                 (isa? (:base_type c) t)))
+          (where [f coll] (some #(when (f %) %) coll))
+          (percentage [arg] (if (number? arg)
+                              (let [f (DecimalFormat. "###,###.##%")]
+                                (.format f (double arg)))
+                              " - "))
+          (format-unit [unit] (str/replace (name unit) "-" " "))]
+    (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
+
+          {:keys [last-value previous-value unit last-change] :as _insight}
+          (where (comp #{(:name metric-col)} :col) insights)]
+      (if (and last-value previous-value unit last-change)
+        (let [value    (format-cell timezone-id last-value metric-col)
+              previous (format-cell timezone-id previous-value metric-col)
+              adj      (if (pos? last-change) (tru "Up") (tru "Down"))]
+          {:attachments nil
+           :content     [:div
+                         [:div {:style (style/style (style/scalar-style))}
+                          (h value)]
+                         [:p {:style (style/style {:color         style/color-text-medium
+                                                   :font-size     :16px
+                                                   :font-weight   700
+                                                   :padding-right :16px})}
+                          adj " " (percentage last-change) "."
+                          " Was " previous " last " (format-unit unit)]]
+           :render/text (str value "\n"
+                             adj " " (percentage last-change) "."
+                             " Was " previous " last " (format-unit unit))})
+        @error-rendered-info))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card {:keys [rows cols] :as data}]
@@ -316,13 +366,4 @@
 
 (s/defmethod render :error :- common/RenderedPulseCard
   [_ _ _ _ _]
-  {:attachments
-   nil
-
-   :content
-   [:div {:style (style/style
-                  (style/font-style)
-                  {:color       style/color-error
-                   :font-weight 700
-                   :padding     :16px})}
-    (trs "An error occurred while displaying this card.")]})
+  @error-rendered-info)

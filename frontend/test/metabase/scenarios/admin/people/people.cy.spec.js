@@ -1,9 +1,5 @@
-import {
-  restore,
-  popover,
-  setupDummySMTP,
-  generateUsers,
-} from "__support__/e2e/cypress";
+import _ from "underscore";
+import { restore, popover, setupDummySMTP } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { normal, admin } = USERS;
@@ -20,7 +16,7 @@ describe("scenarios > admin > people", () => {
   const TEST_USER = {
     first_name: "Testy",
     last_name: "McTestface",
-    email: `testy${Math.round(Math.random() * 100000)}@metabase.com`,
+    email: `testy${Math.round(Math.random() * 100000)}@metabase.test`,
     password: "12341234",
   };
 
@@ -94,6 +90,15 @@ describe("scenarios > admin > people", () => {
       cy.findByLabelText("Email").type(email.toUpperCase());
       clickButton("Create");
       cy.contains("Email address already in use.");
+    });
+
+    it.skip("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
+      cy.viewport(1000, 600);
+
+      cy.visit("/admin/people");
+      cy.button("Invite someone").click();
+      // Modal should appear with the following input field
+      cy.findByLabelText("First name");
     });
 
     it("should disallow admin to deactivate themselves", () => {
@@ -190,7 +195,7 @@ describe("scenarios > admin > people", () => {
       assertTableRowsCount(5);
 
       cy.findByPlaceholderText("Find someone").type("ne");
-      cy.findByText("1 people found");
+      cy.findByText("1 person found");
       assertTableRowsCount(1);
 
       cy.findByPlaceholderText("Find someone").clear();
@@ -199,7 +204,7 @@ describe("scenarios > admin > people", () => {
     });
 
     describe("pagination", () => {
-      const NEW_USERS = 8;
+      const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
 
       beforeEach(() => {
@@ -207,7 +212,7 @@ describe("scenarios > admin > people", () => {
       });
 
       it("should allow paginating people forward and backward", () => {
-        const PAGE_SIZE = 10;
+        const PAGE_SIZE = 25;
 
         cy.visit("/admin/people");
 
@@ -234,7 +239,7 @@ describe("scenarios > admin > people", () => {
       });
 
       it("should allow paginating group members forward and backward", () => {
-        const PAGE_SIZE = 15;
+        const PAGE_SIZE = 25;
         cy.visit("admin/people/groups/1");
 
         // Total
@@ -271,12 +276,25 @@ function showUserOptions(full_name) {
 }
 
 function clickButton(button_name) {
-  cy.findByText(button_name)
-    .closest(".Button")
+  cy.button(button_name)
     .should("not.be.disabled")
     .click();
 }
 
 function assertTableRowsCount(length) {
   cy.get(".ContentTable tbody tr").should("have.length", length);
+}
+
+function generateUsers(count, groupIds) {
+  const users = _.range(count).map(index => ({
+    first_name: `FirstName ${index}`,
+    last_name: `LastName ${index}`,
+    email: `user_${index}@metabase.com`,
+    password: `secure password ${index}`,
+    groupIds,
+  }));
+
+  users.forEach(u => cy.createUserFromRawData(u));
+
+  return users;
 }

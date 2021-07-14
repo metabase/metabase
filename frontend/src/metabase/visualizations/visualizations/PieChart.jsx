@@ -383,7 +383,7 @@ export default class PieChart extends Component {
 
     const getSliceClickObject = index => {
       const slice = slices[index];
-      const sliceRows = slice.rowIndex && rows[slice.rowIndex];
+      const sliceRows = slice.rowIndex != null && rows[slice.rowIndex];
       const data =
         sliceRows &&
         sliceRows.map((value, index) => ({
@@ -439,6 +439,7 @@ export default class PieChart extends Component {
           </div>
           <div className={cx(styles.Chart, "layout-centered")}>
             <svg
+              data-testid="pie-chart"
               className={cx(styles.Donut, "m1")}
               viewBox="0 0 100 100"
               style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}

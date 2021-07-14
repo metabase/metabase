@@ -17,7 +17,7 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
-            [metabase.test.data.redshift :as rstest]
+            [metabase.test.data.redshift :as redshift.test]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.util :as tu]
             [metabase.util :as u]
@@ -65,7 +65,7 @@
                      " WHERE (\"%schema%\".\"test_data_users\".\"id\" = 1 OR \"%schema%\".\"test_data_users\".\"id\" = 2"
                      " OR \"%schema%\".\"test_data_users\".\"id\" = 3)"
                      " LIMIT 2000")
-                    "%schema%" rstest/session-schema-name)]
+                    "%schema%" redshift.test/session-schema-name)]
      (mt/test-driver
       :redshift
       (is (= expected
@@ -79,7 +79,8 @@
                       :card-id     1234
                       :context     :ad-hoc
                       :nested?     false
-                      :query-hash  (byte-array [-53, -125, -44, -10, -18, -36, 37, 14, -37, 15, 44, 22, -8, -39, -94, 30, 93, 66, -13, 34, -52, -20, -31, 73, 76, -114, -13, -42, 52, 88, 31, -30])})))
+                      :query-hash  (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
           "if I run a Redshift query, does it get a remark added to it?")))))
 
 ;; the extsales table is a Redshift Spectrum linked table, provided by AWS's sample data set for Redshift.
@@ -127,7 +128,7 @@
               :parent_id       nil
               :id              (mt/id :extsales :buyerid)
               :visibility_type :normal
-              :display_name    "Buyer ID"
+              :display_name    "Buyerid"
               :base_type       :type/Integer
               :effective_type  :type/Integer
               :coercion_strategy nil}
@@ -141,12 +142,11 @@
               :parent_id       nil
               :id              (mt/id :extsales :salesid)
               :visibility_type :normal
-              :display_name    "Sale Sid"
+              :display_name    "Salesid"
               :base_type       :type/Integer
               :effective_type  :type/Integer
               :coercion_strategy nil}]
-            ; in different Redshift instances, the fingerprint on these
-            ; columns is different.
+            ;; in different Redshift instances, the fingerprint on these columns is different.
             (map #(dissoc % :fingerprint)
                  (get-in (qp/process-query (mt/mbql-query
                                             :extsales
@@ -166,7 +166,7 @@
                 {:database   (mt/id)
                  :type       :native
                  :native     {:query         (str "select * "
-                                                  (format "from \"%s\".test_data_checkins " rstest/session-schema-name)
+                                                  (format "from \"%s\".test_data_checkins " redshift.test/session-schema-name)
                                                   "where {{date}} "
                                                   "order by date desc "
                                                   "limit 1;")
@@ -184,12 +184,12 @@
     (testing "Redshift specific types should be synced correctly"
       (let [db-details   (tx/dbdef->connection-details :redshift)
             tbl-nm       "redshift_specific_types"
-            qual-tbl-nm  (str rstest/session-schema-name "." tbl-nm)
+            qual-tbl-nm  (str redshift.test/session-schema-name "." tbl-nm)
             view-nm      "late_binding_view"
-            qual-view-nm (str rstest/session-schema-name "." view-nm)]
+            qual-view-nm (str redshift.test/session-schema-name "." view-nm)]
         (mt/with-temp Database [database {:engine :redshift, :details db-details}]
           ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
-          (#'rstest/execute!
+          (redshift.test/execute!
            (str "DROP TABLE IF EXISTS %1$s;%n"
                 "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));%n"
                 "CREATE OR REPLACE VIEW %2$s AS SELECT * FROM %1$s WITH NO SCHEMA BINDING;")
@@ -245,50 +245,53 @@
             random-schema (str/lower-case (tu/random-name))
             user-pw       "Password1234"
             db-det        (:details (mt/db))]
-        (#'rstest/execute! (str "CREATE SCHEMA %s;"
-                                "CREATE USER %s PASSWORD '%s';%n"
-                                "GRANT USAGE ON SCHEMA %s TO %s;%n")
-                           random-schema
-                           temp-username
-                           user-pw
-                           random-schema
-                           temp-username)
+        (redshift.test/execute! (str "CREATE SCHEMA %s;"
+                                       "CREATE USER %s PASSWORD '%s';%n"
+                                       "GRANT USAGE ON SCHEMA %s TO %s;%n")
+                                  random-schema
+                                  temp-username
+                                  user-pw
+                                  random-schema
+                                  temp-username)
         (try
-          (mt/with-temp Database [db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
-            (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
-              (let [schemas (reduce conj
-                                    #{}
-                                    (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn)))]
-                ;; the syncable-schemas for the user should contain the newly created random schema
-                (is (contains? schemas random-schema))
-                ;; but it should not contain the current session-schema name (since that was never granted)
-                (is (not (contains? schemas rstest/session-schema-name))))))
+          (binding [redshift.test/*use-original-syncable-schemas-impl?* true]
+            (mt/with-temp Database [db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
+              (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
+                (let [schemas (reduce conj
+                                      #{}
+                                      (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn)))]
+                  (testing "syncable-schemas for the user should contain the newly created random schema"
+                    (is (contains? schemas random-schema)))
+                  (testing "should not contain the current session-schema name (since that was never granted)"
+                    (is (not (contains? schemas redshift.test/session-schema-name))))))))
           (finally
-            (#'rstest/execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
-                                    "DROP USER IF EXISTS %s;%n"
-                                    "DROP SCHEMA IF EXISTS %s;%n")
+            (redshift.test/execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
+                                           "DROP USER IF EXISTS %s;%n"
+                                           "DROP SCHEMA IF EXISTS %s;%n")
              random-schema
              temp-username
              temp-username
              random-schema)))))
+
     (testing "Should filter out non-existent schemas (for which nobody has permissions)"
       (let [fake-schema-name (u/qualified-name ::fake-schema)]
-        ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
-        (with-redefs [sync.describe-database/all-schemas (let [orig sync.describe-database/all-schemas]
-                                                           (fn [metadata]
-                                                             (eduction
-                                                              cat
-                                                              [(orig metadata) [fake-schema-name]])))]
-          (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-            (with-open [conn (jdbc/get-connection jdbc-spec)]
-              (letfn [(schemas []
-                        (reduce
-                         conj
-                         #{}
-                         (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn))))]
-                (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
-                  (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
-                                                                                    reducible)]
-                    (is (contains? (schemas) fake-schema-name))))
-                (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
-                  (is (not (contains? (schemas) fake-schema-name))))))))))))
+        (binding [redshift.test/*use-original-syncable-schemas-impl?* true]
+          ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
+          (with-redefs [sync.describe-database/all-schemas (let [orig sync.describe-database/all-schemas]
+                                                             (fn [metadata]
+                                                               (eduction
+                                                                cat
+                                                                [(orig metadata) [fake-schema-name]])))]
+            (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+              (with-open [conn (jdbc/get-connection jdbc-spec)]
+                (letfn [(schemas []
+                          (reduce
+                           conj
+                           #{}
+                           (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn))))]
+                  (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
+                    (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
+                                                                                      reducible)]
+                      (is (contains? (schemas) fake-schema-name))))
+                  (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
+                    (is (not (contains? (schemas) fake-schema-name)))))))))))))

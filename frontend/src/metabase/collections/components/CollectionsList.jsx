@@ -34,19 +34,20 @@ class CollectionsList extends React.Component {
                 {({ highlighted, hovered }) => {
                   return (
                     <CollectionLink
-                      to={Urls.collection(c.id)}
-                      // TODO - need to make sure the types match here
-                      selected={String(c.id) === currentCollection}
+                      to={Urls.collection(c)}
+                      selected={c.id === currentCollection}
                       depth={this.props.depth}
                       // when we click on a link, if there are children, expand to show sub collections
                       onClick={() => c.children && action(c.id)}
                       hovered={hovered}
                       highlighted={highlighted}
+                      role="treeitem"
+                      aria-expanded={isOpen}
                     >
                       <Flex
                         className="relative"
                         align={
-                          // if a colleciton name is somewhat long, align things at flex-start ("top") for a slightly better
+                          // if a collection name is somewhat long, align things at flex-start ("top") for a slightly better
                           // visual
                           c.name.length > 25 ? "flex-start" : "center"
                         }

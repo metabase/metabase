@@ -1,13 +1,12 @@
 import {
   describeWithToken,
+  modal,
   openOrdersTable,
   openPeopleTable,
   openReviewsTable,
   popover,
-  modal,
   restore,
   remapDisplayValueToFK,
-  sidebar,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -146,7 +145,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.findByText("Greater than").click();
         cy.findByPlaceholderText("Enter a number").type("100");
         cy.findByText("Add filter").click();
-        cy.findByText("Visualize").click();
+        cy.button("Visualize").click();
 
         cy.log("Make sure user is still sandboxed");
         cy.get(".TableInteractive-cellWrapper--firstColumn").should(
@@ -219,7 +218,7 @@ describeWithToken("formatting > sandboxes", () => {
           .click();
       });
 
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
       cy.findByText("Count by User → ID");
       cy.findByText("11"); // Sum of orders for user with ID #1
     });
@@ -508,7 +507,10 @@ describeWithToken("formatting > sandboxes", () => {
        * Related issues: metabase#10474, metabase#14629
        */
 
-      ["normal", "workaround"].forEach(test => {
+      // skipping the workaround test because the function `runAndSaveQuestion`
+      // relies on the existence of a save button on a saved question that is not dirty
+      // which is a bug fixed in ssue metabase#14302
+      ["normal" /* , "workaround" */].forEach(test => {
         it(`${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`, () => {
           cy.server();
           cy.route("POST", "/api/card/*/query").as("cardQuery");
@@ -605,7 +607,7 @@ describeWithToken("formatting > sandboxes", () => {
             // Save the question
             cy.findByText("Save").click();
             modal().within(() => {
-              cy.findAllByRole("button", { name: "Save" }).click();
+              cy.button("Save").click();
             });
             // Wait for an update so the other queries don't accidentally cancel it
             cy.wait("@questionUpdate");
@@ -749,12 +751,12 @@ describeWithToken("formatting > sandboxes", () => {
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();
       cy.findByText("Grant sandboxed access").click();
-      cy.findAllByRole("button", { name: "Change" }).click();
+      cy.button("Change").click();
       cy.findByText(
         "Use a saved question to create a custom view for this table",
       ).click();
       cy.findByText(QUESTION_NAME).click();
-      cy.findAllByRole("button", { name: "Save" }).click();
+      cy.button("Save").click();
 
       cy.wait("@sandboxTable").then(xhr => {
         expect(xhr.status).to.eq(400);
@@ -778,7 +780,7 @@ describeWithToken("formatting > sandboxes", () => {
       cy.findByText("Count of rows").click();
       cy.findByText("Pick a column to group by").click();
       cy.findByText(/Products? → ID/).click();
-      cy.findByText("Visualize").click();
+      cy.button("Visualize").click();
 
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
@@ -813,7 +815,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       cy.findByText("Settings").click();
-      sidebar()
+      cy.findByTestId("sidebar-left")
         .should("be.visible")
         .within(() => {
           // Remove the "Subtotal" column from within sidebar
@@ -822,7 +824,7 @@ describeWithToken("formatting > sandboxes", () => {
             .find(".Icon-close")
             .click();
         });
-      cy.findAllByRole("button", { name: "Done" }).click();
+      cy.button("Done").click();
       // Rerun the query
       cy.icon("play")
         .last()

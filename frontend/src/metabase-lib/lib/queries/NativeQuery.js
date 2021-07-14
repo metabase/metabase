@@ -296,12 +296,14 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   dimensionOptions(
-    dimensionFilter: DimensionFilter = () => true,
+    dimensionFilter: DimensionFilter = _.identity,
+    operatorFilter = _.identity,
   ): DimensionOptions {
     const dimensions = this.templateTags()
-      .filter(tag => tag.type === "dimension")
+      .filter(tag => tag.type === "dimension" && operatorFilter(tag))
       .map(tag => new TemplateTagDimension(tag.name, this.metadata(), this))
-      .filter(dimensionFilter);
+      .filter(dimension => dimensionFilter(dimension));
+
     return new DimensionOptions({
       dimensions: dimensions,
       count: dimensions.length,

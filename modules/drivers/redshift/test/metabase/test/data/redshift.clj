@@ -47,19 +47,6 @@
 (defonce session-schema-name
   (str "schema_" session-schema-number))
 
-;; When we test against Redshift we use a session-unique schema so we can run simultaneous tests
-;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
-(def ^:private excluded-schemas
-  (memoize
-   (fn []
-     (set (conj (for [i     (range 240)
-                      :when (not= i session-schema-number)]
-                  (str "schema_" i))
-                "public")))))
-
-(defmethod sql-jdbc.sync/excluded-schemas :redshift [_]
-  (excluded-schemas))
-
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
 
@@ -80,7 +67,7 @@
 
 ;;; Create + destroy the schema used for this test session
 
-(defn- execute! [format-string & args]
+(defn execute! [format-string & args]
   (let [sql  (apply format format-string args)
         spec (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
     (println (u/format-color 'blue "[redshift] %s" sql))
@@ -90,3 +77,19 @@
 (defmethod tx/before-run :redshift
   [_]
   (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
+
+(defonce ^:private ^{:arglists '([driver connection metadata])} original-syncable-schemas
+  (get-method sql-jdbc.sync/syncable-schemas :redshift))
+
+(def ^:dynamic *use-original-syncable-schemas-impl?*
+  "Whether to use the actual prod impl for `syncable-schemas` rather than the special test one that only syncs the test
+  schema."
+  false)
+
+;; replace the impl the `metabase.driver.redshift`. Only sync the current test schema and the external "spectrum"
+;; schema used for a specific test.
+(defmethod sql-jdbc.sync/syncable-schemas :redshift
+  [driver conn metadata]
+  (if *use-original-syncable-schemas-impl?*
+    (original-syncable-schemas driver conn metadata)
+    #{session-schema-name "spectrum"}))

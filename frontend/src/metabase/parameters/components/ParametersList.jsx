@@ -45,7 +45,12 @@ type Props = {
   setEditingParameter?: (parameterId: ParameterId) => void,
 };
 
-const StaticParameterWidgetList = ({ children, ...props }) => {
+const StaticParameterWidgetList = ({
+  children,
+  onSortStart,
+  onSortEnd,
+  ...props
+}) => {
   return <div {...props}>{children}</div>;
 };
 
@@ -100,7 +105,10 @@ function ParametersList({
     }
   };
 
-  const hiddenParameters = new Set((hideParameters || "").split(","));
+  const hiddenParameters =
+    typeof hideParameters === "string"
+      ? new Set(hideParameters.split(","))
+      : new Set();
   const collatedParameters = collateParametersWithValues(
     parameters,
     parameterValues,

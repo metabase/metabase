@@ -64,11 +64,11 @@
                                 :breakout     [$price]}
               :source-metadata (concat
                                 (venues-source-metadata :price)
-                                [{:name         "count"
-                                  :display_name "Count"
-                                  :base_type    :type/BigInteger
-                                  :semantic_type :type/Number
-                                  :field_ref    [:aggregation 0]}])})
+                                [{:name          "count"
+                                  :display_name  "Count"
+                                  :base_type     :type/BigInteger
+                                  :semantic_type :type/Quantity
+                                  :field_ref     [:aggregation 0]}])})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-table $$venues
@@ -82,12 +82,12 @@
                                 :breakout     [$price]}
               :source-metadata (concat
                                 (venues-source-metadata :price)
-                                [{:name         "avg"
-                                  :display_name "Average of ID"
-                                  :base_type    :type/BigInteger
+                                [{:name          "avg"
+                                  :display_name  "Average of ID"
+                                  :base_type     :type/BigInteger
                                   :semantic_type :type/PK
-                                  :settings     nil
-                                  :field_ref    [:aggregation 0]}])})
+                                  :settings      nil
+                                  :field_ref     [:aggregation 0]}])})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-table $$venues

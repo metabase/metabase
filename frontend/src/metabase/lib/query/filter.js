@@ -1,6 +1,14 @@
 import { op, args, noNullValues, add, update, remove, clear } from "./util";
 import { isValidField } from "./field_ref";
-import { STANDARD_FILTERS } from "metabase/lib/expressions";
+import {
+  STANDARD_FILTERS,
+  FILTER_OPERATORS,
+  isLiteral,
+} from "metabase/lib/expressions";
+
+import { STRING, getOperatorByTypeAndName } from "metabase/lib/schema_metadata";
+
+import _ from "underscore";
 
 import type {
   FilterClause,
@@ -66,10 +74,35 @@ export function canAddFilter(filter: ?FilterClause): boolean {
 // FILTER TYPES
 
 export function isStandard(filter: FilterClause): boolean {
+  if (!Array.isArray(filter)) {
+    return false;
+  }
+
+  const isStandardLiteral = arg => isLiteral(arg) || typeof arg === "boolean";
+
+  // undefined args represents an incomplete filter (still standard, but not valid)
+  const isLiteralOrUndefined = arg => (arg ? isStandardLiteral(arg) : true);
+
+  const [op, field, ...args] = filter;
+
+  if (FILTER_OPERATORS.has(op) || op === "between") {
+    // only allows constant argument(s), e.g. 42 in ["<", field, 42]
+    return isValidField(field) && _.all(args, arg => isLiteralOrUndefined(arg));
+  }
+  const stringOp = getOperatorByTypeAndName(STRING, op);
+  if (stringOp) {
+    // do not check filter option, e.g. "case-sensitive" for "contains"
+    const optionNames = _.keys(stringOp.options);
+    const isOptionName = arg => _.contains(optionNames, _.first(_.keys(arg)));
+    const valueArgs = _.filter(args, arg => !isOptionName(arg));
+    return (
+      isValidField(field) && _.all(valueArgs, arg => isLiteralOrUndefined(arg))
+    );
+  }
+
   return (
-    Array.isArray(filter) &&
-    (STANDARD_FILTERS.has(filter[0]) || filter[0] === null) &&
-    (filter[1] === undefined || isValidField(filter[1]))
+    (STANDARD_FILTERS.has(op) || op === null) &&
+    (field === undefined || isValidField(field))
   );
 }
 

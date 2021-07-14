@@ -8,13 +8,12 @@
             [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
             [metabase.config :as config]
-            [metabase.core :as mbc]
             [metabase.public-settings :as public-settings]
             [metabase.task :as task]
             [metabase.util.i18n :refer [trs]]))
 
 (defn- get-version-info []
-  (let [version-info-url-key  (if mbc/ee-available? :mb-version-info-ee-url :mb-version-info-url)
+  (let [version-info-url-key  (if config/ee-available? :mb-version-info-ee-url :mb-version-info-url)
         version-info-url      (config/config-str version-info-url-key)
         {:keys [status body]} (http/get version-info-url {:content-type "application/json"})]
     (when (not= status 200)

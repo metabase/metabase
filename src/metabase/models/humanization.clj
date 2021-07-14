@@ -2,27 +2,18 @@
   "Logic related to humanization of table names and other identifiers, e.g. taking an identifier like `my_table` and
   returning a human-friendly one like `My Table`.
 
-  There are currently three implementations of humanization logic; `:advanced`, cost-based logic is the default; which
-  implementation is used is determined by the Setting `humanization-strategy`; `:simple`, which merely replaces
-  underscores and dashes with spaces, and `:none`, which predictibly is merely an identity function that does nothing
-  to the results.
+  There are currently two implementations of humanization logic, previously three.
+  Which implementation is used is determined by the Setting `humanization-strategy`.
+  `:simple`, which merely replaces underscores and dashes with spaces, and `:none`,
+  which predictibly is merely an identity function that does nothing to the results.
 
-  The actual algorithm for advanced humanization is in `metabase.util.infer-spaces`. (NOTE: some of the logic is here,
-  such as the `captialize-word` function; maybe we should move that so all the logic is in one place?)"
+  There used to also be `:advanced`, which was the default until enough customers
+  complained that we first fixed it and then the fix wasn't good enough so we removed it."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.infer-spaces :refer [infer-spaces]]
             [toucan.db :as db]))
-
-(def ^:private ^:const acronyms
-  #{"id" "url" "ip" "uid" "uuid" "guid"})
-
-(defn- capitalize-word [word]
-  (if (contains? acronyms (str/lower-case word))
-    (str/upper-case word)
-    (str/capitalize word)))
 
 (declare humanization-strategy)
 
@@ -31,37 +22,42 @@
   strategy defined by the Setting `humanization-strategy`. With two args, you may specify a custom strategy (intended
   mainly for the internal implementation):
 
-     (humanization-strategy :advanced)
-     (name->human-readable-name \"cooltoucans\")                         ;-> \"Cool Toucans\"
+     (humanization-strategy :simple)
+     (name->human-readable-name \"cool_toucans\")                         ;-> \"Cool Toucans\"
      ;; this is the same as:
-     (name->human-readable-name (humanization-strategy) \"cooltoucans\") ;-> \"Cool Toucans\"
+     (name->human-readable-name (humanization-strategy) \"cool_toucans\") ;-> \"Cool Toucans\"
      ;; specifiy a different strategy:
-     (name->human-readable-name :none \"cooltoucans\")                   ;-> \"cooltoucans\""
+     (name->human-readable-name :none \"cool_toucans\")                   ;-> \"cool_toucans\""
   {:arglists '([s] [strategy s])}
   (fn
     ([_] (keyword (humanization-strategy)))
     ([strategy _] (keyword strategy))))
 
-;; :advanced is the default implementation; splits words with cost-based fn
-(defmethod name->human-readable-name :advanced
-  ([s] (name->human-readable-name :advanced s))
-  ([_, ^String s]
-   ;; explode string on hyphens, underscores, spaces, and camelCase
-   (when (seq s)
-     (str/join " " (for [part  (str/split s #"[-_\s]+|(?<=[a-z])(?=[A-Z])")
-                         :when (not (str/blank? part))
-                         word  (dedupe (flatten (infer-spaces part)))]
-                     (capitalize-word word))))))
+(def ^:private ^:const acronyms
+  #{"id" "url" "ip" "uid" "uuid" "guid"})
 
-;; simple replaces hyphens and underscores with spaces
+(defn- capitalize-word [word]
+  (if (contains? acronyms (str/lower-case word))
+    (str/upper-case word)
+    ;; We are assuming that ALL_UPPER_CASE means we should be Title Casing
+    (if (= word (str/upper-case word))
+      (str/capitalize word)
+      (str (str/capitalize (subs word 0 1)) (subs word 1)))))
+
+;; simple replaces hyphens and underscores with spaces and capitalizes
 (defmethod name->human-readable-name :simple
   ([s] (name->human-readable-name :simple s))
   ([_, ^String s]
-   ;; explode on hypens, underscores, and spaces
+   ;; explode on hyphens, underscores, and spaces
    (when (seq s)
      (str/join " " (for [part  (str/split s #"[-_\s]+")
                          :when (not (str/blank? part))]
                      (capitalize-word part))))))
+
+;; actual advanced method has been excised. this one just calls out to simple
+(defmethod name->human-readable-name :advanced
+  ([s] (name->human-readable-name :simple s))
+  ([_, ^String s] (name->human-readable-name :simple s)))
 
 ;; :none is just an identity implementation
 (defmethod name->human-readable-name :none
@@ -93,7 +89,7 @@
 
 
 (defn- set-humanization-strategy! [new-value]
-  (let [new-strategy (or new-value "advanced")]
+  (let [new-strategy (or new-value "simple")]
     ;; check to make sure `new-strategy` is a valid strategy, or throw an Exception it is it not.
     (when-not (get-method name->human-readable-name (keyword new-strategy))
       (throw (IllegalArgumentException.
@@ -108,10 +104,8 @@
       (re-humanize-table-and-field-names! old-strategy))))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
-  (str (deferred-tru "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".")
+  (str (deferred-tru "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces.")
        " "
-       (deferred-tru "This doesn’t work all that well if the names are in a language other than English, however.")
-       " "
-       (deferred-tru "Do you want us to take a guess?"))
-  :default "advanced"
+       (deferred-tru "We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."))
+  :default "simple"
   :setter  set-humanization-strategy!)

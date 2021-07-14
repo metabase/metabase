@@ -103,7 +103,7 @@
   (testing "Check an expired JWT"
     (with-jwt-default-setup
       (is (= "Token is older than max-age (180)"
-             (:message (saml-test/client :get 500 "/auth/sso" {:request-options {:redirect-strategy :none}}
+             (:message (saml-test/client :get 401 "/auth/sso" {:request-options {:redirect-strategy :none}}
                                          :return_to default-redirect-uri
                                          :jwt (jwt/sign {:email "test@metabase.com", :first_name "Test" :last_name "User"
                                                          :iat   (- (buddy-util/now) (u/minutes->seconds 5))}
@@ -162,7 +162,7 @@
                (#'mt.jwt/group-names->ids ["group_2" "group_3"])))))))
 
 (defn- group-memberships [user-or-id]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/get-id user-or-id)))]
+  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
     (db/select-field :name PermissionsGroup :id [:in group-ids])))
 
 (deftest login-sync-group-memberships-test
@@ -170,7 +170,7 @@
     (with-jwt-default-setup
       (tt/with-temp PermissionsGroup [my-group {:name (str ::my-group)}]
         (mt/with-temporary-setting-values [jwt-group-sync       true
-                                           jwt-group-mappings   {"my_group" [(u/get-id my-group)]}
+                                           jwt-group-mappings   {"my_group" [(u/the-id my-group)]}
                                            jwt-attribute-groups "GrOuPs"]
           (with-users-with-email-deleted "newuser@metabase.com"
             (let [response    (saml-test/client-full-response :get 302 "/auth/sso"
@@ -186,4 +186,4 @@
               (is (saml-test/successful-login? response))
               (is (= #{"All Users"
                        ":metabase-enterprise.sso.integrations.jwt-test/my-group"}
-                     (group-memberships (u/get-id (db/select-one-id User :email "newuser@metabase.com"))))))))))))
+                     (group-memberships (u/the-id (db/select-one-id User :email "newuser@metabase.com"))))))))))))

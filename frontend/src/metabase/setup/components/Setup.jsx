@@ -2,17 +2,23 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
+import { color } from "metabase/lib/colors";
+import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
+
+import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import ExternalLink from "metabase/components/ExternalLink";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
-import MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
+
+import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
 
 import LanguageStep from "./LanguageStep";
 import UserStep from "./UserStep";
 import DatabaseConnectionStep from "./DatabaseConnectionStep";
 import PreferencesStep from "./PreferencesStep";
-import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
+import { AddDatabaseHelpCardHolder } from "./Setup.styled";
 
 const WELCOME_STEP_NUMBER = 0;
 const LANGUAGE_STEP_NUMBER = 1;
@@ -28,7 +34,9 @@ export default class Setup extends Component {
     userDetails: PropTypes.object,
     languageDetails: PropTypes.object,
     setActiveStep: PropTypes.func.isRequired,
+    databaseFormName: PropTypes.string.isRequired,
     databaseDetails: PropTypes.object,
+    selectedDatabaseEngine: PropTypes.string,
   };
 
   constructor(props) {
@@ -98,9 +106,14 @@ export default class Setup extends Component {
     const {
       activeStep,
       setupComplete,
+      databaseFormName,
       databaseDetails,
+      selectedDatabaseEngine,
       userDetails,
     } = this.props;
+
+    const isDatabaseHelpCardVisible =
+      selectedDatabaseEngine && activeStep === DATABASE_CONNECTION_STEP_NUMBER;
 
     if (activeStep === WELCOME_STEP_NUMBER) {
       return (
@@ -145,6 +158,7 @@ export default class Setup extends Component {
               <DatabaseConnectionStep
                 {...this.props}
                 stepNumber={DATABASE_CONNECTION_STEP_NUMBER}
+                formName={databaseFormName}
               />
 
               {/* Have the ref for scrolling in UNSAFE_componentWillReceiveProps */}
@@ -187,6 +201,18 @@ export default class Setup extends Component {
               <div className="text-centered">{this.renderFooter()}</div>
             </div>
           </div>
+
+          <AddDatabaseHelpCardHolder isVisible={isDatabaseHelpCardVisible}>
+            <AddDatabaseHelpCard
+              engine={selectedDatabaseEngine}
+              hasCircle={false}
+              data-testid="database-setup-help-card"
+              style={{
+                border: `1px solid ${color("border")}`,
+                backgroundColor: color("white"),
+              }}
+            />
+          </AddDatabaseHelpCardHolder>
         </div>
       );
     }

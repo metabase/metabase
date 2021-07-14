@@ -1,6 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -12,14 +11,20 @@ import { getOperator } from "../filters/pickers/DatePicker";
 export default function FilterPopoverFooter({
   filter,
   isNew,
+  isSidebar,
   onFilterChange,
   onCommit,
   className,
 }) {
   const dimension = filter.dimension();
   const field = dimension.field();
+
+  const containerClassName = cx(className, "flex align-center", {
+    PopoverFooter: !isSidebar,
+  });
+
   return (
-    <div className={cx(className, "flex align-center")}>
+    <div className={containerClassName}>
       <FilterOptions
         filter={filter}
         onFilterChange={onFilterChange}
@@ -45,3 +50,12 @@ export default function FilterPopoverFooter({
     </div>
   );
 }
+
+FilterPopoverFooter.propTypes = {
+  filter: PropTypes.object,
+  isNew: PropTypes.bool,
+  isSidebar: PropTypes.bool,
+  onFilterChange: PropTypes.func,
+  onCommit: PropTypes.func,
+  className: PropTypes.string,
+};

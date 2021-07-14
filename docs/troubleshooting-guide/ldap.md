@@ -62,5 +62,4 @@ If you run into an issue, check that you can login and use your LDAP directory w
 
 ### Current limitations
 
-- Metabase will populate the user profile with the name and surname a user has on LDAP on the first login. In case the user changes the name on the directory, it won't be automatically updated on Metabase.
 - When using Metabase Enterprise with a MySQL database and LDAP enabled, make sure that you disable the sync of binary fields from your LDAP directory by using the `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST` environment variable, as you may hit the 60K field size limitation of the text field in MySQL, which will prevent the creation or log-in of your users.

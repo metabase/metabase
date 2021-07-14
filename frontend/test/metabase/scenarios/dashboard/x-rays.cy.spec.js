@@ -1,7 +1,14 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+} = SAMPLE_DATASET;
 
 describe("scenarios > x-rays", () => {
   beforeEach(() => {
@@ -102,6 +109,30 @@ describe("scenarios > x-rays", () => {
       });
       cy.findByText("A look at the number of People");
       cy.get(".DashCard");
+    });
+
+    it.skip(`"${action.toUpperCase()}" should not show NULL in titles of generated dashboard cards (metabase#15737)`, () => {
+      cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
+      visitQuestionAdhoc({
+        name: "15737",
+        dataset_query: {
+          database: 1,
+          query: {
+            "source-table": PEOPLE_ID,
+            aggregation: [["count"]],
+            breakout: [["field", PEOPLE.SOURCE, null]],
+          },
+          type: "query",
+        },
+        display: "bar",
+      });
+
+      cy.get(".bar")
+        .first()
+        .click();
+      cy.findByText(action).click();
+      cy.wait("@xray");
+      cy.contains("null").should("not.exist");
     });
   });
 });

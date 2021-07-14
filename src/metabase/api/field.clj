@@ -7,6 +7,7 @@
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
+            [metabase.models.params.field-values :as params.field-values]
             [metabase.models.permissions :as perms]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
@@ -21,16 +22,6 @@
   (:import java.text.NumberFormat))
 
 ;;; --------------------------------------------- Basic CRUD Operations ----------------------------------------------
-
-(def ^:private FieldType
-  "Schema for a valid `Field` type."
-  (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :type/*))
-    "value must be a valid field type."))
-
-(def ^:private CoercionType
-  "Schema for a valid `Coercion` type."
-  (su/with-api-error-message (s/constrained s/Str #(isa? (keyword %) :Coercion/*))
-    "value must be a valid coercion type."))
 
 (def ^:private FieldVisibilityType
   "Schema for a valid `Field` visibility type."
@@ -105,15 +96,20 @@
    display_name       (s/maybe su/NonBlankString)
    fk_target_field_id (s/maybe su/IntGreaterThanZero)
    points_of_interest (s/maybe su/NonBlankString)
-   semantic_type      (s/maybe FieldType)
-   coercion_strategy  (s/maybe CoercionType)
+   semantic_type      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
+   coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrString)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
    settings           (s/maybe su/Map)}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
-        effective-type     (or (types/effective_type_for_coercion coercion_strategy)
-                               (:base_type field))
+        [effective-type coercion-strategy]
+        (or (when-let [coercion_strategy (keyword coercion_strategy)]
+              (let [effective (types/effective-type-for-coercion coercion_strategy)]
+                ;; throw an error in an else branch?
+                (when (types/is-coercible? coercion_strategy (:base_type field) effective)
+                  [effective coercion_strategy])))
+            [(:base_type field) nil])
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
@@ -134,7 +130,7 @@
           (u/select-keys-when (assoc body
                                      :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                      :effective_type effective-type
-                                     :coercion_strategy coercion_strategy)
+                                     :coercion_strategy coercion-strategy)
             :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type :coercion_strategy :effective_type
                        :has_field_values}
             :non-nil #{:display_name :settings})))))
@@ -194,19 +190,15 @@
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
   [field]
-  (api/check-404 field)
-  (if-let [field-values (and (field-values/field-should-have-field-values? field)
-                             (field-values/create-field-values-if-needed! field))]
-    (-> field-values
-        (assoc :values (field-values/field-values->pairs field-values))
-        (dissoc :human_readable_values :created_at :updated_at :id))
-    {:values [], :field_id (:id field)}))
+  (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field)))
 
-(defn check-perms-and-return-field-values
+(defn- check-perms-and-return-field-values
   "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
   so, return its values."
-  [id]
-  (field->values (api/read-check (Field id))))
+  [field-id]
+  (let [field (api/check-404 (Field field-id))]
+    (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
+    (field->values field)))
 
 (api/defendpoint GET "/:id/values"
   "If a Field's value of `has_field_values` is `list`, return a list of all the distinct values of the Field, and (if
@@ -312,7 +304,7 @@
   {:database (db-id field)
    :type     :query
    :query    {:source-table (table-id field)
-              :filter       [:starts-with [:field (u/the-id search-field) nil] value {:case-sensitive false}]
+              :filter       [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}]
               ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
               ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
               ;; identifiers/aliases
@@ -323,12 +315,12 @@
               :limit        limit}})
 
 (s/defn search-values
-  "Search for values of `search-field` that start with `value` (up to `limit`, if specified), and return like
+  "Search for values of `search-field` that contain `value` (up to `limit`, if specified), and return like
 
       [<value-of-field> <matching-value-of-search-field>].
 
-   For example, with the Sample Dataset, you could search for the first three IDs & names of People whose name starts
-   with `Ma` as follows:
+   For example, with the Sample Dataset, you could search for the first three IDs & names of People whose name
+  contains `Ma` as follows:
 
       (search-values <PEOPLE.ID Field> <PEOPLE.NAME Field> \"Ma\" 3)
       ;; -> ((14 \"Marilyne Mohr\")

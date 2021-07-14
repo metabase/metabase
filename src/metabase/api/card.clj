@@ -25,7 +25,6 @@
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
@@ -286,13 +285,6 @@
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
       (check-data-permissions-for-query (:dataset_query card-updates)))))
 
-(defn- check-allowed-to-unarchive
-  "When unarchiving a Card, make sure we have data permissions for the Card query before doing so."
-  [card-before-updates card-updates]
-  (when (and (api/column-will-change? :archived card-before-updates card-updates)
-             (:archived card-before-updates))
-    (check-data-permissions-for-query (:dataset_query card-before-updates))))
-
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
   enabled."
@@ -458,7 +450,6 @@
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
     (check-allowed-to-modify-query                 card-before-update card-updates)
-    (check-allowed-to-unarchive                    card-before-update card-updates)
     (check-allowed-to-change-embedding             card-before-update card-updates)
     ;; make sure we have the correct `result_metadata`
     (let [result-metadata-chan (result-metadata-for-updating-async
@@ -534,7 +525,7 @@
             (api/reconcile-position-for-collection! collection_id collection_position nil)
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
-            (db/update! Card (u/get-id card)
+            (db/update! Card (u/the-id card)
               :collection_position idx
               :collection_id       new-collection-id-or-nil))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
@@ -574,7 +565,7 @@
         ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
-                                                 (u/get-id card)))]
+                                                 (u/the-id card)))]
           (db/update-where! Card {:id [:in (set cards-without-position)]}
             :collection_id new-collection-id-or-nil))))))
 
@@ -623,21 +614,23 @@
   be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
   not met before returning the `StreamingResponse`."
   [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware qp-runner run]
+   & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
       :or   {constraints constraints/default-query-constraints
              context     :question
-             qp-runner   qp/process-query-and-save-execution!
-             ;; param `run` can be used to control how the query is ran, e.g. if you need to
-             ;; customize the `context` passed to the QP
-             run         (^:once fn* [query info]
-                          (qp.streaming/streaming-response [context export-format]
-                            (binding [qp.perms/*card-id* card-id]
-                              (qp-runner query info context))))}}]
+             qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(u/maybe? sequential? parameters)]}
-  (let [card  (api/read-check (Card card-id))
+  (let [run   (or run
+                  ;; param `run` can be used to control how the query is ran, e.g. if you need to
+                  ;; customize the `context` passed to the QP
+                  (^:once fn* [query info]
+                   (qp.streaming/streaming-response [context export-format]
+                     (binding [qp.perms/*card-id* card-id]
+                       (qp-runner query info context)))))
+        card  (api/read-check (Card card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware)
                          :async? true)
-                  (assoc-in [:middleware :js-int-to-string?] true))
+                  (update :middleware merge {:js-int-to-string?      true
+                                             :ignore-cached-results? ignore_cache}))
         info  {:executed-by  api/*current-user-id*
                :context      context
                :card-id      card-id
@@ -649,8 +642,7 @@
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
-  (binding [cache/*ignore-cached-results* ignore_cache]
-    (run-query-for-card-async card-id :api, :parameters parameters)))
+  (run-query-for-card-async card-id :api, :parameters parameters, :ignore_cache ignore_cache))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format. Note that this
@@ -658,15 +650,15 @@
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
-  (binding [cache/*ignore-cached-results* true]
-    (run-query-for-card-async
-     card-id export-format
-     :parameters  (json/parse-string parameters keyword)
-     :constraints nil
-     :context     (dataset-api/export-format->context export-format)
-     :middleware  {:skip-results-metadata? true
-                   :format-rows?           false
-                   :js-int-to-string?      false})))
+  (run-query-for-card-async
+   card-id export-format
+   :parameters  (json/parse-string parameters keyword)
+   :constraints nil
+   :context     (dataset-api/export-format->context export-format)
+   :middleware  {:skip-results-metadata? true
+                 :ignore-cached-results? true
+                 :format-rows?           false
+                 :js-int-to-string?      false}))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
@@ -726,7 +718,9 @@
   [card-id :as {{:keys [parameters ignore_cache]
                  :or   {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
-  (binding [cache/*ignore-cached-results* ignore_cache]
-    (run-query-for-card-async card-id :api, :parameters parameters, :qp-runner qp.pivot/run-pivot-query)))
+  (run-query-for-card-async card-id :api
+                            :parameters parameters,
+                            :qp-runner qp.pivot/run-pivot-query
+                            :ignore_cache ignore_cache))
 
 (api/define-routes)

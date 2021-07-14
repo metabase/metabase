@@ -12,3 +12,6 @@ export const getIsAddingSampleDataset = state =>
   state.admin.databases.sampleDataset.loading;
 export const getAddSampleDatasetError = state =>
   state.admin.databases.sampleDataset.error;
+
+export const getInitializeError = state =>
+  state.admin.databases.initializeError;

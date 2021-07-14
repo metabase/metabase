@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import { defer } from "metabase/lib/promise";
 
 import type { Dataset } from "metabase-types/types/Dataset";
@@ -30,6 +31,13 @@ type State = {
   error: ?any,
 };
 
+const propTypes = {
+  question: PropTypes.object,
+  children: PropTypes.func,
+  onLoad: PropTypes.func,
+  keepPreviousWhileLoading: PropTypes.bool,
+};
+
 /*
  * Question result loader
  *
@@ -58,24 +66,22 @@ export class QuestionResultLoader extends React.Component {
 
   _cancelDeferred: ?() => void;
 
-  UNSAFE_componentWillMount() {
-    this._loadResult(this.props.question, this.props.onLoad);
-  }
+  UNSAFE_componentWillMount = () => {
+    this._reload();
+  };
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    const { question, onLoad, keepPreviousWhileLoading } = nextProps;
     // if the question is different, we need to do a fresh load
-    if (
-      nextProps.question &&
-      !nextProps.question.isEqual(this.props.question)
-    ) {
-      this._loadResult(nextProps.question, nextProps.onLoad);
+    if (question && !question.isEqual(this.props.question)) {
+      this._loadResult(question, onLoad, keepPreviousWhileLoading);
     }
   }
 
   /*
    * load the result by calling question.apiGetResults
    */
-  async _loadResult(question: ?Question, onLoad: ?OnLoadCallback) {
+  async _loadResult(question, onLoad, keepPreviousWhileLoading) {
     // we need to have a question for anything to happen
     if (question) {
       try {
@@ -83,7 +89,11 @@ export class QuestionResultLoader extends React.Component {
         this._cancelDeferred = defer();
 
         // begin the request, set cancel in state so the query can be canceled
-        this.setState({ loading: true, results: null, error: null });
+        this.setState(prev => ({
+          loading: true,
+          results: keepPreviousWhileLoading ? prev.results : null,
+          error: null,
+        }));
 
         // call apiGetResults and pass our cancel to allow for cancelation
         const results: Dataset[] = await question.apiGetResults({
@@ -112,7 +122,8 @@ export class QuestionResultLoader extends React.Component {
    * load again
    */
   _reload = () => {
-    this._loadResult(this.props.question, this.props.onLoad);
+    const { question, onLoad, keepPreviousWhileLoading } = this.props;
+    this._loadResult(question, onLoad, keepPreviousWhileLoading);
   };
 
   /*
@@ -152,5 +163,11 @@ export class QuestionResultLoader extends React.Component {
     );
   }
 }
+
+QuestionResultLoader.defaultProps = {
+  keepPreviousWhileLoading: false,
+};
+
+QuestionResultLoader.propTypes = propTypes;
 
 export default QuestionResultLoader;

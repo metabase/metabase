@@ -200,28 +200,15 @@
   [dashboard]
   (update dashboard :ordered_cards add-query-average-duration-to-dashcards))
 
-(defn- hydrate-non-sandboxed-param-values
-  [{:keys [param_fields] :as dashboard}]
-  ;; We need to do this manually to ensure sandboxing is respected.
-  ;; If the user doesn't have full read access, assume they are sandboxed
-  (assoc dashboard :param_values (->> param_fields
-                                      vals
-                                      (filter mi/can-read?)
-                                      (map u/the-id)
-                                      set
-                                      params/field-ids->param-field-values
-                                      not-empty)))
-
 (defn- get-dashboard
   "Get Dashboard with ID."
   [id]
   (-> (Dashboard id)
       api/check-404
-      (hydrate [:ordered_cards :card :series] :can_write :param_fields)
+      (hydrate [:ordered_cards :card :series] :collection_authority_level :can_write :param_fields :param_values)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
-      hydrate-non-sandboxed-param-values
       add-query-average-durations))
 
 
@@ -476,7 +463,7 @@
 
 (def ^:const result-limit
   "How many results to return when chain filtering"
-  100)
+  1000)
 
 (def ^:private ParamMapping
   {:parameter_id su/NonBlankString
@@ -607,7 +594,7 @@
     ;; to 100
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
-  Currently limited to first 100 results"
+  Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
     (chain-filter dashboard param-key query-params query)))

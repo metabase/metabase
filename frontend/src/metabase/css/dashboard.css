@@ -172,27 +172,23 @@
   color: var(--color-text-light);
 }
 
-.Dash--editing .DashCard .Card {
-  user-select: none;
-}
-
 .DashCard .Card {
   box-shadow: 0px 1px 3px var(--color-shadow);
   border-color: transparent;
   border-radius: 8px;
 }
 
-.Dash--editing .DashCard.dragging .Card {
+.Dash--editing .DashCard.react-draggable-dragging .Card {
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
-.Dash--editing .DashCard.dragging,
-.Dash--editing .DashCard.resizing {
+.Dash--editing .DashCard.react-draggable-dragging,
+.Dash--editing .DashCard.react-resizable-resizing {
   z-index: 3;
 }
 
-.Dash--editing .DashCard.dragging .Card,
-.Dash--editing .DashCard.resizing .Card {
+.Dash--editing .DashCard.react-draggable-dragging .Card,
+.Dash--editing .DashCard.react-resizable-resizing .Card {
   background-color: var(--color-bg-medium) !important;
   border: 1px solid var(--color-brand);
 }
@@ -208,15 +204,6 @@
 }
 
 .Dash--editing .DashCard {
-  transition: transform 0.3s;
-}
-
-.Dash--editing .DashCard.dragging,
-.Dash--editing .DashCard.resizing {
-  transition: transform 0s;
-}
-
-.Dash--editing .DashCard {
   cursor: move;
 }
 
@@ -226,8 +213,11 @@
   height: 40px;
   bottom: 0;
   right: 0;
-  cursor: nwse-resize;
   z-index: 1; /* ensure the handle is above the card contents */
+
+  /* overwrites the style coming from react-grid-layout */
+  cursor: nwse-resize !important;
+  background: none; /* hide default RGL's resize handle */
 }
 
 .Dash--editing .DashCard .react-resizable-handle:after {
@@ -252,14 +242,16 @@
   opacity: 1;
 }
 
-.Dash--editing .DashCard.dragging .react-resizable-handle:after,
-.Dash--editing .DashCard.resizing .react-resizable-handle:after {
+.Dash--editing .DashCard.react-draggable-dragging .react-resizable-handle:after,
+.Dash--editing
+  .DashCard.react-resizable-resizing
+  .react-resizable-handle:after {
   opacity: 0.01;
 }
 
 .Dash--editing .react-grid-placeholder {
   z-index: 0;
-  background-color: var(--color-bg-light);
+  background-color: var(--color-bg-light) !important;
   transition: all 0.15s linear;
 }
 

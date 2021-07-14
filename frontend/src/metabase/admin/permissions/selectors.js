@@ -1,5 +1,4 @@
 import { createSelector } from "reselect";
-
 import { push } from "react-router-redux";
 
 import TogglePropagateAction from "./containers/TogglePropagateAction";
@@ -322,12 +321,17 @@ export const getTablesPermissionsGrid = createSelector(
     schemaName: SchemaName,
   ) => {
     const database = metadata.database(databaseId);
-
     if (!groups || !permissions || !database) {
       return null;
     }
 
-    const tables = database.schema(schemaName).tables;
+    const schema = database.schema(schemaName);
+    const tables = schema && schema.tables;
+
+    if (_.isEmpty(tables)) {
+      return null;
+    }
+
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {

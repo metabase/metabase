@@ -80,18 +80,27 @@
 
 ;; ## FieldValues Helper Functions
 
-(s/defn field-should-have-field-values? :- s/Bool
-  "Should this `field` be backed by a corresponding FieldValues object?" {:arglists '([field])}
-  [{base-type :base_type, visibility-type :visibility_type, has-field-values :has_field_values, :as field}
-   :- {:visibility_type  su/KeywordOrString
-       :base_type        (s/maybe su/KeywordOrString)
-       :has_field_values (s/maybe su/KeywordOrString)
-       s/Keyword         s/Any}]
-  (boolean
-   (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
-        (not (isa? (keyword base-type) :type/Temporal))
-        (#{:list :auto-list} (keyword has-field-values)))))
-
+(defn field-should-have-field-values?
+  "Should this `field` be backed by a corresponding FieldValues object?"
+  [field-or-field-id]
+  (if-not (map? field-or-field-id)
+    (let [field-id (u/the-id field-or-field-id)]
+      (recur (or (db/select-one ['Field :base_type :visibility_type :has_field_values] :id field-id)
+                 (throw (ex-info (tru "Field {0} does not exist." field-id)
+                                 {:field-id field-id, :status-code 404})))))
+    (let [{base-type        :base_type
+           visibility-type  :visibility_type
+           has-field-values :has_field_values
+           :as              field} field-or-field-id]
+      (s/check {:visibility_type  su/KeywordOrString
+                :base_type        (s/maybe su/KeywordOrString)
+                :has_field_values (s/maybe su/KeywordOrString)
+                s/Keyword         s/Any}
+               field)
+      (boolean
+       (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
+            (not (isa? (keyword base-type) :type/Temporal))
+            (#{:list :auto-list} (keyword has-field-values)))))))
 
 (defn- values-less-than-total-max-length?
   "`true` if the combined length of all the values in `distinct-values` is below the threshold for what we'll allow in a
@@ -141,7 +150,7 @@
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
    created/updated/deleted as a result of this call."
   [field & [human-readable-values]]
-  (let [field-values (FieldValues :field_id (u/get-id field))
+  (let [field-values (FieldValues :field_id (u/the-id field))
         values       (distinct-values field)
         field-name   (or (:name field) (:id field))]
     (cond
@@ -160,8 +169,8 @@
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
                        field-name (count values))
                   (trs "Switching Field to use a search widget instead."))
-        (db/update! 'Field (u/get-id field) :has_field_values nil)
-        (db/delete! FieldValues :field_id (u/get-id field)))
+        (db/update! 'Field (u/the-id field) :has_field_values nil)
+        (db/delete! FieldValues :field_id (u/the-id field)))
 
       (= (:values field-values) values)
       (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
@@ -170,7 +179,7 @@
       (and field-values values)
       (do
         (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
-        (db/update-non-nil-keys! FieldValues (u/get-id field-values)
+        (db/update-non-nil-keys! FieldValues (u/the-id field-values)
           :values                values
           :human_readable_values (fixup-human-readable-values field-values values))
         ::fv-updated)
@@ -180,7 +189,7 @@
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
         (db/insert! FieldValues
-          :field_id              (u/get-id field)
+          :field_id              (u/the-id field)
           :values                values
           :human_readable_values human-readable-values)
         ::fv-created)
@@ -188,7 +197,7 @@
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
       :else
       (do
-        (db/delete! FieldValues :field_id (u/get-id field))
+        (db/delete! FieldValues :field_id (u/the-id field))
         ::fv-deleted))))
 
 (defn field-values->pairs
@@ -199,9 +208,9 @@
     (map vector values human_readable_values)
     (map vector values)))
 
-(defn create-field-values-if-needed!
-  "Create FieldValues for a `Field` if they *should* exist but don't already exist.
-   Returns the existing or newly created FieldValues for `Field`."
+(defn get-or-create-field-values!
+  "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
+  created FieldValues for `Field`."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
@@ -215,13 +224,13 @@
   [field-id values]
   {:pre [(integer? field-id) (coll? values)]}
   (if-let [field-values (FieldValues :field_id field-id)]
-    (db/update! FieldValues (u/get-id field-values), :values values)
+    (db/update! FieldValues (u/the-id field-values), :values values)
     (db/insert! FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values!
   "Remove the FieldValues for `field-or-id`."
   [field-or-id]
-  (db/delete! FieldValues :field_id (u/get-id field-or-id)))
+  (db/delete! FieldValues :field_id (u/the-id field-or-id)))
 
 (defn- table-ids->table-id->is-on-demand?
   "Given a collection of `table-ids` return a map of Table ID to whether or not its Database is subject to 'On Demand'
@@ -251,5 +260,5 @@
       (when (table-id->is-on-demand? table-id)
         (log/debug
          (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                 (u/get-id field) (:name field)))
+                 (u/the-id field) (:name field)))
         (create-or-update-field-values! field)))))

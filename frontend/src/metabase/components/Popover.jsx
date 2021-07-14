@@ -31,7 +31,6 @@ export default class Popover extends Component {
     isOpen: PropTypes.bool,
     hasArrow: PropTypes.bool,
     hasBackground: PropTypes.bool,
-    // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
     tetherOptions: PropTypes.object,
     // used to prevent popovers from being taller than the screen
     sizeToFit: PropTypes.bool,
@@ -56,13 +55,19 @@ export default class Popover extends Component {
     targetOffsetX: PropTypes.number,
     targetOffsetY: PropTypes.number,
     onClose: PropTypes.func,
+    containerClassName: PropTypes.string,
     className: PropTypes.string,
     style: PropTypes.object,
-    children: PropTypes.element,
+    children: PropTypes.oneOfType([
+      PropTypes.element,
+      PropTypes.func,
+      PropTypes.array,
+    ]),
     dismissOnClickOutside: PropTypes.func,
     dismissOnEscape: PropTypes.func,
-    target: PropTypes.object,
+    target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
     targetEvent: PropTypes.object,
+    role: PropTypes.string,
   };
 
   static defaultProps = {
@@ -78,12 +83,13 @@ export default class Popover extends Component {
     sizeToFit: false,
     autoWidth: false,
     noOnClickOutsideWrapper: false,
+    containerClassName: "",
   };
 
   _getPopoverElement(isOpen) {
     if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
-      this._popoverElement.className = "PopoverContainer";
+      this._popoverElement.className = `PopoverContainer ${this.props.containerClassName}`;
       document.body.appendChild(this._popoverElement);
       this._timer = setInterval(() => {
         const { width, height } = this._popoverElement.getBoundingClientRect();
@@ -144,6 +150,7 @@ export default class Popover extends Component {
           // TODO kdoh 10/16/2017 we should eventually remove this
           this.props.className,
         )}
+        role={this.props.role}
         style={this.props.style}
       >
         {typeof this.props.children === "function"

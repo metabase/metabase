@@ -42,7 +42,7 @@
                                           :where [:and
                                                   [:= :r.model (model->db-model model)]
                                                   [:= :r.model_id id]]
-                                          :order-by [[:u.id :desc]]
+                                          :order-by [[:r.id :desc]]
                                           :limit 1}))]
     (assoc item :last-edit-info updated-info)
     item))

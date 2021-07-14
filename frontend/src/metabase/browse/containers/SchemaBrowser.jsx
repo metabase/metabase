@@ -14,6 +14,7 @@ import Link from "metabase/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import TableBrowser from "metabase/browse/containers/TableBrowser";
+import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
@@ -21,13 +22,15 @@ import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "metabase/browse/constants";
 
 function SchemaBrowser(props) {
   const { schemas, params } = props;
-  const { dbId } = params;
+  const { slug } = params;
+  const dbId = Urls.extractEntityId(slug);
   return (
     <Box>
       {schemas.length === 1 ? (
         <TableBrowser
           {...props}
-          params={{ ...props.params, schemaName: schemas[0].name }}
+          dbId={dbId}
+          schemaName={schemas[0].name}
           // hide the schema since there's only one
           showSchemaInHeader={false}
         />
@@ -80,5 +83,7 @@ function SchemaBrowser(props) {
 }
 
 export default Schema.loadList({
-  query: (state, { params: { dbId } }) => ({ dbId }),
+  query: (state, { params: { slug } }) => ({
+    dbId: Urls.extractEntityId(slug),
+  }),
 })(SchemaBrowser);

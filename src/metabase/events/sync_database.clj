@@ -37,7 +37,7 @@
               (sync/sync-database! database)
               (sync-metadata/sync-db-metadata! database))
             (catch Throwable e
-              (log/error e (trs "Error syncing Database {0}" (u/get-id database))))))))
+              (log/error e (trs "Error syncing Database {0}" (u/the-id database))))))))
     (catch Throwable e
       (log/warn e (trs "Failed to process sync-database event.") topic))))
 

@@ -6,6 +6,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :refer [User]]
+            [metabase.public-settings.metastore-test :as metastore-test]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test.data :as data]
             [metabase.test.data.impl :as data.impl]
@@ -67,15 +68,16 @@
               (let [{:keys [gtaps attributes]} (s/validate WithGTAPsArgs (args-fn))]
                 ;; set user login_attributes
                 (with-user-attributes test-user-name-or-user-id attributes
-                  ;; create Cards/GTAPs from defs
-                  (do-with-gtap-defs group gtaps
-                    (fn []
-                      ;; bind user as current user, then run f
-                      (if (keyword? test-user-name-or-user-id)
-                        (users/with-test-user test-user-name-or-user-id
-                          (f group))
-                        (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
-                          (f group)))))))))]
+                  (metastore-test/with-metastore-token-features #{:sandboxes}
+                    ;; create Cards/GTAPs from defs
+                    (do-with-gtap-defs group gtaps
+                      (fn []
+                        ;; bind user as current user, then run f
+                        (if (keyword? test-user-name-or-user-id)
+                          (users/with-test-user test-user-name-or-user-id
+                            (f group))
+                          (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
+                            (f group))))))))))]
     ;; create a temp copy of the current DB if we haven't already created one. If one is already created, keep using
     ;; that so we can test multiple sandboxed users against the same DB
     (if data.impl/*db-is-temp-copy?*
@@ -107,7 +109,9 @@
     (mt/with-gtaps {:gtaps      {:checkins {:query      {:database (data/id), ...}
                                             :remappings {:user_category [\"variable\" ...]}}}
                     :attributes {\"user_category\" 1}}
-      (mt/run-mbql-query checkins {:limit 2}))"
+      (mt/run-mbql-query checkins {:limit 2}))
+
+  Introduces `&group` anaphor, bound to the PermissionsGroup associated with this GTAP."
   {:style/indent 1}
   [gtaps-and-attributes-map & body]
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) :rasta (fn [~'&group] ~@body)))

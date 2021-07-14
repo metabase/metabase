@@ -152,8 +152,10 @@ export function drillFilter(
     const range = rangeForValue(value, column);
     if (range) {
       filter = ["between", fieldRefForColumn(column), range[0], range[1]];
-    } else {
+    } else if (value != null) {
       filter = ["=", fieldRefForColumn(column), value];
+    } else {
+      filter = ["is-null", fieldRefForColumn(column)];
     }
   }
 

@@ -121,7 +121,7 @@ export default class SelectPicker extends Component {
           </div>
         )}
         <div
-          className="px1 pt1"
+          className="px1 pt1 PopoverBody--marginBottom"
           style={{ maxHeight: "400px", overflowY: "scroll" }}
         >
           {placeholder ? <h5>{placeholder}</h5> : null}
@@ -137,7 +137,7 @@ export default class SelectPicker extends Component {
                   >
                     <CheckBox
                       checked={checked.has(option.key)}
-                      color="purple"
+                      checkedColor="accent2"
                     />
                     <h4 className="ml1">{this.nameForOption(option)}</h4>
                   </label>

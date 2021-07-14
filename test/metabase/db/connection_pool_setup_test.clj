@@ -4,14 +4,18 @@
             [metabase
              [connection-pool :as connection-pool]
              [test :as mt]]
-            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]))
+            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup])
+  (:import com.mchange.v2.c3p0.PoolBackedDataSource))
 
 (deftest connection-pool-spec-test
   (testing "Should be able to create a connection pool"
     (letfn [(test* [db-type spec]
-              (let [{:keys [datasource], :as spec} (#'mdb.connection-pool-setup/connection-pool-spec db-type spec)]
+              (let [conn-pool-spec (#'mdb.connection-pool-setup/connection-pool-spec db-type spec)
+                    {:keys [^PoolBackedDataSource datasource], :as spec} conn-pool-spec]
                 (try
                   (is (instance? javax.sql.DataSource datasource))
+                  (is (= (format "metabase-%s-app-db" (name db-type))
+                         (.getDataSourceName datasource)))
                   (is (= [{:one 1}]
                          (jdbc/query spec ["SELECT 1 AS one;"])))
                   (finally

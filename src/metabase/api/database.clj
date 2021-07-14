@@ -22,6 +22,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
+            [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.field-values :as sync-field-values]
             [metabase.sync.schedules :as sync.schedules]
@@ -68,7 +69,7 @@
   [dbs :- [su/Map]]
   (for [db dbs]
     (assoc db :native_permissions (if (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                        (perms/adhoc-native-query-path (u/get-id db)))
+                                        (perms/adhoc-native-query-path (u/the-id db)))
                                     :write
                                     :none))))
 
@@ -152,7 +153,7 @@
 
 (defn- saved-cards-virtual-db-metadata [& {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
-    (cond-> {:name               "Saved Questions"
+    (cond-> {:name               (trs "Saved Questions")
              :id                 mbql.s/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}
@@ -165,8 +166,15 @@
     (cond-> dbs
       (and (source-query-cards-exist?) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
-(defn- dbs-list [& {:keys [include-tables? include-saved-questions-db? include-saved-questions-tables?]}]
-  (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
+(defn- dbs-list [& {:keys [include-tables?
+                           include-saved-questions-db?
+                           include-saved-questions-tables?
+                           limit
+                           offset]}]
+  (when-let [dbs (seq (filter mi/can-read? (db/select Database
+                                                      {:order-by [:%lower.name :%lower.engine]
+                                                       :limit limit
+                                                       :offset offset})))]
     (cond-> (add-native-perms-info dbs)
       include-tables?             add-tables
       include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
@@ -210,10 +218,15 @@
                                           (if (seq include_cards)
                                             true
                                             include-tables?))]
-    (or (dbs-list :include-tables?                  include-tables?
-                  :include-saved-questions-db?      include-saved-questions-db?
-                  :include-saved-questions-tables?  include-saved-questions-tables?)
-        [])))
+    {:data  (or (dbs-list :include-tables?                  include-tables?
+                          :include-saved-questions-db?      include-saved-questions-db?
+                          :include-saved-questions-tables?  include-saved-questions-tables?
+                          :limit                            offset-paging/*limit*
+                          :offset                           offset-paging/*offset*)
+                [])
+     :limit  offset-paging/*limit*
+     :offset offset-paging/*offset*
+     :total  (db/count Database)}))
 
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
@@ -642,7 +655,7 @@
                       :from      [[FieldValues :fv]]
                       :left-join [[Field :f] [:= :fv.field_id :f.id]
                                   [Table :t] [:= :f.table_id :t.id]]
-                      :where     [:= :t.db_id (u/get-id database-or-id)]})))
+                      :where     [:= :t.db_id (u/the-id database-or-id)]})))
 
 (defn- delete-all-field-values-for-database! [database-or-id]
   (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]
