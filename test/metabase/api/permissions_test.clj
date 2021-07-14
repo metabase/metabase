@@ -58,8 +58,7 @@
       (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1" :limit 50)
              (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
     (testing "Limit and offset pagination works for permissions list"
-      (is (= [{:id 1, :name "All Users", :member_count 4}]
-             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
+      (is (= 1 (count (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1")))))))
 
 (deftest groups-list-filter-test
   (testing "GET /api/permissions/group?group_filter=meta"
