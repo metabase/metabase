@@ -5,6 +5,7 @@ import { t } from "ttag";
 import BaseTableItem from "./BaseTableItem";
 import {
   ColumnHeader,
+  Table,
   SortingIcon,
   SortingControlContainer,
 } from "./BaseItemsTable.styled";
@@ -112,13 +113,13 @@ function BaseItemsTable({
     });
 
   return (
-    <table className="ContentTable" {...props}>
+    <Table {...props}>
       <colgroup>
-        <col span="1" style={{ width: "5%" }} />
-        <col span="1" style={{ width: "64%" }} />
-        <col span="1" style={{ width: "15%" }} />
-        <col span="1" style={{ width: "14%" }} />
-        <col span="1" style={{ width: "2%" }} />
+        <col style={{ width: "70px" }} />
+        <col />
+        <col style={{ width: "140px" }} />
+        <col style={{ width: "140px" }} />
+        <col style={{ width: "60px" }} />
       </colgroup>
       {!headless && (
         <thead
@@ -161,7 +162,7 @@ function BaseItemsTable({
         </thead>
       )}
       <tbody>{items.map(itemRenderer)}</tbody>
-    </table>
+    </Table>
   );
 }
 
