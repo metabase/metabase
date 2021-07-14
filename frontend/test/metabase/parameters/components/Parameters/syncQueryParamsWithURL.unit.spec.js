@@ -20,6 +20,7 @@ const buildPropsForInternalQuestion = props =>
 
 const buildPropsForPublicQuestion = props =>
   buildProps({
+    setMultipleParameterValues: jest.fn(),
     ...props,
   });
 
@@ -130,8 +131,8 @@ describe("Parameters", () => {
 
         it("uses empty object as argument when syncing params", () => {
           syncQueryParamsWithURL(props);
-          expect(props.setParameterValue).toHaveBeenCalledTimes(1);
-          expect(props.setParameterValue).toHaveBeenCalledWith({});
+          expect(props.setMultipleParameterValues).toHaveBeenCalledTimes(1);
+          expect(props.setMultipleParameterValues).toHaveBeenCalledWith({});
         });
       });
 
@@ -150,7 +151,7 @@ describe("Parameters", () => {
 
         it("uses empty object as argument when syncing params", () => {
           syncQueryParamsWithURL(props);
-          expect(props.setParameterValue).toHaveBeenCalledWith({});
+          expect(props.setMultipleParameterValues).toHaveBeenCalledWith({});
         });
       });
 
@@ -169,8 +170,8 @@ describe("Parameters", () => {
 
         it("syncs parameter with query params by slugs, by passing one object with as many key/value pairs as there are matching parameters, all in a single function call", () => {
           syncQueryParamsWithURL(props);
-          expect(props.setParameterValue).toHaveBeenCalledTimes(1);
-          expect(props.setParameterValue).toHaveBeenCalledWith({
+          expect(props.setMultipleParameterValues).toHaveBeenCalledTimes(1);
+          expect(props.setMultipleParameterValues).toHaveBeenCalledWith({
             idForCreatedAt: "2021",
           });
         });
@@ -196,8 +197,8 @@ describe("Parameters", () => {
 
         it("syncs parameter with query params by slugs, by passing one object with as many key/value pairs as there are matching parameters, all in a single function call", () => {
           syncQueryParamsWithURL(props);
-          expect(props.setParameterValue).toHaveBeenCalledTimes(1);
-          expect(props.setParameterValue).toHaveBeenCalledWith({
+          expect(props.setMultipleParameterValues).toHaveBeenCalledTimes(1);
+          expect(props.setMultipleParameterValues).toHaveBeenCalledWith({
             idForCreatedAt: "2021",
             idForState: "CA",
           });
