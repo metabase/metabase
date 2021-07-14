@@ -28,6 +28,8 @@ import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSchemaName } from "metabase/schema";
 
+import "./DataSelector.css";
+
 const MIN_SEARCH_LENGTH = 2;
 
 // chooses a database
@@ -764,6 +766,7 @@ export class UnconnectedDataSelector extends Component {
     return (
       <PopoverWithTrigger
         id="DataPopover"
+        containerClassName="DataPopoverContainer"
         autoWidth
         ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
