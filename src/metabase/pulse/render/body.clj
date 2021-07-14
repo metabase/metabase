@@ -1,5 +1,6 @@
 (ns metabase.pulse.render.body
   (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [hiccup.core :refer [h]]
             [medley.core :as m]
             [metabase.pulse.render.color :as color]
@@ -10,8 +11,22 @@
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
             [metabase.types :as types]
-            [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]))
+            [metabase.util.i18n :refer [trs tru]]
+            [schema.core :as s])
+  (:import java.text.DecimalFormat))
+
+(def error-rendered-info
+  "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
+  (delay {:attachments
+          nil
+
+          :content
+          [:div {:style (style/style
+                         (style/font-style)
+                         {:color       style/color-error
+                          :font-weight 700
+                          :padding     :16px})}
+           (trs "An error occurred while displaying this card.")]}))
 
 (def rows-limit
   "Maximum number of rows to render in a Pulse image."
@@ -229,6 +244,40 @@
       (h value)]
      :render/text (str value)}))
 
+(s/defmethod render :smartscalar :- common/RenderedPulseCard
+  [_ _ timezone-id _card {:keys [cols rows insights]}]
+  (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
+                                 ;; computed and agg columns don't have an effective type
+                                 (isa? (:base_type c) t)))
+          (where [f coll] (some #(when (f %) %) coll))
+          (percentage [arg] (if (number? arg)
+                              (let [f (DecimalFormat. "###,###.##%")]
+                                (.format f (double arg)))
+                              " - "))
+          (format-unit [unit] (str/replace (name unit) "-" " "))]
+    (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
+
+          {:keys [last-value previous-value unit last-change] :as _insight}
+          (where (comp #{(:name metric-col)} :col) insights)]
+      (if (and last-value previous-value unit last-change)
+        (let [value    (format-cell timezone-id last-value metric-col)
+              previous (format-cell timezone-id previous-value metric-col)
+              adj      (if (pos? last-change) (tru "Up") (tru "Down"))]
+          {:attachments nil
+           :content     [:div
+                         [:div {:style (style/style (style/scalar-style))}
+                          (h value)]
+                         [:p {:style (style/style {:color         style/color-text-medium
+                                                   :font-size     :16px
+                                                   :font-weight   700
+                                                   :padding-right :16px})}
+                          adj " " (percentage last-change) "."
+                          " Was " previous " last " (format-unit unit)]]
+           :render/text (str value "\n"
+                             adj " " (percentage last-change) "."
+                             " Was " previous " last " (format-unit unit))})
+        @error-rendered-info))))
+
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn
@@ -317,13 +366,4 @@
 
 (s/defmethod render :error :- common/RenderedPulseCard
   [_ _ _ _ _]
-  {:attachments
-   nil
-
-   :content
-   [:div {:style (style/style
-                  (style/font-style)
-                  {:color       style/color-error
-                   :font-weight 700
-                   :padding     :16px})}
-    (trs "An error occurred while displaying this card.")]})
+  @error-rendered-info)
