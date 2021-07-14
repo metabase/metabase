@@ -395,7 +395,7 @@
     [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
 
 (defn- collection-children*
-  [collection models {:keys [sort-info] :as options}]
+  [collection models {:keys [collection-namespace sort-info] :as options}]
   (let [sql-order   (children-sort-clause sort-info @mdb.env/db-type)
         models      (sort (map keyword models))
         queries     (for [model models]
@@ -406,14 +406,23 @@
                      :from   [[{:union-all queries} :dummy_alias]]}
         rows-query  {:select   [:*]
                      :from     [[{:union-all queries} :dummy_alias]]
-                     :order-by sql-order
-                     :limit    offset-paging/*limit*
-                     :offset   offset-paging/*offset*}]
-    {:total  (->> (db/query total-query) first :count)
-     :data   (->> (db/query rows-query) post-process-rows)
-     :limit  offset-paging/*limit*
-     :offset offset-paging/*offset*
-     :models models}))
+                     :order-by sql-order}
+        ;; We didn't implement collection pagination for snippets namespace for root/items
+        ;; Rip out the limit for now and put it back in when we want it
+        limit-query (if (= (:collection-namespace options) "snippets")
+                      rows-query
+                      (assoc rows-query
+                             :limit  offset-paging/*limit*
+                             :offset offset-paging/*offset*))
+        res          {:total  (->> (db/query total-query) first :count)
+                      :data   (->> (db/query limit-query) post-process-rows)
+                      :models models}
+        limit-res   (assoc res
+                           :limit  offset-paging/*limit*
+                           :offset offset-paging/*offset*)]
+    (if (= (:collection-namespace options) "snippets")
+      res
+      limit-res)))
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
