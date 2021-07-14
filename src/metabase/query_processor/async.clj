@@ -46,8 +46,9 @@
     (if-let [inferred-columns (not-empty (u/ignore-exceptions (qp/query->expected-cols query)))]
       (let [chan (a/promise-chan)]
         (a/>!! chan inferred-columns)
-        (a/close! chan)))
-    ;; for *native* queries we actually have to run it.
-    (let [query (query-for-result-metadata query)]
-      (qp/process-query-async query {:reducedf async-result-metadata-reducedf
-                                     :raisef   async-result-metdata-raisef}))))
+        (a/close! chan)
+        chan)
+      ;; for *native* queries we actually have to run it.
+      (let [query (query-for-result-metadata query)]
+        (qp/process-query-async query {:reducedf async-result-metadata-reducedf
+                                       :raisef   async-result-metdata-raisef})))))

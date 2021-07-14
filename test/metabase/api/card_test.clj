@@ -421,9 +421,9 @@
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/BigInteger
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"
+      (let [metadata  [{:base_type     :type/BigInteger
+                        :display_name  "Count Chocula"
+                        :name          "count_chocula"
                         :semantic_type :type/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
@@ -436,27 +436,20 @@
                                          ;; bad checksum
                                          :metadata_checksum  "ABCDEF"))
             (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (= [{:base_type    :type/BigInteger
-                       :display_name "Count"
-                       :name         "count"
+              (is (= [{:base_type     :type/BigInteger
+                       :display_name  "Count"
+                       :name          "count"
                        :semantic_type :type/Quantity
-                       :fingerprint  {:global {:distinct-count 1
-                                               :nil%           0.0},
-                                      :type   {:type/Number {:min 100.0
-                                                             :max 100.0
-                                                             :avg 100.0
-                                                             :q1  100.0
-                                                             :q3  100.0
-                                                             :sd  nil}}}
-                       :field_ref    [:aggregation 0]}]
+                       :source        :aggregation
+                       :field_ref     [:aggregation 0]}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/Integer
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"
+      (let [metadata  [{:base_type     :type/Integer
+                        :display_name  "Count Chocula"
+                        :name          "count_chocula"
                         :semantic_type :type/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
@@ -470,20 +463,22 @@
                               (reset! sql-result sql)
                               (orig driver stmt sql))]
                 ;; create a card with the metadata
-                (mt/user-http-request :rasta :post 202 "card"
-                                      (assoc (card-with-name-and-query card-name)
-                                             :collection_id      (u/the-id collection)
-                                             :result_metadata    metadata
-                                             :metadata_checksum  "ABCDEF"))) ; bad checksum
+                (mt/user-http-request
+                 :rasta :post 202 "card"
+                 (assoc (card-with-name-and-query card-name)
+                        :dataset_query      (mt/native-query {:query "SELECT count(*) AS \"count\" FROM VENUES"})
+                        :collection_id      (u/the-id collection)
+                        :result_metadata    metadata
+                        :metadata_checksum  "ABCDEF"))) ; bad checksum
               (testing "check the correct metadata was fetched and was saved in the DB"
-                (is (= [{:base_type    (count-base-type)
-                         :display_name "Count"
-                         :name         "count"
+                (is (= [{:base_type     (count-base-type)
+                         :display_name  "count"
+                         :name          "count"
                          :semantic_type :type/Quantity
-                         :fingerprint  {:global {:distinct-count 1
-                                                 :nil%           0.0},
-                                        :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
-                         :field_ref    [:aggregation 0]}]
+                         :fingerprint   {:global {:distinct-count 1
+                                                  :nil%           0.0},
+                                         :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
+                         :field_ref     [:field "count" {:base-type (count-base-type)}]}]
                        (db/select-one-field :result_metadata Card :name card-name))))
               (testing "Was the user id found in the generated SQL?"
                 (is (= true
@@ -704,9 +699,9 @@
                (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
 
 (deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
-  (let [metadata [{:base_type    :type/BigInteger
-                   :display_name "Count Chocula"
-                   :name         "count_chocula"
+  (let [metadata [{:base_type     :type/BigInteger
+                   :display_name  "Count Chocula"
+                   :name          "count_chocula"
                    :semantic_type :type/Quantity}]]
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
@@ -716,14 +711,12 @@
                                :result_metadata   metadata
                                :metadata_checksum "ABC123"}) ; invalid checksum
         ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type    :type/BigInteger
-                 :display_name "Count"
-                 :name         "count"
+        (is (= [{:base_type     :type/BigInteger
+                 :display_name  "Count"
+                 :name          "count"
                  :semantic_type :type/Quantity
-                 :fingerprint  {:global {:distinct-count 1
-                                         :nil%           0.0},
-                                :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
-                 :field_ref    [:aggregation 0]}]
+                 :source        :aggregation
+                 :field_ref     [:aggregation 0]}]
                (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-
