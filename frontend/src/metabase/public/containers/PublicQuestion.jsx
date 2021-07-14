@@ -123,7 +123,19 @@ export default class PublicQuestion extends Component {
     }
   }
 
-  setParameterValue = parameterValues => {
+  setParameterValue = (parameterId, value) => {
+    this.setState(
+      {
+        parameterValues: {
+          ...this.state.parameterValues,
+          [parameterId]: value,
+        },
+      },
+      this.run,
+    );
+  };
+
+  setMultipleParameterValues = parameterValues => {
     this.setState(
       {
         parameterValues: {
@@ -201,6 +213,7 @@ export default class PublicQuestion extends Component {
         actionButtons={actionButtons}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
+        setMultipleParameterValues={this.setMultipleParameterValues}
       >
         <LoadingAndErrorWrapper
           className="flex-full"
