@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
-import { reduxForm, getValues, initialize, change } from "redux-form";
+import { reduxForm, getFormValues, initialize, change } from "redux-form";
 import { getIn, assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
@@ -100,7 +100,7 @@ const makeMapStateToProps = () => {
     const formName = ownProps.formName || `form_${formId}`;
     return {
       formName: formName,
-      values: getValues(state.form[formName]),
+      values: getFormValues(state.form[formName]),
     };
   };
 };

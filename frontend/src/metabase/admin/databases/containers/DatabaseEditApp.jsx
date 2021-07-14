@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { getValues } from "redux-form";
+import { getFormValues } from "redux-form";
 
 import { t } from "ttag";
 
@@ -48,7 +48,7 @@ const getLetUserControlScheduling = database =>
 
 const mapStateToProps = (state, props) => {
   const database = getEditingDatabase(state);
-  const formValues = getValues(state.form[DATABASE_FORM_NAME]);
+  const formValues = getFormValues(state.form[DATABASE_FORM_NAME]);
   return {
     database,
     databaseCreationStep: getDatabaseCreationStep(state),

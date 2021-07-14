@@ -1,5 +1,5 @@
 import { createSelector } from "reselect";
-import { getValues } from "redux-form";
+import { getFormValues } from "redux-form";
 
 export const DATABASE_FORM_NAME = "database";
 
@@ -11,7 +11,7 @@ const setupErrorSelector = state => state.setup.setupError;
 const setupCompleteSelector = state => state.setup.setupComplete;
 
 function selectedDatabaseEngineSelector(state) {
-  const formValues = getValues(state.form[DATABASE_FORM_NAME]);
+  const formValues = getFormValues(state.form[DATABASE_FORM_NAME]);
   return formValues ? formValues.engine : undefined;
 }
 
