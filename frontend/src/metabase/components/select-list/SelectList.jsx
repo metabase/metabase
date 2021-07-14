@@ -10,7 +10,7 @@ const propTypes = {
 
 export function SelectList({ children, className }) {
   return (
-    <ul role="menu" className={className}>
+    <ul role="menu" className={className} data-testid="select-list">
       {children}
     </ul>
   );

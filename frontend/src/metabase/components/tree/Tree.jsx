@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import { TreeNodeList } from "./TreeNodeList";
 import { TreeNode } from "./TreeNode";
+import { getInitialExpandedIds } from "./utils";
 
 const propTypes = {
   TreeNodeComponent: PropTypes.object,
@@ -20,7 +21,9 @@ export function Tree({
   colorScheme = "default",
   emptyState = null,
 }) {
-  const [expandedIds, setExpandedIds] = useState(new Set());
+  const [expandedIds, setExpandedIds] = useState(
+    new Set(selectedId != null ? getInitialExpandedIds(selectedId, data) : []),
+  );
 
   const handleToggleExpand = useCallback(
     itemId => {

@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   restore,
   setupLocalHostEmail,
@@ -6,7 +7,6 @@ import {
   openOrdersTable,
   sidebar,
 } from "__support__/e2e/cypress";
-import _ from "underscore";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { nocollection } = USERS;
@@ -429,7 +429,7 @@ describe("scenarios > collection_defaults", () => {
         });
     });
 
-    it.skip("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
+    it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
       cy.request("POST", "/api/collection", {
         name: "foo:bar",
         color: "#509EE3",
@@ -526,14 +526,15 @@ describe("scenarios > collection_defaults", () => {
           selectItemUsingCheckbox("Orders");
           cy.findByText("1 item selected").should("be.visible");
 
-          // Select all
-          cy.icon("dash").click();
-          cy.icon("dash").should("not.exist");
-          cy.findByText("4 items selected");
-
-          // Deselect all
           cy.findByTestId("bulk-action-bar").within(() => {
-            cy.icon("check").click();
+            // Select all
+            cy.findByTestId("checkbox-root").should("be.visible");
+            cy.icon("dash").click({ force: true });
+            cy.icon("dash").should("not.exist");
+            cy.findByText("4 items selected");
+
+            // Deselect all
+            cy.icon("check").click({ force: true });
           });
           cy.icon("check").should("not.exist");
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
@@ -580,7 +581,7 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    it.skip("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
+    it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
       // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
       // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
       _.times(50, i => cy.createDashboard(`Dashboard ${i}`));
@@ -630,8 +631,9 @@ function selectItemUsingCheckbox(item, icon = "table") {
     .closest("tr")
     .within(() => {
       cy.icon(icon).trigger("mouseover");
-      cy.findByRole("checkbox")
+      cy.findByTestId("checkbox-root")
         .should("be.visible")
+        .findByRole("checkbox")
         .click();
     });
 }

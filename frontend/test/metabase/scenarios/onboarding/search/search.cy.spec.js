@@ -18,11 +18,11 @@ describe("scenarios > auth > search", () => {
       cy.findByText("Products");
     });
 
-    it("should not work for user without permissions", () => {
+    it("should work for user without data permissions (metabase#16855)", () => {
       cy.signIn("nodata");
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
-      cy.findByText("Products").should("not.exist");
+      cy.findByText("Didn't find anything");
     });
   });
 });

@@ -14,7 +14,7 @@ const PermissionsTabs = ({ tab, onChangeTab }) => (
         { name: t`Data permissions`, value: `databases` },
         { name: t`Collection permissions`, value: `collections` },
       ]}
-      onChange={onChangeTab}
+      onOptionClick={onChangeTab}
       variant="underlined"
       py={2}
     />

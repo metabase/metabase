@@ -10,6 +10,7 @@ import { connect } from "react-redux";
 
 import _ from "underscore";
 import { t } from "ttag";
+import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
 
 // COMPONENTS
 
@@ -342,7 +343,7 @@ const FieldGeneralPane = ({
             },
           ]}
           optionValueFn={field => field.id}
-          optionNameFn={field => field.name.replace("Coercion/", "")}
+          optionNameFn={field => humanizeCoercionStrategy(field.name)}
           optionIconFn={field => null}
         />
       </Section>

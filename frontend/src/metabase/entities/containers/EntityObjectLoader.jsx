@@ -106,7 +106,7 @@ export default class EntityObjectLoader extends React.Component {
   UNSAFE_componentWillReceiveProps(nextProps: Props) {
     if (
       nextProps.entityId !== this.props.entityId &&
-      this.props.entityId != null
+      nextProps.entityId != null
     ) {
       nextProps.fetch(
         { id: nextProps.entityId },

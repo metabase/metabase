@@ -23,7 +23,7 @@ import {
   CollectionsContainer,
   BackButton,
 } from "./SavedQuestionPicker.styled";
-import { buildCollectionTree } from "./utils";
+import { buildCollectionTree, findCollectionByName } from "./utils";
 
 const propTypes = {
   onSelect: PropTypes.func.isRequired,
@@ -32,11 +32,12 @@ const propTypes = {
   currentUser: PropTypes.object.isRequired,
   databaseId: PropTypes.string,
   tableId: PropTypes.string,
+  collectionName: PropTypes.string,
 };
 
 const OUR_ANALYTICS_COLLECTION = {
   ...ROOT_COLLECTION,
-  schemaName: "Everything else",
+  schemaName: t`Everything else`,
   icon: "folder",
 };
 
@@ -51,18 +52,8 @@ function SavedQuestionPicker({
   currentUser,
   databaseId,
   tableId,
+  collectionName,
 }) {
-  const [selectedCollection, setSelectedCollection] = useState(
-    OUR_ANALYTICS_COLLECTION,
-  );
-
-  const handleSelect = useCallback(collection => {
-    if (collection.id === PERSONAL_COLLECTIONS.id) {
-      return;
-    }
-    setSelectedCollection(collection);
-  }, []);
-
   const collectionTree = useMemo(() => {
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -97,12 +88,29 @@ function SavedQuestionPicker({
     ];
   }, [collections, currentUser]);
 
+  const initialCollection = useMemo(
+    () => findCollectionByName(collectionTree, collectionName),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const [selectedCollection, setSelectedCollection] = useState(
+    initialCollection || OUR_ANALYTICS_COLLECTION,
+  );
+
+  const handleSelect = useCallback(collection => {
+    if (collection.id === PERSONAL_COLLECTIONS.id) {
+      return;
+    }
+    setSelectedCollection(collection);
+  }, []);
+
   return (
     <SavedQuestionPickerRoot>
       <CollectionsContainer>
         <BackButton onClick={onBack}>
           <Icon name="chevronleft" className="mr1" />
-          {t`Saved questions`}
+          {t`Saved Questions`}
         </BackButton>
         <Box my={1}>
           <Tree

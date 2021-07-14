@@ -7,7 +7,8 @@ export const SegmentedList = styled.ul`
   display: flex;
 `;
 
-export const SegmentedItem = styled.li`
+export const SegmentedItem = styled.label`
+  position: relative;
   display: flex;
   align-items: center;
   font-weight: bold;
@@ -25,4 +26,17 @@ export const SegmentedItem = styled.li`
   :hover {
     color: ${props => (!props.isSelected ? color(props.selectedColor) : null)};
   }
+`;
+
+export const SegmentedControlRadio = styled.input.attrs({ type: "radio" })`
+  cursor: inherit;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  z-index: 1;
 `;

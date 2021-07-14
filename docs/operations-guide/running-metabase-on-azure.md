@@ -10,17 +10,16 @@ This guide covers the basics for running your Metabase instance in Microsoft Azu
   - [Step 5: Create web application (deploy Metabase)](#step-5-create-web-application-deploy-metabase)
   - [Additional configurations](#additional-configurations)
     - [How to enable Health checks](#how-to-enable-health-checks)
-    - [How to update](#how-to-update)
+    - [How to upgrade](#how-to-upgrade)
     - [How to see the logs](#how-to-see-the-logs)
     - [Performance tuning](#performance-tuning)
     - [Custom domains](#custom-domains)
-    - [Scale-up vs Scale-out](#scale-up-vs-scale-out)
-    - [CORS](#cors)
+    - [Scale-up vs Scale-out](#scale-up-vs-scale-out) - [CORS](#cors)
     - [Database name](#database-name)
 
 ## Step 1: Create the resource group (resource grouping)
 
-On the Azure management console, click on the **Resource Groups** icon at the top of the page (or just search for Resource Groups). If you already have a resource group, you can go straight to [Step 2](#step-2-create-the-network).
+On the Azure management console, click on the **Resource Groups** icon at the top of the page (or just search for Resource Groups). If you already have a resource group, you can go straight to [Step 2](#step-2-create-the-vnet-virtual-network).
 
 On the resource group page, click on the **+ Add** button in the top bar to create a new resource group. On the **Create a resource group** page, select your valid Azure Subscription, enter the name of your resource group, and select a region.
 
@@ -154,6 +153,7 @@ Click **Save** and the instance will restart.
 Once it finishes, you should be able to visit your Metabase at the URL shown in the the "Overview" tab in the web app (under the URL section). 
 
 ## Additional configurations
+
 ### How to enable Health checks
 
 Enabling health checking in Metabase is a good practice.  Go to your **web app** -> **Monitoring** -> **Health Check** -> **Enable health check**, and include in the path `/api/health`.
@@ -162,9 +162,9 @@ Enabling health checking in Metabase is a good practice.  Go to your **web app**
 
 Go to the Metabase web app you created and click in **Settings** -> **Container Settings**.
 
-On the textbox where the Metabase Docker container is, simply change the version of the container based on the available versions in [Dockerhub](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated)
+In the textbox of your Metabase Docker container, change the version of the container to the new version. See available versions in [Dockerhub](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated).
 
-**Important**: always ensure you have a backup of your Database before doing a version upgrade, *specially*, when upgrading between major versions. Also remember that Metabase does not officialy support downgrading versions.
+**Important**: always ensure you have a backup of your Database before doing a version upgrade, *especially* when upgrading between major versions. Also remember that Metabase doesn't officially support downgrading versions.
 
 ### How to see the logs
 

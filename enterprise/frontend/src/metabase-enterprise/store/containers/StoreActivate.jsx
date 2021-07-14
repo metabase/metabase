@@ -17,7 +17,7 @@ import { SettingsApi } from "metabase/services";
 @fitViewport
 export default class Activate extends React.Component {
   state = {
-    heading: t`Enter the token you recieved from the store`,
+    heading: t`Enter the token you received from the store`,
     errorMessage: "",
     showVerbose: false,
     error: false,
