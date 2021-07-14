@@ -556,9 +556,9 @@
     (mt/with-temp* [PermissionsGroup [group1]
                     PermissionsGroup [group2]
                     Database         [database]
-                    Table            [table    {:db_id (u/get-id database)}]]
-      (perms/update-graph! [(u/get-id group1) (u/get-id database) :schemas] {"" {(u/get-id table) :all}})
-      (perms/update-graph! [(u/get-id group2) (u/get-id database) :schemas] {"" {(u/get-id table) :all}})
+                    Table            [table    {:db_id (u/the-id database)}]]
+      (perms/update-graph! [(u/the-id group1) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
+      (perms/update-graph! [(u/the-id group2) (u/the-id database) :schemas] {"" {(u/the-id table) :all}})
       (is (= 1 (count (:groups (perms/graph (u/the-id group2)))))))))
 
 (deftest graph-for-tables-without-schemas-test
