@@ -1,6 +1,6 @@
 import { spawn } from "child_process";
 import fs from "fs";
-import chalk from "chalk";
+const { printBold, printYellow, printCyan } = require("./cypress-runner-utils");
 
 // Use require for BackendResource to run it after the mock afterAll has been set
 const BackendResource = require("./backend.js").BackendResource;
@@ -32,26 +32,13 @@ function readFile(fileName) {
 }
 
 const init = async () => {
-  if (!isOpenMode) {
-    console.log(
-      chalk.yellow(
-        "If you are developing locally, prefer using `yarn test-cypress-open` instead.\n",
-      ),
-    );
-  }
-
-  const logMessage = isFolderFlag
-    ? `Running tests in '${sourceFolderLocation}'`
-    : `Running '${testFiles}'`;
-
-  printBold(logMessage);
-
   try {
     const version = await readFile(
       __dirname + "/../../../resources/version.properties",
     );
     printBold("Running e2e test runner with this build:");
-    process.stdout.write(chalk.cyan(version));
+    printCyan(version);
+
     printBold(
       "If that version seems too old, please run `./bin/build version uberjar`.\n",
     );
@@ -69,6 +56,17 @@ const init = async () => {
   await generateSnapshots();
 
   printBold("Starting Cypress");
+  if (!isOpenMode) {
+    printYellow(
+      "If you are developing locally, prefer using `yarn test-cypress-open` instead.\n",
+    );
+  }
+
+  const logMessage = isFolderFlag
+    ? `Running tests in '${sourceFolderLocation}'`
+    : `Running '${testFiles}'`;
+
+  printBold(logMessage);
   const baseConfig = { baseUrl: server.host };
   const folderConfig = isFolderFlag && {
     integrationFolder: sourceFolderLocation,
@@ -152,8 +150,4 @@ async function generateSnapshots() {
   return new Promise((resolve, reject) => {
     cypressProcess.on("exit", resolve);
   });
-}
-
-function printBold(message) {
-  console.log(chalk.bold(message));
 }
