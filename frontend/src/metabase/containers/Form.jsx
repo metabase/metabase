@@ -322,7 +322,9 @@ export default class Form extends React.Component {
   };
 
   _handleSubmitSuccess = async (action: any) => {
-    await this.props.onSubmitSuccess(action);
+    if (this.props.onSubmitSuccess) {
+      await this.props.onSubmitSuccess(action);
+    }
     this.props.dispatch(
       initialize(this.props.formName, this.props.values, this._getFieldNames()),
     );

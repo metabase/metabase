@@ -25,6 +25,10 @@ const data = [
 ];
 
 describe("Tree", () => {
+  beforeAll(() => {
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+  });
+
   it("should render collapsed items when selectedId is not specified", () => {
     const { getAllByRole, queryByText } = render(
       <Tree data={data} onSelect={jest.fn()} />,
