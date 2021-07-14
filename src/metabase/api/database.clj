@@ -153,7 +153,7 @@
 
 (defn- saved-cards-virtual-db-metadata [& {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
-    (cond-> {:name               "Saved Questions"
+    (cond-> {:name               (trs "Saved Questions")
              :id                 mbql.s/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}

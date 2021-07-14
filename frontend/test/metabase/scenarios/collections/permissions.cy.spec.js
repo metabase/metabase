@@ -11,7 +11,12 @@
  */
 
 import { onlyOn } from "@cypress/skip-test";
-import { restore, popover, sidebar } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  sidebar,
+  openNativeEditor,
+} from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
@@ -46,6 +51,18 @@ describe("collection permissions", () => {
                   cy.icon("add").click();
                   cy.findByText("New dashboard").click();
                   cy.get(".AdminSelect").findByText("Second collection");
+                });
+
+                onlyOn(user === "admin", () => {
+                  it("should offer to save dashboard to root collection from a dashboard page (metabase#16832)", () => {
+                    cy.visit("/collection/root");
+                    cy.findByText("Orders in a dashboard").click();
+                    cy.icon("add").click();
+                    popover()
+                      .findByText("New dashboard")
+                      .click();
+                    cy.get(".AdminSelect").findByText("Our analytics");
+                  });
                 });
               });
 
@@ -146,7 +163,6 @@ describe("collection permissions", () => {
 
                 describe("archive page", () => {
                   it("should show archived items (metabase#15080, metabase#16617)", () => {
-                    cy.skipOn(user === "nodata");
                     cy.visit("collection/root");
                     openEllipsisMenuFor("Orders");
                     cy.findByText("Archive this item").click();
@@ -674,9 +690,7 @@ describe("collection permissions", () => {
   it("should offer to save items to 'Our analytics' if user has a 'curate' access to it", () => {
     cy.signIn("normal");
 
-    cy.visit("/question/new");
-    cy.findByText("Native query").click();
-    cy.get(".ace_content").type("select * from people");
+    openNativeEditor().type("select * from people");
     cy.findByText("Save").click();
 
     cy.get(".AdminSelect").findByText("Our analytics");

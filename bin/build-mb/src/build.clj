@@ -1,6 +1,9 @@
 (ns build
   (:require [build-drivers :as build-drivers]
+            [build.licenses :as license]
             [build.version-info :as version-info]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [environ.core :as env]
             [flatland.ordered.map :as ordered-map]
@@ -54,6 +57,37 @@
     (u/assert-file-exists uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
+(defn- build-backend-licenses-file! [edition]
+  {:pre [(#{:oss :ee} edition)]}
+  (let [classpath-and-logs        (u/sh {:dir    u/project-root-directory
+                                         :quiet? true}
+                                        "lein"
+                                        "with-profile" (str \- "dev"
+                                                            (str \, \+ (name edition))
+                                                            \,"+include-all-drivers")
+                                        "classpath")
+        classpath                 (last
+                                   classpath-and-logs)
+        output-filename           (u/filename u/project-root-directory "license-backend-third-party")
+        {:keys [with-license
+                without-license]} (license/generate {:classpath       classpath
+                                                     :backfill        (edn/read-string
+                                                                       (slurp (io/resource "overrides.edn")))
+                                                     :output-filename output-filename
+                                                     :report?         false})]
+    (when (seq without-license)
+      (run! (comp (partial u/error "Missing License: %s") first)
+            without-license))
+    (u/announce "License information generated at %s" output-filename)))
+
+(defn- build-frontend-licenses-file!
+  []
+  (let [license-text (str/join \newline
+                               (u/sh {:dir    u/project-root-directory
+                                      :quiet? true}
+                                     "yarn" "licenses" "generate-disclaimer"))]
+    (spit (u/filename u/project-root-directory "license-frontend-third-party") license-text)))
+
 (def all-steps
   (ordered-map/ordered-map
    :version      (fn [{:keys [edition version]}]
@@ -64,6 +98,10 @@
                    (build-frontend! edition))
    :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
+   :backend-licenses (fn [{:keys [edition]}]
+                       (build-backend-licenses-file! edition))
+   :frontend-licenses (fn [{:keys []}]
+                        (build-frontend-licenses-file!))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 
@@ -95,3 +133,23 @@
     (build! (merge {:edition (edition-from-env-var)}
                    (when-let [steps (not-empty steps)]
                      {:steps steps})))))
+
+(defn list-without-license [{:keys []}]
+  (let [classpath-and-logs        (u/sh {:dir    u/project-root-directory
+                                         :quiet? true}
+                                        "lein"
+                                        "with-profile"
+                                        "-dev,+ee,+include-all-drivers"
+                                        "classpath")
+        classpath                 (last classpath-and-logs)
+        classpath-entries (license/jar-entries classpath)
+        {:keys [without-license]} (license/process*
+                                   {:classpath-entries classpath-entries
+                                    :backfill        (edn/read-string
+                                                        (slurp (io/resource "overrides.edn")))})]
+    (if (seq without-license)
+      (run! (comp (partial u/error "Missing License: %s") first)
+            without-license)
+      (u/announce "All dependencies have licenses"))
+    (shutdown-agents)
+    (System/exit (if (seq without-license) 1 0))))

@@ -1,10 +1,10 @@
 import {
   restore,
   visitQuestionAdhoc,
-  getIframeBody,
   popover,
   sidebar,
 } from "__support__/e2e/cypress";
+
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {
@@ -926,4 +926,14 @@ function dragField(startIndex, dropIndex) {
   cy.get("@dragHandle")
     .eq(dropIndex)
     .trigger("drop");
+}
+
+function getIframeBody(selector = "iframe") {
+  return cy
+    .get(selector)
+    .its("0.contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.null")
+    .then(cy.wrap);
 }

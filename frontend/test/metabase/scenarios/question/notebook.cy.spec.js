@@ -27,7 +27,7 @@ describe("scenarios > question > notebook", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
+  it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
     openOrdersTable();
     // save question initially
     cy.findByText("Save").click();
@@ -497,10 +497,10 @@ describe("scenarios > question > notebook", () => {
       });
     });
 
-    it.skip("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
+    it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
-      cy.route("GET", "/api/automagic-dashboards/adhoc/").as("xray");
+      cy.route("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
 
       visitQuestionAdhoc({
         dataset_query: {

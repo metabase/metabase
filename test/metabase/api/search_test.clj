@@ -503,6 +503,16 @@
                (binding [*search-request-results-database-id* db-id]
                  (search-request-data user :q "Round Table"))))))))
 
+(deftest all-users-no-data-perms-table-test
+  (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
+    (mt/with-temp* [Database                   [{db-id :id}]
+                    Table                      [table {:name "Round Table", :db_id db-id}]]
+      (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
+      (is (= []
+             (filter #(= (:name %) "Round Table")
+                     (binding [*search-request-results-database-id* db-id]
+                       (search-request-data :rasta :q "Round Table"))))))))
+
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
     (mt/with-temp* [Collection [c1 {:name "Normal Collection"}]

@@ -10,12 +10,15 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
+            [metabase.models.query :as query :refer [Query]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.context.default  :as context.default]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
             [metabase.query-processor.middleware.cache.impl-test :as impl-test]
+            [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.util :as qputil]
             [metabase.server.middleware.session :as session]
@@ -24,7 +27,8 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [pretty.core :as pretty]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -319,7 +323,32 @@
                        (-> cached-result
                            (dissoc :cached :updated_at)
                            (m/dissoc-in [:data :results_metadata :checksum])))
-                    "Cached result should be in the same format as the uncached result, except for added keys")))))))))
+                    "Cached result should be in the same format as the uncached result, except for added keys"))))))))
+  (testing "Cached results don't impact average execution time"
+    (let [query                         (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
+                                               :cache-ttl 5000)
+          q-hash                        (qputil/query-hash query)
+          call-count                    (atom 0)
+          called-promise                (promise)
+          save-query-execution-original (var-get #'process-userland-query/save-query-execution!*)]
+      (with-redefs [process-userland-query/save-query-execution!* (fn [& args]
+                                                                    (swap! call-count inc)
+                                                                    (apply save-query-execution-original args)
+                                                                    (deliver called-promise true))
+                    cache/min-duration-ms                         (constantly 0)]
+        (with-mock-cache [save-chan]
+          (db/delete! Query :query_hash q-hash)
+          (is (not (:cached (qp/process-userland-query query (context.default/default-context)))))
+          (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
+          (u/deref-with-timeout called-promise 500)
+          (is (= 1 @call-count))
+          (let [avg-execution-time (query/average-execution-time-ms q-hash)]
+            (is (number? avg-execution-time))
+            ;; rerun query getting cached results
+            (is (:cached (qp/process-userland-query query (context.default/default-context))))
+            (mt/wait-for-result save-chan)
+            (is (= 1 @call-count) "Saving execution times of a cache lookup")
+            (is (= avg-execution-time (query/average-execution-time-ms q-hash)))))))))
 
 (deftest insights-from-cache-test
   (testing "Insights should work on cahced results (#12556)"

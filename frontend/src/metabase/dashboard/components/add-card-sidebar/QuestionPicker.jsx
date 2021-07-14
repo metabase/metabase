@@ -11,11 +11,11 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
-import { QuestionPickerItem } from "./QuestionPickerItem";
 import { QuestionList } from "./QuestionList";
 
 import { BreadcrumbsWrapper, SearchInput } from "./QuestionPicker.styled";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { SelectList } from "metabase/components/select-list";
 
 QuestionPicker.propTypes = {
   onSelect: PropTypes.func.isRequired,
@@ -63,6 +63,7 @@ function QuestionPicker({
   return (
     <Box p={2}>
       <SearchInput
+        autoFocus
         hasClearButton
         placeholder={t`Search…`}
         value={searchText}
@@ -76,10 +77,10 @@ function QuestionPicker({
             <Breadcrumbs crumbs={crumbs} />
           </BreadcrumbsWrapper>
 
-          <ul role="menu">
+          <SelectList>
             {collections.map(collection => (
-              <QuestionPickerItem
-                isCollection
+              <SelectList.Item
+                hasRightArrow
                 key={collection.id}
                 id={collection.id}
                 name={collection.name}
@@ -87,7 +88,7 @@ function QuestionPicker({
                 onSelect={collectionId => setCurrentCollectionId(collectionId)}
               />
             ))}
-          </ul>
+          </SelectList>
         </React.Fragment>
       )}
 

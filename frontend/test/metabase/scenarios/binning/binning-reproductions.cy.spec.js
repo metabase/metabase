@@ -1,4 +1,9 @@
-import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openOrdersTable,
+  visitQuestionAdhoc,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
@@ -72,7 +77,7 @@ describe("binning related reproductions", () => {
     cy.findByText("User → Created At: Minute");
   });
 
-  it.skip("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
+  it("shouldn't render double binning options when question is based on the saved native question (metabase#16327)", () => {
     cy.createNativeQuestion({
       name: "16327",
       native: { query: "select * from products limit 5" },
@@ -94,7 +99,47 @@ describe("binning related reproductions", () => {
     cy.findByText("Month");
   });
 
-  describe.skip("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
+  it.skip("should be able to update the bucket size / granularity on a field that has sorting applied to it (metabase#16770)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: 1,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          "order-by": [
+            ["asc", ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+          ],
+        },
+        type: "query",
+      },
+      display: "line",
+    });
+
+    cy.wait("@dataset");
+
+    cy.contains("Summarize").click();
+    cy.get(".List-item--selected")
+      .contains("by month")
+      .click();
+
+    popover().within(() => {
+      cy.findByText("Year").click();
+    });
+
+    cy.wait("@dataset").then(xhr => {
+      expect(xhr.response.body.error).not.to.exist;
+    });
+
+    cy.findByText("Count by Created At: Year");
+    cy.findByText("2018");
+  });
+
+  describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
       cy.createQuestion({
         name: "16379",

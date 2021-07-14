@@ -5,6 +5,7 @@ import {
   expectedRouteCalls,
   showDashboardCardActions,
   modal,
+  filterWidget,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -424,7 +425,7 @@ describe("scenarios > dashboard", () => {
 
     cy.visit("/dashboard/1");
 
-    cy.get("fieldset")
+    filterWidget()
       .as("filterWidget")
       .click();
 
@@ -487,7 +488,7 @@ describe("scenarios > dashboard", () => {
 
     cy.visit("/dashboard/1");
 
-    cy.get("fieldset")
+    filterWidget()
       .as("filterWidget")
       .click();
     expectedRouteCalls({ route_alias: "fetchFromDB", calls: 1 });
@@ -602,7 +603,7 @@ describe("scenarios > dashboard", () => {
     // which is actually "Include" followed by "this minute" wrapped in <strong>, so has to be clicked this way
     cy.contains("Include this minute").click();
     // make sure the checkbox was checked
-    cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
+    cy.findByRole("checkbox").should("be.checked");
   });
 
   it("user without data permissions should be able to use dashboard filter (metabase#15119)", () => {
@@ -652,7 +653,7 @@ describe("scenarios > dashboard", () => {
         cy.signIn("nodata");
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
-        cy.get("fieldset")
+        filterWidget()
           .contains("Category")
           .click();
         cy.findByPlaceholderText("Search the list").type("Gizmo");
@@ -786,7 +787,7 @@ describe("scenarios > dashboard", () => {
     });
 
     // Check that list filter works
-    cy.get("fieldset")
+    filterWidget()
       .contains("List")
       .click();
 
@@ -796,7 +797,7 @@ describe("scenarios > dashboard", () => {
     cy.button("Add filter").click();
 
     // Check that the search filter works
-    cy.get("fieldset")
+    filterWidget()
       .contains("Search")
       .click();
     cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
@@ -888,7 +889,7 @@ describe("scenarios > dashboard", () => {
       });
     });
 
-    cy.get("fieldset").click();
+    filterWidget().click();
     cy.findByText("AK").click();
     cy.findByText("CA").click();
     cy.icon("close")
@@ -956,7 +957,7 @@ describe("scenarios > dashboard", () => {
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
       });
     });
-    cy.get("fieldset").click();
+    filterWidget().click();
     cy.findByPlaceholderText("Search the list").type("Syner");
     cy.findByText("Synergistic Wool Coat");
   });

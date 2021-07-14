@@ -177,7 +177,7 @@ describe("scenarios > binning > binning options", () => {
     });
   });
 
-  context.skip("via time series footer", () => {
+  context("via time series footer", () => {
     it("should render time series binning options correctly", () => {
       openTable({ table: ORDERS_ID });
       cy.findByText("Created At").click();

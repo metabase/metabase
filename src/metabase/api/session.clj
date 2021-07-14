@@ -81,6 +81,10 @@
 (def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
 (def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
 
+;; Fake salt & hash used to run bcrypt hash if user doesn't exist, to avoid timing attacks (Metaboat #134)
+(def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
+(def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
+
 (s/defn ^:private ldap-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
@@ -107,13 +111,17 @@
 (s/defn ^:private email-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password device-info :- request.u/DeviceInfo]
-  (when-let [user (db/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
+  (if-let [user (db/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (pass/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
         (create-session! :password user device-info)
         (throw (ex-info (str disabled-account-message)
                         {:status-code 401
-                         :errors      {:_error disabled-account-snippet}}))))))
+                         :errors      {:_error disabled-account-snippet}}))))
+    (do
+      ;; User doesn't exist; run bcrypt hash anyway to avoid leaking account existence in request timing
+      (pass/verify-password password fake-salt fake-hashed-password)
+      nil)))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
@@ -185,6 +193,16 @@
   {:email      (throttle/make-throttler :email)
    :ip-address (throttle/make-throttler :email, :attempts-threshold 50)})
 
+(defn- forgot-password-impl
+  [email server-name]
+  (future
+   (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
+              (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
+     (let [reset-token        (user/set-password-reset-token! user-id)
+           password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+       (log/info password-reset-url)
+       (email/send-password-reset-email! email google-auth? server-name password-reset-url is-active?)))))
+
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {:keys [server-name] {:keys [email]} :body, :as request}]
@@ -192,15 +210,9 @@
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request.u/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
-  (throttle-check (forgot-password-throttlers :email)      email)
-  (when-let [{user-id :id, google-auth? :google_auth} (db/select-one [User :id :google_auth]
-                                                        :%lower.email (u/lower-case-en email), :is_active true)]
-    (let [reset-token        (user/set-password-reset-token! user-id)
-          password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email! email google-auth? server-name password-reset-url)
-      (log/info password-reset-url)))
+  (throttle-check (forgot-password-throttlers :email) email)
+  (forgot-password-impl email server-name)
   api/generic-204-no-content)
-
 
 (def ^:private ^:const reset-token-ttl-ms
   "Number of milliseconds a password reset is considered valid."

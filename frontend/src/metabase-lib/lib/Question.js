@@ -30,7 +30,11 @@ import { memoize, sortObject } from "metabase-lib/lib/utils";
 // TODO: remove these dependencies
 import * as Card_DEPRECATED from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
-import { syncTableColumnsToQuery } from "metabase/lib/dataset";
+import {
+  findColumnSettingIndexForColumn,
+  findColumnIndexForColumnSetting,
+  syncTableColumnsToQuery,
+} from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
 import {
   parameterToMBQLFilter,
@@ -540,69 +544,120 @@ export default class Question {
     }
   }
 
-  syncColumnsAndSettings(previous) {
+  _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
     const query = this.query();
+
+    if (
+      !_.isEqual(
+        previousQuestion.setting("table.columns"),
+        this.setting("table.columns"),
+      )
+    ) {
+      return syncTableColumnsToQuery(this);
+    }
+
+    const addedColumnNames = _.difference(
+      query.columnNames(),
+      previousQuery.columnNames(),
+    );
+    const removedColumnNames = _.difference(
+      previousQuery.columnNames(),
+      query.columnNames(),
+    );
+
+    if (
+      this.setting("graph.metrics") &&
+      addedColumnNames.length > 0 &&
+      removedColumnNames.length === 0
+    ) {
+      const addedMetricColumnNames = addedColumnNames.filter(
+        name =>
+          query.columnDimensionWithName(name) instanceof AggregationDimension,
+      );
+      if (addedMetricColumnNames.length > 0) {
+        return this.updateSettings({
+          "graph.metrics": [
+            ...this.setting("graph.metrics"),
+            ...addedMetricColumnNames,
+          ],
+        });
+      }
+    }
+
+    if (
+      this.setting("table.columns") &&
+      addedColumnNames.length > 0 &&
+      removedColumnNames.length === 0
+    ) {
+      return this.updateSettings({
+        "table.columns": [
+          ...this.setting("table.columns"),
+          ...addedColumnNames.map(name => {
+            const dimension = query.columnDimensionWithName(name);
+            return {
+              name: name,
+              field_ref: dimension.baseDimension().mbql(),
+              enabled: true,
+            };
+          }),
+        ],
+      });
+    }
+
+    return this;
+  }
+
+  _syncNativeQuerySettings({ data: { cols = [] } = {} }) {
+    const vizSettings = this.setting("table.columns") || [];
+    // "table.columns" receive a value only if there are custom settings
+    // e.g. some columns are hidden. If it's empty, it means everything is visible
+    const isUsingDefaultSettings = vizSettings.length === 0;
+    if (isUsingDefaultSettings) {
+      return this;
+    }
+
+    let addedColumns = cols.filter(col => {
+      const hasVizSettings =
+        findColumnSettingIndexForColumn(vizSettings, col) >= 0;
+      return !hasVizSettings;
+    });
+
+    const validVizSettings = vizSettings.filter(colSetting => {
+      const hasColumn = findColumnIndexForColumnSetting(cols, colSetting) >= 0;
+      return hasColumn;
+    });
+    const noColumnsRemoved = validVizSettings.length === vizSettings.length;
+
+    if (noColumnsRemoved && addedColumns.length === 0) {
+      return this;
+    }
+
+    addedColumns = addedColumns.map(col => ({
+      name: col.name,
+      fieldRef: col.field_ref,
+      enabled: true,
+    }));
+
+    return this.updateSettings({
+      "table.columns": [...validVizSettings, ...addedColumns],
+    });
+  }
+
+  syncColumnsAndSettings(previous, queryResults) {
+    const query = this.query();
+    const isQueryResultValid = queryResults && !queryResults.error;
+    if (query instanceof NativeQuery && isQueryResultValid) {
+      return this._syncNativeQuerySettings(queryResults);
+    }
     const previousQuery = previous && previous.query();
     if (
       query instanceof StructuredQuery &&
       previousQuery instanceof StructuredQuery
     ) {
-      if (
-        !_.isEqual(
-          previous.setting("table.columns"),
-          this.setting("table.columns"),
-        )
-      ) {
-        return syncTableColumnsToQuery(this);
-      }
-
-      const addedColumnNames = _.difference(
-        query.columnNames(),
-        previousQuery.columnNames(),
+      return this._syncStructuredQueryColumnsAndSettings(
+        previous,
+        previousQuery,
       );
-      const removedColumnNames = _.difference(
-        previousQuery.columnNames(),
-        query.columnNames(),
-      );
-
-      if (
-        this.setting("graph.metrics") &&
-        addedColumnNames.length > 0 &&
-        removedColumnNames.length === 0
-      ) {
-        const addedMetricColumnNames = addedColumnNames.filter(
-          name =>
-            query.columnDimensionWithName(name) instanceof AggregationDimension,
-        );
-        if (addedMetricColumnNames.length > 0) {
-          return this.updateSettings({
-            "graph.metrics": [
-              ...this.setting("graph.metrics"),
-              ...addedMetricColumnNames,
-            ],
-          });
-        }
-      }
-
-      if (
-        this.setting("table.columns") &&
-        addedColumnNames.length > 0 &&
-        removedColumnNames.length === 0
-      ) {
-        return this.updateSettings({
-          "table.columns": [
-            ...this.setting("table.columns"),
-            ...addedColumnNames.map(name => {
-              const dimension = query.columnDimensionWithName(name);
-              return {
-                name: name,
-                field_ref: dimension.baseDimension().mbql(),
-                enabled: true,
-              };
-            }),
-          ],
-        });
-      }
     }
     return this;
   }

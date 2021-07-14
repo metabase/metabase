@@ -13,6 +13,7 @@ const DETAILS_FORM_FIELDS: () => FormFieldDefinition[] = () => [
     name: "first_name",
     title: t`First name`,
     placeholder: "Johnny",
+    autoFocus: true,
     validate: validate.required().maxLength(100),
   },
   {

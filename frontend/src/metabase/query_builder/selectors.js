@@ -146,6 +146,12 @@ const getNextRunParameterValues = createSelector(
   [getParameters],
   parameters =>
     parameters
+      .filter(
+        // parameters with an empty value get filtered out before a query run,
+        // so in order to compare current parameters to previously-used parameters we need
+        // to filter them here as well
+        parameter => parameter.value != null,
+      )
       .map(parameter =>
         // parameters are "normalized" immediately before a query run, so in order
         // to compare current parameters to previously-used parameters we need

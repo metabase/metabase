@@ -138,6 +138,19 @@ export function findColumnIndexForColumnSetting(
   return _.findIndex(columns, col => col.name === columnSetting.name);
 }
 
+export function findColumnSettingIndexForColumn(columnSettings, column) {
+  const fieldRef = normalizeFieldRef(fieldRefForColumn(column));
+  if (fieldRef == null) {
+    return columnSettings.findIndex(
+      columnSetting => columnSetting.name === column.name,
+    );
+  }
+  const index = columnSettings.findIndex(columnSetting =>
+    _.isEqual(fieldRef, normalizeFieldRef(columnSetting.fieldRef)),
+  );
+  return index;
+}
+
 export function syncTableColumnsToQuery(question: Question): Question {
   let query = question.query();
   const columnSettings = question.settings()["table.columns"];

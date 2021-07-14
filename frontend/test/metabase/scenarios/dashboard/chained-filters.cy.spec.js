@@ -227,7 +227,7 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.findByText("Anchorage").click();
       cy.findByText("Add filter").click();
     });
-    cy.get(".y-label").contains("Count");
+    cy.get(".y-label").contains("count");
 
     // Then we make sure it works in pseudo-embedded mode.
     cy.visit(`/embed/dashboard/${DASHBOARD_JWT_TOKEN}`);
@@ -244,7 +244,7 @@ describe("scenarios > dashboard > chained filter", () => {
       cy.findByText("Add filter").click();
     });
 
-    cy.get(".y-label").contains("Count");
+    cy.get(".y-label").contains("count");
     cy.findByText("There was a problem displaying this chart.").should(
       "not.exist",
     );

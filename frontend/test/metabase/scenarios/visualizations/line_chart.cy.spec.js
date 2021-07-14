@@ -147,6 +147,30 @@ describe("scenarios > visualizations > line chart", () => {
       .and("contain", "cat3");
   });
 
+  it("should interpolate null value by not rendering a data point (metabase#4122)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `
+            select 'a' x, 1 y
+            union all
+            select 'b' x, null y
+            union all
+            select 'c' x, 2 y
+          `,
+          "template-tags": {},
+        },
+        database: 1,
+      },
+      display: "line",
+    });
+
+    cy.get(`.sub._0`)
+      .find("circle")
+      .should("have.length", 2);
+  });
+
   describe.skip("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
     const RENAMED_FIRST_SERIES = "Foo";
     const RENAMED_SECOND_SERIES = "Bar";
@@ -339,7 +363,7 @@ describe("scenarios > visualizations > line chart", () => {
     }
   });
 
-  describe.skip("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
+  describe("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
     beforeEach(() => {
       visitQuestionAdhoc({
         dataset_query: {
@@ -360,7 +384,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("Category is Doohickey");
     });
 
-    it("should not drop the chart legend (metabase#4995)", () => {
+    it.skip("should not drop the chart legend (metabase#4995)", () => {
       cy.get(".LegendItem").should("contain", "Doohickey");
     });
 

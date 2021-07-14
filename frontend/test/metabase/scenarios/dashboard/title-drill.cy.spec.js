@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, filterWidget } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PRODUCTS } = SAMPLE_DATASET;
@@ -22,7 +22,7 @@ describe("scenarios > dashboard > title drill", () => {
     });
   });
 
-  it.skip("'contains' filter should still work after title drill through (metabase#16181)", () => {
+  it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
     const filter = {
       name: "Text contains",
       slug: "text_contains",
@@ -42,7 +42,7 @@ describe("scenarios > dashboard > title drill", () => {
             "display-name": "Filter",
             type: "dimension",
             dimension: ["field", PRODUCTS.TITLE, null],
-            "widget-type": "string/=",
+            "widget-type": "string/contains",
             default: null,
           },
         },
@@ -103,10 +103,11 @@ describe("scenarios > dashboard > title drill", () => {
 });
 
 function checkFilterLabelAndValue(label, value) {
-  cy.get("fieldset legend")
+  filterWidget()
+    .find("legend")
     .invoke("text")
     .should("eq", label);
-  cy.get("fieldset").contains(value);
+  filterWidget().contains(value);
 }
 
 function checkScalarResult(result) {

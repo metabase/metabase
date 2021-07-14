@@ -8,7 +8,7 @@ import DashboardHeader from "./DashboardHeader";
 import DashboardGrid from "./DashboardGrid";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
-import Parameters from "metabase/parameters/components/Parameters";
+import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import EmptyState from "metabase/components/EmptyState";
 import { DashboardSidebars } from "./DashboardSidebars";
 
