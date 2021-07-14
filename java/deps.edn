@@ -1,0 +1,15 @@
+{:deps/prep-lib
+ {:ensure "target/classes"
+  :alias  :build
+  :fn     compile-java}
+
+ :paths ["target/classes"]
+
+ :aliases
+ {:build
+  {:deps       {io.github.clojure/tools.build {:tag "v0.1.3", :sha "688245e"}}
+   :ns-default build}
+
+  ;; dependencies needed for compiling the Java files.
+  :compilation-basis
+  {:extra-deps {org.liquibase/liquibase-core {:mvn/version "3.6.3"}}}}}
