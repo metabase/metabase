@@ -1,25 +1,28 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
-
+import React from "react";
+import PropTypes from "prop-types";
 import cx from "classnames";
-import { formDomOnlyProps } from "metabase/lib/redux";
 
-export default class FormInput extends Component {
-  static propTypes = {};
+export default FormInput;
 
-  render() {
-    const { field, className, placeholder } = this.props;
-    return (
-      <input
-        type="text"
-        placeholder={placeholder}
-        className={cx(
-          "input full",
-          { "border-error": !field.active && field.visited && field.invalid },
-          className,
-        )}
-        {...formDomOnlyProps(field)}
-      />
-    );
-  }
+FormInput.propTypes = {
+  input: PropTypes.object.isRequired,
+  meta: PropTypes.object.isRequired,
+  placeholder: PropTypes.string,
+  className: PropTypes.string,
+};
+
+function FormInput({ input, meta, placeholder, className }) {
+  const { active, visited, invalid } = meta;
+  return (
+    <input
+      type="text"
+      placeholder={placeholder}
+      className={cx(
+        "input full",
+        { "border-error": !active && visited && invalid },
+        className,
+      )}
+      {...input}
+    />
+  );
 }

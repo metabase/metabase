@@ -1,25 +1,28 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 
 import cx from "classnames";
 
-import { formDomOnlyProps } from "metabase/lib/redux";
+export default FormTextArea;
 
-export default class FormTextArea extends Component {
-  static propTypes = {};
+FormTextArea.propTypes = {
+  input: PropTypes.object.isRequired,
+  meta: PropTypes.object.isRequired,
+  className: PropTypes.string,
+  placeholder: PropTypes.string,
+};
 
-  render() {
-    const { field, className, placeholder } = this.props;
-    return (
-      <textarea
-        placeholder={placeholder}
-        className={cx(
-          "input full",
-          { "border-error": !field.active && field.visited && field.invalid },
-          className,
-        )}
-        {...formDomOnlyProps(field)}
-      />
-    );
-  }
+function FormTextArea({ input, meta, placeholder, className }) {
+  const { active, invalid, visited } = meta;
+  return (
+    <textarea
+      placeholder={placeholder}
+      className={cx(
+        "input full",
+        { "border-error": !active && visited && invalid },
+        className,
+      )}
+      {...input}
+    />
+  );
 }
