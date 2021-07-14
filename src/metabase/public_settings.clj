@@ -343,6 +343,12 @@
   :setter     :none
   :getter     password/active-password-complexity)
 
+(defsetting session-cookies
+  (deferred-tru "When set, enforces the use of session cookies for all users which expire when the browser is closed.")
+  :type       :boolean
+  :visibility :public
+  :default    nil)
+
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
   :visibility :public

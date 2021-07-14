@@ -6,7 +6,6 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Field FieldValues Table]]
-            [metabase.models.field :as field]
             [metabase.plugins.classloader :as classloader]
             [metabase.sync :as sync]
             [metabase.test.data.dataset-definitions :as defs]
@@ -196,16 +195,32 @@
                                (pr-str table-name) driver db-id (pr-str db-name)
                                (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true)))))))))
 
+(defn- qualified-field-name [{parent-id :parent_id, field-name :name}]
+  (if parent-id
+    (str (qualified-field-name (db/select-one Field :id parent-id))
+         \.
+         field-name)
+    field-name))
+
+(defn- all-field-names [table-id]
+  (into {} (for [field (db/select Field :active true, :table_id table-id)]
+             [(u/the-id field) (qualified-field-name field)])))
+
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
   (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
       (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
             {driver :engine, db-name :name}  (db/select-one [Database :engine :name] :id db-id)
-            field-name                       (str \' field-name \' (when parent-id
-                                                                     (format " (parent: %d)" parent-id)))]
+            field-name                       (qualified-field-name {:parent_id parent-id, :name field-name})
+            all-field-names                  (all-field-names table-id)]
         (throw
-         (Exception. (format "Couldn't find Field %s for Table %d '%s' (%s Database %d '%s') .\nFound: %s"
-                             field-name table-id table-name driver db-id db-name
-                             (u/pprint-to-str (db/select-id->field :name Field, :active true, :table_id table-id))))))))
+         (ex-info (format "Couldn't find Field %s for Table %s.\nFound:\n%s"
+                          (pr-str field-name) (pr-str table-name) (u/pprint-to-str all-field-names))
+                  {:field-name  field-name
+                   :table       table-name
+                   :table-id    table-id
+                   :database    db-name
+                   :database-id db-id
+                   :all-fields  all-field-names})))))
 
 (defn the-field-id
   "Internal impl of `(data/id table field)`."

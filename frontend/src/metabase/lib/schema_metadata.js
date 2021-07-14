@@ -395,6 +395,18 @@ const DEFAULT_FILTER_OPERATORS = [
   { name: "not-null", verboseName: t`Not empty` },
 ];
 
+const KEY_FILTER_OPERATORS = [
+  { name: "=", verboseName: t`Is` },
+  { name: "!=", verboseName: t`Is not` },
+  { name: ">", verboseName: t`Greater than` },
+  { name: "<", verboseName: t`Less than` },
+  { name: "between", verboseName: t`Between` },
+  { name: ">=", verboseName: t`Greater than or equal to` },
+  { name: "<=", verboseName: t`Less than or equal to` },
+  { name: "is-null", verboseName: t`Is empty` },
+  { name: "not-null", verboseName: t`Not empty` },
+];
+
 // ordered list of operators and metadata per type
 const FILTER_OPERATORS_BY_TYPE_ORDERED = {
   [NUMBER]: [
@@ -450,14 +462,19 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "=", verboseName: t`Is` },
     { name: "!=", verboseName: t`Is not` },
     { name: "inside", verboseName: t`Inside` },
+    { name: ">", verboseName: t`Greater than` },
+    { name: "<", verboseName: t`Less than` },
+    { name: "between", verboseName: t`Between` },
+    { name: ">=", verboseName: t`Greater than or equal to` },
+    { name: "<=", verboseName: t`Less than or equal to` },
   ],
   [BOOLEAN]: [
     { name: "=", verboseName: t`Is`, multi: false },
     { name: "is-null", verboseName: t`Is empty` },
     { name: "not-null", verboseName: t`Not empty` },
   ],
-  [FOREIGN_KEY]: DEFAULT_FILTER_OPERATORS,
-  [PRIMARY_KEY]: DEFAULT_FILTER_OPERATORS,
+  [FOREIGN_KEY]: KEY_FILTER_OPERATORS,
+  [PRIMARY_KEY]: KEY_FILTER_OPERATORS,
   [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
 };
 
@@ -497,7 +514,16 @@ export function getOperatorByTypeAndName(type, name) {
 }
 
 export function getFilterOperators(field, table, selected) {
-  const type = getFieldType(field) || UNKNOWN;
+  const fieldType = getFieldType(field) || UNKNOWN;
+  let type = fieldType;
+  if (type === PRIMARY_KEY || type === FOREIGN_KEY) {
+    if (isFieldType(STRING, field)) {
+      type = STRING;
+    } else if (isFieldType(STRING_LIKE, field)) {
+      type = STRING_LIKE;
+    }
+  }
+
   return FILTER_OPERATORS_BY_TYPE_ORDERED[type]
     .map(operatorForType => {
       const operator = FIELD_FILTER_OPERATORS[operatorForType.name];

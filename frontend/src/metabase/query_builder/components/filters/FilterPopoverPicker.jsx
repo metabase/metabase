@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 
 import DatePicker from "../filters/pickers/DatePicker";
 import TimePicker from "../filters/pickers/TimePicker";
@@ -30,15 +30,18 @@ export default class FilterPopoverPicker extends React.Component {
       minWidth,
       maxWidth,
     } = this.props;
+
     const setValue = (index: number, value: any) => {
       onFilterChange(filter.setArgument(index, value));
     };
+
     const setValues = (values: any[]) => {
       onFilterChange(filter.setArguments(values));
     };
 
     const dimension = filter.dimension();
     const field = dimension.field();
+
     return field.isTime() ? (
       <TimePicker
         className={className}
@@ -71,3 +74,13 @@ export default class FilterPopoverPicker extends React.Component {
     );
   }
 }
+
+FilterPopoverPicker.propTypes = {
+  className: PropTypes.string,
+  filter: PropTypes.object,
+  onFilterChange: PropTypes.func,
+  onCommit: PropTypes.func,
+  isSidebar: PropTypes.bool,
+  minWidth: PropTypes.number,
+  maxWidth: PropTypes.number,
+};

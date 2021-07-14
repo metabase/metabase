@@ -7,7 +7,7 @@ import { parseHashOptions } from "metabase/lib/browser";
 import MetabaseSettings from "metabase/lib/settings";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
-import Parameters from "metabase/parameters/components/Parameters";
+import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import LogoBadge from "./LogoBadge";
 
 import cx from "classnames";

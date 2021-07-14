@@ -1,7 +1,5 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
-import styled from "styled-components";
-import { Flex } from "grid-styled";
 
 import { t, jt } from "ttag";
 
@@ -9,6 +7,12 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
+
+import {
+  CardContent,
+  HelpCardContainer,
+  IconContainer,
+} from "./AddDatabaseHelpCard.styled";
 
 export const ENGINE_DOCS = {
   bigquery: MetabaseSettings.docsUrl("administration-guide/databases/bigquery"),
@@ -30,15 +34,9 @@ export const CLOUD_HELP_URL = "https://www.metabase.com/help/cloud";
 const propTypes = {
   engine: PropTypes.string.isRequired,
   hasCircle: PropTypes.bool,
-  style: PropTypes.object,
 };
 
-const defaultProps = {
-  hasCircle: true,
-  style: {},
-};
-
-function AddDatabaseHelpCard({ engine, hasCircle, style, ...props }) {
+function AddDatabaseHelpCard({ engine, hasCircle = true, ...props }) {
   const displayName = useMemo(() => {
     const hasEngineDoc = !!ENGINE_DOCS[engine];
     if (!hasEngineDoc) {
@@ -92,22 +90,5 @@ function AddDatabaseHelpCard({ engine, hasCircle, style, ...props }) {
 }
 
 AddDatabaseHelpCard.propTypes = propTypes;
-AddDatabaseHelpCard.defaultProps = defaultProps;
-
-const HelpCardContainer = styled(Flex)`
-  background-color: #f9fbfb;
-  border-radius: 10px;
-  min-width: 300px;
-`;
-
-const IconContainer = styled(Flex)`
-  width: ${props => (props.hasCircle ? "52px" : "32px")};
-  height: ${props => (props.hasCircle ? "52px" : "32px")};
-  background-color: ${props => (props.hasCircle ? "#EEF2F5" : "transparent")};
-`;
-
-const CardContent = styled(Flex)`
-  margin-top: ${props => (props.shouldDisplayHelpLink ? "8px" : 0)};
-`;
 
 export default AddDatabaseHelpCard;

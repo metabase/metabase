@@ -143,6 +143,7 @@ const Dashboards = createEntity({
         name: "name",
         title: t`Name`,
         placeholder: t`What is the name of your dashboard?`,
+        autoFocus: true,
         validate: name => (!name ? "Name is required" : null),
       },
       {

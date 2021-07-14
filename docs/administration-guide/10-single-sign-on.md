@@ -41,13 +41,9 @@ Metabase will pull out three main attributes from your LDAP directory - email (d
 
 ![Attributes](./images/ldap-attributes.png)
 
-Metabase needs to pull out three main attributes from your LDAP directory. 
-
-- email (defaults to the `mail` attribute)
-- first name (defaults to the `givenName` attribute)
-- last name (defaults to the `sn` attribute). 
-
-Your LDAP directory must have these three fields populated or Metabase won't be able to create or log in the user. If your LDAP setup uses different values for defaults, you must specify these under the "Attributes" portion of the form.
+Your LDAP directory must have the email field populated or Metabase won't be able to create or log in the user. If
+either name field is missing, Metabase will use a default of "Unknown", and the name can be changed manually in the
+user's account settings.
 
 If you have user groups in Metabase you are using to control access, it is often tedious to have to manually assign a user to a group after they're logged in via SSO. You can take advantage of the groups your LDAP directory uses by enabling Group Mappings, and specifying which LDAP group corresponds to which user group on your Metabase server.
 

@@ -2,7 +2,10 @@ import { restore, addMongoDatabase, modal } from "__support__/e2e/cypress";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
-describe("mongodb > native query", () => {
+// Skipping the whole describe block because it contains only one skipped test so far!
+// We don't want to run the whole beforeEeach block in CI only to skip the test afterwards.
+// IMPORTANT: when #15946 gets fixed, unskip both describe block and the test itself!
+describe.skip("mongodb > native query", () => {
   before(() => {
     restore();
     cy.signInAsAdmin();

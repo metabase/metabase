@@ -12,10 +12,13 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
+// Please preserve the following 2 @ calls in this order.
+// Otherwise @Database.loadList overrides pagination props
+// that come from @Task.LoadList
+@Database.loadList()
 @Task.loadList({
   pageSize: 50,
 })
-@Database.loadList()
 class TasksApp extends React.Component {
   render() {
     const {

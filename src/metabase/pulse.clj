@@ -56,13 +56,13 @@
                                  (merge {:executed-by pulse-creator-id
                                          :context     :pulse
                                          :card-id     card-id}
-                                        options))))]
-          (let [result (if pulse-creator-id
-                     (session/with-current-user pulse-creator-id
-                       (process-query))
-                     (process-query))]
-            {:card   card
-             :result result})))
+                                        options))))
+              result        (if pulse-creator-id
+                              (session/with-current-user pulse-creator-id
+                                (process-query))
+                              (process-query))]
+          {:card   card
+           :result result}))
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
 
@@ -123,22 +123,30 @@
   [card-results]
   (let [{channel-id :id} (slack/files-channel)]
     (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
-      {:title                  card-name
-       :attachment-bytes-thunk (fn [] (render/render-pulse-card-to-png (defaulted-timezone card) card result))
-       :title_link             (urls/card-url card-id)
-       :attachment-name        "image.png"
-       :channel-id             channel-id
-       :fallback               card-name})))
+      {:title           card-name
+       :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card result)
+       :title_link      (urls/card-url card-id)
+       :attachment-name "image.png"
+       :channel-id      channel-id
+       :fallback        card-name})))
 
 (defn create-and-upload-slack-attachments!
-  "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
-  [attachments]
-  (doall
-   (for [{:keys [attachment-bytes-thunk attachment-name channel-id] :as attachment-data} attachments]
-     (let [slack-file-url (slack/upload-file! (attachment-bytes-thunk) attachment-name channel-id)]
-       (-> attachment-data
-           (select-keys [:title :title_link :fallback])
-           (assoc :image_url slack-file-url))))))
+  "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
+  it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
+  returns an image url, defaulting to slack/upload-file!."
+  ([attachments] (create-and-upload-slack-attachments! attachments slack/upload-file!))
+  ([attachments slack-attachment-uploader]
+   (letfn [(f [a] (select-keys a [:title :title_link :fallback]))]
+     (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
+               (conj processed (if (:render/text rendered-info)
+                                 (-> (f attachment-data)
+                                     (assoc :text (:render/text rendered-info)))
+                                 (let [image-bytes (render/png-from-render-info rendered-info)
+                                       image-url (slack-attachment-uploader image-bytes attachment-name channel-id)]
+                                   (-> (f attachment-data)
+                                       (assoc :image_url image-url))))))
+             []
+             attachments))))
 
 (defn- is-card-empty?
   "Check if the card is empty"

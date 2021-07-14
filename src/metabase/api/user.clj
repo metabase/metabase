@@ -4,8 +4,8 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
-            [metabase.api.session :as session-api]
             [metabase.email.messages :as email]
+            [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.permissions-group :as group]
@@ -38,11 +38,11 @@
   ;; agrees with is_superuser -- don't want to have ambiguous behavior
   (when (and (some? is-superuser?)
              new-groups-or-ids)
-    (api/checkp (= is-superuser? (contains? (set new-groups-or-ids) (u/get-id (group/admin))))
+    (api/checkp (= is-superuser? (contains? (set new-groups-or-ids) (u/the-id (group/admin))))
       "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
   (when (some? new-groups-or-ids)
     (when-not (= (user/group-ids user-or-id)
-                 (set (map u/get-id new-groups-or-ids)))
+                 (set (map u/the-id new-groups-or-ids)))
       (api/check-superuser)
       (user/set-permissions-groups! user-or-id new-groups-or-ids))))
 
@@ -58,7 +58,7 @@
 (defn- maybe-update-user-personal-collection-name! [user-before-update first_name last_name]
   ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
   (when-some [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
-    (when-some [collection (collection/user->existing-personal-collection (u/get-id user-before-update))]
+    (when-some [collection (collection/user->existing-personal-collection (u/the-id user-before-update))]
       (let [new-collection-name (collection/format-personal-collection-name first_name last_name)]
         (when-not (= new-collection-name (:name collection))
           (db/update! Collection (:id collection) :name new-collection-name))))))
@@ -177,7 +177,7 @@
   (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
   (db/transaction
-    (let [new-user-id (u/get-id (user/create-and-invite-user!
+    (let [new-user-id (u/the-id (user/create-and-invite-user!
                                  (u/select-keys-when body
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*))]
@@ -240,18 +240,18 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (db/update! User (u/get-id existing-user)
+  (db/update! User (u/the-id existing-user)
     :is_active     true
     :is_superuser  false
     ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
     ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
                                  ;; if google-auth-client-id is set it means Google Auth is enabled
-                                 (session-api/google-auth-client-id)))
+                                 (google/google-auth-client-id)))
     :ldap_auth     (boolean (and (:ldap_auth existing-user)
                                  (ldap/ldap-configured?))))
   ;; now return the existing user whether they were originally active or not
-  (fetch-user :id (u/get-id existing-user)))
+  (fetch-user :id (u/the-id existing-user)))
 
 (api/defendpoint PUT "/:id/reactivate"
   "Reactivate user at `:id`"

@@ -1,29 +1,22 @@
 import React from "react";
+import PropTypes from "prop-types";
 
 import _ from "underscore";
 
 const DEBOUNCE_PERIOD = 300;
 
-type AuditParameter = {
-  key: string,
-  placeholder: string,
-};
-
-type Props = {
-  parameters: AuditParameter[],
-  children?: (committedValues: { [key: string]: string }) => React.Element,
-};
-
-type State = {
-  inputValues: { [key: string]: string },
-  committedValues: { [key: string]: string },
+const propTypes = {
+  parameters: PropTypes.arrayOf(
+    PropTypes.shape({
+      key: PropTypes.string.isRequired,
+      placeholder: PropTypes.string.isRequired,
+    }),
+  ),
+  children: PropTypes.func,
 };
 
 export default class AuditParameters extends React.Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       inputValues: {},
@@ -52,7 +45,7 @@ export default class AuditParameters extends React.Component {
         <div className="pt4">
           {parameters.map(({ key, placeholder }) => (
             <input
-              className="input"
+              className="input mr2"
               key={key}
               type="text"
               value={inputValues[key] || ""}
@@ -68,3 +61,5 @@ export default class AuditParameters extends React.Component {
     );
   }
 }
+
+AuditParameters.propTypes = propTypes;

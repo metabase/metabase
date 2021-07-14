@@ -10,13 +10,15 @@ import ArchiveModal from "metabase/components/ArchiveModal";
 import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
 
-const mapDispatchToProps = { archive: Questions.actions.setArchived };
+const mapDispatchToProps = {
+  archive: id => Questions.actions.setArchived({ id }, true),
+};
 
 class ArchiveQuestionModal extends Component {
   onArchive = () => {
     const { question, archive, router } = this.props;
     const card = question.card();
-    archive({ id: card.id });
+    archive(card.id);
     router.push(Urls.collection(card.collection));
   };
 

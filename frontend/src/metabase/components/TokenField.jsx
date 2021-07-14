@@ -174,7 +174,7 @@ export default class TokenField extends Component {
   }
 
   _updateFilteredValues = (props: Props) => {
-    let { options, value, removeSelected, filterOption } = props;
+    let { options = [], value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
     const selectedValues = new Set(value.map(v => JSON.stringify(v)));
 
@@ -589,11 +589,11 @@ export default class TokenField extends Component {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className={cx(
-            optionsClassName,
-            "pl1 my1 scroll-y scroll-show border-bottom",
-          )}
-          style={{ maxHeight: 300, ...optionsStyle }}
+          className={cx(optionsClassName, "overflow-auto pl1 my1 scroll-hide")}
+          style={{
+            ...optionsStyle,
+            maxHeight: this.props.parameter ? 300 : "none",
+          }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >
@@ -637,6 +637,10 @@ export default class TokenField extends Component {
     });
   }
 }
+
+TokenField.propTypes = {
+  parameter: PropTypes.object,
+};
 
 const dedup = array => Array.from(new Set(array));
 

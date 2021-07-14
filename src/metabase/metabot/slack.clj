@@ -14,7 +14,7 @@
 
 (defmacro with-channel-id
   "Execute `body` with `channel-id` as the current Slack channel; all messages will be posted to that channel. (This is
-  bound to the channel that recieved the MetaBot command we're currently handling by the
+  bound to the channel that received the MetaBot command we're currently handling by the
   `metabase.metabot.events/handle-slack-event` event handler.)"
   {:style/indent 1}
   [channel-id & body]

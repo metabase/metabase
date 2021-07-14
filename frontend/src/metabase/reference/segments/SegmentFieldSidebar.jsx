@@ -7,7 +7,6 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SidebarItem from "metabase/components/SidebarItem";
 
 import cx from "classnames";
-import pure from "recompose/pure";
 
 const SegmentFieldSidebar = ({ segment, field, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
@@ -41,4 +40,4 @@ SegmentFieldSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default pure(SegmentFieldSidebar);
+export default React.memo(SegmentFieldSidebar);

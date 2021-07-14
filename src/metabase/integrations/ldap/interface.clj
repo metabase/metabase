@@ -9,8 +9,8 @@
 (def UserInfo
   "Schema for LDAP User info as returned by `user-info` and used as input to `fetch-or-create-user!`."
   {:dn         su/NonBlankString
-   :first-name su/NonBlankString
-   :last-name  su/NonBlankString
+   :first-name (s/maybe su/NonBlankString)
+   :last-name  (s/maybe su/NonBlankString)
    :email      su/Email
    :groups     [su/NonBlankString]
    s/Keyword   s/Any})
@@ -23,10 +23,10 @@
    :last-name-attribute  su/NonBlankString
    :email-attribute      su/NonBlankString
    :sync-groups?         s/Bool
-   :group-base           (s/maybe su/NonBlankString)
-   :group-mappings       (s/maybe {DN [su/IntGreaterThanZero]})
    :user-base            su/NonBlankString
    :user-filter          su/NonBlankString
+   :group-base           (s/maybe su/NonBlankString)
+   :group-mappings       (s/maybe {DN [su/IntGreaterThanZero]})
    s/Keyword             s/Any})
 
 (p/defprotocol+ LDAPIntegration

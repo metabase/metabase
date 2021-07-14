@@ -41,15 +41,15 @@
 
 (defn test-dashboard-is-valid
   "Is generated dashboard valid?
-   Tests that the dashboard has cards, the queries for those cards are valid, all related URLs are
-   valid, and that it has correct metadata."
-  [dashboard]
+   Tests that the dashboard has (the correct number of) cards, the queries for those cards are valid,
+   all related URLs are valid, and that it has correct metadata."
+  [dashboard cardinality]
   (testing (format "Dashboard should be valid")
     (testing (format "\nDashboard =\n%s\n" (u/pprint-to-str dashboard))
       (testing "Dashboard should have a name"
         (is (some? (:name dashboard))))
-      (testing "Cards should have at least one Card"
-        (is (-> dashboard :ordered_cards count pos?)))
+      (testing "Cards should have correct cardinality"
+        (is (= cardinality (-> dashboard :ordered_cards count))))
       (testing "URLs should be valid"
         (test-urls-are-valid dashboard))
       (testing "Dashboard's cards should be valid"

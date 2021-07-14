@@ -1,13 +1,12 @@
 import {
   describeWithToken,
+  modal,
   openOrdersTable,
   openPeopleTable,
   openReviewsTable,
   popover,
-  modal,
   restore,
   remapDisplayValueToFK,
-  sidebar,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
@@ -508,7 +507,10 @@ describeWithToken("formatting > sandboxes", () => {
        * Related issues: metabase#10474, metabase#14629
        */
 
-      ["normal", "workaround"].forEach(test => {
+      // skipping the workaround test because the function `runAndSaveQuestion`
+      // relies on the existence of a save button on a saved question that is not dirty
+      // which is a bug fixed in ssue metabase#14302
+      ["normal" /* , "workaround" */].forEach(test => {
         it(`${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`, () => {
           cy.server();
           cy.route("POST", "/api/card/*/query").as("cardQuery");
@@ -813,7 +815,7 @@ describeWithToken("formatting > sandboxes", () => {
       });
 
       cy.findByText("Settings").click();
-      sidebar()
+      cy.findByTestId("sidebar-left")
         .should("be.visible")
         .within(() => {
           // Remove the "Subtotal" column from within sidebar

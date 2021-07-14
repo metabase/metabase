@@ -56,7 +56,7 @@ class ParameterSidebar extends React.Component {
         <div className="flex justify-evenly border-bottom">
           <Radio
             options={tabs}
-            underlined
+            variant="underlined"
             value={currentTab}
             onChange={value => this.setState({ currentTab: value })}
           />

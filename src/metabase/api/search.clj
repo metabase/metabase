@@ -75,6 +75,7 @@
    ;; returned for Card, Dashboard, Pulse, and Collection
    :collection_id       :integer
    :collection_name     :text
+   :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
    :favorite            :boolean
@@ -162,7 +163,7 @@
 ;; Databases can't be archived
 (defmethod archived-where-clause (class Database)
   [model archived?]
-  [:= 1 1])
+  [:= 1 (if archived? 2 1)])
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause (class Table)
@@ -224,7 +225,9 @@
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
   [query :- su/Map, id :- (s/maybe s/Int)]
-  (if (some? id) (h/merge-where query [:= id :db_id]) query))
+  (if (some? id)
+    (h/merge-where query [:= id :db_id])
+    query))
 
 (s/defn ^:private add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
@@ -295,27 +298,28 @@
   (when (seq current-user-perms)
     (let [base-query (base-query-for-model Table search-ctx)]
       (add-table-db-id-clause
-        (if (contains? current-user-perms "/")
-          base-query
-          (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
-            (when (seq data-perms)
-              {:select (:select base-query)
-               :from   [[(merge
-                           base-query
-                           {:select [:id :schema :db_id :name :description :display_name :updated_at
-                                     [(hx/concat (hx/literal "/db/")
-                                                 :db_id
-                                                 (hx/literal "/schema/")
-                                                 (hsql/call :case
-                                                            [:not= :schema nil] :schema
-                                                            :else               (hx/literal ""))
-                                                 (hx/literal "/table/") :id
-                                                 (hx/literal "/read/"))
-                                      :path]]})
-                         :table]]
-               :where  (into [:or] (for [path data-perms]
-                                     [:like :path (str path "%")]))})))
-        table-db-id))))
+       (if (contains? current-user-perms "/")
+         base-query
+         (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
+           {:select (:select base-query)
+            :from   [[(merge
+                       base-query
+                       {:select [:id :schema :db_id :name :description :display_name :updated_at
+                                 [(hx/concat (hx/literal "/db/")
+                                             :db_id
+                                             (hx/literal "/schema/")
+                                             (hsql/call :case
+                                               [:not= :schema nil] :schema
+                                               :else               (hx/literal ""))
+                                             (hx/literal "/table/") :id
+                                             (hx/literal "/read/"))
+                                  :path]]})
+                      :table]]
+            :where  (if (seq data-perms)
+                      (into [:or] (for [path data-perms]
+                                    [:like :path (str path "%")]))
+                      [:= 0 1])}))
+       table-db-id))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -323,7 +327,8 @@
   (let [match             (wildcard-match (scoring/normalize query))
         columns-to-search (->> all-search-columns
                                (filter (fn [[k v]] (= v :text)))
-                               (map first))
+                               (map first)
+                               (remove #{:collection_authority_level}))
         case-clauses      (as-> columns-to-search <>
                                 (map (fn [col] [:like (hsql/call :lower col) match]) <>)
                                 (interleave <> (repeat 0))

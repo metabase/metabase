@@ -1,6 +1,5 @@
 import React from "react";
 import PropTypes from "prop-types";
-import pure from "recompose/pure";
 import { t } from "ttag";
 import S from "./UsefulQuestions.css";
 import D from "metabase/reference/components/Detail.css";
@@ -25,4 +24,4 @@ UsefulQuestions.propTypes = {
   questions: PropTypes.array.isRequired,
 };
 
-export default pure(UsefulQuestions);
+export default React.memo(UsefulQuestions);

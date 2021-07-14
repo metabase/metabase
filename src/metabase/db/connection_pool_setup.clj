@@ -26,7 +26,7 @@
 
 (s/defn ^:private connection-pool-spec :- {:datasource javax.sql.DataSource, s/Keyword s/Any}
   [db-type :- s/Keyword jdbc-spec :- (s/cond-pre s/Str su/Map)]
-  (let [ds-name    (format "metatabase-%s-app-db" (name db-type))
+  (let [ds-name    (format "metabase-%s-app-db" (name db-type))
         pool-props (assoc application-db-connection-pool-props "dataSourceName" ds-name)]
     (if (string? jdbc-spec)
       {:datasource (connection-pool/pooled-data-source-from-url jdbc-spec pool-props)}

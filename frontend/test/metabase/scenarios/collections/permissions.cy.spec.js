@@ -11,7 +11,12 @@
  */
 
 import { onlyOn } from "@cypress/skip-test";
-import { restore, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  sidebar,
+  openNativeEditor,
+} from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
@@ -39,7 +44,7 @@ describe("collection permissions", () => {
               describe("create dashboard", () => {
                 it("should offer to save dashboard to a currently opened collection", () => {
                   cy.visit("/collection/root");
-                  cy.findByTestId("sidebar").within(() => {
+                  sidebar().within(() => {
                     cy.findByText("First collection").click();
                     cy.findByText("Second collection").click();
                   });
@@ -47,26 +52,34 @@ describe("collection permissions", () => {
                   cy.findByText("New dashboard").click();
                   cy.get(".AdminSelect").findByText("Second collection");
                 });
+
+                onlyOn(user === "admin", () => {
+                  it("should offer to save dashboard to root collection from a dashboard page (metabase#16832)", () => {
+                    cy.visit("/collection/root");
+                    cy.findByText("Orders in a dashboard").click();
+                    cy.icon("add").click();
+                    popover()
+                      .findByText("New dashboard")
+                      .click();
+                    cy.get(".AdminSelect").findByText("Our analytics");
+                  });
+                });
               });
 
               describe("pin", () => {
                 it("pinning should work properly for both questions and dashboards", () => {
                   cy.visit("/collection/root");
                   // Assert that we're starting from a scenario with no pins
-                  cy.findByText("Pinned items").should("not.exist");
+                  cy.findByTestId("pinned-items").should("not.exist");
 
                   pinItem("Orders in a dashboard"); // dashboard
                   pinItem("Orders, Count"); // question
 
                   // Should see "pinned items" and items should be in that section
-                  cy.findByText("Pinned items")
-                    .parent()
-                    .within(() => {
-                      cy.findByText("Orders in a dashboard");
-                      cy.findByText("Orders, Count");
-                    });
-                  // Consequently, "Everything else" should now also be visible
-                  cy.findByText("Everything else");
+                  cy.findByTestId("pinned-items").within(() => {
+                    cy.findByText("Orders in a dashboard");
+                    cy.findByText("Orders, Count");
+                  });
                   // Only pinned dashboards should show up on the home page...
                   cy.visit("/");
                   cy.findByText("Orders in a dashboard");
@@ -141,12 +154,26 @@ describe("collection permissions", () => {
 
               describe("archive", () => {
                 it("should be able to archive/unarchive question (metabase#15253)", () => {
-                  cy.skipOn(user === "nodata");
                   archiveUnarchive("Orders");
                 });
 
                 it("should be able to archive/unarchive dashboard", () => {
                   archiveUnarchive("Orders in a dashboard");
+                });
+
+                describe("archive page", () => {
+                  it("should show archived items (metabase#15080, metabase#16617)", () => {
+                    cy.skipOn(user === "nodata");
+                    cy.visit("collection/root");
+                    openEllipsisMenuFor("Orders");
+                    cy.findByText("Archive this item").click();
+                    cy.findByText("Archived question")
+                      .siblings(".Icon-close")
+                      .click();
+                    cy.findByText("View archive").click();
+                    cy.location("pathname").should("eq", "/archive");
+                    cy.findByText("Orders");
+                  });
                 });
 
                 describe("collections", () => {
@@ -173,13 +200,11 @@ describe("collection permissions", () => {
                     cy.get("[class*=PageHeading]")
                       .as("title")
                       .contains("Second collection");
-                    cy.findByTestId("sidebar")
-                      .as("sidebar")
-                      .within(() => {
-                        cy.findByText("First collection");
-                        cy.findByText("Second collection");
-                        cy.findByText("Third collection").should("not.exist");
-                      });
+                    sidebar().within(() => {
+                      cy.findByText("First collection");
+                      cy.findByText("Second collection");
+                      cy.findByText("Third collection").should("not.exist");
+                    });
                     // While we're here, we can test unarchiving the collection as well
                     cy.findByText("Archived collection");
                     cy.findByText("Undo").click();
@@ -189,7 +214,7 @@ describe("collection permissions", () => {
                     // We're still in the parent collection
                     cy.get("@title").contains("Second collection");
                     // But unarchived collection is now visible in the sidebar
-                    cy.get("@sidebar").within(() => {
+                    sidebar().within(() => {
                       cy.findByText("Third collection");
                     });
                   });
@@ -303,10 +328,15 @@ describe("collection permissions", () => {
                   cy.contains("37.65");
                 });
 
-                it("should be able to archive the question (metabase#11719-3)", () => {
+                it("should be able to archive the question (metabase#11719-3, metabase#16512)", () => {
+                  cy.intercept("GET", "/api/collection/root/items**").as(
+                    "getItems",
+                  );
                   cy.findByText("Archive").click();
                   clickButton("Archive");
                   assertOnRequest("updateQuestion");
+                  cy.wait("@getItems"); // pinned items
+                  cy.wait("@getItems"); // unpinned items
                   cy.location("pathname").should("eq", "/collection/root");
                   cy.findByText("Orders").should("not.exist");
                 });
@@ -661,9 +691,7 @@ describe("collection permissions", () => {
   it("should offer to save items to 'Our analytics' if user has a 'curate' access to it", () => {
     cy.signIn("normal");
 
-    cy.visit("/question/new");
-    cy.findByText("Native query").click();
-    cy.get(".ace_content").type("select * from people");
+    openNativeEditor().type("select * from people");
     cy.findByText("Save").click();
 
     cy.get(".AdminSelect").findByText("Our analytics");
@@ -682,7 +710,7 @@ function openEllipsisMenuFor(item, index = 0) {
   return cy
     .findAllByText(item)
     .eq(index)
-    .closest("a")
+    .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
 }

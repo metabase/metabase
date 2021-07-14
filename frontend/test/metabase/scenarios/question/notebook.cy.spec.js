@@ -70,7 +70,7 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Showing 1 row"); // ensure only one user was returned
   });
 
-  it.skip("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
+  it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
@@ -87,8 +87,13 @@ describe("scenarios > question > notebook", () => {
     });
 
     cy.wait("@dataset");
-    cy.findByText("ID 96 97").click();
-    cy.get("[contenteditable='true']").contains("between([ID], 96, 97)");
+    cy.findByText("ID between 96 97").click();
+    cy.findByText("Between").click();
+    popover().within(() => {
+      cy.contains("Is not");
+      cy.contains("Greater than");
+      cy.contains("Less than");
+    });
   });
 
   it("should show the correct number of function arguments in a custom expression", () => {
@@ -249,7 +254,7 @@ describe("scenarios > question > notebook", () => {
     // NOTE: - This repro is really tightly coupled to the `joinTwoSavedQuestions()` function.
     //       - Be extremely careful when changing any of the steps within that function.
     //       - The alternative approach would have been to write one longer repro instead of two separate ones.
-    it.skip("joined questions should create custom column (metabase#13649)", () => {
+    it("joined questions should create custom column (metabase#13649)", () => {
       // pass down a joined question alias
       joinTwoSavedQuestions("13649");
 
@@ -259,7 +264,7 @@ describe("scenarios > question > notebook", () => {
       popover().within(() => {
         cy.get("[contenteditable='true']").type(
           // reference joined question by previously set alias
-          "[13649 → Sum of Rating] / [Sum of Rating]",
+          "[13649 → sum] / [Sum of Rating]",
         );
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
@@ -310,7 +315,7 @@ describe("scenarios > question > notebook", () => {
       });
     });
 
-    it.skip("should join saved questions that themselves contain joins (metabase#12928)", () => {
+    it("should join saved questions that themselves contain joins (metabase#12928)", () => {
       // Save Question 1
       cy.createQuestion({
         name: "12928_Q1",
@@ -456,7 +461,7 @@ describe("scenarios > question > notebook", () => {
       });
     });
 
-    it.skip("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
+    it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
       cy.createQuestion({
         name: "14649_min",
         query: {
@@ -466,7 +471,7 @@ describe("scenarios > question > notebook", () => {
               [
                 "aggregation-options",
                 ["sum", ["field", ORDERS.SUBTOTAL, null]],
-                { "display-name": "Revenue" },
+                { name: "Revenue", "display-name": "Revenue" },
               ],
             ],
             breakout: [
@@ -492,10 +497,10 @@ describe("scenarios > question > notebook", () => {
       });
     });
 
-    it.skip("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
+    it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
-      cy.route("GET", "/api/automagic-dashboards/adhoc/").as("xray");
+      cy.route("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
 
       visitQuestionAdhoc({
         dataset_query: {
@@ -542,56 +547,6 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("How this metric is distributed across different numbers");
       // Make sure at least one card is rendered
       cy.get(".DashCard");
-    });
-
-    it("binning for a date column on a joined table should offer only a single set of values (metabase#15446)", () => {
-      cy.createQuestion({
-        name: "15446",
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-              condition: [
-                "=",
-                ["field", ORDERS.PRODUCT_ID, null],
-                [
-                  "field",
-                  PRODUCTS.ID,
-                  {
-                    "join-alias": "Products",
-                  },
-                ],
-              ],
-              alias: "Products",
-            },
-          ],
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.visit(`/question/${QUESTION_ID}/notebook`);
-      });
-      cy.findByText("Pick a column to group by").click();
-      // In the first popover we'll choose the breakout method
-      popover().within(() => {
-        cy.findByText("User").click();
-        cy.findByPlaceholderText("Find...").type("cr");
-        cy.findByText("Created At")
-          .closest(".List-item")
-          .findByText("by month")
-          .click({ force: true });
-      });
-      // The second popover shows up and offers binning options
-      popover()
-        .last()
-        .within(() => {
-          cy.findByText("Hour of day").scrollIntoView();
-          // This is an implicit assertion - test fails when there is more than one string when using `findByText` instead of `findAllByText`
-          cy.findByText("Minute").click();
-        });
-      // Given that the previous step passes, we should now see this in the UI
-      cy.findByText("User → Created At: Minute");
     });
 
     it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
@@ -664,18 +619,6 @@ describe("scenarios > question > notebook", () => {
         .should("not.be.disabled")
         .click();
     });
-
-    it("should not render duplicated values in date binning popover (metabase#15574)", () => {
-      openOrdersTable({ mode: "notebook" });
-      cy.findByText("Summarize").click();
-      cy.findByText("Pick a column to group by").click();
-      popover()
-        .findByText("Created At")
-        .closest(".List-item")
-        .findByText("by month")
-        .click({ force: true });
-      cy.findByText("Minute");
-    });
   });
 
   describe.skip("popover rendering issues (metabase#15502)", () => {
@@ -694,11 +637,11 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Add filters to narrow your answer")
         .as("filter")
         .click();
-      popover().isInViewport();
+      popover().isRenderedWithinViewport();
       // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
       cy.icon("gear").click();
       cy.get("@filter").click();
-      popover().isInViewport();
+      popover().isRenderedWithinViewport();
     });
 
     it("popover should not cover the button that invoked it (metabase#15502-2)", () => {

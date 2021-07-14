@@ -21,7 +21,6 @@ import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
 import LogoutApp from "metabase/auth/containers/LogoutApp";
 import PasswordResetApp from "metabase/auth/containers/PasswordResetApp";
-import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount";
 
 /* Dashboards */
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -84,7 +83,7 @@ import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
-import CollectionLanding from "metabase/components/CollectionLanding";
+import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
 import Overworld from "metabase/containers/Overworld";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
@@ -171,7 +170,6 @@ export const getRoutes = store => (
         <Route path="logout" component={LogoutApp} />
         <Route path="forgot_password" component={ForgotPasswordApp} />
         <Route path="reset_password/:token" component={PasswordResetApp} />
-        <Route path="google_no_mb_account" component={GoogleNoAccount} />
       </Route>
 
       {/* MAIN */}

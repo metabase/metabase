@@ -1,5 +1,5 @@
 // Ported from `segments.e2e.spec.js`
-import { restore, popover, modal, sidebar } from "__support__/e2e/cypress";
+import { restore, popover, modal } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -105,7 +105,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findAllByText("Filter")
         .first()
         .click();
-      sidebar().within(() => {
+      cy.findByTestId("sidebar-right").within(() => {
         cy.contains("Product ID").click();
       });
       cy.findByText("Cancel");

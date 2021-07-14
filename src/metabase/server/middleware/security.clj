@@ -49,8 +49,9 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
 
-(def ^:private content-security-policy-header
+(defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
+  []
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -64,8 +65,13 @@
                                    "*.gstatic.com"
                                    ;; for webpack hot reloading
                                    (when config/is-dev?
-                                     "localhost:8080")]
-                                  (map (partial format "'sha256-%s'") inline-js-hashes))
+                                     "localhost:8080")
+                                   ;; for react dev tools to work in Firefox until resolution of
+                                   ;; https://github.com/facebook/react/issues/17997
+                                   (when config/is-dev?
+                                     "'unsafe-inline'")]
+                                   (when-not config/is-dev?
+                                     (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
@@ -91,7 +97,7 @@
 
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes?]
-  (update content-security-policy-header
+  (update (content-security-policy-header)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 

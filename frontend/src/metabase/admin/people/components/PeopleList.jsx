@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import moment from "moment";
 import _ from "underscore";
 
@@ -219,7 +219,13 @@ export default class PeopleList extends Component {
 
         {hasUsers && (
           <div className="flex align-center justify-between p2">
-            <div className="text-medium text-bold">{t`${total} people found`}</div>
+            <div className="text-medium text-bold">
+              {ngettext(
+                msgid`${total} person found`,
+                `${total} people found`,
+                total,
+              )}
+            </div>
             <PaginationControls
               page={page}
               pageSize={pageSize}
