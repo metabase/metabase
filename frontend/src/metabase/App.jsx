@@ -64,7 +64,10 @@ export default class App extends Component {
 
     return (
       <ScrollToTop>
-        <div className="relative">
+        <div
+          className="flex flex-column relative"
+          style={{ minHeight: "100vh" }}
+        >
           {currentUser && !IFRAMED && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />

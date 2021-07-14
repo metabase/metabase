@@ -14,8 +14,7 @@ import "metabase/lib/i18n-debug";
 // set the locale before loading anything else
 import { loadLocalization } from "metabase/lib/i18n";
 
-// NOTE: why do we need to load this here?
-import "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 // NOTE: this loads all builtin plugins
 import "metabase/plugins/builtin";
@@ -64,8 +63,15 @@ const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });
 
+const adminTheme = {
+  colors: {
+    mainBrand: color("admin-navbar"),
+  },
+};
+
 const theme = {
   space: [4, 8, 16, 32, 64, 128],
+  ...adminTheme,
 };
 
 function _init(reducers, getRoutes, callback) {

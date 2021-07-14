@@ -1,4 +1,5 @@
 import { createSelector } from "reselect";
+
 import { push } from "react-router-redux";
 
 import TogglePropagateAction from "./containers/TogglePropagateAction";
@@ -321,17 +322,12 @@ export const getTablesPermissionsGrid = createSelector(
     schemaName: SchemaName,
   ) => {
     const database = metadata.database(databaseId);
+
     if (!groups || !permissions || !database) {
       return null;
     }
 
-    const schema = database.schema(schemaName);
-    const tables = schema && schema.tables;
-
-    if (_.isEmpty(tables)) {
-      return null;
-    }
-
+    const tables = database.schema(schemaName).tables;
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
@@ -750,153 +746,6 @@ const getCollectionPermission = (permissions, groupId, { collectionId }) =>
 export const getPropagatePermissions = state =>
   state.admin.permissions.propagatePermissions;
 
-export const getCollectionPermissions = createSelector(
-  getCollections,
-  getGroups,
-  getPermissions,
-  getPropagatePermissions,
-  getNamespace,
-  (
-    collections,
-    groups: Array<GroupType>,
-    permissions: GroupsPermissions,
-    propagatePermissions: boolean,
-    namespace: string,
-  ) => {
-    if (!groups || groups.length === 0 || !permissions || !collections) {
-      return null;
-    }
-
-    const defaultGroup = _.find(groups, isDefaultGroup);
-
-    return {
-      type: "collection",
-      icon: "folder",
-      permissions: {
-        access: {
-          header: t`Collection Access`,
-          options(groupId, entityId) {
-            return namespace === "snippets"
-              ? [
-                  OPTION_SNIPPET_COLLECTION_WRITE,
-                  OPTION_SNIPPET_COLLECTION_READ,
-                  OPTION_SNIPPET_COLLECTION_NONE,
-                ]
-              : [OPTION_COLLECTION_WRITE, OPTION_COLLECTION_READ, OPTION_NONE];
-          },
-          actions(groupId, { collectionId }) {
-            const collection = _.findWhere(collections, {
-              id: collectionId,
-            });
-            if (collection && collection.children.length > 0) {
-              return [
-                () =>
-                  TogglePropagateAction({
-                    message:
-                      namespace === "snippets"
-                        ? t`Also change sub-folders`
-                        : t`Also change sub-collections`,
-                  }),
-              ];
-            } else {
-              return [];
-            }
-          },
-          getter(groupId, entityId) {
-            return getCollectionPermission(permissions, groupId, entityId);
-          },
-          updater(groupId, { collectionId }, value) {
-            let newPermissions = assocIn(
-              permissions,
-              [groupId, collectionId],
-              value,
-            );
-            if (propagatePermissions) {
-              const collection = _.findWhere(collections, {
-                id: collectionId,
-              });
-              for (const descendent of getDecendentCollections(collection)) {
-                newPermissions = assocIn(
-                  newPermissions,
-                  [groupId, descendent.id],
-                  value,
-                );
-              }
-            }
-            return newPermissions;
-          },
-          confirm(groupId, entityId, value) {
-            return [
-              getPermissionWarningModal(
-                getCollectionPermission,
-                null,
-                defaultGroup,
-                permissions,
-                groupId,
-                entityId,
-                value,
-              ),
-            ];
-          },
-          warning(groupId, entityId) {
-            const collection = _.findWhere(collections, {
-              id: entityId.collectionId,
-            });
-            if (!collection) {
-              return;
-            }
-            const collectionPerm = getCollectionPermission(
-              permissions,
-              groupId,
-              entityId,
-            );
-            const descendentCollections = getDecendentCollections(collection);
-            const descendentPerms = getPermissionsSet(
-              descendentCollections,
-              permissions,
-              groupId,
-            );
-            if (
-              collectionPerm === "none" &&
-              (descendentPerms.has("read") || descendentPerms.has("write"))
-            ) {
-              return t`This group has permission to view at least one subcollection of this collection.`;
-            } else if (
-              collectionPerm === "read" &&
-              descendentPerms.has("write")
-            ) {
-              return t`This group has permission to edit at least one subcollection of this collection.`;
-            }
-          },
-        },
-      },
-      entityName: "Group names",
-      groups: groups.map(group => {
-        return {
-          id: group.id,
-          name: group.name,
-          permissions: {
-            access: "val",
-          },
-        };
-      }),
-      entities: collections.map(collection => {
-        return {
-          id: {
-            collectionId: collection.id,
-          },
-          name: collection.name,
-          link: collection.children &&
-            collection.children.length > 0 && {
-              name: t`View sub-collections`,
-              url: `/admin/permissions/collections/${collection.id}`,
-            },
-        };
-      }),
-    };
-  },
-);
-
 export const getCollectionsPermissionsGrid = createSelector(
   getCollections,
   getGroups,
@@ -1080,4 +929,51 @@ export const getDiff = createSelector(
     permissions: GroupsPermissions,
     originalPermissions: GroupsPermissions,
   ) => diffPermissions(permissions, originalPermissions, groups, metadata),
+);
+
+const isPinnedGroup = group =>
+  isAdminGroup(group) || isDefaultGroup(group) || isMetaBotGroup(group);
+
+const getEntitySwitchState = value => ({
+  value,
+  options: [
+    {
+      name: "Groups",
+      value: "groups",
+    },
+    {
+      name: "Databases",
+      value: "databases",
+    },
+  ],
+});
+
+export const getSidebarState = createSelector(
+  getGroups,
+  groups => {
+    let [pinnedGroups, unpinnedGroups] = _.partition(groups, isPinnedGroup);
+
+    pinnedGroups = pinnedGroups.map(group => ({
+      ...group,
+      icon: "bolt",
+    }));
+
+    unpinnedGroups = unpinnedGroups.map(group => ({
+      ...group,
+      icon: "group",
+    }));
+
+    return {
+      entityGroups: [pinnedGroups, unpinnedGroups],
+      entitySwitch: getEntitySwitchState("databases"),
+      filterPlaceholder: "Search for a group",
+    };
+  },
+);
+
+export const getDatabasesPermissions = createSelector(
+  getMetadata,
+  metadata => {
+    const databases = metadata.databasesList({ savedQuestions: false });
+  },
 );

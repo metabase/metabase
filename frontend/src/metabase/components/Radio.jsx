@@ -38,6 +38,7 @@ const propTypes = {
   // Modes
   variant: PropTypes.oneOf(["bubble", "normal", "underlined"]),
   vertical: PropTypes.bool,
+  colorScheme: PropTypes.oneOf(["admin", "default"]),
 };
 
 const defaultNameGetter = option => option.name;
@@ -63,6 +64,7 @@ function Radio({
   yspace,
   py,
   showButtons = vertical && variant !== "bubble",
+  colorScheme = "default",
   ...props
 }) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
@@ -84,6 +86,7 @@ function Radio({
         return (
           <Item
             key={optionKeyFn(option)}
+            colorScheme={colorScheme}
             selected={selected}
             last={last}
             vertical={vertical}

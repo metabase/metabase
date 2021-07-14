@@ -48,20 +48,22 @@ export function Sidebar({
   const [filter, setFilter] = useState("");
   const [selectedId, setSelectedId] = useState(null);
 
-  const handleSelect = id => {
+  const handleSelect = ({ id }) => {
     setSelectedId(id);
-    onSelect(id);
+    onSelect && onSelect(id);
   };
-  const handleFilterChange = text => setFilter(text.trim().toLowerCase());
+  const handleFilterChange = text => setFilter(text);
 
   const filteredList = useMemo(() => {
-    if (filter.length === 0) {
+    const trimmedFilter = filter.trim().toLowerCase();
+
+    if (trimmedFilter.length === 0) {
       return null;
     }
 
     return entityGroups
       .flat()
-      .filter(entity => entity.name.toLowerCase().indexOf(filter) >= 0);
+      .filter(entity => entity.name.toLowerCase().includes(trimmedFilter));
   }, [entityGroups, filter]);
 
   return (
@@ -75,8 +77,8 @@ export function Sidebar({
         {entitySwitch && (
           <Box mb={2}>
             <Radio
-              bubble
-              variant="admin"
+              variant="bubble"
+              colorScheme="admin"
               options={entitySwitch.options}
               value={entitySwitch.value}
             />
@@ -84,7 +86,7 @@ export function Sidebar({
         )}
         <TextInput
           hasClearButton
-          variant="admin"
+          colorScheme="admin"
           placeholder={filterPlaceholder}
           onChange={handleFilterChange}
           value={filter}
@@ -96,6 +98,7 @@ export function Sidebar({
       <SidebarContent>
         {filteredList && (
           <Tree
+            colorScheme="admin"
             data={filteredList}
             selectedId={selectedId}
             onSelect={handleSelect}
@@ -112,6 +115,7 @@ export function Sidebar({
             return (
               <React.Fragment key={index}>
                 <Tree
+                  colorScheme="admin"
                   data={entities}
                   selectedId={selectedId}
                   onSelect={handleSelect}

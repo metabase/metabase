@@ -12,7 +12,7 @@ const BORDER_RADIUS = {
 };
 
 const COLOR_BY_VARIANT = {
-  main: color("brand"),
+  default: color("brand"),
   admin: color("accent7"),
 };
 
@@ -45,7 +45,7 @@ export const Input = styled.input`
       : null}
 
   &:focus {
-    border-color: ${props => COLOR_BY_VARIANT[props.variant]};
+    border-color: ${props => COLOR_BY_VARIANT[props.colorScheme]};
   }
 `;
 

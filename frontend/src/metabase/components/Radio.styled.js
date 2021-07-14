@@ -4,6 +4,15 @@ import { space } from "styled-system";
 
 import { color, lighten } from "metabase/lib/colors";
 
+const COLOR_SCHEMES = {
+  admin: {
+    main: color("accent7"),
+  },
+  default: {
+    main: color("brand"),
+  },
+};
+
 // BASE
 const BaseList = styled.ul`
   display: flex;
@@ -20,7 +29,9 @@ const BaseItem = styled.li.attrs({
   cursor: pointer;
   :hover {
     color: ${props =>
-      !props.showButtons && !props.selected ? color("brand") : null};
+      !props.showButtons && !props.selected
+        ? COLOR_SCHEMES[props.colorScheme].main
+        : null};
   }
 `;
 
@@ -35,11 +46,15 @@ export const BubbleList = styled(BaseList)``;
 export const BubbleItem = styled(BaseItem)`
   font-weight: 700;
   border-radius: 99px;
-  color: ${props => (props.selected ? color("white") : color("brand"))};
+  color: ${props =>
+    props.selected ? color("white") : COLOR_SCHEMES[props.colorScheme].main};
   background-color: ${props =>
-    props.selected ? color("brand") : lighten("brand")};
+    props.selected
+      ? COLOR_SCHEMES[props.colorScheme].main
+      : lighten(COLOR_SCHEMES[props.colorScheme].main)};
   :hover {
-    background-color: ${props => !props.selected && lighten("brand", 0.38)};
+    background-color: ${props =>
+      !props.selected && lighten(COLOR_SCHEMES[props.colorScheme].main, 0.38)};
     transition: background 300ms linear;
   }
 `;
@@ -56,7 +71,8 @@ export const NormalList = styled(BaseList).attrs({
 })``;
 
 export const NormalItem = styled(BaseItem)`
-  color: ${props => (props.selected ? color("brand") : null)};
+  color: ${props =>
+    props.selected ? COLOR_SCHEMES[props.colorScheme].main : null};
 `;
 
 // UNDERLINE
@@ -64,7 +80,8 @@ export const UnderlinedList = styled(NormalList)``;
 
 export const UnderlinedItem = styled(NormalItem)`
   border-bottom: 3px solid transparent;
-  border-color: ${props => (props.selected ? color("brand") : null)};
+  border-color: ${props =>
+    props.selected ? COLOR_SCHEMES[props.colorScheme].main : null};
 `;
 
 UnderlinedItem.defaultProps = {

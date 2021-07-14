@@ -3,7 +3,6 @@ import { color } from "metabase/lib/colors";
 
 export const SidebarRoot = styled.aside`
   width: 300px;
-  height: 100%;
   border-right: 1px solid ${color("border")};
 `;
 

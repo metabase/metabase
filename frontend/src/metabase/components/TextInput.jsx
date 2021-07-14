@@ -22,7 +22,7 @@ TextInput.propTypes = {
   icon: PropTypes.node,
   padding: PropTypes.oneOf(["sm", "md"]),
   borderRadius: PropTypes.oneOf(["sm", "md"]),
-  variant: PropTypes.oneOf(["main", "admin"]),
+  colorScheme: PropTypes.oneOf(["default", "admin"]),
 };
 
 function TextInput({
@@ -33,7 +33,7 @@ function TextInput({
   hasClearButton = false,
   icon,
   type = "text",
-  variant = "main",
+  colorScheme = "default",
   autoFocus = false,
   padding = "md",
   borderRadius = "md",
@@ -49,7 +49,7 @@ function TextInput({
     <TextInputRoot className={className}>
       {icon && <IconWrapper>{icon}</IconWrapper>}
       <Input
-        variant={variant}
+        colorScheme={colorScheme}
         autoFocus={autoFocus}
         hasClearButton={hasClearButton}
         hasIcon={!!icon}

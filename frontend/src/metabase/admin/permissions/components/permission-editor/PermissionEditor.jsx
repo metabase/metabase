@@ -31,15 +31,17 @@ export function PermissionEditor({
 }) {
   const [filter, setFilter] = useState("");
 
-  const handleFilterChange = text => setFilter(text.trim().toLowerCase());
+  const handleFilterChange = text => setFilter(text);
 
   const filteredEntities = useMemo(() => {
-    if (filter.length === 0) {
+    const trimmedFilter = filter.trim().toLowerCase();
+
+    if (trimmedFilter.length === 0) {
       return null;
     }
 
-    return entities.filter(
-      entity => entity.name.toLowerCase().indexOf(filter) >= 0,
+    return entities.filter(entity =>
+      entity.name.toLowerCase().includes(trimmedFilter),
     );
   }, [entities, filter]);
 
@@ -52,7 +54,7 @@ export function PermissionEditor({
         <Box mt={2} mb={1}>
           <TextInput
             hasClearButton
-            variant="admin"
+            colorScheme="admin"
             placeholder={filterPlaceholder}
             onChange={handleFilterChange}
             value={filter}

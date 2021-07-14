@@ -9,7 +9,7 @@ const propTypes = {
   expandedIds: PropTypes.instanceOf(Set),
   selectedId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   depth: PropTypes.number.isRequired,
-  variant: PropTypes.string,
+  colorScheme: PropTypes.string,
 };
 
 export function TreeNodeList({
@@ -20,7 +20,7 @@ export function TreeNodeList({
   expandedIds,
   selectedId,
   depth,
-  variant,
+  colorScheme,
 }) {
   return (
     <ul role="menu">
@@ -33,7 +33,7 @@ export function TreeNodeList({
         return (
           <React.Fragment key={item.id}>
             <TreeNodeComponent
-              variant={variant}
+              colorScheme={colorScheme}
               item={item}
               onToggleExpand={onToggleExpand}
               onSelect={onSelect}
@@ -44,7 +44,7 @@ export function TreeNodeList({
             />
             {isExpanded && (
               <TreeNodeList
-                variant={variant}
+                colorScheme={colorScheme}
                 TreeNodeComponent={TreeNodeComponent}
                 items={item.children}
                 onToggleExpand={onToggleExpand}

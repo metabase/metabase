@@ -7,7 +7,7 @@ const propTypes = {
   TreeNodeComponent: PropTypes.object,
   data: PropTypes.array.isRequired,
   onSelect: PropTypes.func.isRequired,
-  variant: PropTypes.oneOf(["default", "admin"]),
+  colorScheme: PropTypes.oneOf(["default", "admin"]),
   selectedId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   emptyState: PropTypes.node,
 };
@@ -17,7 +17,7 @@ export function Tree({
   data,
   onSelect,
   selectedId,
-  variant = "default",
+  colorScheme = "default",
   emptyState = null,
 }) {
   const [expandedIds, setExpandedIds] = useState(new Set());
@@ -39,7 +39,7 @@ export function Tree({
 
   return (
     <TreeNodeList
-      variant={variant}
+      colorScheme={colorScheme}
       TreeNodeComponent={TreeNodeComponent}
       items={data}
       onSelect={onSelect}

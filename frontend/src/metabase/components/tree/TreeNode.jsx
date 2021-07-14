@@ -24,7 +24,7 @@ const propTypes = {
     hasRightArrow: PropTypes.string,
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,
-  variant: PropTypes.string,
+  colorScheme: PropTypes.string,
 };
 
 export const TreeNode = React.memo(function TreeNode({
@@ -35,7 +35,7 @@ export const TreeNode = React.memo(function TreeNode({
   onSelect,
   depth,
   item,
-  variant,
+  colorScheme,
 }) {
   const { name, icon, hasRightArrow, id } = item;
 
@@ -62,7 +62,7 @@ export const TreeNode = React.memo(function TreeNode({
     <TreeNodeRoot
       role="menuitem"
       tabIndex={0}
-      variant={variant}
+      colorScheme={colorScheme}
       depth={depth}
       onClick={handleSelect}
       isSelected={isSelected}
@@ -73,7 +73,7 @@ export const TreeNode = React.memo(function TreeNode({
       </ExpandToggleButton>
 
       {icon && (
-        <IconContainer variant={variant}>
+        <IconContainer colorScheme={colorScheme}>
           <Icon name={icon} />
         </IconContainer>
       )}

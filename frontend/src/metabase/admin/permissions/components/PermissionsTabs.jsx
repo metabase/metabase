@@ -8,7 +8,7 @@ import Radio from "metabase/components/Radio";
 const PermissionsTabs = ({ tab, onChangeTab }) => (
   <div className="px3 mt1">
     <Radio
-      // variant="admin"
+      colorScheme="admin"
       value={tab}
       options={[
         { name: t`Data permissions`, value: `databases` },

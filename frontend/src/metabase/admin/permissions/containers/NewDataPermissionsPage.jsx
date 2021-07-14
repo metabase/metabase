@@ -59,7 +59,7 @@ export function NewDataPermissionsPage() {
     <Sidebar>
       <Sidebar.Header>
         <TextInput
-          variant="admin"
+          colorScheme="admin"
           onChange={() => {}}
           padding="sm"
           borderRadius="md"
@@ -67,7 +67,7 @@ export function NewDataPermissionsPage() {
         />
       </Sidebar.Header>
       <Sidebar.Content>
-        <Tree variant="admin" data={data} />
+        <Tree colorScheme="admin" data={data} />
       </Sidebar.Content>
     </Sidebar>
   );

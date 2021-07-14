@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
+import { Box } from "grid-styled";
 
 import * as Urls from "metabase/lib/urls";
 import { CollectionsApi } from "metabase/services";
@@ -17,6 +18,8 @@ import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 
 import PermissionsGrid from "../components/PermissionsGrid";
+import EmptyState from "metabase/components/EmptyState";
+import { PermissionsTable } from "../components/permissions-table";
 
 import {
   getCollectionsPermissionsGrid,
@@ -94,6 +97,42 @@ export default class CollectionPermissionsModal extends Component {
       namespace,
       collection,
     } = this.props;
+
+    console.log(">>>grid", grid);
+
+    // const entities = grid.groups.map(group => {
+    //   return {
+    //     ...group,
+    //   };
+    // });
+
+    // const permissions = [
+    //   {
+    //     displayName: "Collection access",
+    //     name: "collection_access",
+    //     options: [
+    //       {
+    //         label: "Database",
+    //         value: "yo1",
+    //         icon: "arrow_left",
+    //         iconColor: "red",
+    //       },
+    //       {
+    //         label: "Database2",
+    //         value: "yo2",
+    //         icon: "arrow_left",
+    //         iconColor: "green",
+    //       },
+    //       {
+    //         label: "Database3",
+    //         value: "yo3",
+    //         icon: "arrow_left",
+    //         iconColor: "red",
+    //       },
+    //     ],
+    //   },
+    // ];
+
     return (
       <ModalContent
         title={
@@ -145,6 +184,19 @@ export default class CollectionPermissionsModal extends Component {
               showHeader={false}
             />
           )}
+
+          {/* {grid && (
+            <PermissionsTable
+              entityName={t`Group name`}
+              entities={grid.groups}
+              permissions={permissions}
+              emptyState={
+                <Box mt="120px">
+                  <EmptyState message={t`Nothing here`} icon="all" />
+                </Box>
+              }
+            />
+          )} */}
         </div>
       </ModalContent>
     );
