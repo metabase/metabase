@@ -1,4 +1,3 @@
-import React from "react";
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_MODERATION } from "metabase/plugins";

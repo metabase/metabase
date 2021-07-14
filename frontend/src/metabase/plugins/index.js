@@ -82,6 +82,8 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 
 export const PLUGIN_MODERATION = {
   ModerationActions: PluginPlaceholder,
+  ModerationReviewBanner: PluginPlaceholder,
+
   verifyItem: _.noop,
   getVerifiedIcon: _.noop,
   getIconForReview: object,

@@ -1382,3 +1382,12 @@ export const moderatorVerifyCard = createThunkAction(
     return dispatch(softReloadCard());
   },
 );
+
+export const REMOVE_MODERATION_REVIEW = "metabase/qb/REMOVE_MODERATION_REVIEW";
+export const removeModerationReview = createThunkAction(
+  REMOVE_MODERATION_REVIEW,
+  id => async (dispatch, getState) => {
+    // todo -- remove the review
+    return dispatch(softReloadCard());
+  },
+);

@@ -2,7 +2,10 @@ import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import { moderatorVerifyCard } from "metabase/query_builder/actions";
+import {
+  moderatorVerifyCard,
+  removeModerationReview,
+} from "metabase/query_builder/actions";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
@@ -12,9 +15,13 @@ import {
   BorderedModerationActions,
   BorderedQuestionActivityTimeline,
 } from "./QuestionDetailsSidebarPanel.styled";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+
+const { ModerationReviewBanner } = PLUGIN_MODERATION;
 
 const mapDispatchToProps = {
   moderatorVerifyCard,
+  removeModerationReview,
 };
 
 export default connect(
@@ -35,6 +42,11 @@ function QuestionDetailsSidebarPanel({
 }) {
   const canWrite = question.canWrite();
   const description = question.description();
+  const latestModerationReview = question.getLatestModerationReview() || {
+    created_at: Date.now(),
+    status: "verified",
+    moderator_id: 1,
+  };
 
   const onDescriptionEdit = canWrite
     ? () => {
@@ -45,6 +57,10 @@ function QuestionDetailsSidebarPanel({
   const onVerify = () => {
     const id = question.id();
     moderatorVerifyCard(id);
+  };
+
+  const onRemoveModerationReview = () => {
+    removeModerationReview(latestModerationReview.id);
   };
 
   return (
@@ -58,6 +74,12 @@ function QuestionDetailsSidebarPanel({
           onEdit={onDescriptionEdit}
         />
         <BorderedModerationActions onVerify={onVerify} />
+        {latestModerationReview && (
+          <ModerationReviewBanner
+            moderationReview={latestModerationReview}
+            onRemove={onRemoveModerationReview}
+          />
+        )}
         <BorderedQuestionActivityTimeline question={question} />
       </SidebarContentContainer>
     </SidebarContent>
