@@ -1,4 +1,9 @@
-import { restore, modal, describeWithToken } from "__support__/e2e/cypress";
+import {
+  restore,
+  modal,
+  describeWithToken,
+  describeWithoutToken,
+} from "__support__/e2e/cypress";
 
 describeWithToken("collections types", () => {
   beforeEach(() => {
@@ -39,6 +44,40 @@ describeWithToken("collections types", () => {
   });
 });
 
+describeWithoutToken("collection types", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not be able to manage collection's authority level", () => {
+    cy.visit("/collection/root");
+
+    cy.icon("new_folder").click();
+    modal().within(() => {
+      assertNoCollectionTypeInput();
+      cy.icon("close").click();
+    });
+
+    cy.findByText("First collection").click();
+    cy.icon("pencil").click();
+    cy.findByText("Edit this collection").click();
+    modal().within(() => {
+      assertNoCollectionTypeInput();
+    });
+  });
+
+  it("should not display official collection icon", () => {
+    cy.createCollection({
+      name: "Official Collection Test",
+      authority_level: "official",
+    });
+    cy.visit("/collection/root");
+    cy.findByText("Official Collection Test").click();
+    cy.findByTestId("official-collection-marker").should("not.exist");
+  });
+});
+
 function setOfficial(official = true) {
   const isOfficialNow = !official;
   cy.findByLabelText("Regular").should(
@@ -48,4 +87,10 @@ function setOfficial(official = true) {
     isOfficialNow ? "be.checked" : "not.be.checked",
   );
   cy.findByText(official ? "Official" : "Regular").click();
+}
+
+function assertNoCollectionTypeInput() {
+  cy.findByText(/Collection type/i).should("not.exist");
+  cy.findByText("Regular").should("not.exist");
+  cy.findByText("Official").should("not.exist");
 }
