@@ -1,0 +1,6 @@
+{:paths ["src" "resources"]
+
+ :deps
+ {com.google.apis/google-api-services-analytics {:mvn/version "v3-rev20180622-1.27.0"}}
+
+ :metabase.build-driver/parents #{:google}}

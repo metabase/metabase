@@ -7,7 +7,7 @@ There are three main entrypoints. Shell script wrappers are provided for conveni
 
 ### `build-drivers`
 
-Builds *all* drivers as needed. If drivers were recently built and no relevant source code changed, skips rebuild.
+Builds *all* drivers as needed.
 
 ```
 cd bin/build-drivers

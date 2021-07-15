@@ -6,8 +6,10 @@
 
 (defn- all-drivers []
   (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
-       (filter #(.isDirectory %)) ;; watch for errant DS_Store files on os_x
-       (map (comp keyword #(.getName %)))))
+       (filter #(.isDirectory %)) ; watch for errant DS_Store files on os_x
+       (remove #(.isHidden %))    ; ignore stuff like .cpcache
+       (map (comp keyword #(.getName %)))
+       sort))
 
 (defn build-drivers! [edition]
   (let [edition (or edition :oss)]

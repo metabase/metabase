@@ -1,0 +1,14 @@
+{:deps
+ {metabase/bigquery-driver        {:local/root "bigquery"}
+  metabase/druid-driver           {:local/root "druid"}
+  metabase/google-driver          {:local/root "google"}
+  metabase/googleanalytics-driver {:local/root "googleanalytics"}
+  metabase/mongo-driver           {:local/root "mongo"}
+  metabase/oracle-driver          {:local/root "oracle"}
+  metabase/presto-driver          {:local/root "presto"}
+  metabase/redshift-driver        {:local/root "redshift"}
+  metabase/snowflake-driver       {:local/root "snowflake"}
+  metabase/sparksql-driver        {:local/root "sparksql"}
+  metabase/sqlite-driver          {:local/root "sqlite"}
+  metabase/sqlserver-driver       {:local/root "sqlserver"}
+  metabase/vertica-driver         {:local/root "vertica"}}}

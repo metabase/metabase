@@ -2,9 +2,4 @@
  ["src" "resources"]
 
  :deps
- {com.google.api-client/google-api-client {:mvn/version "1.30.7"}}
-
- :aliases
- {:build
-  {:extra-deps
-   {metabase/metabase-core {:local/root "../../.."}}}}}
+ {com.google.api-client/google-api-client {:mvn/version "1.30.7"}}}

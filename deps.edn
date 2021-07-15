@@ -53,7 +53,9 @@
                                              :exclusions  [org.clojure/clojurescript]}
   instaparse/instaparse                     {:mvn/version "1.4.10"}
   io.forward/yaml                           {:mvn/version "1.0.9"
-                                             :exclusions  [org.clojure/clojure org.flatland/ordered org.yaml/snakeyaml]}
+                                             :exclusions  [org.clojure/clojure
+                                                           org.flatland/ordered
+                                                           org.yaml/snakeyaml]}
   javax.xml.bind/jaxb-api                   {:mvn/version "2.4.0-b180830.0359"}
   joda-time/joda-time                       {:mvn/version "2.10.8"}
   kixi/stats                                {:mvn/version "0.4.4"
@@ -133,7 +135,7 @@
   weavejester/dependency                    {:mvn/version "0.2.1"}
 
   ;; dummy dependency for the Java source file(s)
-  metabase/java-deps                        {:local/root "java"}}
+  metabase/java-deps {:local/root "java"}}
 
  :paths
  ["src" "shared/src" "resources" "java/target/classes"]
@@ -149,7 +151,8 @@
    :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Duser.timezone=UTC"
-                 "-Duser.language=en"]}
+                 "-Duser.language=en"
+                 "-XX:-OmitStackTraceInFastThrow"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
@@ -180,18 +183,24 @@
   :ee-test
   {:exec-args {:dirs ["test" "shared/test" "enterprise/backend/test"]}}
 
-  ;; for oracle dev: :dev:dev-oracle
-  :dev-oracle
-  {:extra-deps {metabase/oracle-driver  {:local/root "modules/drivers/oracle"}
-                ;; https://ask.clojure.org/index.php/7843/allow-specifying-aliases-coordinates-that-point-projects
-                com.oracle.ojdbc/ojdbc8 {:mvn/version "19.3.0.0"}}}
+  ;; for local dev -- include the drivers locally e.g.
+  :drivers
+  {:extra-deps
+   {metabase/driver-modules {:local/root "modules/drivers"}}}
 
-  ;; run oracle tests with clojure -X:dev:test:dev-oracle:dev-oracle-test
-  ;; EE oracle tests:      clojure -X:dev:test:ee:ee-dev:ee-test:dev-oracle:dev-oracle-test
-  :dev-oracle-test
-  {:extra-paths ["modules/drivers/oracle/test"]}
-
-  ;; TODO: all the other drivers
-  ;; TODO: combined dev-all-drivers profile
-  ;; TODO
-  }}
+  ;; to run driver tests: clojure -X:dev:test:drivers:drivers-test
+  :drivers-test
+  {:extra-paths
+   ["modules/drivers/bigquery/test"
+    "modules/drivers/druid/test"
+    "modules/drivers/google/test"
+    "modules/drivers/googleanalytics/test"
+    "modules/drivers/mongo/test"
+    "modules/drivers/oracle/test"
+    "modules/drivers/presto/test"
+    "modules/drivers/redshift/test"
+    "modules/drivers/snowflake/test"
+    "modules/drivers/sparksql/test"
+    "modules/drivers/sqlite/test"
+    "modules/drivers/sqlserver/test"
+    "modules/drivers/vertica/test"]}}}
