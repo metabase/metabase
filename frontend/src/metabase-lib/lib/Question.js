@@ -1047,7 +1047,7 @@ export default class Question {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
   getLatestModerationReview() {
-    return _.last(this.getModerationReviews());
+    return _.findWhere(this.getModerationReviews(), { most_recent: true });
   }
 }
 
