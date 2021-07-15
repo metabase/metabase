@@ -184,6 +184,82 @@
                               {:filters     [[:expression "bob"] [:expression "dobbs"]]
                                :expressions {:bob   [:abs $latitude]
                                              :dobbs [:upper $name]}
+                               :limit       5})))))
+    (testing "Should be able to deal with 2-arity functions"
+      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
+              :query
+              [{"$project"
+                {"_id" "$_id",
+                 "name" {"$toUpper" "$name"},
+                 "category_id" "$category_id",
+                 "latitude" {"$abs" "$latitude"},
+                 "longitude" "$longitude",
+                 "price" "$price"}}
+               {"$limit" 5}],
+              :collection "venues",
+              :mbql? true}
+             (qp/query->native
+               (mt/mbql-query venues
+                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
+                               :expressions {:bob   [:abs $latitude]
+                                             :dobbs [:upper $name]}
+                               :limit       5})))))
+    (testing "Should be able to deal with a little recursion, as a treat"
+      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
+              :query
+              [{"$project"
+                {"_id" "$_id",
+                 "name" {"$toUpper" "$name"},
+                 "category_id" "$category_id",
+                 "latitude" {"$abs" "$latitude"},
+                 "longitude" "$longitude",
+                 "price" "$price"}}
+               {"$limit" 5}],
+              :collection "venues",
+              :mbql? true}
+             (qp/query->native
+               (mt/mbql-query venues
+                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
+                               :expressions {:bob   [:abs $latitude]
+                                             :dobbs [:upper $name]}
+                               :limit       5})))))
+    (testing "Should be able to deal with a little recursion, as a treat, with an expression in"
+      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
+              :query
+              [{"$project"
+                {"_id" "$_id",
+                 "name" {"$toUpper" "$name"},
+                 "category_id" "$category_id",
+                 "latitude" {"$abs" "$latitude"},
+                 "longitude" "$longitude",
+                 "price" "$price"}}
+               {"$limit" 5}],
+              :collection "venues",
+              :mbql? true}
+             (qp/query->native
+               (mt/mbql-query venues
+                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
+                               :expressions {:bob   [:abs $latitude]
+                                             :dobbs [:upper $name]}
+                               :limit       5})))))
+    (testing "Should be able to deal with a timestampy thing"
+      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
+              :query
+              [{"$project"
+                {"_id" "$_id",
+                 "name" {"$toUpper" "$name"},
+                 "category_id" "$category_id",
+                 "latitude" {"$abs" "$latitude"},
+                 "longitude" "$longitude",
+                 "price" "$price"}}
+               {"$limit" 5}],
+              :collection "venues",
+              :mbql? true}
+             (qp/query->native
+               (mt/mbql-query venues
+                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
+                               :expressions {:bob   [:abs $latitude]
+                                             :dobbs [:upper $name]}
                                :limit       5})))))))
 
 (deftest compile-time-interval-test
