@@ -6,7 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import Selection from "./ParameterFieldWidgetSelection/ParameterFieldWidgetSelection";
+import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import Popover from "metabase/components/Popover";
 import Button from "metabase/components/Button";
 
@@ -107,7 +107,10 @@ export default class ParameterFieldWidget extends Component {
           onClick={() => focusChanged(true)}
         >
           {savedValue.length > 0 ? (
-            <Selection savedValue={savedValue} fields={fields} />
+            <ParameterFieldWidgetValue
+              savedValue={savedValue}
+              fields={fields}
+            />
           ) : (
             <span>{placeholder}</span>
           )}

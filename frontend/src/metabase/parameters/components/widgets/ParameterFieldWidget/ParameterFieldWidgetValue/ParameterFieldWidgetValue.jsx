@@ -18,16 +18,14 @@ export default function ParameterFieldWidgetSelection({ savedValue, fields }) {
 
   const numberOfValues = values.length;
 
+  // If there are multiple fields, turn off remapping since they might
+  // be remapped to different fields.
+  const shouldRemap = fields.length === 1;
+
   return numberOfValues > 1 ? (
     renderNumberOfSelections(numberOfValues)
   ) : (
-    <Value
-      // If there are multiple fields, turn off remapping since they might
-      // be remapped to different fields.
-      remap={fields.length === 1}
-      value={savedValue[0]}
-      column={fields[0]}
-    />
+    <Value remap={shouldRemap} value={savedValue[0]} column={fields[0]} />
   );
 }
 
