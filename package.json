@@ -202,7 +202,7 @@
     "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-no-build --open",
-    "test-cypress-no-build": "yarn && CONFIG_FILE=frontend/test/__support__/e2e/cypress.json babel-node ./frontend/test/__runner__/run_cypress_tests.js",
+    "test-cypress-no-build": "yarn && babel-node ./frontend/test/__runner__/run_cypress_tests.js",
     "prepare": "husky install"
   },
   "lint-staged": {
