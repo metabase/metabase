@@ -30,7 +30,7 @@ const questionDetails = {
   },
 };
 
-describe("issue 12720", () => {
+describe.skip("issue 12720", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card/1/query").as("cardQuery");
 
