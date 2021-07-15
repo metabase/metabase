@@ -91,7 +91,7 @@ function ItemIcon({ item, type }) {
       {type === "table" ? (
         <Icon name="database" />
       ) : (
-        <Icon name={item.getIcon()} size={20} />
+        <Icon {...item.getIcon()} size={20} />
       )}
     </IconWrapper>
   );

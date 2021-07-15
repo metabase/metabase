@@ -20,7 +20,7 @@ class CollectionBadge extends React.Component {
     return (
       <Badge
         to={collection.getUrl()}
-        icon={collection.getIcon()}
+        icon={collection.getIcon().name}
         data-metabase-event={`${analyticsContext};Collection Badge Click`}
         {...props}
       >
