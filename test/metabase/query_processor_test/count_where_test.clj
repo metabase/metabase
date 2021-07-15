@@ -4,7 +4,7 @@
             [metabase.models.segment :refer [Segment]]
             [metabase.test :as mt]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 94
            (->> {:aggregation [[:count-where [:< [:field-id (mt/id :venues :price)] 4]]]}
@@ -20,7 +20,7 @@
                   ffirst
                   long))))))
 
-(deftest compound-condition-test
+(deftest ^:parallel compound-condition-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 17
            (->> {:aggregation [[:count-where
@@ -34,7 +34,7 @@
                 ffirst
                 long)))))
 
-(deftest filter-test
+(deftest ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= nil
            (->> {:aggregation [[:count-where [:< [:field-id (mt/id :venues :price)] 4]]]
@@ -43,7 +43,7 @@
                 mt/rows
                 ffirst)))))
 
-(deftest breakout-test
+(deftest ^:parallel breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= [[2 0]
             [3 0]
@@ -58,7 +58,7 @@
                 (map (fn [[k v]]
                        [(long k) (long v)])))))))
 
-(deftest count-where-inside-expression-test
+(deftest ^:parallel count-where-inside-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (is (= 48
            (->> {:aggregation [[:+

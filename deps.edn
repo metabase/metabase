@@ -144,6 +144,7 @@
  {:dev
   {:extra-deps
    {clj-http-fake/clj-http-fake {:mvn/version "1.0.3", :exclusions [slingshot/slingshot]}
+    eftest/eftest               {:mvn/version "0.5.9"}
     reifyhealth/specmonstah     {:mvn/version "2.0.0"}
     ring/ring-mock              {:mvn/version "0.4.0"}
     talltale/talltale           {:mvn/version "0.5.4"}}
@@ -156,17 +157,20 @@
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
-  {:extra-deps {io.github.cognitect-labs/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
-                                                      :sha     "705ad25bbf0228b1c38d0244a36001c2987d7337"}}
-   :exec-fn    cognitect.test-runner.api/test
-   :exec-args  {:dirs ["test" "shared/test"]}
-   :jvm-opts   ["-Dmb.run.mode=test"
-                "-Dmb.db.in.memory=true"
-                "-Dmb.jetty.join=false"
-                "-Dmb.field.filter.operators.enabled=true"
-                "-Dmb.api.key=test-api-key"
-                "-Dmb.jetty.port=3200"  ; todo -- figure out how to do a random port like tests?
-                ]}
+  {;; we want the stuff in `test_resources` to override the stuff in `resources`, e.g. the test-specific logging config
+   :replace-paths ["src" "shared/src" "test_resources" "resources" "java/target/classes"]
+   :exec-fn       test-runner/run-tests
+   :exec-args     {:only ["test" "shared/test"]}
+   :jvm-opts      ["-Dmb.run.mode=test"
+                   "-Dmb.db.in.memory=true"
+                   "-Dmb.jetty.join=false"
+                   "-Dmb.field.filter.operators.enabled=true"
+                   "-Dmb.api.key=test-api-key"
+                   "-Dmb.jetty.port=3200" ; TODO -- figure out how to do a random port like in the old project.clj?
+                   ]}
+
+  :ci
+  {:jvm-opts ["-Xmx2g"]}
 
   ;; exists for symmetry with the ee profile
   :oss

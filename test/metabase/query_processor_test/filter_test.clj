@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.filter-test
+(ns ^:parallel metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
