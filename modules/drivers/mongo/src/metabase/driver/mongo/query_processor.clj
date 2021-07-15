@@ -294,13 +294,44 @@
 
 ;;; ---------------------------------------------------- functions ---------------------------------------------------
 
-(defmethod ->lvalue :avg    [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :stddev [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :sum    [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :sum    [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :abs    [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :upper  [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :avg       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :stddev    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :sum       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :min       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :max       [[_ inp]] (->lvalue inp))
 
+(defmethod ->lvalue :floor     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :ceil      [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :round     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :abs       [[_ inp]] (->lvalue inp))
+
+(defmethod ->lvalue :log       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :exp       [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :sqrt      [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :power     [[_ inp]] (->lvalue inp))
+
+(defmethod ->lvalue :trim      [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :ltrim     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :rtrim     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :upper     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :lower     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :replace   [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :concat    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :substring [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :length    [[_ inp]] (->lvalue inp))
+
+
+(defmethod ->rvalue :avg
+  [[_ inp]]
+  {"$avg" (->rvalue inp)})
+
+(defmethod ->rvalue :stddev
+  [[_ inp]]
+  {"$stdDevPop" (->rvalue inp)})
+
+(defmethod ->rvalue :sum
+  [[_ inp]]
+  {"$sum" (->rvalue inp)})
 
 (defmethod ->rvalue :abs
   [[_ inp]]
