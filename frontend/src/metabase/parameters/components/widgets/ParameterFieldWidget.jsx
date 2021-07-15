@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
+import PropTypes from "prop-types";
 
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
@@ -8,8 +9,6 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Popover from "metabase/components/Popover";
 import Button from "metabase/components/Button";
 import Value from "metabase/components/Value";
-
-import Field from "metabase-lib/lib/metadata/Field";
 
 import cx from "classnames";
 import {
@@ -32,6 +31,19 @@ export default class ParameterFieldWidget extends Component {
       widgetWidth: null,
     };
   }
+
+  static propTypes = {
+    dashboard: PropTypes.object,
+    fields: PropTypes.array.isRequired,
+    isEditing: PropTypes.bool.isRequired,
+    operator: PropTypes.object.isRequired,
+    parameter: PropTypes.object.isRequired,
+    parameters: PropTypes.array.isRequired,
+    parentFocusChanged: PropTypes.bool,
+    placeholder: PropTypes.string.isRequired,
+    setValue: PropTypes.func.isRequired,
+    value: PropTypes.string,
+  };
 
   static noPopover = true;
 
