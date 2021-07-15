@@ -57,8 +57,17 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,
 };
 
+const AUTHORITY_LEVEL_REGULAR = {
+  type: null,
+  icon: "folder",
+}
+
 export const PLUGIN_COLLECTIONS = {
   formFields: [],
+  AUTHORITY_LEVEL: {
+    [AUTHORITY_LEVEL_REGULAR.type]: AUTHORITY_LEVEL_REGULAR,
+    regular: AUTHORITY_LEVEL_REGULAR, // just an alias
+  }
 };
 
 export const PLUGIN_COLLECTION_COMPONENTS = {
