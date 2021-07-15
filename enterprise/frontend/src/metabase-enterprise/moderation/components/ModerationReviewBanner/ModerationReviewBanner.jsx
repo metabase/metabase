@@ -20,6 +20,9 @@ import {
 } from "./ModerationReviewBanner.styled";
 import Tooltip from "metabase/components/Tooltip";
 
+const ICON_BUTTON_SIZE = 16;
+const TOOLTIP_X_OFFSET = ICON_BUTTON_SIZE / 2;
+
 const mapStateToProps = (state, props) => ({
   currentUser: getUser(state),
 });
@@ -60,13 +63,14 @@ function ModerationReviewBanner({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <Tooltip tooltip={tooltipText}>
+      <Tooltip targetOffsetX={TOOLTIP_X_OFFSET} tooltip={tooltipText}>
         <IconButton
           onFocus={() => setIsActive(true)}
           onBlur={() => setIsActive(false)}
           icon={showClose ? "close" : icon}
           color={color(showClose ? "text-medium" : iconColor)}
           onClick={onRemove}
+          size={ICON_BUTTON_SIZE}
         />
       </Tooltip>
       <Text>{bannerText}</Text>
