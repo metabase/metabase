@@ -152,9 +152,12 @@
         ;; code may run inside of some other block that sets report timezone
         ;;
         ;; require/resolve used here to avoid circular refs
-        ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-value)
-         :report-timezone nil
-         #(create-database! driver dbdef)))))))
+        (let [thunk #(create-database! driver dbdef)]
+          (if (driver/report-timezone)
+            ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-value)
+             :report-timezone nil
+             thunk)
+            (thunk))))))))
 
 (defn- get-or-create-test-data-db!
   "Get or create the Test Data database for `driver`, which defaults to `driver/*driver*`, or `:h2` if that is unbound."

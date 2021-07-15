@@ -29,6 +29,7 @@
             [metabase.util.files :as u.files]
             [potemkin :as p]
             [schema.core :as s]
+            test-runner
             [toucan.db :as db]
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
@@ -287,6 +288,7 @@
 (defn do-with-temp-env-var-value
   "Impl for `with-temp-env-var-value` macro."
   [env-var-keyword value thunk]
+  (test-runner/assert-test-is-not-parallel "with-temp-env-var-value")
   (let [value (str value)]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
@@ -363,18 +365,19 @@
 
   Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
-  [setting-k value f]
+  [setting-k value thunk]
+  (test-runner/assert-test-is-not-parallel "with-temporary-setting-values")
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting                    (#'setting/resolve-setting setting-k)
         env-var-value              (#'setting/env-var-value setting)
         original-db-or-cache-value (#'setting/db-or-cache-value setting)]
     (if env-var-value
-      (do-with-temp-env-var-value setting env-var-value f)
+      (do-with-temp-env-var-value setting env-var-value thunk)
       (try
         (setting/set! setting-k value)
         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-            (f))
+          (thunk))
         (finally
           (setting/set! setting-k original-db-or-cache-value))))))
 
@@ -419,6 +422,7 @@
 (defn do-with-temp-vals-in-db
   "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
+  (test-runner/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
@@ -426,10 +430,10 @@
                                             :from   [model]
                                             :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
-      (format "%s %d not found." (name model) (u/the-id object-or-id)))
+            (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
       (db/update! model (u/the-id object-or-id)
-                  column->temp-value)
+        column->temp-value)
       (f)
       (finally
         (db/execute!
@@ -604,6 +608,7 @@
 
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? t.models/model? models)]}
+  (test-runner/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
                                      [model (:max-id (db/select-one [model [:%max.id :max-id]]))]))]
@@ -706,6 +711,7 @@
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
         groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
         groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+    (test-runner/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)
       (finally
@@ -721,6 +727,7 @@
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
+  (test-runner/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
   (try
     (do-with-discarded-collections-perms-changes
      collection
@@ -787,6 +794,7 @@
 (defn call-with-locale
   "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"
   [locale-tag f]
+  (test-runner/assert-test-is-not-parallel "with-locale")
   (let [current-locale (Locale/getDefault)]
     (try
       (Locale/setDefault (Locale/forLanguageTag locale-tag))

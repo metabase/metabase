@@ -7,7 +7,7 @@
             [metabase.test.data :as data]
             [metabase.test.util :as tu]))
 
-(deftest no-aggregation-test
+(deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Test that no aggregation just returns rows as-is."
       (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
@@ -24,7 +24,7 @@
                (mt/run-mbql-query venues
                  {:limit 10, :order-by [[:asc $id]]})))))))
 
-(deftest basic-aggregations-test
+(deftest ^:parallel basic-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "count aggregation"
       (is (= [[100]]
@@ -50,7 +50,7 @@
                (mt/run-mbql-query checkins
                  {:aggregation [[:distinct $user_id]]})))))))
 
-(deftest standard-deviation-test
+(deftest ^:parallel standard-deviation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
     (testing "standard deviation aggregations"
       (is (= {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
@@ -72,7 +72,7 @@
 ;;; |                                                   MIN & MAX                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest min-test
+(deftest ^:parallel min-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [1]
            (mt/first-row
@@ -86,7 +86,7 @@
                {:aggregation [[:min $latitude]]
                 :breakout    [$price]}))))))
 
-(deftest max-test
+(deftest ^:parallel max-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [4]
            (mt/first-row
@@ -105,7 +105,7 @@
 ;;; |                                             MULTIPLE AGGREGATIONS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest multiple-aggregations-test
+(deftest ^:parallel multiple-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "two aggregations"
       (is (= [[100 203]]
@@ -119,7 +119,7 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:avg $price] [:count] [:sum $price]]})))))))
 
-(deftest multiple-aggregations-metadata-test
+(deftest ^:parallel multiple-aggregations-metadata-test
   ;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple
   ;; columns with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and
   ;; generalize it so we can use it with Mongo
@@ -136,7 +136,7 @@
 
 ;;; ------------------------------------------------- CUMULATIVE SUM -------------------------------------------------
 
-(deftest cumulate-sum-test
+(deftest ^:parallel cumulate-sum-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cum_sum w/o breakout should be treated the same as sum"
       (is (= [[120]]
@@ -199,7 +199,7 @@
 
 ;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
 
-(deftest cumulative-count-test
+(deftest ^:parallel cumulative-count-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count aggregations"
       (testing "w/o breakout should be treated the same as count"
@@ -257,7 +257,7 @@
                (or (-> results mt/cols first)
                    results)))))))
 
-(deftest duplicate-aggregations-test
+(deftest ^:parallel duplicate-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Do we properly handle queries that have more than one of the same aggregation? (#5393)"
       (is (= [[5050 203]]
@@ -265,7 +265,7 @@
                (mt/run-mbql-query venues
                                   {:aggregation [[:sum $id] [:sum $price]]})))))))
 
-(deftest multiple-distinct-aggregations-test
+(deftest ^:parallel multiple-distinct-aggregations-test
   (testing "Multiple `:distinct` aggregations should work correctly (#13097)"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[100 4]]

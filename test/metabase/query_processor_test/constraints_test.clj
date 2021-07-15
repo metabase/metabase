@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.constraints-test
+(ns ^:parallel metabase.query-processor-test.constraints-test
   "Test for MBQL `:constraints`"
   (:require [clojure.test :refer :all]
             [metabase.query-processor :as qp]

@@ -8,9 +8,9 @@
             [metabase.models.database :as mdb]
             [metabase.models.permissions :as perms]
             [metabase.models.user :as user]
-            [metabase.plugins.classloader :as classloader]
             [metabase.server.middleware.session :as mw.session]
             [metabase.task :as task]
+            [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -31,8 +31,10 @@
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler
-      (classloader/require 'metabase.task.sync-databases)
-      (task/init! :metabase.task.sync-databases/SyncDatabases)
+      ;; temporarily disable the `maybe-update-db-schedules` behavior that normally happens when the sync databases
+      ;; task gets initialized so we don't end up getting all of our database sync schedules randomized.
+      (with-redefs [task.sync-databases/maybe-update-db-schedules identity]
+        (task/init! ::task.sync-databases/SyncDatabases))
       (mt/with-temp Database [{db-id :id}]
         (is (schema= {:description         (s/eq (format "sync-and-analyze Database %d" db-id))
                       :key                 (s/eq (format "metabase.task.sync-and-analyze.trigger.%d" db-id))

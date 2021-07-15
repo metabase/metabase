@@ -13,17 +13,17 @@
             [metabase.test.util :as tu]
             [metabase.util.honeysql-extensions :as hx]))
 
-(deftest parse-connection-string-test
+(deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
     (is (= ["file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}]
            (#'h2/connection-string->file+options "file:my-file;OPTION_1=TRUE;OPTION_2=100;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY")))))
 
-(deftest build-connection-string-test
+(deftest ^:parallel build-connection-string-test
   (testing "Check that we can build connection string out of parsed results"
     (is (= "file:my-file;OPTION_1=TRUE;OPTION_2=100;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"
            (#'h2/file+options->connection-string "file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"})))))
 
-(deftest set-safe-options-test
+(deftest ^:parallel set-safe-options-test
   (testing "Check that we add safe connection options to connection strings"
     (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
            (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"))))
@@ -32,7 +32,7 @@
     (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
            (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;ACCESS_MODE_DATA=rws")))))
 
-(deftest db-details->user-test
+(deftest ^:parallel db-details->user-test
   (testing "make sure we return the USER from db details if it is a keyword key in details..."
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db", :USER "cam"}))))
@@ -45,7 +45,7 @@
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db;USER=cam"})))))
 
-(deftest only-connect-to-existing-dbs-test
+(deftest ^:parallel only-connect-to-existing-dbs-test
   (testing "Make sure we *cannot* connect to a non-existent database by default"
     (is (= ::exception-thrown
            (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
@@ -53,7 +53,7 @@
                   (and (re-matches #"Database .+ not found .+" (.getMessage e))
                        ::exception-thrown)))))))
 
-(deftest db-timezone-id-test
+(deftest ^:parallel db-timezone-id-test
   (mt/test-driver :h2
     (is (= "UTC"
            (tu/db-timezone-id)))))
@@ -68,7 +68,7 @@
                               :type     :native
                               :native   {:query "SELECT 1"}}))))))
 
-(deftest add-interval-honeysql-form-test
+(deftest ^:parallel add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
     (is (= (hsql/call :dateadd
              (hx/literal "millisecond")
@@ -83,7 +83,7 @@
              :%now)
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
-(deftest clob-test
+(deftest ^:parallel clob-test
   (mt/test-driver :h2
     (testing "Make sure we properly handle rows that come back as `org.h2.jdbc.JdbcClob`"
       (let [results (qp/process-query (mt/native-query {:query "SELECT cast('Conchúr Tihomir' AS clob) AS name;"}))]
@@ -98,7 +98,7 @@
                    :name         "NAME"}]
                  (mt/cols results))))))))
 
-(deftest native-query-date-trunc-test
+(deftest ^:parallel native-query-date-trunc-test
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (= [{:display_name "D"
@@ -108,13 +108,13 @@
                :name         "D"}]
              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
-(deftest timestamp-with-timezone-test
+(deftest ^:parallel timestamp-with-timezone-test
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
     (is (= [{:t #t "2020-05-28T18:06-07:00"}]
            (jdbc/query (db.spec/h2 {:db "mem:test_db"})
                        "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
 
-(deftest native-query-parameters-test
+(deftest ^:parallel native-query-parameters-test
   (testing "Native query parameters should work with filters."
     (is (= [[693 "2015-12-29T00:00:00Z" 10 90]]
            (mt/rows
@@ -135,7 +135,7 @@
       (str/replace #"\"" "")
       (str/replace #"PUBLIC\." "")))
 
-(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+(deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
   (mt/test-driver :h2
     (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
       (mt/dataset attempted-murders

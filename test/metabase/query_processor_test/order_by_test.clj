@@ -4,7 +4,7 @@
             [metabase.driver :as driver]
             [metabase.test :as mt]))
 
-(deftest order-by-test
+(deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[1 12 375]
             [1  9 139]
@@ -24,7 +24,7 @@
                            [:asc $id]]
                 :limit    10}))))))
 
-(deftest order-by-aggregate-fields-test
+(deftest ^:parallel order-by-aggregate-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing :count
       (is (= [[4  6]

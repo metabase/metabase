@@ -77,6 +77,7 @@
    :trace Level/TRACE})
 
 (defn do-with-log-messages-for-level [x thunk]
+  (test-runner/assert-test-is-not-parallel "with-log-level")
   (let [[namespace-symb level] (if (sequential? x)
                                  x
                                  ['metabase x])
