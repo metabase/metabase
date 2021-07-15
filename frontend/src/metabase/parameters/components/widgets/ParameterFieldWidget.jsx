@@ -17,6 +17,19 @@ import {
   isFuzzyOperator,
 } from "metabase/lib/schema_metadata";
 
+const propTypes = {
+  dashboard: PropTypes.object,
+  fields: PropTypes.array.isRequired,
+  isEditing: PropTypes.bool.isRequired,
+  operator: PropTypes.object.isRequired,
+  parameter: PropTypes.object.isRequired,
+  parameters: PropTypes.array.isRequired,
+  parentFocusChanged: PropTypes.bool,
+  placeholder: PropTypes.string.isRequired,
+  setValue: PropTypes.func.isRequired,
+  value: PropTypes.string,
+};
+
 const BORDER_WIDTH = 1;
 
 const normalizeValue = value =>
@@ -31,19 +44,6 @@ export default class ParameterFieldWidget extends Component {
       widgetWidth: null,
     };
   }
-
-  static propTypes = {
-    dashboard: PropTypes.object,
-    fields: PropTypes.array.isRequired,
-    isEditing: PropTypes.bool.isRequired,
-    operator: PropTypes.object.isRequired,
-    parameter: PropTypes.object.isRequired,
-    parameters: PropTypes.array.isRequired,
-    parentFocusChanged: PropTypes.bool,
-    placeholder: PropTypes.string.isRequired,
-    setValue: PropTypes.func.isRequired,
-    value: PropTypes.string,
-  };
 
   static noPopover = true;
 
@@ -197,3 +197,5 @@ export default class ParameterFieldWidget extends Component {
     }
   }
 }
+
+ParameterFieldWidget.propTypes = propTypes;
