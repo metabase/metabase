@@ -321,6 +321,11 @@
 (defmethod ->lvalue :concat    [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :substring [[_ inp]] (->lvalue inp))
 
+(defmethod ->lvalue :+ [[_ & args]] (->lvalue inp))
+(defmethod ->lvalue :- [[_ fst snd]] (->lvalue inp))
+(defmethod ->lvalue :* [[_ & args]] (->lvalue inp))
+(defmethod ->lvalue :/ [[_ fst snd]] (->lvalue inp))
+
 ;;; actually __most__ these rvals are fucked up arities...
 
 (defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
