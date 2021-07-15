@@ -148,6 +148,12 @@ describe("binning related reproductions", () => {
           aggregation: [["avg", ["field", ORDERS.SUBTOTAL, null]]],
           breakout: [["field", ORDERS.USER_ID, null]],
         },
+      }).then(({ body }) => {
+        cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
+        cy.visit(`/question/${body.id}`);
+
+        // Wait for `result_metadata` to load
+        cy.wait("@cardQuery");
       });
     });
 
