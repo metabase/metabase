@@ -308,38 +308,39 @@
 (defmethod ->lvalue :log       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :exp       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :sqrt      [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :power     [[_ inp]] (->lvalue inp))
 
 (defmethod ->lvalue :trim      [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :ltrim     [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :rtrim     [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :upper     [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :lower     [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :length    [[_ inp]] (->lvalue inp))
+
+(defmethod ->lvalue :power     [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :replace   [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :concat    [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :substring [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :length    [[_ inp]] (->lvalue inp))
 
+;;; actually __most__ these rvals are fucked up arities...
 
-(defmethod ->rvalue :avg
-  [[_ inp]]
-  {"$avg" (->rvalue inp)})
+(defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
+(defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevPop" (->rvalue inp)})
+(defmethod ->rvalue :sum       [[_ inp]] {"$sum" (->rvalue inp)})
+(defmethod ->rvalue :min       [[_ inp]] {"$min" (->rvalue inp)})
+(defmethod ->rvalue :max       [[_ inp]] {"$max" (->rvalue inp)})
 
-(defmethod ->rvalue :stddev
-  [[_ inp]]
-  {"$stdDevPop" (->rvalue inp)})
+(defmethod ->rvalue :floor     [[_ inp]] {"$floor" (->rvalue inp)})
+(defmethod ->rvalue :ceil      [[_ inp]] {"$ceil" (->rvalue inp)})
+(defmethod ->rvalue :round     [[_ inp]] {"$round" (->rvalue inp)})
+(defmethod ->rvalue :abs       [[_ inp]] {"$abs" (->rvalue inp)})
 
-(defmethod ->rvalue :sum
-  [[_ inp]]
-  {"$sum" (->rvalue inp)})
+(defmethod ->rvalue :log       [[_ inp]] {"$log10" (->rvalue inp)})
+(defmethod ->rvalue :exp       [[_ inp]] {"$exp" (->rvalue inp)})
+(defmethod ->rvalue :sqrt      [[_ inp]] {"$sqrt" (->rvalue inp)})
 
-(defmethod ->rvalue :abs
-  [[_ inp]]
-  {"$abs" (->rvalue inp)})
+(defmethod ->rvalue :power     [[_ inp]] {"$sqrt" (->rvalue inp)})
 
-(defmethod ->rvalue :upper
-  [[_ inp]]
-  {"$toUpper" (->rvalue inp)})
+(defmethod ->rvalue :upper     [[_ inp]] {"$toUpper" (->rvalue inp)})
 
 
 
