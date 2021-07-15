@@ -22,9 +22,7 @@ export const Time = styled.time`
   font-size: 12px;
 `;
 
-export const IconButton = styled(Button).attrs({
-  iconOnly: true,
-})`
+export const IconButton = styled(Button)`
   padding: 0 0.5rem !important;
   border: none;
   background-color: transparent;
