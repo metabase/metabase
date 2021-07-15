@@ -42,11 +42,7 @@ function QuestionDetailsSidebarPanel({
 }) {
   const canWrite = question.canWrite();
   const description = question.description();
-  const latestModerationReview = question.getLatestModerationReview() || {
-    created_at: Date.now(),
-    status: "verified",
-    moderator_id: 1,
-  };
+  const latestModerationReview = question.getLatestModerationReview();
 
   const onDescriptionEdit = canWrite
     ? () => {

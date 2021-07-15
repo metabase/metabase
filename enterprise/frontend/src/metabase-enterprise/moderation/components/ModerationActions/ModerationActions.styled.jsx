@@ -31,4 +31,8 @@ export const VerifyButton = styled(Button).attrs({
     background-color: transparent;
     color: ${color(verifiedIconColor)};
   }
+
+  &:disabled {
+    color: ${color("text-medium")};
+  }
 `;

@@ -53,3 +53,7 @@ function getUserDisplayName(user, currentUser) {
     return t`Someone`;
   }
 }
+
+export function isItemVerified(review) {
+  return review != null && review.status === "verified";
+}
