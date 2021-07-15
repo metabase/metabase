@@ -45,6 +45,19 @@ export default class ParameterFieldWidget extends Component {
     };
   }
 
+  static propTypes = {
+    dashboard: PropTypes.object,
+    fields: PropTypes.array.isRequired,
+    isEditing: PropTypes.bool.isRequired,
+    operator: PropTypes.object.isRequired,
+    parameter: PropTypes.object.isRequired,
+    parameters: PropTypes.array.isRequired,
+    parentFocusChanged: PropTypes.bool,
+    placeholder: PropTypes.string.isRequired,
+    setValue: PropTypes.func.isRequired,
+    value: PropTypes.string,
+  };
+
   static noPopover = true;
 
   static format(value, fields) {
