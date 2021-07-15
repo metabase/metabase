@@ -6,7 +6,14 @@ import {
 } from "metabase/plugins";
 import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLevelIcon";
-import { OFFICIAL_COLLECTION } from "./constants";
+import { EE_AUTHORITY_LEVELS, OFFICIAL_COLLECTION } from "./constants";
+
+PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = {
+  ...PLUGIN_COLLECTIONS.AUTHORITY_LEVEL,
+  ...EE_AUTHORITY_LEVELS,
+}
+
+const {AUTHORITY_LEVEL} = PLUGIN_COLLECTIONS
 
 PLUGIN_COLLECTIONS.formFields = [
   ...PLUGIN_COLLECTIONS.formFields,
@@ -18,8 +25,8 @@ PLUGIN_COLLECTIONS.formFields = [
     options: [
       {
         name: t`Regular`,
-        value: null,
-        icon: "folder",
+        value: AUTHORITY_LEVEL.regular.type,
+        icon: AUTHORITY_LEVEL.regular.icon,
       },
       {
         name: t`Official`,
