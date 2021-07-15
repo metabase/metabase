@@ -11,9 +11,6 @@ import Value from "metabase/components/Value";
 
 import Field from "metabase-lib/lib/metadata/Field";
 
-import type { Parameter } from "metabase-types/types/Parameter";
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
-import type { FilterOperator } from "metabase-types/types/Metadata";
 import cx from "classnames";
 import {
   getFilterArgumentFormatOptions,
@@ -21,41 +18,13 @@ import {
   isFuzzyOperator,
 } from "metabase/lib/schema_metadata";
 
-type Props = {
-  value: any,
-  setValue: () => void,
-
-  isEditing: boolean,
-
-  fields: Field[],
-  parentFocusChanged: boolean => void,
-
-  operator?: FilterOperator,
-  dashboard?: DashboardWithCards,
-  parameter?: Parameter,
-  parameters?: Parameter[],
-  placeholder?: string,
-};
-
-type State = {
-  value: any[],
-  isFocused: boolean,
-  widgetWidth: ?number,
-};
-
 const BORDER_WIDTH = 1;
 
 const normalizeValue = value =>
   Array.isArray(value) ? value : value != null ? [value] : [];
 
-// TODO: rename this something else since we're using it for more than searching and more than text
-export default class ParameterFieldWidget extends Component<*, Props, State> {
-  props: Props;
-  state: State;
-
-  _unfocusedElement: React.Component;
-
-  constructor(props: Props) {
+export default class ParameterFieldWidget extends Component {
+  constructor(props) {
     super(props);
     this.state = {
       isFocused: false,
@@ -84,7 +53,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     }
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.value !== nextProps.value) {
       this.setState({ value: nextProps.value });
     }
