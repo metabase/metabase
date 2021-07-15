@@ -10,14 +10,7 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-} = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 
 function saveDashboard() {
   cy.findByText("Save").click();
