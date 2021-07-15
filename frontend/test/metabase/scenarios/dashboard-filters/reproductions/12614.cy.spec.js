@@ -1,31 +1,33 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
-describe("scenarios > dashboard > nested cards", () => {
+describe("issue 12614", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("should show fields on nested cards", () => {
-    createDashboardWithNestedCard(dashId => {
-      cy.visit(`/dashboard/${dashId}`);
-    });
+  it("should show fields on nested cards (metabase#12614)", () => {
+    createDashboardWithNestedCard();
+
     cy.icon("pencil").click();
     cy.icon("filter").click();
+
     popover()
       .contains("Time")
       .click();
     popover()
       .contains("All Options")
       .click();
+
     cy.get(".DashCard")
       .contains("Select")
       .click();
+
     popover().contains("CREATED_AT");
   });
 });
 
-function createDashboardWithNestedCard(callback) {
+function createDashboardWithNestedCard() {
   cy.createNativeQuestion({
     name: "Q1",
     native: { query: 'SELECT * FROM "ORDERS"', "template-tags": {} },
@@ -40,7 +42,7 @@ function createDashboardWithNestedCard(callback) {
           .createDashboard("Q2 in a dashboard")
           .then(({ body: { id: dashId } }) => {
             cy.request("POST", `/api/dashboard/${dashId}/cards`, { cardId });
-            callback(dashId);
+            cy.visit(`/dashboard/${dashId}`);
           }),
       ),
   );
