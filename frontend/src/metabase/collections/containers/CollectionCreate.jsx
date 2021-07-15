@@ -4,6 +4,9 @@ import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 
 import Collection from "metabase/entities/collections";
+import {PLUGIN_COLLECTIONS} from "metabase/plugins"
+
+const {AUTHORITY_LEVEL} = PLUGIN_COLLECTIONS;
 
 const mapStateToProps = (state, props) => ({
   initialCollectionId: Collection.selectors.getInitialCollectionId(
@@ -27,6 +30,7 @@ export default class CollectionCreate extends Component {
       <Collection.ModalForm
         collection={{
           parent_id: initialCollectionId,
+          authority_level: AUTHORITY_LEVEL.regular.type,
         }}
         onSaved={goBack}
         onClose={goBack}
