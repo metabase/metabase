@@ -167,7 +167,7 @@ describe("binning related reproductions", () => {
       });
 
       popover().within(() => {
-        cy.findByText("50 bins").click();
+        cy.findByText("10 bins").click();
       });
 
       cy.get(".bar");
@@ -190,7 +190,7 @@ describe("binning related reproductions", () => {
       popover()
         .last()
         .within(() => {
-          cy.findByText("50 bins").click();
+          cy.findByText("10 bins").click();
         });
 
       cy.button("Visualize").click();
