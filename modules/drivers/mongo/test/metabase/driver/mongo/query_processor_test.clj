@@ -166,7 +166,7 @@
                                :expressions {:bob   [:field $latitude nil]
                                              :dobbs [:field $name nil]}
                                :limit       5})))))
-    (testing "Should be able to deal with slightly less trivial expressions"
+    (testing "Should be able to deal with 1-arity functions"
       (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
               :query
               [{"$project"
@@ -201,8 +201,7 @@
              (qp/query->native
                (mt/mbql-query venues
                               {:filters     [[:expression "bob"] [:expression "dobbs"]]
-                               :expressions {:bob   [:abs $latitude]
-                                             :dobbs [:upper $name]}
+                               :expressions {:bob   [:+ $price 300]}
                                :limit       5})))))
     (testing "Should be able to deal with a little recursion, as a treat"
       (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
@@ -220,8 +219,7 @@
              (qp/query->native
                (mt/mbql-query venues
                               {:filters     [[:expression "bob"] [:expression "dobbs"]]
-                               :expressions {:bob   [:abs $latitude]
-                                             :dobbs [:upper $name]}
+                               :expressions {:bob   [:abs [:- $price 300]]}
                                :limit       5})))))
     (testing "Should be able to deal with a little recursion, as a treat, with an expression in"
       (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
@@ -240,7 +238,7 @@
                (mt/mbql-query venues
                               {:filters     [[:expression "bob"] [:expression "dobbs"]]
                                :expressions {:bob   [:abs $latitude]
-                                             :dobbs [:upper $name]}
+                                             :dobbs [:- 2 :bob]}
                                :limit       5})))))
     (testing "Should be able to deal with a timestampy thing"
       (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
@@ -258,8 +256,8 @@
              (qp/query->native
                (mt/mbql-query venues
                               {:filters     [[:expression "bob"] [:expression "dobbs"]]
-                               :expressions {:bob   [:abs $latitude]
-                                             :dobbs [:upper $name]}
+                               :expressions {:bob   [:+ $date $date]
+                                             :dobbs [:$dateToParts $date]}
                                :limit       5})))))))
 
 (deftest compile-time-interval-test
