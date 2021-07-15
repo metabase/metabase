@@ -187,4 +187,4 @@
                                   :details {:account  "my-instance"
                                             :regionid "us-west-1"}}]
                              (is (= {:account "my-instance.us-west-1"}
-                                   (:details db)))))))
+                                    (:details db)))))))

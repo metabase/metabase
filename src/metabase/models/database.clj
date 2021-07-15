@@ -54,7 +54,9 @@
     ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
     (as-> db* ; database from outer cond->
         (assoc db* :features (driver.u/features driver))
-        (driver/normalize-db-details driver db*))))
+        (if (:details db*)
+          (driver/normalize-db-details driver db*)
+          db*))))
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
