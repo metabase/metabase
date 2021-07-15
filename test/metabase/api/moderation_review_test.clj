@@ -72,11 +72,11 @@
             (doseq [status mod-review/statuses]
               (is (= status (:status (moderate! status "good")))))
             ;; i wish this was better. Should have a better error message and honestly shouldn't be a 500
-            (mt/user-http-request :crowberto :post 500 "moderation-review"
-                                  {:text                "not a chance this works"
-                                   :status              "invalid status"
-                                   :moderated_item_id   card-id
-                                   :moderated_item_type "card"}))
+            (tap> (mt/user-http-request :crowberto :post 400 "moderation-review"
+                                        {:text                "not a chance this works"
+                                         :status              "invalid status"
+                                         :moderated_item_id   card-id
+                                         :moderated_item_type "card"})))
           (testing "Can't moderate a card that doesn't exist"
             (is (= "Not found."
                    (mt/user-http-request :crowberto :post 404 "moderation-review"
