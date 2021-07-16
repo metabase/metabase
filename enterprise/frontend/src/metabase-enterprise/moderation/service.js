@@ -32,6 +32,8 @@ export function getIconForReview(review) {
     const { icon, color } = ACTIONS[status] || {};
     return { icon, iconColor: color };
   }
+
+  return {};
 }
 
 export function getTextForReviewBanner(
