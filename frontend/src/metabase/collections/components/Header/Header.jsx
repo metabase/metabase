@@ -13,22 +13,27 @@ import CollectionEditMenu from "metabase/collections/components/CollectionEditMe
 
 import { ToggleMobileSidebarIcon } from "./Header.styled";
 
-function Title({ collection, handleToggleMobileSidebar }) {
+function Title({
+  collection: { description, name },
+  handleToggleMobileSidebar,
+}) {
+  const hoverStyle = { color: color("brand") };
+
   return (
     <Flex align="center">
       <PageHeading className="text-wrap">
         <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
-        {collection.name}
+        {name}
       </PageHeading>
 
-      {collection.description && (
-        <Tooltip tooltip={collection.description}>
+      {description && (
+        <Tooltip tooltip={description}>
           <Icon
             name="info"
             ml={1}
             mt="4px"
             color={color("bg-dark")}
-            hover={{ color: color("brand") }}
+            hover={hoverStyle}
           />
         </Tooltip>
       )}
@@ -36,51 +41,63 @@ function Title({ collection, handleToggleMobileSidebar }) {
   );
 }
 
-function Menu({
-  collection,
-  collectionId,
-  isAdmin,
-  isPersonalCollectionChild,
-  isRoot,
-}) {
-  const shouldRenderLinkToEditPermissions =
+function PermissionsLink({ collection, isAdmin, isPersonalCollectionChild }) {
+  const shouldRender =
     isAdmin && !collection.personal_owner_id && !isPersonalCollectionChild;
 
-  const shouldRenderEditMenu =
+  const tooltip = t`Edit the permissions for this collection`;
+  const link = `${Urls.collection(collection)}/permissions`;
+
+  return shouldRender ? (
+    <Tooltip tooltip={tooltip}>
+      <Link to={link}>
+        <IconWrapper>
+          <Icon name="lock" />
+        </IconWrapper>
+      </Link>
+    </Tooltip>
+  ) : null;
+}
+
+function EditMenu({ collection, isAdmin, isRoot }) {
+  const shouldRender =
     collection && collection.can_write && !collection.personal_owner_id;
 
-  const shouldRenderLinkToCreateCollection = collection && collection.can_write;
+  const tooltip = t`Edit collection`;
 
+  return shouldRender ? (
+    <CollectionEditMenu
+      tooltip={tooltip}
+      collection={collection}
+      isAdmin={isAdmin}
+      isRoot={isRoot}
+    />
+  ) : null;
+}
+
+function CreateCollectionLink({ collection, collectionId }) {
+  const shouldRender = collection && collection.can_write;
+
+  const tooltip = t`New collection`;
+  const link = Urls.newCollection(collectionId);
+
+  return shouldRender ? (
+    <Tooltip tooltip={tooltip}>
+      <Link to={link}>
+        <IconWrapper>
+          <Icon name="new_folder" />
+        </IconWrapper>
+      </Link>
+    </Tooltip>
+  ) : null;
+}
+
+function Menu(props) {
   return (
     <Flex ml="auto">
-      {shouldRenderLinkToEditPermissions && (
-        <Tooltip tooltip={t`Edit the permissions for this collection`}>
-          <Link to={`${Urls.collection(collection)}/permissions`}>
-            <IconWrapper>
-              <Icon name="lock" />
-            </IconWrapper>
-          </Link>
-        </Tooltip>
-      )}
-
-      {shouldRenderEditMenu && (
-        <CollectionEditMenu
-          tooltip={t`Edit collection`}
-          collection={collection}
-          isAdmin={isAdmin}
-          isRoot={isRoot}
-        />
-      )}
-
-      {shouldRenderLinkToCreateCollection && (
-        <Tooltip tooltip={t`New collection`}>
-          <Link to={Urls.newCollection(collectionId)}>
-            <IconWrapper>
-              <Icon name="new_folder" />
-            </IconWrapper>
-          </Link>
-        </Tooltip>
-      )}
+      <PermissionsLink {...props} />
+      <EditMenu {...props} />
+      <CreateCollectionLink {...props} />
     </Flex>
   );
 }
