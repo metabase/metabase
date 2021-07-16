@@ -40,7 +40,7 @@ ModerationReviewBanner.propTypes = {
   onRemove: PropTypes.func,
 };
 
-function ModerationReviewBanner({
+export function ModerationReviewBanner({
   moderationReview,
   user: moderator,
   currentUser,

@@ -14,7 +14,7 @@ describe("SavedQuestionHeaderButton", () => {
     onClick = jest.fn();
     question = {
       displayName: () => "foo",
-      getLatestModerationReview: undefined,
+      getModerationReviews: () => [],
     };
 
     const { container } = render(
@@ -41,7 +41,7 @@ describe("SavedQuestionHeaderButton", () => {
     it("should contain no additional icons", () => {
       expect(
         componentContainer.querySelector(".Icon:not(.Icon-chevrondown)"),
-      ).toBeUndefined();
+      ).toEqual(null);
     });
   });
 
@@ -49,9 +49,10 @@ describe("SavedQuestionHeaderButton", () => {
     beforeEach(() => {
       question = {
         displayName: () => "foo",
-        getLatestModerationReview: () => ({
-          status: "verified",
-        }),
+        getModerationReviews: () => [
+          { status: null },
+          { most_recent: true, status: "verified" },
+        ],
       };
 
       const { container } = render(

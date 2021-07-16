@@ -3,7 +3,7 @@ import { getUserIsAdmin } from "./user";
 describe("metabase/selectors/user", () => {
   it("should return true if user is an admin", () => {
     const state = {
-      user: {
+      currentUser: {
         is_superuser: true,
       },
     };
@@ -13,7 +13,7 @@ describe("metabase/selectors/user", () => {
 
   it("should return false if user is not an admin", () => {
     const state = {
-      user: {
+      currentUser: {
         is_superuser: false,
       },
     };

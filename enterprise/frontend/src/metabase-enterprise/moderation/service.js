@@ -27,10 +27,11 @@ export function getVerifiedIcon() {
 }
 
 export function getIconForReview(review) {
-  const reviewStatus = review && review.status;
-
-  const { icon, color } = ACTIONS[reviewStatus] || {};
-  return { icon, iconColor: color };
+  if (review && review.status !== null) {
+    const { status } = review;
+    const { icon, color } = ACTIONS[status] || {};
+    return { icon, iconColor: color };
+  }
 }
 
 export function getTextForReviewBanner(
@@ -76,4 +77,9 @@ export function getLatestModerationReview(reviews) {
   if (review && review.status !== null) {
     return review;
   }
+}
+
+export function getStatusIconForReviews(reviews) {
+  const review = getLatestModerationReview(reviews);
+  return getIconForReview(review);
 }

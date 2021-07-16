@@ -1,6 +1,5 @@
 import { t } from "ttag";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
-import _ from "underscore";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
@@ -82,8 +81,5 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 
 export const PLUGIN_MODERATION = {
   QuestionModerationSection: PluginPlaceholder,
-
-  getVerifiedIcon: _.noop,
-  getIconForReview: object,
-  getLatestModerationReview: _.noop,
+  getStatusIconForReviews: object,
 };
