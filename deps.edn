@@ -144,7 +144,8 @@
  {:dev
   {:extra-deps
    {clj-http-fake/clj-http-fake                           {:mvn/version "1.0.3"
-                                                            :exclusions  [slingshot/slingshot]}
+                                                           :exclusions  [slingshot/slingshot]}
+    jonase/eastwood                                       {:mvn/version "0.3.11"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
     lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"}
     reifyhealth/specmonstah                               {:mvn/version "2.0.0"}
@@ -231,8 +232,39 @@
 
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
   :namespace-checker
-  {:exec-fn    metabase.check-namespace-decls/check-namespace-decls
-   :exec-args  {:prefix-rewriting false}}
+  {:exec-fn   metabase.linters.namespace-checker/check-namespace-decls
+   :exec-args {:prefix-rewriting false}}
+
+  ;; clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check
+  :check
+  {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
+                                 :sha     "518d5a1cbfcd7c952f548e6dbfcb9a4a5faf9062"}}
+   :main-opts  ["-m" "clj-check.check"]}
+
+  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
+  :eastwood
+  {:exec-fn metabase.linters.eastwood/eastwood
+   :exec-args  {:config-files    ["test_resources/eastwood-config.clj"]
+                :add-linters     [:unused-private-vars
+                                  ;; These linters are pretty useful but give a few false
+                                  ;; positives and can't be selectively disabled (yet)
+                                  ;;
+                                  ;; For example see https://github.com/jonase/eastwood/issues/193
+                                  ;;
+                                  ;; It's still useful to re-enable them and run them every once
+                                  ;; in a while because they catch a lot of actual errors too.
+                                  ;; Keep an eye on the issue above and re-enable them if we can
+                                  ;; get them to work
+                                  #_:unused-fn-args
+                                  #_:unused-locals]
+                :exclude-linters [ ;; Turn this off temporarily until we finish removing
+                                  ;; self-deprecated functions & macros
+                                  :deprecations
+                                  ;; this has a fit in libs that use Potemkin `import-vars` such
+                                  ;; as `java-time`
+                                  :implicit-dependencies
+                                  ;; too many false positives for now
+                                  :unused-ret-vals]}}
 
   ;; Other misc convenience aliases
 

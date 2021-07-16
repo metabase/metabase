@@ -206,7 +206,7 @@
 (p.types/deftype+ StreamingResponse [f options donechan]
   pretty/PrettyPrintable
   (pretty [_]
-    (list (symbol (str (.getCanonicalName StreamingResponse) \.)) f options))
+    (list (pretty/qualify-symbol-for-*ns* `->StreamingResponse) f options donechan))
 
   server.protocols/Respond
   (respond [this context]
