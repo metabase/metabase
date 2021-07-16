@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
@@ -7,28 +6,36 @@ import Tooltip from "metabase/components/Tooltip";
 
 import { FieldRow, Label, InfoIcon } from "./FormField.styled";
 
+const formFieldCommon = {
+  title: PropTypes.string,
+  description: PropTypes.string,
+  info: PropTypes.string,
+  hidden: PropTypes.bool,
+  horizontal: PropTypes.bool,
+};
+
+const propTypes = {
+  ...formFieldCommon,
+
+  formField: PropTypes.shape({
+    ...formFieldCommon,
+    type: PropTypes.string,
+  }),
+
+  // redux-form compatible:
+  name: PropTypes.string,
+  error: PropTypes.any,
+  visited: PropTypes.bool,
+  active: PropTypes.bool,
+
+  children: PropTypes.oneOfType([
+    PropTypes.arrayOf(PropTypes.node),
+    PropTypes.node,
+  ]),
+  className: PropTypes.string,
+};
+
 export default class FormField extends Component {
-  static propTypes = {
-    field: PropTypes.object,
-    formField: PropTypes.object,
-
-    // redux-form compatible:
-    name: PropTypes.string,
-    error: PropTypes.any,
-    visited: PropTypes.bool,
-    active: PropTypes.bool,
-
-    hidden: PropTypes.bool,
-    title: PropTypes.string,
-    description: PropTypes.string,
-    info: PropTypes.string,
-
-    children: PropTypes.oneOfType([
-      PropTypes.arrayOf(PropTypes.node),
-      PropTypes.node,
-    ]),
-  };
-
   render() {
     const {
       className,
@@ -98,3 +105,5 @@ export default class FormField extends Component {
     );
   }
 }
+
+FormField.propTypes = propTypes;
