@@ -67,14 +67,13 @@ function FormField(props) {
     error = null;
   }
 
+  const rootClassNames = cx("Form-field", className, {
+    "Form--fieldError": !!error,
+    flex: horizontal,
+  });
+
   return (
-    <div
-      id={formFieldId}
-      className={cx("Form-field", className, {
-        "Form--fieldError": !!error,
-        flex: horizontal,
-      })}
-    >
+    <div id={formFieldId} className={rootClassNames}>
       {(title || description) && (
         <div>
           <FieldRow>

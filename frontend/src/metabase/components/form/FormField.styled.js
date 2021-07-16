@@ -3,8 +3,6 @@ import Icon from "metabase/components/Icon";
 
 import { color } from "metabase/lib/colors";
 
-export const FormFieldRoot = styled.div.attrs({});
-
 export const FieldRow = styled.div`
   display: flex;
   align-items: center;
