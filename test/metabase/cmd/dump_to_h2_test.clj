@@ -59,10 +59,6 @@
     :postgres (db.spec/postgres (tx/dbdef->connection-details :postgres :db {:database-name db-name}))
     :mysql (db.spec/mysql (tx/dbdef->connection-details :mysql :db {:database-name db-name}))))
 
-(defn- abs-path
-  [path]
-  (.getAbsolutePath (io/file path)))
-
 (deftest dump-to-h2-dump-plaintext-test
   (testing "dump-to-h2 --dump-plaintext"
     (let [h2-fixture-db-file  @cmd.test-util/fixture-db-file-path

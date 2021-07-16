@@ -353,4 +353,4 @@
   `(doseq [args# ~(mapv vec (partition (count argv) args))
            :let [~argv args#]]
      (is ~expr
-         (are+-message '~expr '~argv args#))))
+         (str (are+-message '~expr '~argv args#)))))

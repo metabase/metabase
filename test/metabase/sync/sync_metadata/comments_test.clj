@@ -15,7 +15,7 @@
   (let [table-ids (db/select-ids Table :db_id (u/the-id db))]
     (set (map (partial into {}) (db/select ['Field :name :description] :table_id [:in table-ids])))))
 
-(tx/defdataset ^:private basic-field-comments
+(tx/defdataset basic-field-comments
   [["basic_field_comments"
     [{:field-name "with_comment", :base-type :type/Text, :field-comment "comment"}
      {:field-name "no_comment", :base-type :type/Text}]
@@ -30,7 +30,7 @@
                  {:name (mt/format-name "no_comment"), :description nil}}
                (db->fields (mt/db))))))))
 
-(tx/defdataset ^:private update-desc
+(tx/defdataset update-desc
   [["update_desc"
     [{:field-name "updated_desc", :base-type :type/Text, :field-comment "original comment"}]
     [["foo"]]]])

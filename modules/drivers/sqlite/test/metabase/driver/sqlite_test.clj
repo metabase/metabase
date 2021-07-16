@@ -19,26 +19,26 @@
            (tu/db-timezone-id)))))
 
 (deftest filter-by-date-test
-  "Make sure filtering against a LocalDate works correctly in SQLite"
-  (mt/test-driver :sqlite
-    (is (= [[225 "2014-03-04T00:00:00Z"]
-            [409 "2014-03-05T00:00:00Z"]
-            [917 "2014-03-05T00:00:00Z"]
-            [995 "2014-03-05T00:00:00Z"]
-            [159 "2014-03-06T00:00:00Z"]
-            [951 "2014-03-06T00:00:00Z"]]
-           (qp.test/rows
-             (data/run-mbql-query checkins
-               {:fields   [$id $date]
-                :filter   [:and
-                           [:>= $date "2014-03-04"]
-                           [:<= $date "2014-03-06"]]
-                :order-by [[:asc $date]]}))
-           (qp.test/rows
-             (data/run-mbql-query checkins
-               {:fields   [$id $date]
-                :filter   [:between $date "2014-03-04" "2014-03-07"]
-                :order-by [[:asc $date]]}))))))
+  (testing "Make sure filtering against a LocalDate works correctly in SQLite"
+    (mt/test-driver :sqlite
+      (is (= [[225 "2014-03-04T00:00:00Z"]
+              [409 "2014-03-05T00:00:00Z"]
+              [917 "2014-03-05T00:00:00Z"]
+              [995 "2014-03-05T00:00:00Z"]
+              [159 "2014-03-06T00:00:00Z"]
+              [951 "2014-03-06T00:00:00Z"]]
+             (qp.test/rows
+              (data/run-mbql-query checkins
+                {:fields   [$id $date]
+                 :filter   [:and
+                            [:>= $date "2014-03-04"]
+                            [:<= $date "2014-03-06"]]
+                 :order-by [[:asc $date]]}))
+             (qp.test/rows
+              (data/run-mbql-query checkins
+                {:fields   [$id $date]
+                 :filter   [:between $date "2014-03-04" "2014-03-07"]
+                 :order-by [[:asc $date]]})))))))
 
 (defn- table-fingerprint
   [{:keys [fields name]}]

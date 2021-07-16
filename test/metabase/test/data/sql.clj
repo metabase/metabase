@@ -40,7 +40,7 @@
 
    By default, this qualifies field names with their table name, but otherwise does no other specific
   qualification."
-  {:arglists '([driver database-name? table-name? field-name?])}
+  {:arglists '([driver database-name table-name? field-name?])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

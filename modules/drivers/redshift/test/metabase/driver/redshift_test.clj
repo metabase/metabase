@@ -182,7 +182,7 @@
   (mt/test-driver
     :redshift
     (testing "Redshift specific types should be synced correctly"
-      (let [db-details   (tx/dbdef->connection-details :redshift)
+      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
             tbl-nm       "redshift_specific_types"
             qual-tbl-nm  (str redshift.test/session-schema-name "." tbl-nm)
             view-nm      "late_binding_view"

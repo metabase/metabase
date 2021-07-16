@@ -118,7 +118,7 @@
 
   (testing "query-caching-max-kb should throw an error if you try to put in a huge value"
     (mt/discard-setting-changes [query-caching-max-kb]
-      (is (thrown?
+      (is (thrown-with-msg?
            IllegalArgumentException
            #"Values greater than 204,800 \(200\.0 MB\) are not allowed"
            (public-settings/query-caching-max-kb (* 1024 1024)))))))

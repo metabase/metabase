@@ -28,10 +28,45 @@
 
 (disable-warning
  {:linter               :wrong-arity
+  :function-symbol      'metabase.test/initialize-if-needed!
+  :arglists-for-linting '([& what])})
+
+(disable-warning
+ {:linter               :wrong-arity
   :function-symbol      'metabase.query-processor-test/normal-drivers-with-feature
   :arglists-for-linting '([feature & more-features])})
 
 (disable-warning
  {:linter               :wrong-arity
   :function-symbol      'metabase.test/normal-drivers-with-feature
-  :arglists-for-linting '([feature & more-features])})()
+  :arglists-for-linting '([feature & more-features])})
+
+(disable-warning
+ {:linter               :wrong-arity
+  :function-symbol      'metabase.query-processor-test/normal-drivers-without-feature
+  :arglists-for-linting '([feature & more-features])})
+
+(disable-warning
+ {:linter               :wrong-arity
+  :function-symbol      'metabase.test/normal-drivers-without-feature
+  :arglists-for-linting '([feature & more-features])})
+
+(disable-warning
+ {:linter               :wrong-arity
+  :function-symbol      'metabase.http-client/client
+  :arglists-for-linting '([& args])})
+
+(disable-warning
+ {:linter               :wrong-arity
+  :function-symbol      'metabase.test/client
+  :arglists-for-linting '([& args])})
+
+(disable-warning
+ {:linter               :wrong-arity
+  :function-symbol      'metabase.test/client-full-response
+  :arglists-for-linting '([& args])})
+
+(disable-warning
+ {:linter               :wrong-arity
+  :function-symbol      'metabase.test.data.sql/qualified-name-components
+  :arglists-for-linting '([driver database-name & args])})
