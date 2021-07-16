@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import { ItemRoot, ItemIcon, ItemTitle } from "./SelectListItem.styled";
+import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
 const propTypes = {
   id: PropTypes.string.isRequired,
@@ -24,8 +25,11 @@ export function SelectListItem({
   hasRightArrow = false,
   size = "medium",
 }) {
+  const ref = useScrollOnMount();
+
   return (
     <ItemRoot
+      innerRef={isSelected ? ref : null}
       isSelected={isSelected}
       role="menuitem"
       tabIndex={0}

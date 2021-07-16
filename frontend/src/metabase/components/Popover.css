@@ -140,6 +140,13 @@
   z-index: 1;
 }
 
+.PopoverBody--withBackground .PopoverFooterWhenIsNotEqualOps {
+  bottom: 0;
+  padding-bottom: 12px;
+  padding-top: 10px;
+  width: calc(100% - 26px);
+}
+
 .PopoverParameterFieldWidgetFooter {
   position: fixed;
   bottom: -7px;

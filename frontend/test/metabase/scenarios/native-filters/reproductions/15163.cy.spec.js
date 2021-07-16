@@ -42,10 +42,7 @@ const dashboardFilter = {
 
       cy.createNativeQuestion(nativeQuery).then(({ body: { id: card_id } }) => {
         cy.createDashboard("15163D").then(({ body: { id: dashboard_id } }) => {
-          // Add filter to the dashboard
-          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-            parameters: [dashboardFilter],
-          });
+          cy.addFilterToDashboard({ filter: dashboardFilter, dashboard_id });
 
           // Add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
