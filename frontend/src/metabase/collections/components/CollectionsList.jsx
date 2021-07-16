@@ -107,4 +107,6 @@ CollectionsList.defaultProps = {
   depth: 1,
 };
 
+CollectionsList.Icon = CollectionListIcon;
+
 export default CollectionsList;

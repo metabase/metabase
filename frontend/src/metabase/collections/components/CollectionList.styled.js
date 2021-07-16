@@ -1,10 +1,14 @@
 import styled from "styled-components";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { CollectionIcon } from "metabase/collections/components/CollectionIcon";
 
 const { isRegularCollection } = PLUGIN_COLLECTIONS;
 
 function getOpacity(collection) {
+  if (collection.id === ROOT_COLLECTION.id) {
+    return 1;
+  }
   return isRegularCollection(collection) ? 0.4 : 1;
 }
 

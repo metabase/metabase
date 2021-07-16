@@ -90,6 +90,7 @@ class CollectionSidebar extends React.Component {
                     highlighted={highlighted}
                     hovered={hovered}
                   >
+                    <CollectionsList.Icon collection={root} />
                     {t`Our analytics`}
                   </CollectionLink>
                 )}
