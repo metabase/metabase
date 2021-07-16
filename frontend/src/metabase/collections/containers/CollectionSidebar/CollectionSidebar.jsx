@@ -114,7 +114,6 @@ class CollectionSidebar extends React.Component {
               onClose={this.onClose}
               onOpen={this.onOpen}
               collections={currentUserPersonalCollections(list, currentUser.id)}
-              initialIcon="person"
               filter={this.filterPersonalCollections}
               currentCollection={collectionId}
             />
