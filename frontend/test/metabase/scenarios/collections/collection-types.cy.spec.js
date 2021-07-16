@@ -24,7 +24,7 @@ describeWithToken("collections types", () => {
     cy.findByText("Official Collection Test").click();
     cy.findByTestId("official-collection-marker");
 
-    // Test can change regular collection to official
+    // Test can change official collection to regular
     cy.icon("pencil").click();
     cy.findByText("Edit this collection").click();
     modal().within(() => {
