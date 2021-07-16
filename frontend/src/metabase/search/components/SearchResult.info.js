@@ -9,7 +9,7 @@ const COLLECTION_EXAMPLE = {
   model: "collection",
   id: 1,
   name: "Revenue",
-  getIcon: () => "folder",
+  getIcon: () => ({ name: "folder" }),
 };
 
 const DASHBOARD_EXAMPLE = {
@@ -22,7 +22,7 @@ const DASHBOARD_EXAMPLE = {
     id: "root",
     name: "Our analytics",
   },
-  getIcon: () => "dashboard",
+  getIcon: () => ({ name: "dashboard" }),
 };
 
 const QUESTION_EXAMPLE = {
@@ -30,7 +30,7 @@ const QUESTION_EXAMPLE = {
   id: 1,
   name: "Revenue by region",
   collection: COLLECTION_EXAMPLE,
-  getIcon: () => "table",
+  getIcon: () => ({ name: "table" }),
 };
 
 const LONG_TITLE_DASHBOARD_EXAMPLE = {

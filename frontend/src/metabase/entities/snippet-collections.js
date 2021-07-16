@@ -63,7 +63,7 @@ const SnippetCollections = createEntity({
   }),
 
   objectSelectors: {
-    getIcon: collection => "folder",
+    getIcon: collection => ({ name: "folder" }),
   },
 
   form: {
