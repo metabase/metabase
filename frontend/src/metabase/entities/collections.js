@@ -81,7 +81,7 @@ const Collections = createEntity({
   objectSelectors: {
     getName: collection => collection && collection.name,
     getUrl: collection => Urls.collection(collection),
-    getIcon: collection => ({ name: "folder" }),
+    getIcon: getCollectionIcon,
   },
 
   selectors: {
@@ -171,6 +171,24 @@ const Collections = createEntity({
 });
 
 export default Collections;
+
+export function isPersonalCollection(collection) {
+  return typeof collection.personal_owner_id === "number";
+}
+
+export function getCollectionIcon(collection) {
+  if (collection.id === PERSONAL_COLLECTIONS.id) {
+    return { name: "group" };
+  }
+  if (isPersonalCollection(collection)) {
+    return { name: "person" };
+  }
+  const authorityLevel =
+    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+  return authorityLevel
+    ? { name: authorityLevel.icon, color: color(authorityLevel.color) }
+    : { name: "folder" };
+}
 
 // API requires items in "root" collection be persisted with a "null" collection ID
 // Also ensure it's parsed as a number
