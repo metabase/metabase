@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
@@ -17,6 +17,7 @@ const formFieldCommon = {
 const propTypes = {
   ...formFieldCommon,
 
+  field: PropTypes.object,
   formField: PropTypes.shape({
     ...formFieldCommon,
     type: PropTypes.string,
@@ -35,75 +36,75 @@ const propTypes = {
   className: PropTypes.string,
 };
 
-export default class FormField extends Component {
-  render() {
-    const {
-      className,
-      formField,
-      title = formField && formField.title,
-      description = formField && formField.description,
-      info = formField && formField.info,
-      hidden = formField &&
-        (formField.hidden != null
-          ? formField.hidden
-          : formField.type === "hidden"),
-      horizontal = formField &&
-        (formField.horizontal != null
-          ? formField.horizontal
-          : formField.type === "boolean"),
-      children,
-    } = this.props;
+function FormField(props) {
+  const {
+    className,
+    formField,
+    title = formField && formField.title,
+    description = formField && formField.description,
+    info = formField && formField.info,
+    hidden = formField &&
+      (formField.hidden != null
+        ? formField.hidden
+        : formField.type === "hidden"),
+    horizontal = formField &&
+      (formField.horizontal != null
+        ? formField.horizontal
+        : formField.type === "boolean"),
+    children,
+  } = props;
 
-    if (hidden) {
-      return null;
-    }
-
-    let { name, error, visited, active } = {
-      ...(this.props.field || {}),
-      ...this.props,
-    };
-
-    if (visited === false || active === true) {
-      // if the field hasn't been visited or is currently active then don't show the error
-      error = null;
-    }
-
-    return (
-      <div
-        className={cx("Form-field", className, {
-          "Form--fieldError": !!error,
-          flex: horizontal,
-        })}
-        id={`formField-${name.replace(/\./g, "-")}`}
-      >
-        {(title || description) && (
-          <div>
-            <FieldRow>
-              {title && (
-                <Label
-                  className={cx("Form-label", { "mr-auto": horizontal })}
-                  htmlFor={name}
-                  id={`${name}-label`}
-                >
-                  {title}
-                  {error && <span className="text-error">: {error}</span>}
-                </Label>
-              )}
-              {info && (
-                <Tooltip tooltip={info}>
-                  <InfoIcon />
-                </Tooltip>
-              )}
-            </FieldRow>
-            {description && <div className="mb1">{description}</div>}
-          </div>
-        )}
-        <div className={cx("flex-no-shrink", { "ml-auto": horizontal })}>
-          {children}
-        </div>
-      </div>
-    );
+  if (hidden) {
+    return null;
   }
+
+  let { name, error, visited, active } = {
+    ...(props.field || {}),
+    ...props,
+  };
+
+  if (visited === false || active === true) {
+    // if the field hasn't been visited or is currently active then don't show the error
+    error = null;
+  }
+
+  return (
+    <div
+      className={cx("Form-field", className, {
+        "Form--fieldError": !!error,
+        flex: horizontal,
+      })}
+      id={`formField-${name.replace(/\./g, "-")}`}
+    >
+      {(title || description) && (
+        <div>
+          <FieldRow>
+            {title && (
+              <Label
+                className={cx("Form-label", { "mr-auto": horizontal })}
+                htmlFor={name}
+                id={`${name}-label`}
+              >
+                {title}
+                {error && <span className="text-error">: {error}</span>}
+              </Label>
+            )}
+            {info && (
+              <Tooltip tooltip={info}>
+                <InfoIcon />
+              </Tooltip>
+            )}
+          </FieldRow>
+          {description && <div className="mb1">{description}</div>}
+        </div>
+      )}
+      <div className={cx("flex-no-shrink", { "ml-auto": horizontal })}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 FormField.propTypes = propTypes;
+
+export default FormField;
