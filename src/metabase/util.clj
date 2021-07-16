@@ -340,13 +340,23 @@
 (defn do-with-timeout
   "Impl for `with-timeout` macro."
   [timeout-ms f]
-  (let [result (deref-with-timeout
-                (future
-                  (try
-                    (f)
+  ;; catch the Exception that we get inside the future (e.g. a `java.lang.InterruptedException`) and set it as the
+  ;; cause of the `java.util.concurrent.TimeoutException`, so we can see the stacktrace when the future got canceled
+  ;; and see what frame it was potentially hanging on.
+  (let [exception (atom nil)
+        futur     (future
+                    (try
+                      (f)
+                      (catch Throwable e
+                        (reset! exception e)
+                        e)))
+        result    (try
+                    (deref-with-timeout futur timeout-ms)
                     (catch Throwable e
-                      e)))
-                timeout-ms)]
+                      (when (and (not (ex-cause e))
+                                 @exception)
+                        (.initCause e @exception))
+                      (throw e)))]
     (if (instance? Throwable result)
       (throw result)
       result)))

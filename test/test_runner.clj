@@ -1,9 +1,11 @@
 (ns test-runner
-  "Simple wrapper to let us use eftest with the Clojure CLI. Pass `:only` to specify where to look for tests -- args can
-  be string(s) (denoting directories), symbol(s) denoting namespaces or individual tests, or keyword(s) denoting test
-  selectors."
-  (:require [clojure.pprint :as pprint]
+  "Simple wrapper to let us use eftest with the Clojure CLI. Pass `:only` to specify where to look for tests (see dox
+  for [[find-tests]] for more info.)"
+  (:require [clojure.java.classpath :as classpath]
+            [clojure.java.io :as io]
+            [clojure.pprint :as pprint]
             [clojure.test :as t]
+            [clojure.tools.namespace.find :as ns-find]
             eftest.report
             eftest.report.junit
             eftest.report.pretty
@@ -65,12 +67,50 @@
           (junit-reporter m)))
       (stdout-reporter m))))
 
+(defmulti find-tests
+  "Find test vars in `arg`, which can be a string directory name, symbol naming a specific namespace or test, or a
+  collection of one or more of the above."
+  {:arglists '([arg])}
+  type)
+
+;; collection of one of the things below
+(defmethod find-tests clojure.lang.Sequential
+  [coll]
+  (mapcat find-tests coll))
+
+;; directory name
+(defmethod find-tests String
+  [dir-name]
+  (find-tests (io/file dir-name)))
+
+;; directory
+(defmethod find-tests java.io.File
+  [^java.io.File file]
+  (when (.isDirectory file)
+    (->> (ns-find/find-namespaces-in-dir file)
+         (filter #(re-matches  #"^metabase.*test$" (name %)))
+         (mapcat find-tests))))
+
+;; a test namespace or individual test
+(defmethod find-tests clojure.lang.Symbol
+  [symb]
+  (if (namespace symb)
+    ;; a actual test var e.g. `metabase.whatever-test/my-test`
+    [symb]
+    ;; a namespace e.g. `metabase.whatever-test`
+    (do
+      (require symb)
+      (eftest.runner/find-tests symb))))
+
+;; default -- look in all dirs on the classpath
+(defmethod find-tests nil
+  [_]
+  (find-tests (classpath/system-classpath)))
+
 (defn tests [{:keys [only]}]
-  (let [only       (if (sequential? only)
-                     only
-                     [only])
-        _          (println "Running tests in" (pr-str only))
-        tests      (mapcat eftest.runner/find-tests only)]
+  (when only
+    (println "Running tests in" (pr-str only)))
+  (let [tests (find-tests only)]
     (println "Running" (count tests) "tests")
     tests))
 

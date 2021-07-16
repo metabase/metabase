@@ -157,10 +157,9 @@
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
-  {;; we want the stuff in `test_resources` to override the stuff in `resources`, e.g. the test-specific logging config
+  { ;; we want the stuff in `test_resources` to override the stuff in `resources`, e.g. the test-specific logging config
    :replace-paths ["src" "shared/src" "test_resources" "resources" "java/target/classes"]
    :exec-fn       test-runner/run-tests
-   :exec-args     {:only ["test" "shared/test"]}
    :jvm-opts      ["-Dmb.run.mode=test"
                    "-Dmb.db.in.memory=true"
                    "-Dmb.jetty.join=false"
@@ -176,24 +175,29 @@
   :oss
   {}
 
+  ;; include EE source code.
   :ee
   {:extra-paths ["enterprise/backend/src"]}
 
+  ;; Include EE tests.
   ;; for ee dev: :dev:ee:ee-dev
+  ;; for ee tests: clojure -X:dev:ee:ee-dev:test
   :ee-dev
   {:extra-paths ["enterprise/backend/test"]}
 
-  ;; clojure -X:dev:test:ee:ee-dev:ee-test
-  :ee-test
-  {:exec-args {:dirs ["test" "shared/test" "enterprise/backend/test"]}}
-
-  ;; for local dev -- include the drivers locally e.g.
+  ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
   {:extra-deps
    {metabase/driver-modules {:local/root "modules/drivers"}}}
 
-  ;; to run driver tests: clojure -X:dev:test:drivers:drivers-test
-  :drivers-test
+  ;; for local dev: include drivers as well as their tests.
+  ;;
+  ;;    clojure -X:dev:drivers:drivers-dev:test
+  ;;
+  ;; or
+  ;;
+  ;;    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test (for EE)
+  :drivers-dev
   {:extra-paths
    ["modules/drivers/bigquery/test"
     "modules/drivers/druid/test"
