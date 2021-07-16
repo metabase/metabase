@@ -17,15 +17,16 @@ ModerationActions.propTypes = {
 
 function ModerationActions({ moderationReview, className, onVerify }) {
   const hasActions = !!onVerify;
+  const isVerified = isItemVerified(moderationReview);
 
   return hasActions ? (
     <Container className={className}>
       <Label>{t`Moderation`}</Label>
-      <Tooltip tooltip={t`Verify this`}>
+      <Tooltip isEnabled={!isVerified} tooltip={t`Verify this`}>
         <VerifyButton
           data-testid="moderation-verify-action"
           onClick={onVerify}
-          disabled={isItemVerified(moderationReview)}
+          disabled={isVerified}
         />
       </Tooltip>
     </Container>
