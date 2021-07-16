@@ -1,2 +1,7 @@
-export const normalizeValue = value =>
-  Array.isArray(value) ? value : value != null ? [value] : [];
+export function normalizeValue(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return value ? [value] : [];
+}
