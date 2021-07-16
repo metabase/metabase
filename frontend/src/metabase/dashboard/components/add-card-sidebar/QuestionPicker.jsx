@@ -84,7 +84,7 @@ function QuestionPicker({
                 key={collection.id}
                 id={collection.id}
                 name={collection.name}
-                icon={getCollectionIcon(collection)}
+                icon={getCollectionIcon(collection).name}
                 onSelect={collectionId => setCurrentCollectionId(collectionId)}
               />
             ))}
