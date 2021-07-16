@@ -36,6 +36,8 @@ const propTypes = {
   className: PropTypes.string,
 };
 
+const ALL_DOT_CHARS = /\./g;
+
 function FormField(props) {
   const {
     className,
@@ -53,6 +55,8 @@ function FormField(props) {
     return null;
   }
 
+  const formFieldId = `formField-${name.replace(ALL_DOT_CHARS, "-")}`;
+
   let { name, error, visited, active } = {
     ...(props.field || {}),
     ...props,
@@ -65,11 +69,11 @@ function FormField(props) {
 
   return (
     <div
+      id={formFieldId}
       className={cx("Form-field", className, {
         "Form--fieldError": !!error,
         flex: horizontal,
       })}
-      id={`formField-${name.replace(/\./g, "-")}`}
     >
       {(title || description) && (
         <div>
