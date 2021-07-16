@@ -1,8 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import cx from "classnames";
+
+import Tooltip from "metabase/components/Tooltip";
+
+import { FieldRow, Label, InfoIcon } from "./FormField.styled";
 
 export default class FormField extends Component {
   static propTypes = {
@@ -18,6 +21,7 @@ export default class FormField extends Component {
     hidden: PropTypes.bool,
     title: PropTypes.string,
     description: PropTypes.string,
+    info: PropTypes.string,
 
     children: PropTypes.oneOfType([
       PropTypes.arrayOf(PropTypes.node),
@@ -31,6 +35,7 @@ export default class FormField extends Component {
       formField,
       title = formField && formField.title,
       description = formField && formField.description,
+      info = formField && formField.info,
       hidden = formField &&
         (formField.hidden != null
           ? formField.hidden
@@ -66,16 +71,23 @@ export default class FormField extends Component {
       >
         {(title || description) && (
           <div>
-            {title && (
-              <label
-                className={cx("Form-label", { "mr-auto": horizontal })}
-                htmlFor={name}
-                id={`${name}-label`}
-              >
-                {title}
-                {error && <span className="text-error">: {error}</span>}
-              </label>
-            )}
+            <FieldRow>
+              {title && (
+                <Label
+                  className={cx("Form-label", { "mr-auto": horizontal })}
+                  htmlFor={name}
+                  id={`${name}-label`}
+                >
+                  {title}
+                  {error && <span className="text-error">: {error}</span>}
+                </Label>
+              )}
+              {info && (
+                <Tooltip tooltip={info}>
+                  <InfoIcon />
+                </Tooltip>
+              )}
+            </FieldRow>
             {description && <div className="mb1">{description}</div>}
           </div>
         )}
