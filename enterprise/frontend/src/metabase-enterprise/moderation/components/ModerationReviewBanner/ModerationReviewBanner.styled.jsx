@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Button from "metabase/components/Button";
+import Icon from "metabase/components/Icon";
 
 export const Container = styled.div`
   padding: 1rem 1rem 1rem 0.5rem;
@@ -31,4 +32,8 @@ export const IconButton = styled(Button)`
     background-color: transparent;
     color: ${color("text-medium")};
   }
+`;
+
+export const StatusIcon = styled(Icon)`
+  padding: 0 0.5rem;
 `;

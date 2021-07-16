@@ -1,34 +1,24 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { connect } from "react-redux";
 
-import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import { isItemVerified } from "metabase-enterprise/moderation/service";
 
 import { Container, Label, VerifyButton } from "./ModerationActions.styled";
 import Tooltip from "metabase/components/Tooltip";
 
-const mapStateToProps = (state, props) => ({
-  isModerator: getIsModerator(state, props),
-});
-
-export default connect(mapStateToProps)(ModerationActions);
+export default ModerationActions;
 
 ModerationActions.propTypes = {
   className: PropTypes.string,
-  onVerify: PropTypes.func.isRequired,
-  isModerator: PropTypes.bool.isRequired,
+  onVerify: PropTypes.func,
   moderationReview: PropTypes.object,
 };
 
-export function ModerationActions({
-  moderationReview,
-  className,
-  onVerify,
-  isModerator,
-}) {
-  return isModerator ? (
+function ModerationActions({ moderationReview, className, onVerify }) {
+  const hasActions = !!onVerify;
+
+  return hasActions ? (
     <Container className={className}>
       <Label>{t`Moderation`}</Label>
       <Tooltip tooltip={t`Verify this`}>

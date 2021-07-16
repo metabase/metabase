@@ -1046,9 +1046,6 @@ export default class Question {
   getModerationReviews() {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
-  getLatestModerationReview() {
-    return _.findWhere(this.getModerationReviews(), { most_recent: true });
-  }
 }
 
 window.Question = Question;

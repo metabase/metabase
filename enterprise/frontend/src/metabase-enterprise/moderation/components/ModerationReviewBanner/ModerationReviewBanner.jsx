@@ -17,6 +17,7 @@ import {
   Text,
   Time,
   IconButton,
+  StatusIcon,
 } from "./ModerationReviewBanner.styled";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -36,7 +37,7 @@ ModerationReviewBanner.propTypes = {
   moderationReview: PropTypes.object.isRequired,
   user: PropTypes.object,
   currentUser: PropTypes.object.isRequired,
-  onRemove: PropTypes.func.isRequired,
+  onRemove: PropTypes.func,
 };
 
 function ModerationReviewBanner({
@@ -63,15 +64,26 @@ function ModerationReviewBanner({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <Tooltip targetOffsetX={TOOLTIP_X_OFFSET} tooltip={tooltipText}>
-        <IconButton
-          onFocus={() => setIsActive(true)}
-          onBlur={() => setIsActive(false)}
-          icon={showClose ? "close" : icon}
-          color={color(showClose ? "text-medium" : iconColor)}
-          onClick={onRemove}
-          size={ICON_BUTTON_SIZE}
-        />
+      <Tooltip
+        targetOffsetX={TOOLTIP_X_OFFSET}
+        tooltip={onRemove && tooltipText}
+      >
+        {onRemove ? (
+          <IconButton
+            onFocus={() => setIsActive(true)}
+            onBlur={() => setIsActive(false)}
+            icon={showClose ? "close" : icon}
+            color={color(showClose ? "text-medium" : iconColor)}
+            onClick={onRemove}
+            size={ICON_BUTTON_SIZE}
+          />
+        ) : (
+          <StatusIcon
+            name={icon}
+            color={color(iconColor)}
+            size={ICON_BUTTON_SIZE}
+          />
+        )}
       </Tooltip>
       <Text>{bannerText}</Text>
       <Time dateTime={moderationReview.created_at}>{relativeCreationTime}</Time>

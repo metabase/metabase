@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { ModerationReviewApi } from "metabase/services";
 import { ACTIONS } from "./constants";
@@ -9,6 +10,14 @@ export function verifyItem({ text, itemId, itemType }) {
     moderated_item_id: itemId,
     moderated_item_type: itemType,
     text,
+  });
+}
+
+export function removeReview({ itemId, itemType }) {
+  return ModerationReviewApi.create({
+    status: null,
+    moderated_item_id: itemId,
+    moderated_item_type: itemType,
   });
 }
 
@@ -56,4 +65,15 @@ function getUserDisplayName(user, currentUser) {
 
 export function isItemVerified(review) {
   return review != null && review.status === "verified";
+}
+
+export function getLatestModerationReview(reviews) {
+  const review = _.findWhere(reviews, {
+    most_recent: true,
+  });
+
+  // since we can't delete reviews, consider a most recent review with a status of null to mean there is no review
+  if (review && review.status !== null) {
+    return review;
+  }
 }

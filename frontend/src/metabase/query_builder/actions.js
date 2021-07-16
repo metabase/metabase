@@ -13,7 +13,6 @@ import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
 
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import {
@@ -1366,28 +1365,5 @@ export const revertToRevision = createThunkAction(
       await revision.revert();
       await dispatch(reloadCard());
     };
-  },
-);
-
-export const MODERATOR_VERIFY_CARD = "metabase/qb/MODERATOR_VERIFY_CARD";
-export const moderatorVerifyCard = createThunkAction(
-  MODERATOR_VERIFY_CARD,
-  (cardId, text) => async (dispatch, getState) => {
-    await PLUGIN_MODERATION.verifyItem({
-      itemId: cardId,
-      itemType: "card",
-      text,
-    });
-
-    return dispatch(softReloadCard());
-  },
-);
-
-export const REMOVE_MODERATION_REVIEW = "metabase/qb/REMOVE_MODERATION_REVIEW";
-export const removeModerationReview = createThunkAction(
-  REMOVE_MODERATION_REVIEW,
-  id => async (dispatch, getState) => {
-    // todo -- remove the review
-    return dispatch(softReloadCard());
   },
 );
