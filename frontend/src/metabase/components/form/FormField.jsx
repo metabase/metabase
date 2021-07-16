@@ -43,14 +43,9 @@ function FormField(props) {
     title = formField && formField.title,
     description = formField && formField.description,
     info = formField && formField.info,
-    hidden = formField &&
-      (formField.hidden != null
-        ? formField.hidden
-        : formField.type === "hidden"),
+    hidden = formField && (formField.hidden || formField.type === "hidden"),
     horizontal = formField &&
-      (formField.horizontal != null
-        ? formField.horizontal
-        : formField.type === "boolean"),
+      (formField.horizontal || formField.type === "boolean"),
     children,
   } = props;
 
