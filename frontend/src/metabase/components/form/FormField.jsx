@@ -55,12 +55,12 @@ function FormField(props) {
     return null;
   }
 
-  const formFieldId = `formField-${name.replace(ALL_DOT_CHARS, "-")}`;
-
   let { name, error, visited, active } = {
     ...(props.field || {}),
     ...props,
   };
+
+  const formFieldId = `formField-${name.replace(ALL_DOT_CHARS, "-")}`;
 
   if (!visited || active) {
     // if the field hasn't been visited or is currently active then don't show the error
