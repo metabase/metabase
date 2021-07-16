@@ -1,13 +1,11 @@
 (ns metabase.integrations.google-test
-  (:require [clj-http.client :as http]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.email-test :as et]
             [metabase.integrations.google :as google]
             [metabase.integrations.google.interface :as google.i]
             [metabase.models.user :refer [User]]
             [metabase.public-settings.metastore :as metastore]
             [metabase.test :as mt]
-            [schema.core :as s]
             [toucan.db :as db]))
 
 (deftest email->domain-test

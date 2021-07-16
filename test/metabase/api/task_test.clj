@@ -2,10 +2,10 @@
   (:require [clojure.test :refer :all]
             [java-time :as t]
             [metabase.models.task-history :refer [TaskHistory]]
+            [metabase.task :as task]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [metabase.task :as task]))
+            [toucan.db :as db]))
 
 (def ^:private default-task-history
   {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil})

@@ -3,7 +3,6 @@
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase-enterprise.sandbox.test-util :as mt.tu]
             [metabase.email.messages :as messages]
             [metabase.models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.pulse :as models.pulse]

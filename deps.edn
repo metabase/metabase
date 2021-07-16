@@ -143,11 +143,13 @@
  :aliases
  {:dev
   {:extra-deps
-   {clj-http-fake/clj-http-fake {:mvn/version "1.0.3", :exclusions [slingshot/slingshot]}
-    eftest/eftest               {:mvn/version "0.5.9"}
-    reifyhealth/specmonstah     {:mvn/version "2.0.0"}
-    ring/ring-mock              {:mvn/version "0.4.0"}
-    talltale/talltale           {:mvn/version "0.5.4"}}
+   {clj-http-fake/clj-http-fake                           {:mvn/version "1.0.3"
+                                                            :exclusions  [slingshot/slingshot]}
+    eftest/eftest                                         {:mvn/version "0.5.9"}
+    lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"}
+    reifyhealth/specmonstah                               {:mvn/version "2.0.0"}
+    ring/ring-mock                                        {:mvn/version "0.4.0"}
+    talltale/talltale                                     {:mvn/version "0.5.4"}}
 
    :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
@@ -223,4 +225,15 @@
     "modules/drivers/sparksql/test"
     "modules/drivers/sqlite/test"
     "modules/drivers/sqlserver/test"
-    "modules/drivers/vertica/test"]}}}
+    "modules/drivers/vertica/test"]}
+
+  ;; Linters
+
+  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
+  :namespace-checker
+  {:exec-fn    metabase.check-namespace-decls/check-namespace-decls
+   :exec-args  {:prefix-rewriting false}}
+
+  ;; Other misc convenience aliases
+
+  }}

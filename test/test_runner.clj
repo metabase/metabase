@@ -4,6 +4,7 @@
   (:require [clojure.java.classpath :as classpath]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
+            [clojure.string :as str]
             [clojure.test :as t]
             [clojure.tools.namespace.find :as ns-find]
             eftest.report
@@ -11,6 +12,8 @@
             eftest.report.pretty
             eftest.report.progress
             eftest.runner
+            [metabase.db :as mdb]
+            [metabase.test.data.env :as tx.env]
             metabase.test.redefs))
 
 (comment metabase.test.redefs/keep-me)
@@ -86,7 +89,13 @@
 ;; directory
 (defmethod find-tests java.io.File
   [^java.io.File file]
-  (when (.isDirectory file)
+  (when (and (.isDirectory file)
+             (not (str/ends-with? "resources" (.getName file)))
+             (not (str/ends-with? "classes" (.getName file)))
+             (if-let [[_ driver] (re-find #"modules/drivers/([^/]+)/" (str file))]
+               (contains? (tx.env/test-drivers) (keyword driver))
+               true))
+    (println "Looking for tests namespaces in directory" (str file))
     (->> (ns-find/find-namespaces-in-dir file)
          (filter #(re-matches  #"^metabase.*test$" (name %)))
          (mapcat find-tests))))
@@ -110,7 +119,9 @@
 (defn tests [{:keys [only]}]
   (when only
     (println "Running tests in" (pr-str only)))
-  (let [tests (find-tests only)]
+  (let [tests (with-redefs [mdb/setup-db! (fn []
+                                            (throw (ex-info "Shouldn't be setting up the app DB as a side effect of loading test namespaces!" {})))]
+                (find-tests only))]
     (println "Running" (count tests) "tests")
     tests))
 
@@ -119,8 +130,9 @@
     (eftest.runner/run-tests
      tests
      (merge
-      {:multithread? :vars
-       :report       (reporter)}
+      {:multithread?    :vars
+       :capture-output? false
+       :report          (reporter)}
       options))))
 
 (defn run-tests [options]
