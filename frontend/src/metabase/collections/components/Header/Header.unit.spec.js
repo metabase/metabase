@@ -80,3 +80,29 @@ describe("permissions link", () => {
     });
   });
 });
+
+describe("permissions link", () => {
+  const ariaLabel = "pencil icon";
+
+  describe("should not be displayed", () => {
+    it("when collection.can_write is falsey", () => {
+      render(<Header collection={collection} />);
+
+      expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
+    });
+
+    it("when collection includes personal_owner_id", () => {
+      render(<Header collection={{ ...collection, can_write: false }} />);
+
+      expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("should be displayed", () => {
+    it("when collection.can_write is truthy and collection.personal_owner_id is falsey", () => {
+      render(<Header collection={{ ...collection, can_write: true }} />);
+
+      screen.getByLabelText(ariaLabel);
+    });
+  });
+});
