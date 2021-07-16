@@ -151,6 +151,8 @@
 
    :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
+                 "-Dmb.field.filter.operators.enabled=true"
+                 "-Dmb.test.env.setting=ABCDEFG"
                  "-Duser.timezone=UTC"
                  "-Duser.language=en"
                  "-XX:-OmitStackTraceInFastThrow"]}
@@ -168,6 +170,16 @@
                    "-Dmb.jetty.port=3200" ; TODO -- figure out how to do a random port like in the old project.clj?
                    ]}
 
+  ;; run the dev server with
+  ;; clojure -M:run
+  ;; clojure -M:run:drivers (include all drivers)
+  ;; clojure -M:run:ee (include EE code)
+  :run
+  {:main-opts ["-m" "metabase.core"]
+   :jvm-opts  ["-Djava.awt.headless=true" ; prevent Java icon from randomly popping up in macOS dock
+               "-Dmb.jetty.port=3000"]}
+
+  ;; alias for CI-specific options.
   :ci
   {:jvm-opts ["-Xmx2g"]}
 
