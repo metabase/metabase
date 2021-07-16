@@ -13,7 +13,9 @@ function renderNumberOfSelections(numberOfSelections) {
   );
 }
 
-export default function ParameterFieldWidgetSelection({ savedValue, fields }) {
+export default function ParameterFieldWidgetValue({ savedValue, fields }) {
+  /* eslint-disable */
+  return <div>Fake</div>;
   const values = normalizeValue(savedValue);
 
   const numberOfValues = values.length;
@@ -29,7 +31,7 @@ export default function ParameterFieldWidgetSelection({ savedValue, fields }) {
   );
 }
 
-ParameterFieldWidgetSelection.propTypes = {
+ParameterFieldWidgetValue.propTypes = {
   savedValue: PropTypes.array,
   fields: PropTypes.array,
 };
