@@ -10,10 +10,10 @@ import CollectionLink from "metabase/collections/components/CollectionLink";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
+import { CollectionListIcon } from "./CollectionList.styled";
 class CollectionsList extends React.Component {
   render() {
     const {
-      initialIcon,
       currentCollection,
       filter = () => true,
       openCollections,
@@ -69,11 +69,7 @@ class CollectionsList extends React.Component {
                             />
                           </Flex>
                         )}
-                        <Icon
-                          name={initialIcon}
-                          mr={"6px"}
-                          style={{ opacity: 0.4 }}
-                        />
+                        <CollectionListIcon collection={c} />
                         {c.name}
                       </Flex>
                     </CollectionLink>
@@ -102,7 +98,6 @@ class CollectionsList extends React.Component {
 }
 
 CollectionsList.defaultProps = {
-  initialIcon: "folder",
   depth: 1,
 };
 
