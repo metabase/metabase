@@ -4,21 +4,21 @@ import { Flex } from "grid-styled";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { color } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 
-import { ToggleMobileSidebarIcon } from "./Header.styled";
+import {
+  DescriptionTooltipIcon,
+  ToggleMobileSidebarIcon,
+} from "./Header.styled";
 
 function Title({
   collection: { description, name },
   handleToggleMobileSidebar,
 }) {
-  const hoverStyle = { color: color("brand") };
-
   return (
     <Flex align="center">
       <PageHeading className="text-wrap">
@@ -28,13 +28,7 @@ function Title({
 
       {description && (
         <Tooltip tooltip={description}>
-          <Icon
-            name="info"
-            ml={1}
-            mt="4px"
-            color={color("bg-dark")}
-            hover={hoverStyle}
-          />
+          <DescriptionTooltipIcon />
         </Tooltip>
       )}
     </Flex>
