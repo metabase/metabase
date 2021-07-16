@@ -4,7 +4,7 @@ import cx from "classnames";
 
 import Tooltip from "metabase/components/Tooltip";
 
-import { FieldRow, Label, InfoIcon } from "./FormField.styled";
+import { FieldRow, Label, InfoIcon, InputContainer } from "./FormField.styled";
 
 const formFieldCommon = {
   title: PropTypes.string,
@@ -93,9 +93,7 @@ function FormField(props) {
           {description && <div className="mb1">{description}</div>}
         </div>
       )}
-      <div className={cx("flex-no-shrink", { "ml-auto": horizontal })}>
-        {children}
-      </div>
+      <InputContainer horizontal={horizontal}>{children}</InputContainer>
     </div>
   );
 }
