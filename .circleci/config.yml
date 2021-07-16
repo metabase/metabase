@@ -880,6 +880,9 @@ jobs:
       source-folder:
         type: string
         default: ""
+      folder:
+        type: string
+        default: ""
       test-files:
         type: string
         default: ""
@@ -1177,121 +1180,12 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-          name: e2e-tests-smoketest-<< matrix.edition >>
+              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "onboarding", "native", "native-filters", "question", "sharing", "smoketest", "visualizations"]
+          name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          cypress-group: "smoketest-<< matrix.edition >>"
-          source-folder: smoketest
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-admin-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "admin-<< matrix.edition >>"
-          source-folder: admin
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-collections-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "collections-<< matrix.edition >>"
-          source-folder: collections
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-dashboard-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "dashboard-<< matrix.edition >>"
-          source-folder: dashboard
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-dashboard-filters-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "dashboard-filters-<< matrix.edition >>"
-          source-folder: dashboard-filters
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-onboarding-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "onboarding-<< matrix.edition >>"
-          source-folder: onboarding
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-native-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "native-<< matrix.edition >>"
-          source-folder: native
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-native-filters-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "native-filters-<< matrix.edition >>"
-          source-folder: native-filters
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-question-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "question-<< matrix.edition >>"
-          source-folder: question
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-binning-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "binning-<< matrix.edition >>"
-          source-folder: binning
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-sharing-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "sharing-<< matrix.edition >>"
-          source-folder: sharing
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-visualizations-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "visualizations-<< matrix.edition >>"
-          source-folder: visualizations
+          cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
+          source-folder: << matrix.folder >>
 
       - fe-tests-cypress:
           name: e2e-tests-mongo-4-<< matrix.edition >>
