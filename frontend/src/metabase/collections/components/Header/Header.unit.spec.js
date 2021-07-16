@@ -17,18 +17,22 @@ it("should display collection name", () => {
 describe("description tooltip", () => {
   const ariaLabel = "info icon";
 
-  it("should not be displayed if description is not received", () => {
-    render(<Header collection={collection} />);
+  describe("should not be displayed", () => {
+    it("if description is not received", () => {
+      render(<Header collection={collection} />);
 
-    expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
+    });
   });
 
-  it("should be displayed if description is received", () => {
-    const description = "description";
+  describe("should be displayed", () => {
+    it("if description is received", () => {
+      const description = "description";
 
-    render(<Header collection={{ ...collection, description }} />);
+      render(<Header collection={{ ...collection, description }} />);
 
-    screen.getByLabelText(ariaLabel);
+      screen.getByLabelText(ariaLabel);
+    });
   });
 });
 
@@ -100,6 +104,26 @@ describe("permissions link", () => {
 
   describe("should be displayed", () => {
     it("when collection.can_write is truthy and collection.personal_owner_id is falsey", () => {
+      render(<Header collection={{ ...collection, can_write: true }} />);
+
+      screen.getByLabelText(ariaLabel);
+    });
+  });
+});
+
+describe("link to create a new collection", () => {
+  const ariaLabel = "new_folder icon";
+
+  describe("should not be displayed", () => {
+    it("when collection.can_write is falsey", () => {
+      render(<Header collection={collection} />);
+
+      expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("should be displayed", () => {
+    it("when collection.can_write is truthy", () => {
       render(<Header collection={{ ...collection, can_write: true }} />);
 
       screen.getByLabelText(ariaLabel);
