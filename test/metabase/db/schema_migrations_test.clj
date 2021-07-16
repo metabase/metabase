@@ -36,8 +36,9 @@
             (is (= id
                    (db/select-one-field :database_position Field :id id)))))))))
 
-(defn- create-raw-user [email]
+(defn- create-raw-user!
   "create a user but skip pre and post insert steps"
+  [email]
   (db/simple-insert! User
     :email        email
     :first_name   (tu/random-name)
@@ -53,7 +54,7 @@
       (let [e1 "Foo@email.com"
             e2 "boo@email.com"]
         (doseq [e [e1 e2]]
-          (create-raw-user e))
+          (create-raw-user! e))
         ;; Run migrations 268 - 272
         (migrate!)
         (doseq [e [e1 e2]]

@@ -74,8 +74,6 @@
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
 
-(defn- subset-model [model res] (filter #(= (:model %) (name model)) res))
-
 (defn- default-archived-results []
   (for [result (default-search-results)
         :when (false? (:archived result))]
