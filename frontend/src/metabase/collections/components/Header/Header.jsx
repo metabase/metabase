@@ -13,6 +13,29 @@ import CollectionEditMenu from "metabase/collections/components/CollectionEditMe
 
 import { ToggleMobileSidebarIcon } from "./Header.styled";
 
+function Title({ collection, handleToggleMobileSidebar }) {
+  return (
+    <Flex align="center">
+      <PageHeading className="text-wrap">
+        <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
+        {collection.name}
+      </PageHeading>
+
+      {collection.description && (
+        <Tooltip tooltip={collection.description}>
+          <Icon
+            name="info"
+            ml={1}
+            mt="4px"
+            color={color("bg-dark")}
+            hover={{ color: color("brand") }}
+          />
+        </Tooltip>
+      )}
+    </Flex>
+  );
+}
+
 export default function Header({
   collection,
   isAdmin,
@@ -23,24 +46,10 @@ export default function Header({
 }) {
   return (
     <Flex align="center" py={3}>
-      <Flex align="center">
-        <PageHeading className="text-wrap">
-          <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
-          {collection.name}
-        </PageHeading>
-        {collection.description && (
-          <Tooltip tooltip={collection.description}>
-            <Icon
-              name="info"
-              ml={1}
-              mt="4px"
-              color={color("bg-dark")}
-              hover={{ color: color("brand") }}
-            />
-          </Tooltip>
-        )}
-      </Flex>
-
+      <Title
+        collection={collection}
+        handleToggleMobileSidebar={handleToggleMobileSidebar}
+      />
       <Flex ml="auto">
         {isAdmin &&
           !collection.personal_owner_id &&
