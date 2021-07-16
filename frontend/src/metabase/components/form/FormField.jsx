@@ -58,7 +58,7 @@ function FormField(props) {
     ...props,
   };
 
-  if (visited === false || active === true) {
+  if (!visited || active) {
     // if the field hasn't been visited or is currently active then don't show the error
     error = null;
   }
