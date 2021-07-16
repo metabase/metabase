@@ -20,11 +20,6 @@
   [username]
   (dissoc (mt/fetch-user username) :date_joined :last_login))
 
-(defn- metric-details
-  [{:keys [creator] :as metric}]
-  (-> (dissoc metric :id :table_id :created_at :updated_at)
-      (update :creator #(dissoc % :date_joined :last_login))))
-
 (deftest retrieve-metrics-test
   (mt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id-1 :id}    {:db_id database-id}]

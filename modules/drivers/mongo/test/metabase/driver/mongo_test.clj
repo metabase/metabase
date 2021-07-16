@@ -155,7 +155,7 @@
                     :limit       4}))))))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
-(tx/defdataset ^:private all-null-columns
+(tx/defdataset all-null-columns
   [["bird_species"
     [{:field-name "name", :base-type :type/Text}
      {:field-name "favorite_snack", :base-type :type/Text}]
@@ -231,7 +231,7 @@
                            (into {} field))))))))))
 
 
-(tx/defdataset ^:private with-bson-ids
+(tx/defdataset with-bson-ids
   [["birds"
      [{:field-name "name", :base-type :type/Text}
       {:field-name "bird_id", :base-type :type/MongoBSONID}]

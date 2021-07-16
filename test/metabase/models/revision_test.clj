@@ -10,7 +10,7 @@
 
 (models/defmodel ^:private FakedCard :report_card)
 
-(extend-type (class FakedCard)
+(extend-type FakedCardInstance
   revision/IRevisioned
   (serialize-instance [_ _ obj]
     (assoc obj :serialized true))

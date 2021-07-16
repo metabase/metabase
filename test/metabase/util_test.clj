@@ -248,7 +248,7 @@
 
 (deftest or-with-test
   (testing "empty case"
-    (is (= (or) (u/or-with identity))))
+    (is (= nil (u/or-with identity))))
   (testing "short-circuiting"
     (let [counter (atom [])
           expensive-fn (fn [x] (swap! counter conj x) x)
@@ -286,7 +286,7 @@
                 (let [q' (rf q x)]
                   ;; a bit internal but this is really what we're after: bounded size while we look for the biggest
                   ;; elements
-                  (is (<= (.size q) limit))
+                  (is (<= (count q) limit))
                   q))
               (rf)
               (shuffle (range 30))))))
