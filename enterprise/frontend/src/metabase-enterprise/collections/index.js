@@ -6,14 +6,13 @@ import {
 } from "metabase/plugins";
 import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLevelIcon";
-import { EE_AUTHORITY_LEVELS, OFFICIAL_COLLECTION } from "./constants";
+import {
+  AUTHORITY_LEVELS,
+  REGULAR_COLLECTION,
+  OFFICIAL_COLLECTION,
+} from "./constants";
 
-PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = {
-  ...PLUGIN_COLLECTIONS.AUTHORITY_LEVEL,
-  ...EE_AUTHORITY_LEVELS,
-};
-
-const { AUTHORITY_LEVEL } = PLUGIN_COLLECTIONS;
+PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
 
 PLUGIN_COLLECTIONS.formFields = [
   ...PLUGIN_COLLECTIONS.formFields,
@@ -24,12 +23,12 @@ PLUGIN_COLLECTIONS.formFields = [
     type: "collectionAuthorityLevel",
     options: [
       {
-        name: t`Regular`,
-        value: AUTHORITY_LEVEL.regular.type,
-        icon: AUTHORITY_LEVEL.regular.icon,
+        name: REGULAR_COLLECTION.name,
+        value: REGULAR_COLLECTION.type,
+        icon: REGULAR_COLLECTION.icon,
       },
       {
-        name: t`Official`,
+        name: OFFICIAL_COLLECTION.name,
         value: OFFICIAL_COLLECTION.type,
         icon: OFFICIAL_COLLECTION.icon,
         selectedColor: OFFICIAL_COLLECTION.color,
