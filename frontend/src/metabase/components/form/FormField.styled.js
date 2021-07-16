@@ -11,8 +11,13 @@ export const FieldRow = styled.div`
   margin-bottom: 0.5em;
 `;
 
-export const Label = styled.label`
+export const Label = styled.label.attrs({ className: "Form-label" })`
   margin-bottom: 0;
+  ${props =>
+    props.horizontal &&
+    css`
+      margin-right: auto;
+    `}
 `;
 
 export const InfoIcon = styled(Icon).attrs({ name: "info", size: 12 })`

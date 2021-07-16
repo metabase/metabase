@@ -79,11 +79,7 @@ function FormField(props) {
         <div>
           <FieldRow>
             {title && (
-              <Label
-                className={cx("Form-label", { "mr-auto": horizontal })}
-                htmlFor={name}
-                id={`${name}-label`}
-              >
+              <Label id={`${name}-label`} htmlFor={name} horizontal>
                 {title}
                 {error && <span className="text-error">: {error}</span>}
               </Label>
