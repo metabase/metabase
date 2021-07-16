@@ -17,10 +17,12 @@ class CollectionBadge extends React.Component {
     if (!collection) {
       return null;
     }
+    const icon = collection.getIcon();
     return (
       <Badge
         to={collection.getUrl()}
-        icon={collection.getIcon().name}
+        icon={icon.name}
+        iconColor={icon.color}
         data-metabase-event={`${analyticsContext};Collection Badge Click`}
         {...props}
       >
