@@ -20,7 +20,7 @@ const propTypes = {
   field: PropTypes.object,
   formField: PropTypes.shape({
     ...formFieldCommon,
-    type: PropTypes.string,
+    type: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
   }),
 
   // redux-form compatible:
