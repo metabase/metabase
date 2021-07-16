@@ -64,7 +64,7 @@
       (testing (str "connect with " details)
         (is (= expected
                (driver.u/can-connect-with-details? :mongo details))
-            message)))))
+            (str message))))))
 
 (def ^:private native-query
   "[{\"$project\": {\"_id\": \"$_id\"}},

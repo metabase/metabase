@@ -1,10 +1,10 @@
 (disable-warning
- {:linter :suspicious-expression
-  :for-macro 'clojure.core/and
+ {:linter                      :suspicious-expression
+  :for-macro                   'clojure.core/and
   :if-inside-macroexpansion-of #{'clojure.core.match/match}
-  :within-depth 50
-  :reason (str "By default, eastwood only allows a depth of up to 13 when ignoring single-arg `and` "
-               "in `core/match` macro expansions; some of our `mbql.u/match` macros exceed that depth.")})
+  :within-depth                50
+  :reason                      (str "By default, eastwood only allows a depth of up to 13 when ignoring single-arg `and` "
+                                    "in `core/match` macro expansions; some of our `mbql.u/match` macros exceed that depth.")})
 
 (disable-warning
  {:linter          :wrong-arity
@@ -63,6 +63,11 @@
 
 (disable-warning
  {:linter               :wrong-arity
+  :function-symbol      'metabase.http-client/client-full-response
+  :arglists-for-linting '([& args])})
+
+(disable-warning
+ {:linter               :wrong-arity
   :function-symbol      'metabase.test/client-full-response
   :arglists-for-linting '([& args])})
 
@@ -70,3 +75,18 @@
  {:linter               :wrong-arity
   :function-symbol      'metabase.test.data.sql/qualified-name-components
   :arglists-for-linting '([driver database-name & args])})
+
+(disable-warning
+ {:linter                      :suspicious-expression
+  :for-macro                   'clojure.core/let
+  :if-inside-macroexpansion-of #{'metabase.models.collection-test/with-collection-in-location}
+  :within-depth                10})
+
+(disable-warning
+ {:linter                      :suspicious-expression
+  :for-macro                   'clojure.core/let
+  :if-inside-macroexpansion-of '#{metabase.test/with-temp
+                                  metabase.test/with-temp*
+                                  toucan.util.test/with-temp
+                                  toucan.util.test/with-temp*}
+  :within-depth                10})

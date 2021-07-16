@@ -11,12 +11,6 @@
   [username]
   (dissoc (mt/fetch-user username) :date_joined :last_login))
 
-(defn- segment-details
-  [{:keys [creator], :as segment}]
-  (-> segment
-      (dissoc :id :table_id :created_at :updated_at)
-      (assoc :creator (dissoc creator :date_joined :last_login))))
-
 (deftest update-test
   (testing "Updating"
     (mt/with-temp Segment [{:keys [id]} {:creator_id (mt/user->id :rasta)}]

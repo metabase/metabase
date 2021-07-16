@@ -464,7 +464,7 @@
          (-> (into {} collection)
              (update :id integer?)
              (update :location location-path-ids->names)
-             (update :children (comp set (partial format-collections)))))))
+             (update :children (comp set format-collections))))))
 
 (defn- descendants [collection]
   (-> (#'collection/descendants collection)

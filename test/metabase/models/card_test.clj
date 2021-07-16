@@ -113,14 +113,6 @@
                           :query    {:source-table source-table}}}
          kvs))
 
-(defn- force-update-card-to-reference-source-table!
-  "Skip normal pre-update stuff so we can force a Card to get into an invalid state."
-  [card source-table]
-  (db/update! Card {:where [:= :id (u/the-id card)]
-                    :set   (-> (card-with-source-table source-table)
-                               ;; we have to manually JSON-encode since we're skipping normal pre-update stuff
-                               (update :dataset_query json/generate-string))}))
-
 (deftest circular-reference-test
   (testing "Should throw an Exception if saving a Card that references itself"
     (tt/with-temp Card [card (card-with-source-table (mt/id :venues))]

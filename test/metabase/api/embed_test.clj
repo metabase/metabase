@@ -351,7 +351,7 @@
              (dissoc-id-and-name
                (http/client :get 200 (dashboard-url dash))))))))
 
-(deftest we-should-fail-when-attempting-to-use-an-expired-token
+(deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
     (mt/with-temp Dashboard [dash {:enable_embedding true}]
       (is (re= #"^Token is expired.*"

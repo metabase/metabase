@@ -6,16 +6,12 @@
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.models.database :refer [Database]]
-            [metabase.sync.analyze :as sync.analyze]
-            [metabase.sync.field-values :as sync.field-values]
             [metabase.sync.schedules :as sync.schedules]
-            [metabase.sync.sync-metadata :as sync.metadata]
             [metabase.task.sync-databases :as sync-db]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.cron :as cron-util]
-            [metabase.util.date-2 :as u.date]
             [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
@@ -173,7 +169,7 @@
 ;;; |                                    CHECKING THAT SYNC TASKS RUN CORRECT FNS                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- check-if-sync-processes-ran-for-db {:style/indent 0} [waits db-info]
+#_(defn- check-if-sync-processes-ran-for-db {:style/indent 0} [waits db-info]
   (let [sync-db-metadata-ran?    (promise)
         analyze-db-ran?          (promise)
         update-field-values-ran? (promise)]
@@ -191,7 +187,7 @@
                           :ran-analyze?             analyze-db-ran?
                           :ran-update-field-values? update-field-values-ran?})))))))
 
-(defn- cron-schedule-for-next-year []
+#_(defn- cron-schedule-for-next-year []
   (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
 
 ;; this test fails all the time -- disabled for now until I figure out how to fix it - Cam
