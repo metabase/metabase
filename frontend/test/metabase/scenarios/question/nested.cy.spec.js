@@ -25,12 +25,6 @@ describe("scenarios > question > nested (metabase#12568)", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
       },
       display: "line",
-    }).then(({ body }) => {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("cardMetadata");
-
-      cy.visit(`/question/${body.id}`);
-      // We have to wait for the metadata to load
-      cy.wait("@cardMetadata");
     });
 
     // Create a native question of orders by day
@@ -41,12 +35,6 @@ describe("scenarios > question > nested (metabase#12568)", () => {
           "SELECT date_trunc('day', CREATED_AT) as date, COUNT(*) as count FROM ORDERS GROUP BY date_trunc('day', CREATED_AT)",
       },
       display: "scalar",
-    }).then(({ body }) => {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("nativeMetadata");
-
-      cy.visit(`/question/${body.id}`);
-      // We have to wait for the metadata to load
-      cy.wait("@nativeMetadata");
     });
 
     // [quarantine] The whole CI was timing out
@@ -92,7 +80,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
     cy.contains("Count").click();
     cy.contains("Distribution").click();
     cy.contains("Count by Count: Auto binned");
-    cy.get(".bar").should("have.length.of.at.least", 8);
+    cy.get(".bar").should("have.length.of.at.least", 10);
   });
 
   it("should allow Sum over time on a Saved Simple Question", () => {
@@ -114,7 +102,7 @@ describe("scenarios > question > nested (metabase#12568)", () => {
     cy.contains("COUNT").click();
     cy.contains("Distribution").click();
     cy.contains("Count by COUNT: Auto binned");
-    cy.get(".bar").should("have.length.of.at.least", 8);
+    cy.get(".bar").should("have.length.of.at.least", 10);
   });
 
   // [quarantine] The whole CI was timing out
