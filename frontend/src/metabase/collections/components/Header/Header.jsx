@@ -36,52 +36,60 @@ function Title({ collection, handleToggleMobileSidebar }) {
   );
 }
 
-export default function Header({
+function Menu({
   collection,
-  isAdmin,
-  isRoot,
-  isPersonalCollectionChild,
   collectionId,
-  handleToggleMobileSidebar,
+  isAdmin,
+  isPersonalCollectionChild,
+  isRoot,
 }) {
+  const shouldRenderLinkToEditPermissions =
+    isAdmin && !collection.personal_owner_id && !isPersonalCollectionChild;
+
+  const shouldRenderEditMenu =
+    collection && collection.can_write && !collection.personal_owner_id;
+
+  const shouldRenderLinkToCreateCollection = collection && collection.can_write;
+
+  return (
+    <Flex ml="auto">
+      {shouldRenderLinkToEditPermissions && (
+        <Tooltip tooltip={t`Edit the permissions for this collection`}>
+          <Link to={`${Urls.collection(collection)}/permissions`}>
+            <IconWrapper>
+              <Icon name="lock" />
+            </IconWrapper>
+          </Link>
+        </Tooltip>
+      )}
+
+      {shouldRenderEditMenu && (
+        <CollectionEditMenu
+          tooltip={t`Edit collection`}
+          collection={collection}
+          isAdmin={isAdmin}
+          isRoot={isRoot}
+        />
+      )}
+
+      {shouldRenderLinkToCreateCollection && (
+        <Tooltip tooltip={t`New collection`}>
+          <Link to={Urls.newCollection(collectionId)}>
+            <IconWrapper>
+              <Icon name="new_folder" />
+            </IconWrapper>
+          </Link>
+        </Tooltip>
+      )}
+    </Flex>
+  );
+}
+
+export default function Header(props) {
   return (
     <Flex align="center" py={3}>
-      <Title
-        collection={collection}
-        handleToggleMobileSidebar={handleToggleMobileSidebar}
-      />
-      <Flex ml="auto">
-        {isAdmin &&
-          !collection.personal_owner_id &&
-          !isPersonalCollectionChild && (
-            <Tooltip tooltip={t`Edit the permissions for this collection`}>
-              <Link to={`${Urls.collection(collection)}/permissions`}>
-                <IconWrapper>
-                  <Icon name="lock" />
-                </IconWrapper>
-              </Link>
-            </Tooltip>
-          )}
-        {collection &&
-          collection.can_write &&
-          !collection.personal_owner_id && (
-            <CollectionEditMenu
-              tooltip={t`Edit collection`}
-              collection={collection}
-              isAdmin={isAdmin}
-              isRoot={isRoot}
-            />
-          )}
-        {collection && collection.can_write && (
-          <Tooltip tooltip={t`New collection`}>
-            <Link to={Urls.newCollection(collectionId)}>
-              <IconWrapper>
-                <Icon name="new_folder" />
-              </IconWrapper>
-            </Link>
-          </Tooltip>
-        )}
-      </Flex>
+      <Title {...props} />
+      <Menu {...props} />
     </Flex>
   );
 }
