@@ -28,12 +28,11 @@ These are the tools which are required in order to complete any build of the Met
 2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](./operations-guide/java-versions.md))
 3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
 4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by doing `npm install --global yarn`
-5. [Leiningen (http://leiningen.org/)](http://leiningen.org/) - latest release
 
 On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure, can be installed by using:
 
 ```
-sudo apt install openjdk-11-jdk nodejs leiningen && sudo npm install --global yarn
+sudo apt install openjdk-11-jdk nodejs && sudo npm install --global yarn
 ```
 If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building by doing `sudo update-alternatives --config java` and selecting Java 11 in the menu
 
@@ -79,7 +78,7 @@ $ yarn
 
 Run your backend development server with
 
-    lein run
+    clojure -M:run
 
 Start the frontend build process with
 
@@ -150,12 +149,13 @@ Leiningen and your REPL are the main development tools for the backend. There ar
 
 And of course your Jetty development server is available via
 
-    lein run
+    clojure -M:run
 
 ### Building drivers
 
-Most of the drivers Metabase uses to connect to external data warehouse databases are separate Leiningen projects under the `modules/` subdirectory. When running Metabase via `lein`, you'll
-need to build these drivers in order to have access to them. You can build drivers as follows:
+Most of the drivers Metabase uses to connect to external data warehouse databases are separate projects under the
+`modules/` subdirectory. When running Metabase via `lein`, you'll need to build these drivers in order to have access
+to them. You can build drivers as follows:
 
 ```
 # Build the 'mongo' driver

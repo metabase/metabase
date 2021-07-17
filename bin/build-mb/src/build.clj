@@ -52,8 +52,9 @@
   {:pre [(#{:oss :ee} edition)]}
   (u/delete-file-if-exists! uberjar-filename)
   (u/step (format "Build uberjar with profile %s" edition)
-    (u/sh {:dir u/project-root-directory} "lein" "clean")
-    (u/sh {:dir u/project-root-directory} "lein" "with-profile" (str \+ (name edition)) "uberjar")
+    ;; TODO -- we (probably) don't need to shell out in order to do this anymore, we should be able to do all this
+    ;; stuff directly in Clojure land by including this other `build` namespace directly (once we dedupe the names)
+    (u/sh {:dir u/project-root-directory} "clojure" "-T:build" "uberjar" :profile edition)
     (u/assert-file-exists uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 

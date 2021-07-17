@@ -2,7 +2,7 @@
 # STAGE 1.1: builder frontend
 ###################
 
-FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as frontend
+FROM metabase/ci:circleci-java-11-clj-1.10.3.912-07-16-2021-node-browsers as frontend
 
 ARG MB_EDITION=oss
 
@@ -15,7 +15,7 @@ RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn --frozen-lockfile && yarn bu
 # STAGE 1.2: backend deps
 ###################
 
-FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as backend
+FROM metabase/ci:circleci-java-11-clj-1.10.3.912-07-16-2021-node-browsers as backend
 
 WORKDIR /app/source
 
@@ -27,7 +27,7 @@ RUN lein deps :tree
 # STAGE 1.3: drivers
 ###################
 
-FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as drivers
+FROM metabase/ci:circleci-java-11-clj-1.10.3.912-07-16-2021-node-browsers as drivers
 
 ARG MB_EDITION=oss
 
@@ -45,7 +45,7 @@ RUN INTERACTIVE=false MB_EDITION=$MB_EDITION sh bin/build-drivers.sh
 # STAGE 1.4: main builder
 ###################
 
-FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as builder
+FROM metabase/ci:circleci-java-11-clj-1.10.3.912-07-16-2021-node-browsers as builder
 
 ARG MB_EDITION=oss
 

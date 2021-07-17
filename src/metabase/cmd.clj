@@ -6,7 +6,7 @@
 
   for example, running the `migrate` command and passing it `force` can be done using one of the following ways:
 
-    lein run migrate force
+    clojure -M:run] migrate force
     java -jar metabase.jar migrate force
 
 
@@ -185,7 +185,7 @@
           (System/exit 1))))
 
 (defn run-cmd
-  "Run `cmd` with `args`. This is a function above. e.g. `lein run metabase migrate force` becomes
+  "Run `cmd` with `args`. This is a function above. e.g. `clojure -M:run metabase migrate force` becomes
   `(migrate \"force\")`."
   [cmd args]
   (try (apply (cmd->fn cmd) args)

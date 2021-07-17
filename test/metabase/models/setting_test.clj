@@ -15,9 +15,6 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; ## TEST SETTINGS DEFINITIONS
-;; TODO! These don't get loaded by `lein ring server` unless this file is touched
-;; so if you run unit tests while `lein ring server` is running (i.e., no Jetty server is started)
-;; these tests will fail. FIXME
 
 (defsetting test-setting-1
   (deferred-tru "Test setting - this only shows up in dev (1)"))
