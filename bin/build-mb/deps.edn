@@ -15,12 +15,3 @@
                        org.apache.commons/commons-math3 {:mvn/version "3.6.1"}
                        net.redhogs.cronparser/cron-parser-core {:mvn/version "3.4"}}
          :main-opts   ["-m" "cognitect.test-runner"]}}}
-
-;; :manifest
-;;   {;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
-;;    "Liquibase-Package"
-;;    #= (eval
-;;        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-;;             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-;;             "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-;;             "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}

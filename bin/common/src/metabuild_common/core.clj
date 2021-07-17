@@ -61,7 +61,6 @@
  [output
   announce
   error
-  format-bytes
   pretty-print-exception
   safe-println]
 

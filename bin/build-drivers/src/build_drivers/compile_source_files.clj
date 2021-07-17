@@ -2,7 +2,8 @@
   (:require [build-drivers.common :as c]
             [clojure.java.io :as io]
             [clojure.tools.namespace.find :as tools.ns.find]
-            [metabuild-common.core :as u]))
+            [metabuild-common.core :as u]
+            potemkin.macros))
 
 (defn driver-source-paths [driver edition]
   (for [path (:paths (c/driver-edn driver edition))]
@@ -23,13 +24,12 @@
       (u/announce "Compiling Clojure source files in %s to %s" (pr-str source-paths) target-dir)
       (u/create-directory-unless-exists! target-dir)
       (u/announce "Compiling namespaces %s" (pr-str namespaces))
-      (binding [*compile-path* target-dir]
-        (dorun
-         (pmap
-          (fn [a-namespace]
+      ;; force Potemkin to recompile classes
+      (with-redefs [potemkin.macros/equivalent? (constantly false)]
+        (binding [*compile-path* target-dir]
+          (doseq [a-namespace namespaces]
             (#'clojure.core/serialized-require a-namespace)
-            (compile a-namespace))
-          namespaces)))
+            (compile a-namespace))))
       (u/announce "Compiled %d namespace(s) in %d ms."
                   (count namespaces)
                   (- (System/currentTimeMillis) start-time-ms)))))
