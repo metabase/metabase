@@ -5,6 +5,17 @@ import {
   describeWithToken,
   describeWithoutToken,
 } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+
+const COLLECTION_NAME = "Official Collection Test";
+
+const TEST_QUESTION_QUERY = {
+  "source-table": ORDERS_ID,
+  aggregation: [["count"]],
+  breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
+};
 
 describeWithToken("collections types", () => {
   beforeEach(() => {
@@ -46,6 +57,9 @@ describeWithToken("collections types", () => {
     cy.findByTestId("official-collection-marker");
     assertSidebarIcon(COLLECTION_NAME, "badge");
   });
+
+  it("displays official badge throughout the application", () => {
+    testOfficialBadgePresence();
   });
 });
 
@@ -73,15 +87,55 @@ describeWithoutToken("collection types", () => {
   });
 
   it("should not display official collection icon", () => {
-    cy.createCollection({
-      name: "Official Collection Test",
-      authority_level: "official",
-    });
-    cy.visit("/collection/root");
-    cy.findByText("Official Collection Test").click();
-    cy.findByTestId("official-collection-marker").should("not.exist");
+    testOfficialBadgePresence(false);
   });
 });
+
+function testOfficialBadgePresence(expectBadge = true) {
+  cy.createCollection({
+    name: COLLECTION_NAME,
+    authority_level: "official",
+  }).then(response => {
+    const { id: collectionId } = response.body;
+    cy.createQuestion({
+      name: "Official Question",
+      collection_id: collectionId,
+      query: TEST_QUESTION_QUERY,
+    });
+    cy.createDashboard("Official Dashboard", { collection_id: collectionId });
+    cy.visit(`/collection/${collectionId}`);
+  });
+
+  // Collections page
+  cy.findByTestId("official-collection-marker").should(
+    expectBadge ? "exist" : "not.exist",
+  );
+  assertSidebarIcon(COLLECTION_NAME, expectBadge ? "badge" : "folder");
+
+  // Dashboard Page
+  cy.findByText("Official Dashboard").click();
+  assertHasCollectionBadge(expectBadge);
+
+  // Question Page
+  cy.findByText(COLLECTION_NAME).click();
+  cy.findByText("Official Question").click();
+  assertHasCollectionBadge(expectBadge);
+
+  // Search
+  cy.get(".Nav")
+    .findByPlaceholderText("Search…")
+    .as("searchBar")
+    .type("Official");
+
+  cy.findByTestId("search-results-list").within(() => {
+    assertSearchResultBadge(COLLECTION_NAME, {
+      expectBadge,
+      selector: "h3",
+    });
+    assertSearchResultBadge("Official Question", { expectBadge });
+    assertSearchResultBadge("Official Dashboard", { expectBadge });
+  });
+}
 
 function setOfficial(official = true) {
   const isOfficialNow = !official;
@@ -106,5 +160,22 @@ function assertSidebarIcon(collectionName, expectedIcon) {
     .parent()
     .within(() => {
       cy.icon(expectedIcon);
+    });
+}
+
+function assertSearchResultBadge(itemName, opts) {
+  const { expectBadge } = opts;
+  cy.findByText(itemName, opts)
+    .parentsUntil("[data-testid=search-result-item]")
+    .within(() => {
+      cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
+    });
+}
+
+function assertHasCollectionBadge(expectBadge = true) {
+  cy.findByText(COLLECTION_NAME)
+    .parent()
+    .within(() => {
+      cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
     });
 }

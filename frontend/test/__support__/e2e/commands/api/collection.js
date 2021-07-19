@@ -8,7 +8,7 @@ Cypress.Commands.add(
     authority_level = null,
   } = {}) => {
     cy.log(`Create a collection: ${name}`);
-    cy.request("POST", "/api/collection", {
+    return cy.request("POST", "/api/collection", {
       name,
       description,
       parent_id,
