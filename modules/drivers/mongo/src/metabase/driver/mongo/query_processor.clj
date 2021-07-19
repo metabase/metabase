@@ -321,10 +321,10 @@
 (defmethod ->lvalue :concat    [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :substring [[_ inp]] (->lvalue inp))
 
-(defmethod ->lvalue :+ [[_ & args]] (->lvalue inp))
-(defmethod ->lvalue :- [[_ fst snd]] (->lvalue inp))
-(defmethod ->lvalue :* [[_ & args]] (->lvalue inp))
-(defmethod ->lvalue :/ [[_ fst snd]] (->lvalue inp))
+(defmethod ->lvalue :+ [[_ & args]] (->lvalue args))
+(defmethod ->lvalue :- [[_ fst snd]] (->lvalue fst))
+(defmethod ->lvalue :* [[_ & args]] (->lvalue args))
+(defmethod ->lvalue :/ [[_ fst snd]] (->lvalue fst))
 
 ;;; actually __most__ these rvals are fucked up arities...
 
