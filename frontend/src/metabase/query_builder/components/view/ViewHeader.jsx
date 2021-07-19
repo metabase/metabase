@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 import { Box } from "grid-styled";
@@ -8,8 +8,10 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
+import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
@@ -25,6 +27,40 @@ import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+const viewTitleHeaderPropTypes = {
+  question: PropTypes.object.isRequired,
+  originalQuestion: PropTypes.object,
+
+  queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
+  setQueryBuilderMode: PropTypes.func,
+
+  result: PropTypes.object,
+
+  isDirty: PropTypes.bool,
+  isRunnable: PropTypes.bool,
+  isRunning: PropTypes.bool,
+  isResultDirty: PropTypes.bool,
+  isNativeEditorOpen: PropTypes.bool,
+  isShowingFilterSidebar: PropTypes.bool,
+  isShowingSummarySidebar: PropTypes.bool,
+
+  runQuestionQuery: PropTypes.func,
+  cancelQuery: PropTypes.func,
+
+  onOpenModal: PropTypes.func,
+  onEditSummary: PropTypes.func,
+  onCloseSummary: PropTypes.func,
+  onAddFilter: PropTypes.func,
+  onCloseFilter: PropTypes.func,
+
+  isPreviewable: PropTypes.bool,
+  isPreviewing: PropTypes.bool,
+  setIsPreviewing: PropTypes.func,
+
+  className: PropTypes.string,
+  style: PropTypes.object,
+};
 
 export class ViewTitleHeader extends React.Component {
   constructor(props) {
@@ -82,6 +118,7 @@ export class ViewTitleHeader extends React.Component {
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
     const description = question.description();
+    const lastEditInfo = question.lastEditInfo();
 
     const isStructured = question.isStructured();
     const isNative = question.isNative();
@@ -120,6 +157,12 @@ export class ViewTitleHeader extends React.Component {
                 question={question}
                 onOpenModal={onOpenModal}
               />
+              {lastEditInfo && (
+                <LastEditInfoLabel
+                  className="ml1 text-light"
+                  item={question.card()}
+                />
+              )}
             </div>
             <ViewSubHeading className="flex align-center flex-wrap">
               <CollectionBadge
@@ -261,6 +304,19 @@ export class ViewTitleHeader extends React.Component {
               />
             </Box>
           )}
+          {question.query().database() && isNative && isSaved && (
+            <Link
+              to={question
+                .composeThisQuery()
+                .setDisplay("table")
+                .setSettings({})
+                .getUrl()}
+            >
+              <ViewButton medium p={[2, 1]} icon="insight" labelBreakpoint="sm">
+                {t`Explore results`}
+              </ViewButton>
+            </Link>
+          )}
           {isRunnable && !isNativeEditorOpen && (
             <RunButtonWithTooltip
               className={cx("text-brand-hover hide", {
@@ -284,6 +340,14 @@ export class ViewTitleHeader extends React.Component {
     );
   }
 }
+
+ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
+
+const viewSubHeaderPropTypes = {
+  isPreviewable: PropTypes.bool,
+  isPreviewing: PropTypes.bool,
+  setIsPreviewing: PropTypes.func,
+};
 
 export class ViewSubHeader extends React.Component {
   render() {
@@ -316,3 +380,5 @@ export class ViewSubHeader extends React.Component {
     ) : null;
   }
 }
+
+ViewSubHeader.propTypes = viewSubHeaderPropTypes;

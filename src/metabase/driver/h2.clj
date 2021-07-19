@@ -140,12 +140,20 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :milliseconds] [_ _ expr]
   (add-to-1970 expr "millisecond"))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :microseconds] [_ _ expr]
   (add-to-1970 expr "microsecond"))
 
+(defmethod sql.qp/cast-temporal-string [:h2 :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (hsql/call :parsedatetime expr (hx/literal "yyyyMMddHHmmss")))
+
+(defmethod sql.qp/cast-temporal-byte [:h2 :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               (hsql/call :utf8tostring expr)))
 
 ;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
 ;; and then converting back to a date.
@@ -301,7 +309,7 @@
   [driver database ^String timezone-id]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
   ;; steps that are in the default impl
-  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (doto conn
         (.setReadOnly true))

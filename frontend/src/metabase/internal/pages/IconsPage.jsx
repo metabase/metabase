@@ -27,7 +27,7 @@ export default class IconsPage extends Component {
                 />
               </th>
               {sizes.map((size, index) => (
-                <th>
+                <th key={index}>
                   <div>{size}px</div>
                   {index === SIZES.length && (
                     <input
@@ -46,10 +46,10 @@ export default class IconsPage extends Component {
             {Object.keys(require("metabase/icon_paths").ICON_PATHS)
               .filter(name => !searchText || name.indexOf(searchText) >= 0)
               .map(name => (
-                <tr>
+                <tr key={name}>
                   <td>{name}</td>
-                  {sizes.map(size => (
-                    <td>
+                  {sizes.map((size, index) => (
+                    <td key={index}>
                       <Icon name={name} size={size} />
                     </td>
                   ))}

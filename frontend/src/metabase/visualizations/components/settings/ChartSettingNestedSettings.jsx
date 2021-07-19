@@ -105,7 +105,7 @@ const chartSettingNestedSettings = ({
       newSettings: Settings,
     ) => {
       const objectKey = getObjectKey(object);
-      if (objectKey) {
+      if (objectKey != null) {
         this.handleChangeSettingsForObjectKey(objectKey, newSettings);
       }
     };

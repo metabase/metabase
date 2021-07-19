@@ -112,15 +112,16 @@ export default class SelectPicker extends Component {
         {validOptions.length <= 10 && !regex ? null : (
           <div className="px1 pt1">
             <ListSearchField
+              hasClearButton
               onChange={this.updateSearchText}
-              searchText={this.state.searchText}
+              value={this.state.searchText}
               placeholder={t`Find a value`}
               autoFocus={true}
             />
           </div>
         )}
         <div
-          className="px1 pt1"
+          className="px1 pt1 PopoverBody--marginBottom"
           style={{ maxHeight: "400px", overflowY: "scroll" }}
         >
           {placeholder ? <h5>{placeholder}</h5> : null}
@@ -145,8 +146,12 @@ export default class SelectPicker extends Component {
             </ul>
           ) : (
             <div className="flex flex-wrap py1">
-              {validOptions.map((option, index) => (
-                <div className="half" style={{ padding: "0.15em" }}>
+              {validOptions.map(option => (
+                <div
+                  key={option.key}
+                  className="half"
+                  style={{ padding: "0.15em" }}
+                >
                   <button
                     style={{ height: "95px" }}
                     className={cx(

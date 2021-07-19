@@ -1,4 +1,4 @@
-import { restore, popover, modal } from "__support__/cypress";
+import { restore, popover, modal } from "__support__/e2e/cypress";
 
 describe("scenarios > admin > databases > edit", () => {
   beforeEach(() => {
@@ -203,6 +203,15 @@ describe("scenarios > admin > databases > edit", () => {
 
       cy.wait("@delete");
       cy.url().should("match", /\/admin\/databases\/$/);
+    });
+
+    it("should not display a setup help card", () => {
+      cy.intercept("GET", "/api/database/1").as("loadDatabase");
+
+      cy.visit("/admin/databases/1");
+      cy.wait("@loadDatabase");
+
+      cy.findByTestId("database-setup-help-card").should("not.exist");
     });
   });
 });

@@ -86,7 +86,9 @@
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
-  (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  (str (deferred-tru "This URL is used for things like creating links in emails, auth redirects,")
+       " "
+       (deferred-tru "and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :getter (fn []
             (try
@@ -242,7 +244,7 @@
   (deferred-tru "The url or image that you want to use as the favicon.")
   :visibility :public
   :type       :string
-  :default    "frontend_client/favicon.ico")
+  :default    "/app/assets/img/favicon.ico")
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
@@ -339,7 +341,13 @@
   "Current password complexity requirements"
   :visibility :public
   :setter     :none
-  :getter     (constantly password/active-password-complexity))
+  :getter     password/active-password-complexity)
+
+(defsetting session-cookies
+  (deferred-tru "When set, enforces the use of session cookies for all users which expire when the browser is closed.")
+  :type       :boolean
+  :visibility :public
+  :default    nil)
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"

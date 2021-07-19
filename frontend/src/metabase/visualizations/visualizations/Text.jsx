@@ -3,18 +3,10 @@ import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import styles from "./Text.css";
 
-import Icon from "metabase/components/Icon";
-
 import cx from "classnames";
 import { t } from "ttag";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-
-const HEADER_ICON_SIZE = 16;
-
-const HEADER_ACTION_STYLE = {
-  padding: 4,
-};
 
 type State = {
   isShowingRenderedOutput: boolean,
@@ -36,7 +28,6 @@ export default class Text extends Component {
     super(props);
 
     this.state = {
-      isShowingRenderedOutput: false,
       text: "",
     };
   }
@@ -49,6 +40,7 @@ export default class Text extends Component {
   static noHeader = true;
   static supportsSeries = false;
   static hidden = true;
+  static supportPreviewing = true;
 
   static minSize = { width: 2, height: 1 };
 
@@ -102,52 +94,18 @@ export default class Text extends Component {
     },
   };
 
-  UNSAFE_componentWillReceiveProps(newProps: VisualizationProps) {
-    // dashboard is going into edit mode
-    if (!this.props.isEditing && newProps.isEditing) {
-      this.onEdit();
-    }
-  }
-
   handleTextChange(text: string) {
     this.props.onUpdateVisualizationSettings({ text: text });
   }
 
-  onEdit() {
-    this.setState({ isShowingRenderedOutput: false });
-  }
-
-  onPreview() {
-    this.setState({ isShowingRenderedOutput: true });
-  }
-
   render() {
-    const {
-      className,
-      actionButtons,
-      gridSize,
-      settings,
-      isEditing,
-    } = this.props;
-    const isSmall = gridSize && gridSize.width < 4;
+    const { className, gridSize, settings, isEditing } = this.props;
+    const isSingleRow = gridSize && gridSize.height === 1;
 
     if (isEditing) {
       return (
-        <div
-          className={cx(
-            className,
-            styles.Text,
-            styles[isSmall ? "small" : "large"],
-            styles["dashboard-is-editing"],
-          )}
-        >
-          <TextActionButtons
-            actionButtons={actionButtons}
-            isShowingRenderedOutput={this.state.isShowingRenderedOutput}
-            onEdit={this.onEdit.bind(this)}
-            onPreview={this.onPreview.bind(this)}
-          />
-          {this.state.isShowingRenderedOutput ? (
+        <div className={cx(className, styles.Text)}>
+          {this.props.isPreviewing ? (
             <ReactMarkdown
               className={cx(
                 "full flex-full flex flex-column text-card-markdown",
@@ -173,14 +131,12 @@ export default class Text extends Component {
     } else {
       return (
         <div
-          className={cx(
-            className,
-            styles.Text,
-            styles[isSmall ? "small" : "large"],
+          className={cx(className, styles.Text, {
             /* if the card is not showing a background we should adjust the left
              * padding to help align the titles with the wrapper */
-            { pl0: !settings["dashcard.background"] },
-          )}
+            pl0: !settings["dashcard.background"],
+            "Text--single-row": isSingleRow,
+          })}
         >
           <ReactMarkdown
             className={cx(
@@ -195,62 +151,3 @@ export default class Text extends Component {
     }
   }
 }
-
-const TextActionButtons = ({
-  actionButtons,
-  isShowingRenderedOutput,
-  onEdit,
-  onPreview,
-}) => (
-  <div className="Card-title">
-    <div className="absolute top left p1 px2">
-      <span
-        className="DashCard-actions-persistent flex align-center"
-        style={{ lineHeight: 1 }}
-      >
-        <a
-          data-metabase-event={"Dashboard;Text;edit"}
-          className={cx(
-            "cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled",
-            {
-              "text-light text-medium-hover": isShowingRenderedOutput,
-              "text-brand": !isShowingRenderedOutput,
-            },
-          )}
-          onClick={onEdit}
-          style={HEADER_ACTION_STYLE}
-        >
-          <span className="flex align-center">
-            <span className="flex">
-              <Icon
-                name="edit_document"
-                style={{ top: 0, left: 0 }}
-                size={HEADER_ICON_SIZE}
-              />
-            </span>
-          </span>
-        </a>
-
-        <a
-          data-metabase-event={"Dashboard;Text;preview"}
-          className={cx(
-            "cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled",
-            {
-              "text-light text-medium-hover": !isShowingRenderedOutput,
-              "text-brand": isShowingRenderedOutput,
-            },
-          )}
-          onClick={onPreview}
-          style={HEADER_ACTION_STYLE}
-        >
-          <span className="flex align-center">
-            <span className="flex">
-              <Icon name="eye" style={{ top: 0, left: 0 }} size={20} />
-            </span>
-          </span>
-        </a>
-      </span>
-    </div>
-    <div className="absolute top right p1 px2">{actionButtons}</div>
-  </div>
-);

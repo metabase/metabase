@@ -3,9 +3,9 @@ import {
   withDatabase,
   visitAlias,
   popover,
-} from "__support__/cypress";
+} from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
 
@@ -70,49 +70,6 @@ describe.skip("scenarios > admin > datamodel > field", () => {
 
       cy.reload();
       cy.contains("Do not include");
-    });
-  });
-
-  describe("Field Type", () => {
-    before(restore);
-
-    it("lets you change the type to 'No semantic type'", () => {
-      visitAlias("@ORDERS_PRODUCT_ID_URL");
-
-      cy.contains("Foreign Key").click();
-      cy.contains("No semantic type").click({ force: true });
-      cy.wait("@fieldUpdate");
-
-      cy.reload();
-      cy.contains("No semantic type");
-    });
-
-    it("lets you change the type to 'Number'", () => {
-      visitAlias("@ORDERS_PRODUCT_ID_URL");
-
-      cy.contains("No semantic type").click();
-      cy.contains("Number").click({ force: true });
-      cy.wait("@fieldUpdate");
-
-      cy.reload();
-      cy.contains("Number");
-    });
-
-    it("lets you change the type to 'Foreign key' and choose the target field", () => {
-      visitAlias("@ORDERS_PRODUCT_ID_URL");
-
-      cy.contains("Number").click();
-      cy.get(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordianList virtualization
-      cy.contains("Foreign Key").click({ force: true });
-      cy.wait("@fieldUpdate");
-
-      cy.contains("Select a target").click();
-      cy.contains("Products → ID").click();
-      cy.wait("@fieldUpdate");
-
-      cy.reload();
-      cy.contains("Foreign Key");
-      cy.contains("Products → ID");
     });
   });
 

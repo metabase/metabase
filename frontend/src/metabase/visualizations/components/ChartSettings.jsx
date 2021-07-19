@@ -18,7 +18,10 @@ import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-import { updateSettings } from "metabase/visualizations/lib/settings";
+import {
+  updateSettings,
+  getClickBehaviorSettings,
+} from "metabase/visualizations/lib/settings";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Display`];
@@ -64,6 +67,16 @@ class ChartSettings extends Component {
     };
   }
 
+  componentDidUpdate(prevProps) {
+    const { initial } = this.props;
+    if (!_.isEqual(initial, prevProps.initial)) {
+      this.setState({
+        currentSection: (initial && initial.section) || null,
+        currentWidget: (initial && initial.widget) || null,
+      });
+    }
+  }
+
   handleShowSection = section => {
     this.setState({ currentSection: section, currentWidget: null });
   };
@@ -80,7 +93,9 @@ class ChartSettings extends Component {
 
   handleResetSettings = () => {
     MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
-    this.props.onChange({});
+
+    const settings = getClickBehaviorSettings(this._getSettings());
+    this.props.onChange(settings);
   };
 
   handleChangeSettings = changedSettings => {
@@ -232,7 +247,7 @@ class ChartSettings extends Component {
         options={sectionNames}
         optionNameFn={v => v}
         optionValueFn={v => v}
-        bubble
+        variant="bubble"
       />
     );
 
@@ -285,7 +300,10 @@ class ChartSettings extends Component {
           </div>
         ) : (
           <div className="Grid flex-full">
-            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
+            <div
+              className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4"
+              data-testid={"chartsettings-sidebar"}
+            >
               {widgetList}
             </div>
             <div className="Grid-cell flex flex-column pt2">

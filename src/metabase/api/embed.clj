@@ -135,9 +135,10 @@
         :when                         (and tag-type
                                            (or widget-type (not= tag-type :dimension)))]
     {:id      (:id tag)
-     :type    (or widget-type (cond (= tag-type :date)                       :date/single
-                                    (params/field-filter-operators-enabled?) :string/=
-                                    :else                                    :category))
+     :type    (or widget-type (cond (= tag-type :date)                                                  :date/single
+                                    (and (params/field-filter-operators-enabled?) (= tag-type :string)) :string/=
+                                    (and (params/field-filter-operators-enabled?) (= tag-type :number)) :number/=
+                                    :else                                                               :category))
      :target  (if (= tag-type :dimension)
                 [:dimension [:template-tag (:name tag)]]
                 [:variable  [:template-tag (:name tag)]])
@@ -167,7 +168,7 @@
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
-  (-> (db/select-one [Card :dataset_query], :id (u/get-id card-or-id))
+  (-> (db/select-one [Card :dataset_query], :id (u/the-id card-or-id))
       add-implicit-card-parameters
       :parameters))
 

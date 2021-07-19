@@ -64,7 +64,6 @@ class Settings {
 
   setAll(settings: SettingsMap) {
     for (const [key, value] of Object.entries(settings)) {
-      // $FlowFixMe
       this.set(key, value);
     }
   }
@@ -120,6 +119,11 @@ class Settings {
 
   trackingEnabled() {
     return this.get("anon-tracking-enabled") || false;
+  }
+
+  formattingOptions() {
+    const opts = this.get("custom-formatting");
+    return opts && opts["type/Temporal"] ? opts["type/Temporal"] : {};
   }
 
   versionInfoLastChecked() {
@@ -216,9 +220,7 @@ class Settings {
 
     const descriptions = {};
     for (const [name, clause] of Object.entries(PASSWORD_COMPLEXITY_CLAUSES)) {
-      // $FlowFixMe:
       if (!clause.test(requirements, password)) {
-        // $FlowFixMe:
         descriptions[name] = clause.description(requirements);
       }
     }

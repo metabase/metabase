@@ -1,8 +1,7 @@
-// Includes migrations from integration tests:
-// https://github.com/metabase/metabase/pull/14174
+import _ from "underscore";
+import { restore, popover, setupDummySMTP } from "__support__/e2e/cypress";
+import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
-import { restore, popover, setupDummySMTP } from "__support__/cypress";
-import { USERS, USER_GROUPS } from "__support__/cypress_data";
 const { normal, admin } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
@@ -17,7 +16,7 @@ describe("scenarios > admin > people", () => {
   const TEST_USER = {
     first_name: "Testy",
     last_name: "McTestface",
-    email: `testy${Math.round(Math.random() * 100000)}@metabase.com`,
+    email: `testy${Math.round(Math.random() * 100000)}@metabase.test`,
     password: "12341234",
   };
 
@@ -25,13 +24,9 @@ describe("scenarios > admin > people", () => {
     it("should render (metabase-enterprise#210)", () => {
       cy.visit("/admin/people");
 
-      cy.log("Assert it loads People by default");
-      cy.get(".PageTitle").contains("People");
+      assertTableRowsCount(TOTAL_USERS);
 
-      cy.get(".ContentTable tbody tr")
-        .as("result-rows")
-        // Bobby Tables, No Collection Tableton, No Data Tableton, None Tableton, Robert Tableton
-        .should("have.length", TOTAL_USERS);
+      cy.findByText(`${TOTAL_USERS} people found`);
 
       // A small sidebar selector
       cy.get(".AdminList-items").within(() => {
@@ -42,8 +37,7 @@ describe("scenarios > admin > people", () => {
       cy.log("Switch to 'Groups' and make sure it renders properly");
       cy.get(".PageTitle").contains("Groups");
 
-      // Administrators, All Users, collection, data
-      cy.get("@result-rows").should("have.length", TOTAL_GROUPS);
+      assertTableRowsCount(TOTAL_GROUPS);
 
       cy.get(".AdminList-items").within(() => {
         cy.findByText("Groups").should("have.class", "selected");
@@ -56,7 +50,7 @@ describe("scenarios > admin > people", () => {
       cy.get(".PageTitle").contains("All Users");
 
       // The same list as for "People"
-      cy.get("@result-rows").should("have.length", TOTAL_USERS);
+      assertTableRowsCount(TOTAL_USERS);
     });
 
     it("should load the members when navigating to the group directly", () => {
@@ -69,7 +63,7 @@ describe("scenarios > admin > people", () => {
       const { first_name, last_name, email } = TEST_USER;
       const FULL_NAME = `${first_name} ${last_name}`;
       cy.visit("/admin/people");
-      clickButton("Add someone");
+      clickButton("Invite someone");
 
       // first modal
       cy.findByLabelText("First name").type(first_name);
@@ -89,13 +83,22 @@ describe("scenarios > admin > people", () => {
     it("should disallow admin to create new users with case mutation of existing user", () => {
       const { first_name, last_name, email } = normal;
       cy.visit("/admin/people");
-      clickButton("Add someone");
+      clickButton("Invite someone");
 
       cy.findByLabelText("First name").type(first_name + "New");
       cy.findByLabelText("Last name").type(last_name + "New");
       cy.findByLabelText("Email").type(email.toUpperCase());
       clickButton("Create");
       cy.contains("Email address already in use.");
+    });
+
+    it.skip("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
+      cy.viewport(1000, 600);
+
+      cy.visit("/admin/people");
+      cy.button("Invite someone").click();
+      // Modal should appear with the following input field
+      cy.findByLabelText("First name");
     });
 
     it("should disallow admin to deactivate themselves", () => {
@@ -132,10 +135,6 @@ describe("scenarios > admin > people", () => {
         cy.icon("refresh").click();
         cy.findByText(`Reactivate ${FULL_NAME}?`);
         clickButton("Reactivate");
-        // It redirects to all people listing
-        cy.findByText("Deactivated").should("not.exist");
-        cy.findByText("Add someone");
-        cy.findByText(FULL_NAME);
       });
     });
 
@@ -187,6 +186,84 @@ describe("scenarios > admin > people", () => {
       );
       cy.findByText(/^temporary password$/i).should("not.exist");
     });
+
+    it("should allow to search people", () => {
+      cy.visit("/admin/people");
+
+      cy.findByPlaceholderText("Find someone").type("no");
+      cy.findByText("5 people found");
+      assertTableRowsCount(5);
+
+      cy.findByPlaceholderText("Find someone").type("ne");
+      cy.findByText("1 person found");
+      assertTableRowsCount(1);
+
+      cy.findByPlaceholderText("Find someone").clear();
+      cy.findByText(`${TOTAL_USERS} people found`);
+      assertTableRowsCount(TOTAL_USERS);
+    });
+
+    describe("pagination", () => {
+      const NEW_USERS = 18;
+      const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
+
+      beforeEach(() => {
+        generateUsers(NEW_USERS);
+      });
+
+      it("should allow paginating people forward and backward", () => {
+        const PAGE_SIZE = 25;
+
+        cy.visit("/admin/people");
+
+        // Total
+        cy.findByText(`${NEW_TOTAL_USERS} people found`);
+
+        // Page 1
+        cy.findByText(`1 - ${PAGE_SIZE}`);
+        assertTableRowsCount(PAGE_SIZE);
+        cy.findByTestId("previous-page-btn").should("be.disabled");
+
+        cy.findByTestId("next-page-btn").click();
+
+        // Page 2
+        cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
+        cy.findByTestId("next-page-btn").should("be.disabled");
+
+        cy.findByTestId("previous-page-btn").click();
+
+        // Page 1
+        cy.findByText(`1 - ${PAGE_SIZE}`);
+        assertTableRowsCount(PAGE_SIZE);
+      });
+
+      it("should allow paginating group members forward and backward", () => {
+        const PAGE_SIZE = 25;
+        cy.visit("admin/people/groups/1");
+
+        // Total
+        cy.findByText(`${NEW_TOTAL_USERS} members`);
+
+        // Page 1
+        cy.findByText(`1 - ${PAGE_SIZE}`);
+        assertTableRowsCount(PAGE_SIZE);
+        cy.findByTestId("previous-page-btn").should("be.disabled");
+
+        cy.findByTestId("next-page-btn").click();
+
+        // Page 2
+        cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
+        cy.findByTestId("next-page-btn").should("be.disabled");
+
+        cy.findByTestId("previous-page-btn").click();
+
+        // Page 1
+        cy.findByText(`1 - ${PAGE_SIZE}`);
+        assertTableRowsCount(PAGE_SIZE);
+      });
+    });
   });
 });
 
@@ -199,8 +276,25 @@ function showUserOptions(full_name) {
 }
 
 function clickButton(button_name) {
-  cy.findByText(button_name)
-    .closest(".Button")
+  cy.button(button_name)
     .should("not.be.disabled")
     .click();
+}
+
+function assertTableRowsCount(length) {
+  cy.get(".ContentTable tbody tr").should("have.length", length);
+}
+
+function generateUsers(count, groupIds) {
+  const users = _.range(count).map(index => ({
+    first_name: `FirstName ${index}`,
+    last_name: `LastName ${index}`,
+    email: `user_${index}@metabase.com`,
+    password: `secure password ${index}`,
+    groupIds,
+  }));
+
+  users.forEach(u => cy.createUserFromRawData(u));
+
+  return users;
 }

@@ -4,6 +4,7 @@ import { t, ngettext, msgid } from "ttag";
 
 import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
+import { formatDateTimeForParameter } from "metabase/lib/formatting/date";
 import Question from "metabase-lib/lib/Question";
 import { TemplateTagVariable } from "metabase-lib/lib/Variable";
 import { TemplateTagDimension } from "metabase-lib/lib/Dimension";
@@ -245,7 +246,11 @@ export function formatSourceForTarget(
       // we should serialize differently based on the target parameter type
       const parameter = getParameter(target, { extraData, clickBehavior });
       if (parameter) {
-        return formatDateForParameterType(datum.value, parameter.type);
+        return formatDateForParameterType(
+          datum.value,
+          parameter.type,
+          datum.column.unit,
+        );
       }
     } else {
       // If the target is a dimension or variable,, we serialize as a date to remove the timestamp.
@@ -256,7 +261,7 @@ export function formatSourceForTarget(
   return datum.value;
 }
 
-function formatDateForParameterType(value, parameterType) {
+function formatDateForParameterType(value, parameterType, unit) {
   const m = parseTimestamp(value);
   if (!m.isValid()) {
     return String(value);
@@ -265,11 +270,10 @@ function formatDateForParameterType(value, parameterType) {
     return m.format("YYYY-MM");
   } else if (parameterType === "date/quarter-year") {
     return m.format("[Q]Q-YYYY");
-  } else if (
-    parameterType === "date/single" ||
-    parameterType === "date/all-options"
-  ) {
+  } else if (parameterType === "date/single") {
     return m.format("YYYY-MM-DD");
+  } else if (parameterType === "date/all-options") {
+    return formatDateTimeForParameter(value, unit);
   }
   return value;
 }

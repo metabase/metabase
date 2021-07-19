@@ -24,7 +24,7 @@ const Example = ({ children }) => {
               value={code}
             />
           </Absolute>
-          <pre>
+          <pre className="overflow-auto">
             <code>{code}</code>
           </pre>
         </Box>

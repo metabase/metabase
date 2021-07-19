@@ -51,7 +51,6 @@ export default class Database extends Base {
   }
 
   // @deprecated: use tablesLookup
-  // $FlowFixMe: known to not have side-effects
   get tables_lookup() {
     return this.tablesLookup();
   }

@@ -6,6 +6,7 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.async.streaming-response.thread-pool :as streaming-response.thread-pool]
             [metabase.async.util :as async.u]
+            [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
             [metabase.server :as server]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
@@ -39,14 +40,15 @@
      (format " [%s: %s]" (trs "ASYNC") async-status))))
 
 (defn- format-performance-info
-  [{:keys [start-time call-count-fn]
+  [{:keys [start-time call-count-fn diag-info-fn]
     :or {start-time    (System/nanoTime)
-         call-count-fn (constantly -1)}}]
+         call-count-fn (constantly -1)
+         diag-info-fn  (constantly {})}}]
   (let [elapsed-time (u/format-nanoseconds (- (System/nanoTime) start-time))
         db-calls     (call-count-fn)]
     (trs "{0} ({1} DB calls)" elapsed-time db-calls)))
 
-(defn- stats []
+(defn- stats [diag-info-fn]
   (str
    (let [^PoolBackedDataSource pool (:datasource (db/connection))]
      (trs "App DB connections: {0}/{1}"
@@ -63,11 +65,20 @@
    " "
    (trs "Queries in flight: {0}" (streaming-response.thread-pool/active-thread-count))
    " "
-   (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count))))
+   (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count))
+   (when diag-info-fn
+     (if-let [diag-info (not-empty (diag-info-fn))]
+       (format
+        "; %s DB %s connections: %d/%d (%d threads blocked)"
+        (some-> diag-info ::sql-jdbc.execute.diagnostic/driver name)
+        (::sql-jdbc.execute.diagnostic/database-id diag-info)
+        (::sql-jdbc.execute.diagnostic/active-connections diag-info)
+        (::sql-jdbc.execute.diagnostic/total-connections diag-info)
+        (::sql-jdbc.execute.diagnostic/threads-waiting diag-info))))))
 
-(defn- format-threads-info [{:keys [include-stats?]}]
+(defn- format-threads-info [{:keys [diag-info-fn]} {:keys [include-stats?]}]
   (when include-stats?
-    (stats)))
+    (stats diag-info-fn)))
 
 (defn- format-error-info [{{:keys [body]} :response} {:keys [error?]}]
   (when (and error?
@@ -77,7 +88,7 @@
 (defn- format-info [info opts]
   (str/join " " (filter some? [(format-status-info info)
                                (format-performance-info info)
-                               (format-threads-info opts)
+                               (format-threads-info info opts)
                                (format-error-info info opts)])))
 
 
@@ -187,9 +198,12 @@
       (handler request respond raise)
       ;; API call, log info about it
       (db/with-call-counting [call-count-fn]
-        (let [info           {:request       request
-                              :start-time    (System/nanoTime)
-                              :call-count-fn call-count-fn}
-              response->info #(assoc info :response %)
-              respond        (comp respond logged-response response->info)]
-          (handler request respond raise))))))
+        (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
+          (let [info           {:request       request
+                                :start-time    (System/nanoTime)
+                                :call-count-fn call-count-fn
+                                :diag-info-fn  diag-info-fn}
+                response->info (fn [response]
+                                 (assoc info :response response))
+                respond        (comp respond logged-response response->info)]
+            (handler request respond raise)))))))

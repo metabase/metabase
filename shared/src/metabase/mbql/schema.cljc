@@ -237,7 +237,7 @@
   ;; TODO -- these should use `lisp-case` like everything else in MBQL.
   {(s/optional-key :database_type) (s/maybe helpers/NonBlankString)
    (s/optional-key :base_type)     (s/maybe helpers/FieldType)
-   (s/optional-key :semantic_type) (s/maybe helpers/FieldType)
+   (s/optional-key :semantic_type) (s/maybe helpers/FieldSemanticOrRelationType)
    (s/optional-key :unit)          (s/maybe DateTimeUnit)
    (s/optional-key :name)          (s/maybe helpers/NonBlankString)
    s/Keyword                       s/Any})
@@ -440,7 +440,9 @@
    :else
    Field))
 
-(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp})
+(def arithmetic-expressions
+  "Set of valid arithmetic expression clause keywords."
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case})
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
@@ -563,8 +565,7 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
-(def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log))
+(declare ArithmeticExpression*)
 
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
@@ -725,6 +726,9 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
+(def ^:private ArithmeticExpression*
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case))
+
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a `:field` clause."
@@ -884,7 +888,7 @@
    ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
    ;; able to remove this as a requirement
    :display_name                   helpers/NonBlankString
-   (s/optional-key :semantic_type) (s/maybe helpers/FieldType)
+   (s/optional-key :semantic_type) (s/maybe helpers/FieldSemanticOrRelationType)
    ;; you'll need to provide this in order to use BINNING
    (s/optional-key :fingerprint)   (s/maybe helpers/Map)
    s/Any                           s/Any})
@@ -988,7 +992,7 @@
     (every-pred
      (some-fn :source-table :source-query)
      (complement (every-pred :source-table :source-query)))
-    "Joins can must have either a `source-table` or `source-query`, but not both.")))
+    "Joins must have either a `source-table` or `source-query`, but not both.")))
 
 (def Joins
   "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique."

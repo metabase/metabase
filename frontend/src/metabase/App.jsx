@@ -7,7 +7,7 @@ import Navbar from "metabase/nav/containers/Navbar";
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import UndoListing from "metabase/containers/UndoListing";
-import ErrorCard from "metabase/components/ErrorCard";
+import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
 
 import {
   Archived,
@@ -55,6 +55,7 @@ export default class App extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
+    console.log("COMPONENT DID CATCH LOLE");
     this.setState({ errorInfo });
   }
 
@@ -69,7 +70,7 @@ export default class App extends Component {
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
         </div>
-        <ErrorCard errorInfo={errorInfo} />
+        <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
     );
   }

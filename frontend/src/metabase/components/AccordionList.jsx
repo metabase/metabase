@@ -1,10 +1,9 @@
-/* eslint "react/prop-types": "warn" */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import cx from "classnames";
 import _ from "underscore";
+import { getIn } from "icepick";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
@@ -51,7 +50,9 @@ export default class AccordionList extends Component {
     className: PropTypes.string,
     id: PropTypes.string,
 
-    width: PropTypes.number,
+    // TODO: pass width to this component as solely number or string if possible
+    // currently prop is number on initialization, then string afterwards
+    width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     maxHeight: PropTypes.number,
 
     sections: PropTypes.array.isRequired,
@@ -79,7 +80,7 @@ export default class AccordionList extends Component {
     showItemArrows: PropTypes.bool,
 
     searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
-    searchProp: PropTypes.string,
+    searchProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),
     searchCaseInsensitive: PropTypes.bool,
     searchFuzzy: PropTypes.bool,
     searchPlaceholder: PropTypes.string,
@@ -223,6 +224,22 @@ export default class AccordionList extends Component {
     this.setState({ searchText });
   };
 
+  searchPredicate = (item, searchPropMember) => {
+    const { searchCaseInsensitive, searchFuzzy } = this.props;
+    let { searchText } = this.state;
+    const path = searchPropMember.split(".");
+    let itemText = String(getIn(item, path) || "");
+    if (searchCaseInsensitive) {
+      itemText = itemText.toLowerCase();
+      searchText = searchText.toLowerCase();
+    }
+    if (searchFuzzy) {
+      return itemText.indexOf(searchText) >= 0;
+    } else {
+      return itemText.startsWith(searchText);
+    }
+  };
+
   render() {
     const {
       id,
@@ -230,8 +247,6 @@ export default class AccordionList extends Component {
       className,
       searchable,
       searchProp,
-      searchCaseInsensitive,
-      searchFuzzy,
       sections,
       alwaysTogglable,
       alwaysExpanded,
@@ -247,19 +262,17 @@ export default class AccordionList extends Component {
     const sectionIsTogglable = sectionIndex =>
       alwaysTogglable || sections.length > 1;
 
-    let { searchText } = this.state;
+    const { searchText } = this.state;
     let searchFilter = () => true;
     if (searchText) {
       searchFilter = item => {
-        let itemText = String(item[searchProp] || "");
-        if (searchCaseInsensitive) {
-          itemText = itemText.toLowerCase();
-          searchText = searchText.toLowerCase();
-        }
-        if (searchFuzzy) {
-          return itemText.indexOf(searchText) >= 0;
-        } else {
-          return itemText.startsWith(searchText);
+        if (typeof searchProp === "string") {
+          return this.searchPredicate(item, searchProp);
+        } else if (Array.isArray(searchProp)) {
+          const searchResults = searchProp.map(member =>
+            this.searchPredicate(item, member),
+          );
+          return searchResults.reduce((acc, curr) => acc || curr);
         }
       };
     }
@@ -348,8 +361,9 @@ export default class AccordionList extends Component {
             ...style,
           }}
         >
-          {rows.map(row => (
+          {rows.map((row, index) => (
             <AccordionListCell
+              key={index}
               {...this.props}
               row={row}
               sections={sections}
@@ -520,9 +534,10 @@ const AccordionListCell = ({
   } else if (type === "search") {
     content = (
       <ListSearchField
+        hasClearButton
         className="bg-white m1"
         onChange={onChangeSearchText}
-        searchText={searchText}
+        value={searchText}
         placeholder={searchPlaceholder}
         autoFocus
       />

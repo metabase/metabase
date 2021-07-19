@@ -1,4 +1,4 @@
-import { popover, restore, mockSessionProperty } from "__support__/cypress";
+import { popover, restore, mockSessionProperty } from "__support__/e2e/cypress";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
 describe("scenarios > dashboard > parameters", () => {
@@ -53,7 +53,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
     cy.findByText("Baker");
 
-    cy.contains("of 8");
+    cy.findAllByTestId("table-row").should("have.length", 8);
   });
 
   it("should filter by category", () => {

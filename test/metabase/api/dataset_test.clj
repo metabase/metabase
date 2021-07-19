@@ -99,6 +99,7 @@
                   :dashboard_id nil
                   :error        nil
                   :id           true
+                  :cache_hit    false
                   :database_id  (mt/id)
                   :started_at   true
                   :running_time true}
@@ -324,7 +325,6 @@
                         "test-expr"]
                        (map :display_name cols)))
                 (is (= {:base_type       "type/Integer"
-                        :semantic_type    "type/Number"
                         :name            "pivot-grouping"
                         :display_name    "pivot-grouping"
                         :expression_name "pivot-grouping"

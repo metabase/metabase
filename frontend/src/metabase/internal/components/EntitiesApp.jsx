@@ -152,7 +152,7 @@ const EntitySidebarLayout = ({ params, children }) => (
   </div>
 );
 
-EntitiesApp.routes = [
+EntitiesApp.routes = (
   <Route path="entities">
     <IndexRoute component={EntitiesApp} />
     <Route path=":entityType">
@@ -166,5 +166,5 @@ EntitiesApp.routes = [
         />
       </Route>
     </Route>
-  </Route>,
-];
+  </Route>
+);

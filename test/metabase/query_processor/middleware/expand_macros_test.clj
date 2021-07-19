@@ -245,3 +245,72 @@
                                        [:or
                                         [:segment segment-2-id]
                                         [:> [:field 4 nil] 1]]]]]})))))))
+
+(defn- expand-macros [query]
+  (:pre (mt/test-qp-middleware expand-macros/expand-macros query)))
+
+(deftest expand-macros-in-nested-queries-test
+  (testing "expand-macros should expand things in the correct nested level (#12507)"
+    (mt/with-temp* [Metric [metric (mt/$ids checkins
+                                     {:table_id   $$checkins
+                                      :definition {:source-table $$checkins
+                                                   :aggregation  [[:count]]
+                                                   :filter       [:not-null $id]}})]
+                    Segment [segment (mt/$ids checkins
+                                       {:table_id   $$checkins
+                                        :definition {:filter [:not-null $id]}})]]
+      (doseq [[macro-type {:keys [before after]}]
+              (mt/$ids checkins
+                {"Metrics"
+                 {:before {:source-table $$checkins
+                           :aggregation  [[:metric (u/the-id metric)]]}
+                  :after  {:source-table $$checkins
+                           :aggregation  [[:aggregation-options [:count] {:display-name "Toucans in the rainforest"}]]
+                           :filter       [:not-null $id]}}
+
+                 "Segments"
+                 {:before {:source-table $$checkins
+                           :filter       [:segment (u/the-id segment)]}
+                  :after  {:source-table $$checkins
+                           :filter       [:not-null $id]}}})]
+        (testing macro-type
+          (testing "nested 1 level"
+            (is (= (mt/mbql-query nil {:source-query after})
+                   (expand-macros
+                    (mt/mbql-query nil {:source-query before})))))
+          (testing "nested 2 levels"
+            (is (= (mt/mbql-query nil {:source-query {:source-query after}})
+                   (expand-macros
+                    (mt/mbql-query nil {:source-query {:source-query before}})))))
+          (testing "nested 3 levels"
+            (is (= (mt/mbql-query nil {:source-query {:source-query {:source-query after}}})
+                   (expand-macros
+                    (mt/mbql-query nil {:source-query {:source-query {:source-query before}}})))))
+          (testing "nested at different levels"
+            (is (= (mt/mbql-query nil {:source-query (-> after
+                                                         (dissoc :source-table)
+                                                         (assoc :source-query after))})
+                   (expand-macros
+                    (mt/mbql-query nil {:source-query (-> before
+                                                          (dissoc :source-table)
+                                                          (assoc :source-query before))})))))
+          (testing "inside :source-query inside :joins"
+            (is (= (mt/mbql-query checkins {:joins [{:condition    [:= 1 2]
+                                                     :source-query after}]})
+                   (expand-macros
+                    (mt/mbql-query checkins {:joins [{:condition    [:= 1 2]
+                                                      :source-query before}]})))))
+          (when (= macro-type "Segments")
+            (testing "inside join condition"
+              (is (= (mt/mbql-query checkins {:joins [{:source-table $$checkins
+                                                       :condition    (:filter after)}]})
+                     (expand-macros
+                      (mt/mbql-query checkins {:joins [{:source-table $$checkins
+                                                        :condition    (:filter before)}]}))))))
+          (testing "inside :joins inside :source-query"
+            (is (= (mt/mbql-query nil {:source-query {:source-table $$checkins
+                                                      :joins        [{:condition    [:= 1 2]
+                                                                      :source-query after}]}})
+                   (expand-macros (mt/mbql-query nil {:source-query {:source-table $$checkins
+                                                                     :joins        [{:condition    [:= 1 2]
+                                                                                     :source-query before}]}}))))))))))

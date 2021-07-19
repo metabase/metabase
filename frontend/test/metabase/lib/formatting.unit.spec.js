@@ -226,19 +226,19 @@ describe("formatting", () => {
     it("should return a component for email addresses in jsx + rich mode", () => {
       expect(
         isElementOfType(
-          formatValue("tom@metabase.com", { jsx: true, rich: true }),
+          formatValue("tom@metabase.test", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(true);
     });
     it("should not add mailto prefix if there's a different semantic type", () => {
       expect(
-        formatValue("foobar@example.com", {
+        formatValue("foobar@example.test", {
           jsx: true,
           rich: true,
           column: { semantic_type: "type/PK" },
         }),
-      ).toEqual("foobar@example.com");
+      ).toEqual("foobar@example.test");
     });
     it("should display hour-of-day with 12 hour clock", () => {
       expect(
@@ -287,7 +287,7 @@ describe("formatting", () => {
       ).toEqual(true);
       expect(
         isElementOfType(
-          formatUrl("mailto:tom@metabase.com", { jsx: true, rich: true }),
+          formatUrl("mailto:tom@metabase.test", { jsx: true, rich: true }),
           ExternalLink,
         ),
       ).toEqual(true);
@@ -337,14 +337,84 @@ describe("formatting", () => {
         }),
       ).toEqual("data:text/plain;charset=utf-8,hello%20world");
     });
-    it("should return link component for type/URL and  view_as = link", () => {
-      const formatted = formatUrl("http://whatever", {
-        jsx: true,
-        rich: true,
-        column: { semantic_type: TYPE.URL },
-        view_as: "link",
+
+    describe("when view_as = link", () => {
+      it("should return link component for type/URL and  view_as = link", () => {
+        const formatted = formatUrl("http://whatever", {
+          jsx: true,
+          rich: true,
+          column: { semantic_type: TYPE.URL },
+          view_as: "link",
+        });
+        expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
       });
-      expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
+
+      it("should return link component using link_url and link_text when specified", () => {
+        const formatted = formatUrl("http://not.metabase.com", {
+          jsx: true,
+          rich: true,
+          link_text: "metabase link",
+          link_url: "http://metabase.com",
+          view_as: "link",
+          clicked: {},
+        });
+
+        expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
+        expect(formatted.props.children).toEqual("metabase link");
+        expect(formatted.props.href).toEqual("http://metabase.com");
+      });
+
+      it("should return link component using link_text and the value as url when link_url is empty", () => {
+        const formatted = formatUrl("http://metabase.com", {
+          jsx: true,
+          rich: true,
+          link_text: "metabase link",
+          link_url: "",
+          view_as: "link",
+          clicked: {},
+        });
+
+        expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
+        expect(formatted.props.children).toEqual("metabase link");
+        expect(formatted.props.href).toEqual("http://metabase.com");
+      });
+
+      it("should return link component using link_url and the value as text when link_text is empty", () => {
+        const formatted = formatUrl("metabase link", {
+          jsx: true,
+          rich: true,
+          link_text: "",
+          link_url: "http://metabase.com",
+          view_as: "link",
+          clicked: {},
+        });
+
+        expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
+        expect(formatted.props.children).toEqual("metabase link");
+        expect(formatted.props.href).toEqual("http://metabase.com");
+      });
+
+      it("should not return an ExternalLink in jsx + rich mode if there's click behavior", () => {
+        const formatted = formatValue("http://metabase.com/", {
+          jsx: true,
+          rich: true,
+          click_behavior: {
+            linkTemplate: "foo",
+            linkTextTemplate: "bar",
+            linkType: "url",
+            type: "link",
+          },
+          link_text: "metabase link",
+          link_url: "http://metabase.com",
+          view_as: "link",
+          clicked: {},
+        });
+
+        // it is not a link set on the question level
+        expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
+        // it is formatted as a link cell for the dashboard level click behavior
+        expect(formatted.props.className).toEqual("link link--wrappable");
+      });
     });
 
     it("should not crash if column is null", () => {

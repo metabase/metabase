@@ -12,12 +12,15 @@
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
   (:import [java.sql ResultSet Types]))
 
-(driver/register! :vertica, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :vertica, :parent #{:sql-jdbc
+                                      ::legacy/use-legacy-classes-for-read-and-set
+                                      ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
 

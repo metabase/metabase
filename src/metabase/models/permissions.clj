@@ -9,6 +9,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions-group :as group]
             [metabase.models.permissions-revision :as perms-revision :refer [PermissionsRevision]]
+            [metabase.models.permissions.delete-sandboxes :as delete-sandboxes]
             [metabase.models.permissions.parse :as perms-parse]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -170,13 +171,13 @@
   schemas don't have separate `read/` and write permissions; you either have 'data access' permissions for them, or
   you don't. Tables, however, have separate read and write perms.)"
   ([database-or-id :- MapOrID]
-   (str "/db/" (u/get-id database-or-id) "/"))
+   (str "/db/" (u/the-id database-or-id) "/"))
 
   ([database-or-id :- MapOrID, schema-name :- (s/maybe s/Str)]
    (str (object-path database-or-id) "schema/" (escape-path-component schema-name) "/"))
 
   ([database-or-id :- MapOrID, schema-name :- (s/maybe s/Str), table-or-id :- MapOrID]
-   (str (object-path database-or-id schema-name) "table/" (u/get-id table-or-id) "/" )))
+   (str (object-path database-or-id schema-name) "table/" (u/the-id table-or-id) "/" )))
 
 (s/defn adhoc-native-query-path :- ObjectPath
   "Return the native query read/write permissions path for a database.
@@ -193,7 +194,7 @@
   "Return the permissions path for *readwrite* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (if-not (get collection-or-id :metabase.models.collection.root/is-root?)
-    (format "/collection/%d/" (u/get-id collection-or-id))
+    (format "/collection/%d/" (u/the-id collection-or-id))
     (if-let [collection-namespace (:namespace collection-or-id)]
       (format "/collection/namespace/%s/root/" (escape-path-component (u/qualified-name collection-namespace)))
       "/collection/root/")))
@@ -210,7 +211,7 @@
 
   ([database-or-id schema-name table-or-id]
    {:post [(valid-object-path? %)]}
-   (str (object-path (u/get-id database-or-id) schema-name (u/get-id table-or-id)) "read/")))
+   (str (object-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "read/")))
 
 (s/defn table-query-path :- ObjectPath
   "Return the permissions path for *full* query access for a Table. Full query access means you can run any (MBQL) query
@@ -219,7 +220,7 @@
    (table-query-path (:db_id table) (:schema table) table))
 
   ([database-or-id schema-name table-or-id]
-   (str (object-path (u/get-id database-or-id) schema-name (u/get-id table-or-id)) "query/")))
+   (str (object-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/")))
 
 (s/defn table-segmented-query-path :- ObjectPath
   "Return the permissions path for *segmented* query access for a Table. Segmented access means running queries against
@@ -229,7 +230,7 @@
    (table-segmented-query-path (:db_id table) (:schema table) table))
 
   ([database-or-id schema-name table-or-id]
-   (str (object-path (u/get-id database-or-id) schema-name (u/get-id table-or-id)) "query/segmented/")))
+   (str (object-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/segmented/")))
 
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
@@ -470,13 +471,13 @@
   [group-or-id :- (s/cond-pre su/Map su/IntGreaterThanZero), path :- ObjectPath, & other-conditions]
   (let [where {:where (apply list
                              :and
-                             [:= :group_id (u/get-id group-or-id)]
+                             [:= :group_id (u/the-id group-or-id)]
                              [:or
                               [:like path (hx/concat :object (hx/literal "%"))]
                               [:like :object (str path "%")]]
                              other-conditions)}]
     (when-let [revoked (db/select-field :object Permissions where)]
-      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/get-id group-or-id) revoked))
+      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
       (db/delete! Permissions where))))
 
 (defn revoke-permissions!
@@ -498,7 +499,7 @@
   ([group-or-id path]
    (try
      (db/insert! Permissions
-       :group_id (u/get-id group-or-id)
+       :group_id (u/the-id group-or-id)
        :object   path)
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
@@ -553,8 +554,8 @@
     ;; ok, once we've confirmed this isn't the Root Collection, see if it's in the DB with a personal_owner_id
     (let [collection (if (map? collection-or-id)
                        collection-or-id
-                       (or (db/select-one 'Collection :id (u/get-id collection-or-id))
-                           (throw (ex-info (tru "Collection does not exist.") {:collection-id (u/get-id collection-or-id)}))))]
+                       (or (db/select-one 'Collection :id (u/the-id collection-or-id))
+                           (throw (ex-info (tru "Collection does not exist.") {:collection-id (u/the-id collection-or-id)}))))]
       (when (is-personal-collection-or-descendant-of-one? collection)
         (throw (Exception. (tru "You cannot edit permissions for a Personal Collection or its descendants.")))))))
 
@@ -568,13 +569,13 @@
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-not-personal-collection-or-descendant collection-or-id)
-  (grant-permissions! (u/get-id group-or-id) (collection-readwrite-path collection-or-id)))
+  (grant-permissions! (u/the-id group-or-id) (collection-readwrite-path collection-or-id)))
 
 (s/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-not-personal-collection-or-descendant collection-or-id)
-  (grant-permissions! (u/get-id group-or-id) (collection-read-path collection-or-id)))
+  (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
 
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
@@ -714,7 +715,8 @@
        (db/transaction
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
-         (save-perms-revision! (:revision old-graph) old new)))))
+         (save-perms-revision! (:revision old-graph) old new)
+         (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any], new-value]

@@ -25,10 +25,12 @@
      {"maxPoolSize" max-pool-size})))
 
 (s/defn ^:private connection-pool-spec :- {:datasource javax.sql.DataSource, s/Keyword s/Any}
-  [jdbc-spec :- (s/cond-pre s/Str su/Map)]
-  (if (string? jdbc-spec)
-    {:datasource (connection-pool/pooled-data-source-from-url jdbc-spec application-db-connection-pool-props)}
-    (connection-pool/connection-pool-spec jdbc-spec application-db-connection-pool-props)))
+  [db-type :- s/Keyword jdbc-spec :- (s/cond-pre s/Str su/Map)]
+  (let [ds-name    (format "metabase-%s-app-db" (name db-type))
+        pool-props (assoc application-db-connection-pool-props "dataSourceName" ds-name)]
+    (if (string? jdbc-spec)
+      {:datasource (connection-pool/pooled-data-source-from-url jdbc-spec pool-props)}
+      (connection-pool/connection-pool-spec jdbc-spec pool-props))))
 
 (defn create-connection-pool!
   "Create a connection pool for the application DB and set it as the default Toucan connection. This is normally called
@@ -41,7 +43,7 @@
       (log/trace "Closing old application DB connection pool")
       (.close pool)))
   (log/debug (trs "Set default db connection with connection pool..."))
-  (let [pool-spec (connection-pool-spec jdbc-spec)]
+  (let [pool-spec (connection-pool-spec db-type jdbc-spec)]
     (db/set-default-db-connection! pool-spec)
     (db/set-default-jdbc-options! {:read-columns mdb.jdbc-protocols/read-columns})
     pool-spec))

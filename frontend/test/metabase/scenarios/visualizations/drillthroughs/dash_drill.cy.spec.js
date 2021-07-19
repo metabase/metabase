@@ -1,6 +1,6 @@
 // Imported from drillthroughs.e2e.spec.js
-import { restore } from "__support__/cypress";
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { restore } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 
@@ -8,6 +8,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 const Q2 = {
   name: "Orders, Count",
   id: 2,
+  expectedPath: "2-orders-count",
 };
 
 describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
@@ -33,7 +34,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
       it("should result in a correct query result", () => {
         cy.log("Assert that the url is correct");
-        cy.location("pathname").should("eq", `/question/${Q2.id}`);
+        cy.location("pathname").should("eq", `/question/${Q2.expectedPath}`);
 
         cy.contains("18,760");
       });
@@ -64,7 +65,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       });
 
       it("should result in a correct query result", () => {
-        cy.location("pathname").should("eq", `/question/${Q2.id}`);
+        cy.location("pathname").should("eq", `/question/${Q2.expectedPath}`);
         cy.findByText("5,755");
       });
     });

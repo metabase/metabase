@@ -1,5 +1,5 @@
-import { restore, popover, modal } from "__support__/cypress";
-import { USERS } from "__support__/cypress_data";
+import { restore, popover, modal, sidebar } from "__support__/e2e/cypress";
+import { USERS } from "__support__/e2e/cypress_data";
 
 describe("personal collections", () => {
   beforeEach(() => {
@@ -41,17 +41,35 @@ describe("personal collections", () => {
       cy.icon("pencil").should("not.exist");
     });
 
-    it.skip("shouldn't be able to change permission levels for sub-collections in personal collections (metabase#8406)", () => {
+    it("shouldn't be able to change permission levels for sub-collections in personal collections (metabase#8406)", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection").click();
       // Create new collection inside admin's personal collection and navigate to it
       addNewCollection("Foo");
-      cy.get("[class*=CollectionSidebar]")
+      sidebar()
         .findByText("Foo")
         .click();
       cy.icon("new_folder");
       cy.icon("pencil");
       cy.icon("lock").should("not.exist");
+
+      // Check can't open permissions modal via URL for personal collection
+      cy.findByText("Your personal collection").click();
+      cy.location().then(location => {
+        cy.visit(`${location}/permissions`);
+        cy.get(".Modal").should("not.exist");
+        cy.url().should("eq", String(location));
+
+        // Check can't open permissions modal via URL for personal collection child
+        sidebar()
+          .findByText("Foo")
+          .click();
+        cy.location().then(location => {
+          cy.visit(`${location}/permissions`);
+          cy.get(".Modal").should("not.exist");
+          cy.url().should("eq", String(location));
+        });
+      });
     });
 
     it.skip("should be able view other users' personal sub-collections (metabase#15339)", () => {
@@ -60,7 +78,7 @@ describe("personal collections", () => {
       cy.findByLabelText("Name").type("Foo");
       cy.findByText("Create").click();
       // This repro could possibly change depending on the design decision for this feature implementation
-      cy.get("[class*=CollectionSidebar]").findByText("Foo");
+      sidebar().findByText("Foo");
     });
   });
 
@@ -73,7 +91,7 @@ describe("personal collections", () => {
           cy.findByText("Your personal collection").click();
           // Create initial collection inside the personal collection and navigate inside it
           addNewCollection("Foo");
-          cy.get("[class*=CollectionSidebar]")
+          sidebar()
             .as("sidebar")
             .findByText("Foo")
             .click();
@@ -106,7 +124,7 @@ describe("personal collections", () => {
           popover()
             .findByText("My personal collection") /* [3] */
             .click();
-          cy.findByRole("button", { name: "Update" }).click();
+          cy.button("Update").click();
           // Clicking on "Foo" would've closed it and would hide its sub-collections (if there were any).
           // By doing this, we're making sure "Bar" lives at the same level as "Foo"
           cy.get("@sidebar")

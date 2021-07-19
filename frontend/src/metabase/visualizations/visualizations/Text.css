@@ -6,20 +6,19 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 1em 0 1em 1.5em;
+  padding: 0.5em 0.75em;
   height: 100%;
 }
-:local .Text.dashboard-is-editing {
-  padding: 2.8em 1.3em var(--text-card-padding) 1.3em;
-}
 :local .Text .text-card-textarea {
-  padding: 0.5em 0.75em 0.5em 0.75em;
+  padding: 0.25em 0.75em;
   font-size: 1.143em;
   line-height: 1.602em;
   pointer-events: all;
   resize: none;
   outline: none;
   border-radius: var(--default-border-radius);
+  min-height: unset;
+  height: inherit;
 }
 :local .Text .text-card-textarea:focus {
   border-color: var(--color-brand);
@@ -156,8 +155,6 @@
   height: auto;
 }
 
-@media screen and (--breakpoint-max-lg) {
-  :local .Text {
-    padding: 0.5em 0 0.5em 1em;
-  }
+:local .single-row {
+  margin: 0;
 }

@@ -1,5 +1,6 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
+import cx from "classnames";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
@@ -26,6 +27,16 @@ import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 import type { Parameter } from "metabase-types/types/Parameter";
 
 const MAX_SEARCH_RESULTS = 100;
+
+const fieldValuesWidgetPropTypes = {
+  addRemappings: PropTypes.func,
+  expand: PropTypes.bool,
+  isSidebar: PropTypes.bool,
+};
+
+const optionsMessagePropTypes = {
+  message: PropTypes.string.isRequired,
+};
 
 // fetch the possible values of a parameter based on the values of the other parameters in a dashboard.
 // parameterId = the auto-generated ID of the parameter
@@ -174,6 +185,54 @@ export class FieldValuesWidget extends Component {
     }
   }
 
+  getSearchableTokenFieldPlaceholder(fields, firstField) {
+    let placeholder;
+
+    const names = new Set(
+      fields.map(field => stripId(this.searchField(field).display_name)),
+    );
+
+    if (names.size > 1) {
+      placeholder = t`Search`;
+    } else {
+      const [name] = names;
+
+      placeholder = t`Search by ${name}`;
+      if (firstField.isID() && firstField !== this.searchField(firstField)) {
+        placeholder += t` or enter an ID`;
+      }
+    }
+    return placeholder;
+  }
+
+  getNonSearchableTokenFieldPlaceholder(firstField) {
+    if (firstField.isID()) {
+      return t`Enter an ID`;
+    } else if (firstField.isNumeric()) {
+      return t`Enter a number`;
+    } else {
+      return t`Enter some text`;
+    }
+  }
+
+  getTokenFieldPlaceholder() {
+    const { fields, placeholder } = this.props;
+
+    if (placeholder) {
+      return placeholder;
+    }
+
+    const [firstField] = fields;
+
+    if (this.hasList()) {
+      return t`Search the list`;
+    } else if (this.isSearchable()) {
+      return this.getSearchableTokenFieldPlaceholder(fields, firstField);
+    } else {
+      return this.getNonSearchableTokenFieldPlaceholder(firstField);
+    }
+  }
+
   shouldList() {
     return (
       !this.props.disableSearch &&
@@ -254,7 +313,6 @@ export class FieldValuesWidget extends Component {
               {
                 value,
                 fieldId: field.id,
-                // $FlowFixMe all fields have a search field if we're searching
                 searchFieldId: this.searchField(field).id,
                 limit: this.props.maxResults,
               },
@@ -270,7 +328,6 @@ export class FieldValuesWidget extends Component {
     if (this.showRemapping()) {
       const [field] = fields;
       if (field.remappedField() === this.searchField(field)) {
-        // $FlowFixMe
         this.props.addRemappings(field.id, results);
       }
     }
@@ -303,7 +360,6 @@ export class FieldValuesWidget extends Component {
     this._searchDebounced(value);
   };
 
-  // $FlowFixMe
   _searchDebounced = _.debounce(async (value): void => {
     this.setState({
       loadingState: "LOADING",
@@ -357,7 +413,6 @@ export class FieldValuesWidget extends Component {
         if (loadingState === "LOADING") {
           return <LoadingState />;
         } else if (loadingState === "LOADED") {
-          // $FlowFixMe all fields have a search field if this.isSearchable()
           return <NoMatchState fields={fields.map(this.searchField)} />;
         }
       }
@@ -373,7 +428,6 @@ export class FieldValuesWidget extends Component {
         maximumFractionDigits={20}
         remap={this.showRemapping()}
         {...formatOptions}
-        // $FlowFixMe
         {...options}
       />
     );
@@ -393,36 +447,7 @@ export class FieldValuesWidget extends Component {
     } = this.props;
     const { loadingState } = this.state;
 
-    let { placeholder } = this.props;
-    if (!placeholder) {
-      const [field] = fields;
-      if (this.hasList()) {
-        placeholder = t`Search the list`;
-      } else if (this.isSearchable()) {
-        const names = new Set(
-          // $FlowFixMe all fields have a search field if this.isSearchable()
-          fields.map(field => stripId(this.searchField(field).display_name)),
-        );
-        if (names.size > 1) {
-          placeholder = t`Search`;
-        } else {
-          // $FlowFixMe
-          const [name] = names;
-          placeholder = t`Search by ${name}`;
-          if (field.isID() && field !== this.searchField(field)) {
-            placeholder += t` or enter an ID`;
-          }
-        }
-      } else {
-        if (field.isID()) {
-          placeholder = t`Enter an ID`;
-        } else if (field.isNumeric()) {
-          placeholder = t`Enter a number`;
-        } else {
-          placeholder = t`Enter some text`;
-        }
-      }
-    }
+    const placeholder = this.getTokenFieldPlaceholder();
 
     let options = [];
     if (this.hasList() && !this.useChainFilterEndpoints()) {
@@ -438,6 +463,7 @@ export class FieldValuesWidget extends Component {
 
     return (
       <div
+        className={cx({ "PopoverBody--marginBottom": !this.props.isSidebar })}
         style={{
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
@@ -455,6 +481,7 @@ export class FieldValuesWidget extends Component {
           color={color}
           style={style}
           className={className}
+          parameter={this.props.parameter}
           optionsStyle={
             optionsMaxHeight !== undefined
               ? { maxHeight: optionsMaxHeight }
@@ -462,7 +489,6 @@ export class FieldValuesWidget extends Component {
           }
           // end forwarded props
           options={options}
-          // $FlowFixMe
           valueKey={0}
           valueRenderer={value =>
             this.renderValue(value, { autoLoad: true, compact: false })
@@ -510,8 +536,9 @@ export class FieldValuesWidget extends Component {
   }
 }
 
+FieldValuesWidget.propTypes = fieldValuesWidgetPropTypes;
+
 function dedupeValues(valuesList) {
-  // $FlowFixMe
   const uniqueValueMap = new Map(valuesList.flat().map(o => [o[0], o]));
   return Array.from(uniqueValueMap.values());
 }
@@ -549,6 +576,8 @@ const EveryOptionState = () => (
 const OptionsMessage = ({ message }) => (
   <div className="flex layout-centered p4 border-bottom">{message}</div>
 );
+
+OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(
   mapStateToProps,

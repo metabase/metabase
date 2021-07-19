@@ -83,7 +83,7 @@
   (when-let [[{[{invite-email :content}] :body}] (get @mt/inbox new-user-email-address)]
     (let [[_ reset-token] (re-find #"/auth/reset_password/(\d+_[\w_-]+)#new" invite-email)]
       (http/client :post 200 "session/reset_password" {:token    reset-token
-                                                       :password "ABC123"}))))
+                                                       :password "p@ssword1"}))))
 
 (defn sent-emails
   "Fetch the emails that have been sent in the form of a map of email address -> sequence of email subjects.
@@ -95,7 +95,6 @@
                                              address)]]
              [address (for [{subject :subject} emails]
                         (str/replace subject (str new-user-first-name " " new-user-last-name) "<New User>"))])))
-
 
 (defn- invite-user-accept-and-check-inboxes!
   "Create user by passing `invite-user-args` to `create-and-invite-user!` or `create-new-google-auth-user!`,
@@ -194,7 +193,7 @@
                 "PermissionsGroupMembership object")
     (mt/with-temp User [user {:is_superuser true}]
       (is (= true
-             (db/exists? PermissionsGroupMembership :user_id (u/get-id user), :group_id (u/get-id (group/admin))))))))
+             (db/exists? PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (group/admin))))))))
 
 (deftest ldap-sequential-login-attributes-test
   (testing "You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)"
@@ -215,16 +214,16 @@
 
 (defn group-names [groups-or-ids]
   (when (seq groups-or-ids)
-    (db/select-field :name PermissionsGroup :id [:in (map u/get-id groups-or-ids)])))
+    (db/select-field :name PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
 
 (defn- do-with-group [group-properties group-members f]
   (mt/with-temp PermissionsGroup [group group-properties]
     (doseq [member group-members]
       (db/insert! PermissionsGroupMembership
-        {:group_id (u/get-id group)
+        {:group_id (u/the-id group)
          :user_id  (if (keyword? member)
                      (mt/user->id member)
-                     (u/get-id member))}))
+                     (u/the-id member))}))
     (f group)))
 
 (defmacro ^:private with-groups [[group-binding group-properties members & more-groups] & body]
@@ -341,7 +340,7 @@
 
         (testing "their is_superuser flag should be set to true"
           (is (= true
-                 (db/select-one-field :is_superuser User :id (u/get-id user)))))))
+                 (db/select-one-field :is_superuser User :id (u/the-id user)))))))
 
     (testing "should be able to remove someone from the Admin group"
       (mt/with-temp User [user {:is_superuser true}]
@@ -351,7 +350,7 @@
 
         (testing "their is_superuser flag should be set to false"
           (is (= false
-                 (db/select-one-field :is_superuser User :id (u/get-id user)))))))
+                 (db/select-one-field :is_superuser User :id (u/the-id user)))))))
 
     (testing "should run all changes in a transaction -- if one set of changes fails, others should not be persisted"
       (testing "Invalid ADD operation"
@@ -361,7 +360,7 @@
           (u/ignore-exceptions
             (user/set-permissions-groups! user #{(group/all-users) Integer/MAX_VALUE}))
           (is (= true
-                 (db/select-one-field :is_superuser User :id (u/get-id user))))))
+                 (db/select-one-field :is_superuser User :id (u/the-id user))))))
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist

@@ -11,6 +11,14 @@ Unless otherwise noted, all files Copyright © 2021 Metabase, Inc.
 
 ## Running it
 
+### Front-end
+
+```sh
+MB_EDITION=ee yarn build-hot
+```
+
+### Back-end
+
 You need to add the `:ee` profile to the leiningen command to run Metabase Enterprise Edition.
 
 ```clj

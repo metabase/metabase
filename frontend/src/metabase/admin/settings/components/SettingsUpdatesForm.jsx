@@ -3,12 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 import { Flex, Box } from "grid-styled";
+import cx from "classnames";
+
 import MetabaseSettings from "metabase/lib/settings";
 import SettingsSetting from "./SettingsSetting";
 
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
+import ExternalLink from "metabase/components/ExternalLink";
 
 export default class SettingsUpdatesForm extends Component {
   static propTypes = {
@@ -16,22 +19,25 @@ export default class SettingsUpdatesForm extends Component {
   };
 
   renderVersionUpdateNotice() {
+    const currentVersion = formatVersion(MetabaseSettings.currentVersion());
+
+    if (MetabaseSettings.isHosted()) {
+      return (
+        <div>{jt`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}</div>
+      );
+    }
+
     if (MetabaseSettings.versionIsLatest()) {
-      const currentVersion = MetabaseSettings.currentVersion();
+      const shouldShowHostedCta = !MetabaseSettings.isEnterprise();
       return (
         <div>
           <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
-            {jt`You're running Metabase ${formatVersion(
-              currentVersion,
-            )} which is the latest and greatest!`}
+            {jt`You're running Metabase ${currentVersion} which is the latest and greatest!`}
           </div>
-          {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
-            <HostingCTA />
-          )}
+          {shouldShowHostedCta && <HostingCTA />}
         </div>
       );
     } else if (MetabaseSettings.newVersionAvailable()) {
-      const currentVersion = MetabaseSettings.currentVersion();
       const latestVersion = MetabaseSettings.latestVersion();
       const versionInfo = MetabaseSettings.versionInfo();
       return (
@@ -39,9 +45,9 @@ export default class SettingsUpdatesForm extends Component {
           <div className="p2 bg-green bordered rounded border-success flex flex-row align-center justify-between">
             <span className="text-white text-bold">
               {jt`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
-              {jt`You're running ${formatVersion(currentVersion)}`}
+              {jt`You're running ${currentVersion}`}
             </span>
-            <a
+            <ExternalLink
               data-metabase-event={
                 "Updates Settings; Update link clicked; " + latestVersion
               }
@@ -51,10 +57,9 @@ export default class SettingsUpdatesForm extends Component {
                 latestVersion +
                 "/operations-guide/upgrading-metabase.html"
               }
-              target="_blank"
             >
               {t`Update`}
-            </a>
+            </ExternalLink>
           </div>
 
           <div
@@ -66,17 +71,16 @@ export default class SettingsUpdatesForm extends Component {
             <Version version={versionInfo.latest} />
 
             {versionInfo.older &&
-              versionInfo.older.map(version => <Version version={version} />)}
+              versionInfo.older.map((version, index) => (
+                <Version key={index} version={version} />
+              ))}
           </div>
 
           {!MetabaseSettings.isHosted() && <HostingCTA />}
         </div>
       );
     } else {
-      return (
-        <div>{t`Sorry, we were unable to check for updates at this time. Last successful check was
-         ${MetabaseSettings.versionInfoLastChecked()}.`}</div>
-      );
+      return <div>{t`No successful checks yet.`}</div>;
     }
   }
 
@@ -94,10 +98,14 @@ export default class SettingsUpdatesForm extends Component {
 
     return (
       <div style={{ width: "585px" }}>
-        <ul>{settings}</ul>
+        {!MetabaseSettings.isHosted() && <ul>{settings}</ul>}
 
         <div className="px2">
-          <div className="pt3 border-top">
+          <div
+            className={cx("pt3", {
+              "border-top": !MetabaseSettings.isHosted(),
+            })}
+          >
             {this.renderVersionUpdateNotice()}
           </div>
         </div>
@@ -118,8 +126,8 @@ function Version({ version }) {
       </h3>
       <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
         {version.highlights &&
-          version.highlights.map(highlight => (
-            <li style={{ lineHeight: "1.5" }} className="pl1">
+          version.highlights.map((highlight, index) => (
+            <li key={index} style={{ lineHeight: "1.5" }} className="pl1">
               {highlight}
             </li>
           ))}
@@ -129,6 +137,10 @@ function Version({ version }) {
 }
 
 function HostingCTA() {
+  if (MetabaseSettings.isEnterprise()) {
+    return null;
+  }
+
   return (
     <Flex
       justifyContent="space-between"

@@ -11,6 +11,8 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Changing localization settings](localization.md)
 * [Caching query results](14-caching.md)
 * [Customizing your map settings](20-custom-maps.md)
+* [SSH tunneling in Metabase](ssh-tunnel-for-database-connections.md)
+* [Securing database connections using an SSL certificate](secure-database-connections-with-ssl-certificates.md)
 
 **Curating your data:**
 * [Editing your database metadata](03-metadata-editing.md)

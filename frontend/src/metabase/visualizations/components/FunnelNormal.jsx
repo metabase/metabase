@@ -47,11 +47,11 @@ export default class FunnelNormal extends Component {
     const dimensionIndex = 0;
     const metricIndex = 1;
     const cols = series[0].data.cols;
-    // $FlowFixMe
     const rows: number[][] = series.map(s => s.data.rows[0]);
 
-    const funnelSmallSize =
-      gridSize && (gridSize.width < 7 || gridSize.height <= 5);
+    const isNarrow = gridSize && gridSize.width < 7;
+    const isShort = gridSize && gridSize.height <= 5;
+    const isSmall = isShort || isNarrow;
 
     const formatDimension = (dimension, jsx = true) =>
       formatValue(dimension, {
@@ -138,9 +138,9 @@ export default class FunnelNormal extends Component {
     return (
       <div
         className={cx(className, styles.Funnel, "flex", {
-          [styles.Small]: funnelSmallSize,
-          p1: funnelSmallSize,
-          p2: !funnelSmallSize,
+          [styles["Funnel--narrow"]]: isNarrow,
+          p1: isSmall,
+          p2: !isSmall,
         })}
       >
         <div
@@ -181,12 +181,12 @@ export default class FunnelNormal extends Component {
               onVisualizationClick={isClickable ? onVisualizationClick : null}
             />
             <div className={styles.Infos}>
-              <div className={styles.Title}>
+              <Ellipsified className={styles.Title}>
                 {formatPercent(info.value / initial.value)}
-              </div>
-              <div className={styles.Subtitle}>
+              </Ellipsified>
+              <Ellipsified className={styles.Subtitle}>
                 {formatMetric(rows[index + 1][metricIndex])}
-              </div>
+              </Ellipsified>
             </div>
           </div>
         ))}
@@ -212,33 +212,37 @@ const GraphSection = ({
   onHoverChange: (hovered: ?HoverObject) => void,
 }) => {
   return (
-    <svg
-      className={cx(className, styles.Graph)}
-      onMouseMove={e => {
-        if (onHoverChange && info.hovered) {
-          onHoverChange({
-            ...info.hovered,
-            event: e.nativeEvent,
-          });
-        }
-      }}
-      onMouseLeave={() => onHoverChange && onHoverChange(null)}
-      onClick={e => {
-        if (onVisualizationClick && info.clicked) {
-          onVisualizationClick({
-            ...info.clicked,
-            event: e.nativeEvent,
-          });
-        }
-      }}
-      viewBox="0 0 1 1"
-      preserveAspectRatio="none"
-    >
-      <polygon
-        opacity={1 - index * (0.9 / (infos.length + 1))}
-        fill={DEFAULT_COLORS[0]}
-        points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
-      />
-    </svg>
+    <div className="relative full-height">
+      <svg
+        height="100%"
+        width="100%"
+        className={cx(className, "absolute")}
+        onMouseMove={e => {
+          if (onHoverChange && info.hovered) {
+            onHoverChange({
+              ...info.hovered,
+              event: e.nativeEvent,
+            });
+          }
+        }}
+        onMouseLeave={() => onHoverChange && onHoverChange(null)}
+        onClick={e => {
+          if (onVisualizationClick && info.clicked) {
+            onVisualizationClick({
+              ...info.clicked,
+              event: e.nativeEvent,
+            });
+          }
+        }}
+        viewBox="0 0 1 1"
+        preserveAspectRatio="none"
+      >
+        <polygon
+          opacity={1 - index * (0.9 / (infos.length + 1))}
+          fill={DEFAULT_COLORS[0]}
+          points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
+        />
+      </svg>
+    </div>
   );
 };

@@ -29,7 +29,7 @@
   [table :- i/TableInstance, new-field-metadatas :- [i/TableMetadataField], parent-id :- common/ParentID]
   (when (seq new-field-metadatas)
     (db/select     Field
-      :table_id    (u/get-id table)
+      :table_id    (u/the-id table)
       :%lower.name [:in (map common/canonical-name new-field-metadatas)]
       :parent_id   parent-id
       :active      false)))
@@ -52,7 +52,7 @@
                                      field-name
                                      effective-type
                                      base-type)))
-         {:table_id          (u/get-id table)
+         {:table_id          (u/the-id table)
           :name              field-name
           :display_name      (humanization/name->human-readable-name field-name)
           :database_type     (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
@@ -73,14 +73,14 @@
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (db/update-where! Field {:id [:in (map u/get-id fields-to-reactivate)]}
+      (db/update-where! Field {:id [:in (map u/the-id fields-to-reactivate)]}
         :active true))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated
           new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
       ;; now return the newly created or reactivated Fields
-      (when-let [new-and-updated-fields (seq (map u/get-id (concat fields-to-reactivate new-field-ids)))]
+      (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
         (db/select Field :id [:in new-and-updated-fields])))))
 
 
@@ -133,7 +133,7 @@
   nested Fields. Returns `1` if a Field was marked inactive, `nil` otherwise."
   [table :- i/TableInstance, metabase-field :- common/TableMetadataFieldWithID]
   (log/info (trs "Marking Field ''{0}'' as inactive." (common/field-metadata-name-for-logging table metabase-field)))
-  (when (db/update! Field (u/get-id metabase-field) :active false)
+  (when (db/update! Field (u/the-id metabase-field) :active false)
     1))
 
 (s/defn ^:private retire-fields! :- su/IntGreaterThanOrEqualToZero
@@ -171,7 +171,7 @@
        table
        (set nested-fields-metadata)
        (set metabase-nested-fields)
-       (some-> metabase-field u/get-id)))))
+       (some-> metabase-field u/the-id)))))
 
 (s/defn ^:private sync-nested-field-instances! :- (s/maybe su/IntGreaterThanOrEqualToZero)
   "Recursively sync Field instances (i.e., rows in application DB) for *all* the nested Fields of all Fields in

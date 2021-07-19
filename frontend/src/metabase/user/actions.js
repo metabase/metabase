@@ -2,7 +2,7 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 import { createThunkAction } from "metabase/lib/redux";
 
-import { UserApi } from "metabase/services";
+import { UserApi, UtilApi } from "metabase/services";
 
 import { refreshCurrentUser } from "metabase/redux/user";
 
@@ -10,6 +10,7 @@ import { refreshCurrentUser } from "metabase/redux/user";
 export const CHANGE_TAB = "CHANGE_TAB";
 export const UPDATE_PASSWORD = "UPDATE_PASSWORD";
 export const UPDATE_USER = "UPDATE_USER";
+export const VALIDATE_PASSWORD = "VALIDATE_PASSWORD";
 
 // action creators
 
@@ -37,6 +38,16 @@ export const updatePassword = createThunkAction(UPDATE_PASSWORD, function(
     } catch (error) {
       return error;
     }
+  };
+});
+
+export const validatePassword = createThunkAction(VALIDATE_PASSWORD, function(
+  password,
+) {
+  return async function(dispatch, getState) {
+    return await UtilApi.password_check({
+      password: password,
+    });
   };
 });
 

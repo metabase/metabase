@@ -8261,6 +8261,144 @@ databaseChangeLog:
             columnName: parameters
             defaultNullValue: '[]'
             tableName: pulse
+  - changeSet:
+      id: 300
+      author: dpsutton
+      comment: Added 0.40.0
+      changes:
+        - renameTable:
+            oldTableName: collection_revision
+            newTableName: collection_permission_graph_revision
+  - changeSet:
+      id: 301
+      author: dpsutton
+      comment: Added 0.40.0 renaming collection_revision to collection_permission_graph_revision
+      failOnError: false # mysql and h2 don't have this sequence
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            - sql: ALTER SEQUENCE collection_revision_id_seq RENAME TO collection_permission_graph_revision_id_seq
+
+  - changeSet:
+      id: 304
+      author: camsaul
+      comment: Added 0.40.0 (replaces a data migration dating back to 0.20.0)
+      changes:
+        - sql:
+              sql: >-
+                UPDATE metabase_field
+                SET semantic_type = (CASE semantic_type
+                                      WHEN 'avatar'    THEN 'type/AvatarURL'
+                                      WHEN 'category'  THEN 'type/Category'
+                                      WHEN 'city'      THEN 'type/City'
+                                      WHEN 'country'   THEN 'type/Country'
+                                      WHEN 'desc'      THEN 'type/Description'
+                                      WHEN 'fk'        THEN 'type/FK'
+                                      WHEN 'id'        THEN 'type/PK'
+                                      WHEN 'image'     THEN 'type/ImageURL'
+                                      WHEN 'json'      THEN 'type/SerializedJSON'
+                                      WHEN 'latitude'  THEN 'type/Latitude'
+                                      WHEN 'longitude' THEN 'type/Longitude'
+                                      WHEN 'name'      THEN 'type/Name'
+                                      WHEN 'number'    THEN 'type/Number'
+                                      WHEN 'state'     THEN 'type/State'
+                                      WHEN 'url'       THEN 'type/URL'
+                                      WHEN 'zip_code'  THEN 'type/ZipCode'
+                                     END)
+                WHERE semantic_type IN ('avatar', 'category', 'city', 'country', 'desc', 'fk', 'id', 'image',
+                                        'json', 'latitude', 'longitude', 'name', 'number', 'state', 'url',
+                                        'zip_code');
+
+  - changeSet:
+      id: 305
+      author: camsaul
+      comment: Added 0.40.0 (replaces a data migration dating back to 0.20.0)
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET base_type = (CASE base_type
+                                WHEN 'ArrayField'      THEN 'type/Array'
+                                WHEN 'BigIntegerField' THEN 'type/BigInteger'
+                                WHEN 'BooleanField'    THEN 'type/Boolean'
+                                WHEN 'CharField'       THEN 'type/Text'
+                                WHEN 'DateField'       THEN 'type/Date'
+                                WHEN 'DateTimeField'   THEN 'type/DateTime'
+                                WHEN 'DecimalField'    THEN 'type/Decimal'
+                                WHEN 'DictionaryField' THEN 'type/Dictionary'
+                                WHEN 'FloatField'      THEN 'type/Float'
+                                WHEN 'IntegerField'    THEN 'type/Integer'
+                                WHEN 'TextField'       THEN 'type/Text'
+                                WHEN 'TimeField'       THEN 'type/Time'
+                                WHEN 'UUIDField'       THEN 'type/UUID'
+                                WHEN 'UnknownField'    THEN 'type/*'
+                               END)
+              WHERE base_type IN ('ArrayField', 'BigIntegerField', 'BooleanField', 'CharField', 'DateField',
+                                  'DateTimeField', 'DecimalField', 'DictionaryField', 'FloatField', 'IntegerField',
+                                  'TextField', 'TimeField', 'UUIDField', 'UnknownField');
+  - changeSet:
+      id: 308
+      author: howonlee
+      comment: Added 0.40.0 Track cache hits in query_execution table
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: cache_hit
+                  type: boolean
+                  remarks: "Cache hit on query execution"
+                  constraints:
+                    nullable: true
+
+
+  - changeSet:
+      id: 309
+      author: dpsutton
+      comment: 'Added 0.40.0 - Add type to collections'
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: authority_level
+                  type: varchar(255)
+                  remarks: 'Nullable column to incidate collection''s authority level. Initially values are "official" and nil.'
+                  constraints:
+                    nullable: true
+
+
+  - changeSet:
+      id: 310
+      author: howonlee
+      comment: Added 0.40.0 Migrate friendly field names
+      changes:
+        - update:
+            tableName: setting
+            columns:
+              - column:
+                  name: value
+                  value: 'simple'
+            where: "'key'='humanization-strategy' AND value='advanced'"
+
+  - changeSet:
+      id: 311
+      author: howonlee
+      comment: Added 0.40.0 Migrate friendly field names, not noop
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            sql: |
+                UPDATE setting SET value='simple' WHERE `key`='humanization-strategy'
+                AND value='advanced'
+        - sql:
+            dbms: postgresql,h2
+            sql: |
+                UPDATE setting SET value='simple' WHERE key='humanization-strategy'
+                AND value='advanced'
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

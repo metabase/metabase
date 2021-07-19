@@ -5,6 +5,7 @@ import {
   getComputedSettings,
   getSettingsWidgets,
   mergeSettings,
+  getClickBehaviorSettings,
 } from "metabase/visualizations/lib/settings";
 
 describe("settings framework", () => {
@@ -215,6 +216,47 @@ describe("settings framework", () => {
       expect(
         mergeSettings({}, { column_settings: { col1: { set1: "val" } } }),
       ).toEqual({ column_settings: { col1: { set1: "val" } } });
+    });
+  });
+
+  describe("getClickBehaviorSettings", () => {
+    it("should clone only click_behavior from column_settings", () => {
+      expect(
+        getClickBehaviorSettings({
+          column_settings: {
+            col1: {
+              click_behavior: { type: "stub" },
+              not_click_behavior: { type: "another stub" },
+            },
+          },
+        }),
+      ).toEqual({
+        column_settings: { col1: { click_behavior: { type: "stub" } } },
+      });
+    });
+
+    it("should clone only click_behavior from root settings", () => {
+      expect(
+        getClickBehaviorSettings({
+          click_behavior: { type: "stub" },
+          not_click_behavior: { type: "another stub" },
+        }),
+      ).toEqual({
+        click_behavior: { type: "stub" },
+      });
+    });
+
+    it("should return an empty object if there are no click behaviors set", () => {
+      expect(
+        getClickBehaviorSettings({
+          not_click_behavior: { type: "stub" },
+          column_settings: {
+            col1: {
+              not_click_behavior: { type: "stub" },
+            },
+          },
+        }),
+      ).toEqual({});
     });
   });
 });

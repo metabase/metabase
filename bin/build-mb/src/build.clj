@@ -1,6 +1,9 @@
 (ns build
   (:require [build-drivers :as build-drivers]
+            [build.licenses :as license]
             [build.version-info :as version-info]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [environ.core :as env]
             [flatland.ordered.map :as ordered-map]
@@ -54,16 +57,51 @@
     (u/assert-file-exists uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
+(defn- build-backend-licenses-file! [edition]
+  {:pre [(#{:oss :ee} edition)]}
+  (let [classpath-and-logs        (u/sh {:dir    u/project-root-directory
+                                         :quiet? true}
+                                        "lein"
+                                        "with-profile" (str \- "dev"
+                                                            (str \, \+ (name edition))
+                                                            \,"+include-all-drivers")
+                                        "classpath")
+        classpath                 (last
+                                   classpath-and-logs)
+        output-filename           (u/filename u/project-root-directory "license-backend-third-party")
+        {:keys [with-license
+                without-license]} (license/generate {:classpath       classpath
+                                                     :backfill        (edn/read-string
+                                                                       (slurp (io/resource "overrides.edn")))
+                                                     :output-filename output-filename
+                                                     :report?         false})]
+    (when (seq without-license)
+      (run! (comp (partial u/error "Missing License: %s") first)
+            without-license))
+    (u/announce "License information generated at %s" output-filename)))
+
+(defn- build-frontend-licenses-file!
+  []
+  (let [license-text (str/join \newline
+                               (u/sh {:dir    u/project-root-directory
+                                      :quiet? true}
+                                     "yarn" "licenses" "generate-disclaimer"))]
+    (spit (u/filename u/project-root-directory "license-frontend-third-party") license-text)))
+
 (def all-steps
   (ordered-map/ordered-map
-   :version      (fn [{:keys [version]}]
-                   (version-info/generate-version-info-file! version))
+   :version      (fn [{:keys [edition version]}]
+                   (version-info/generate-version-info-file! edition version))
    :translations (fn [_]
                    (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
    :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
+   :backend-licenses (fn [{:keys [edition]}]
+                       (build-backend-licenses-file! edition))
+   :frontend-licenses (fn [{:keys []}]
+                        (build-frontend-licenses-file!))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 
@@ -72,22 +110,23 @@
    (build! nil))
 
   ([{:keys [version edition steps]
-     :or   {version (version-info/current-snapshot-version)
-            edition :oss
+     :or   {edition :oss
             steps   (keys all-steps)}}]
-   (u/step (format "Running build steps for %s version %s: %s"
-                   (case edition
-                     :oss "Community (OSS) Edition"
-                     :ee "Enterprise Edition")
-                   version
-                   (str/join ", " (map name steps)))
-     (doseq [step-name steps
-             :let      [step-fn (or (get all-steps (keyword step-name))
-                                    (throw (ex-info (format "Invalid step: %s" step-name)
-                                                    {:step        step-name
-                                                     :valid-steps (keys all-steps)})))]]
-       (step-fn {:version version, :edition edition}))
-     (u/announce "All build steps finished."))))
+   (let [version (or version
+                     (version-info/current-snapshot-version edition))]
+     (u/step (format "Running build steps for %s version %s: %s"
+                     (case edition
+                       :oss "Community (OSS) Edition"
+                       :ee  "Enterprise Edition")
+                     version
+                     (str/join ", " (map name steps)))
+       (doseq [step-name steps
+               :let      [step-fn (or (get all-steps (keyword step-name))
+                                      (throw (ex-info (format "Invalid step: %s" step-name)
+                                                      {:step        step-name
+                                                       :valid-steps (keys all-steps)})))]]
+         (step-fn {:version version, :edition edition}))
+       (u/announce "All build steps finished.")))))
 
 (defn -main [& steps]
   (u/exit-when-finished-nonzero-on-exception

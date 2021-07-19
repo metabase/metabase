@@ -3,10 +3,10 @@ import {
   openOrdersTable,
   openReviewsTable,
   popover,
-} from "__support__/cypress";
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+} from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { ORDERS, ORDERS_ID, REVIEWS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
@@ -80,7 +80,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
   });
 
-  it.skip("should not include date when metric is binned by hour of day (metabase#14124)", () => {
+  it("should not include date when metric is binned by hour of day (metabase#14124)", () => {
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
       semantic_type: null,
     });
@@ -91,7 +91,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         breakout: [
-          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "hour-of-day" }],
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
         ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
@@ -125,4 +125,27 @@ describe("scenarios > admin > datamodel > metadata", () => {
       .contains("Created At")
       .should("have.length", 1);
   });
+
+  it.skip("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
+    cy.visit(
+      `/admin/datamodel/database/1/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
+    );
+
+    openOptionsForSection("Filtering on this field");
+    popover()
+      .findByText("Search box")
+      .click();
+
+    cy.reload();
+
+    openOptionsForSection("Display values");
+    popover().findByText("Custom mapping");
+  });
 });
+
+function openOptionsForSection(sectionName) {
+  cy.findByText(sectionName)
+    .closest("section")
+    .find(".AdminSelect")
+    .click();
+}

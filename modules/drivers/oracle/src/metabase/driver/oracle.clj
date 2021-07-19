@@ -12,6 +12,7 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util :as u]
@@ -25,7 +26,7 @@
            [oracle.jdbc OracleConnection OracleTypes]
            oracle.sql.TIMESTAMPTZ))
 
-(driver/register! :oracle, :parent :sql-jdbc)
+(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -85,7 +86,7 @@
       :or   {host "localhost", port 1521}
       :as   details}]
   (assert (or sid service-name))
-  (let [spec      {:classname "oracle.jdbc.OracleDriver" :subprotocol "oracle:thin"}
+  (let [spec      {:classname "oracle.jdbc.OracleDriver", :subprotocol "oracle:thin"}
         finish-fn (if (:ssl details) ssl-spec non-ssl-spec)]
     (-> (merge spec details)
         (dissoc :host :port :sid :service-name :ssl)
@@ -217,12 +218,16 @@
         (num-to-ds-interval :second field-or-value)))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->DateTime]
-  [_driver _semantic_type expr]
+  [_driver _coercion-strategy expr]
   (hsql/call :to_timestamp expr "YYYY-MM-DD HH:mi:SS"))
 
 (defmethod sql.qp/cast-temporal-string [:oracle :Coercion/ISO8601->Date]
-  [_driver _semantic_type expr]
+  [_driver _coercion-strategy expr]
   (hsql/call :to_date expr "YYYY-MM-DD"))
+
+(defmethod sql.qp/cast-temporal-string [:oracle :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (hsql/call :to_timestamp expr "YYYYMMDDHH24miSS"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]

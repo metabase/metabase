@@ -3,6 +3,7 @@
   (:require [clojure.data.csv :as csv]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.test :refer :all]
             [java-time :as t]
             [medley.core :as m]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -11,6 +12,7 @@
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
+            [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.files :as files]))
 
@@ -94,11 +96,23 @@
           csv-rows     (cons column-names rows-with-id)]
       (try
         (with-open [writer (java.io.FileWriter. (java.io.File. filename))]
-          (csv/write-csv writer csv-rows))
+          (csv/write-csv writer csv-rows :quote? (constantly false)))
         (catch Throwable e
           (throw (ex-info "Error writing rows to CSV" {:rows (take 10 csv-rows)} e)))))
     (catch Throwable e
       (throw (ex-info "Error dumping rows to CSV" {:filename filename} e)))))
+
+(deftest dump-row-with-commas-to-csv-test
+  (testing "Values with commas in them should get escaped correctly"
+    (let [table-def     {:table-name        "products"
+                         :field-definitions [{:field-name "vendor"
+                                              :base-type  :type/Text}]
+                         :rows              [["Pouros, Nitzsche and Mayer"]]}
+          temp-filename (str (files/get-path (System/getProperty "java.io.tmpdir") "vertica-csv-test.csv"))]
+      (dump-table-rows-to-csv! table-def temp-filename)
+      (is (= ["id,vendor"
+              "1,Pouros\\, Nitzsche and Mayer"]
+             (str/split-lines (slurp temp-filename)))))))
 
 (defn- load-rows-from-csv!
   "Load rows from a CSV file into a Table."
@@ -112,8 +126,8 @@
                     (throw (ex-info "Error executing SQL" {:sql sql, :spec (dbspec)} e)))))
               (actual-rows []
                 (u/ignore-exceptions
-                 (jdbc/query {:connection conn}
-                             (format "SELECT * FROM %s ORDER BY id ASC;" table-identifier))))]
+                  (jdbc/query {:connection conn}
+                              (format "SELECT * FROM %s ORDER BY id ASC;" table-identifier))))]
         (try
           ;; make sure the Table is empty
           (execute! (format "TRUNCATE TABLE %s" table-identifier))
@@ -142,7 +156,7 @@
 (defmethod load-data/load-data! :vertica
   [driver dbdef {:keys [rows], :as tabledef}]
   (try
-    (let [filename (str (files/get-path (System/getProperty "java.io.tmpdir") "vertica-rows.csv"))]
+    (mt/with-temp-file [filename "vertica-rows.csv"]
       (dump-table-rows-to-csv! tabledef filename)
       (load-rows-from-csv! driver dbdef tabledef filename))
     (catch Throwable e

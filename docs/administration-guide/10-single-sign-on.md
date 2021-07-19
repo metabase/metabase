@@ -10,13 +10,11 @@ As time goes on we may add other auth providers. If you have a service you’d l
 
 ### Enabling Google Sign-In
 
-To let your team start signing in with Google you’ll first need to create an application through Google’s [developer console](https://console.developers.google.com/projectselector/apis/library).
+To let your team start signing in with Google you’ll first need to create an application through Google’s [developer console](https://console.developers.google.com/projectselector2/apis/library).
 
-To create a new application follow [the instructions from Google here](https://developers.google.com/identity/sign-in/web/devconsole-project).
+Next, you'll have to create authorization credentials for your application by following [the instructions from Google here](https://developers.google.com/identity/sign-in/web/sign-in#create_authorization_credentials). Specify the URI of your Metabase instance in the “Authorized JavaScript origins” section. You should leave the “Authorized Redirect URIs” section blank.
 
-Note that when creating the app you only need to specify the url of your Metabase install in the “Javascript Origins” field. You should leave the “redirect-url” blank.
-
-Once you have your client_id, copy and paste it into the box on the Single Sign-On sections of your Metabase Admin settings page. ```XXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com```
+Once you have your `client_id` (ending in `.apps.googleusercontent.com`), click `Configure` on the "Sign in with Google" section of the Authentication page in the Metabase Admin Panel. Paste your `client_id` into the first box.
 
 Now existing Metabase users signed into a Google account that matches their Metabase account email can sign in with just a click.
 
@@ -43,13 +41,9 @@ Metabase will pull out three main attributes from your LDAP directory - email (d
 
 ![Attributes](./images/ldap-attributes.png)
 
-Metabase needs to pull out three main attributes from your LDAP directory. 
-
-- email (defaults to the `mail` attribute)
-- first name (defaults to the `givenName` attribute)
-- last name (defaults to the `sn` attribute). 
-
-Your LDAP directory must have these three fields populated or Metabase won't be able to create or log in the user. If your LDAP setup uses different values for defaults, you must specify these under the "Attributes" portion of the form.
+Your LDAP directory must have the email field populated or Metabase won't be able to create or log in the user. If
+either name field is missing, Metabase will use a default of "Unknown", and the name can be changed manually in the
+user's account settings.
 
 If you have user groups in Metabase you are using to control access, it is often tedious to have to manually assign a user to a group after they're logged in via SSO. You can take advantage of the groups your LDAP directory uses by enabling Group Mappings, and specifying which LDAP group corresponds to which user group on your Metabase server.
 

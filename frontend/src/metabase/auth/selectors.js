@@ -6,7 +6,3 @@ export function getAuthProviders(state, props) {
     [],
   );
 }
-
-export const getLoginError = state => state.auth && state.auth.loginError;
-export const getResetError = state => state.auth && state.auth.resetError;
-export const getResetSuccess = state => state.auth && state.auth.resetSuccess;

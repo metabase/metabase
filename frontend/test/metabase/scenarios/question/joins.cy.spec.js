@@ -1,5 +1,5 @@
-import { restore, openProductsTable, popover } from "__support__/cypress";
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { restore, openProductsTable, popover } from "__support__/e2e/cypress";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
 
@@ -35,7 +35,7 @@ describe("scenarios > question > joined questions", () => {
     popover()
       .findByText("Product ID") // Implicit assertion - test will fail for multiple strings
       .click();
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).not.to.exist;
     });

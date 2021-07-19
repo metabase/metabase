@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -24,6 +23,20 @@ import type {
   ExpressionReference,
 } from "metabase-types/types/Query";
 
+const singleDatePickerPropTypes = {
+  className: PropTypes.string,
+  filter: PropTypes.object,
+  onFilterChange: PropTypes.func,
+  hideTimeSelectors: PropTypes.func,
+};
+
+const multiDatePickerPropTypes = {
+  className: PropTypes.string,
+  filter: PropTypes.object,
+  onFilterChange: PropTypes.func,
+  hideTimeSelectors: PropTypes.func,
+};
+
 const SingleDatePicker = ({
   className,
   filter: [op, field, value],
@@ -38,6 +51,8 @@ const SingleDatePicker = ({
     calendar
   />
 );
+
+SingleDatePicker.propTypes = singleDatePickerPropTypes;
 
 const MultiDatePicker = ({
   className,
@@ -74,6 +89,8 @@ const MultiDatePicker = ({
     </div>
   </div>
 );
+
+MultiDatePicker.propTypes = multiDatePickerPropTypes;
 
 const PreviousPicker = props => (
   <RelativeDatePicker {...props} formatter={value => value * -1} />
@@ -171,7 +188,6 @@ export function getDateTimeFieldTarget(
   if (dimension && dimension.temporalUnit()) {
     return dimension.withoutTemporalBucketing().mbql();
   } else {
-    // $FlowFixMe
     return field;
   }
 }
@@ -186,7 +202,6 @@ function getDateTimeFieldAndValues(
     .map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const field = getDateTimeField(filter[1], bucketing);
-  // $FlowFixMe
   return [field, ...values];
 }
 
@@ -230,7 +245,6 @@ export const DATE_OPERATORS: Operator[] = [
       getOptions(filter),
     ],
     test: ([op, field, value]) =>
-      // $FlowFixMe
       (op === "time-interval" && value < 0) || Object.is(value, -0),
     widget: PreviousPicker,
     options: { "include-current": true },
@@ -245,7 +259,6 @@ export const DATE_OPERATORS: Operator[] = [
       getUnit(filter),
       getOptions(filter),
     ],
-    // $FlowFixMe
     test: ([op, field, value]) => op === "time-interval" && value >= 0,
     widget: NextPicker,
     options: { "include-current": true },
@@ -344,6 +357,7 @@ export default class DatePicker extends Component {
     className: PropTypes.string,
     hideEmptinessOperators: PropTypes.bool,
     hideTimeSelectors: PropTypes.bool,
+    isSidebar: PropTypes.bool,
     operators: PropTypes.array,
   };
 
@@ -360,8 +374,16 @@ export default class DatePicker extends Component {
   }
 
   render() {
-    const { filter, onFilterChange, includeAllTime, className } = this.props;
+    const {
+      className,
+      filter,
+      onFilterChange,
+      includeAllTime,
+      isSidebar,
+    } = this.props;
+
     let { operators } = this.state;
+
     if (includeAllTime) {
       operators = [ALL_TIME_OPERATOR, ...operators];
     }
@@ -374,6 +396,7 @@ export default class DatePicker extends Component {
         // apply flex to align the operator selector and the "Widget" if necessary
         className={cx(className, {
           "flex align-center": Widget && Widget.horizontalLayout,
+          "PopoverBody--marginBottom": !isSidebar,
         })}
         style={{ minWidth: 300 }}
       >

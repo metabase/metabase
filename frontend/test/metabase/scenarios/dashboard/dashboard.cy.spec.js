@@ -1,13 +1,14 @@
-// Mostly ported from `dashboard.e2e.spec.js`
-// *** Haven't ported: should add the parameter values to state tree for public dashboards
 import {
   popover,
   restore,
   selectDashboardFilter,
   expectedRouteCalls,
-} from "__support__/cypress";
+  showDashboardCardActions,
+  modal,
+  filterWidget,
+} from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/cypress_sample_dataset";
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {
   ORDERS,
@@ -146,7 +147,7 @@ describe("scenarios > dashboard", () => {
     cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 
-  it.skip("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
+  it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
     cy.createQuestion({
       name: "13597",
       query: {
@@ -162,6 +163,7 @@ describe("scenarios > dashboard", () => {
             {
               id: "92eb69ea",
               name: "ID",
+              sectionId: "id",
               slug: "id",
               type: "id",
             },
@@ -194,11 +196,13 @@ describe("scenarios > dashboard", () => {
                   click_behavior: {
                     type: "crossfilter",
                     parameterMapping: {
-                      id: "92eb69ea",
-                      source: { id: "ID", name: "ID", type: "column" },
-                      target: {
+                      "92eb69ea": {
                         id: "92eb69ea",
-                        type: "parameter",
+                        source: { id: "ID", name: "ID", type: "column" },
+                        target: {
+                          id: "92eb69ea",
+                          type: "parameter",
+                        },
                       },
                     },
                   },
@@ -256,7 +260,8 @@ describe("scenarios > dashboard", () => {
 
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
-    cy.get(".DashCard .Icon-click").click({ force: true });
+    showDashboardCardActions();
+    cy.icon("click").click();
     cy.findByText("COUNT(*)").click();
     cy.findByText("Update a dashboard filter").click();
 
@@ -366,7 +371,74 @@ describe("scenarios > dashboard", () => {
     }
   });
 
-  it.skip("should cache filter results after the first DB call (metabase#13832)", () => {
+  it("should not get the parameter values from the field API", () => {
+    // In this test we're using already present dashboard ("Orders in a dashboard")
+    const FILTER_ID = "d7988e02";
+
+    cy.log("Add filter to the dashboard");
+    cy.request("PUT", "/api/dashboard/1", {
+      parameters: [
+        {
+          id: FILTER_ID,
+          name: "Category",
+          slug: "category",
+          type: "category",
+        },
+      ],
+    });
+
+    cy.log("Connect filter to the existing card");
+    cy.request("PUT", "/api/dashboard/1/cards", {
+      cards: [
+        {
+          id: 1,
+          card_id: 1,
+          row: 0,
+          col: 0,
+          sizeX: 12,
+          sizeY: 8,
+          parameter_mappings: [
+            {
+              parameter_id: FILTER_ID,
+              card_id: 1,
+              target: [
+                "dimension",
+                [
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  { "source-field": ORDERS.PRODUCT_ID },
+                ],
+              ],
+            },
+          ],
+          visualization_settings: {},
+        },
+      ],
+    });
+
+    cy.server();
+    cy.route(`/api/dashboard/1/params/${FILTER_ID}/values`).as(
+      "fetchDashboardParams",
+    );
+    cy.route(`/api/field/${PRODUCTS.CATEGORY}`).as("fetchField");
+    cy.route(`/api/field/${PRODUCTS.CATEGORY}/values`).as("fetchFieldValues");
+
+    cy.visit("/dashboard/1");
+
+    filterWidget()
+      .as("filterWidget")
+      .click();
+
+    ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(category => {
+      cy.findByText(category);
+    });
+
+    expectedRouteCalls({ route_alias: "fetchDashboardParams", calls: 1 });
+    expectedRouteCalls({ route_alias: "fetchField", calls: 0 });
+    expectedRouteCalls({ route_alias: "fetchFieldValues", calls: 0 });
+  });
+
+  it.skip("filter dropdown should not send request for values every time the widget is opened (metabase#16103)", () => {
     // In this test we're using already present dashboard ("Orders in a dashboard")
     const FILTER_ID = "d7988e02";
 
@@ -416,7 +488,7 @@ describe("scenarios > dashboard", () => {
 
     cy.visit("/dashboard/1");
 
-    cy.get("fieldset")
+    filterWidget()
       .as("filterWidget")
       .click();
     expectedRouteCalls({ route_alias: "fetchFromDB", calls: 1 });
@@ -534,7 +606,7 @@ describe("scenarios > dashboard", () => {
     cy.findByRole("checkbox").should("have.attr", "aria-checked", "true");
   });
 
-  it.skip("user without data permissions should be able to use dashboard filter (metabase#15119)", () => {
+  it("user without data permissions should be able to use dashboard filter (metabase#15119)", () => {
     cy.createQuestion({
       name: "15119",
       query: { "source-table": 1 },
@@ -581,16 +653,12 @@ describe("scenarios > dashboard", () => {
         cy.signIn("nodata");
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
-        cy.get("fieldset")
+        filterWidget()
           .contains("Category")
           .click();
+        cy.findByPlaceholderText("Search the list").type("Gizmo");
+        cy.button("Add filter").click();
 
-        cy.findByPlaceholderText("Enter some text")
-          .click()
-          .type("Gizmo", { delay: 10 });
-        cy.findByRole("button", { name: "Add filter" })
-          .should("not.be.disabled")
-          .click();
         cy.contains("Rustic Paper Wallet");
       });
     });
@@ -648,99 +716,99 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
   });
 
-  ["normal", "corrupted"].forEach(test => {
-    it(`${test.toUpperCase()} version:\n filters should work even if one of them is corrupted (metabase #15279)`, () => {
-      cy.skipOn(test === "corrupted"); // Remove this line when the issue is fixed
-      cy.createQuestion({
-        name: "15279",
-        query: { "source-table": PEOPLE_ID },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard("15279D").then(({ body: { id: DASHBOARD_ID } }) => {
-          const parameters = [
-            {
-              name: "List",
-              slug: "list",
-              id: "6fe14171",
-              type: "category",
-            },
-            {
-              name: "Search",
-              slug: "search",
-              id: "4db4913a",
-              type: "category",
-            },
-          ];
+  it("filters should work even if one of them is corrupted (metabase #15279)", () => {
+    const parameters = [
+      {
+        name: "List",
+        slug: "list",
+        id: "6fe14171",
+        type: "category",
+      },
+      {
+        name: "Search",
+        slug: "search",
+        id: "4db4913a",
+        type: "category",
+      },
+      // This filter is corrupted because it's missing `name` and the `slug`
+      {
+        name: "",
+        slug: "",
+        id: "af72ce9c",
+        type: "category",
+      },
+    ];
 
-          if (test === "corrupted") {
-            // This filter is corrupted because it's missing `name` and the `slug`
-            parameters.push({
-              name: "",
-              slug: "",
-              id: "af72ce9c",
-              type: "category",
-            });
-          }
-          // Add filters to the dashboard
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-            parameters,
-          });
-
-          // Add previously created question to the dashboard
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            // Connect filters to that question
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
-                {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 18,
-                  sizeY: 8,
-                  series: [],
-                  visualization_settings: {},
-                  parameter_mappings: [
-                    {
-                      parameter_id: "6fe14171",
-                      card_id: QUESTION_ID,
-                      target: ["dimension", ["field-id", PEOPLE.SOURCE]],
-                    },
-                    {
-                      parameter_id: "4db4913a",
-                      card_id: QUESTION_ID,
-                      target: ["dimension", ["field-id", PEOPLE.NAME]],
-                    },
-                  ],
-                },
-              ],
-            });
-          });
-
-          cy.visit(`/dashboard/${DASHBOARD_ID}`);
+    cy.createQuestion({
+      name: "15279",
+      query: { "source-table": PEOPLE_ID },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("15279D").then(({ body: { id: DASHBOARD_ID } }) => {
+        // Add filters to the dashboard
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters,
         });
-      });
-      // Check that dropdown list works
-      cy.get("fieldset")
-        .contains("List")
-        .click();
-      popover()
-        .findByText("Organic")
-        .click();
-      cy.findByRole("button", { name: "Add filter" }).click();
-      // Check that the search works
-      cy.get("fieldset")
-        .contains("Search")
-        .click();
-      cy.findByPlaceholderText("Search by Name")
-        .click()
-        .type("Lor", { delay: 50 });
-      popover().within(() => {
-        cy.get(".LoadingSpinner").should("not.exist");
-        cy.findByText("Lora Cronin");
+
+        // Add previously created question to the dashboard
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+        }).then(({ body: { id: DASH_CARD_ID } }) => {
+          // Connect filters to that question
+          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+            cards: [
+              {
+                id: DASH_CARD_ID,
+                card_id: QUESTION_ID,
+                row: 0,
+                col: 0,
+                sizeX: 18,
+                sizeY: 8,
+                series: [],
+                visualization_settings: {},
+                parameter_mappings: [
+                  {
+                    parameter_id: "6fe14171",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PEOPLE.SOURCE]],
+                  },
+                  {
+                    parameter_id: "4db4913a",
+                    card_id: QUESTION_ID,
+                    target: ["dimension", ["field-id", PEOPLE.NAME]],
+                  },
+                ],
+              },
+            ],
+          });
+        });
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
       });
     });
+
+    // Check that list filter works
+    filterWidget()
+      .contains("List")
+      .click();
+
+    cy.findByPlaceholderText("Enter some text")
+      .type("Organic")
+      .blur();
+    cy.button("Add filter").click();
+
+    // Check that the search filter works
+    filterWidget()
+      .contains("Search")
+      .click();
+    cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+    cy.button("Add filter").click();
+
+    cy.findByText("Gold Beach");
+    cy.findByText("Arcadia").should("not.exist");
+
+    // The corrupted filter is now present in the UI, but it doesn't work (as expected)
+    // People can now easily remove it
+    cy.findByPlaceholderText("Enter a value...");
   });
 
   it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
@@ -821,7 +889,7 @@ describe("scenarios > dashboard", () => {
       });
     });
 
-    cy.get("fieldset").click();
+    filterWidget().click();
     cy.findByText("AK").click();
     cy.findByText("CA").click();
     cy.icon("close")
@@ -837,7 +905,7 @@ describe("scenarios > dashboard", () => {
       .contains("CA");
   });
 
-  it.skip("dashboard filters should not limit the number of search results (metabase#15695)", () => {
+  it("dashboard filters should not limit the number of search results (metabase#15695)", () => {
     // Change filtering on this field to "a list of all values"
     cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
       has_field_values: "list",
@@ -889,9 +957,39 @@ describe("scenarios > dashboard", () => {
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
       });
     });
-    cy.get("fieldset").click();
+    filterWidget().click();
     cy.findByPlaceholderText("Search the list").type("Syner");
     cy.findByText("Synergistic Wool Coat");
+  });
+
+  it.skip("should show values of added dashboard card via search immediately (metabase#15959)", () => {
+    /**
+     * For the reason I don't udnerstand, I could reproduce this issue ONLY if I use these specific functions in this order:
+     *  1. realType()
+     *  2. type()
+     */
+    cy.visit("/dashboard/1");
+    cy.icon("pencil").click();
+    cy.icon("add")
+      .last()
+      .as("addQuestion")
+      .click();
+    cy.icon("search")
+      .last()
+      .as("searchModal")
+      .click();
+    cy.findByPlaceholderText("Search").realType("Orders{enter}"); /* [1] */
+    modal()
+      .findByText("Orders, Count")
+      .realClick();
+    cy.get("@addQuestion").click();
+    cy.get("@searchModal").click();
+    cy.findByPlaceholderText("Search").type("Orders{enter}"); /* [2] */
+    modal()
+      .findByText("Orders, Count")
+      .realClick();
+    cy.get(".LoadingSpinner").should("not.exist");
+    cy.findAllByText("18,760").should("have.length", 2);
   });
 });
 

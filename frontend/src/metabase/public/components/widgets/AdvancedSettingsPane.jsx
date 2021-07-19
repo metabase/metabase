@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import Parameters from "metabase/parameters/components/Parameters";
+import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import Select, { Option } from "metabase/components/Select";
 
 import { color } from "metabase/lib/colors";
@@ -83,7 +83,7 @@ const AdvancedSettingsPane = ({
           <p>{t`This ${resourceType} doesn't have any parameters to configure yet.`}</p>
         )}
         {resourceParameters.map(parameter => (
-          <div className="flex align-center my1">
+          <div key={parameter.id} className="flex align-center my1">
             <Icon
               name={getIconForParameter(parameter)}
               className="mr2"

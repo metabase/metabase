@@ -1,4 +1,9 @@
-import { restore, popover, modal, openOrdersTable } from "__support__/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  openOrdersTable,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -33,7 +38,7 @@ describe("scenarios > question > saved", () => {
 
     modal().within(() => {
       cy.findByText("Save question");
-      cy.findByRole("button", { name: /save/i }).as("saveButton");
+      cy.button("Save").as("saveButton");
       cy.get("@saveButton").should("not.be.disabled");
 
       cy.log(
@@ -114,7 +119,7 @@ describe("scenarios > question > saved", () => {
       .click();
     cy.get(".AdminSelect").findByText("Equal to");
     cy.findByPlaceholderText("Enter a number").type("4");
-    cy.findByRole("button", { name: "Add filter" })
+    cy.button("Add filter")
       .should("not.be.disabled")
       .click();
     cy.findByText("Synergistic Granite Chair");

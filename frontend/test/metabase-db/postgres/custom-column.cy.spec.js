@@ -1,4 +1,4 @@
-import { restore, addPostgresDatabase, popover } from "__support__/cypress";
+import { restore, addPostgresDatabase, popover } from "__support__/e2e/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 
@@ -9,7 +9,7 @@ describe("postgres > question > custom columns", () => {
     addPostgresDatabase(PG_DB_NAME);
   });
 
-  it.skip("should allow using strings in filter based on a custom column (metabase#13751)", () => {
+  it("should allow using strings in filter based on a custom column (metabase#13751)", () => {
     const CC_NAME = "C-States";
 
     cy.visit("/question/new");
@@ -48,7 +48,7 @@ describe("postgres > question > custom columns", () => {
         .click();
     });
 
-    cy.findByText("Visualize").click();
+    cy.button("Visualize").click();
     cy.findByText("Arnold Adams");
   });
 
@@ -90,7 +90,7 @@ describe("postgres > question > custom columns", () => {
       .click();
     cy.findByText("Function Percentile expects 1 argument").should("not.exist");
     cy.get("@description").type("A");
-    cy.findByRole("button", { name: "Done" })
+    cy.button("Done")
       .should("not.be.disabled")
       .click();
     // Todo: Add positive assertions once this is fixed
