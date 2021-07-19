@@ -1046,7 +1046,7 @@
                         :color (s/eq "#f38630")
                         :name (s/eq "foo")
                         :personal_owner_id (s/eq nil)
-                        :authority_level (s/eq nil)
+                        :authority_level (s/eq "official")
                         :id s/Int
                         :location (s/eq "/")
                         :namespace (s/eq nil)}
