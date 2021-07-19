@@ -9,9 +9,3 @@ export const DriverWarningContainer = styled(Flex)`
   width: 300px;
   margin-bottom: 8px;
 `;
-
-export const IconContainer = styled(Flex)`
-  width: 32px;
-  height: 32px;
-  background-color: "transparent";
-`;

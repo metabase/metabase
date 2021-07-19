@@ -278,8 +278,8 @@ function getEngineFormFields(engine, details, id) {
     });
 }
 
-const ENGINES = MetabaseSettings.get("engines");
-const ENGINE_OPTIONS = Object.entries(ENGINES || {})
+const ENGINES = MetabaseSettings.get("engines", {});
+const ENGINE_OPTIONS = Object.entries(ENGINES)
   .map(([engine, info]) => ({
     name: info["driver-name"],
     value: engine,
@@ -287,7 +287,7 @@ const ENGINE_OPTIONS = Object.entries(ENGINES || {})
   .sort((a, b) => a.name.localeCompare(b.name));
 
 // use top level constant for engines so we only need to compute these maps once
-const ENGINE_SUPERSEDES_MAPS = Object.keys(ENGINES || {}).reduce(
+const ENGINE_SUPERSEDES_MAPS = Object.keys(ENGINES).reduce(
   (acc, engine) => {
     const newEngine = ENGINES[engine]["superseded-by"];
     if (newEngine) {

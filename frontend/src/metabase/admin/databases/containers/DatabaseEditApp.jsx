@@ -215,7 +215,7 @@ export default class DatabaseEditApp extends Component {
                   <DriverWarning
                     engine={selectedEngine}
                     ml={26}
-                    data-testid={"database-setup-driver-warning"}
+                    data-testid="database-setup-driver-warning"
                   />
                   {addingNewDatabase && (
                     <AddDatabaseHelpCard
