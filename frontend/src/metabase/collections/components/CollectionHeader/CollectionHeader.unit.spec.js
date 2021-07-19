@@ -56,6 +56,18 @@ describe("permissions link", () => {
 
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
     });
+
+    it("when isPersonalCollectionChild is truthy", () => {
+      render(
+        <Header
+          isAdmin={true}
+          collection={collection}
+          isPersonalCollectionChild={true}
+        />,
+      );
+
+      expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
+    });
   });
 
   describe("should be displayed", () => {

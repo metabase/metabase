@@ -36,11 +36,17 @@ function Title({
   );
 }
 
-function PermissionsLink({ collection, isAdmin, isPersonal }) {
+function PermissionsLink({
+  collection,
+  isAdmin,
+  isPersonal,
+  isPersonalCollectionChild,
+}) {
   const tooltip = t`Edit the permissions for this collection`;
   const link = `${Urls.collection(collection)}/permissions`;
 
-  const canChangePermissions = isAdmin && !isPersonal;
+  const canChangePermissions =
+    isAdmin && !isPersonal && !isPersonalCollectionChild;
 
   return canChangePermissions ? (
     <Tooltip tooltip={tooltip}>
