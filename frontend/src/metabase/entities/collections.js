@@ -9,6 +9,7 @@ import { createSelector } from "reselect";
 import { GET } from "metabase/lib/api";
 
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
+import { isPersonalCollection } from "metabase/collections/utils";
 
 import { t } from "ttag";
 
@@ -171,10 +172,6 @@ const Collections = createEntity({
 });
 
 export default Collections;
-
-export function isPersonalCollection(collection) {
-  return typeof collection.personal_owner_id === "number";
-}
 
 export function getCollectionIcon(collection) {
   if (collection.id === PERSONAL_COLLECTIONS.id) {
