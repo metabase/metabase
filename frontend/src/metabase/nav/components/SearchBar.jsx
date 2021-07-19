@@ -20,7 +20,7 @@ const ActiveSearchColor = lighten(color("nav"), 0.1);
 
 import Search from "metabase/entities/search";
 
-const SearchWrapper = Flex.extend`
+const SearchWrapper = styled(Flex)`
   position: relative;
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};

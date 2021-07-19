@@ -4,6 +4,8 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import styled from "styled-components";
+
 import { color as c, lighten, darken } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
@@ -205,7 +207,7 @@ export default class NotebookStep extends React.Component {
   }
 }
 
-const ColorButton = Button.extend`
+const ColorButton = styled(Button)`
   border: none;
   color: ${({ color }) => (color ? color : c("text-medium"))}
   background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};
