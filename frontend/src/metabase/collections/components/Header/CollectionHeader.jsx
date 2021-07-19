@@ -14,7 +14,7 @@ import CollectionEditMenu from "metabase/collections/components/CollectionEditMe
 import {
   DescriptionTooltipIcon,
   ToggleMobileSidebarIcon,
-} from "./Header.styled";
+} from "./CollectionHeader.styled";
 
 function Title({
   collection: { description, name },
@@ -103,7 +103,7 @@ function Menu(props) {
   );
 }
 
-export default function Header(props) {
+export default function CollectionHeader(props) {
   const { collection } = props;
   const isPersonal = isPersonalCollection(collection);
   const hasWritePermission = collection && collection.can_write;

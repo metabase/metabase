@@ -2,7 +2,7 @@ import React from "react";
 import "@testing-library/jest-dom/extend-expect";
 import { render, screen } from "@testing-library/react";
 
-import Header from "./Header";
+import Header from "./CollectionHeader";
 
 const collection = {
   name: "Name",
