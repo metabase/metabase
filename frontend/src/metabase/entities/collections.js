@@ -9,8 +9,12 @@ import { createSelector } from "reselect";
 import { GET } from "metabase/lib/api";
 
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
+import { isPersonalCollection } from "metabase/collections/utils";
 
 import { t } from "ttag";
+
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { getFormSelector } from "./collections/forms";
 
 const listCollectionsTree = GET("/api/collection/tree");
 const listCollections = GET("/api/collection");
@@ -79,10 +83,11 @@ const Collections = createEntity({
   objectSelectors: {
     getName: collection => collection && collection.name,
     getUrl: collection => Urls.collection(collection),
-    getIcon: collection => ({ name: "folder" }),
+    getIcon: getCollectionIcon,
   },
 
   selectors: {
+    getForm: getFormSelector,
     getExpandedCollectionsById: createSelector(
       [
         state => state.entities.collections,
@@ -124,43 +129,6 @@ const Collections = createEntity({
     ),
   },
 
-  form: {
-    fields: (
-      values = {
-        color: color("brand"),
-      },
-    ) => [
-      {
-        name: "name",
-        title: t`Name`,
-        placeholder: t`My new fantastic collection`,
-        autoFocus: true,
-        validate: name =>
-          (!name && t`Name is required`) ||
-          (name && name.length > 100 && t`Name must be 100 characters or less`),
-      },
-      {
-        name: "description",
-        title: t`Description`,
-        type: "text",
-        placeholder: t`It's optional but oh, so helpful`,
-        normalize: description => description || null, // expected to be nil or non-empty string
-      },
-      {
-        name: "color",
-        title: t`Color`,
-        type: "hidden",
-        initial: () => color("brand"),
-        validate: color => !color && t`Color is required`,
-      },
-      {
-        name: "parent_id",
-        title: t`Collection it's saved in`,
-        type: "collection",
-      },
-    ],
-  },
-
   getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.parent_id, getState());
     return type && `collection=${type}`;
@@ -168,6 +136,20 @@ const Collections = createEntity({
 });
 
 export default Collections;
+
+export function getCollectionIcon(collection) {
+  if (collection.id === PERSONAL_COLLECTIONS.id) {
+    return { name: "group" };
+  }
+  if (isPersonalCollection(collection)) {
+    return { name: "person" };
+  }
+  const authorityLevel =
+    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+  return authorityLevel
+    ? { name: authorityLevel.icon, color: color(authorityLevel.color) }
+    : { name: "folder" };
+}
 
 // API requires items in "root" collection be persisted with a "null" collection ID
 // Also ensure it's parsed as a number

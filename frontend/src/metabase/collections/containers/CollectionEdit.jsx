@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import { getValues } from "redux-form";
 
 import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
@@ -7,16 +8,35 @@ import { goBack, push } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 import Collection from "metabase/entities/collections";
 
+const FORM_NAME = "edit-collection";
+
+function mapStateToProps(state, props) {
+  const formValues = getValues(state.form[FORM_NAME]);
+  return {
+    form: Collection.selectors.getForm(state, { ...props, formValues }),
+  };
+}
+
+function Form({ collection, form, onSave, onClose }) {
+  return (
+    <Collection.ModalForm
+      formName={FORM_NAME}
+      form={form}
+      collection={collection}
+      onSaved={onSave}
+      onClose={onClose}
+    />
+  );
+}
+
+const CollectionForm = connect(mapStateToProps)(Form);
+
 const mapDispatchToProps = {
   push,
   goBack,
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
-export default class CollectionEdit extends Component {
+class CollectionEdit extends Component {
   onSave = updatedCollection => {
     const url = Urls.collection(updatedCollection);
     this.props.push(url);
@@ -27,9 +47,9 @@ export default class CollectionEdit extends Component {
     return (
       <Collection.Loader id={collectionId}>
         {({ collection, update }) => (
-          <Collection.ModalForm
+          <CollectionForm
             collection={collection}
-            onSaved={this.onSave}
+            onSave={this.onSave}
             onClose={this.props.goBack}
           />
         )}
@@ -37,3 +57,8 @@ export default class CollectionEdit extends Component {
     );
   }
 }
+
+export default connect(
+  null,
+  mapDispatchToProps,
+)(CollectionEdit);

@@ -1,8 +1,13 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import Link from "metabase/components/Link";
 import { color } from "metabase/lib/colors";
 
 import { SIDEBAR_SPACER } from "../constants";
+
+const dimmedIconCss = css`
+  fill: ${color("white")};
+  opacity: 0.8;
+`;
 
 const CollectionLink = styled(Link)`
   margin-left: ${props =>
@@ -34,9 +39,14 @@ const CollectionLink = styled(Link)`
         ? color("brand")
         : color("bg-medium")};
   }
+
   .Icon {
-    fill: ${props => props.selected && "white"};
-    opacity: ${props => props.selected && "0.8"};
+    ${props => props.selected && props.dimmedIcon && dimmedIconCss}
+  }
+
+  .Icon-chevronright,
+  .Icon-chevrondown {
+    ${props => props.selected && dimmedIconCss}
   }
 `;
 

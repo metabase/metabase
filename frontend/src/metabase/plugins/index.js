@@ -1,3 +1,4 @@
+import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 
 // functions called when the application is started
@@ -44,6 +45,8 @@ export const PLUGIN_SELECTORS = {
   getLogoBackgroundClass: (state, props) => "bg-white",
 };
 
+export const PLUGIN_FORM_WIDGETS = {};
+
 // snippet sidebar
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
 export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
@@ -52,4 +55,22 @@ export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,
+};
+
+const AUTHORITY_LEVEL_REGULAR = {
+  type: null,
+  icon: "folder",
+};
+
+export const PLUGIN_COLLECTIONS = {
+  authorityLevelFormFields: [],
+  isRegularCollection: () => true,
+  AUTHORITY_LEVEL: {
+    [AUTHORITY_LEVEL_REGULAR.type]: AUTHORITY_LEVEL_REGULAR,
+    regular: AUTHORITY_LEVEL_REGULAR, // just an alias
+  },
+};
+
+export const PLUGIN_COLLECTION_COMPONENTS = {
+  CollectionAuthorityLevelIcon: PluginPlaceholder,
 };

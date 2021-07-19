@@ -6,6 +6,7 @@ Cypress.Commands.add(
     display = "table",
     database = 1,
     visualization_settings = {},
+    collection_id = null,
     collection_position = null,
   } = {}) => {
     cy.log(`Create a question: ${name}`);
@@ -18,6 +19,7 @@ Cypress.Commands.add(
       },
       display,
       visualization_settings,
+      collection_id,
       collection_position,
     });
   },

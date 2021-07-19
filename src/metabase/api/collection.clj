@@ -566,6 +566,7 @@
      {:name        name
       :color       color
       :description description
+      :authority_level authority_level
       :namespace   namespace}
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))

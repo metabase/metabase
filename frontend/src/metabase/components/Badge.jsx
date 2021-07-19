@@ -6,7 +6,14 @@ import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 
-export default function Badge({ icon, name, className, children, ...props }) {
+export default function Badge({
+  icon,
+  iconColor,
+  name,
+  className,
+  children,
+  ...props
+}) {
   return (
     <MaybeLink
       className={cx(className, "flex align-center text-bold text-medium", {
@@ -14,7 +21,14 @@ export default function Badge({ icon, name, className, children, ...props }) {
       })}
       {...props}
     >
-      {icon && <Icon name={icon} mr={children ? "5px" : null} size={11} />}
+      {icon && (
+        <Icon
+          name={icon}
+          mr={children ? "5px" : null}
+          color={iconColor}
+          size={12}
+        />
+      )}
       {children && <span className="text-wrap">{children}</span>}
     </MaybeLink>
   );

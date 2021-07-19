@@ -6,7 +6,9 @@ import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
-import Collection from "metabase/entities/collections";
+import Collection, {
+  PERSONAL_COLLECTIONS,
+} from "metabase/entities/collections";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 
@@ -90,6 +92,7 @@ class CollectionSidebar extends React.Component {
                     highlighted={highlighted}
                     hovered={hovered}
                   >
+                    <CollectionsList.Icon collection={root} />
                     {t`Our analytics`}
                   </CollectionLink>
                 )}
@@ -114,7 +117,6 @@ class CollectionSidebar extends React.Component {
               onClose={this.onClose}
               onOpen={this.onOpen}
               collections={currentUserPersonalCollections(list, currentUser.id)}
-              initialIcon="person"
               filter={this.filterPersonalCollections}
               currentCollection={collectionId}
             />
@@ -128,7 +130,7 @@ class CollectionSidebar extends React.Component {
               to={Urls.collection({ id: "users" })}
               className="flex align-center text-bold text-light text-brand-hover"
             >
-              <Icon name="group" mr={1} />
+              <CollectionsList.Icon collection={PERSONAL_COLLECTIONS} />
               {t`Other users' personal collections`}
             </Link>
           )}
