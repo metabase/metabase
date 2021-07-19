@@ -15,7 +15,6 @@ import {
 import RootCollectionLink from "./RootCollectionLink/RootCollectionLink";
 import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
 import Collections from "./Collections/Collections";
-
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { getParentPath } from "metabase/collections/utils";
