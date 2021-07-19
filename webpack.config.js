@@ -29,8 +29,8 @@ const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 
 // default NODE_ENV to development
-const NODE_ENV = process.env["NODE_ENV"] || "development";
-const devMode = process.env.NODE_ENV !== "production";
+const NODE_ENV = process.env.NODE_ENV || "development";
+const devMode = NODE_ENV !== "production";
 
 // Babel:
 const BABEL_CONFIG = {
@@ -38,10 +38,9 @@ const BABEL_CONFIG = {
 };
 
 const CSS_CONFIG = {
-  localIdentName:
-    NODE_ENV !== "production"
-      ? "[name]__[local]___[hash:base64:5]"
-      : "[hash:base64:5]",
+  localIdentName: devMode
+    ? "[name]__[local]___[hash:base64:5]"
+    : "[hash:base64:5]",
   importLoaders: 1,
 };
 
