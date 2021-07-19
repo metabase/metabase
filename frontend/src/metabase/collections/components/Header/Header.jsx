@@ -4,6 +4,7 @@ import { Flex } from "grid-styled";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import { isPersonalCollection } from "metabase/collections/utils";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import PageHeading from "metabase/components/type/PageHeading";
@@ -35,14 +36,13 @@ function Title({
   );
 }
 
-function PermissionsLink({ collection, isAdmin, isPersonalCollectionChild }) {
-  const shouldRender =
-    isAdmin && !collection.personal_owner_id && !isPersonalCollectionChild;
-
+function PermissionsLink({ collection, isAdmin, isPersonal }) {
   const tooltip = t`Edit the permissions for this collection`;
   const link = `${Urls.collection(collection)}/permissions`;
 
-  return shouldRender ? (
+  const canChangePermissions = isAdmin && !isPersonal;
+
+  return canChangePermissions ? (
     <Tooltip tooltip={tooltip}>
       <Link to={link}>
         <IconWrapper>
@@ -53,13 +53,18 @@ function PermissionsLink({ collection, isAdmin, isPersonalCollectionChild }) {
   ) : null;
 }
 
-function EditMenu({ collection, isAdmin, isRoot }) {
-  const shouldRender =
-    collection && collection.can_write && !collection.personal_owner_id;
-
+function EditMenu({
+  collection,
+  hasWritePermission,
+  isAdmin,
+  isPersonal,
+  isRoot,
+}) {
   const tooltip = t`Edit collection`;
 
-  return shouldRender ? (
+  const canEditCollection = hasWritePermission && !isPersonal;
+
+  return canEditCollection ? (
     <CollectionEditMenu
       tooltip={tooltip}
       collection={collection}
@@ -69,13 +74,15 @@ function EditMenu({ collection, isAdmin, isRoot }) {
   ) : null;
 }
 
-function CreateCollectionLink({ collection, collectionId }) {
-  const shouldRender = collection && collection.can_write;
-
+function CreateCollectionLink({
+  collection,
+  collectionId,
+  hasWritePermission,
+}) {
   const tooltip = t`New collection`;
   const link = Urls.newCollection(collectionId);
 
-  return shouldRender ? (
+  return hasWritePermission ? (
     <Tooltip tooltip={tooltip}>
       <Link to={link}>
         <IconWrapper>
@@ -97,10 +104,18 @@ function Menu(props) {
 }
 
 export default function Header(props) {
+  const { collection } = props;
+  const isPersonal = isPersonalCollection(collection);
+  const hasWritePermission = collection && collection.can_write;
+
   return (
     <Flex align="center" py={3}>
       <Title {...props} />
-      <Menu {...props} />
+      <Menu
+        {...props}
+        isPersonal={isPersonal}
+        hasWritePermission={hasWritePermission}
+      />
     </Flex>
   );
 }
