@@ -120,6 +120,19 @@ describeWithToken("formatting > whitelabel", () => {
       cy.findByText(`${COMPANY_NAME} is up and running.`);
       cy.findByText("Metabase is up and running.").should("not.exist");
     });
+
+    it.skip("should not show the old name in the admin panel (metabase#17043)", () => {
+      cy.reload();
+
+      cy.findByDisplayValue(COMPANY_NAME);
+      cy.contains(
+        `These are the primary colors used in charts and throughout ${COMPANY_NAME}.`,
+      );
+      cy.contains(`The top nav bar of ${COMPANY_NAME}.`);
+
+      cy.visit("/admin/settings/general");
+      cy.contains(`The name used for this instance of ${COMPANY_NAME}.`);
+    });
   });
 
   describe("company color theme", () => {
