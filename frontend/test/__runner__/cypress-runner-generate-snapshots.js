@@ -13,22 +13,24 @@ const generateSnapshots = async (baseUrl, exitFunction) => {
   const snapshotConfig = getConfig(baseUrl);
 
   try {
-    const results = await cypress.run(snapshotConfig);
+    const { status, message, totalFailed, failures } = await cypress.run(
+      snapshotConfig,
+    );
 
     // At least one test failed. We can't continue to the next step.
     // Cypress tests rely on snapshots correctly generated at this stage.
-    if (results.totalFailed > 0) {
+    if (totalFailed > 0) {
       await exitFunction(1);
     }
 
     // Something went wrong and Cypress failed to even run tests
-    if (results.status === "failed" && results.failures) {
-      console.error(results.message);
+    if (status === "failed" && failures) {
+      console.error(message);
 
-      await exitFunction(results.failures);
+      await exitFunction(failures);
     }
   } catch (e) {
-    console.error("Unable to generate snapshots\n", e);
+    console.error("Unable to generate snapshots!\n", e);
 
     await exitFunction(1);
   }

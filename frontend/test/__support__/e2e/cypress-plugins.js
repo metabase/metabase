@@ -17,6 +17,8 @@
 const hasEnterpriseToken =
   process.env["ENTERPRISE_TOKEN"] && process.env["MB_EDITION"] === "ee";
 
+const isQaDatabase = process.env["QA_DB_ENABLED"];
+
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 const webpack = require("@cypress/webpack-preprocessor");
@@ -54,6 +56,9 @@ module.exports = (on, config) => {
    **                          CONFIG                                **
    ********************************************************************/
 
+  if (!isQaDatabase) {
+    config.ignoreTestFiles = "**/metabase-db/**";
+  }
   config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
 
   return config;
