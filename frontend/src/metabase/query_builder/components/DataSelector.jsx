@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import _ from "underscore";
 
 import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
@@ -21,12 +20,11 @@ import Tables from "metabase/entities/tables";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
-  isSavedQuestion,
 } from "./data-search";
-import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSchemaName } from "metabase/schema";
+
+import _ from "underscore";
 
 const MIN_SEARCH_LENGTH = 2;
 
@@ -114,24 +112,35 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
 };
 
 @connect(
-  (state, ownProps) => ({
-    metadata: getMetadata(state),
-    databases:
+  (state, ownProps) => {
+    const databases =
       ownProps.databases ||
       Databases.selectors.getList(state, {
         entityQuery: ownProps.databaseQuery,
       }) ||
-      [],
-    hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { include: "tables", saved: true },
-    }),
-    hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { saved: true },
-    }),
-    hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
-      entityQuery: { include: "tables" },
-    }),
-  }),
+      [];
+
+    const fakeSavedQuestionDatabase = databases.find(d => d.is_saved_questions);
+    databases.unshift({
+      ...fakeSavedQuestionDatabase,
+      isFakeModels: true,
+      name: t`Models`,
+    });
+
+    return {
+      metadata: getMetadata(state),
+      databases,
+      hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
+        entityQuery: { include: "tables", saved: true },
+      }),
+      hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
+        entityQuery: { saved: true },
+      }),
+      hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
+        entityQuery: { include: "tables" },
+      }),
+    };
+  },
   {
     fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
     fetchSchemas: databaseId => Schemas.actions.fetchList({ dbId: databaseId }),
@@ -155,7 +164,6 @@ export class UnconnectedDataSelector extends Component {
       selectedTableId: props.selectedTableId,
       selectedFieldId: props.selectedFieldId,
       searchText: "",
-      isSavedQuestionPickerShown: false,
     };
     const computedState = this._getComputedState(props, state);
     this.state = {
@@ -334,15 +342,6 @@ export class UnconnectedDataSelector extends Component {
     }
   }
 
-  async componentDidMount() {
-    if (this.props.selectedTableId) {
-      await this.props.fetchFields(this.props.selectedTableId);
-      if (this.isSavedQuestionSelected()) {
-        this.showSavedQuestionPicker();
-      }
-    }
-  }
-
   async componentDidUpdate() {
     // this logic cleans up invalid states, e.x. if a selectedSchema's database
     // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
@@ -355,12 +354,10 @@ export class UnconnectedDataSelector extends Component {
     const invalidSchema =
       selectedDatabase &&
       selectedSchema &&
-      selectedSchema.database.id !== selectedDatabase.id &&
-      !selectedSchema.database.is_saved_questions;
+      selectedSchema.database.id !== selectedDatabase.id;
     const invalidTable =
       selectedSchema &&
       selectedTable &&
-      !isSavedQuestion(selectedTable.id) &&
       selectedTable.schema.id !== selectedSchema.id;
     const invalidField =
       selectedTable &&
@@ -385,9 +382,7 @@ export class UnconnectedDataSelector extends Component {
 
   async hydrateActiveStep() {
     const { steps } = this.props;
-    if (this.isSavedQuestionSelected()) {
-      await this.switchToStep(DATABASE_STEP);
-    } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
+    if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
     } else if (this.state.selectedSchemaId && steps.includes(TABLE_STEP)) {
       await this.switchToStep(TABLE_STEP);
@@ -575,19 +570,12 @@ export class UnconnectedDataSelector extends Component {
     }
   };
 
-  showSavedQuestionPicker = () =>
-    this.setState({ isSavedQuestionPickerShown: true });
-
   onChangeDatabase = async database => {
-    if (database.is_saved_questions) {
-      this.showSavedQuestionPicker();
-      return;
-    }
-
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
     }
-    if (this.state.selectedDatabaseId != null) {
+
+    if (this.state.selectedDatabaseId != null || database.isFakeModels) {
       // If we already had a database selected, we need to go back and clear
       // data before advancing to the next step.
       await this.previousStep();
@@ -659,11 +647,6 @@ export class UnconnectedDataSelector extends Component {
       : "flex align-center";
   }
 
-  handleSavedQuestionPickerClose = () =>
-    this.setState({
-      isSavedQuestionPickerShown: false,
-    });
-
   renderActiveStep() {
     const { combineDatabaseSchemaSteps, hasTableSearch } = this.props;
     const props = {
@@ -703,16 +686,6 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
-  isSavedQuestionSelected = () => isSavedQuestion(this.props.selectedTableId);
-
-  handleSavedQuestionSelect = async table => {
-    if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table.id);
-    }
-    this.popover.current.toggle();
-    this.handleClose();
-  };
-
   showTableSearch = () => {
     const { hasTableSearch, steps } = this.props;
     const { activeStep } = this.state;
@@ -744,27 +717,15 @@ export class UnconnectedDataSelector extends Component {
   };
 
   render() {
-    const {
-      searchText,
-      isSavedQuestionPickerShown,
-      selectedTable,
-    } = this.state;
+    const { searchText } = this.state;
     const { canChangeDatabase, selectedDatabaseId } = this.props;
-    const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
+    const searchDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
-
-    const searchPlaceholder = isSavedQuestionPickerShown
-      ? t`Search for a question`
-      : t`Search for a table...`;
-    const searchModels = isSavedQuestionPickerShown
-      ? ["card"]
-      : ["card", "table"];
 
     return (
       <PopoverWithTrigger
         id="DataPopover"
-        autoWidth
         ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
         triggerElement={this.getTriggerElement()}
@@ -782,34 +743,18 @@ export class UnconnectedDataSelector extends Component {
             className="bg-white m1"
             onChange={this.handleSearchTextChange}
             value={searchText}
-            placeholder={searchPlaceholder}
+            placeholder={t`Search for a table...`}
             autoFocus
           />
         )}
         {isSearchActive && (
           <SearchResults
-            searchModels={searchModels}
             searchQuery={searchText.trim()}
-            databaseId={currentDatabaseId}
+            databaseId={searchDatabaseId}
             onSelect={this.handleSearchItemSelect}
           />
         )}
-        {!isSearchActive &&
-          (isSavedQuestionPickerShown ? (
-            <SavedQuestionPicker
-              collectionName={
-                selectedTable &&
-                selectedTable.schema &&
-                getSchemaName(selectedTable.schema.id)
-              }
-              tableId={selectedTable && selectedTable.id}
-              databaseId={currentDatabaseId}
-              onSelect={this.handleSavedQuestionSelect}
-              onBack={this.handleSavedQuestionPickerClose}
-            />
-          ) : (
-            this.renderActiveStep()
-          ))}
+        {!isSearchActive && this.renderActiveStep()}
       </PopoverWithTrigger>
     );
   }
@@ -899,9 +844,9 @@ const DatabaseSchemaPicker = ({
   }
 
   const sections = databases.map(database => ({
-    name: database.is_saved_questions ? t`Saved Questions` : database.name,
+    name: database.name,
     items:
-      !database.is_saved_questions && database.schemas.length > 1
+      database.schemas.length > 1
         ? database.schemas.map(schema => ({
             schema,
             name: schema.displayName(),
@@ -937,7 +882,15 @@ const DatabaseSchemaPicker = ({
       className="text-brand"
       sections={sections}
       onChange={item => onChangeSchema(item.schema)}
-      onChangeSection={(_section, sectionIndex) => {
+      onChangeSection={(section, sectionIndex) => {
+        if (
+          selectedDatabase &&
+          selectedDatabase.id === databases[sectionIndex].id
+        ) {
+          // You can't change to the current database. If you click on that,
+          // still return "true" to let the AccordionList collapse that section.
+          return true;
+        }
         onChangeDatabase(databases[sectionIndex]);
         return true;
       }}
@@ -973,7 +926,8 @@ const TablePicker = ({
     return null;
   }
 
-  const isSavedQuestionList = selectedDatabase.is_saved_questions;
+  const isSavedQuestionList =
+    selectedDatabase.is_saved_questions && !selectedDatabase.isFakeModels;
   const header = (
     <div className="flex flex-wrap align-center">
       <span
@@ -997,11 +951,21 @@ const TablePicker = ({
     const sections = [
       {
         name: header,
-        items: tables.map(table => ({
-          name: table.displayName(),
-          table: table,
-          database: selectedDatabase,
-        })),
+        items: selectedDatabase.isFakeModels
+          ? tables
+              .filter(table => {
+                return table.displayName().startsWith("MODEL: ");
+              })
+              .map(table => ({
+                name: table.displayName(),
+                table: table,
+                database: selectedDatabase,
+              }))
+          : tables.map(table => ({
+              name: table.displayName(),
+              table: table,
+              database: selectedDatabase,
+            })),
         loading: tables.length === 0 && isLoading,
       },
     ];
