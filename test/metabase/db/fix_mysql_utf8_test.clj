@@ -86,11 +86,15 @@
             (remove-utf8mb4-migrations! jdbc-spec)
             (binding [db/*db-connection* jdbc-spec]
               (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
-                (is (= {:character-set charset, :collation collation}
-                       (db-charset)
-                       (table-charset)
-                       (column-charset))
-                    (format "Make sure we converted the DB to %s correctly" charset))
+                (let [db-cs (db-charset)
+                      tb-cs (table-charset)
+                      col-cs (column-charset)]
+                  (is (every? (cond-> #{charset} (= charset "utf8") (conj "utf8mb3"))
+                              (map :character-set [db-cs tb-cs col-cs]))
+                      (format "Make sure we converted the DB to %s correctly" charset))
+                  (is (every? (cond-> #{collation} (= collation "utf8_general_ci") (conj "utf8mb3_general_ci"))
+                              (map :collation [db-cs tb-cs col-cs]))
+                      (format "Make sure we converted the DB to %s correctly" charset)))
                 (is (thrown?
                      Exception
                      (insert-row!))
