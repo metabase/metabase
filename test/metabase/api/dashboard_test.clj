@@ -726,7 +726,7 @@
                 :created_at             true
                 :updated_at             true}
                (-> (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
-                                         {:cardId                 card-id
+                                         {:card_id                card-id
                                           :row                    4
                                           :col                    4
                                           :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
@@ -751,7 +751,7 @@
     (with-dashboards-in-writeable-collection [dashboard-id]
       (card-api-test/with-cards-in-readable-collection [card-id series-id-1]
         (let [dashboard-card (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
-                                                   {:cardId card-id
+                                                   {:card_id card-id
                                                     :row    4
                                                     :col    4
                                                     :series [{:id series-id-1}]})]
