@@ -1,4 +1,4 @@
-const LEVELS = [4, 8, 16, 32, 64, 128];
+import { SPACE_LEVELS as levels } from "./constants";
 
 /**
  * Returns a pixel amount: 4px, 8px, 16px, on to 128px
@@ -6,7 +6,7 @@ const LEVELS = [4, 8, 16, 32, 64, 128];
  * @returns {string}
  */
 export function space(level = 0) {
-  const spaceInteger = LEVELS[level];
+  const spaceInteger = levels[level];
 
-  return spaceInteger ? spaceInteger + "px" : "";
+  return spaceInteger || "";
 }
