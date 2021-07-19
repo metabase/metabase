@@ -48,6 +48,7 @@ export function SegmentedControl({
         const isLast = index === options.length - 1;
         const id = `${name}-${option.value}`;
         const labelId = `${name}-${option.value}`;
+        const iconOnly = !option.name;
         return (
           <SegmentedItem
             key={option.value}
@@ -60,9 +61,10 @@ export function SegmentedControl({
               isSelected={isSelected}
               selectedColor={option.selectedColor || "brand"}
               inactiveColor={inactiveColor}
+              compact={iconOnly}
             >
               {option.icon && (
-                <ItemIcon name={option.icon} iconOnly={!option.name} />
+                <ItemIcon name={option.icon} iconOnly={iconOnly} />
               )}
               <SegmentedControlRadio
                 id={id}

@@ -30,9 +30,9 @@ export const SegmentedItemLabel = styled.label`
   justify-content: center;
   position: relative;
   font-weight: bold;
-  padding: 6px 12px;
   color: ${props =>
     props.isSelected ? color(props.selectedColor) : color(props.inactiveColor)};
+  padding: ${props => (props.compact ? "8px" : "8px 12px")};
   cursor: pointer;
 
   :hover {
