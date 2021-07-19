@@ -287,7 +287,7 @@ const createDashboard = () =>
 
 const addCardToDashboard = ({ dashboardId, questionId }) =>
   cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-    cardId: questionId,
+    card_id: questionId,
   });
 
 const mapParameters = ({ dashboardId, dashcardId, questionId }) =>
