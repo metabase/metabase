@@ -57,7 +57,6 @@ const runCypress = async (baseUrl, exitFunction) => {
     config: {
       baseUrl,
     },
-    ignoreTestFiles: isQaDatabase ? null : "**/metabase-db/**",
     spec: isFolder && getSourceFolder(),
   };
 

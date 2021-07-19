@@ -883,6 +883,9 @@ jobs:
       test-files:
         type: string
         default: ""
+      qa-db:
+        type: boolean
+        default: false
       before-steps:
         type: steps
         default: []
@@ -891,6 +894,7 @@ jobs:
     environment:
       MB_EDITION: << parameters.edition >>
       CYPRESS_GROUP:  << parameters.cypress-group >>
+      QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
     steps:
       - attach-workspace
@@ -1296,6 +1300,7 @@ workflows:
           e: fe-mongo-4
           cypress-group: "mongo"
           source-folder: mongo
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 27017
@@ -1308,6 +1313,7 @@ workflows:
           e: fe-postgres-12
           cypress-group: "postgres"
           source-folder: postgres
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 5432
@@ -1320,6 +1326,7 @@ workflows:
           e: fe-mysql-8
           cypress-group: "mysql"
           source-folder: mysql
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 3306
