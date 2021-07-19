@@ -161,7 +161,7 @@ const Collections = createEntity({
         title: t`Collection it's saved in`,
         type: "collection",
       },
-      ...PLUGIN_COLLECTIONS.formFields,
+      ...PLUGIN_COLLECTIONS.authorityLevelFormFields,
     ],
   },
 
