@@ -69,6 +69,8 @@ describe("smoketest > user", () => {
     });
     cy.button("Visualize").click();
 
+    cy.wait(1000); // slide-in animation for the table
+
     cy.get("@firstTableCell").contains("Aerodynamic Bronze Hat");
 
     cy.icon("table2").click();
@@ -181,6 +183,8 @@ describe("smoketest > user", () => {
     cy.findByText("Pick a column to group by").click();
     cy.icon("calendar").click();
     cy.button("Visualize").click();
+
+    cy.wait(1000); // slide-in animation for the table
 
     cy.get("svg");
     cy.findAllByText("Created At");
