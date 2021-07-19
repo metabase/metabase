@@ -40,13 +40,13 @@ describe("permissions link", () => {
   const ariaLabel = "lock icon";
 
   describe("should not be displayed", () => {
-    it("when isAdmin is not passed", () => {
+    it("if user is not admin", () => {
       render(<Header collection={collection} />);
 
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
     });
 
-    it("when collection includes personal_owner_id", () => {
+    it("for personal collections", () => {
       render(
         <Header
           isAdmin={true}
@@ -59,31 +59,25 @@ describe("permissions link", () => {
   });
 
   describe("should be displayed", () => {
-    it("when user is admin, collection does not include personal_owner_id and isPersonalCollectionChild is falsey", () => {
-      render(
-        <Header
-          collection={collection}
-          isAdmin={true}
-          isPersonalCollectionChild={false}
-        />,
-      );
+    it("if user is admin", () => {
+      render(<Header collection={collection} isAdmin={true} />);
 
       screen.getByLabelText(ariaLabel);
     });
   });
 });
 
-describe("permissions link", () => {
+describe("link to edit collection", () => {
   const ariaLabel = "pencil icon";
 
   describe("should not be displayed", () => {
-    it("when collection.can_write is falsey", () => {
+    it("when no detail is passed in the collection to determine if user can change collection", () => {
       render(<Header collection={collection} />);
 
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
     });
 
-    it("when collection includes personal_owner_id", () => {
+    it("if user is not allowed to change collection", () => {
       render(<Header collection={{ ...collection, can_write: false }} />);
 
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
@@ -91,7 +85,7 @@ describe("permissions link", () => {
   });
 
   describe("should be displayed", () => {
-    it("when collection.can_write is truthy and collection.personal_owner_id is falsey", () => {
+    it("if user is allowed to change collection", () => {
       render(<Header collection={{ ...collection, can_write: true }} />);
 
       screen.getByLabelText(ariaLabel);
@@ -103,7 +97,7 @@ describe("link to create a new collection", () => {
   const ariaLabel = "new_folder icon";
 
   describe("should not be displayed", () => {
-    it("when collection.can_write is falsey", () => {
+    it("if user is not allowed to change collection", () => {
       render(<Header collection={collection} />);
 
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
@@ -111,7 +105,7 @@ describe("link to create a new collection", () => {
   });
 
   describe("should be displayed", () => {
-    it("when collection.can_write is truthy", () => {
+    it("if user is allowed to change collection", () => {
       render(<Header collection={{ ...collection, can_write: true }} />);
 
       screen.getByLabelText(ariaLabel);
