@@ -18,7 +18,7 @@ import Table from "metabase/entities/tables";
 
 function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
-    return color("warning");
+    return color("saturated-yellow");
   }
   switch (props.type) {
     case "collection":
