@@ -10,7 +10,7 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
   size: 20,
 })`
   cursor: pointer;
-  margin: 4px ${space(2)} 0 ${space(1)};
+  margin: ${space(0)} ${space(2)} 0 ${space(1)};
 
   ${breakpointMinSmall} {
     display: none;
