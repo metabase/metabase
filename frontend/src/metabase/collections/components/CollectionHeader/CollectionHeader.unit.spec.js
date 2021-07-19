@@ -57,7 +57,7 @@ describe("permissions link", () => {
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
     });
 
-    it("when isPersonalCollectionChild is truthy", () => {
+    it("if a collection is a personal collection child", () => {
       render(
         <Header
           isAdmin={true}
