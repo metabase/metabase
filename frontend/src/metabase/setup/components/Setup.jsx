@@ -203,13 +203,12 @@ export default class Setup extends Component {
             </div>
           </div>
 
-          <DriverWarning
-            engine={selectedDatabaseEngine}
-            ml={26}
-            style={{ marginBottom: "8px" }}
-            data-testid={"database-setup-driver-warning"}
-          />
           <AddDatabaseHelpCardHolder isVisible={isDatabaseHelpCardVisible}>
+            <DriverWarning
+              engine={selectedDatabaseEngine}
+              ml={26}
+              data-testid="database-setup-driver-warning"
+            />
             <AddDatabaseHelpCard
               engine={selectedDatabaseEngine}
               hasCircle={false}
