@@ -318,7 +318,7 @@
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
   [id :as {{:keys [card_id parameter_mappings series], :as dashboard-card} :body}]
-  {card_id             (s/maybe su/IntGreaterThanZero)
+  {card_id             (su/IntGreaterThanZero)
    parameter_mappings [su/Map]}
   (api/check-not-archived (api/write-check Dashboard id))
   (when card_id
