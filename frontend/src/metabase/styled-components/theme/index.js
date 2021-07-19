@@ -1,2 +1,2 @@
 export * from "./media-queries";
-export * from "./spacing";
+export * from "./space";
