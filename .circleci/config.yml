@@ -806,6 +806,7 @@ jobs:
     parameters:
       <<: *Params
     executor: clojure-and-node
+    resource_class: large
     steps:
       - attach-workspace
       - run-on-change:
