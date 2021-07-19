@@ -11,14 +11,12 @@ import Collection from "metabase/entities/collections";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 
 import { Sidebar, ToggleMobileSidebarIcon } from "./CollectionSidebar.styled";
-import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import CollectionSidebarFooter from "./CollectionSidebarFooter/CollectionSidebarFooter";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import CollectionsList from "metabase/collections/components/CollectionsList";
 import CollectionLink from "metabase/collections/components/CollectionLink";
 
-import { SIDEBAR_SPACER } from "metabase/collections/constants";
 import {
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
@@ -121,25 +119,7 @@ class CollectionSidebar extends React.Component {
           </Box>
         </Box>
 
-        <Box className="mt-auto" pb={2} pl={SIDEBAR_SPACER * 2}>
-          {currentUser.is_superuser && (
-            <Link
-              my={2}
-              to={Urls.collection({ id: "users" })}
-              className="flex align-center text-bold text-light text-brand-hover"
-            >
-              <Icon name="group" mr={1} />
-              {t`Other users' personal collections`}
-            </Link>
-          )}
-          <Link
-            to={`/archive`}
-            className="flex align-center text-bold text-light text-brand-hover"
-          >
-            <Icon name="view_archive" mr={1} />
-            {t`View archive`}
-          </Link>
-        </Box>
+        <CollectionSidebarFooter isSuperUser={currentUser.is_superuser} />
       </React.Fragment>
     );
   };
