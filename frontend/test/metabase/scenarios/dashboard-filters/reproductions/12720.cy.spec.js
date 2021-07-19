@@ -47,7 +47,7 @@ describe.skip("issue 12720", () => {
         cy.intercept("POST", `/api/card/${SQL_ID}/query`).as("sqlQuery");
 
         cy.request("POST", "/api/dashboard/1/cards", {
-          cardId: SQL_ID,
+          card_id: SQL_ID,
         }).then(({ body: { id: SQL_DASH_CARD_ID } }) => {
           cy.log(
             "Edit both cards (adjust their size and connect them to the filter)",

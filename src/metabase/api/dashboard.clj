@@ -315,18 +315,17 @@
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
-;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings series], :as dashboard-card} :body}]
-  {cardId             (s/maybe su/IntGreaterThanZero)
+  [id :as {{:keys [card_id parameter_mappings series], :as dashboard-card} :body}]
+  {card_id             (s/maybe su/IntGreaterThanZero)
    parameter_mappings [su/Map]}
   (api/check-not-archived (api/write-check Dashboard id))
-  (when cardId
-    (api/check-not-archived (api/read-check Card cardId)))
-  (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
+  (when card_id
+    (api/check-not-archived (api/read-check Card card_id)))
+  (u/prog1 (api/check-500 (dashboard/add-dashcard! id card_id (-> dashboard-card
                                                                  (assoc :creator_id api/*current-user*)
-                                                                 (dissoc :cardId))))
+                                                                 (dissoc :card_id))))
     (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})))
 
 ;; TODO - we should use schema to validate the format of the Cards :D

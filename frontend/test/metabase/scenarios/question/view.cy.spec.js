@@ -128,7 +128,7 @@ describe("scenarios > question > view", () => {
 
       cy.request("POST", "/api/dashboard/2/cards", {
         id: 2,
-        cardId: 4,
+        card_id: 4,
       });
     });
 

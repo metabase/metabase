@@ -79,7 +79,7 @@ function createDashboard({ dashboardName, questionId }, callback) {
     });
 
     cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-      cardId: questionId,
+      card_id: questionId,
     }).then(({ body: { id: dashCardId } }) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
         cards: [
@@ -279,7 +279,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
         // Add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
+          card_id: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Connect filter to that question
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {

@@ -153,7 +153,7 @@ describe("snapshots", () => {
 
     // dashboard 1: Orders in a dashboard
     cy.createDashboard("Orders in a dashboard");
-    cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
+    cy.request("POST", `/api/dashboard/1/cards`, { card_id: 1 }).then(
       ({ body: { id: dashCardId } }) => {
         cy.request("PUT", `/api/dashboard/1/cards`, {
           cards: [

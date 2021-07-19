@@ -315,7 +315,7 @@ export const saveDashboardAndCards = createThunkAction(
             if (dc.isAdded) {
               const result = await DashboardApi.addcard({
                 dashId: dashboard.id,
-                cardId: dc.card_id,
+                card_id: dc.card_id,
               });
               dispatch(updateDashcardId(dc.id, result.id));
 

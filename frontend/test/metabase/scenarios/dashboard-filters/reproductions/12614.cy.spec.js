@@ -37,11 +37,11 @@ function createDashboardWithNestedCard() {
         name: "Q2",
         query: { "source-table": `card__${body.id}` },
       })
-      .then(({ body: { id: cardId } }) =>
+      .then(({ body: { id: card_id } }) =>
         cy
           .createDashboard("Q2 in a dashboard")
           .then(({ body: { id: dashId } }) => {
-            cy.request("POST", `/api/dashboard/${dashId}/cards`, { cardId });
+            cy.request("POST", `/api/dashboard/${dashId}/cards`, { card_id });
             cy.visit(`/dashboard/${dashId}`);
           }),
       ),

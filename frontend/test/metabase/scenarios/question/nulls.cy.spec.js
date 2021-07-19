@@ -69,7 +69,7 @@ describe("scenarios > question > null", () => {
 
         // add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-          cardId: questionId,
+          card_id: questionId,
         }).then(({ body: { id: dashCardId } }) => {
           // connect filter to that question
           cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
@@ -126,7 +126,7 @@ describe("scenarios > question > null", () => {
 
           [Q1_ID, Q2_ID].forEach((questionId, index) => {
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: questionId,
+              card_id: questionId,
             }).then(({ body: { id: DASHCARD_ID } }) => {
               const CARD_SIZE_X = 6;
 

@@ -63,7 +63,7 @@ describe("scenarios > question > filter", () => {
               cy.log("Add nested card to the dashboard");
 
               cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cardId: Q2_ID,
+                card_id: Q2_ID,
               }).then(({ body: { id: DASH_CARD_ID } }) => {
                 cy.log("Connect dashboard filters to the nested card");
 
@@ -151,7 +151,7 @@ describe("scenarios > question > filter", () => {
             cy.log("Add previously created question to the dashboard");
 
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: QUESTION_ID,
+              card_id: QUESTION_ID,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log("Connect dashboard filter to the aggregated card");
 
@@ -367,7 +367,7 @@ describe("scenarios > question > filter", () => {
         cy.log("Add question to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
+          card_id: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           cy.log("Connect the filters to the card");
 

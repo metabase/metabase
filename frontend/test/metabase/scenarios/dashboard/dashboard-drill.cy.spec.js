@@ -75,7 +75,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.log("Add question to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
+          card_id: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           cy.log("Set card parameters");
 
@@ -423,7 +423,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.log("Add question to the dashboard");
 
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
+          card_id: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           cy.log("Connect dashboard filter to the question");
 
@@ -534,7 +534,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.createDashboard("14919D").then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
+          card_id: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Add click through behavior to that question
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -619,7 +619,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         });
         // Add question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
+          card_id: QUESTION_ID,
         }).then(({ body: { id: DASH_CARD_ID } }) => {
           // Connect dashboard filter to the question
           cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -690,7 +690,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.createDashboard("15612D").then(({ body: { id: DASHBOARD_ID } }) => {
           // Add the first question to the dashboard
           cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION1_ID,
+            card_id: QUESTION1_ID,
           }).then(({ body: { id: DASH_CARD1_ID } }) => {
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
               cards: [
@@ -755,7 +755,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.createDashboard("13289D").then(({ body: { id: DASHBOARD_ID } }) => {
         // Add question to the dashboard
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
+          card_id: QUESTION_ID,
           row: 0,
           col: 0,
           sizeX: 12,
@@ -932,7 +932,7 @@ function createDashboard(
     });
 
     cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-      cardId: questionId,
+      card_id: questionId,
     }).then(({ body: { id: dashCardId } }) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
         cards: [
