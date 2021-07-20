@@ -328,7 +328,7 @@ describe("Question", () => {
       });
     });
 
-    describe("aggregate(...)", async () => {
+    describe("aggregate(...)", () => {
       const question = new Question(orders_raw_card, metadata);
       it("returns the correct query for a summarization of a raw data table", () => {
         const summarizedQuestion = question.aggregate(["count"]);
@@ -340,7 +340,7 @@ describe("Question", () => {
       });
     });
 
-    describe("breakout(...)", async () => {
+    describe("breakout(...)", () => {
       it("works with a datetime field reference", () => {
         const ordersCountQuestion = new Question(orders_count_card, metadata);
         const brokenOutCard = ordersCountQuestion.breakout([
@@ -393,7 +393,7 @@ describe("Question", () => {
       });
     });
 
-    describe("pivot(...)", async () => {
+    describe("pivot(...)", () => {
       const ordersCountQuestion = new Question(orders_count_card, metadata);
       it("works with a datetime dimension ", () => {
         const pivoted = ordersCountQuestion.pivot([
@@ -441,7 +441,7 @@ describe("Question", () => {
       });
     });
 
-    describe("filter(...)", async () => {
+    describe("filter(...)", () => {
       const questionForFiltering = new Question(orders_raw_card, metadata);
 
       it("works with an id filter", () => {
@@ -503,7 +503,7 @@ describe("Question", () => {
       });
     });
 
-    describe("drillUnderlyingRecords(...)", async () => {
+    describe("drillUnderlyingRecords(...)", () => {
       const ordersCountQuestion = new Question(
         orders_count_by_id_card,
         metadata,
@@ -529,7 +529,7 @@ describe("Question", () => {
       });
     });
 
-    describe("toUnderlyingRecords(...)", async () => {
+    describe("toUnderlyingRecords(...)", () => {
       const question = new Question(orders_raw_card, metadata);
       const ordersCountQuestion = new Question(orders_count_card, metadata);
 
@@ -563,7 +563,7 @@ describe("Question", () => {
       });
     });
 
-    describe("toUnderlyingData()", async () => {
+    describe("toUnderlyingData()", () => {
       const ordersCountQuestion = new Question(orders_count_card, metadata);
 
       it("returns underlying data correctly for table query", () => {
@@ -582,7 +582,7 @@ describe("Question", () => {
       });
     });
 
-    describe("drillPK(...)", async () => {
+    describe("drillPK(...)", () => {
       const question = new Question(orders_raw_card, metadata);
       it("returns the correct query for a PK detail drill-through", () => {
         const drilledQuestion = question.drillPK(ORDERS.ID, 1);
