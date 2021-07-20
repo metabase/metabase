@@ -107,7 +107,7 @@
 
 (defmethod ->lvalue :expression
   [[_ expression-name]]
-  (->lvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
+  expression-name)
 
 (defmethod ->rvalue :default
   [x]

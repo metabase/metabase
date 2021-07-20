@@ -156,89 +156,96 @@
 (deftest expressions-test
   (mt/test-driver :mongo
     (testing "Should be able to deal with expressions (#9382 is for BQ but we're doing it for mongo too)"
-      (is (= {:projections '("latitude" "name"),
-              :query [{"$project" {"_id" false, "latitude" "$latitude", "name" "$name"}} {"$limit" 5}],
+      (is (= {:projections '("bob" "cobb"),
+              :query [{"$project" {"_id" false, "bob" "$latitude", "cobb" "$name"}} {"$limit" 5}],
               :collection "venues",
               :mbql? true}
              (qp/query->native
                (mt/mbql-query venues
-                              {:fields      [[:expression "bob"] [:expression "dobbs"]]
+                              {:fields      [[:expression "bob"] [:expression "cobb"]]
                                :expressions {:bob   [:field $latitude nil]
-                                             :dobbs [:field $name nil]}
+                                             :cobb [:field $name nil]}
                                :limit       5})))))
     (testing "Should be able to deal with 1-arity functions"
-      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
+      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "bob" "cobb"),
               :query
               [{"$project"
                 {"_id" "$_id",
-                 "name" {"$toUpper" "$name"},
+                 "cobb" {"$toUpper" "$name"},
                  "category_id" "$category_id",
-                 "latitude" {"$abs" "$latitude"},
+                 "bob" {"$abs" "$latitude"},
                  "longitude" "$longitude",
+                 "latitude" "$latitude",
+                 "name" "$name",
                  "price" "$price"}}
                {"$limit" 5}],
               :collection "venues",
               :mbql? true}
              (qp/query->native
                (mt/mbql-query venues
-                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
+                              {:filters     [[:expression "bob"] [:expression "cobb"]]
                                :expressions {:bob   [:abs $latitude]
-                                             :dobbs [:upper $name]}
+                                             :cobb [:upper $name]}
                                :limit       5})))))
     (testing "Should be able to deal with 2-arity functions"
-      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
+      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "bob"),
               :query
               [{"$project"
                 {"_id" "$_id",
-                 "name" {"$toUpper" "$name"},
+                 "name" "$name",
                  "category_id" "$category_id",
-                 "latitude" {"$abs" "$latitude"},
+                 "latitude" "$latitude",
                  "longitude" "$longitude",
-                 "price" "$price"}}
+                 "price" "$price",
+                 "bob" {"$add" ["$price" 300]}}}
                {"$limit" 5}],
               :collection "venues",
               :mbql? true}
              (qp/query->native
                (mt/mbql-query venues
-                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
+                              {:filters     [[:expression "bob"] [:expression "cobb"]]
                                :expressions {:bob   [:+ $price 300]}
                                :limit       5})))))
-    (testing "Should be able to deal with a little recursion, as a treat"
-      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
+    (testing "Should be able to deal with a little indirection"
+      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "bob"),
               :query
               [{"$project"
                 {"_id" "$_id",
-                 "name" {"$toUpper" "$name"},
+                 "name" "$name",
                  "category_id" "$category_id",
-                 "latitude" {"$abs" "$latitude"},
+                 "latitude" "$latitude",
                  "longitude" "$longitude",
-                 "price" "$price"}}
+                 "price" "$price",
+                 "bob" {"$abs" {"$subtract" ["$price" 300]}}}}
                {"$limit" 5}],
               :collection "venues",
               :mbql? true}
              (qp/query->native
                (mt/mbql-query venues
-                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
+                              {:filters     [[:expression "bob"] [:expression "cobb"]]
                                :expressions {:bob   [:abs [:- $price 300]]}
                                :limit       5})))))
-    (testing "Should be able to deal with a little recursion, as a treat, with an expression in"
-      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
+
+    (testing "Should be able to deal with a little indirection, with an expression in"
+      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "bob" "cobb"),
               :query
               [{"$project"
                 {"_id" "$_id",
-                 "name" {"$toUpper" "$name"},
+                 "name" "$name",
                  "category_id" "$category_id",
-                 "latitude" {"$abs" "$latitude"},
+                 "bob" {"$abs" "$latitude"},
+                 "cobb" {"$ceil" {"$abs" "$latitude"}},
                  "longitude" "$longitude",
+                 "latitude" "$latitude",
                  "price" "$price"}}
                {"$limit" 5}],
               :collection "venues",
               :mbql? true}
              (qp/query->native
                (mt/mbql-query venues
-                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
+                              {:filters     [[:expression "bob"] [:expression "cobb"]]
                                :expressions {:bob   [:abs $latitude]
-                                             :dobbs [:ceil [:expression "bob"]]}
+                                             :cobb [:ceil [:expression "bob"]]}
                                :limit       5})))))))
 
 (deftest compile-time-interval-test
