@@ -118,7 +118,6 @@
     "babel-loader": "^8.2.2",
     "babel-plugin-styled-components": "^1.10.7",
     "babel-plugin-ttag": "^1.7.26",
-    "babel-register": "^6.26.0",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
     "cypress": "^6.8.0",
