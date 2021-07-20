@@ -444,26 +444,26 @@
     (hsql/call :count (->honeysql driver field))
     :%count.*))
 
-(defmethod ->honeysql [:sql :avg]        [driver [_ field]]   (hsql/call :avg             (->honeysql driver field))) ;; yes
-(defmethod ->honeysql [:sql :median]     [driver [_ field]]   (hsql/call :median          (->honeysql driver field))) ;; no
-(defmethod ->honeysql [:sql :percentile] [driver [_ field p]] (hsql/call :percentile-cont (->honeysql driver field) (->honeysql driver p))) ;; no
-(defmethod ->honeysql [:sql :distinct]   [driver [_ field]]   (hsql/call :distinct-count  (->honeysql driver field))) ;; no
-(defmethod ->honeysql [:sql :stddev]     [driver [_ field]]   (hsql/call :stddev_pop      (->honeysql driver field))) ;; yes
-(defmethod ->honeysql [:sql :var]        [driver [_ field]]   (hsql/call :var_pop         (->honeysql driver field))) ;; no
-(defmethod ->honeysql [:sql :sum]        [driver [_ field]]   (hsql/call :sum             (->honeysql driver field))) ;; yes
-(defmethod ->honeysql [:sql :min]        [driver [_ field]]   (hsql/call :min             (->honeysql driver field))) ;; yes
-(defmethod ->honeysql [:sql :max]        [driver [_ field]]   (hsql/call :max             (->honeysql driver field))) ;; yes
+(defmethod ->honeysql [:sql :avg]        [driver [_ field]]   (hsql/call :avg             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :median]     [driver [_ field]]   (hsql/call :median          (->honeysql driver field)))
+(defmethod ->honeysql [:sql :percentile] [driver [_ field p]] (hsql/call :percentile-cont (->honeysql driver field) (->honeysql driver p)))
+(defmethod ->honeysql [:sql :distinct]   [driver [_ field]]   (hsql/call :distinct-count  (->honeysql driver field)))
+(defmethod ->honeysql [:sql :stddev]     [driver [_ field]]   (hsql/call :stddev_pop      (->honeysql driver field)))
+(defmethod ->honeysql [:sql :var]        [driver [_ field]]   (hsql/call :var_pop         (->honeysql driver field)))
+(defmethod ->honeysql [:sql :sum]        [driver [_ field]]   (hsql/call :sum             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :min]        [driver [_ field]]   (hsql/call :min             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :max]        [driver [_ field]]   (hsql/call :max             (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :floor] [driver [_ field]] (hsql/call :floor (->honeysql driver field))) ;; yes
-(defmethod ->honeysql [:sql :ceil]  [driver [_ field]] (hsql/call :ceil  (->honeysql driver field))) ;; yes
-(defmethod ->honeysql [:sql :round] [driver [_ field]] (hsql/call :round (->honeysql driver field))) ;; yes
-(defmethod ->honeysql [:sql :abs]   [driver [_ field]] (hsql/call :abs (->honeysql driver field))) ;; yes
+(defmethod ->honeysql [:sql :floor] [driver [_ field]] (hsql/call :floor (->honeysql driver field)))
+(defmethod ->honeysql [:sql :ceil]  [driver [_ field]] (hsql/call :ceil  (->honeysql driver field)))
+(defmethod ->honeysql [:sql :round] [driver [_ field]] (hsql/call :round (->honeysql driver field)))
+(defmethod ->honeysql [:sql :abs]   [driver [_ field]] (hsql/call :abs (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hsql/call :log 10 (->honeysql driver field))) ;; yes
-(defmethod ->honeysql [:sql :exp]   [driver [_ field]] (hsql/call :exp (->honeysql driver field))) ;; yes
-(defmethod ->honeysql [:sql :sqrt]  [driver [_ field]] (hsql/call :sqrt (->honeysql driver field))) ;; yes
+(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hsql/call :log 10 (->honeysql driver field)))
+(defmethod ->honeysql [:sql :exp]   [driver [_ field]] (hsql/call :exp (->honeysql driver field)))
+(defmethod ->honeysql [:sql :sqrt]  [driver [_ field]] (hsql/call :sqrt (->honeysql driver field)))
 (defmethod ->honeysql [:sql :power] [driver [_ field power]]
-  (hsql/call :power (->honeysql driver field) (->honeysql driver power))) ;; yes
+  (hsql/call :power (->honeysql driver field) (->honeysql driver power)))
 
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
@@ -511,57 +511,57 @@
   [driver [_ arg pred]]
   (hsql/call :sum (hsql/call :case
                     (->honeysql driver pred) (->honeysql driver arg)
-                    :else                    0.0))) ;; no
+                    :else                    0.0)))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
-  (->honeysql driver [:sum-where 1 pred])) ;; no
+  (->honeysql driver [:sum-where 1 pred]))
 
 (defmethod ->honeysql [:sql :share]
   [driver [_ pred]]
-  (hsql/call :/ (->honeysql driver [:count-where pred]) :%count.*)) ;;no
+  (hsql/call :/ (->honeysql driver [:count-where pred]) :%count.*))
 
 (defmethod ->honeysql [:sql :trim]
   [driver [_ arg]]
-  (hsql/call :trim (->honeysql driver arg))) ;; yes
+  (hsql/call :trim (->honeysql driver arg)))
 
 (defmethod ->honeysql [:sql :ltrim]
   [driver [_ arg]]
-  (hsql/call :ltrim (->honeysql driver arg))) ;; yes
+  (hsql/call :ltrim (->honeysql driver arg)))
 
 (defmethod ->honeysql [:sql :rtrim]
   [driver [_ arg]]
-  (hsql/call :rtrim (->honeysql driver arg))) ;; yes
+  (hsql/call :rtrim (->honeysql driver arg)))
 
 (defmethod ->honeysql [:sql :upper]
   [driver [_ arg]]
-  (hsql/call :upper (->honeysql driver arg))) ;; yes
+  (hsql/call :upper (->honeysql driver arg)))
 
 (defmethod ->honeysql [:sql :lower]
   [driver [_ arg]]
-  (hsql/call :lower (->honeysql driver arg))) ;; yes
+  (hsql/call :lower (->honeysql driver arg)))
 
 (defmethod ->honeysql [:sql :coalesce]
   [driver [_ & args]]
-  (apply hsql/call :coalesce (mapv (partial ->honeysql driver) args))) ;; no
+  (apply hsql/call :coalesce (mapv (partial ->honeysql driver) args)))
 
 (defmethod ->honeysql [:sql :replace]
   [driver [_ arg pattern replacement]]
-  (hsql/call :replace (->honeysql driver arg) (->honeysql driver pattern) (->honeysql driver replacement))) ;; yes
+  (hsql/call :replace (->honeysql driver arg) (->honeysql driver pattern) (->honeysql driver replacement)))
 
 (defmethod ->honeysql [:sql :concat]
   [driver [_ & args]]
-  (apply hsql/call :concat (mapv (partial ->honeysql driver) args))) ;; yes
+  (apply hsql/call :concat (mapv (partial ->honeysql driver) args)))
 
 (defmethod ->honeysql [:sql :substring]
   [driver [_ arg start length]]
   (if length
     (hsql/call :substring (->honeysql driver arg) (->honeysql driver start) (->honeysql driver length))
-    (hsql/call :substring (->honeysql driver arg) (->honeysql driver start)))) ;; yes
+    (hsql/call :substring (->honeysql driver arg) (->honeysql driver start))))
 
 (defmethod ->honeysql [:sql :length]
   [driver [_ arg]]
-  (hsql/call :length (->honeysql driver arg))) ;; yes
+  (hsql/call :length (->honeysql driver arg)))
 
 (defmethod ->honeysql [:sql :case]
   [driver [_ cases options]]
@@ -570,7 +570,7 @@
                  [[:else (:default options)]]))
        (apply concat)
        (mapv (partial ->honeysql driver))
-       (apply hsql/call :case))) ;; no
+       (apply hsql/call :case)))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
 (defmethod ->honeysql [:sql :aggregation-options]
