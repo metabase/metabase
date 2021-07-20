@@ -11,8 +11,8 @@ const propTypes = {
 };
 
 export function CollectionIcon({ collection, ...props }) {
-  const icon = getCollectionIcon(collection);
-  return <Icon name={icon.name} color={icon.color} {...props} />;
+  const { name, color } = getCollectionIcon(collection);
+  return <Icon name={name} color={color} {...props} />;
 }
 
 CollectionIcon.propTypes = propTypes;
