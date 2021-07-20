@@ -470,5 +470,3 @@ function setParamsEndpoints(prefix: string) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
-
-global.services = exports;
