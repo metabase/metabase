@@ -1,12 +1,14 @@
+import { t } from "ttag";
+
 export const REGULAR_COLLECTION = {
   type: null,
-  name: "Regular",
+  name: t`Regular`,
   icon: "folder",
 };
 
 export const OFFICIAL_COLLECTION = {
   type: "official",
-  name: "Official",
+  name: t`Official`,
   icon: "badge",
   color: "saturated-yellow",
 };
