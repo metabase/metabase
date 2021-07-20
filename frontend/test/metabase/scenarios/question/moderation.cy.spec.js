@@ -10,18 +10,22 @@ describeWithToken("scenarios > saved question moderation", () => {
       cy.signInAsAdmin();
 
       cy.visit("/question/1");
-      cy.findByTestId("saved-question-header-button").click();
     });
 
     it("should be able to verify a saved question", () => {
+      cy.findByTestId("saved-question-header-button").click();
+
       cy.findByTestId("moderation-verify-action").click();
 
       cy.findByText("You verified this").should("be.visible");
+
       cy.findByTestId("saved-question-header-button").click();
       cy.icon("verified").should("be.visible");
     });
 
     it("should be able to unverify a verified saved question", () => {
+      cy.findByTestId("saved-question-header-button").click();
+
       cy.findByTestId("moderation-verify-action").click();
       cy.findByTestId("moderation-remove-review-action").click();
 
@@ -41,7 +45,7 @@ describeWithToken("scenarios > saved question moderation", () => {
       cy.createQuestion({
         name: "Verified Question",
         query: { "source-table": PRODUCTS_ID },
-        moderationReviews: [
+        moderation_reviews: [
           {
             state: "verified",
             most_recent: true,
@@ -51,7 +55,9 @@ describeWithToken("scenarios > saved question moderation", () => {
         ],
       }).then(({ body: { id: QUESTION_ID } }) => {
         cy.visit(`/question/${QUESTION_ID}`);
+
         cy.icon("verified").should("be.visible");
+
         cy.findByTestId("saved-question-header-button").click();
         cy.findByText("Someone verified this").should("be.visible");
       });

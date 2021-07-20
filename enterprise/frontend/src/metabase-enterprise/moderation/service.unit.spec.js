@@ -74,8 +74,8 @@ describe("moderation/service", () => {
       );
     });
 
-    it("should be undefined for a null review", () => {
-      expect(getIconForReview({ status: null })).toEqual(undefined);
+    it("should be an empty object for a null review", () => {
+      expect(getIconForReview({ status: null })).toEqual({});
     });
   });
 
