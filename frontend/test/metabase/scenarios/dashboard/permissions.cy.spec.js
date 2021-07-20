@@ -63,10 +63,10 @@ describe("scenarios > dashboard > permissions", () => {
 
     cy.createDashboard("dashboard").then(({ body: { id: dashId } }) => {
       cy.request("POST", `/api/dashboard/${dashId}/cards`, {
-        card_id: firstQuestionId,
+        cardId: firstQuestionId,
       }).then(({ body: { id: dashCardIdA } }) => {
         cy.request("POST", `/api/dashboard/${dashId}/cards`, {
-          card_id: secondQuestionId,
+          cardId: secondQuestionId,
         }).then(({ body: { id: dashCardIdB } }) => {
           cy.request("PUT", `/api/dashboard/${dashId}/cards`, {
             cards: [

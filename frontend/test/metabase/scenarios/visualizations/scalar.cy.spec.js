@@ -34,7 +34,7 @@ describe("scenarios > visualizations > scalar", () => {
         cy.createDashboard("12629").then(({ body: { id: dashboardId } }) => {
           // Add previously created question to the dashboard
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            card_id: questionId,
+            cardId: questionId,
           }).then(({ body: { id: dashCardId } }) => {
             cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
               cards: [

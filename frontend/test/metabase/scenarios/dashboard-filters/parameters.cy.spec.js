@@ -366,7 +366,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.createDashboard("16181D").then(({ body: { id: dashboard_id } }) => {
         // Add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
-          card_id: card_id,
+          cardId: card_id,
         }).then(({ body: { id } }) => {
           cy.addFilterToDashboard({ filter, dashboard_id });
 

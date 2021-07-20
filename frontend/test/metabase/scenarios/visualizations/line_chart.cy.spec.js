@@ -293,7 +293,7 @@ describe("scenarios > visualizations > line chart", () => {
     } = {}) {
       // Add the first question to the dashboard
       cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-        card_id: firstCardId,
+        cardId: firstCardId,
       }).then(({ body: { id: dashCardId } }) => {
         // Combine the second question with the first one as the second series
         cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {

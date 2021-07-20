@@ -28,7 +28,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.createDashboard("15993D").then(({ body: { id: dashboardId } }) => {
             // Add native question to the dashboard
             cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-              card_id: nativeId,
+              cardId: nativeId,
             }).then(({ body: { id: dashCardId } }) => {
               // Add click behavior to the dashboard card and point it to the question 1
               cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {

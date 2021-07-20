@@ -5,7 +5,7 @@ Cypress.Commands.add(
       cy.createDashboard(dashboardName).then(
         ({ body: { id: dashboardId } }) => {
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            card_id: questionId,
+            cardId: questionId,
           });
         },
       );

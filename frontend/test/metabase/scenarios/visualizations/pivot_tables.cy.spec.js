@@ -531,7 +531,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add previously created question to that dashboard");
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              card_id: QUESTION_ID,
+              cardId: QUESTION_ID,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log("Resize the dashboard card");
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -591,7 +591,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add previously created question to that dashboard");
             cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              card_id: QUESTION_ID,
+              cardId: QUESTION_ID,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               cy.log("Resize the dashboard card");
               cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {

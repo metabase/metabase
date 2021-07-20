@@ -165,7 +165,7 @@ describe("scenarios > dashboard", () => {
 
         // add previously created question to the dashboard
         cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-          card_id: questionId,
+          cardId: questionId,
         }).then(({ body: { id: dashCardId } }) => {
           // connect filter to that question
           cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
@@ -244,7 +244,7 @@ describe("scenarios > dashboard", () => {
 
         cy.log("Add previously created question to the dashboard");
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          card_id: QUESTION_ID,
+          cardId: QUESTION_ID,
         });
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
