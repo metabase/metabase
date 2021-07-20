@@ -4,18 +4,15 @@ import { connect } from "react-redux";
 import { Box } from "grid-styled";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-
 import Collection from "metabase/entities/collections";
 
-import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-
 import { Sidebar, ToggleMobileSidebarIcon } from "./CollectionSidebar.styled";
-import CollectionSidebarFooter from "./CollectionSidebarFooter/CollectionSidebarFooter";
+
+import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
+import Header from "./CollectionSidebarHeader/CollectionSidebarHeader";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import CollectionsList from "metabase/collections/components/CollectionsList";
-import CollectionLink from "metabase/collections/components/CollectionLink";
 
 import {
   nonPersonalOrArchivedCollection,
@@ -45,6 +42,7 @@ class CollectionSidebar extends React.Component {
   componentDidUpdate(prevProps) {
     const { collectionId, collections, loading } = this.props;
     const loaded = prevProps.loading && !loading;
+
     if (loaded) {
       const ancestors = getParentPath(collections, collectionId) || [];
       this.setState({ openCollections: ancestors });
@@ -77,23 +75,9 @@ class CollectionSidebar extends React.Component {
     return (
       <React.Fragment>
         <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
+
         <Collection.Loader id="root">
-          {({ collection: root }) => (
-            <Box mb={1} mt={2}>
-              <CollectionDropTarget collection={root}>
-                {({ highlighted, hovered }) => (
-                  <CollectionLink
-                    to={Urls.collection({ id: "root" })}
-                    selected={isRoot}
-                    highlighted={highlighted}
-                    hovered={hovered}
-                  >
-                    {t`Our analytics`}
-                  </CollectionLink>
-                )}
-              </CollectionDropTarget>
-            </Box>
-          )}
+          {({ collection: root }) => <Header isRoot={isRoot} root={root} />}
         </Collection.Loader>
 
         <Box pb={4}>
@@ -119,7 +103,7 @@ class CollectionSidebar extends React.Component {
           </Box>
         </Box>
 
-        <CollectionSidebarFooter isSuperUser={currentUser.is_superuser} />
+        <Footer isSuperUser={currentUser.is_superuser} />
       </React.Fragment>
     );
   };
