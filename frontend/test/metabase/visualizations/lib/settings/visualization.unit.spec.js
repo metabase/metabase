@@ -42,24 +42,26 @@ describe("visualization_settings", () => {
         "day-of-year",
         "week-of-year",
       ];
-      describe("non-histgram units", () =>
-        NON_HISTOGRAM_UNITS.map(unit =>
+      describe("non-histgram units", () => {
+        NON_HISTOGRAM_UNITS.forEach(unit => {
           it(`should default ${unit} to false`, () => {
             const settings = getComputedSettingsForSeries(
               cardWithTimeseriesBreakout({ unit }),
             );
             expect(settings["graph.x_axis._is_histogram"]).toBe(false);
-          }),
-        ));
-      describe("histgram units", () =>
-        HISTOGRAM_UNITS.map(unit =>
+          });
+        });
+      });
+      describe("histgram units", () => {
+        HISTOGRAM_UNITS.forEach(unit => {
           it(`should default ${unit} to true`, () => {
             const settings = getComputedSettingsForSeries(
               cardWithTimeseriesBreakout({ unit }),
             );
             expect(settings["graph.x_axis._is_histogram"]).toBe(true);
-          }),
-        ));
+          });
+        });
+      });
     });
     describe("graph.y_axis.title_text", () => {
       const data = {
