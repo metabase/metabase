@@ -316,17 +316,15 @@
 (defmethod ->lvalue :lower     [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :length    [[_ inp]] (->lvalue inp))
 
-(defmethod ->lvalue :power     [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :replace   [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :concat    [[_ inp]] (->lvalue inp))
-(defmethod ->lvalue :substring [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :power     [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :replace   [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :concat    [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :substring [[_ & args]] (->lvalue (first args)))
 
 (defmethod ->lvalue :+ [[_ & args]] (->lvalue (first args)))
 (defmethod ->lvalue :- [[_ & args]] (->lvalue (first args)))
 (defmethod ->lvalue :* [[_ & args]] (->lvalue (first args)))
 (defmethod ->lvalue :/ [[_ & args]] (->lvalue (first args)))
-
-;; what can't be done: the variable arity dealios. the coalescing and other stuff picked out in sql qp....
 
 (defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
 (defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevPop" (->rvalue inp)})
@@ -350,18 +348,15 @@
 (defmethod ->rvalue :lower     [[_ inp]] {"$toLower" (->rvalue inp)})
 (defmethod ->rvalue :length    [[_ inp]] {"$strLenCP" (->rvalue inp)})
 
-; (defmethod ->rvalue :power     [[_ inp]] { (->rvalue inp)})
-; (defmethod ->rvalue :replace   [[_ inp]] { (->rvalue inp)})
-; (defmethod ->rvalue :concat    [[_ inp]] { (->rvalue inp)})
-; (defmethod ->rvalue :substring [[_ inp]] { (->rvalue inp)})
-
+(defmethod ->rvalue :power     [[_ & args]] {"$pow" (mapv ->rvalue args)})
+(defmethod ->rvalue :replace   [[_ & args]] {"$replaceAll" (mapv->rvalue args)})
+(defmethod ->rvalue :concat    [[_ & args]] {"$concat" (->rvalue args)})
+(defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (->rvalue args)})
 
 (defmethod ->rvalue :+ [[_ & args]] {"$add" (mapv ->rvalue args)})
 (defmethod ->rvalue :- [[_ & args]] {"$subtract" (mapv ->rvalue args)})
 (defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
 (defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
-
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |

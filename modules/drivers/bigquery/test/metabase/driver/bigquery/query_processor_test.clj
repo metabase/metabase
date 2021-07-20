@@ -242,21 +242,6 @@
         :info     {:executed-by 1000
                     :query-hash  (byte-array [1 2 3 4])}}))))))
 
-(deftest expressions-test
-  (mt/test-driver :bigquery
-    (is (=  (str
-            "SELECT `v3_test_data.venues`.`id` AS `id`,"
-            " `v3_test_data.venues`.`name` AS `name` "
-            "FROM `v3_test_data.venues` "
-            "LIMIT 1")
-           (query->native
-             {:database   (mt/id)
-              :query      {:source-table (mt/id :venues)
-                           :expressions  {:test ["*" 1 1]}
-                           :fields       [[:field (mt/id :venues :price) nil]
-                                          [:expression "test"]]}
-              :type       "query"})))))
-
 (deftest unprepare-params-test
   (mt/test-driver :bigquery
     (is (= [["Red Medicine"]]
