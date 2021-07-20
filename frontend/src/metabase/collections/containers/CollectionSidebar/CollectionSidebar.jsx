@@ -73,6 +73,7 @@ class CollectionSidebar extends React.Component {
         <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
 
         <Collection.Loader id="root">
+<<<<<<< HEAD
           {({ collection: root }) => (
             <RootCollectionLink isRoot={isRoot} root={root} />
           )}
@@ -88,6 +89,35 @@ class CollectionSidebar extends React.Component {
         />
 
         <Footer isAdmin={currentUser.is_superuser} />
+=======
+          {({ collection: root }) => <Header isRoot={isRoot} root={root} />}
+        </Collection.Loader>
+
+        <Box pb={4}>
+          <CollectionsList
+            openCollections={this.state.openCollections}
+            onClose={this.onClose}
+            onOpen={this.onOpen}
+            collections={list}
+            filter={nonPersonalOrArchivedCollection}
+            currentCollection={collectionId}
+          />
+
+          <Box>
+            <CollectionsList
+              openCollections={this.state.openCollections}
+              onClose={this.onClose}
+              onOpen={this.onOpen}
+              collections={currentUserPersonalCollections(list, currentUser.id)}
+              initialIcon="person"
+              filter={this.filterPersonalCollections}
+              currentCollection={collectionId}
+            />
+          </Box>
+        </Box>
+
+        <Footer isSuperUser={currentUser.is_superuser} />
+>>>>>>> fc641cba8 (Extract Header into component)
       </React.Fragment>
     );
   };
