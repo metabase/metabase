@@ -5,7 +5,7 @@ import Settings from "metabase/lib/settings";
 export const validators = {
   required: () => value => !value && t`required`,
   email: () => value =>
-    !Utils.validEmail(value) && t`must be a valid email address`,
+    !Utils.isEmail(value) && t`must be a valid email address`,
   maxLength: max => value =>
     value && value.length > max && t`must be ${max} characters or less`,
   passwordComplexity: () => value =>

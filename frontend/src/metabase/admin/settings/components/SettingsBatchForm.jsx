@@ -16,11 +16,11 @@ import { updateSettings as defaultUpdateSettings } from "../settings";
 
 const VALIDATIONS = {
   email: {
-    validate: value => MetabaseUtils.validEmail(value),
+    validate: value => MetabaseUtils.isEmail(value),
     message: t`That's not a valid email address`,
   },
   integer: {
-    validate: value => !isNaN(parseInt(value)),
+    validate: value => MetabaseUtils.isInteger(value),
     message: t`That's not a valid integer`,
   },
 };
