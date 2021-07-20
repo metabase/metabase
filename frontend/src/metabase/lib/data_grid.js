@@ -139,7 +139,7 @@ export function multiLevelPivot(data, settings) {
   }
 
   const columnIndex = addEmptyIndexItem(
-    formattedColumnTreeWithoutValues.flatMap(enumeratePaths),
+    formattedColumnTreeWithoutValues.flatMap(root => enumeratePaths(root)),
   );
   const valueColumns = valueColumnIndexes.map(index => columns[index]);
   const formattedColumnTree = addValueColumnNodes(
@@ -171,7 +171,9 @@ export function multiLevelPivot(data, settings) {
     });
   }
 
-  const rowIndex = addEmptyIndexItem(formattedRowTree.flatMap(enumeratePaths));
+  const rowIndex = addEmptyIndexItem(
+    formattedRowTree.flatMap(root => enumeratePaths(root)),
+  );
 
   const leftHeaderItems = treeToArray(formattedRowTree.flat());
   const topHeaderItems = treeToArray(formattedColumnTree.flat());
