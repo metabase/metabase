@@ -4,11 +4,18 @@
 
 FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as frontend
 
+ARG ENV=production
+
 ARG MB_EDITION=oss
 
 WORKDIR /app/source
 
 COPY . .
+
+RUN apk add --no-cache patch
+
+RUN if [ "$ENV" = "staging" ] ; then patch -p1 < staging.patch; fi
+
 RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn --frozen-lockfile && yarn build && bin/i18n/build-translation-resources
 
 ###################
@@ -29,8 +36,6 @@ RUN lein deps :tree
 
 FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as drivers
 
-ARG ENV=production
-
 ARG MB_EDITION=oss
 
 WORKDIR /app/source
@@ -39,10 +44,6 @@ COPY --from=backend /root/.m2/repository/. /root/.m2/repository/.
 
 # add the rest of the source
 COPY . .
-
-RUN apk add --no-cache patch
-
-RUN if [ "$ENV" = "staging" ] ; then patch -p1 < staging.patch; fi
 
 # build the app
 RUN INTERACTIVE=false MB_EDITION=$MB_EDITION sh bin/build-drivers.sh
