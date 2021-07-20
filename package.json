@@ -103,7 +103,6 @@
     "@babel/plugin-transform-flow-strip-types": "^7.14.5",
     "@babel/preset-env": "^7.14.7",
     "@babel/preset-react": "^7.14.5",
-    "@babel/standalone": "^7.4.5",
     "@cypress/skip-test": "^2.6.0",
     "@cypress/webpack-preprocessor": "^4.1.0",
     "@percy/cli": "^1.0.0-beta.48",
