@@ -602,15 +602,6 @@ describe("Question", () => {
     });
   });
 
-  describe("QUESTION EXECUTION", () => {
-    describe("getResults()", () => {
-      it("executes correctly a native query with field filter parameters", () => {
-        pending();
-        // test also here a combo of parameter with a value + parameter without a value + parameter with a default value
-      });
-    });
-  });
-
   describe("COMPARISON TO OTHER QUESTIONS", () => {
     describe("isDirtyComparedTo(question)", () => {
       it("New questions are automatically dirty", () => {
