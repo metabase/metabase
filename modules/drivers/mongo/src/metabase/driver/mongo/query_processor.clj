@@ -349,9 +349,9 @@
 (defmethod ->rvalue :length    [[_ inp]] {"$strLenCP" (->rvalue inp)})
 
 (defmethod ->rvalue :power     [[_ & args]] {"$pow" (mapv ->rvalue args)})
-(defmethod ->rvalue :replace   [[_ & args]] {"$replaceAll" (mapv->rvalue args)})
-(defmethod ->rvalue :concat    [[_ & args]] {"$concat" (->rvalue args)})
-(defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (->rvalue args)})
+(defmethod ->rvalue :replace   [[_ & args]] {"$replaceAll" (mapv ->rvalue args)})
+(defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
+(defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :+ [[_ & args]] {"$add" (mapv ->rvalue args)})
 (defmethod ->rvalue :- [[_ & args]] {"$subtract" (mapv ->rvalue args)})
