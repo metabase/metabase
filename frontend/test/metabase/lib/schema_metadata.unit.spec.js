@@ -115,12 +115,10 @@ describe("schema_metadata", () => {
   });
 
   describe("isEqualsOperator", () => {
-    it("given operator metadata object", () => {
-      it("should evaluate whether it is an equals operator", () => {
-        expect(isEqualsOperator()).toBe(false);
-        expect(isEqualsOperator({ name: "foo" })).toBe(false);
-        expect(isEqualsOperator({ name: "=" })).toBe(true);
-      });
+    it("should evaluate whether it is an equals operator", () => {
+      expect(isEqualsOperator()).toBe(false);
+      expect(isEqualsOperator({ name: "foo" })).toBe(false);
+      expect(isEqualsOperator({ name: "=" })).toBe(true);
     });
   });
 
