@@ -22,5 +22,6 @@
   "coveragePathIgnorePatterns": [
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js"
-  ]
+  ],
+  "testEnvironment": "jsdom"
 }
