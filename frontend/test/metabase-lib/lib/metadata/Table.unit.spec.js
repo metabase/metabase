@@ -17,13 +17,6 @@ describe("Table", () => {
     expect(table.db).toBeInstanceOf(Database);
   });
 
-  describe("dimensions", () => {
-    it("returns dimension fields", () => {
-      pending();
-      // expect(table.dimensions().length)
-    });
-  });
-
   describe("date fields", () => {
     it("should return date fields", () => {
       expect(table.dateFields().length).toEqual(1);

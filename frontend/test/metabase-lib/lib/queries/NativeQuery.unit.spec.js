@@ -116,9 +116,6 @@ describe("NativeQuery", () => {
         );
         expect(fakeMongoQuery.collection()).toBe(fakeCollectionID);
       });
-      it("sure would be nice to have some error checking on this", () => {
-        pending();
-      });
     });
     describe("table()", () => {
       it("returns null for a non-mongo query", () => {

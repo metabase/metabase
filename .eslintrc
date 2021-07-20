@@ -27,7 +27,6 @@
     "complexity": ["error", { "max": 54 }]
   },
   "globals": {
-    "pending": false,
     "before": true,
     "cy": true,
     "Cypress": true
