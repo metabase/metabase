@@ -11,6 +11,8 @@ import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+
 import {
   Container,
   DescriptionTooltipIcon,
@@ -18,19 +20,16 @@ import {
   ToggleMobileSidebarIcon,
 } from "./CollectionHeader.styled";
 
-function Title({
-  collection: { description, name },
-  handleToggleMobileSidebar,
-}) {
+const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
+
+function Title({ collection, handleToggleMobileSidebar }) {
   return (
     <Flex align="center">
-      <PageHeading className="text-wrap">
-        <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
-        {name}
-      </PageHeading>
-
-      {description && (
-        <Tooltip tooltip={description}>
+      <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
+      <CollectionAuthorityLevelIcon collection={collection} mr={1} size={24} />
+      <PageHeading className="text-wrap">{collection.name}</PageHeading>
+      {collection.description && (
+        <Tooltip tooltip={collection.description}>
           <DescriptionTooltipIcon />
         </Tooltip>
       )}
