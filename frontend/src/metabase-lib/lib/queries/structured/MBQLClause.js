@@ -10,6 +10,18 @@ export default class MBQLArrayClause extends Array {
     _private(this, "_query", query);
   }
 
+  // There is a mismatch between the constructor args for `MBQLArrayClause` and `Array`
+  // so when methods like `map` and `filter` call `this.constructor` on the instance of
+  // `MBQLArrayClause` in order to create a new instance, things break. To fix this we can
+  // change what constructor is given to Array methods so that they instead return new
+  // instances of Array.
+  // A downside to this fix (which was a consequence of having upgraded Babel) is that
+  // after mapping over a MBQLArrayClause instance we must recreate the MBQLArrayClause instance.
+  // See https://javascript.info/extend-natives for more information on how this works.
+  static get [Symbol.species]() {
+    return Array;
+  }
+
   set(mbql: any[]) {
     return new this.constructor(mbql, this._index, this._query);
   }
