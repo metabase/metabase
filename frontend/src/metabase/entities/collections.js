@@ -12,6 +12,8 @@ import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import { t } from "ttag";
 
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+
 const listCollectionsTree = GET("/api/collection/tree");
 const listCollections = GET("/api/collection");
 
@@ -158,6 +160,7 @@ const Collections = createEntity({
         title: t`Collection it's saved in`,
         type: "collection",
       },
+      ...PLUGIN_COLLECTIONS.formFields,
     ],
   },
 
