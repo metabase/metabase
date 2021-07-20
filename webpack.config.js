@@ -1,10 +1,5 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
-
-require("babel-register");
-require("core-js/stable");
-require("regenerator-runtime/runtime");
-
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 
 const webpack = require("webpack");
