@@ -135,8 +135,16 @@
   necessary when dealing with the full MBQL query tree (which can have arbitrary nesting of maps and
   vectors)."
   [m]
-  (reduce (fn [acc ks]
-            (pull-unresolved-names-up acc (drop-last ks))) m (paths-to-key-in m ::unresolved-names)))
+  (let [paths (paths-to-key-in m ::unresolved-names)]
+    (if-not (empty? paths)
+      (reduce (fn [acc ks]
+                (let [ks* (drop-last ks)]
+                  (if-not (empty? ks*)
+                    (pull-unresolved-names-up acc ks*)
+                    acc)))
+              m
+              paths)
+      m)))
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
@@ -382,12 +390,25 @@
       (pull-unresolved-names-up vs-norm [::mb.viz/column-settings] resolved-cs))
     vs-norm))
 
+(defn- resolve-table-columns [vs-norm]
+  (if (::mb.viz/table-columns vs-norm)
+    (letfn [(resolve-table-column-field-ref [[f-type f-str f-md]]
+              (if (names/fully-qualified-field-name? f-str)
+                [f-type ((comp :field fully-qualified-name->context) f-str) f-md]
+                [f-type f-str f-md]))
+            (resolve-field-id [{:keys [::mb.viz/table-column-field-ref] :as tbl-col}]
+              (update tbl-col ::mb.viz/table-column-field-ref resolve-table-column-field-ref))]
+      (update vs-norm ::mb.viz/table-columns (fn [tbl-cols]
+                                               (mapv resolve-field-id tbl-cols))))
+    vs-norm))
+
 (defn- resolve-visualization-settings
   [entity]
   (if-let [viz-settings (:visualization_settings entity)]
     (let [resolved-vs (-> (mb.viz/db->norm viz-settings)
                           resolve-top-level-click-behavior
                           resolve-column-settings
+                          resolve-table-columns
                           mb.viz/norm->db)]
       (pull-unresolved-names-up entity [:visualization_settings] resolved-vs))
     entity))
