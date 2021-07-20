@@ -70,6 +70,7 @@ export function ModerationReviewBanner({
       >
         {onRemove ? (
           <IconButton
+            data-testid="moderation-remove-review-action"
             onFocus={() => setIsActive(true)}
             onBlur={() => setIsActive(false)}
             icon={showClose ? "close" : icon}
