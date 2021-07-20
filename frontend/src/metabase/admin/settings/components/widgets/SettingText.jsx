@@ -17,6 +17,7 @@ const SettingText = ({
     })}
     defaultValue={setting.value || ""}
     placeholder={setting.placeholder}
+    disabled={disabled}
     onChange={fireOnChange ? e => onChange(e.target.value) : null}
     onBlur={!fireOnChange ? e => onChange(e.target.value) : null}
     autoFocus={autoFocus}

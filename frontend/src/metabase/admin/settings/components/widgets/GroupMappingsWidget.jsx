@@ -22,6 +22,7 @@ type Props = {
   mappingSetting: string,
   groupHeading: string,
   groupPlaceholder: string,
+  disabled?: boolean,
 };
 
 type State = {
@@ -133,6 +134,7 @@ export default class GroupMappingsWidget extends React.Component {
   };
 
   render() {
+    const { disabled } = this.props;
     const {
       showEditModal,
       showAddRow,
@@ -149,6 +151,7 @@ export default class GroupMappingsWidget extends React.Component {
             type="button"
             className="ml1"
             medium
+            disabled={disabled}
             onClick={this._showEditModal}
           >{t`Edit Mappings`}</Button>
         </div>

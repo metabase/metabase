@@ -22,6 +22,7 @@ const SettingInput = ({
     type={type}
     value={setting.value || ""}
     placeholder={setting.placeholder}
+    disabled={disabled}
     onChange={fireOnChange ? e => onChange(e.target.value) : null}
     onBlurChange={!fireOnChange ? e => onChange(e.target.value) : null}
     autoFocus={autoFocus}

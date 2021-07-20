@@ -224,7 +224,7 @@ export default class SettingsBatchForm extends Component {
   };
 
   render() {
-    const { elements, settingValues } = this.props;
+    const { elements, settingValues, enabledKey } = this.props;
     const {
       formData,
       formErrors,
@@ -254,15 +254,18 @@ export default class SettingsBatchForm extends Component {
         formData[element.key] == null
           ? element.defaultValue
           : formData[element.key];
+      const disabled =
+        enabledKey && key !== enabledKey && !formData[enabledKey];
 
       return (
         <SettingsSetting
           key={element.key}
           setting={{ ...element, value }}
-          onChange={value => this.handleChangeEvent(element.key, value)}
           settingValues={settingValues}
-          onChangeSetting={(key, value) => this.handleChangeEvent(key, value)}
+          disabled={disabled}
           errorMessage={errorMessage}
+          onChange={value => this.handleChangeEvent(element.key, value)}
+          onChangeSetting={(key, value) => this.handleChangeEvent(key, value)}
           fireOnChange
         />
       );
