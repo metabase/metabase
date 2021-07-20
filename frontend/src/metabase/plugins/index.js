@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 
@@ -59,14 +60,15 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
 
 const AUTHORITY_LEVEL_REGULAR = {
   type: null,
+  name: t`Regular`,
   icon: "folder",
 };
 
 export const PLUGIN_COLLECTIONS = {
   formFields: [],
+  REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   AUTHORITY_LEVEL: {
     [AUTHORITY_LEVEL_REGULAR.type]: AUTHORITY_LEVEL_REGULAR,
-    regular: AUTHORITY_LEVEL_REGULAR, // just an alias
   },
 };
 
