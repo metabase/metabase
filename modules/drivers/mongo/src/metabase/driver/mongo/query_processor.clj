@@ -321,12 +321,12 @@
 (defmethod ->lvalue :concat    [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :substring [[_ inp]] (->lvalue inp))
 
-(defmethod ->lvalue :+ [[_ & args]] (->lvalue args))
-(defmethod ->lvalue :- [[_ fst snd]] (->lvalue fst))
-(defmethod ->lvalue :* [[_ & args]] (->lvalue args))
-(defmethod ->lvalue :/ [[_ fst snd]] (->lvalue fst))
+(defmethod ->lvalue :+ [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :- [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :* [[_ & args]] (->lvalue (first args)))
+(defmethod ->lvalue :/ [[_ & args]] (->lvalue (first args)))
 
-;;; actually __most__ these rvals are fucked up arities...
+;; what can't be done: the variable arity dealios. the coalescing and other stuff picked out in sql qp....
 
 (defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
 (defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevPop" (->rvalue inp)})
@@ -343,9 +343,23 @@
 (defmethod ->rvalue :exp       [[_ inp]] {"$exp" (->rvalue inp)})
 (defmethod ->rvalue :sqrt      [[_ inp]] {"$sqrt" (->rvalue inp)})
 
-(defmethod ->rvalue :power     [[_ inp]] {"$sqrt" (->rvalue inp)})
-
+(defmethod ->rvalue :trim      [[_ inp]] {"$trim" (->rvalue inp)})
+(defmethod ->rvalue :ltrim     [[_ inp]] {"$ltrim" (->rvalue inp)})
+(defmethod ->rvalue :rtrim     [[_ inp]] {"$rtrim" (->rvalue inp)})
 (defmethod ->rvalue :upper     [[_ inp]] {"$toUpper" (->rvalue inp)})
+(defmethod ->rvalue :lower     [[_ inp]] {"$toLower" (->rvalue inp)})
+(defmethod ->rvalue :length    [[_ inp]] {"$strLenCP" (->rvalue inp)})
+
+; (defmethod ->rvalue :power     [[_ inp]] { (->rvalue inp)})
+; (defmethod ->rvalue :replace   [[_ inp]] { (->rvalue inp)})
+; (defmethod ->rvalue :concat    [[_ inp]] { (->rvalue inp)})
+; (defmethod ->rvalue :substring [[_ inp]] { (->rvalue inp)})
+
+
+(defmethod ->rvalue :+ [[_ & args]] {"$add" (mapv ->rvalue args)})
+(defmethod ->rvalue :- [[_ & args]] {"$subtract" (mapv ->rvalue args)})
+(defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
+(defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
 
 
@@ -708,31 +722,6 @@
                                                         (when-not (zero? offset)
                                                           {$skip offset}))
                                                       {$limit items-per-page}]))))
-
-;;; --------------------------------- process inner query to deal with expressions -----------------------------------
-
-(defn- process-inner-query
-  "Compile an mbql inner query with expression clause to inner query suitable to query mongo."
-  [{:keys [expressions] :as inner-query}]
-  (if-not (seq expressions)
-    inner-query
-    (let [subselect (-> inner-query
-                        (select-keys [:joins :source-table :source-query :source-metadata :expressions])
-                        (assoc :fields (-> (mbql.u/match (dissoc inner-query :source-query :joins)
-                                                         [:field id-or-name opts]
-                                                         [:field id-or-name (dissoc opts :temporal-unit :binning)]
-                                                         :expression
-                                                         &match)
-                                           distinct)))
-          res       (-> (mbql.u/replace inner-query
-                                        [:expression expression-name]
-                                        [:field expression-name nil]
-                                        [:field (field-id :guard int?) field-info]
-                                        [:field field-id (assoc field-info ::outer-select true)])
-                        (dissoc :source-table :joins :expressions :source-metadata)
-                        (assoc :source-query subselect))]
-      (println res)
-      res)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Process & Run                                                  |

@@ -238,26 +238,7 @@
                (mt/mbql-query venues
                               {:filters     [[:expression "bob"] [:expression "dobbs"]]
                                :expressions {:bob   [:abs $latitude]
-                                             :dobbs [:- 2 :bob]}
-                               :limit       5})))))
-    (testing "Should be able to deal with a timestampy thing"
-      (is (= {:projections '("_id" "name" "category_id" "latitude" "longitude" "price" "latitude" "name"),
-              :query
-              [{"$project"
-                {"_id" "$_id",
-                 "name" {"$toUpper" "$name"},
-                 "category_id" "$category_id",
-                 "latitude" {"$abs" "$latitude"},
-                 "longitude" "$longitude",
-                 "price" "$price"}}
-               {"$limit" 5}],
-              :collection "venues",
-              :mbql? true}
-             (qp/query->native
-               (mt/mbql-query venues
-                              {:filters     [[:expression "bob"] [:expression "dobbs"]]
-                               :expressions {:bob   [:+ $date $date]
-                                             :dobbs [:$dateToParts $date]}
+                                             :dobbs [:ceil [:expression "bob"]]}
                                :limit       5})))))))
 
 (deftest compile-time-interval-test
