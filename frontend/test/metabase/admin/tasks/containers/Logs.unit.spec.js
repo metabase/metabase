@@ -19,7 +19,7 @@ describe("Logs", () => {
       const utilSpy = jest.spyOn(UtilApi, "logs");
 
       screen.getByText("Loading...");
-      jest.runTimersToTime(1001);
+      jest.advanceTimersByTime(1001);
       expect(utilSpy).toHaveBeenCalled();
     });
   });
