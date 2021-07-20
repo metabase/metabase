@@ -11,11 +11,15 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+
 import { QuestionList } from "./QuestionList";
 
 import { BreadcrumbsWrapper, SearchInput } from "./QuestionPicker.styled";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { SelectList } from "metabase/components/select-list";
+
+const { isRegularCollection } = PLUGIN_COLLECTIONS;
 
 QuestionPicker.propTypes = {
   onSelect: PropTypes.func.isRequired,
@@ -78,16 +82,23 @@ function QuestionPicker({
           </BreadcrumbsWrapper>
 
           <SelectList>
-            {collections.map(collection => (
-              <SelectList.Item
-                hasRightArrow
-                key={collection.id}
-                id={collection.id}
-                name={collection.name}
-                icon={getCollectionIcon(collection).name}
-                onSelect={collectionId => setCurrentCollectionId(collectionId)}
-              />
-            ))}
+            {collections.map(collection => {
+              const icon = getCollectionIcon(collection);
+              return (
+                <SelectList.Item
+                  hasRightArrow
+                  key={collection.id}
+                  id={collection.id}
+                  name={collection.name}
+                  icon={icon.name}
+                  iconColor={icon.color}
+                  isHighlighted={!isRegularCollection(collection)}
+                  onSelect={collectionId =>
+                    setCurrentCollectionId(collectionId)
+                  }
+                />
+              );
+            })}
           </SelectList>
         </React.Fragment>
       )}
