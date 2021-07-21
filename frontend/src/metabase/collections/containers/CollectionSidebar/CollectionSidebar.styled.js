@@ -26,7 +26,7 @@ export const Sidebar = styled(Box.withComponent("aside"))`
   left: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-top: 32px;
+  padding-top: ${space(3)};
   position: fixed;
   top: 65px;
   width: ${props => (props.shouldDisplayMobileSidebar ? "100vw" : 0)};
@@ -37,13 +37,11 @@ export const Sidebar = styled(Box.withComponent("aside"))`
 `;
 
 export const ToggleMobileSidebarIcon = styled(Icon).attrs({
-  ml: 3,
-  mr: 2,
-  mt: "4px",
   name: "close",
   size: 20,
 })`
   color: ${color("brand")};
+  margin: ${space(0)} ${space(2)} 0 ${space(3)}};
 
   ${breakpointMinSmall} {
     cursor: pointer;
