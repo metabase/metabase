@@ -7,7 +7,7 @@ import { GridRows } from "@visx/grid";
 
 export default function TimeseriesBar(
   { data, yScaleType = scaleLinear, accessors },
-  layout
+  layout,
 ) {
   let multiScale, categories;
   const xAxisScale = scaleBand({
@@ -39,7 +39,7 @@ export default function TimeseriesBar(
         left={40}
         strokeDasharray="4"
       />
-      {data.map((d) => {
+      {data.map(d => {
         const barWidth = xAxisScale.bandwidth();
         const barHeight = layout.yMax - yAxisScale(accessors.y(d));
         const x = xAxisScale(accessors.x(d));
@@ -58,7 +58,7 @@ export default function TimeseriesBar(
       <AxisLeft
         hideTicks
         hideAxisLine
-        tickFormat={(d) => {
+        tickFormat={d => {
           return String(d);
         }}
         scale={yAxisScale}
@@ -69,7 +69,7 @@ export default function TimeseriesBar(
       <AxisBottom
         hideTicks
         top={layout.yMax}
-        tickFormat={(d) => new Date(d).toLocaleDateString("en")}
+        tickFormat={d => new Date(d).toLocaleDateString("en")}
         scale={xAxisScale}
         stroke={layout.colors.axis.stroke}
         label={"Time"}

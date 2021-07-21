@@ -7,7 +7,7 @@ import { GridRows } from "@visx/grid";
 
 export default function TimeseriesLine(
   { data, yScaleType = scaleLinear, accessors },
-  layout
+  layout,
 ) {
   let multiScale, categories;
 
@@ -42,16 +42,16 @@ export default function TimeseriesLine(
         strokeDasharray="4"
       />
       {multiScale ? (
-        categories.map((c) => {
+        categories.map(c => {
           return (
             <LinePath
               key={`series-${c}`}
-              data={data.filter((d) => {
+              data={data.filter(d => {
                 return accessors.multi(d) === c;
               })}
               stroke={multiScale(accessors.multi(c))}
-              x={(d) => xAxisScale(accessors.x(d))}
-              y={(d) => yAxisScale(accessors.y(d))}
+              x={d => xAxisScale(accessors.x(d))}
+              y={d => yAxisScale(accessors.y(d))}
             />
           );
         })
@@ -60,15 +60,15 @@ export default function TimeseriesLine(
           data={data}
           stroke={"#509ee3"}
           strokeWidth={2}
-          x={(d) => xAxisScale(accessors.x(d))}
-          y={(d) => yAxisScale(accessors.y(d))}
+          x={d => xAxisScale(accessors.x(d))}
+          y={d => yAxisScale(accessors.y(d))}
         />
       )}
       <AxisLeft
         label={"Count"}
         hideTicks
         hideAxisLine
-        tickFormat={(d) => String(d)}
+        tickFormat={d => String(d)}
         scale={yAxisScale}
         left={40}
         tickLabelProps={() => leftAxisTickStyles(layout)}
@@ -78,7 +78,7 @@ export default function TimeseriesLine(
         hideTicks
         top={layout.yMax}
         stroke={layout.colors.axis.stroke}
-        tickFormat={(d) => new Date(d).toLocaleDateString("en")}
+        tickFormat={d => new Date(d).toLocaleDateString("en")}
         scale={xAxisScale}
         tickLabelProps={() => bottomAxisTickStyles(layout)}
       />

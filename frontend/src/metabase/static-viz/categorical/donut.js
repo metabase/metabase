@@ -43,7 +43,7 @@ export default function Donut({ data, accessors }, layout) {
           cornerRadius={2}
           padAngle={0.001}
         >
-          {(pie) => {
+          {pie => {
             return pie.arcs.map((arc, index) => {
               const arcPath = pie.path(arc);
               return (
