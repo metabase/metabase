@@ -347,7 +347,7 @@ export function xValueForWaterfallTotal({ settings, series }) {
   } else if (isQuantitative(settings) || isHistogram(settings)) {
     const lastXValue = xValues[xValues.length - 1];
     return lastXValue + xInterval;
-  } else if (typeof xValues[0] === "number") {
+  } else if (series.every(({ data }) => dimensionIsNumeric(data))) {
     const lastXValue = xValues[xValues.length - 1];
     return lastXValue + 1;
   }
