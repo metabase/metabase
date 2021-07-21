@@ -26,42 +26,49 @@ describeWithToken("collections types", () => {
   it("should be able to manage collection authority level", () => {
     cy.visit("/collection/root");
 
-    // Test can create official collection
-    cy.icon("new_folder").click();
-    modal().within(() => {
-      cy.findByLabelText("Name").type(COLLECTION_NAME);
-      setOfficial();
-      cy.button("Create").click();
-    });
-    cy.findByText(COLLECTION_NAME).click();
-    cy.findByTestId("official-collection-marker");
-    assertSidebarIcon(COLLECTION_NAME, "badge");
-
-    // Test can change official collection to regular
-    cy.icon("pencil").click();
-    cy.findByText("Edit this collection").click();
-    modal().within(() => {
-      setOfficial(false);
-      cy.button("Update").click();
-    });
-    cy.findByTestId("official-collection-marker").should("not.exist");
-    assertSidebarIcon(COLLECTION_NAME, "folder");
-
-    // Test can change regular collection to official
-    cy.icon("pencil").click();
-    cy.findByText("Edit this collection").click();
-    modal().within(() => {
-      setOfficial();
-      cy.button("Update").click();
-    });
-    cy.findByTestId("official-collection-marker");
-    assertSidebarIcon(COLLECTION_NAME, "badge");
+    createOfficialCollection();
+    changeCollectionFromOfficialToRegular();
+    changeCollectionFromRegularToOfficial();
   });
 
   it("displays official badge throughout the application", () => {
     testOfficialBadgePresence();
   });
 });
+
+function createOfficialCollection() {
+  cy.icon("new_folder").click();
+  modal().within(() => {
+    cy.findByLabelText("Name").type(COLLECTION_NAME);
+    setOfficial();
+    cy.button("Create").click();
+  });
+  cy.findByText(COLLECTION_NAME).click();
+  cy.findByTestId("official-collection-marker");
+  assertSidebarIcon(COLLECTION_NAME, "badge");
+}
+
+function changeCollectionFromOfficialToRegular() {
+  cy.icon("pencil").click();
+  cy.findByText("Edit this collection").click();
+  modal().within(() => {
+    setOfficial(false);
+    cy.button("Update").click();
+  });
+  cy.findByTestId("official-collection-marker").should("not.exist");
+  assertSidebarIcon(COLLECTION_NAME, "folder");
+}
+
+function changeCollectionFromRegularToOfficial() {
+  cy.icon("pencil").click();
+  cy.findByText("Edit this collection").click();
+  modal().within(() => {
+    setOfficial();
+    cy.button("Update").click();
+  });
+  cy.findByTestId("official-collection-marker");
+  assertSidebarIcon(COLLECTION_NAME, "badge");
+}
 
 describeWithoutToken("collection types", () => {
   beforeEach(() => {
@@ -106,22 +113,36 @@ function testOfficialBadgePresence(expectBadge = true) {
     cy.visit(`/collection/${collectionId}`);
   });
 
-  // Collections page
+  testOfficialBadgeInCollectionsPage(expectBadge);
+  testOfficialBadgeInDashboardPage(expectBadge);
+
+  testOfficialBadgeInQuestionPage(expectBadge);
+
+  testOfficialBadgeInSearch(expectBadge);
+}
+
+function testOfficialBadgeInCollectionsPage(expectBadge) {
   cy.findByTestId("official-collection-marker").should(
     expectBadge ? "exist" : "not.exist",
   );
   assertSidebarIcon(COLLECTION_NAME, expectBadge ? "badge" : "folder");
+}
 
-  // Dashboard Page
+function testOfficialBadgeInDashboardPage(expectBadge) {
   cy.findByText("Official Dashboard").click();
   assertHasCollectionBadge(expectBadge);
+}
 
-  // Question Page
+function testOfficialBadgeInQuestionPage(expectBadge) {
   cy.findByText(COLLECTION_NAME).click();
   cy.findByText("Official Question").click();
   assertHasCollectionBadge(expectBadge);
+}
 
-  // Search
+function testOfficialBadgeInSearch(expectBadge) {
+  cy.findByText(COLLECTION_NAME).click();
+  cy.findByText("Official Question").click();
+  assertHasCollectionBadge(expectBadge);
   cy.get(".Nav")
     .findByPlaceholderText("Search…")
     .as("searchBar")
