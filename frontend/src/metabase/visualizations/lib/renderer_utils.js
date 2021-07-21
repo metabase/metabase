@@ -2,7 +2,6 @@
 
 import _ from "underscore";
 import { getIn } from "icepick";
-import { t } from "ttag";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { parseTimestamp } from "metabase/lib/time";
