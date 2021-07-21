@@ -5,7 +5,12 @@ import { t } from "ttag";
 
 import Collection from "metabase/entities/collections";
 
-import { Sidebar, ToggleMobileSidebarIcon } from "./CollectionSidebar.styled";
+import {
+  LoadingContainer,
+  LoadingTitle,
+  Sidebar,
+  ToggleMobileSidebarIcon,
+} from "./CollectionSidebar.styled";
 
 import Header from "./CollectionSidebarHeader/CollectionSidebarHeader";
 import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
@@ -56,8 +61,6 @@ class CollectionSidebar extends React.Component {
     });
   };
 
-  // TODO Should we update the API to filter archived collections?
-
   renderContent = () => {
     const {
       currentUser,
@@ -89,24 +92,26 @@ class CollectionSidebar extends React.Component {
   };
 
   render() {
-    const { allFetched } = this.props;
+    const { allFetched, shouldDisplayMobileSidebar } = this.props;
 
     return (
       <Sidebar
         role="tree"
-        shouldDisplayMobileSidebar={this.props.shouldDisplayMobileSidebar}
+        shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
       >
-        {allFetched ? (
-          this.renderContent()
-        ) : (
-          <div className="text-brand text-centered">
-            <LoadingSpinner />
-            <h2 className="text-normal text-light mt1">{t`Loading…`}</h2>
-          </div>
-        )}
+        {allFetched ? this.renderContent() : <LoadingWarning />}
       </Sidebar>
     );
   }
+}
+
+function LoadingWarning() {
+  return (
+    <LoadingContainer>
+      <LoadingSpinner />
+      <LoadingTitle>{t`Loading…`}</LoadingTitle>
+    </LoadingContainer>
+  );
 }
 
 export default connect(getCurrentUser)(CollectionSidebar);
