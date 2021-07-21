@@ -46,7 +46,7 @@ function LastEditInfoLabel({ item, user, onClick, ...props }) {
 
   return (
     <TextButton
-      small
+      size="small"
       onClick={onClick}
       data-testid="revision-history-button"
       {...props}
