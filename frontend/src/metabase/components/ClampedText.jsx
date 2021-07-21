@@ -16,8 +16,6 @@ ClampedText.propTypes = {
   visibleLines: PropTypes.number,
 };
 
-export default ClampedText;
-
 function ClampedText({ className, text, visibleLines }) {
   const [isClamped, setIsClamped] = useState(true);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -57,3 +55,5 @@ function ClampedText({ className, text, visibleLines }) {
     </div>
   );
 }
+
+export default ClampedText;
