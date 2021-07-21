@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Pie } from "@visx/shape";
 import { scaleOrdinal } from "@visx/scale";

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Bar } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
@@ -25,6 +26,7 @@ export default function TimeseriesBar(
 
   if (accessors.multi) {
     categories = data.map(accessors.multi);
+    // eslint-disable-next-line no-unused-vars
     multiScale = scaleOrdinal({
       domain: categories,
       range: ["blue", "yellow", "green", "red"],
