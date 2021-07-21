@@ -123,7 +123,7 @@
    [net.cgrand/macrovich "0.2.1"]                                     ; utils for writing macros for both Clojure & ClojureScript
    [net.redhogs.cronparser/cron-parser-core "3.4"                     ; describe Cron schedule in human-readable language
     :exclusions [org.slf4j/slf4j-api joda-time]]                      ; exclude joda time 2.3 which has outdated timezone information
-   [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
+   [net.sf.cssbox/cssbox "5.0.0" :exclusions [org.slf4j/slf4j-api]]   ; HTML / CSS rendering
    [org.apache.commons/commons-compress "1.20"]                       ; compression utils
    [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
    [org.apache.logging.log4j/log4j-api "2.13.3"]                      ; apache logging framework

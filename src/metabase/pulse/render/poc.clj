@@ -82,8 +82,15 @@ const BarChart = (data) => exports.default(toJSArray(data));
     (let [in         (TranscoderInput. svg-document)
           out        (TranscoderOutput. os)
           transcoder (high-quality-png-transcoder)]
+      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH (float 2000))
       (.transcode transcoder in out))
     (.toByteArray os)))
+
+(defn svg-string->bytes [s]
+  (let [s (-> s
+              (str/replace  #"<svg " "<svg xmlns=\"http://www.w3.org/2000/svg\" ")
+              (str/replace #"fill=\"transparent\"" "fill-opacity=\"0.0\""))]
+    (-> s parse-svg-string render-svg)))
 
 (defn png []
   (render-svg (svg)))

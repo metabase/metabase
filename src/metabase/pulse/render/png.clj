@@ -14,14 +14,14 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
-           java.awt.Dimension
            java.awt.image.BufferedImage
            [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            javax.imageio.ImageIO
+           (org.fit.cssbox.awt BrowserCanvas GraphicsEngine)
            [org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin]
            [org.fit.cssbox.io DefaultDOMSource StreamDocumentSource]
-           org.fit.cssbox.layout.BrowserCanvas
+           org.fit.cssbox.layout.Dimension
            org.w3c.dom.Document))
 
 (defn- register-font! [filename]
@@ -65,27 +65,27 @@
     .getStyleSheets))
 
 (defn- content-canvas
-  ^BrowserCanvas [^Document doc, ^StreamDocumentSource doc-source, width]
-  (let [window-size (Dimension. width 1)
-        da          (dom-analyzer doc doc-source window-size)
-        canvas      (doto (BrowserCanvas. (.getRoot da) da (.getURL doc-source))
-                      (.setAutoMediaUpdate false)
-                      (.setAutoSizeUpdate true))]
+  ^BrowserCanvas [^Document doc, ^StreamDocumentSource doc-source, ^Dimension dimension]
+  (let [da          (dom-analyzer doc doc-source dimension)
+        canvas      (BrowserCanvas. (.getRoot da) da (.getURL doc-source))]
     (doto (.getConfig canvas)
       (.setClipViewport false)
       (.setLoadImages true)
       (.setLoadBackgroundImages true))
     (doto canvas
-      (.createLayout window-size))))
+      (.createLayout dimension))))
 
 (defn- render-to-png!
   [^String html, ^ByteArrayOutputStream os, width]
   (register-fonts-if-needed!)
-  (with-open [is (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))]
-    (let [doc-source     (StreamDocumentSource. is nil "text/html; charset=utf-8")
-          doc            (.parse (DefaultDOMSource. doc-source))
-          content-canvas (content-canvas doc doc-source width)]
-      (write-image! (.getImage content-canvas) "png" os))))
+  (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
+              doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
+    (let [dimension       (Dimension. 2000 1)
+          doc             (.parse (DefaultDOMSource. doc-source))
+          da              (dom-analyzer doc doc-source dimension)
+          graphics-engine (GraphicsEngine. (.getRoot da) da (.getURL doc-source))]
+      (.createLayout graphics-engine dimension)
+      (write-image! (.getImage graphics-engine) "png" os))))
 
 (s/defn render-html-to-png :- bytes
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
