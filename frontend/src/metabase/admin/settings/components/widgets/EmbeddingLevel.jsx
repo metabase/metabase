@@ -5,9 +5,11 @@ import SettingsInput from "./SettingInput";
 import cx from "classnames";
 
 import ExternalLink from "metabase/components/ExternalLink";
+import MetabaseSettings from "metabase/lib/settings";
 
-const PREMIUM_EMBEDDING_STORE_URL =
-  "https://store.metabase.com/product/embedding";
+const PREMIUM_EMBEDDING_STORE_URL = MetabaseSettings.storeUrl(
+  "product/embedding",
+);
 const PREMIUM_EMBEDDING_SETTING_KEY = "premium-embedding-token";
 
 class PremiumTokenInput extends Component {

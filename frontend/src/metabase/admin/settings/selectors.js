@@ -16,6 +16,7 @@ import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 
+import { SettingsCloudStoreLink } from "./components/SettingsCloudStoreLink";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
@@ -391,6 +392,22 @@ const SECTIONS = updateSectionsWithPlugins({
     ],
   },
 });
+
+if (MetabaseSettings.isHosted()) {
+  const allSections = Object.values(SECTIONS);
+  const lastSection = _.max(allSections, "order");
+  SECTIONS.cloud = {
+    name: t`Cloud`,
+    order: lastSection.order + 1,
+    settings: [
+      {
+        key: "store-link",
+        display_name: t`Cloud Settings`,
+        widget: SettingsCloudStoreLink,
+      },
+    ],
+  };
+}
 
 export const getSettings = createSelector(
   state => state.admin.settings.settings,
