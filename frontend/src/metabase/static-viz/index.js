@@ -1,7 +1,7 @@
 import ReactDOMServer from "react-dom/server";
 
-import { TimeseriesBar, TimeseriesLine } from "./timeseries/index.js";
-import { Donut } from "./categorical/index.js";
+import { TimeseriesBar, TimeseriesLine } from "metabase/static-viz/timeseries/";
+import { Donut } from "metabase/static-viz/categorical/";
 
 const DEFAULTS = {
   width: 540,
