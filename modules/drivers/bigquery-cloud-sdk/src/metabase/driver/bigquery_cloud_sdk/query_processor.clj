@@ -413,6 +413,21 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :coalesce]
+  [driver [_ & args]]
+  (letfn [(to-case [member]
+            (let [member-sql (sql.qp/->honeysql driver member)]
+              (hsql/call :case
+                         [:not= member-sql nil] member-sql
+                         :else nil)))
+          (merge-case [acc next-elem]
+            (as-> (:args acc) args
+                (vec args)
+                (pop args)
+                (conj args next-elem)
+                (apply list args)
+                (assoc acc :args args)))]
+  (reduce merge-case (map to-case args))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |
