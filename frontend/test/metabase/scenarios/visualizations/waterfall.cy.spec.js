@@ -52,8 +52,9 @@ describe("scenarios > visualizations > waterfall", () => {
 
   it("should work with ordinal series and numeric X-axis (metabase#15550)", () => {
     openNativeEditor().type(
-      "select 1 as X, 2 as Y union select -1 as X, -2 as Y",
+      "select 1 as X, 20 as Y union select 2 as X, -10 as Y",
     );
+
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
@@ -62,9 +63,17 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.get(".List-item")
       .contains("X")
       .click();
+
     cy.contains("Select a field").click();
     cy.get(".List-item")
       .contains("Y")
+      .click();
+
+    cy.contains("Axes").click();
+
+    cy.contains("Linear").click();
+    cy.get(".List-item")
+      .contains("Ordinal")
       .click();
 
     verifyWaterfallRendering("X", "Y");
