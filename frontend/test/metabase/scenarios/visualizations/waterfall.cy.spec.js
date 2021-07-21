@@ -50,9 +50,9 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("PRODUCT", "PROFIT");
   });
 
-  it("should work with quantitative series", () => {
+  it("should work with ordinal series with numeric X-axis (metabase#15550)", () => {
     openNativeEditor().type(
-      "select 1 as xx, 10 as yy union select 2 as xx, -2 as yy",
+      "select 1 as X, 2 as Y union select -1 as X, -2 as Y",
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("Visualization").click();
@@ -60,12 +60,32 @@ describe("scenarios > visualizations > waterfall", () => {
 
     cy.contains("Select a field").click();
     cy.get(".List-item")
-      .first()
-      .click(); // X
+      .contains("X")
+      .click();
     cy.contains("Select a field").click();
     cy.get(".List-item")
-      .last()
-      .click(); // Y
+      .contains("Y")
+      .click();
+
+    verifyWaterfallRendering("X", "Y");
+  });
+
+  it("should work with quantitative series", () => {
+    openNativeEditor().type(
+      "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
+    );
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.contains("Visualization").click();
+    cy.icon("waterfall").click();
+
+    cy.contains("Select a field").click();
+    cy.get(".List-item")
+      .contains("X")
+      .click();
+    cy.contains("Select a field").click();
+    cy.get(".List-item")
+      .contains("Y")
+      .click();
 
     verifyWaterfallRendering("XX", "YY");
   });

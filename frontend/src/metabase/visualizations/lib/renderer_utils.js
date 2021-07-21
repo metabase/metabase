@@ -349,7 +349,7 @@ export function xValueForWaterfallTotal({ settings, series }) {
     return xValues[xValues.length - 1] + xInterval;
   }
 
-  return t`Total`;
+  return "Infinity";
 }
 
 /************************************************************ PROPERTIES ************************************************************/
