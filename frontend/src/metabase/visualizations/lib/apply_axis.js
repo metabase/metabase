@@ -278,7 +278,6 @@ export function applyChartQuantitativeXAxis(
     ) {
       throw "X-axis must not cross 0 when using log scale.";
     }
-    ``;
   } else {
     scale = d3.scale.linear();
   }

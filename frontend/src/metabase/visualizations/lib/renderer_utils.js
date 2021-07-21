@@ -345,15 +345,14 @@ export function xValueForWaterfallTotal({ settings, series }) {
     const lastXValue = xValues[xValues.length - 1];
     return lastXValue.clone().add(count, interval);
   } else if (isQuantitative(settings) || isHistogram(settings)) {
-    return xValues[xValues.length - 1] + xInterval;
+    const lastXValue = xValues[xValues.length - 1];
+    return lastXValue + xInterval;
+  } else if (typeof xValues[0] === "number") {
+    const lastXValue = xValues[xValues.length - 1];
+    return lastXValue + 1;
   }
 
-  // The exact value is not important, but:
-  // * it must be unique among xValues
-  // * if xValues are numbers, it must be a number or a numeric string
-  // * if xValues are strings, it must be a string
-  // Infinity satisfies conditions above
-  return "Infinity";
+  return "Total";
 }
 
 /************************************************************ PROPERTIES ************************************************************/
