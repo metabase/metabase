@@ -60,11 +60,6 @@ class CollectionSidebar extends React.Component {
     });
   };
 
-<<<<<<< HEAD
-=======
-  // TODO Should we update the API to filter archived collections?
-
->>>>>>> a28a75352 (Extract Collections component)
   renderContent = () => {
     const {
       currentUser,
@@ -78,7 +73,6 @@ class CollectionSidebar extends React.Component {
         <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
 
         <Collection.Loader id="root">
-<<<<<<< HEAD
           {({ collection: root }) => (
             <RootCollectionLink isRoot={isRoot} root={root} />
           )}
@@ -94,21 +88,6 @@ class CollectionSidebar extends React.Component {
         />
 
         <Footer isAdmin={currentUser.is_superuser} />
-=======
-          {({ collection: root }) => <Header isRoot={isRoot} root={root} />}
-        </Collection.Loader>
-
-        <Collections
-          collectionId={collectionId}
-          currentUserId={currentUser.id}
-          list={list}
-          onClose={this.onClose}
-          onOpen={this.onOpen}
-          openCollections={this.state.openCollections}
-        />
-
-        <Footer isSuperUser={currentUser.is_superuser} />
->>>>>>> fc641cba8 (Extract Header into component)
       </React.Fragment>
     );
   };
