@@ -2,13 +2,15 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import Popover from "metabase/components/Popover";
 import Button from "metabase/components/Button";
-import Value from "metabase/components/Value";
+
+import { normalizeValue } from "./normalizeValue";
 
 import cx from "classnames";
 import {
@@ -32,9 +34,6 @@ const propTypes = {
 
 const BORDER_WIDTH = 1;
 
-const normalizeValue = value =>
-  Array.isArray(value) ? value : value != null ? [value] : [];
-
 export default class ParameterFieldWidget extends Component {
   constructor(props) {
     super(props);
@@ -46,24 +45,6 @@ export default class ParameterFieldWidget extends Component {
   }
 
   static noPopover = true;
-
-  static format(value, fields) {
-    value = normalizeValue(value);
-    if (value.length > 1) {
-      const n = value.length;
-      return ngettext(msgid`${n} selection`, `${n} selections`, n);
-    } else {
-      return (
-        <Value
-          // If there are multiple fields, turn off remapping since they might
-          // be remapped to different fields.
-          remap={fields.length === 1}
-          value={value[0]}
-          column={fields[0]}
-        />
-      );
-    }
-  }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.value !== nextProps.value) {
@@ -126,7 +107,10 @@ export default class ParameterFieldWidget extends Component {
           onClick={() => focusChanged(true)}
         >
           {savedValue.length > 0 ? (
-            ParameterFieldWidget.format(savedValue, fields)
+            <ParameterFieldWidgetValue
+              savedValue={savedValue}
+              fields={fields}
+            />
           ) : (
             <span>{placeholder}</span>
           )}
