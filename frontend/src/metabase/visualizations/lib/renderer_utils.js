@@ -349,6 +349,11 @@ export function xValueForWaterfallTotal({ settings, series }) {
     return xValues[xValues.length - 1] + xInterval;
   }
 
+  // The exact value is not important, but:
+  // * it must be unique among xValues
+  // * if xValues are numbers, it must be a number or a numeric string
+  // * if xValues are strings, it must be a string
+  // Infinity satisfies conditions above
   return "Infinity";
 }
 
