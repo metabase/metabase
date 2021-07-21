@@ -55,6 +55,7 @@
             [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
             [metabase.query-processor.middleware.validate :as validate]
             [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
+            [metabase.query-processor.middleware.visualization-settings :as viz-settings]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
@@ -83,6 +84,7 @@
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
+   #'viz-settings/update-viz-settings
    #'annotate/add-column-info
    #'perms/check-query-permissions
    #'pre-alias-ags/pre-alias-aggregations

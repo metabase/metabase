@@ -15,6 +15,7 @@
             [metabase.query-processor.pivot :as pivot]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.util :as qputil]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -83,25 +84,37 @@
      (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
   (re-pattern (str "(" (str/join "|" (map u/qualified-name (qp.streaming/export-formats))) ")")))
 
+(def ^:private column-ref-regex #"^\[.+\]$")
+
+(defn- viz-setting-key-fn
+  "Key function for parsing JSON visualization settings into the DB form. Converts most keys to
+  keywords, but leaves column references as strings."
+   [json-key]
+   (if (re-matches column-ref-regex json-key)
+     json-key
+     (keyword json-key)))
+
 (api/defendpoint ^:streaming POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format :as {{:keys [query]} :params}]
-  {query         su/JSONString
-   export-format ExportFormat}
-  (let [{:keys [database] :as query} (json/parse-string query keyword)]
-    (let [query (-> (assoc query :async? true)
-                    (dissoc :constraints)
-                    (update :middleware #(-> %
-                                             (dissoc :add-default-userland-constraints? :js-int-to-string?)
-                                             (assoc :skip-results-metadata? true
-                                                    :format-rows? false))))
-          info  {:executed-by api/*current-user-id*
-                 :context     (export-format->context export-format)}]
-      (run-query-async
-       query
-       :export-format export-format
-       :context       (export-format->context export-format)
-       :qp-runner     qp/process-query-and-save-execution!))))
+  [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
+  {query                  su/JSONString
+   visualization_settings su/JSONString
+   export-format          ExportFormat}
+  (let [query        (json/parse-string query keyword)
+        viz-settings (mb.viz/db->norm (json/parse-string visualization_settings viz-setting-key-fn))
+        query        (-> (assoc query
+                                :async? true
+                                :viz-settings viz-settings)
+                         (dissoc :constraints)
+                         (update :middleware #(-> %
+                                                  (dissoc :add-default-userland-constraints? :js-int-to-string?)
+                                                  (assoc :skip-results-metadata? true
+                                                         :format-rows? false))))]
+    (run-query-async
+     query
+     :export-format export-format
+     :context       (export-format->context export-format)
+     :qp-runner     qp/process-query-and-save-execution!)))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------

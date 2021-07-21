@@ -29,6 +29,7 @@ const QueryDownloadWidget = ({
   dashcardId,
   icon,
   params,
+  visualizationSettings,
 }) => (
   <PopoverWithTrigger
     triggerElement={
@@ -84,8 +85,8 @@ const QueryDownloadWidget = ({
               <UnsavedQueryButton
                 key={type}
                 type={type}
-                card={card}
                 result={result}
+                visualizationSettings={visualizationSettings}
               />
             ) : null}
           </Box>
@@ -95,10 +96,17 @@ const QueryDownloadWidget = ({
   </PopoverWithTrigger>
 );
 
-const UnsavedQueryButton = ({ type, result: { json_query = {} }, card }) => (
+const UnsavedQueryButton = ({
+  type,
+  result: { json_query = {} },
+  visualizationSettings,
+}) => (
   <DownloadButton
     url={`api/dataset/${type}`}
-    params={{ query: JSON.stringify(_.omit(json_query, "constraints")) }}
+    params={{
+      query: JSON.stringify(_.omit(json_query, "constraints")),
+      visualization_settings: JSON.stringify(visualizationSettings),
+    }}
     extensions={[type]}
   >
     {type}
