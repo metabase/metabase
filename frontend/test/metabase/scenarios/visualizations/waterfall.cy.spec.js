@@ -50,7 +50,7 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("PRODUCT", "PROFIT");
   });
 
-  it("should work with ordinal series with numeric X-axis (metabase#15550)", () => {
+  it("should work with ordinal series and numeric X-axis (metabase#15550)", () => {
     openNativeEditor().type(
       "select 1 as X, 2 as Y union select -1 as X, -2 as Y",
     );
