@@ -124,7 +124,7 @@
     "cypress": "^6.8.0",
     "cypress-grep": "^2.5.2",
     "cypress-real-events": "^1.4.0",
-    "documentation": "^4.0.0-rc.1",
+    "documentation": "^13.2.5",
     "eslint": "7.12.1",
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-loader": "4.0.2",
