@@ -87,7 +87,7 @@ describe("scenarios > visualizations > waterfall", () => {
       .contains("Y")
       .click();
 
-    verifyWaterfallRendering("XX", "YY");
+    verifyWaterfallRendering("X", "Y");
   });
 
   it("should work with time-series data", () => {
