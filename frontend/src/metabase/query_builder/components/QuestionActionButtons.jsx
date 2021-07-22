@@ -2,6 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+
 import Button from "metabase/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 import { Container } from "./QuestionActionButtons.styled";
@@ -11,12 +13,6 @@ export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 export const MOVE_TESTID = "move-button";
 export const CLONE_TESTID = "clone-button";
 export const ARCHIVE_TESTID = "archive-button";
-
-export const EDIT_ACTION = "edit";
-export const ADD_TO_DASH_ACTION = "add-to-dashboard";
-export const MOVE_ACTION = "move";
-export const CLONE_ACTION = "clone";
-export const ARCHIVE_ACTION = "archive";
 
 const ICON_SIZE = 18;
 
@@ -36,7 +32,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
             onlyIcon
             icon="pencil"
             iconSize={ICON_SIZE}
-            onClick={() => onOpenModal(EDIT_ACTION)}
+            onClick={() => onOpenModal(MODAL_TYPES.EDIT)}
             data-testid={EDIT_TESTID}
           />
         </Tooltip>
@@ -46,7 +42,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
           onlyIcon
           icon="add_to_dash"
           iconSize={ICON_SIZE}
-          onClick={() => onOpenModal(ADD_TO_DASH_ACTION)}
+          onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
           data-testid={ADD_TO_DASH_TESTID}
         />
       </Tooltip>
@@ -56,7 +52,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
             onlyIcon
             icon="move"
             iconSize={ICON_SIZE}
-            onClick={() => onOpenModal(MOVE_ACTION)}
+            onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
             data-testid={MOVE_TESTID}
           />
         </Tooltip>
@@ -67,7 +63,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
             onlyIcon
             icon="segment"
             iconSize={ICON_SIZE}
-            onClick={() => onOpenModal(CLONE_ACTION)}
+            onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
             data-testid={CLONE_TESTID}
           />
         </Tooltip>
@@ -78,7 +74,7 @@ function QuestionActionButtons({ canWrite, onOpenModal }) {
             onlyIcon
             icon="archive"
             iconSize={ICON_SIZE}
-            onClick={() => onOpenModal(ARCHIVE_ACTION)}
+            onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
             data-testid={ARCHIVE_TESTID}
           />
         </Tooltip>
