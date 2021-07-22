@@ -38,8 +38,7 @@ describeWithToken("collections types", () => {
     assertSidebarIcon(COLLECTION_NAME, "badge");
 
     // Test can change official collection to regular
-    cy.icon("pencil").click();
-    cy.findByText("Edit this collection").click();
+    editCollection();
     modal().within(() => {
       setOfficial(false);
       cy.button("Update").click();
@@ -48,8 +47,7 @@ describeWithToken("collections types", () => {
     assertSidebarIcon(COLLECTION_NAME, "folder");
 
     // Test can change regular collection to official
-    cy.icon("pencil").click();
-    cy.findByText("Edit this collection").click();
+    editCollection();
     modal().within(() => {
       setOfficial();
       cy.button("Update").click();
@@ -79,8 +77,7 @@ describeWithoutToken("collection types", () => {
     });
 
     cy.findByText("First collection").click();
-    cy.icon("pencil").click();
-    cy.findByText("Edit this collection").click();
+    editCollection();
     modal().within(() => {
       assertNoCollectionTypeInput();
     });
@@ -135,6 +132,11 @@ function testOfficialBadgePresence(expectBadge = true) {
     assertSearchResultBadge("Official Question", { expectBadge });
     assertSearchResultBadge("Official Dashboard", { expectBadge });
   });
+}
+
+function editCollection() {
+  cy.icon("pencil").click();
+  cy.findByText("Edit this collection").click();
 }
 
 function setOfficial(official = true) {
