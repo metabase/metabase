@@ -21,6 +21,7 @@ const propTypes = {
   item: PropTypes.shape({
     name: PropTypes.string.isRequired,
     icon: PropTypes.string,
+    iconColor: PropTypes.string,
     hasRightArrow: PropTypes.string,
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,
@@ -42,7 +43,7 @@ export const TreeNode = React.memo(
     },
     ref,
   ) {
-    const { name, icon, hasRightArrow, id } = item;
+    const { name, icon, iconColor, hasRightArrow, id } = item;
 
     const handleSelect = () => {
       onSelect(item);
@@ -80,7 +81,7 @@ export const TreeNode = React.memo(
 
         {icon && (
           <IconContainer variant={variant}>
-            <Icon name={icon} />
+            <Icon name={icon} color={iconColor} />
           </IconContainer>
         )}
         <NameContainer>{name}</NameContainer>

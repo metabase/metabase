@@ -158,7 +158,11 @@ export default class SearchBar extends React.Component {
                     debounced
                   >
                     {({ list }) => {
-                      return <ol>{this.renderResults(list)}</ol>;
+                      return (
+                        <ol data-testid="search-results-list">
+                          {this.renderResults(list)}
+                        </ol>
+                      );
                     }}
                   </Search.ListLoader>
                 </Card>
