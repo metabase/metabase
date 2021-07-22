@@ -347,9 +347,9 @@ export function xValueForWaterfallTotal({ settings, series }) {
   } else if (isQuantitative(settings) || isHistogram(settings)) {
     const lastXValue = xValues[xValues.length - 1];
     return lastXValue + xInterval;
-  } else if (series.every(({ data }) => dimensionIsNumeric(data))) {
-    const lastXValue = xValues[xValues.length - 1];
-    return lastXValue + 1;
+  } else if (isOrdinal(settings)) {
+    const maxXValue = xValues.reduce((a, b) => (a > b ? a : b), xValues[0]);
+    return maxXValue + 1;
   }
 
   return "Total";
