@@ -26,6 +26,11 @@ export default class LegendHeader extends Component {
     actionButtons: PropTypes.node,
     description: PropTypes.string,
     classNameWidgets: PropTypes.string,
+    icon: PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      color: PropTypes.string,
+      size: PropTypes.number,
+    }),
   };
 
   static defaultProps = {
@@ -40,6 +45,7 @@ export default class LegendHeader extends Component {
       hovered,
 
       actionButtons,
+      icon,
       onHoverChange,
       onChangeCardAndRun,
       settings,
@@ -82,6 +88,7 @@ export default class LegendHeader extends Component {
           <LegendItem
             key={index}
             title={titles[index]}
+            icon={icon}
             description={description}
             color={colors[index % colors.length]}
             className={cx({ "text-brand-hover": !isBreakoutSeries })}
