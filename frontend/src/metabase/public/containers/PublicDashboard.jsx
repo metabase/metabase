@@ -151,15 +151,7 @@ export default class PublicDashboard extends Component {
         parameterValues={parameterValues}
         setParameterValue={this.props.setParameterValue}
         actionButtons={
-          buttons.length > 0 && (
-            <div>
-              {buttons.map((button, index) => (
-                <span key={index} className="m1">
-                  {button}
-                </span>
-              ))}
-            </div>
-          )
+          buttons.length > 0 && <div className="flex">{buttons}</div>
         }
       >
         <LoadingAndErrorWrapper
