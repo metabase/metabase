@@ -447,11 +447,12 @@
 (defn- maybe-escape-component
   [component]
   (if (str/includes? component "-")
-    (str "[" component "]")
+    (str "`" component "`")
     component))
 
 (defn- maybe-escape-identifier
-  "If it's got dashes it's gotta get escaped in the special way BQ has"
+  "If it's got dashes it's gotta get escaped in the special way BQ has.
+  This is the salient thing MB allows which BQ doesn't without quoting, although there might be others"
   [{:keys [identifier-type components] :as identifier}]
   (apply hx/identifier (concat [identifier-type]
     (map maybe-escape-component components))))
