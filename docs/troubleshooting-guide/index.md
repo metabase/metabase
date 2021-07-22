@@ -16,4 +16,6 @@
 
 ### [LDAP](ldap.md)
 
+### [My question or dashboard is slow](performance.md)
+
 ### [I think I found a bug](bugs.md)
