@@ -19,7 +19,8 @@
             [metabase.shared.util.log :as log]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util.i18n :refer [deferred-trs trs]])
+            [metabase.util.i18n :refer [deferred-trs trs]]
+            [clojure.string :as str])
   (:import org.apache.commons.io.FileUtils))
 
 (use-fixtures :once
@@ -110,9 +111,33 @@
     (type entity)))
 
 (defmethod assert-loaded-entity (type Card)
-  [card {:keys [query-results collections]}]
-  (query-res-match query-results card)
-  (collection-names-match collections card))
+  [{card-name :name :as card} {:keys [query-results collections]}]
+  (testing (format "Card: %s" card-name)
+    (query-res-match query-results card)
+    (collection-names-match collections card)
+    (when (= "My Nested Card" card-name)
+      (testing "Visualization settings for a Card were persisted correctly"
+        (let [vs (:visualization_settings card)
+              col (-> (:column_settings vs)
+                      first)
+              [col-key col-val] col
+              col-ref (mb.viz/parse-db-column-ref col-key)
+              {:keys [::mb.viz/field-id]} col-ref
+              [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as tbl-col} & _] (:table.columns vs)
+              [_ col-field-id _] col-field-ref]
+          (is (some? (:table.columns vs)))
+          (is (some? (:column_settings vs)))
+          (is (integer? field-id))
+          (is (= "latitude" (-> (db/select-one-field :name Field :id field-id)
+                              str/lower-case)))
+          (is (= {:show_mini_bar true
+                  :column_title "Parallel"} col-val))
+          (is (= "Venue Category" col-name))
+          (is (true? col-enabled))
+          (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
+          (is (= "category_id" (-> (db/select-one-field :name Field :id col-field-id)
+                                   str/lower-case))))))
+    card))
 
 (defn- collection-parent-name [collection]
   (let [[_ parent-id] (re-matches #".*/(\d+)/$" (:location collection))]
@@ -235,7 +260,7 @@
   [entity _]
   entity)
 
-(deftest dump-load-entities-test
+(deftest dump-load-entities-testw
   (try
     ;; in case it already exists
     (u/ignore-exceptions
