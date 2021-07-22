@@ -193,6 +193,11 @@ export default class LineAreaBarChart extends Component {
     actionButtons: PropTypes.node,
     showTitle: PropTypes.bool,
     isDashboard: PropTypes.bool,
+    headerIcon: PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      color: PropTypes.string,
+      size: PropTypes.number,
+    }),
   };
 
   static defaultProps = {};
@@ -260,6 +265,7 @@ export default class LineAreaBarChart extends Component {
       series,
       hovered,
       showTitle,
+      headerIcon,
       actionButtons,
       onChangeCardAndRun,
       onVisualizationClick,
@@ -302,6 +308,7 @@ export default class LineAreaBarChart extends Component {
             settings={settings}
             onChangeCardAndRun={onChangeCardAndRun}
             actionButtons={actionButtons}
+            icon={headerIcon}
           />
         )}
         {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
