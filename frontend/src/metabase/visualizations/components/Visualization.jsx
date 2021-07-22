@@ -504,18 +504,22 @@ export default class Visualization extends React.PureComponent {
 
     const CardVisualization = visualization;
 
+    const title = settings["card.title"];
+    const hasHeaderContent = title || extra;
+    const isHeaderEnabled = !(visualization && visualization.noHeader);
+
+    const hasLegendHeader =
+      (showTitle &&
+        hasHeaderContent &&
+        (loading || error || noResults || isHeaderEnabled)) ||
+      replacementContent;
+
     return (
       <div
         className={cx(className, "flex flex-column full-height")}
         style={style}
       >
-        {(showTitle &&
-          (settings["card.title"] || extra) &&
-          (loading ||
-            error ||
-            noResults ||
-            !(visualization && visualization.noHeader))) ||
-        replacementContent ? (
+        {!!hasLegendHeader && (
           <div className="p1 flex-no-shrink">
             <TitleLegendHeader
               classNameWidgets={classNameWidgets}
@@ -531,7 +535,7 @@ export default class Visualization extends React.PureComponent {
               }
             />
           </div>
-        ) : null}
+        )}
         {replacementContent ? (
           replacementContent
         ) : // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
