@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
@@ -7,13 +8,22 @@ import Ellipsified from "metabase/components/Ellipsified";
 
 import cx from "classnames";
 
+import { IconContainer } from "./LegendItem.styled";
+
+const propTypes = {
+  icon: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    color: PropTypes.string,
+    size: PropTypes.number,
+  }),
+};
+
 export default class LegendItem extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {};
   }
 
-  static propTypes = {};
   static defaultProps = {
     showDot: true,
     showTitle: true,
@@ -26,6 +36,7 @@ export default class LegendItem extends Component {
     const {
       title,
       color,
+      icon,
       showDot,
       showTitle,
       isMuted,
@@ -56,6 +67,11 @@ export default class LegendItem extends Component {
         onMouseLeave={onMouseLeave}
         onClick={onClick}
       >
+        {icon && (
+          <IconContainer>
+            <Icon {...icon} />
+          </IconContainer>
+        )}
         {showDot && (
           <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
             <div
@@ -86,3 +102,5 @@ export default class LegendItem extends Component {
     );
   }
 }
+
+LegendItem.propTypes = propTypes;
