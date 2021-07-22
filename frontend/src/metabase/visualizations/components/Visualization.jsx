@@ -64,6 +64,12 @@ type Props = {
   isEditing: boolean,
   isSettings: boolean,
 
+  headerIcon?: {
+    name: string,
+    color?: string,
+    size?: Number,
+  },
+
   actionButtons: React.Element<any>,
 
   // errors
@@ -372,6 +378,7 @@ export default class Visualization extends React.PureComponent {
       isDashboard,
       width,
       height,
+      headerIcon,
       errorIcon,
       isSlow,
       expectedDuration,
@@ -516,6 +523,7 @@ export default class Visualization extends React.PureComponent {
               actionButtons={extra}
               description={settings["card.description"]}
               settings={settings}
+              icon={headerIcon}
               onChangeCardAndRun={
                 this.props.onChangeCardAndRun && !replacementContent
                   ? this.handleOnChangeCardAndRun
