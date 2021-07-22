@@ -160,7 +160,7 @@
     "webpack-notifier": "^1.8.0",
     "webpack-postcss-tools": "^1.1.2",
     "xhr-mock": "^2.4.1",
-    "xlsx": "^0.16.8",
+    "xlsx": "^0.17.0",
     "yaml-lint": "^1.2.4"
   },
   "scripts": {
