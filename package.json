@@ -13,6 +13,7 @@
     "@visx/axis": "1.8.0",
     "@visx/grid": "1.16.0",
     "@visx/group": "1.7.0",
+    "@visx/legend": "^1.17.1",
     "@visx/scale": "1.7.0",
     "@visx/shape": "1.8.0",
     "ace-builds": "^1.4.7",

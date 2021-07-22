@@ -3,6 +3,7 @@ import React from "react";
 import { Pie } from "@visx/shape";
 import { scaleOrdinal } from "@visx/scale";
 import { Group } from "@visx/group";
+import { LegendOrdinal } from "@visx/legend";
 
 export default function Donut({ data, accessors }, layout) {
   const scale = scaleOrdinal({
@@ -59,6 +60,12 @@ export default function Donut({ data, accessors }, layout) {
           }}
         </Pie>
       </Group>
+      <LegendOrdinal
+        scale={scale}
+        direction={"row"}
+        itemMargin={8}
+        shape={"circle"}
+      />
     </svg>
   );
 }
