@@ -146,7 +146,16 @@
                                 :collection_id ~'collection-id
                                 :dataset_query {:type :query
                                                 :database ~'db-id
-                                                :query {:source-table (str "card__" ~'card-id)}}}]
+                                                :query {:source-table (str "card__" ~'card-id)}}
+                                :visualization_settings
+                                {:table.columns [{:name "Venue Category"
+                                                  :fieldRef [:field ~'category-field-id nil]
+                                                  :enabled true}]
+                                 :column_settings {(keyword (format
+                                                             "[\"ref\",[\"field\",%d,null]]"
+                                                              ~'latitude-field-id))
+                                                   {:show_mini_bar true
+                                                    :column_title "Parallel"}}}}]
                    Card       [{~'card-id-nested-query :id}
                                {:table_id ~'table-id
                                 :name "My Nested Query Card"
