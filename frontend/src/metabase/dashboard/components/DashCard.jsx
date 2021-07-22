@@ -59,6 +59,11 @@ export default class DashCard extends Component {
     markNewCardSeen: PropTypes.func.isRequired,
     fetchCardData: PropTypes.func.isRequired,
     navigateToNewCardFromDashboard: PropTypes.func.isRequired,
+    headerIcon: PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      color: PropTypes.string,
+      size: PropTypes.number,
+    }),
   };
 
   constructor(props) {
@@ -112,6 +117,7 @@ export default class DashCard extends Component {
       dashboard,
       parameterValues,
       mode,
+      headerIcon,
     } = this.props;
 
     const mainCard = {
@@ -205,6 +211,7 @@ export default class DashCard extends Component {
           })}
           classNameWidgets={isEmbed && "text-light text-medium-hover"}
           error={errorMessage}
+          headerIcon={headerIcon}
           errorIcon={errorIcon}
           isSlow={isSlow}
           expectedDuration={expectedDuration}
