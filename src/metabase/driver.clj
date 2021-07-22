@@ -608,8 +608,10 @@
   deprecated in Metabase and will eventually be replaced by the returned driver, in some future version (at which point
   any databases using it will be migrated to the new one).
 
-  This is only used on the frontend for the purpose of showing/hiding deprecated drivers."
-  {:arglists '([driver])}
+  This is currently only used on the frontend for the purpose of showing/hiding deprecated drivers. A driver can make
+  use of this facility by adding a top-level `superseded-by` key to its plugin manifest YAML file, or (less preferred)
+  overriding this multimethod directly."
+  {:added "0.41.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
