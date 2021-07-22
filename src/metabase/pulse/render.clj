@@ -81,12 +81,19 @@
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (types/temporal-field? @col-1)
-             (number-field? @col-2))
+             (number-field? @col-2)
+             (= display-type :line))
         (chart-type :sparkline "result has 2 cols (%s (temporal) and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)
-             (number-field? @col-2))
+             (number-field? @col-2)
+             (= display-type :bar))
         (chart-type :bar "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
+
+        (and (= @col-sample-count 2)
+             (number-field? @col-2)
+             (= display-type :pie))
+        (chart-type :categorical/donut "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
 
         :else
         (chart-type :table "no other chart types match")))))

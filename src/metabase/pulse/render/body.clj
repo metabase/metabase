@@ -7,6 +7,7 @@
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
+            [metabase.pulse.render.poc :as svg-poc]
             [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
@@ -217,21 +218,41 @@
   [_ _ timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
-        row-values                  (map y-axis-rowfn rows)
-        min-value                   (min 0 (apply min row-values))
-        max-value                   (apply max row-values)]
+        image-bundle (image-bundle/make-image-bundle
+                      :inline
+                      (svg-poc/timelineseries-bar
+                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
     {:attachments
      nil
 
      :content
      [:div
-      (table/render-table (color/make-color-selector data (:visualization_settings card))
-                          (normalize-bar-value 0 min-value max-value)
-                          (mapv :name cols)
-                          (prep-for-html-rendering timezone-id card data 2 {:bar-column y-axis-rowfn
-                                                                            :min-value  min-value
-                                                                            :max-value  max-value}))
-      (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
+      [:img {:style (style/style {:display :block :width :100%})
+             :src (:image-src image-bundle)}]]
+     #_[:div
+        (table/render-table (color/make-color-selector data (:visualization_settings card))
+                            (normalize-bar-value 0 min-value max-value)
+                            (mapv :name cols)
+                            (prep-for-html-rendering timezone-id card data 2 {:bar-column y-axis-rowfn
+                                                                              :min-value  min-value
+                                                                              :max-value  max-value}))
+        (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
+
+(s/defmethod render :categorical/donut :- common/RenderedPulseCard
+  [_ _ timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
+  (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
+        rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
+        image-bundle (image-bundle/make-image-bundle
+                      :inline
+                      (svg-poc/categorical-donut
+                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
+    {:attachments
+     nil
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src (:image-src image-bundle)}]]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id card {:keys [cols rows]}]
@@ -287,7 +308,9 @@
         values         (for [row last-rows]
                          (some-> row y-axis-rowfn common/format-number))
         labels         (datetime/format-temporal-string-pair timezone-id (map x-axis-rowfn last-rows) (x-axis-rowfn cols))
-        image-bundle   (sparkline/sparkline-image-bundle render-type timezone-id card {:rows rows, :cols cols})]
+        image-bundle   (image-bundle/make-image-bundle
+                        render-type
+                        (svg-poc/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
