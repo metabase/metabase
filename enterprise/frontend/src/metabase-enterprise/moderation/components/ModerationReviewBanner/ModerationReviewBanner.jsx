@@ -22,7 +22,7 @@ import {
 import Tooltip from "metabase/components/Tooltip";
 
 const ICON_BUTTON_SIZE = 20;
-const TOOLTIP_X_OFFSET = ICON_BUTTON_SIZE / 2;
+const TOOLTIP_X_OFFSET = ICON_BUTTON_SIZE / 4;
 
 const mapStateToProps = (state, props) => ({
   currentUser: getUser(state),
