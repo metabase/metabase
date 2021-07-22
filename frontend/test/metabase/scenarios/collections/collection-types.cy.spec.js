@@ -93,12 +93,6 @@ function testOfficialBadgePresence(expectBadge = true) {
     cy.visit(`/collection/${collectionId}`);
   });
 
-  // Collections page
-  cy.findByTestId("official-collection-marker").should(
-    expectBadge ? "exist" : "not.exist",
-  );
-  assertSidebarIcon(COLLECTION_NAME, expectBadge ? "badge" : "folder");
-
   // Dashboard Page
   cy.findByText("Official Dashboard").click();
   assertHasCollectionBadge(expectBadge);
