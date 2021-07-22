@@ -47,6 +47,10 @@ describeWithToken("collections types", () => {
     testOfficialBadgePresence();
   });
 
+  it("should display a badge next to official questions in regular dashboards", () => {
+    testOfficialQuestionBadgeInRegularDashboard();
+  });
+
   it("should be able to update authority level for collection children", () => {
     cy.visit("/collection/root");
     cy.findByText("First collection").click();
@@ -95,7 +99,6 @@ describeWithToken("collections types", () => {
       cy.icon("folder").should("have.length", 3);
       cy.icon("badge").should("not.exist");
     });
-  });
 });
 
 describeWithoutToken("collection types", () => {
@@ -122,6 +125,10 @@ describeWithoutToken("collection types", () => {
 
   it("should not display official collection icon", () => {
     testOfficialBadgePresence(false);
+  });
+
+  it("should display official questions as regular in regular dashboards", () => {
+    testOfficialQuestionBadgeInRegularDashboard(false);
   });
 });
 
@@ -180,6 +187,30 @@ function testOfficialBadgeInSearch({
     });
     assertSearchResultBadge(question, { expectBadge });
     assertSearchResultBadge(dashboard, { expectBadge });
+  });
+}
+
+function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
+  cy.createCollection({
+    name: COLLECTION_NAME,
+    authority_level: "official",
+  }).then(response => {
+    const { id: collectionId } = response.body;
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Official Question",
+        collection_id: collectionId,
+        query: TEST_QUESTION_QUERY,
+      },
+      dashboardName: "Regular Dashboard",
+    });
+  });
+
+  cy.visit("/collection/root");
+  cy.findByText("Regular Dashboard").click();
+
+  cy.get(".DashboardGrid").within(() => {
+    cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
   });
 }
 
