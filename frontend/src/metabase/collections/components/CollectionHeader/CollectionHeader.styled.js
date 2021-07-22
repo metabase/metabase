@@ -9,6 +9,7 @@ import Icon from "metabase/components/Icon";
 export const Container = styled(Flex)`
   justify-content: space-between;
   flex-direction: column;
+  margin-bottom: ${space(3)};
   padding-top: ${space(0)};
 
   ${breakpointMinSmall} {
