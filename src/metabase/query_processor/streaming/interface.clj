@@ -10,11 +10,11 @@
 (p.types/defprotocol+ StreamingResultsWriter
   "Protocol for the methods needed to write streaming QP results. This protocol is a higher-level interface to intended
   to have multiple implementations."
-  (begin! [this initial-metadata]
+  (begin! [this initial-metadata viz-settings]
     "Write anything needed before writing the first row. `initial-metadata` is incomplete metadata provided before
     rows begin reduction; some metadata such as insights won't be available until we finish.")
 
-  (write-row! [this row row-num]
+  (write-row! [this row row-num viz-settings]
     "Write a row. `row` is a sequence of values in the row. `row-num` is the zero-indexed row number.")
 
   (finish! [this final-metadata]

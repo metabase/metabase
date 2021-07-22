@@ -21,18 +21,22 @@
   (let [writer    (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         col-names (volatile! nil)]
     (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [cols]} :data}]
+      (begin! [_ {{:keys [deduped-cols]} :data} {:keys [output-order]}]
         ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
         ;; probably going to be parsed programatically
-        (vreset! col-names (mapv (some-fn :display_name :name) cols))
-        (.write writer "[\n"))
+        (let [cols-vec (into [] deduped-cols)
+              ordered-cols (for [i output-order] (cols-vec i))]
+          (vreset! col-names (mapv (some-fn :display_name :name) ordered-cols))
+          (.write writer "[\n")))
 
-      (write-row! [_ row row-num]
-        (when-not (zero? row-num)
-          (.write writer ",\n"))
-        (json/generate-stream (zipmap @col-names (map common/format-value row))
-                              writer)
-        (.flush writer))
+      (write-row! [_ row row-num {:keys [output-order]}]
+        (let [row-vec (into [] row)
+              ordered-row (for [i output-order] (row-vec i))]
+          (when-not (zero? row-num)
+            (.write writer ",\n"))
+          (json/generate-stream (zipmap @col-names (map common/format-value ordered-row))
+                                writer)
+          (.flush writer)))
 
       (finish! [_ _]
         (.write writer "\n]")
@@ -55,10 +59,10 @@
   [_ ^OutputStream os]
   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (reify i/StreamingResultsWriter
-      (begin! [_ _]
+      (begin! [_ _ _]
         (.write writer "{\"data\":{\"rows\":[\n"))
 
-      (write-row! [_ row row-num]
+      (write-row! [_ row row-num _]
         (when-not (zero? row-num)
           (.write writer ",\n"))
         (json/generate-stream row writer)

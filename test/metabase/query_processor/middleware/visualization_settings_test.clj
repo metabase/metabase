@@ -94,8 +94,8 @@
                precedence than card settings"
         (testing "for a saved card"
           (mt/with-temp Card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
-            (let [query (test-query [field-id-1 field-id-2] card-id {})
-                  result (update-viz-settings query)
+            (let [query    (test-query [field-id-1 field-id-2] card-id {})
+                  result   (update-viz-settings query)
                   expected (assoc-in (processed-viz-settings field-id-1 field-id-2) [1 {::mb.viz/field-id field-id-2} ::mb.viz/scale] 10)]
               (is (= expected result)))))
 
@@ -123,6 +123,6 @@
 
 (deftest native-query-viz-settings-test
   (testing "Viz settings for native queries are fetched from the query map and ordered by the :table.columns key"
-    (let [query        (test-query [] nil test-native-query-viz-settings :native)
-          result       (update-viz-settings query)]
+    (let [query  (test-query [] nil test-native-query-viz-settings :native)
+          result (update-viz-settings query)]
       (is (= expected-native-query-viz-settings result)))))

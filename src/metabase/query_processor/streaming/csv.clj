@@ -19,13 +19,17 @@
   [_ ^OutputStream os]
   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [cols]} :data}]
-        (csv/write-csv writer [(map (some-fn :display_name :name) cols)])
-        (.flush writer))
+      (begin! [_ {{:keys [deduped-cols]} :data} {:keys [output-order]}]
+        (let [cols-vec (into [] deduped-cols)
+              ordered-cols (for [i output-order] (cols-vec i))]
+          (csv/write-csv writer [(map (some-fn :display_name :name) ordered-cols)])
+          (.flush writer)))
 
-      (write-row! [_ row row-num]
-        (csv/write-csv writer [(map common/format-value row)])
-        (.flush writer))
+      (write-row! [_ row row-num {:keys [output-order]}]
+        (let [row-vec (into [] row)
+              ordered-row (for [i output-order] (row-vec i))]
+          (csv/write-csv writer [(map common/format-value ordered-row)])
+          (.flush writer)))
 
       (finish! [_ _]
          ;; TODO -- not sure we need to flush both
