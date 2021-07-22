@@ -123,3 +123,25 @@ export function formatFrame(frame) {
 export function getRelativeTime(timestamp) {
   return moment(timestamp).fromNow();
 }
+
+export function getRelativeTimeAbbreviated(timestamp) {
+  return moment(timestamp).fromNow(
+    moment.updateLocale("en", {
+      relativeTime: {
+        future: "in %s",
+        past: "%s ",
+        s: "sec",
+        m: "%d m",
+        mm: "%d m",
+        h: "%d h",
+        hh: "%d h",
+        d: "%d d",
+        dd: "%d d",
+        M: "a mth",
+        MM: "%d mths",
+        y: "y",
+        yy: "%d y",
+      },
+    }),
+  );
+}

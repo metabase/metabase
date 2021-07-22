@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 
 import { color, alpha } from "metabase/lib/colors";
 import { getUser } from "metabase/selectors/user";
-import { getRelativeTime } from "metabase/lib/time";
+import { getRelativeTimeAbbreviated } from "metabase/lib/time";
 import {
   getTextForReviewBanner,
   getIconForReview,
@@ -54,7 +54,9 @@ export function ModerationReviewBanner({
     moderator,
     currentUser,
   );
-  const relativeCreationTime = getRelativeTime(moderationReview.created_at);
+  const relativeCreationTime = getRelativeTimeAbbreviated(
+    moderationReview.created_at,
+  );
   const { icon, iconColor } = getIconForReview(moderationReview);
   const showClose = isHovering || isActive;
 
