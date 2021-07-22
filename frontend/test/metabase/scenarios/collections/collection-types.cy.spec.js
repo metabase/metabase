@@ -96,18 +96,36 @@ function testOfficialBadgePresence(expectBadge = true) {
   assertHasCollectionBadge(expectBadge);
 
   // Search
+  testOfficialBadgeInSearch({
+    searchQuery: "Official",
+    collection: COLLECTION_NAME,
+    dashboard: "Official Dashboard",
+    question: "Official Question",
+    expectBadge,
+  });
+}
+
+// The helper accepts a single search query,
+// and relies on collection, dashboard and question being found within this single query
+function testOfficialBadgeInSearch({
+  searchQuery,
+  collection,
+  dashboard,
+  question,
+  expectBadge,
+}) {
   cy.get(".Nav")
     .findByPlaceholderText("Search…")
     .as("searchBar")
-    .type("Official");
+    .type(searchQuery);
 
   cy.findByTestId("search-results-list").within(() => {
-    assertSearchResultBadge(COLLECTION_NAME, {
+    assertSearchResultBadge(collection, {
       expectBadge,
       selector: "h3",
     });
-    assertSearchResultBadge("Official Question", { expectBadge });
-    assertSearchResultBadge("Official Dashboard", { expectBadge });
+    assertSearchResultBadge(question, { expectBadge });
+    assertSearchResultBadge(dashboard, { expectBadge });
   });
 }
 
