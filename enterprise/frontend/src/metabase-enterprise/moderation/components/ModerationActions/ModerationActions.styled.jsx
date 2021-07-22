@@ -14,20 +14,18 @@ export const Container = styled.div`
 `;
 
 export const Label = styled.h5`
-  font-size: 11px;
-  text-transform: uppercase;
+  font-size: 14px;
   color: ${color("text-medium")};
   flex: 1;
 `;
 
 export const VerifyButton = styled(Button).attrs({
   icon: verifiedIcon,
-  size: 20,
+  iconSize: 20,
 })`
   border: none;
 
   &:hover {
-    background-color: transparent;
     color: ${color(verifiedIconColor)};
   }
 
