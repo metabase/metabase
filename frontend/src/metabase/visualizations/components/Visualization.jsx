@@ -598,6 +598,7 @@ export default class Visualization extends React.PureComponent {
             card={series[0].card} // convenience for single-series visualizations
             data={series[0].data} // convenience for single-series visualizations
             hovered={hovered}
+            headerIcon={hasLegendHeader ? null : headerIcon}
             onHoverChange={this.handleHoverChange}
             onVisualizationClick={this.handleVisualizationClick}
             visualizationIsClickable={this.visualizationIsClickable}
