@@ -5,6 +5,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
+import CollectionsList from "metabase/collections/components/CollectionsList";
 import CollectionLink from "metabase/collections/components/CollectionLink";
 
 import { Container } from "./RootCollectionLink.styled";
@@ -25,6 +26,7 @@ export default function CollectionSidebarHeader({ isRoot, root }) {
             highlighted={highlighted}
             hovered={hovered}
           >
+            <CollectionsList.Icon collection={root} />
             {t`Our analytics`}
           </CollectionLink>
         )}

@@ -12,7 +12,15 @@ import {
   OFFICIAL_COLLECTION,
 } from "./constants";
 
+function isRegularCollection({ authority_level }) {
+  // Root, personal collections don't have `authority_level`
+  return !authority_level || authority_level === REGULAR_COLLECTION.type;
+}
+
+PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
+
 PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
+
 PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
 
 PLUGIN_COLLECTIONS.formFields = [

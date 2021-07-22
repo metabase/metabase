@@ -12,9 +12,13 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
 
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+
 import Schema from "metabase/entities/schemas";
 import Database from "metabase/entities/databases";
 import Table from "metabase/entities/tables";
+
+const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
 
 function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
@@ -97,18 +101,33 @@ function ItemIcon({ item, type }) {
   );
 }
 
+const CollectionBadgeRoot = styled.div`
+  display: inline-block;
+`;
+
 const CollectionLink = styled(Link)`
+  display: flex;
+  align-items: center;
   text-decoration: dashed;
   &:hover {
     color: ${color("brand")};
   }
 `;
 
+const AuthorityLevelIcon = styled(CollectionAuthorityLevelIcon).attrs({
+  size: 13,
+})`
+  padding-right: 2px;
+`;
+
 function CollectionBadge({ collection }) {
   return (
-    <CollectionLink to={Urls.collection(collection)}>
-      {collection.name}
-    </CollectionLink>
+    <CollectionBadgeRoot>
+      <CollectionLink to={Urls.collection(collection)}>
+        <AuthorityLevelIcon collection={collection} />
+        {collection.name}
+      </CollectionLink>
+    </CollectionBadgeRoot>
   );
 }
 
