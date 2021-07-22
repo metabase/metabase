@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
 import {
   MinRowsError,
@@ -23,6 +24,14 @@ import cx from "classnames";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import TitleLegendHeader from "metabase/visualizations/components/TitleLegendHeader";
+
+const propTypes = {
+  headerIcon: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    color: PropTypes.string,
+    size: PropTypes.number,
+  }),
+};
 
 export default class Funnel extends Component {
   props: VisualizationProps;
@@ -172,7 +181,7 @@ export default class Funnel extends Component {
   }
 
   render() {
-    const { settings } = this.props;
+    const { headerIcon, settings } = this.props;
 
     const hasTitle = settings["card.title"];
 
@@ -193,6 +202,7 @@ export default class Funnel extends Component {
               settings={settings}
               onChangeCardAndRun={onChangeCardAndRun}
               actionButtons={actionButtons}
+              icon={headerIcon}
             />
           )}
           {!hasTitle &&
@@ -210,3 +220,5 @@ export default class Funnel extends Component {
     }
   }
 }
+
+Funnel.propTypes = propTypes;
