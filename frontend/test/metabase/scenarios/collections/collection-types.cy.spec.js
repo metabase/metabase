@@ -26,14 +26,7 @@ describeWithToken("collections types", () => {
   it("should be able to manage collection authority level", () => {
     cy.visit("/collection/root");
 
-    // Test can create official collection
-    cy.icon("new_folder").click();
-    modal().within(() => {
-      cy.findByLabelText("Name").type(COLLECTION_NAME);
-      setOfficial();
-      cy.button("Create").click();
-    });
-    cy.findByText(COLLECTION_NAME).click();
+    createAndOpenOfficialCollection({ name: COLLECTION_NAME });
     cy.findByTestId("official-collection-marker");
     assertSidebarIcon(COLLECTION_NAME, "badge");
 
@@ -132,6 +125,16 @@ function setOfficial(official = true) {
     isOfficialNow ? "be.checked" : "not.be.checked",
   );
   cy.findByText(official ? "Official" : "Regular").click();
+}
+
+function createAndOpenOfficialCollection({ name }) {
+  cy.icon("new_folder").click();
+  modal().within(() => {
+    cy.findByLabelText("Name").type(name);
+    setOfficial();
+    cy.button("Create").click();
+  });
+  cy.findByText(name).click();
 }
 
 function changeCollectionTypeTo(type) {
