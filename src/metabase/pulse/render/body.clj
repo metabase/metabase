@@ -215,11 +215,11 @@
        (list table-body))}))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ _ timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
+  [_ render-type timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
         image-bundle (image-bundle/make-image-bundle
-                      :inline
+                      render-type
                       (svg-poc/timelineseries-bar
                        (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
     {:attachments
@@ -239,11 +239,11 @@
         (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
-  [_ _ timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
+  [_ render-type timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
         image-bundle (image-bundle/make-image-bundle
-                      :inline
+                      render-type
                       (svg-poc/categorical-donut
                        (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
     {:attachments
