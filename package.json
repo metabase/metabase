@@ -10,6 +10,11 @@
     "yarn": ">=1.12.3"
   },
   "dependencies": {
+    "@visx/axis": "1.8.0",
+    "@visx/grid": "1.16.0",
+    "@visx/group": "1.7.0",
+    "@visx/scale": "1.7.0",
+    "@visx/shape": "1.8.0",
     "ace-builds": "^1.4.7",
     "arg": "^5.0.0",
     "chevrotain": "^6.5.0",
@@ -189,6 +194,7 @@
     "build-hot": "yarn concurrently -n 'cljs,js' 'yarn build-hot:cljs' 'yarn build-hot:js'",
     "build-stats": "yarn && webpack --json > stats.json",
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
+    "build-static-viz": "yarn && webpack --config webpack.static-viz.config.js",
     "start": "yarn build && lein ring server",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
