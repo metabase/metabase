@@ -37,21 +37,11 @@ describeWithToken("collections types", () => {
     cy.findByTestId("official-collection-marker");
     assertSidebarIcon(COLLECTION_NAME, "badge");
 
-    // Test can change official collection to regular
-    editCollection();
-    modal().within(() => {
-      setOfficial(false);
-      cy.button("Update").click();
-    });
+    changeCollectionTypeTo("regular");
     cy.findByTestId("official-collection-marker").should("not.exist");
     assertSidebarIcon(COLLECTION_NAME, "folder");
 
-    // Test can change regular collection to official
-    editCollection();
-    modal().within(() => {
-      setOfficial();
-      cy.button("Update").click();
-    });
+    changeCollectionTypeTo("official");
     cy.findByTestId("official-collection-marker");
     assertSidebarIcon(COLLECTION_NAME, "badge");
   });
@@ -148,6 +138,14 @@ function setOfficial(official = true) {
     isOfficialNow ? "be.checked" : "not.be.checked",
   );
   cy.findByText(official ? "Official" : "Regular").click();
+}
+
+function changeCollectionTypeTo(type) {
+  editCollection();
+  modal().within(() => {
+    setOfficial(type === "official");
+    cy.button("Update").click();
+  });
 }
 
 function assertNoCollectionTypeInput() {
