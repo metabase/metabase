@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import { color, lighten } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 import { getUser } from "metabase/selectors/user";
 import { getRelativeTime } from "metabase/lib/time";
 import {
@@ -21,7 +21,7 @@ import {
 } from "./ModerationReviewBanner.styled";
 import Tooltip from "metabase/components/Tooltip";
 
-const ICON_BUTTON_SIZE = 16;
+const ICON_BUTTON_SIZE = 20;
 const TOOLTIP_X_OFFSET = ICON_BUTTON_SIZE / 2;
 
 const mapStateToProps = (state, props) => ({
@@ -60,7 +60,7 @@ export function ModerationReviewBanner({
 
   return (
     <Container
-      backgroundColor={lighten(iconColor)}
+      backgroundColor={alpha(iconColor, 0.2)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -76,7 +76,7 @@ export function ModerationReviewBanner({
             icon={showClose ? "close" : icon}
             color={color(showClose ? "text-medium" : iconColor)}
             onClick={onRemove}
-            size={ICON_BUTTON_SIZE}
+            iconSize={ICON_BUTTON_SIZE}
           />
         ) : (
           <StatusIcon

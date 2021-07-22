@@ -16,21 +16,22 @@ export const Container = styled.div`
 export const Text = styled.span`
   flex: 1;
   font-size: 14px;
+  font-weight: 700;
 `;
 
 export const Time = styled.time`
   color: ${color("text-medium")};
-  font-size: 12px;
+  font-size: 11px;
 `;
 
 export const IconButton = styled(Button)`
-  padding: 0 0.5rem !important;
+  padding: 0 0 0 0.5rem !important;
   border: none;
   background-color: transparent;
 
   &:hover {
     background-color: transparent;
-    color: ${color("text-medium")};
+    color: ${color("danger")};
   }
 `;
 
