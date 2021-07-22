@@ -21,7 +21,7 @@ export const Text = styled.span`
 
 export const Time = styled.time`
   color: ${color("text-medium")};
-  font-size: 11px;
+  font-size: 12px;
 `;
 
 export const IconButton = styled(Button)`
