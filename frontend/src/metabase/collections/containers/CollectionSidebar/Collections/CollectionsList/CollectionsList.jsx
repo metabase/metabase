@@ -52,64 +52,73 @@ function CollectionItem({ action, c, initialIcon, isOpen }) {
   );
 }
 
+function Item({
+  c,
+  depth,
+  currentCollection,
+  filter,
+  initialIcon,
+  onClose,
+  onOpen,
+  openCollections,
+}) {
+  const isOpen = openCollections.indexOf(c.id) >= 0;
+  const action = isOpen ? onClose : onOpen;
+
+  return (
+    <Box key={c.id}>
+      <CollectionDropTarget collection={c}>
+        {({ highlighted, hovered }) => {
+          return (
+            <CollectionLink
+              to={Urls.collection(c)}
+              selected={c.id === currentCollection}
+              depth={depth}
+              // when we click on a link, if there are children, expand to show sub collections
+              onClick={() => c.children && action(c.id)}
+              hovered={hovered}
+              highlighted={highlighted}
+              role="treeitem"
+              aria-expanded={isOpen}
+            >
+              <CollectionItem
+                action={action}
+                c={c}
+                initialIcon={initialIcon}
+                isOpen={isOpen}
+              />
+            </CollectionLink>
+          );
+        }}
+      </CollectionDropTarget>
+
+      {c.children && isOpen && (
+        <ChildrenContainer>
+          <CollectionsList
+            openCollections={openCollections}
+            onOpen={onOpen}
+            onClose={onClose}
+            collections={c.children}
+            filter={filter}
+            currentCollection={currentCollection}
+            depth={depth + 1}
+          />
+        </ChildrenContainer>
+      )}
+    </Box>
+  );
+}
+
 class CollectionsList extends React.Component {
   render() {
-    const {
-      initialIcon,
-      currentCollection,
-      filter = () => true,
-      openCollections,
-    } = this.props;
-    const collections = this.props.collections.filter(filter);
+    const { collections, filter, ...otherProps } = this.props;
+    const filteredCollections = collections.filter(filter);
 
     return (
       <Box>
-        {collections.map(c => {
-          const isOpen = openCollections.indexOf(c.id) >= 0;
-          const action = isOpen ? this.props.onClose : this.props.onOpen;
-
-          return (
-            <Box key={c.id}>
-              <CollectionDropTarget collection={c}>
-                {({ highlighted, hovered }) => {
-                  return (
-                    <CollectionLink
-                      to={Urls.collection(c)}
-                      selected={c.id === currentCollection}
-                      depth={this.props.depth}
-                      // when we click on a link, if there are children, expand to show sub collections
-                      onClick={() => c.children && action(c.id)}
-                      hovered={hovered}
-                      highlighted={highlighted}
-                      role="treeitem"
-                      aria-expanded={isOpen}
-                    >
-                      <CollectionItem
-                        action={action}
-                        c={c}
-                        initialIcon={initialIcon}
-                        isOpen={isOpen}
-                      />
-                    </CollectionLink>
-                  );
-                }}
-              </CollectionDropTarget>
-              {c.children && isOpen && (
-                <ChildrenContainer>
-                  <CollectionsList
-                    openCollections={openCollections}
-                    onOpen={this.props.onOpen}
-                    onClose={this.props.onClose}
-                    collections={c.children}
-                    filter={filter}
-                    currentCollection={currentCollection}
-                    depth={this.props.depth + 1}
-                  />
-                </ChildrenContainer>
-              )}
-            </Box>
-          );
-        })}
+        {filteredCollections.map(c => (
+          <Item key={c.id} c={c} filter={filter} {...otherProps} />
+        ))}
       </Box>
     );
   }
