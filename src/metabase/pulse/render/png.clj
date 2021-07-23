@@ -80,7 +80,7 @@
   (register-fonts-if-needed!)
   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
-    (let [dimension       (Dimension. 2000 1)
+    (let [dimension       (Dimension. 1200 1)
           doc             (.parse (DefaultDOMSource. doc-source))
           da              (dom-analyzer doc doc-source dimension)
           graphics-engine (GraphicsEngine. (.getRoot da) da (.getURL doc-source))]

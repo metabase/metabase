@@ -112,7 +112,7 @@ function categorical_donut (data) {
     (let [in         (TranscoderInput. svg-document)
           out        (TranscoderOutput. os)
           transcoder (high-quality-png-transcoder)]
-      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH (float 2000))
+      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH (float 1200))
       (.transcode transcoder in out))
     (.toByteArray os)))
 
