@@ -10,7 +10,11 @@ import {
 
 import Warnings from "metabase/query_builder/components/Warnings";
 
-import { CardContent, DriverWarningContainer } from "./DriverWarning.styled";
+import {
+  CardContent,
+  DriverWarningContainer,
+  IconContainer,
+} from "./DriverWarning.styled";
 
 const propTypes = {
   engine: PropTypes.string.isRequired,
@@ -46,11 +50,13 @@ function DriverWarning({ engine, ...props }) {
 
   return (
     <DriverWarningContainer p={2} {...props}>
-      <Warnings
-        className="mx2 align-self-end text-gold"
-        warnings={[tooltipWarning]}
-        size={20}
-      />
+      <IconContainer>
+        <Warnings
+          className="mx2 text-gold"
+          warnings={[tooltipWarning]}
+          size={20}
+        />
+      </IconContainer>
       <CardContent flexDirection="column" justify="center" className="ml2">
         <div>
           <p className="text-medium m0">{message}</p>
