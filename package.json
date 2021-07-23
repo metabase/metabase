@@ -197,6 +197,7 @@
     "build-static-viz": "yarn && webpack --config webpack.static-viz.config.js",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
+    "postinstall": "patch-package",
     "prettier": "prettier --write '{enterprise/,}frontend/**/*.{js,jsx,css}'",
     "eslint-fix": "yarn && eslint --fix --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules {enterprise/,}frontend/{src,test}",
     "docs": "documentation serve --watch frontend/src/metabase-lib/lib/**",
