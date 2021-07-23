@@ -99,6 +99,7 @@ describeWithToken("collections types", () => {
       cy.icon("folder").should("have.length", 3);
       cy.icon("badge").should("not.exist");
     });
+  });
 });
 
 describeWithoutToken("collection types", () => {
