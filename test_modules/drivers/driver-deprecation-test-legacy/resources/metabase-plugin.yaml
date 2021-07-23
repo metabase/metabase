@@ -1,0 +1,16 @@
+info:
+  name: Legacy Driver
+  version: 0.0.0-SNAPSHOT
+  description: Test plugin for driver deprecation (legacy)
+driver:
+  name: driver-deprecation-test-legacy
+  display-name: Driver Deprecation Test Plugin (Legacy)
+  lazy-load: true
+  parent: sql
+  connection-properties:
+    - host
+    - port
+superseded-by: driver-deprecation-test-new
+init:
+  - step: load-namespace
+    namespace: metabase.driver.driver-deprecation-test-legacy
