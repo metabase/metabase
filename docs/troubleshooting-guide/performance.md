@@ -16,7 +16,7 @@ In order to troubleshoot performance problems, you first need to understand what
 
 7. The back end forwards those results to the front end.
 
-8. The front end creates the HTML to display them.
+8. The front end creates the HTML to display them in your browser.
 
 ## Specific Problems
 
@@ -40,7 +40,7 @@ By default caching is disabled so that we always re-run every question. However,
 
 **How to detect this:** Open the Admin Panel, go to "Settings", and look in the "Caching" tab to see whether caching is enabled or not.
 
-**How to fix this:** [This guide][admin-caching] explains how to change the minimum query duration (we cache anything that takes longer than that to run) and the maximum cache size (which is the total memory the cache will ever use). You may need to experiment with these values over several days to find the best balance. For example, if you increase the total memory used by the cache, you may also want to increase the memory that the JVM is allowed to use (discussed below).
+**How to fix this:** [This guide][admin-caching] explains how to change the minimum query duration (we cache anything that takes longer than that to run) and the maximum cache size for each query result. You may need to experiment with these values over several days to find the best balance.
 
 ### The answer you want isn't cached.
 
@@ -85,10 +85,6 @@ Low performance when using Metabase can also be caused by incorrect typing of co
 **How to detect this:** Even a handwritten query will be slow if it has to do this conversion every time. You can also spot this by looking at the raw data types of the columns being used in the query.
 
 **How to fix this:** Amend the database schema to store numbers as numbers, timestamps as timestamps, and so on, rather than as strings or other data types.
-
-### The Java Virtual Machine is using too much memory.
-
-We discuss this problem and its solutions in [this troubleshooting guide](./running.md).
 
 ### Metabase is running on an under-powered machine.
 
