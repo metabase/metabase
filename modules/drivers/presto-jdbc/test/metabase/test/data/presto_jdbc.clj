@@ -71,6 +71,7 @@
                      "sightings" 50
                      "incidents" 50
                      "checkins" 25
+                     "airport" 50
                      100)
         load-fn    (load-data/make-load-data-fn load-data/load-data-add-ids
                      (partial load-data/load-data-chunked pmap chunk-size))]
