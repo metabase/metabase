@@ -132,9 +132,9 @@
           (spreadsheet/add-row! sheet (map (some-fn :display_name :name) ordered-cols))))
 
       (write-row! [_ row _ {:keys [output-order]}]
-        (binding [*cell-styles* cell-styles])
-        (let [ordered-row (select-indices row output-order)]
-            (spreadsheet/add-row! sheet ordered-row)))
+        (binding [*cell-styles* cell-styles]
+          (let [ordered-row (select-indices row output-order)]
+            (spreadsheet/add-row! sheet ordered-row))))
 
       (finish! [_ _]
         (spreadsheet/save-workbook-into-stream! os workbook)
