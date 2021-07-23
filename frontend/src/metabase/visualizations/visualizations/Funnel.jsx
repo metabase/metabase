@@ -6,6 +6,8 @@ import {
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
 
+import { iconPropTypes } from "metabase/components/Icon";
+
 import { formatValue } from "metabase/lib/formatting";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -26,11 +28,7 @@ import type { VisualizationProps } from "metabase-types/types/Visualization";
 import TitleLegendHeader from "metabase/visualizations/components/TitleLegendHeader";
 
 const propTypes = {
-  headerIcon: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    color: PropTypes.string,
-    size: PropTypes.number,
-  }),
+  headerIcon: PropTypes.shape(iconPropTypes),
 };
 
 export default class Funnel extends Component {

@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import styles from "./Legend.css";
 
 import ExplicitSize from "../../components/ExplicitSize";
-import Icon from "metabase/components/Icon";
+import Icon, { iconPropTypes } from "metabase/components/Icon";
 import LegendItem from "./LegendItem";
 
 import cx from "classnames";
@@ -26,11 +26,7 @@ export default class LegendHeader extends Component {
     actionButtons: PropTypes.node,
     description: PropTypes.string,
     classNameWidgets: PropTypes.string,
-    icon: PropTypes.shape({
-      name: PropTypes.string.isRequired,
-      color: PropTypes.string,
-      size: PropTypes.number,
-    }),
+    icon: PropTypes.shape(iconPropTypes),
   };
 
   static defaultProps = {

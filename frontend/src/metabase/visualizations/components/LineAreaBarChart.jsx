@@ -2,6 +2,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
+import { iconPropTypes } from "metabase/components/Icon";
+
 import CardRenderer from "./CardRenderer";
 import LegendHeader from "./LegendHeader";
 import TitleLegendHeader from "./TitleLegendHeader";
@@ -193,11 +196,7 @@ export default class LineAreaBarChart extends Component {
     actionButtons: PropTypes.node,
     showTitle: PropTypes.bool,
     isDashboard: PropTypes.bool,
-    headerIcon: PropTypes.shape({
-      name: PropTypes.string.isRequired,
-      color: PropTypes.string,
-      size: PropTypes.number,
-    }),
+    headerIcon: PropTypes.shape(iconPropTypes),
   };
 
   static defaultProps = {};

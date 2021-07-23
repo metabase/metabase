@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon";
+import Icon, { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 
@@ -11,11 +11,7 @@ import cx from "classnames";
 import { IconContainer } from "./LegendItem.styled";
 
 const propTypes = {
-  icon: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    color: PropTypes.string,
-    size: PropTypes.number,
-  }),
+  icon: PropTypes.shape(iconPropTypes),
 };
 
 export default class LegendItem extends Component {

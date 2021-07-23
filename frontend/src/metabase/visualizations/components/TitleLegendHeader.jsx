@@ -4,14 +4,12 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { getIn } from "icepick";
 
+import { iconPropTypes } from "metabase/components/Icon";
+
 import LegendHeader from "./LegendHeader";
 
 const propTypes = {
-  icon: PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    color: PropTypes.string,
-    size: PropTypes.number,
-  }),
+  icon: PropTypes.shape(iconPropTypes),
 };
 
 export default function TitleLegendHeader({
