@@ -23,7 +23,7 @@ const propTypes = {
 };
 
 const driverUpgradeHelpLink = MetabaseSettings.docsUrl(
-  "administration-guide/99-upgrading-drivers",
+  "administration-guide/01-managing-databases",
 );
 
 function getSupersedesWarningContent(newDriver, supersedesDriver) {
@@ -32,8 +32,7 @@ function getSupersedesWarningContent(newDriver, supersedesDriver) {
       <p className="text-medium m0">
         {t`This is our new ${
           allEngines[newDriver]["driver-name"]
-        } driver, which is faster and
-      more reliable.`}
+        } driver, which is faster and more reliable.`}
       </p>
       <p>{t`The old driver has been deprecated and will be removed in the next release. If you really
       need to use it, you can select ${
@@ -52,14 +51,13 @@ function getSupersededByWarningContent(engine) {
       <p className="text-medium m0">
         {t`We recommend that you upgrade to the new ${
           allEngines[engine]["driver-name"]
-        } driver, which is faster and more
-         reliable.`}
+        } driver, which is faster and more reliable.`}
       </p>
       <ExternalLink
         href={driverUpgradeHelpLink}
         className="text-brand text-bold"
       >
-        {t`How to upgrade a driver (TODO: fix link)`}
+        {t`How to upgrade a driver`}
       </ExternalLink>
     </div>
   );
