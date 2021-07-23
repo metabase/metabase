@@ -12,7 +12,7 @@
 
 (def ^:private bundle-path
   ;; todo: this will move to app/dist when the bundle is in the tree
-  "resources/frontend_client/app/dist/lib-static-viz.bundle.js")
+  "frontend_client/app/dist/lib-static-viz.bundle.js")
 
 (def ^:private src-api
   "API for calling to the javascript bundle. Entry points are the functions
@@ -76,7 +76,7 @@ function categorical_donut (data) {
                       (allowIO true)
                       (build))]
       (doto context
-        (.eval (.build (Source/newBuilder "js" (io/file bundle-path))))
+        (.eval (.build (Source/newBuilder "js" (io/resource bundle-path))))
         (.eval (.build (Source/newBuilder "js" ^String src-api "src call")))))))
 
 
