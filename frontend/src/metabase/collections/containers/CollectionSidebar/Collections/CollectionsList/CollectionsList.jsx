@@ -9,7 +9,7 @@ import {
   ChildrenContainer,
   ExpandCollectionButton,
   InitialIcon,
-  ItemContainer,
+  LabelContainer,
 } from "./CollectionsList.styled";
 
 import CollectionLink from "metabase/collections/components/CollectionLink";
@@ -30,14 +30,14 @@ function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   );
 }
 
-function CollectionLabel({ action, collection, initialIcon, isOpen }) {
+function Label({ action, collection, initialIcon, isOpen }) {
   const { archived, children, id, name } = collection;
 
   const hasChildren =
     Array.isArray(children) && children.some(child => !archived);
 
   return (
-    <ItemContainer>
+    <LabelContainer>
       {hasChildren && (
         <ToggleChildCollectionButton
           action={action}
@@ -48,7 +48,7 @@ function CollectionLabel({ action, collection, initialIcon, isOpen }) {
 
       <InitialIcon name={initialIcon} />
       {name}
-    </ItemContainer>
+    </LabelContainer>
   );
 }
 
@@ -67,7 +67,7 @@ function Collection({
   const action = isOpen ? onClose : onOpen;
 
   return (
-    <Box key={id}>
+    <Box>
       <CollectionDropTarget collection={collection}>
         {({ highlighted, hovered }) => {
           const url = Urls.collection(collection);
@@ -90,7 +90,7 @@ function Collection({
               role="treeitem"
               aria-expanded={isOpen}
             >
-              <CollectionLabel
+              <Label
                 action={action}
                 collection={collection}
                 initialIcon={initialIcon}

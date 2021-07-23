@@ -25,6 +25,6 @@ export const InitialIcon = styled(Icon)`
   opacity: 0.4;
 `;
 
-export const ItemContainer = styled(Flex)`
+export const LabelContainer = styled(Flex)`
   position: relative;
 `;
