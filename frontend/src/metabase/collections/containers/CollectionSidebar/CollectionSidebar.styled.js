@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { Box } from "grid-styled";
 
 import { space } from "metabase/styled-components/theme";
@@ -29,7 +29,15 @@ export const Sidebar = styled(Box.withComponent("aside"))`
   padding-top: ${space(3)};
   position: fixed;
   top: 65px;
-  width: ${props => (props.shouldDisplayMobileSidebar ? "100vw" : 0)};
+  width: 0;
+
+  ${props =>
+    props.shouldDisplayMobileSidebar &&
+    css`
+      box-shadow: 5px 0px 8px rgba(0, 0, 0, 0.35),
+        40px 0px rgba(5, 14, 31, 0.32);
+      width: calc(100vw - 40px);
+    `}
 
   ${breakpointMinSmall} {
     width: ${SIDEBAR_WIDTH};
@@ -41,7 +49,11 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
   size: 20,
 })`
   color: ${color("brand")};
-  margin: ${space(0)} ${space(2)} 0 ${space(3)}};
+  // margin sizes hard-coded
+  // for icon to land on
+  // same position as burger icon
+  // when sidebar is hidden in mobile
+  margin: -4px ${space(2)} 0 30px};
 
   ${breakpointMinSmall} {
     cursor: pointer;
