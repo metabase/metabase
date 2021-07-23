@@ -572,14 +572,14 @@ jobs:
           steps:
             - restore-be-deps-cache
             - run:
-                name: Fetch dependencies
-                command: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
-            - run:
                 name: Compile Java source file(s)
                 command: clojure -X:deps prep
             - run:
                 name: Compile driver AOT namespaces
                 command: cd modules/drivers && clojure -X:deps prep
+            - run:
+                name: Fetch dependencies
+                command: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
             - run:
                 name: Fetch dependencies (./bin/build)
                 command: cd /home/circleci/metabase/metabase/bin/build-mb && clojure -P -X:test
