@@ -68,9 +68,11 @@ const Questions = createEntity({
     getColor: () => color("text-medium"),
     getCollection: question =>
       question && normalizedCollection(question.collection),
-    getIcon: question =>
-      (require("metabase/visualizations").default.get(question.display) || {})
-        .iconName || "beaker",
+    getIcon: question => ({
+      name:
+        (require("metabase/visualizations").default.get(question.display) || {})
+          .iconName || "beaker",
+    }),
   },
 
   reducer: (state = {}, { type, payload, error }) => {

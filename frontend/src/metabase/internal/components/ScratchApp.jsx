@@ -103,8 +103,8 @@ export default class ScratchApp extends React.Component {
           onChange={this.handleChange}
         />
         <div className="absolute bottom right flex align-center p1">
-          <span className="mr1">Centered:</span>
           <CheckBox
+            label="Centered"
             checked={centered}
             onChange={e => this.setState({ centered: !centered })}
           />

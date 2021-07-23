@@ -79,7 +79,7 @@ const Collections = createEntity({
   objectSelectors: {
     getName: collection => collection && collection.name,
     getUrl: collection => Urls.collection(collection),
-    getIcon: collection => "folder",
+    getIcon: collection => ({ name: "folder" }),
   },
 
   selectors: {

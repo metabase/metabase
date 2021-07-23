@@ -52,7 +52,7 @@ describe("scenarios > admin > settings > SSO > LDAP", () => {
     cy.button("Changes saved!");
   });
 
-  it.skip("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
+  it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
     cy.findByPlaceholderText("ldap.yourdomain.org").type("foobar");
     cy.findByPlaceholderText("389").type("baz");
     cy.button("Save changes").click();

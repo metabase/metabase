@@ -44,6 +44,14 @@
                      "NODE_ENV"   "production"
                      "MB_EDITION" mb-edition}}
               "./node_modules/.bin/webpack" "--bail"))
+      ;; related to the above TODO -- not sure why `yarn build-static-viz` fails here
+      (u/step "Build static viz"
+        (u/sh {:dir u/project-root-directory
+               :env {"PATH"       (env/env :path)
+                     "HOME"       (env/env :user-home)
+                     "NODE_ENV"   "production"
+                     "MB_EDITION" mb-edition}}
+              "./node_modules/.bin/webpack" "--bail" "--config" "webpack.static-viz.config.js"))
       (u/announce "Frontend built successfully."))))
 
 (def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
@@ -133,3 +141,23 @@
     (build! (merge {:edition (edition-from-env-var)}
                    (when-let [steps (not-empty steps)]
                      {:steps steps})))))
+
+(defn list-without-license [{:keys []}]
+  (let [classpath-and-logs        (u/sh {:dir    u/project-root-directory
+                                         :quiet? true}
+                                        "lein"
+                                        "with-profile"
+                                        "-dev,+ee,+include-all-drivers"
+                                        "classpath")
+        classpath                 (last classpath-and-logs)
+        classpath-entries (license/jar-entries classpath)
+        {:keys [without-license]} (license/process*
+                                   {:classpath-entries classpath-entries
+                                    :backfill        (edn/read-string
+                                                        (slurp (io/resource "overrides.edn")))})]
+    (if (seq without-license)
+      (run! (comp (partial u/error "Missing License: %s") first)
+            without-license)
+      (u/announce "All dependencies have licenses"))
+    (shutdown-agents)
+    (System/exit (if (seq without-license) 1 0))))

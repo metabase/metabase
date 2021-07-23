@@ -29,13 +29,13 @@ msgid "Select a database type"
 msgstr "Оберіть тип бази даних"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:267
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:182
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:191
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:432
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:113
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:133
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:207
 #: frontend/src/metabase/components/ActionButton.jsx:49
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:7
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:155
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:156
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:175
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:47
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:16
@@ -97,7 +97,7 @@ msgstr "Коли користувач додає новий фільтр до д
 msgid "Never, I'll do this manually if I need to"
 msgstr "Ніколи, я зроблю це вручну при необхідності"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:28
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:30
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:228
 #: frontend/src/metabase/components/ActionButton.jsx:50
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
@@ -142,12 +142,12 @@ msgstr "у цьому полі:"
 #: frontend/src/metabase/admin/people/components/AddRow.jsx:28
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:50
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:53
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:99
-#: frontend/src/metabase/admin/permissions/selectors.js:161
-#: frontend/src/metabase/admin/permissions/selectors.js:171
-#: frontend/src/metabase/admin/permissions/selectors.js:186
-#: frontend/src/metabase/admin/permissions/selectors.js:225
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:362
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:119
+#: frontend/src/metabase/admin/permissions/selectors.js:160
+#: frontend/src/metabase/admin/permissions/selectors.js:170
+#: frontend/src/metabase/admin/permissions/selectors.js:185
+#: frontend/src/metabase/admin/permissions/selectors.js:224
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:399
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:206
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:273
 #: frontend/src/metabase/components/ArchiveModal.jsx:38
@@ -167,7 +167,7 @@ msgstr "у цьому полі:"
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:33
 #: frontend/src/metabase/reference/components/EditHeader.jsx:34
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:58
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:335
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:350
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:465
 msgid "Cancel"
 msgstr "Відмінити"
@@ -180,11 +180,11 @@ msgstr "Відмінити"
 msgid "Delete"
 msgstr "Вилучити"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:151
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:157
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:96
-#: frontend/src/metabase/admin/permissions/selectors.js:339
-#: frontend/src/metabase/admin/permissions/selectors.js:346
-#: frontend/src/metabase/admin/permissions/selectors.js:457
+#: frontend/src/metabase/admin/permissions/selectors.js:343
+#: frontend/src/metabase/admin/permissions/selectors.js:350
+#: frontend/src/metabase/admin/permissions/selectors.js:461
 #: frontend/src/metabase/admin/routes.jsx:60
 #: frontend/src/metabase/home/containers/SearchApp.jsx:38
 #: frontend/src/metabase/nav/containers/Navbar.jsx:132
@@ -193,23 +193,23 @@ msgstr "Вилучити"
 msgid "Databases"
 msgstr "Бази даних"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:152
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:158
 msgid "Add Database"
 msgstr "Додати базу даних"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:74
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:79
 msgid "Connection"
 msgstr "З'єднання"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:78
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:83
 msgid "Scheduling"
 msgstr "Розклад"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:185
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:182
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:191
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:63
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:81
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:27
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:29
 #: frontend/src/metabase/admin/settings/components/SettingsGoogleForm.jsx:82
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:227
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:225
@@ -218,18 +218,18 @@ msgstr "Розклад"
 msgid "Save changes"
 msgstr "Зберегти зміни"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:222
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:231
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:31
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:31
 msgid "Actions"
 msgstr "Дії"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:230
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:239
 msgid "Sync database schema now"
 msgstr "Синхронізувати структуру БД"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:231
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:243
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:240
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:252
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:16
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:24
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:91
@@ -237,41 +237,41 @@ msgstr "Синхронізувати структуру БД"
 msgid "Starting…"
 msgstr "Починаю..."
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:232
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:241
 msgid "Failed to sync"
 msgstr "Помилка синхронізації"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:233
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:242
 msgid "Sync triggered!"
 msgstr "Синхронізація почалася!"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:242
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:251
 msgid "Re-scan field values now"
 msgstr "Пересканувати значення полів"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:244
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:253
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:92
 msgid "Failed to start scan"
 msgstr "Неможливо розпочати сканування"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:245
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:254
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:18
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:93
 msgid "Scan triggered!"
 msgstr "Сканування почалося!"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:252
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:261
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:418
 msgid "Danger Zone"
 msgstr "Небезпечна зона"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:258
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:261
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:267
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:270
 msgid "Discard saved field values"
 msgstr "Скинути збережені значення полів"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:276
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:285
 msgid "Remove this database"
 msgstr "Вилучити цю базу даних"
 
@@ -283,18 +283,18 @@ msgstr "Додати базу даних"
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:29
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:29
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:120
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:188
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:218
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:89
 #: frontend/src/metabase/collections/components/BaseItemsTable.jsx:143
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:133
-#: frontend/src/metabase/entities/collections.js:134
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:134
+#: frontend/src/metabase/entities/collections.js:135
 #: frontend/src/metabase/entities/dashboards.js:144
 #: frontend/src/metabase/entities/databases/forms.js:300
 #: frontend/src/metabase/entities/questions.js:88
 #: frontend/src/metabase/entities/questions.js:104
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:480
 #: frontend/src/metabase/visualizations/lib/settings/column.js:344
-#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:89
+#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:90
 msgid "Name"
 msgstr "Ім'я"
 
@@ -314,7 +314,7 @@ msgstr "Завантаження..."
 msgid "Bring the sample dataset back"
 msgstr "Відновити зразки наборів даних"
 
-#: frontend/src/metabase/admin/databases/database.js:175
+#: frontend/src/metabase/admin/databases/database.js:177
 msgid "Couldn't connect to the database. Please check the connection details."
 msgstr "Неможливо з'єднатися з базою даних. Будь ласка, перевірте налаштування з'єднання."
 
@@ -711,13 +711,13 @@ msgstr "Чи не вдалося скинути значення"
 msgid "Discard triggered!"
 msgstr "Скидання значень почався!"
 
-#: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:113
+#: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:123
 msgid "Select any table to see its schema and add or edit metadata."
 msgstr "Вибрати базу даних щоб побачити її схему або змінити метадані."
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:32
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:31
-#: frontend/src/metabase/entities/collections.js:137
+#: frontend/src/metabase/entities/collections.js:139
 #: frontend/src/metabase/entities/snippet-collections.js:76
 msgid "Name is required"
 msgstr "ім'я обов'язково"
@@ -841,7 +841,7 @@ msgstr "Дане повідомлення з'явиться в історії з
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:70
 #: frontend/src/metabase/admin/routes.jsx:137
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:222
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:226
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:104
 #: frontend/src/metabase/nav/containers/Navbar.jsx:114
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:19
@@ -871,7 +871,7 @@ msgstr "Email вказано невірно"
 msgid "First name"
 msgstr "Ім'я"
 
-#: frontend/src/metabase/entities/users/forms.js:20
+#: frontend/src/metabase/entities/users/forms.js:21
 msgid "Last name"
 msgstr "Прізвище"
 
@@ -911,7 +911,7 @@ msgstr "Учасники"
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:122
 #: frontend/src/metabase/admin/people/components/group-members/GroupMembersTable.jsx:54
 #: frontend/src/metabase/admin/settings/selectors.js:126
-#: frontend/src/metabase/entities/users/forms.js:26
+#: frontend/src/metabase/entities/users/forms.js:27
 #: frontend/src/metabase/lib/core.js:146
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:298
 msgid "Email"
@@ -991,7 +991,7 @@ msgstr "видалити групу"
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:84
 #: frontend/src/metabase/query_builder/components/SidebarContent.jsx:18
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:119
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:341
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:356
 msgid "Done"
 msgstr "Готово"
 
@@ -1005,7 +1005,7 @@ msgstr "Ім'я групи"
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:22
 #: frontend/src/metabase/admin/routes.jsx:97
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:173
-#: frontend/src/metabase/entities/users/forms.js:70
+#: frontend/src/metabase/entities/users/forms.js:71
 msgid "Groups"
 msgstr "Групи"
 
@@ -1226,7 +1226,7 @@ msgstr "Ніяких змін доступу виконано не буде."
 msgid "You've made changes to permissions."
 msgstr "Ви внесли зміни в налаштування доступу."
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:84
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:104
 msgid "Permissions for this collection"
 msgstr "Дозволи для цієї колекції"
 
@@ -1242,127 +1242,127 @@ msgstr "Ви дійсно бажаєте залишити цю сторінку 
 msgid "Sorry, an error occurred."
 msgstr "Вибачте, виникла помилка."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:69
+#: frontend/src/metabase/admin/permissions/selectors.js:68
 msgid "Administrators always have the highest level of access to everything in Metabase."
 msgstr "Адміністратори завжди мають найвищий пріоритет доступу до всього в Metabase."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:71
+#: frontend/src/metabase/admin/permissions/selectors.js:70
 msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
 msgstr "Кожен користувач Metabase відноситься до групи Всі користувачі. Якщо ви хочете обмежити доступ групи до чого-небудь, переконайтеся що група Всі користувачі має рівний або менший рівень доступу."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:73
+#: frontend/src/metabase/admin/permissions/selectors.js:72
 msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
 msgstr "MetaBot це Slack бот Metabase. Тут ви можете вибрати до чого він буде мати доступ."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:126
+#: frontend/src/metabase/admin/permissions/selectors.js:125
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
 msgstr "Група \"{0}\" має доступ до інших {1}, ніж дана група, що дозволить їй отримати доступ до {2}."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:129
+#: frontend/src/metabase/admin/permissions/selectors.js:128
 msgid "The \"{0}\" group has a higher level of access than this, which will override this setting. You should limit or revoke the \"{1}\" group's access to this item."
 msgstr "Група \"{0}\" має більший рівень доступу, ніж цей, що перевизначити цей параметр. Вам слід обмежити або відкликати доступ групи \"{1}\" до даного елементу."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:155
+#: frontend/src/metabase/admin/permissions/selectors.js:154
 msgid "Limit"
 msgstr "обмеження"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:155
+#: frontend/src/metabase/admin/permissions/selectors.js:154
 msgid "Revoke"
 msgstr "відкликати"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:157
+#: frontend/src/metabase/admin/permissions/selectors.js:156
 msgid "access even though \"{0}\" has greater access?"
 msgstr "доступ, навіть якщо \"{0}\" має більший доступ?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:160
-#: frontend/src/metabase/admin/permissions/selectors.js:259
+#: frontend/src/metabase/admin/permissions/selectors.js:159
+#: frontend/src/metabase/admin/permissions/selectors.js:258
 msgid "Limit access"
 msgstr "обмежити доступ"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:160
-#: frontend/src/metabase/admin/permissions/selectors.js:224
-#: frontend/src/metabase/admin/permissions/selectors.js:267
-#: frontend/src/metabase/admin/permissions/selectors.js:307
+#: frontend/src/metabase/admin/permissions/selectors.js:159
+#: frontend/src/metabase/admin/permissions/selectors.js:223
+#: frontend/src/metabase/admin/permissions/selectors.js:266
+#: frontend/src/metabase/admin/permissions/selectors.js:306
 msgid "Revoke access"
 msgstr "відкликати доступ"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:169
+#: frontend/src/metabase/admin/permissions/selectors.js:168
 msgid "Change access to this database to limited?"
 msgstr "Обмежити доступ до цієї бази даних?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:170
+#: frontend/src/metabase/admin/permissions/selectors.js:169
 msgid "Change"
 msgstr "змінити"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:183
+#: frontend/src/metabase/admin/permissions/selectors.js:182
 msgid "Allow Raw Query Writing?"
 msgstr "Дозволити написання прямих запитів?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:184
+#: frontend/src/metabase/admin/permissions/selectors.js:183
 msgid "This will also change this group's data access to Unrestricted for this database."
 msgstr "Це також надасть цій групі Необмежений доступ до бази даних."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:185
+#: frontend/src/metabase/admin/permissions/selectors.js:184
 msgid "Allow"
 msgstr "Дозволити"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:222
+#: frontend/src/metabase/admin/permissions/selectors.js:221
 msgid "Revoke access to all tables?"
 msgstr "Відкликати доступ до всіх таблиць?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:223
+#: frontend/src/metabase/admin/permissions/selectors.js:222
 msgid "This will also revoke this group's access to raw queries for this database."
 msgstr "Це також відкличе доступ групи до прямих запитам до бази даних."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:252
+#: frontend/src/metabase/admin/permissions/selectors.js:251
 msgid "Grant unrestricted access"
 msgstr "Надати необмежений доступ"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:253
+#: frontend/src/metabase/admin/permissions/selectors.js:252
 msgid "Unrestricted access"
 msgstr "необмежений доступ"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:260
+#: frontend/src/metabase/admin/permissions/selectors.js:259
 msgid "Limited access"
 msgstr "Обмежений доступ"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:268
+#: frontend/src/metabase/admin/permissions/selectors.js:267
 msgid "No access"
 msgstr "Немає доступу"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:274
+#: frontend/src/metabase/admin/permissions/selectors.js:273
 msgid "Write raw queries"
 msgstr "Написання прямих запитів"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:275
+#: frontend/src/metabase/admin/permissions/selectors.js:274
 msgid "Can write raw queries"
 msgstr "Може писати прямі запити"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:282
+#: frontend/src/metabase/admin/permissions/selectors.js:281
 msgid "Curate collection"
 msgstr "управляти колекцією"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:289
+#: frontend/src/metabase/admin/permissions/selectors.js:288
 msgid "View collection"
 msgstr "Подивитися колекцію"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:350
-#: frontend/src/metabase/admin/permissions/selectors.js:461
-#: frontend/src/metabase/admin/permissions/selectors.js:574
+#: frontend/src/metabase/admin/permissions/selectors.js:354
+#: frontend/src/metabase/admin/permissions/selectors.js:465
+#: frontend/src/metabase/admin/permissions/selectors.js:578
 msgid "Data Access"
 msgstr "Доступ до даних"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:526
-#: frontend/src/metabase/admin/permissions/selectors.js:681
-#: frontend/src/metabase/admin/permissions/selectors.js:686
+#: frontend/src/metabase/admin/permissions/selectors.js:530
+#: frontend/src/metabase/admin/permissions/selectors.js:685
+#: frontend/src/metabase/admin/permissions/selectors.js:690
 msgid "View tables"
 msgstr "Подивитися таблиці"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:622
+#: frontend/src/metabase/admin/permissions/selectors.js:626
 msgid "SQL Queries"
 msgstr "SQL запити"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:692
+#: frontend/src/metabase/admin/permissions/selectors.js:696
 msgid "View schemas"
 msgstr "Подивитися схеми"
 
@@ -1395,23 +1395,23 @@ msgstr "LDAP"
 msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
 msgstr "Дозволяє користувачам в каталозі LDAP входити в Metabase з обліковими даними LDAP, а також автоматично пов'язує групи LDAP з групами Metabase."
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:18
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:20
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:75
 #: frontend/src/metabase/admin/settings/selectors.js:174
 msgid "That's not a valid email address"
 msgstr "Це не дійсний email адреса"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:22
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:24
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:79
 msgid "That's not a valid integer"
 msgstr "Це не правильна ціле число"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:29
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:31
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:229
 msgid "Changes saved!"
 msgstr "зміни збережені"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:186
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:188
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:138
 msgid "Looks like we ran into some problems"
 msgstr "Схоже, ми зіткнулися з деякими проблемами"
@@ -1502,7 +1502,7 @@ msgstr "Створити Slack Bot користувача для MetaBot"
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
 msgstr "Поки ви тут, дайте ім'я та натисніть {0}. Потім скопіюйте і вставте Bot API токен в поле нижче. Після цього, створіть канал \"metabase_files\" в Slack. Це потрібно Metabase для завантаження графіків."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:25
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:35
 msgid "You're running Metabase {0} which is the latest and greatest!"
 msgstr "Ви запустили останню і найкращу версію Metanase {0}!"
 
@@ -1510,21 +1510,21 @@ msgstr "Ви запустили останню і найкращу версію 
 msgid "Metabase {0} is available.  You're running {1}"
 msgstr "Metabase {0} доступна. Ви використовуєте {1}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:56
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:61
 #: frontend/src/metabase/components/form/StandardForm.jsx:19
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:119
 msgid "Update"
 msgstr "оновити"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:64
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:69
 msgid "What's Changed:"
 msgstr "Що змінено:"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:136
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:166
 msgid "Add a map"
 msgstr "Додати карту"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:189
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:219
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:125
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:568
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:605
@@ -1532,14 +1532,14 @@ msgstr "Додати карту"
 msgid "URL"
 msgstr "Посилання"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:206
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:236
 msgid "Delete custom map"
 msgstr "Видалити поточну карту"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:208
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:238
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:335
-#: frontend/src/metabase/containers/Overworld.jsx:153
-#: frontend/src/metabase/containers/Overworld.jsx:304
+#: frontend/src/metabase/containers/Overworld.jsx:128
+#: frontend/src/metabase/containers/Overworld.jsx:278
 #: frontend/src/metabase/dashboard/components/DashCard.jsx:362
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:91
@@ -1548,7 +1548,7 @@ msgstr "Видалити поточну карту"
 msgid "Remove"
 msgstr "вилучити"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:233
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:270
 #: frontend/src/metabase/dashboard/containers/DashCardCardParameterMapper.jsx:175
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:194
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:141
@@ -1556,59 +1556,59 @@ msgstr "вилучити"
 msgid "Select…"
 msgstr "Вибрати ..."
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:248
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:285
 msgid "Sample values:"
 msgstr "Приклади значень:"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:286
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:323
 msgid "Add a new map"
 msgstr "Додати нову карту"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:286
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:323
 msgid "Edit map"
 msgstr "змінити карту"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:287
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:324
 msgid "What do you want to call this map?"
 msgstr "Як ви хочете назвати цю карту?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:292
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:329
 msgid "e.g. United Kingdom, Brazil, Mars"
 msgstr "наприклад, Великобританія, Бразилія, Марс"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:299
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:336
 msgid "URL for the GeoJSON file you want to use"
 msgstr "URL до файлу GeoJSON, який потрібно використовувати"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:305
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:342
 msgid "Like https://my-mb-server.com/maps/my-map.json"
 msgstr "Наприклад, https://my-mb-server.com/maps/my-map.json"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:316
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:353
 msgid "Refresh"
 msgstr "оновити"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:316
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:353
 msgid "Load"
 msgstr "Завантажити"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:322
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:359
 msgid "Which property specifies the region’s identifier?"
 msgstr "Яка ознака визначає ідентифікатор регіону?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:331
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:368
 msgid "Which property specifies the region’s display name?"
 msgstr "Яка ознака визначає відображення найменування регіону?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:352
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:389
 msgid "Load a GeoJSON file to see a preview"
 msgstr "Завантажте файл GeoJSON для попереднього перегляду"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:370
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:407
 msgid "Save map"
 msgstr "зберегти карту"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:370
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:407
 msgid "Add map"
 msgstr "Додати карту"
 
@@ -1744,7 +1744,7 @@ msgstr "Включено"
 msgid "Disabled"
 msgstr "Відключено"
 
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:119
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:121
 msgid "Unknown setting {0}"
 msgstr "Невідома настройка {0}"
 
@@ -1785,7 +1785,7 @@ msgstr "Вибрати часовий пояс"
 msgid "Not all databases support timezones, in which case this setting won't take effect."
 msgstr "Не всі бази даних підтримують часові пояси, тому цей параметр може не спрацювати."
 
-#: frontend/src/metabase/entities/users/forms.js:34
+#: frontend/src/metabase/entities/users/forms.js:35
 msgid "Language"
 msgstr "Мова"
 
@@ -1881,7 +1881,7 @@ msgstr "Користувач або DN"
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:46
 #: frontend/src/metabase/entities/databases/forms.js:70
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:67
-#: frontend/src/metabase/user/components/UserSettings.jsx:67
+#: frontend/src/metabase/user/components/UserSettings.jsx:65
 #: src/metabase/driver/common.clj
 msgid "Password"
 msgstr "Пароль"
@@ -2034,7 +2034,7 @@ msgstr "Повернутися до входу"
 msgid "No Metabase account exists for this Google account."
 msgstr "Немає облікового запису пов'язаного з цим Google аккаунтом."
 
-#: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:17
+#: src/metabase/integrations/google.clj
 msgid "You'll need an administrator to create a Metabase account before you can use Google to log in."
 msgstr "Зв'яжіться з адміністратором для використання Гугл логіна."
 
@@ -2062,7 +2062,7 @@ msgstr "Послати емаил для скидання пароля"
 msgid "Check your email for instructions on how to reset your password."
 msgstr "Послати емаил з інструкцією як скинути пароль."
 
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:28
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:31
 msgid "Sign in to Metabase"
 msgstr "Увійти в Metabase"
 
@@ -2170,7 +2170,7 @@ msgstr "Дашборди, колекції та пульси у цій коле�
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:242
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:243
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:59
-#: frontend/src/metabase/routes.jsx:195
+#: frontend/src/metabase/routes.jsx:193
 msgid "Archive"
 msgstr "Архів"
 
@@ -2189,7 +2189,7 @@ msgstr "Востоновіть цей {0}"
 #: frontend/src/metabase/browse/containers/DatabaseBrowser.jsx:23
 #: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:41
 #: frontend/src/metabase/browse/containers/TableBrowser.jsx:71
-#: frontend/src/metabase/containers/Overworld.jsx:281
+#: frontend/src/metabase/containers/Overworld.jsx:255
 #: frontend/src/metabase/reference/databases/DatabaseList.jsx:48
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:39
 msgid "Our data"
@@ -2295,7 +2295,7 @@ msgstr "прикріплені"
 msgid "Drag something here to pin it to the top"
 msgstr "Перемістіть щось для того щоб закріпити нагорі"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:780
+#: frontend/src/metabase/admin/permissions/selectors.js:784
 #: frontend/src/metabase/home/containers/SearchApp.jsx:33
 msgid "Collections"
 msgstr "колекції"
@@ -2342,7 +2342,7 @@ msgstr "Перемістити колекцію в архів"
 msgid "My personal collection"
 msgstr "Моя особиста колекція"
 
-#: frontend/src/metabase/collections/components/Header.jsx:53
+#: frontend/src/metabase/collections/components/Header/Header.jsx:67
 #: frontend/src/metabase/components/CollectionList.jsx:110
 msgid "New collection"
 msgstr "Нова колекція"
@@ -2407,7 +2407,7 @@ msgstr "{0} перейдіть в консоль, якщо ви цього ще 
 msgid "How would you like to refer to this database?"
 msgstr "Як би ви хотіли звертатися до цієї бази даних?"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:195
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:204
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:254
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:146
 #: frontend/src/metabase/setup/components/DatabaseSchedulingStep.jsx:70
@@ -2472,7 +2472,7 @@ msgstr "завантажити результати"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:53
 #: frontend/src/metabase/components/EntityMenu.info.js:105
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:99
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:107
 msgid "Sharing and embedding"
 msgstr "параметри шаринга"
 
@@ -2518,35 +2518,35 @@ msgstr "Засноване на схемі"
 msgid "A look at your"
 msgstr "Погляньте на"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:406
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:228
 msgid "Search the list"
 msgstr "Пошук в списку"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:415
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:200
 msgid "Search by {0}"
 msgstr "Шукати по {0}"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:417
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:202
 msgid " or enter an ID"
 msgstr "або введітеь ID"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:422
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:210
 msgid "Enter an ID"
 msgstr "Введіть ID"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:424
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:212
 msgid "Enter a number"
 msgstr "ведіть номер"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:426
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:214
 msgid "Enter some text"
 msgstr "Введіть текст"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:542
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:563
 msgid "No matching {0} found."
 msgstr "Чи не знайдено сходст в {0}."
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:551
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:572
 msgid "Including every option in your filter probably won’t do much…"
 msgstr "Припускаю, що вибір всіх значень фільтра справі не допоможе ..."
 
@@ -2643,7 +2643,7 @@ msgid "Questions"
 msgstr "питання"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:53
-#: frontend/src/metabase/routes.jsx:316
+#: frontend/src/metabase/routes.jsx:314
 msgid "Pulses"
 msgstr "Пульси"
 
@@ -2690,14 +2690,14 @@ msgstr "Тимчасовий пароль"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:227
 #: frontend/src/metabase/components/PasswordReveal.jsx:67
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:454
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:469
 msgid "Hide"
 msgstr "приховати"
 
 #: frontend/src/metabase/components/PasswordReveal.jsx:67
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:471
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
 msgid "Show"
 msgstr "Показати"
 
@@ -2845,7 +2845,7 @@ msgid "Creator"
 msgstr "творець"
 
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:244
-#: frontend/src/metabase/query_builder/components/data-search/SearchResults.jsx:31
+#: frontend/src/metabase/query_builder/components/data-search/SearchResults.jsx:45
 msgid "No results found"
 msgstr "Нічого не знайдено"
 
@@ -2861,7 +2861,7 @@ msgstr "Переглянуто"
 msgid "of"
 msgstr "з"
 
-#: frontend/src/metabase/containers/Overworld.jsx:98
+#: frontend/src/metabase/containers/Overworld.jsx:77
 msgid "Don't tell anyone, but you're my favorite."
 msgstr "Нікому не кажи, але ти мій улюбленець."
 
@@ -2869,19 +2869,19 @@ msgstr "Нікому не кажи, але ти мій улюбленець."
 msgid "Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data."
 msgstr "Як тільки ви підключите власні дані я зможу показати деякі автоматичні вишукування, названі X-ray. Ось кілька прикладів на даних, які є у мене."
 
-#: frontend/src/metabase/containers/Overworld.jsx:187
-#: frontend/src/metabase/containers/Overworld.jsx:398
+#: frontend/src/metabase/containers/Overworld.jsx:162
+#: frontend/src/metabase/containers/Overworld.jsx:373
 msgid "Start here"
 msgstr "Почніть тут"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:98
-#: frontend/src/metabase/containers/Overworld.jsx:393
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:93
+#: frontend/src/metabase/containers/Overworld.jsx:368
 #: frontend/src/metabase/entities/collections.js:20
 #: src/metabase/models/collection.clj
 msgid "Our analytics"
 msgstr "Наша статистика"
 
-#: frontend/src/metabase/containers/Overworld.jsx:259
+#: frontend/src/metabase/containers/Overworld.jsx:233
 msgid "Browse all items"
 msgstr "Переглянути всі елементи"
 
@@ -2889,11 +2889,11 @@ msgstr "Переглянути всі елементи"
 msgid "Replace or save as new?"
 msgstr "Замінити або зберегти як новий?"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:169
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:170
 msgid "Replace original question, \"{0}\""
 msgstr "Замінити вихідний питання, \"{0}\""
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:173
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:174
 msgid "Save as new question"
 msgstr "Зберегти як новий запит"
 
@@ -2905,15 +2905,15 @@ msgstr "Для початку, збережіть ваш запит"
 msgid "Save question"
 msgstr "Зберегти запит"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:134
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:135
 msgid "What is the name of your card?"
 msgstr "Як називається ваша картка?"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:19
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:144
-#: frontend/src/metabase/entities/collections.js:142
-#: frontend/src/metabase/entities/dashboards.js:150
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:145
+#: frontend/src/metabase/entities/collections.js:144
+#: frontend/src/metabase/entities/dashboards.js:151
 #: frontend/src/metabase/entities/questions.js:91
 #: frontend/src/metabase/entities/questions.js:107
 #: frontend/src/metabase/lib/core.js:38
@@ -2927,18 +2927,18 @@ msgstr "Як називається ваша картка?"
 msgid "Description"
 msgstr "опис"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:145
-#: frontend/src/metabase/entities/collections.js:144
-#: frontend/src/metabase/entities/dashboards.js:152
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:146
+#: frontend/src/metabase/entities/collections.js:146
+#: frontend/src/metabase/entities/dashboards.js:153
 #: frontend/src/metabase/entities/questions.js:93
 #: frontend/src/metabase/entities/questions.js:109
 #: frontend/src/metabase/entities/snippet-collections.js:83
-#: frontend/src/metabase/entities/snippets.js:27
+#: frontend/src/metabase/entities/snippets.js:28
 msgid "It's optional but oh, so helpful"
 msgstr "Це не обов'язково, але може бути корисним"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:149
-#: frontend/src/metabase/entities/dashboards.js:156
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:150
+#: frontend/src/metabase/entities/dashboards.js:157
 msgid "Which collection should this go in?"
 msgstr "В яку збріку слід це включити?"
 
@@ -2963,6 +2963,7 @@ msgid "That question isn't compatible"
 msgstr "Цей запит несумісний"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:310
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:758
 msgid "Search for a question"
 msgstr "Знайти запит"
 
@@ -2986,19 +2987,19 @@ msgstr "Дашборд виглядає порожнім."
 msgid "Add a question to start making it useful!"
 msgstr "Додайте питання і зробіть її корисною!"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:125
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:169
 msgid "Daytime mode"
 msgstr "денний режим"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:125
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:169
 msgid "Nighttime mode"
 msgstr "Нічний режим"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:145
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:189
 msgid "Exit fullscreen"
 msgstr "Вихід з повноекранного режиму"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:145
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:189
 msgid "Enter fullscreen"
 msgstr "Повноекранний режим"
 
@@ -3137,12 +3138,12 @@ msgstr "Значення цього поля не покривають знач�
 msgid "No valid fields"
 msgstr "Немає коректних полів"
 
-#: frontend/src/metabase/entities/collections.js:138
+#: frontend/src/metabase/entities/collections.js:140
 #: frontend/src/metabase/entities/snippet-collections.js:77
 msgid "Name must be 100 characters or less"
 msgstr "Ім'я не повинно перевищувати 100 символів"
 
-#: frontend/src/metabase/entities/collections.js:152
+#: frontend/src/metabase/entities/collections.js:154
 #: frontend/src/metabase/entities/snippet-collections.js:91
 msgid "Color is required"
 msgstr "колір обов'язковий"
@@ -3203,6 +3204,9 @@ msgstr "останні дані отримані"
 #: frontend/src/metabase/home/components/Activity.jsx:253
 #: frontend/src/metabase/lib/query_time.js:185
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:334
+#: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/jwt.clj
+#: src/metabase/integrations/ldap/default_implementation.clj
 msgid "Unknown"
 msgstr "невідомо"
 
@@ -3387,20 +3391,20 @@ msgid "Common"
 msgstr "Загальна"
 
 #: frontend/src/metabase/lib/core.js:28
-#: frontend/src/metabase/meta/Dashboard.js:54
+#: frontend/src/metabase/meta/Dashboard.js:55
 #: frontend/src/metabase/meta/Parameter.js:178
 #: frontend/src/metabase/modes/components/drill/PivotByCategoryDrill.jsx:8
 msgid "Category"
 msgstr "Категорія"
 
 #: frontend/src/metabase/lib/core.js:55
-#: frontend/src/metabase/meta/Dashboard.js:39
+#: frontend/src/metabase/meta/Dashboard.js:40
 #: frontend/src/metabase/meta/Parameter.js:181
 msgid "City"
 msgstr "Місто"
 
 #: frontend/src/metabase/lib/core.js:60
-#: frontend/src/metabase/meta/Dashboard.js:51
+#: frontend/src/metabase/meta/Dashboard.js:52
 #: frontend/src/metabase/meta/Parameter.js:193
 msgid "Country"
 msgstr "Країна"
@@ -3426,17 +3430,17 @@ msgid "Longitude"
 msgstr "довгота"
 
 #: frontend/src/metabase/lib/core.js:43
-#: frontend/src/metabase/meta/Dashboard.js:104
-#: frontend/src/metabase/meta/Dashboard.js:110
+#: frontend/src/metabase/meta/Dashboard.js:105
+#: frontend/src/metabase/meta/Dashboard.js:111
 #: frontend/src/metabase/meta/Parameter.js:163
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:145
-#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:43
+#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:44
 msgid "Number"
 msgstr "Число"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:20
 #: frontend/src/metabase/lib/core.js:75
-#: frontend/src/metabase/meta/Dashboard.js:43
+#: frontend/src/metabase/meta/Dashboard.js:44
 #: frontend/src/metabase/meta/Parameter.js:185
 msgid "State"
 msgstr "Штат"
@@ -3597,7 +3601,7 @@ msgstr "Metabase ніколи не отримає це поле. Викорис�
 
 #: frontend/src/metabase/lib/query/description.js:77
 #: frontend/src/metabase/lib/query/description.js:262
-#: frontend/src/metabase/lib/schema_metadata.js:578
+#: frontend/src/metabase/lib/schema_metadata.js:583
 #: frontend/src/metabase/visualizations/lib/utils.js:127
 #: src/metabase/query_processor/middleware/annotate.clj
 #: resources/automagic_dashboards/field/DateTime.yaml
@@ -3612,7 +3616,7 @@ msgstr "кількість"
 msgid "CumulativeCount"
 msgstr "Накопичувальне кількість"
 
-#: frontend/src/metabase/lib/schema_metadata.js:587
+#: frontend/src/metabase/lib/schema_metadata.js:592
 #: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:17
 #: frontend/src/metabase/visualizations/lib/utils.js:128
 msgid "Sum"
@@ -3630,20 +3634,20 @@ msgstr "унікальні"
 msgid "StandardDeviation"
 msgstr "Стандартне відхилення"
 
-#: frontend/src/metabase/lib/schema_metadata.js:596
+#: frontend/src/metabase/lib/schema_metadata.js:601
 #: frontend/src/metabase/visualizations/lib/utils.js:126
 msgid "Average"
 msgstr "середнє"
 
-#: frontend/src/metabase/lib/schema_metadata.js:641
+#: frontend/src/metabase/lib/schema_metadata.js:646
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:484
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:483
 msgid "Min"
 msgstr "Мінімальна"
 
-#: frontend/src/metabase/lib/schema_metadata.js:650
+#: frontend/src/metabase/lib/schema_metadata.js:655
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:492
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:491
 msgid "Max"
 msgstr "максимальне"
 
@@ -3702,7 +3706,7 @@ msgstr "Що ви хочете дізнатися?"
 
 #: frontend/src/metabase/lib/query/description.js:75
 #: frontend/src/metabase/lib/query/description.js:260
-#: frontend/src/metabase/lib/schema_metadata.js:569
+#: frontend/src/metabase/lib/schema_metadata.js:574
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:72
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:243
 msgid "Raw data"
@@ -3710,7 +3714,7 @@ msgstr "Вихідні дані"
 
 #: frontend/src/metabase/lib/query/description.js:79
 #: frontend/src/metabase/lib/query/description.js:264
-#: frontend/src/metabase/lib/schema_metadata.js:623
+#: frontend/src/metabase/lib/schema_metadata.js:628
 msgid "Cumulative count"
 msgstr "Накопичувальне кількість"
 
@@ -3799,7 +3803,7 @@ msgstr "Введіть праву довготу"
 #: frontend/src/metabase/lib/schema_metadata.js:444
 #: frontend/src/metabase/lib/schema_metadata.js:452
 #: frontend/src/metabase/lib/schema_metadata.js:462
-#: frontend/src/metabase/lib/schema_metadata.js:467
+#: frontend/src/metabase/lib/schema_metadata.js:472
 msgid "Is"
 msgstr "-"
 
@@ -3820,7 +3824,7 @@ msgstr "Чи не"
 #: frontend/src/metabase/lib/schema_metadata.js:440
 #: frontend/src/metabase/lib/schema_metadata.js:448
 #: frontend/src/metabase/lib/schema_metadata.js:454
-#: frontend/src/metabase/lib/schema_metadata.js:468
+#: frontend/src/metabase/lib/schema_metadata.js:473
 msgid "Is empty"
 msgstr "Пусто"
 
@@ -3831,7 +3835,7 @@ msgstr "Пусто"
 #: frontend/src/metabase/lib/schema_metadata.js:441
 #: frontend/src/metabase/lib/schema_metadata.js:449
 #: frontend/src/metabase/lib/schema_metadata.js:455
-#: frontend/src/metabase/lib/schema_metadata.js:469
+#: frontend/src/metabase/lib/schema_metadata.js:474
 msgid "Not empty"
 msgstr "Чи не порожньо"
 
@@ -3847,17 +3851,20 @@ msgstr "Не дорівнює"
 
 #: frontend/src/metabase/lib/schema_metadata.js:401
 #: frontend/src/metabase/lib/schema_metadata.js:415
+#: frontend/src/metabase/lib/schema_metadata.js:465
 msgid "Greater than"
 msgstr "Більше ніж"
 
 #: frontend/src/metabase/lib/schema_metadata.js:402
 #: frontend/src/metabase/lib/schema_metadata.js:416
+#: frontend/src/metabase/lib/schema_metadata.js:466
 msgid "Less than"
 msgstr "Менше ніж"
 
 #: frontend/src/metabase/lib/schema_metadata.js:403
 #: frontend/src/metabase/lib/schema_metadata.js:417
 #: frontend/src/metabase/lib/schema_metadata.js:447
+#: frontend/src/metabase/lib/schema_metadata.js:467
 #: frontend/src/metabase/meta/Parameter.js:60
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:301
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:99
@@ -3866,12 +3873,14 @@ msgstr "між"
 
 #: frontend/src/metabase/lib/schema_metadata.js:404
 #: frontend/src/metabase/lib/schema_metadata.js:418
+#: frontend/src/metabase/lib/schema_metadata.js:468
 #: frontend/src/metabase/meta/Parameter.js:65
 msgid "Greater than or equal to"
 msgstr "Більше або дорівнює"
 
 #: frontend/src/metabase/lib/schema_metadata.js:405
 #: frontend/src/metabase/lib/schema_metadata.js:419
+#: frontend/src/metabase/lib/schema_metadata.js:469
 #: frontend/src/metabase/meta/Parameter.js:70
 msgid "Less than or equal to"
 msgstr "Менше або дорівнює"
@@ -3916,43 +3925,43 @@ msgstr "після"
 msgid "Inside"
 msgstr "усередині"
 
-#: frontend/src/metabase/lib/schema_metadata.js:570
+#: frontend/src/metabase/lib/schema_metadata.js:575
 msgid "Just a table with the rows in the answer, no additional operations."
 msgstr "Просто таблиця з рядками результатів, без додаткових операцій."
 
-#: frontend/src/metabase/lib/schema_metadata.js:577
+#: frontend/src/metabase/lib/schema_metadata.js:582
 msgid "Count of rows"
 msgstr "Кількість записів"
 
-#: frontend/src/metabase/lib/schema_metadata.js:579
+#: frontend/src/metabase/lib/schema_metadata.js:584
 msgid "Total number of rows in the answer."
 msgstr "Загальна кількість рядків у відповіді"
 
-#: frontend/src/metabase/lib/schema_metadata.js:586
+#: frontend/src/metabase/lib/schema_metadata.js:591
 msgid "Sum of ..."
 msgstr "Кількість ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:588
+#: frontend/src/metabase/lib/schema_metadata.js:593
 msgid "Sum of all the values of a column."
 msgstr "Кількість всіх значень колонки."
 
-#: frontend/src/metabase/lib/schema_metadata.js:595
+#: frontend/src/metabase/lib/schema_metadata.js:600
 msgid "Average of ..."
 msgstr "Середнє ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:597
+#: frontend/src/metabase/lib/schema_metadata.js:602
 msgid "Average of all the values of a column"
 msgstr "Середнє всіх значень колонки."
 
-#: frontend/src/metabase/lib/schema_metadata.js:604
+#: frontend/src/metabase/lib/schema_metadata.js:609
 msgid "Number of distinct values of ..."
 msgstr "Унікальні значення ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:606
+#: frontend/src/metabase/lib/schema_metadata.js:611
 msgid "Number of unique values of a column among all the rows in the answer."
 msgstr "Кількість унікальних значень стовпця серед всіх записів у відповіді."
 
-#: frontend/src/metabase/lib/schema_metadata.js:613
+#: frontend/src/metabase/lib/schema_metadata.js:618
 msgid "Cumulative sum of ..."
 msgstr "Сума наростаючим підсумком ..."
 
@@ -3960,7 +3969,7 @@ msgstr "Сума наростаючим підсумком ..."
 msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
 msgstr "Сукупна сума всіх значень стовпця. \\\\ ne.x. всього дохід за часовий інтервал."
 
-#: frontend/src/metabase/lib/schema_metadata.js:622
+#: frontend/src/metabase/lib/schema_metadata.js:627
 msgid "Cumulative count of rows"
 msgstr "Наростаючий підсумок"
 
@@ -3968,27 +3977,27 @@ msgstr "Наростаючий підсумок"
 msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over time."
 msgstr "Сукупна кількість записів. \\\\ ne.x. всього продажів за часовий інтервал."
 
-#: frontend/src/metabase/lib/schema_metadata.js:631
+#: frontend/src/metabase/lib/schema_metadata.js:636
 msgid "Standard deviation of ..."
 msgstr "Стандартне відхилення…"
 
-#: frontend/src/metabase/lib/schema_metadata.js:633
+#: frontend/src/metabase/lib/schema_metadata.js:638
 msgid "Number which expresses how much the values of a column vary among all rows in the answer."
 msgstr "Число, що відображає наскільки значення стовпця відхиляються від всіх записів відповіді."
 
-#: frontend/src/metabase/lib/schema_metadata.js:640
+#: frontend/src/metabase/lib/schema_metadata.js:645
 msgid "Minimum of ..."
 msgstr "Мінімум ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:642
+#: frontend/src/metabase/lib/schema_metadata.js:647
 msgid "Minimum value of a column"
 msgstr "Мінімальне значення стовпця"
 
-#: frontend/src/metabase/lib/schema_metadata.js:649
+#: frontend/src/metabase/lib/schema_metadata.js:654
 msgid "Maximum of ..."
 msgstr "Максимум ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:651
+#: frontend/src/metabase/lib/schema_metadata.js:656
 msgid "Maximum value of a column"
 msgstr "Максимальне значення колонки"
 
@@ -4123,35 +4132,35 @@ msgstr "всі опції"
 msgid "Contains all of the above"
 msgstr "Включає все що перераховано нижче"
 
-#: frontend/src/metabase/meta/Dashboard.js:47
+#: frontend/src/metabase/meta/Dashboard.js:48
 #: frontend/src/metabase/meta/Parameter.js:189
 msgid "ZIP or Postal Code"
 msgstr "ZIP або Поштовий код"
 
-#: frontend/src/metabase/meta/Dashboard.js:93
+#: frontend/src/metabase/meta/Dashboard.js:94
 #: frontend/src/metabase/meta/Parameter.js:171
 msgid "ID"
 msgstr "ВД"
 
-#: frontend/src/metabase/meta/Dashboard.js:62
+#: frontend/src/metabase/meta/Dashboard.js:63
 #: frontend/src/metabase/modes/components/drill/PivotByTimeDrill.jsx:7
 msgid "Time"
 msgstr "час"
 
-#: frontend/src/metabase/meta/Dashboard.js:63
+#: frontend/src/metabase/meta/Dashboard.js:64
 msgid "Date range, relative date, time of day, etc."
 msgstr "Часовий інтервал, відносна дата, час дня, інше."
 
 #: frontend/src/metabase/lib/core.js:56 frontend/src/metabase/lib/core.js:61
 #: frontend/src/metabase/lib/core.js:66 frontend/src/metabase/lib/core.js:71
 #: frontend/src/metabase/lib/core.js:76 frontend/src/metabase/lib/core.js:81
-#: frontend/src/metabase/meta/Dashboard.js:74
-#: frontend/src/metabase/meta/Dashboard.js:84
+#: frontend/src/metabase/meta/Dashboard.js:75
+#: frontend/src/metabase/meta/Dashboard.js:85
 #: frontend/src/metabase/modes/components/drill/PivotByLocationDrill.jsx:7
 msgid "Location"
 msgstr "Розташування"
 
-#: frontend/src/metabase/meta/Dashboard.js:75
+#: frontend/src/metabase/meta/Dashboard.js:76
 msgid "City, State, Country, ZIP code."
 msgstr "Місто, Штат, Країна, ZIP код."
 
@@ -4159,11 +4168,11 @@ msgstr "Місто, Штат, Країна, ZIP код."
 msgid "User ID, product ID, event ID, etc."
 msgstr "Ідентифікатор користувача, продукту, події, і т.д."
 
-#: frontend/src/metabase/meta/Dashboard.js:129
+#: frontend/src/metabase/meta/Dashboard.js:130
 msgid "Other Categories"
 msgstr "Інші категорії"
 
-#: frontend/src/metabase/meta/Dashboard.js:130
+#: frontend/src/metabase/meta/Dashboard.js:131
 msgid "Category, Type, Model, Rating, etc."
 msgstr "Категорія, Тип, Модель, Рейтинг, інше."
 
@@ -4639,7 +4648,7 @@ msgid "We recommend keeping pulses small and focused to help keep them digestibl
 msgstr "Ми рекомендуємо залишати Пульси невеликими і цілеспрямованими, щоб зробити їх легкими для використання та корисний для всієї команди."
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:161
-#: frontend/src/metabase/query_builder/components/view/View.jsx:134
+#: frontend/src/metabase/query_builder/components/view/View.jsx:135
 msgid "Pick your data"
 msgstr "Виберіть дані"
 
@@ -4746,30 +4755,30 @@ msgstr "Допоможіть вашій команді залишатися в �
 msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
 msgstr "Пульси дозволяють відправляти дані з Metabase по електронній пошті або в Slack за заданим вами розкладом."
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:94
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:91
 msgid "After {0}"
 msgstr "Після {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:96
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:93
 msgid "Before {0}"
 msgstr "До {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:98
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:95
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:311
 msgid "Is Empty"
 msgstr "Пусто"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:100
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:97
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:317
 msgid "Not Empty"
 msgstr "Чи не порожньо"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:103
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:100
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:231
 msgid "All Time"
 msgstr "Весь час"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:148
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:145
 msgid "Apply"
 msgstr "застосувати"
 
@@ -5075,31 +5084,31 @@ msgid "Pick a segment or table"
 msgstr "Прикріпіть сегмент або таблицю"
 
 #: frontend/src/metabase/entities/databases/forms.js:296
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:79
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:81
 msgid "Select a database"
 msgstr "Виберіть базу даних"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:94
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:96
 msgid "Select..."
 msgstr "Вибрати ..."
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:88
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:90
 msgid "Select a table"
 msgstr "Виберіть таблицю"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1000
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1059
 msgid "No tables found in this database."
 msgstr "У цій базі даних не знайдено жодної таблиці."
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:973
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1032
 msgid "Is a question missing?"
 msgstr "Якщо пропустити запит?"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:982
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1041
 msgid "Learn more about nested queries"
 msgstr "Дізнатися більше про вкладених запитах"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1026
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1085
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:16
 msgid "Fields"
 msgstr "поля"
@@ -5179,7 +5188,7 @@ msgstr "Дані"
 msgid "Filtered by"
 msgstr "відфільтровано по"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:92
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:95
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:360
 msgid "View"
 msgstr "Вид"
@@ -5368,7 +5377,7 @@ msgstr "Розширений ..."
 msgid "Sorry. Something went wrong."
 msgstr "Просимо вибачення. Щось пішло не так."
 
-#: frontend/src/metabase/query_builder/components/TimeGroupingPopover.jsx:42
+#: frontend/src/metabase/query_builder/components/TimeGroupingPopover.jsx:15
 msgid "Group time by"
 msgstr "Групувати час по"
 
@@ -5525,7 +5534,7 @@ msgstr "Подумайте про це як про те, як написати �
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:112
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:283
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:154
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:164
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:20
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:77
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:79
@@ -5695,12 +5704,12 @@ msgstr "Тема фільтра"
 msgid "Variable type"
 msgstr "Тип змінної"
 
-#: frontend/src/metabase/meta/Dashboard.js:123
+#: frontend/src/metabase/meta/Dashboard.js:124
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:144
 msgid "Text"
 msgstr "текст"
 
-#: frontend/src/metabase/meta/Dashboard.js:68
+#: frontend/src/metabase/meta/Dashboard.js:69
 #: frontend/src/metabase/meta/Parameter.js:155
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:146
 msgid "Date"
@@ -5889,7 +5898,7 @@ msgstr "Що потрібно знати про цю базі даних"
 msgid "Databases and tables"
 msgstr "Бази даних і таблиці"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:71
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:74
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:28
 #: frontend/src/metabase/reference/databases/FieldSidebar.jsx:38
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:173
@@ -6265,24 +6274,24 @@ msgstr "Запити з цим сегментом"
 msgid "X-ray this segment"
 msgstr "Просканувати цей сегмент"
 
-#: frontend/src/metabase/routes.jsx:168 frontend/src/metabase/routes.jsx:169
+#: frontend/src/metabase/routes.jsx:167 frontend/src/metabase/routes.jsx:168
 msgid "Login"
 msgstr "Логін"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableWithSearch.jsx:18
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:412
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:196
 #: frontend/src/metabase/containers/ItemPicker.jsx:160
 #: frontend/src/metabase/nav/components/SearchBar.jsx:134
-#: frontend/src/metabase/routes.jsx:194
+#: frontend/src/metabase/routes.jsx:192
 msgid "Search"
 msgstr "Пошук"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:566
-#: frontend/src/metabase/routes.jsx:213
+#: frontend/src/metabase/routes.jsx:211
 msgid "Dashboard"
 msgstr "Панель інструментів"
 
-#: frontend/src/metabase/routes.jsx:228
+#: frontend/src/metabase/routes.jsx:226
 msgid "New Question"
 msgstr "Нове питання"
 
@@ -6395,13 +6404,13 @@ msgstr "Як ми можемо вас називати?"
 msgid "Hi, {0}. nice to meet you!"
 msgstr "Привіт, {0}. Раді вас бачити!"
 
-#: frontend/src/metabase/entities/users/forms.js:48
+#: frontend/src/metabase/entities/users/forms.js:49
 msgid "Create a password"
 msgstr "Створіть пароль"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:47
-#: frontend/src/metabase/entities/users/forms.js:50
-#: frontend/src/metabase/entities/users/forms.js:98
+#: frontend/src/metabase/entities/users/forms.js:51
+#: frontend/src/metabase/entities/users/forms.js:99
 msgid "Shhh..."
 msgstr "Тссс ..."
 
@@ -6409,11 +6418,11 @@ msgstr "Тссс ..."
 msgid "Confirm password"
 msgstr "Підтвердження пароля"
 
-#: frontend/src/metabase/entities/users/forms.js:57
+#: frontend/src/metabase/entities/users/forms.js:58
 msgid "Shhh... but one more time so we get it right"
 msgstr "Тсс ... але ще раз, щоб напевно"
 
-#: frontend/src/metabase/entities/users/forms.js:86
+#: frontend/src/metabase/entities/users/forms.js:87
 msgid "Your company or team name"
 msgstr "Назва вашої компанії або команди"
 
@@ -6582,7 +6591,7 @@ msgstr "Пароль успішно змінено!"
 msgid "Account updated successfully!"
 msgstr "Обліковий запис успішно змінена!"
 
-#: frontend/src/metabase/entities/users/forms.js:97
+#: frontend/src/metabase/entities/users/forms.js:98
 msgid "Current password"
 msgstr "Поточний пароль"
 
@@ -6594,11 +6603,11 @@ msgstr "Увійти за допомогою облікового запису G
 msgid "User Details"
 msgstr "Деталі користувача"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:351
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:366
 msgid "Reset to defaults"
 msgstr "Скинути по замовчуванню"
 
-#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:167
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:166
 msgid "unknown map"
 msgstr "невідома карта"
 
@@ -6639,7 +6648,7 @@ msgstr "закріпити карту"
 msgid "Unset"
 msgstr "зняти вибір"
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:148
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:150
 msgid "Rows {0}-{1} of {2}"
 msgstr "Записи {0} - {1} з {2}"
 
@@ -6647,28 +6656,28 @@ msgstr "Записи {0} - {1} з {2}"
 msgid "Data truncated to {0} rows."
 msgstr "Дані скорочені до {0} рядків."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:416
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:412
 msgid "Could not find visualization"
 msgstr "Неможливо знайти візуалізацію"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:423
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:419
 msgid "Could not display this chart with this data."
 msgstr "Неможливо відобразити графік з поточними даними."
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:69
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:541
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:537
 msgid "No results!"
 msgstr "Немає результатів!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:562
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:558
 msgid "Still Waiting..."
 msgstr "Очікування ..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:565
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:561
 msgid "This usually takes an average of {0}."
 msgstr "Це в середньому займає {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:567
 msgid "(This is a bit long for a dashboard)"
 msgstr "Це трохи задовго для панелі інструментів"
 
@@ -6941,7 +6950,7 @@ msgstr "Конфігуруйте цю діаграму в налаштуванн
 msgid "Edit Settings"
 msgstr "Змінити налаштування"
 
-#: frontend/src/metabase/visualizations/lib/fill_data.js:39
+#: frontend/src/metabase/visualizations/lib/fill_data.js:41
 msgid "xValues missing!"
 msgstr "X-значення відсутні!"
 
@@ -7029,79 +7038,79 @@ msgstr "лінійна інтерполяція"
 msgid "X-axis scale"
 msgstr "Шкала осі абсцис"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:422
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:421
 msgid "Timeseries"
 msgstr "тимчасова шкала"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:425
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:443
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:424
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:442
 msgid "Linear"
 msgstr "лінійний"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:427
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:426
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:443
 msgid "Power"
 msgstr "У ступені"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:428
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:445
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:427
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
 msgid "Log"
 msgstr "лог"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:430
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:429
 msgid "Histogram"
 msgstr "Гістограма"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:432
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:431
 msgid "Ordinal"
 msgstr "порядковий"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:438
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
 msgid "Y-axis scale"
 msgstr "Масштаб Y осі"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:451
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:450
 msgid "Show x-axis line and marks"
 msgstr "Показати рядок і мітки по осі x"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:349
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:457
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
 msgid "Compact"
 msgstr "компактно"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:458
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:457
 msgid "Rotate 45°"
 msgstr "Перевернути на 45 °"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:459
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:458
 msgid "Rotate 90°"
 msgstr "Перевернути на 90 °"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:466
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:465
 msgid "Show y-axis line and marks"
 msgstr "Показати рядок і мітки по осі y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:478
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
 msgid "Auto y-axis range"
 msgstr "Авто діапазон осі ординат"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:522
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:521
 msgid "Use a split y-axis when necessary"
 msgstr "Використовувати розриви школи ординат коли це необхідно"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:529
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:528
 msgid "Show label on x-axis"
 msgstr "Показати мітку на X осі"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:535
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
 msgid "X-axis label"
 msgstr "Мітка X осі"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:544
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:543
 msgid "Show label on y-axis"
 msgstr "Показати мітку на Y осі"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:550
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:549
 msgid "Y-axis label"
 msgstr "Мітка Y осі"
 
@@ -7249,7 +7258,7 @@ msgstr "об'єкт"
 
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:138
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:252
-#: frontend/src/metabase/visualizations/lib/renderer_utils.js:349
+#: frontend/src/metabase/visualizations/lib/renderer_utils.js:352
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:380
 msgid "Total"
 msgstr "всього"
@@ -7298,7 +7307,7 @@ msgstr "Візуалізація прогрес потрібно число."
 msgid "Progress"
 msgstr "Прогрес"
 
-#: frontend/src/metabase/entities/collections.js:149
+#: frontend/src/metabase/entities/collections.js:151
 #: frontend/src/metabase/entities/snippet-collections.js:88
 #: frontend/src/metabase/visualizations/visualizations/Map.jsx:256
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:74
@@ -7641,7 +7650,7 @@ msgstr "У вас безліч збережених запитів в {0}? Ст�
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:100
 #: frontend/src/metabase/public/components/LogoBadge.jsx:21
 #: frontend/src/metabase/routes-public.jsx:13
-#: frontend/src/metabase/routes.jsx:139 src/metabase/api/setup.clj
+#: frontend/src/metabase/routes.jsx:138 src/metabase/api/setup.clj
 #: src/metabase/email/messages.clj
 msgid "Metabase"
 msgstr "Metabase"
@@ -9165,35 +9174,35 @@ msgstr "Дозволи даних"
 msgid "Collection permissions"
 msgstr "Дозволи Колекції"
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:96
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:116
 msgid "See all collection permissions"
 msgstr "Всі права збору"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:813
+#: frontend/src/metabase/admin/permissions/selectors.js:817
 msgid "Also change sub-collections"
 msgstr "Крім того, змініть підколекції"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:283
+#: frontend/src/metabase/admin/permissions/selectors.js:282
 msgid "Can edit this collection and its contents"
 msgstr "Може редагувати цю колекцію і її вміст"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:290
+#: frontend/src/metabase/admin/permissions/selectors.js:289
 msgid "Can view items in this collection"
 msgstr "Ви можете переглянути елементи в цій колекції"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:792
+#: frontend/src/metabase/admin/permissions/selectors.js:796
 msgid "Collection Access"
 msgstr "збір доступу"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:878
+#: frontend/src/metabase/admin/permissions/selectors.js:882
 msgid "This group has permission to view at least one subcollection of this collection."
 msgstr "Ця група має дозвіл на перегляд, щонайменше, один підколекції цієї колекції."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:883
+#: frontend/src/metabase/admin/permissions/selectors.js:887
 msgid "This group has permission to edit at least one subcollection of this collection."
 msgstr "Ця група має дозволу на зміну, щонайменше, один підколекції цієї колекції."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:896
+#: frontend/src/metabase/admin/permissions/selectors.js:900
 msgid "View sub-collections"
 msgstr "Перегляд суб-колекція"
 
@@ -9205,7 +9214,7 @@ msgstr "Пам'ятай мене"
 msgid "X-ray this schema"
 msgstr "Просканувати цю схема"
 
-#: frontend/src/metabase/collections/components/Header.jsx:34
+#: frontend/src/metabase/collections/components/Header/Header.jsx:48
 msgid "Edit the permissions for this collection"
 msgstr "Зміна дозволів для цієї колекції"
 
@@ -9217,6 +9226,7 @@ msgstr "Додати це питання в приладову панель"
 msgid "Create a new dashboard"
 msgstr "Створити нову приладову панель"
 
+#: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:124
 #: frontend/src/metabase/containers/ErrorPages.jsx:47
 msgid "The page you asked for couldn't be found."
 msgstr "На сторінці ви просили не може бути знайдений."
@@ -9225,11 +9235,11 @@ msgstr "На сторінці ви просили не може бути зна�
 msgid "Select a {0}"
 msgstr "Виберіть {0}"
 
-#: frontend/src/metabase/containers/Overworld.jsx:245
+#: frontend/src/metabase/containers/Overworld.jsx:219
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr "Зберегти приладові панелі, питання і колекції в «{0}»"
 
-#: frontend/src/metabase/containers/Overworld.jsx:246
+#: frontend/src/metabase/containers/Overworld.jsx:220
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr "Щитки доступу, питання і колекція в «{0}»"
 
@@ -9249,7 +9259,7 @@ msgstr "споріднений"
 msgid "More X-rays"
 msgstr "Більше X-Rays"
 
-#: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableVisualization.jsx:80
+#: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableVisualization.jsx:81
 #: src/metabase/pulse/render/body.clj
 msgid "No results"
 msgstr "Немає результатів"
@@ -9464,10 +9474,10 @@ msgstr "N / A"
 msgid "Windows domain"
 msgstr "домен Windows,"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:528
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:543
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:549
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:527
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:533
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:542
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:548
 msgid "Labels"
 msgstr "етикетки"
 
@@ -9475,7 +9485,7 @@ msgstr "етикетки"
 msgid "Add members"
 msgstr "Додати користувачів"
 
-#: frontend/src/metabase/entities/collections.js:156
+#: frontend/src/metabase/entities/collections.js:158
 msgid "Collection it's saved in"
 msgstr "Колекція вона зберігається в"
 
@@ -9491,12 +9501,14 @@ msgstr "Адміністратори"
 msgid "MetaBot"
 msgstr "MetaBot"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:59
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:66
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:132
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:287
+#: frontend/src/metabase/query_builder/containers/QuestionEmbedWidget.jsx:99
 msgid "Sharing"
 msgstr "поділ"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:24
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:27
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:218
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:251
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:280
@@ -9525,13 +9537,13 @@ msgid "Display"
 msgstr "дисплей"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:402
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:450
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:465
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:483
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:491
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:521
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:436
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:464
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:476
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:482
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:490
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:520
 msgid "Axes"
 msgstr "сокири"
 
@@ -9541,7 +9553,7 @@ msgstr "сокири"
 msgid "Formatting"
 msgstr "форматування"
 
-#: frontend/src/metabase/containers/Overworld.jsx:128
+#: frontend/src/metabase/containers/Overworld.jsx:103
 msgid "Try these x-rays based on your data."
 msgstr "Спробуйте ці x-rays на основі ваших даних."
 
@@ -9561,11 +9573,11 @@ msgstr "Всього голови до:"
 msgid "{0} without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost."
 msgstr "{0} без зразка Dataset, підручник Query Builder не працюватиме. Ви завжди можете відновити Sample Dataset, але будь-які питання, ви зберегли використовуючи ці дані будуть втрачені."
 
-#: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:32
+#: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:41
 msgid "X-ray"
 msgstr "X-ray"
 
-#: frontend/src/metabase/modes/components/drill/CompareToRestDrill.js:33
+#: frontend/src/metabase/modes/components/drill/CompareToRestDrill.js:42
 msgid "Compare to the rest"
 msgstr "У порівнянні з іншими"
 
@@ -9579,11 +9591,11 @@ msgid "We suggest you leave this off unless you're doing manual timezone casting
 msgstr "Ми пропонуємо вам залишити цю опцію, якщо ви робите ручну виливок часового поясу в\n"
 "багато чи більшість ваших запитів з цими даними."
 
-#: frontend/src/metabase/containers/Overworld.jsx:409
+#: frontend/src/metabase/containers/Overworld.jsx:384
 msgid "Your team's most important dashboards go here"
 msgstr "Найбільш важливі Щитки вашої команди йдуть сюди"
 
-#: frontend/src/metabase/containers/Overworld.jsx:410
+#: frontend/src/metabase/containers/Overworld.jsx:385
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr "Pin Щитки в {0}, щоб вони відображалися в цьому просторі для всіх"
 
@@ -9628,15 +9640,15 @@ msgstr "параметри форматування"
 msgid "Task details"
 msgstr "Деталі про завдання"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:39
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:42
 msgid "Troubleshooting logs"
 msgstr "Журнали для розв'язку проблем"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:41
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:44
 msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
 msgstr "Намагаючись докопатися до чогось? У цьому розділі відображається журнали фонових завдань метабази для, який може допомогти пролити світло на те, що відбувається."
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:65
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:68
 msgid "Task"
 msgstr "Задача"
 
@@ -9644,15 +9656,15 @@ msgstr "Задача"
 msgid "DB ID"
 msgstr "DB ID"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:68
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:71
 msgid "Started at"
 msgstr "Початок"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:69
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:72
 msgid "Ended at"
 msgstr "Закінчення"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:70
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:73
 msgid "Duration (ms)"
 msgstr "Тривалість (мс)"
 
@@ -9840,23 +9852,23 @@ msgstr "Вимірювач"
 msgid "Gauge ranges"
 msgstr "діапазони Калібрувальні"
 
-#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:105
+#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:106
 msgid "Field to show"
 msgstr "поле показати"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:143
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:144
 msgid "last {0}"
 msgstr "останній {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:218
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:219
 msgid "{0} was {1} {2}"
 msgstr "{0} був {1} {2}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:73
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:74
 msgid "Group by a time field to see how this has changed over time"
 msgstr "Угруповання по полю часу, щоб побачити, як це змінилося з плином часу"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:52
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:53
 msgid "Switch positive / negative colors?"
 msgstr "Перейдіть позитивні / негативні кольору?"
 
@@ -11274,7 +11286,7 @@ msgstr "Як ця метрика розподіляється між різни�
 msgid "Sessions by page where the session began"
 msgstr "Сесії по сторінці, де почалася сесія"
 
-#: frontend/src/metabase/lib/schema_metadata.js:605
+#: frontend/src/metabase/lib/schema_metadata.js:610
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Number.yaml
@@ -11795,11 +11807,11 @@ msgstr "недійсний"
 msgid "Add a time"
 msgstr "Додати час"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:197
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:198
 msgid "Nothing to compare for the previous {0}."
 msgstr "Ніщо не порівняти для попередньої {0}."
 
-#: frontend/src/metabase-lib/lib/Dimension.js:835
+#: frontend/src/metabase-lib/lib/Dimension.js:843
 msgid "by {0}"
 msgstr "{0}"
 
@@ -12682,7 +12694,7 @@ msgstr "Автоматично виконувати запити простої 
 msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "Якщо дозволено, Metabase автоматично виконуватиме запити агрегування та фільтрації для користувачаа який переглядає таблицю чи діаграму. Якщо вимкнено робота з базою даних прискористья, проте не вплине на деталізацію."
 
-#: frontend/src/metabase/containers/Overworld.jsx:340
+#: frontend/src/metabase/containers/Overworld.jsx:314
 msgid "Learn about this database"
 msgstr "Дізнатись що це за база даних"
 
@@ -12751,7 +12763,7 @@ msgstr "Основні метрики"
 msgid "Custom…"
 msgstr "Користувацький..."
 
-#: frontend/src/metabase/query_builder/components/DimensionList.jsx:146
+#: frontend/src/metabase/query_builder/components/DimensionList.jsx:153
 msgid "Add grouping"
 msgstr "Групувати"
 
@@ -12793,6 +12805,7 @@ msgstr "Користувацька колонка"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:55
 #: frontend/src/metabase/query_builder/components/view/QuestionSummaries.jsx:61
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:224
 msgid "Summarize"
 msgstr "Підсумувати"
 
@@ -12813,6 +12826,7 @@ msgid "Pick a column to group by"
 msgstr "Оберіть колонку для групування"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/DataStep.jsx:30
+#: frontend/src/metabase/query_builder/components/view/NewQuestionHeader.jsx:9
 msgid "Pick your starting data"
 msgstr "Оберіть початкові значення"
 
@@ -12951,11 +12965,11 @@ msgstr "Додати метрику"
 #: frontend/src/metabase/lib/core.js:137 frontend/src/metabase/lib/core.js:142
 #: frontend/src/metabase/lib/core.js:147 frontend/src/metabase/lib/core.js:152
 #: frontend/src/metabase/lib/core.js:157 frontend/src/metabase/lib/core.js:162
-#: frontend/src/metabase/user/components/UserSettings.jsx:65
+#: frontend/src/metabase/user/components/UserSettings.jsx:63
 msgid "Profile"
 msgstr "Профіль"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "Звичайно це не займає часу, але зараз знадобиться довше."
 
@@ -12967,7 +12981,7 @@ msgstr "Комбо"
 msgid "Row"
 msgstr "Стрічка"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:23
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:24
 msgid "Trend"
 msgstr "Тренд"
 
@@ -13454,31 +13468,31 @@ msgstr "Щоб увімкнути цей параметр адреса пови�
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "Звичайно Metabase синхронізується з базою даних щогодини поверхнево, та щодня виконуючи повне сканування таблиць та полів. Якщо ваша база даних об'ємна, рекомендуємо заглянути у базу даних щоб оцінити можливий негативний ефект синхронізації."
 
-#: frontend/src/metabase/containers/Overworld.jsx:133
+#: frontend/src/metabase/containers/Overworld.jsx:108
 msgid "Remove these suggestions"
 msgstr "Скасувати ці пропозиції"
 
-#: frontend/src/metabase/containers/Overworld.jsx:142
+#: frontend/src/metabase/containers/Overworld.jsx:117
 msgid "Remove these suggestions?"
 msgstr "Скасувати ці пропозиції?"
 
-#: frontend/src/metabase/containers/Overworld.jsx:158
+#: frontend/src/metabase/containers/Overworld.jsx:133
 msgid "These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables."
 msgstr "Вони більше не зображатимуться на головній сторінці для жодного користувача, але ви завжди можете перейти на сторінку рентген клацнувши пункт меню огляд даних, після чого обравши значок блискавки на котроїсь із таблиць."
 
-#: frontend/src/metabase/containers/Overworld.jsx:285
+#: frontend/src/metabase/containers/Overworld.jsx:259
 msgid "Hide this section"
 msgstr "Приховати секцію"
 
-#: frontend/src/metabase/containers/Overworld.jsx:293
+#: frontend/src/metabase/containers/Overworld.jsx:267
 msgid "Remove this section?"
 msgstr "Знищити секцію?"
 
-#: frontend/src/metabase/containers/Overworld.jsx:309
+#: frontend/src/metabase/containers/Overworld.jsx:283
 msgid "\"Our Data\" won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation."
 msgstr "Наші дані не відображатиметься на головній сторінці для жодного із користувачів. Ви завжди можете переглянути їх натиснуваши огляд даних головного меню."
 
-#: frontend/src/metabase/entities/collections.js:135
+#: frontend/src/metabase/entities/collections.js:136
 msgid "My new fantastic collection"
 msgstr "Моя фантастична колекція"
 
@@ -13518,11 +13532,11 @@ msgstr "На застосовуати"
 msgid "This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries."
 msgstr "Це поле не відображатиметься у запитах створених візуальним інструментом. Але буде доступним у редакторі SQL."
 
-#: frontend/src/metabase/lib/schema_metadata.js:614
+#: frontend/src/metabase/lib/schema_metadata.js:619
 msgid "Cumulative sum"
 msgstr "сума знакопиченням"
 
-#: frontend/src/metabase/lib/schema_metadata.js:632
+#: frontend/src/metabase/lib/schema_metadata.js:637
 msgid "Standard deviation"
 msgstr "стандартне відхилення"
 
@@ -13874,11 +13888,11 @@ msgstr "Щоб користувачі могли увійти з допомог�
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
 msgstr "Не забудьте вказати Client ID, особливо суфікс apps.googleusercontent.com."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:42
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:47
 msgid "Metabase {0} is available."
 msgstr "Доступна Metabase {0}. "
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:43
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:48
 msgid "You're running {0}"
 msgstr "Ви запустили {0}"
 
@@ -13886,7 +13900,7 @@ msgstr "Ви запустили {0}"
 msgid "Sorry, we were unable to check for updates at this time."
 msgstr "На жаль, нам не вдалось знайти оновлення."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:119
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:125
 msgid "patch release"
 msgstr "реліз латок"
 
@@ -13946,7 +13960,7 @@ msgstr "З метою безпеки, термін дії посилань дл�
 msgid "Save new password"
 msgstr "Зберегти новий пароль"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:537
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:558
 msgid "No matching result"
 msgstr "Співпадінь не знайдено"
 
@@ -13974,7 +13988,7 @@ msgstr "або"
 #: frontend/src/metabase/entities/databases/forms.js:48
 #: frontend/src/metabase/entities/databases/forms.js:271
 #: frontend/src/metabase/entities/databases/forms.js:302
-#: frontend/src/metabase/entities/users/forms.js:59
+#: frontend/src/metabase/entities/users/forms.js:60
 #: frontend/src/metabase/lib/validate.js:6
 msgid "required"
 msgstr "обов'язкове"
@@ -13996,15 +14010,15 @@ msgstr "Metabase може сканувати значення кожного п�
 msgid "Collection"
 msgstr "Колекція"
 
-#: frontend/src/metabase/entities/users/forms.js:55
+#: frontend/src/metabase/entities/users/forms.js:56
 msgid "Confirm your password"
 msgstr "Підтвердість ваш пароль"
 
-#: frontend/src/metabase/entities/users/forms.js:60
+#: frontend/src/metabase/entities/users/forms.js:61
 msgid "passwords do not match"
 msgstr "Паролі не співпали"
 
-#: frontend/src/metabase/entities/users/forms.js:87
+#: frontend/src/metabase/entities/users/forms.js:88
 msgid "Department of Awesome"
 msgstr "Класний відділ"
 
@@ -14561,36 +14575,36 @@ msgstr "Працює завдяки {0}"
 msgid "To:"
 msgstr "Кому:"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:40
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:45
 msgid "This question can't be used because it's based on a different database."
 msgstr "Це запитання не можна виконати, адже воно стосується іншої бази даних."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:44
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:49
 msgid "Couldn't find a saved question with that ID number."
 msgstr "Не вдалось знайти запит з таким ID."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:55
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:60
 msgid "Pick a saved question"
 msgstr "Оберіть збережений запит"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:57
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:62
 msgid "Pick a different question"
 msgstr "Оберіть інший запит"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:162
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:62
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:160
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:67
 msgid "Loading…"
 msgstr "Завантажую..."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:79
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:84
 msgid "Question #…"
 msgstr "Запит #… "
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:81
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:86
 msgid "Question #{0}"
 msgstr "Запит #{0}"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:115
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:120
 msgid "Last edited {0}"
 msgstr "Редагувалось {0}"
 
@@ -14646,7 +14660,7 @@ msgstr "Форматування значень"
 msgid "Full"
 msgstr "Повністю"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:199
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:200
 msgid "No change from last {0}"
 msgstr "Без змін після {0}"
 
@@ -14702,6 +14716,7 @@ msgstr "Токен Google Auth недійсний. "
 msgid "Double check that it matches in Google and Metabase."
 msgstr "Переконайтесь що все співпадає в Google та Metabase."
 
+#: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionPicker.jsx:40
 #: src/metabase/api/table.clj
 msgid "Everything else"
 msgstr "Все решта"
@@ -15118,20 +15133,20 @@ msgstr "Заповніть окремі поля"
 msgid "Enter some SQL here so you can reuse it later"
 msgstr "Додайте код  SQL, щоб його пізніше застосувати"
 
-#: frontend/src/metabase/entities/snippets.js:20
+#: frontend/src/metabase/entities/snippets.js:21
 msgid "Give your snippet a name"
 msgstr "Назвіть ваш фрагмент"
 
-#: frontend/src/metabase/entities/snippets.js:21
+#: frontend/src/metabase/entities/snippets.js:22
 msgid "Current Customers"
 msgstr "Діючі клієнти"
 
 #: frontend/src/metabase/entities/snippet-collections.js:81
-#: frontend/src/metabase/entities/snippets.js:26
+#: frontend/src/metabase/entities/snippets.js:27
 msgid "Add a description"
 msgstr "Додати опис"
 
-#: frontend/src/metabase/entities/users/forms.js:37
+#: frontend/src/metabase/entities/users/forms.js:38
 msgid "Use site default"
 msgstr "Використати по-замовчуванню"
 
@@ -15940,35 +15955,35 @@ msgstr "Рекламна сторінка"
 msgid "No groups"
 msgstr "Груп не має"
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:81
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:101
 msgid "Permissions for {0}"
 msgstr "Дозволи для {0}"
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:83
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:103
 msgid "Permissions for this folder"
 msgstr "Дозволи для цього каталога"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:295
+#: frontend/src/metabase/admin/permissions/selectors.js:294
 msgid "Grant Edit access"
 msgstr "Надати права редагування"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:296
+#: frontend/src/metabase/admin/permissions/selectors.js:295
 msgid "Can modify snippets in this folder"
 msgstr "Дозволено редагування фрагментів у каталозі"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:301
+#: frontend/src/metabase/admin/permissions/selectors.js:300
 msgid "Grant View access"
 msgstr "Надати права перегляду"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:302
+#: frontend/src/metabase/admin/permissions/selectors.js:301
 msgid "Can insert and use snippets in this folder, but can't edit the SQL they contain"
 msgstr "Може створювати та застосовувати фрагменти у цьому каталозі, але не може їх редагувати"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:308
+#: frontend/src/metabase/admin/permissions/selectors.js:307
 msgid "Can't view or insert snippets in this folder"
 msgstr "Не дозволено перегляд та створення фрагментів"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:812
+#: frontend/src/metabase/admin/permissions/selectors.js:816
 msgid "Also change sub-folders"
 msgstr "Поширити на підкаталоги"
 
@@ -15976,7 +15991,7 @@ msgstr "Поширити на підкаталоги"
 msgid "First day of the week"
 msgstr "Початок тижня"
 
-#: frontend/src/metabase/auth/components/GoogleButton.jsx:75
+#: frontend/src/metabase/auth/components/GoogleButton.jsx:74
 msgid "There was an issue signing in with Google. Please contact an administrator."
 msgstr "Вхід в Google провалився. Зверніться до адміністрації."
 
@@ -15995,7 +16010,7 @@ msgstr "Відкрити меню команд Metabase"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:47
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:372
-#: frontend/src/metabase/lib/click-behavior.js:168
+#: frontend/src/metabase/lib/click-behavior.js:169
 msgid "Do nothing"
 msgstr "Нічого не робити"
 
@@ -16214,15 +16229,15 @@ msgid "Something short but sweet"
 msgstr "Щось недовге та приємне"
 
 #: frontend/src/metabase/entities/snippet-collections.js:95
-#: frontend/src/metabase/entities/snippets.js:55
+#: frontend/src/metabase/entities/snippets.js:56
 msgid "Folder this should be in"
 msgstr "Це належить до каталога"
 
-#: frontend/src/metabase/lib/click-behavior.js:167
+#: frontend/src/metabase/lib/click-behavior.js:168
 msgid "Open the action menu"
 msgstr "Відкрити меню команд"
 
-#: frontend/src/metabase/lib/click-behavior.js:176
+#: frontend/src/metabase/lib/click-behavior.js:177
 msgid "{0} column has custom behavior"
 msgid_plural "{0} columns have custom behavior"
 msgstr[0] "Стовпчик {0} має настроювану поведінку"
@@ -16230,23 +16245,23 @@ msgstr[1] "Стовпчики {0} мають настроювану поведі
 msgstr[2] "Стовпчики {0} мають настроювану поведінку"
 msgstr[3] "Стовпчики {0} мають настроювану поведінку"
 
-#: frontend/src/metabase/lib/click-behavior.js:189
+#: frontend/src/metabase/lib/click-behavior.js:190
 msgid "Go to..."
 msgstr "Перейти..."
 
-#: frontend/src/metabase/lib/click-behavior.js:191
+#: frontend/src/metabase/lib/click-behavior.js:192
 msgid "Go to dashboard"
 msgstr "Перейти на дошку"
 
-#: frontend/src/metabase/lib/click-behavior.js:193
+#: frontend/src/metabase/lib/click-behavior.js:194
 msgid "Go to question"
 msgstr "Перейти до запитань"
 
-#: frontend/src/metabase/lib/click-behavior.js:194
+#: frontend/src/metabase/lib/click-behavior.js:195
 msgid "Go to url"
 msgstr "Перейти за посиланням"
 
-#: frontend/src/metabase/lib/click-behavior.js:197
+#: frontend/src/metabase/lib/click-behavior.js:198
 msgid "Filter this dashboard"
 msgstr "Фільтрувати цю дошку"
 
@@ -16534,12 +16549,12 @@ msgstr "Пустий"
 msgid "Not null"
 msgstr "Не пустий"
 
-#: frontend/src/metabase/lib/schema_metadata.js:615
+#: frontend/src/metabase/lib/schema_metadata.js:620
 msgid "Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "Сума усіх значень стовпця, напр. загальний дохід з плином часу."
 
-#: frontend/src/metabase/lib/schema_metadata.js:624
+#: frontend/src/metabase/lib/schema_metadata.js:629
 msgid "Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "Кількість усіх значень стовпця, напр. кількість продаж з плином часу."
@@ -16968,23 +16983,23 @@ msgstr "Служба посвідчень SAML"
 msgid "SAML Identity Provider SSO URL"
 msgstr "Сторінка SSO служби посвідчень SAML"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:69
 msgid "DB Name"
 msgstr "Ім'я БД"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:67
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:70
 msgid "DB Engine"
 msgstr "Реалізація БД"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:83
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:86
 msgid "Unknown name"
 msgstr "Невідоме ім'я"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:84
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:87
 msgid "Unknown engine"
 msgstr "Невідомий механізм"
 
-#: frontend/src/metabase/collections/components/Header.jsx:46
+#: frontend/src/metabase/collections/components/Header/Header.jsx:60
 msgid "Edit collection"
 msgstr "Редагувати колекцію"
 
@@ -16992,15 +17007,15 @@ msgstr "Редагувати колекцію"
 msgid "Pinned items"
 msgstr "Пришпилені речі"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:137
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:132
 msgid "Other users' personal collections"
 msgstr "Колекції інших користувачів"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:145
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:140
 msgid "View archive"
 msgstr "Переглянути архів"
 
-#: frontend/src/metabase/collections/utils.js:13
+#: frontend/src/metabase/collections/utils.js:18
 msgid "Your personal collection"
 msgstr "Ваша особиста колекція"
 
@@ -17168,7 +17183,7 @@ msgstr "Спочатку {0}."
 msgid "First, you'll have to {0}."
 msgstr "Спочатку необхідно {0}."
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:146
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:148
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Стрічки {0}-{1} з перших {2}"
 
@@ -17180,7 +17195,7 @@ msgstr "Перетягніть поля сюди"
 msgid "Percentage"
 msgstr "Процентаж"
 
-#: frontend/src/metabase/lib/data_grid.js:371
+#: frontend/src/metabase/lib/data_grid.js:382
 msgid "Totals for {0}"
 msgstr "Всього для {0}"
 
@@ -17812,11 +17827,12 @@ msgstr "хвилин після"
 msgid "Email sent"
 msgstr "Надіслано email"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:60
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:67
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:133
 msgid "Add data to share this dashboard"
 msgstr "Додайте дані, щоб поділитись дашбордом"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:85
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:92
 msgid "Dashboard subscriptions"
 msgstr "Підписки на дашборд"
 
@@ -17987,11 +18003,11 @@ msgstr "Налаштуйте email."
 msgid "Have your server maintained for you."
 msgstr "Налаштуйте ваш Metabase."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:149
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:159
 msgid "Want to have upgrades taken care of for you?"
 msgstr "Бажаєте автоматично оновлювати версію?"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:150
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:160
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:17
 msgid "Migrate to Metabase Cloud."
 msgstr "Перенесіть дані у Metabase Cloud."
@@ -18072,7 +18088,7 @@ msgstr "Обрати перетворення"
 msgid "Don't cast"
 msgstr "Не перетворювати тип"
 
-#: frontend/src/metabase/components/ErrorCard.jsx:22
+#: frontend/src/metabase/components/AppErrorCard/AppErrorCard.jsx:39
 msgid "Something went wrong"
 msgstr "Щось пішло не так"
 
@@ -18123,7 +18139,7 @@ msgstr "Очікував логічне значення а отримав {0}"
 msgid "12:00 PM"
 msgstr "12:00"
 
-#: frontend/src/metabase/meta/Dashboard.js:105
+#: frontend/src/metabase/meta/Dashboard.js:106
 msgid "Subtotal, Age, Price, Quantity, etc."
 msgstr "Підсумок, вік, ціна, кількість і т.д."
 
@@ -18221,7 +18237,7 @@ msgstr[1] "та ще {0} фільтри"
 msgstr[2] "та ще {0} фільтрів"
 msgstr[3] "та ще {0} фільтрів"
 
-#: frontend/src/metabase/user/components/UserSettings.jsx:70
+#: frontend/src/metabase/user/components/UserSettings.jsx:67
 msgid "Login History"
 msgstr "Історія входів"
 
@@ -18513,6 +18529,9 @@ msgid "Information about active and idle connections for all pools"
 msgstr "Інформація про активні та простоючі з'єднання для всіх пулів"
 
 #: frontend/src/metabase/browse/containers/TableBrowser.jsx:60
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:902
+#: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionPicker.jsx:113
+#: src/metabase/api/database.clj
 msgid "Saved Questions"
 msgstr "Збережені запитання"
 
@@ -18560,11 +18579,12 @@ msgstr "Закрити бічну панель"
 msgid "Add questions"
 msgstr "Додати запитання"
 
-#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionList.jsx:49
+#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionList.jsx:48
+#: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionList.jsx:37
 msgid "Nothing here"
 msgstr "Тут пусто"
 
-#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionPicker.jsx:67
+#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionPicker.jsx:68
 msgid "Search…"
 msgstr "Пошук…"
 
@@ -18596,15 +18616,15 @@ msgstr "Відсутні відкриваючі лапки"
 msgid "Invalid character: {0}"
 msgstr "Некоректний символ: {0}"
 
-#: frontend/src/metabase/meta/Dashboard.js:94
+#: frontend/src/metabase/meta/Dashboard.js:95
 msgid "User ID, Product ID, Event ID, etc."
 msgstr "ID користувача, продукту, події тощо."
 
-#: frontend/src/metabase/meta/Dashboard.js:117
+#: frontend/src/metabase/meta/Dashboard.js:118
 msgid "Text or Category"
 msgstr "Текст чи Категорія"
 
-#: frontend/src/metabase/meta/Dashboard.js:118
+#: frontend/src/metabase/meta/Dashboard.js:119
 msgid "Name, Rating, Description, etc."
 msgstr "Назва, рейтинг, опис тощо."
 
@@ -18612,7 +18632,7 @@ msgstr "Назва, рейтинг, опис тощо."
 msgid "String"
 msgstr "Строка"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:734
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:759
 msgid "Search for a table..."
 msgstr "Пошук таблиці..."
 
@@ -18862,4 +18882,55 @@ msgstr "значення повинно бути коректною страте
 #: src/metabase/util/schema.clj
 msgid "password is too common."
 msgstr "пароль занадто поширений."
+
+#: enterprise/frontend/src/metabase-enterprise/store/containers/StoreActivate.jsx:20
+msgid "Enter the token you received from the store"
+msgstr "Введіть маркер, який ви отримали з магазину"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:26
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud постійно оновлює ваш екземпляр. Зараз ви використовуєте версію {0}. Дякуємо, що стали клієнтом!"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:83
+msgid "No successful checks yet."
+msgstr "Успішних перевірок ще немає."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:87
+#: src/metabase/api/geojson.clj
+msgid "Invalid custom GeoJSON"
+msgstr "Недійсний користувацький GeoJSON"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:91
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:96
+msgid "Invalid custom GeoJSON: does not contain features"
+msgstr "Недійсний користувацький GeoJSON: не містить функцій"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:101
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:108
+msgid "Invalid custom GeoJSON: feature is misssing properties"
+msgstr "Недійсний користувацький GeoJSON: функція не відповідає властивостям"
+
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:227
+msgid "Break out by a…"
+msgstr "Вирватися на ..."
+
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:231
+msgid "Automatic explorations"
+msgstr "Автоматичні дослідження"
+
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:236
+msgid "Filter by this value"
+msgstr "Фільтрувати за цим значенням"
+
+#: src/metabase/api/geojson.clj
+msgid "GeoJSON URL failed to load"
+msgstr "Не вдалося завантажити URL-адресу GeoJSON"
+
+#: src/metabase/driver/common/parameters/values.clj
+msgid "Error determining value for parameter: {0}"
+msgstr "Помилка визначення значення параметра: {0}"
+
+#: src/metabase/driver/common/parameters/values.clj
+msgid "Error building query parameter map: {0}"
+msgstr "Помилка побудови карти параметрів запиту: {0}"
 

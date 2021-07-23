@@ -29,13 +29,13 @@ msgid "Select a database type"
 msgstr "Välj en databastyp"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:267
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:182
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:191
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:432
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:113
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:133
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:207
 #: frontend/src/metabase/components/ActionButton.jsx:49
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:7
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:155
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:156
 #: frontend/src/metabase/dashboard/components/DashboardHeader.jsx:175
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:47
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:16
@@ -97,7 +97,7 @@ msgstr "När en användare lägger till ett nytt filter till en dashboard eller 
 msgid "Never, I'll do this manually if I need to"
 msgstr "Aldrig, jag gör det vid behov manuellt"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:28
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:30
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:228
 #: frontend/src/metabase/components/ActionButton.jsx:50
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
@@ -142,12 +142,12 @@ msgstr "här i rutan:"
 #: frontend/src/metabase/admin/people/components/AddRow.jsx:28
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:50
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor.jsx:53
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:99
-#: frontend/src/metabase/admin/permissions/selectors.js:161
-#: frontend/src/metabase/admin/permissions/selectors.js:171
-#: frontend/src/metabase/admin/permissions/selectors.js:186
-#: frontend/src/metabase/admin/permissions/selectors.js:225
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:362
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:119
+#: frontend/src/metabase/admin/permissions/selectors.js:160
+#: frontend/src/metabase/admin/permissions/selectors.js:170
+#: frontend/src/metabase/admin/permissions/selectors.js:185
+#: frontend/src/metabase/admin/permissions/selectors.js:224
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:399
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:206
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:273
 #: frontend/src/metabase/components/ArchiveModal.jsx:38
@@ -167,7 +167,7 @@ msgstr "här i rutan:"
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:33
 #: frontend/src/metabase/reference/components/EditHeader.jsx:34
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:58
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:335
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:350
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:465
 msgid "Cancel"
 msgstr "Ångra"
@@ -180,11 +180,11 @@ msgstr "Ångra"
 msgid "Delete"
 msgstr "Radera"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:151
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:157
 #: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:96
-#: frontend/src/metabase/admin/permissions/selectors.js:339
-#: frontend/src/metabase/admin/permissions/selectors.js:346
-#: frontend/src/metabase/admin/permissions/selectors.js:457
+#: frontend/src/metabase/admin/permissions/selectors.js:343
+#: frontend/src/metabase/admin/permissions/selectors.js:350
+#: frontend/src/metabase/admin/permissions/selectors.js:461
 #: frontend/src/metabase/admin/routes.jsx:60
 #: frontend/src/metabase/home/containers/SearchApp.jsx:38
 #: frontend/src/metabase/nav/containers/Navbar.jsx:132
@@ -193,23 +193,23 @@ msgstr "Radera"
 msgid "Databases"
 msgstr "Databaser"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:152
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:158
 msgid "Add Database"
 msgstr "Lägg till databas"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:74
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:79
 msgid "Connection"
 msgstr "Anslutning"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:78
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:83
 msgid "Scheduling"
 msgstr "Schemaläggning"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:185
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:182
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:191
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:63
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:81
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:27
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:29
 #: frontend/src/metabase/admin/settings/components/SettingsGoogleForm.jsx:82
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:227
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:225
@@ -218,18 +218,18 @@ msgstr "Schemaläggning"
 msgid "Save changes"
 msgstr "Spara ändringar"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:222
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:231
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:31
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:31
 msgid "Actions"
 msgstr "Åtgärder"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:230
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:239
 msgid "Sync database schema now"
 msgstr "Synka databas schema nu"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:231
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:243
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:240
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:252
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:16
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:24
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:91
@@ -237,41 +237,41 @@ msgstr "Synka databas schema nu"
 msgid "Starting…"
 msgstr "Startar..."
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:232
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:241
 msgid "Failed to sync"
 msgstr "Fel vid synkning"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:233
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:242
 msgid "Sync triggered!"
 msgstr "Synkning triggad!"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:242
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:251
 msgid "Re-scan field values now"
 msgstr "Omskanna fältvärden nu"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:244
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:253
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:92
 msgid "Failed to start scan"
 msgstr "Fel vid skanning"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:245
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:254
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:18
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:93
 msgid "Scan triggered!"
 msgstr "Skanning triggad!"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:252
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:261
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:418
 msgid "Danger Zone"
 msgstr "Farlig zon"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:258
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:261
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:267
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:270
 msgid "Discard saved field values"
 msgstr "Kassera sparade fältvärden"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:276
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:285
 msgid "Remove this database"
 msgstr "Ta bort denna databas"
 
@@ -283,18 +283,18 @@ msgstr "Lägg till databas"
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:29
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:29
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:120
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:188
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:218
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:89
 #: frontend/src/metabase/collections/components/BaseItemsTable.jsx:143
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:133
-#: frontend/src/metabase/entities/collections.js:134
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:134
+#: frontend/src/metabase/entities/collections.js:135
 #: frontend/src/metabase/entities/dashboards.js:144
 #: frontend/src/metabase/entities/databases/forms.js:300
 #: frontend/src/metabase/entities/questions.js:88
 #: frontend/src/metabase/entities/questions.js:104
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:480
 #: frontend/src/metabase/visualizations/lib/settings/column.js:344
-#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:89
+#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:90
 msgid "Name"
 msgstr "Namn"
 
@@ -314,7 +314,7 @@ msgstr "Laddar ..."
 msgid "Bring the sample dataset back"
 msgstr "Återställ exempeldata"
 
-#: frontend/src/metabase/admin/databases/database.js:175
+#: frontend/src/metabase/admin/databases/database.js:177
 msgid "Couldn't connect to the database. Please check the connection details."
 msgstr "Kunde inte ansluta till databasen. Vänligen kontrollera anslutningsdetaljerna."
 
@@ -706,13 +706,13 @@ msgstr "Misslyckades med att radera värden"
 msgid "Discard triggered!"
 msgstr "Radering påbörjad"
 
-#: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:113
+#: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:123
 msgid "Select any table to see its schema and add or edit metadata."
 msgstr "Välj en tabell för att se dess schema och lägga till eller redigera metadata."
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:32
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:31
-#: frontend/src/metabase/entities/collections.js:137
+#: frontend/src/metabase/entities/collections.js:139
 #: frontend/src/metabase/entities/snippet-collections.js:76
 msgid "Name is required"
 msgstr "Namn är obligatoriskt"
@@ -836,7 +836,7 @@ msgstr "Detta kommer att synas i revisionshistoriken för detta segment för att
 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:70
 #: frontend/src/metabase/admin/routes.jsx:137
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:222
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:226
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:104
 #: frontend/src/metabase/nav/containers/Navbar.jsx:114
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:19
@@ -866,7 +866,7 @@ msgstr "Inte en giltig epost-adress"
 msgid "First name"
 msgstr "Förnamn"
 
-#: frontend/src/metabase/entities/users/forms.js:20
+#: frontend/src/metabase/entities/users/forms.js:21
 msgid "Last name"
 msgstr "Efternamn"
 
@@ -906,7 +906,7 @@ msgstr "Medlemmar"
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:122
 #: frontend/src/metabase/admin/people/components/group-members/GroupMembersTable.jsx:54
 #: frontend/src/metabase/admin/settings/selectors.js:126
-#: frontend/src/metabase/entities/users/forms.js:26
+#: frontend/src/metabase/entities/users/forms.js:27
 #: frontend/src/metabase/lib/core.js:146
 #: frontend/src/metabase/pulse/components/PulseEditChannels.jsx:298
 msgid "Email"
@@ -984,7 +984,7 @@ msgstr "Radera grupp"
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:84
 #: frontend/src/metabase/query_builder/components/SidebarContent.jsx:18
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:119
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:341
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:356
 msgid "Done"
 msgstr "Klart"
 
@@ -998,7 +998,7 @@ msgstr "Gruppnamn"
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:22
 #: frontend/src/metabase/admin/routes.jsx:97
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:173
-#: frontend/src/metabase/entities/users/forms.js:70
+#: frontend/src/metabase/entities/users/forms.js:71
 msgid "Groups"
 msgstr "Grupper"
 
@@ -1217,7 +1217,7 @@ msgstr "Inga förändingar i rättigheter kommer att göras."
 msgid "You've made changes to permissions."
 msgstr "Du har gjort ändringar i rättigheter."
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:84
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:104
 msgid "Permissions for this collection"
 msgstr "Rättigheter för denna samling"
 
@@ -1233,127 +1233,127 @@ msgstr "Vill du lämna denna sida och överge dina ändringar?"
 msgid "Sorry, an error occurred."
 msgstr "Ursäkta, ett fel uppstod."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:69
+#: frontend/src/metabase/admin/permissions/selectors.js:68
 msgid "Administrators always have the highest level of access to everything in Metabase."
 msgstr "Administratörer har alltid den högsta access-nivån till allting i Metabase"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:71
+#: frontend/src/metabase/admin/permissions/selectors.js:70
 msgid "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access."
 msgstr "Varje Metabase-användare tillhör gruppen Alla användare. Om du vill begränsa en grupps rättigheter, se till att gruppen Alla användare har samma eller lägre access-nivå."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:73
+#: frontend/src/metabase/admin/permissions/selectors.js:72
 msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
 msgstr "MetaBot är Metabases Slack Bot. Du kan välja vad den har åtkomst till här."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:126
+#: frontend/src/metabase/admin/permissions/selectors.js:125
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
 msgstr "Gruppen {0} kan ha access till en annan uppsättning av {1} än denna grupp, vilket kan ge denna grupp ytterligare till några {2}."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:129
+#: frontend/src/metabase/admin/permissions/selectors.js:128
 msgid "The \"{0}\" group has a higher level of access than this, which will override this setting. You should limit or revoke the \"{1}\" group's access to this item."
 msgstr "Gruppen {0} har en högre accessnivå än denna, vilket kommer att ha företräde före denna inställning. Du bör begränsa eller ta bort {1}-gruppens rättigheter till denna post."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:155
+#: frontend/src/metabase/admin/permissions/selectors.js:154
 msgid "Limit"
 msgstr "Begränsa"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:155
+#: frontend/src/metabase/admin/permissions/selectors.js:154
 msgid "Revoke"
 msgstr "Upphäv"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:157
+#: frontend/src/metabase/admin/permissions/selectors.js:156
 msgid "access even though \"{0}\" has greater access?"
 msgstr "åtkomst trots att {0} har större rättigheter?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:160
-#: frontend/src/metabase/admin/permissions/selectors.js:259
+#: frontend/src/metabase/admin/permissions/selectors.js:159
+#: frontend/src/metabase/admin/permissions/selectors.js:258
 msgid "Limit access"
 msgstr "Begränsa åtkomst"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:160
-#: frontend/src/metabase/admin/permissions/selectors.js:224
-#: frontend/src/metabase/admin/permissions/selectors.js:267
-#: frontend/src/metabase/admin/permissions/selectors.js:307
+#: frontend/src/metabase/admin/permissions/selectors.js:159
+#: frontend/src/metabase/admin/permissions/selectors.js:223
+#: frontend/src/metabase/admin/permissions/selectors.js:266
+#: frontend/src/metabase/admin/permissions/selectors.js:306
 msgid "Revoke access"
 msgstr "Upphäv åtkomst"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:169
+#: frontend/src/metabase/admin/permissions/selectors.js:168
 msgid "Change access to this database to limited?"
 msgstr "Ändra åtkomst för denna databas till begränsad?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:170
+#: frontend/src/metabase/admin/permissions/selectors.js:169
 msgid "Change"
 msgstr "Ändra"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:183
+#: frontend/src/metabase/admin/permissions/selectors.js:182
 msgid "Allow Raw Query Writing?"
 msgstr "Tillåta manuella frågor?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:184
+#: frontend/src/metabase/admin/permissions/selectors.js:183
 msgid "This will also change this group's data access to Unrestricted for this database."
 msgstr "Detta kommer också att ändra denna grupps åtkomst till Obegränsad för denna databas."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:185
+#: frontend/src/metabase/admin/permissions/selectors.js:184
 msgid "Allow"
 msgstr "Tillåt"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:222
+#: frontend/src/metabase/admin/permissions/selectors.js:221
 msgid "Revoke access to all tables?"
 msgstr "Upphäva åtkomst till alla tabeller?"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:223
+#: frontend/src/metabase/admin/permissions/selectors.js:222
 msgid "This will also revoke this group's access to raw queries for this database."
 msgstr "Detta kommer också att upphäva denna grupps åtkomst till manuella frågor mot denna databas."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:252
+#: frontend/src/metabase/admin/permissions/selectors.js:251
 msgid "Grant unrestricted access"
 msgstr "Ge obegränsad åtkomst"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:253
+#: frontend/src/metabase/admin/permissions/selectors.js:252
 msgid "Unrestricted access"
 msgstr "Obegränsad åtkomst"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:260
+#: frontend/src/metabase/admin/permissions/selectors.js:259
 msgid "Limited access"
 msgstr "Begränsad åtkomst"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:268
+#: frontend/src/metabase/admin/permissions/selectors.js:267
 msgid "No access"
 msgstr "Ingen åtkomst"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:274
+#: frontend/src/metabase/admin/permissions/selectors.js:273
 msgid "Write raw queries"
 msgstr "Skriva manuella frågor"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:275
+#: frontend/src/metabase/admin/permissions/selectors.js:274
 msgid "Can write raw queries"
 msgstr "Kan skriva manuella frågor"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:282
+#: frontend/src/metabase/admin/permissions/selectors.js:281
 msgid "Curate collection"
 msgstr "Utvald samling"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:289
+#: frontend/src/metabase/admin/permissions/selectors.js:288
 msgid "View collection"
 msgstr "Visa samling"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:350
-#: frontend/src/metabase/admin/permissions/selectors.js:461
-#: frontend/src/metabase/admin/permissions/selectors.js:574
+#: frontend/src/metabase/admin/permissions/selectors.js:354
+#: frontend/src/metabase/admin/permissions/selectors.js:465
+#: frontend/src/metabase/admin/permissions/selectors.js:578
 msgid "Data Access"
 msgstr "Dataåtkomst"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:526
-#: frontend/src/metabase/admin/permissions/selectors.js:681
-#: frontend/src/metabase/admin/permissions/selectors.js:686
+#: frontend/src/metabase/admin/permissions/selectors.js:530
+#: frontend/src/metabase/admin/permissions/selectors.js:685
+#: frontend/src/metabase/admin/permissions/selectors.js:690
 msgid "View tables"
 msgstr "Visa tabeller"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:622
+#: frontend/src/metabase/admin/permissions/selectors.js:626
 msgid "SQL Queries"
 msgstr "SQL-frågor"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:692
+#: frontend/src/metabase/admin/permissions/selectors.js:696
 msgid "View schemas"
 msgstr "Visa scheman"
 
@@ -1386,23 +1386,23 @@ msgstr "LDAP"
 msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
 msgstr "Tillåter LDAP-användare i din LDAP att logga in i Metabase med LDAP-uppgifter och tillåter automatisk mappning av LDAP-grupper till Metabase-grupper."
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:18
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:20
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:75
 #: frontend/src/metabase/admin/settings/selectors.js:174
 msgid "That's not a valid email address"
 msgstr "Det är inte en giltig epost-adress"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:22
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:24
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:79
 msgid "That's not a valid integer"
 msgstr "Det är inte ett giltigt heltal"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:29
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:31
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:229
 msgid "Changes saved!"
 msgstr "Ändringar sparade!"
 
-#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:186
+#: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:188
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:138
 msgid "Looks like we ran into some problems"
 msgstr "Det verkar som om något gick fel"
@@ -1493,7 +1493,7 @@ msgstr "Skapa en Slack Bot-användare för MetaBot"
 msgid "Once you're there, give it a name and click {0}. Then copy and paste the Bot API Token into the field below. Once you are done, create a \"metabase_files\" channel in Slack. Metabase needs this to upload graphs."
 msgstr "När du väl är där, ge den ett namn och klicka på {0}. Sedan, kopiera och klistra in \"Bot API Token\" i fältet nedan. När du väl är klar, skapa kanalen \"metabase_files\" i Slack. Metabase behöver detta för att ladda upp grafer."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:25
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:35
 msgid "You're running Metabase {0} which is the latest and greatest!"
 msgstr "Du kör Metabase {0} vilken är den senaste och bästa!"
 
@@ -1501,21 +1501,21 @@ msgstr "Du kör Metabase {0} vilken är den senaste och bästa!"
 msgid "Metabase {0} is available.  You're running {1}"
 msgstr "Metabase {0} finns tillgänglig. Du kör {1}"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:56
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:61
 #: frontend/src/metabase/components/form/StandardForm.jsx:19
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:119
 msgid "Update"
 msgstr "Uppdatera"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:64
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:69
 msgid "What's Changed:"
 msgstr "Vad som ändrats:"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:136
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:166
 msgid "Add a map"
 msgstr "Lägg till en karta"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:189
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:219
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:125
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:568
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:605
@@ -1523,14 +1523,14 @@ msgstr "Lägg till en karta"
 msgid "URL"
 msgstr "URL"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:206
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:236
 msgid "Delete custom map"
 msgstr "Ta bort anpassad karta"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:208
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:238
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:335
-#: frontend/src/metabase/containers/Overworld.jsx:153
-#: frontend/src/metabase/containers/Overworld.jsx:304
+#: frontend/src/metabase/containers/Overworld.jsx:128
+#: frontend/src/metabase/containers/Overworld.jsx:278
 #: frontend/src/metabase/dashboard/components/DashCard.jsx:362
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:91
@@ -1539,7 +1539,7 @@ msgstr "Ta bort anpassad karta"
 msgid "Remove"
 msgstr "Ta bort"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:233
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:270
 #: frontend/src/metabase/dashboard/containers/DashCardCardParameterMapper.jsx:175
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:194
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:141
@@ -1547,59 +1547,59 @@ msgstr "Ta bort"
 msgid "Select…"
 msgstr "Välj..."
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:248
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:285
 msgid "Sample values:"
 msgstr "Exempelvärden:"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:286
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:323
 msgid "Add a new map"
 msgstr "Lägg till en ny karta"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:286
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:323
 msgid "Edit map"
 msgstr "Redigera karta"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:287
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:324
 msgid "What do you want to call this map?"
 msgstr "Vad vill du kalla denna karta?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:292
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:329
 msgid "e.g. United Kingdom, Brazil, Mars"
 msgstr "t.ex Storbritannien, Brasilien, Mars"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:299
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:336
 msgid "URL for the GeoJSON file you want to use"
 msgstr "URL för GeoJSON-filen du vill använda"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:305
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:342
 msgid "Like https://my-mb-server.com/maps/my-map.json"
 msgstr "som t.ex https://my-mb-server.com/maps/my-map.json"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:316
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:353
 msgid "Refresh"
 msgstr "Ladda om"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:316
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:353
 msgid "Load"
 msgstr "Ladda"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:322
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:359
 msgid "Which property specifies the region’s identifier?"
 msgstr "Vilken egenskap anger regionens identifiering?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:331
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:368
 msgid "Which property specifies the region’s display name?"
 msgstr "Vilken egenskap anger regionens namn?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:352
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:389
 msgid "Load a GeoJSON file to see a preview"
 msgstr "Ladda en GeoJSON-fil för att förhandsgranska"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:370
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:407
 msgid "Save map"
 msgstr "Spara karta"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:370
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:407
 msgid "Add map"
 msgstr "Lägg till karta"
 
@@ -1735,7 +1735,7 @@ msgstr "Aktiverad"
 msgid "Disabled"
 msgstr "Inaktiverad"
 
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:119
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:121
 msgid "Unknown setting {0}"
 msgstr "{0} - okänd inställning"
 
@@ -1776,7 +1776,7 @@ msgstr "Välj en tidszon"
 msgid "Not all databases support timezones, in which case this setting won't take effect."
 msgstr "Alla databaser har inte stöd för tidszoner, i vilka fall denna inställning inte kommer att göra någon skillnad."
 
-#: frontend/src/metabase/entities/users/forms.js:34
+#: frontend/src/metabase/entities/users/forms.js:35
 msgid "Language"
 msgstr "Språk"
 
@@ -1872,7 +1872,7 @@ msgstr "Användarnamn eller DN"
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:46
 #: frontend/src/metabase/entities/databases/forms.js:70
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:67
-#: frontend/src/metabase/user/components/UserSettings.jsx:67
+#: frontend/src/metabase/user/components/UserSettings.jsx:65
 #: src/metabase/driver/common.clj
 msgid "Password"
 msgstr "Lösenord"
@@ -2025,7 +2025,7 @@ msgstr "Tillbaka till inloggning"
 msgid "No Metabase account exists for this Google account."
 msgstr "Inget Metabase-konto finns för ditt Google-konto"
 
-#: frontend/src/metabase/auth/components/GoogleNoAccount.jsx:17
+#: src/metabase/integrations/google.clj
 msgid "You'll need an administrator to create a Metabase account before you can use Google to log in."
 msgstr "Du behöver en administratör för att skapa ett Metabase-konto innan du kan använda Google för att logga in."
 
@@ -2053,7 +2053,7 @@ msgstr "Skicka epost om återställning av lösenord"
 msgid "Check your email for instructions on how to reset your password."
 msgstr "Kontrollera instruktionerna i din epost för hur du återstället lösenordet."
 
-#: frontend/src/metabase/auth/containers/LoginApp.jsx:28
+#: frontend/src/metabase/auth/containers/LoginApp.jsx:31
 msgid "Sign in to Metabase"
 msgstr "Logga in i Metabase"
 
@@ -2160,7 +2160,7 @@ msgstr "Instrumentpaneler, samlingar och ögonblicksbilder i denna samling komme
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:242
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:243
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:59
-#: frontend/src/metabase/routes.jsx:195
+#: frontend/src/metabase/routes.jsx:193
 msgid "Archive"
 msgstr "Arkiv"
 
@@ -2179,7 +2179,7 @@ msgstr "Av-arkivera denna {0}"
 #: frontend/src/metabase/browse/containers/DatabaseBrowser.jsx:23
 #: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:41
 #: frontend/src/metabase/browse/containers/TableBrowser.jsx:71
-#: frontend/src/metabase/containers/Overworld.jsx:281
+#: frontend/src/metabase/containers/Overworld.jsx:255
 #: frontend/src/metabase/reference/databases/DatabaseList.jsx:48
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:39
 msgid "Our data"
@@ -2285,7 +2285,7 @@ msgstr "Fästnålar"
 msgid "Drag something here to pin it to the top"
 msgstr "Dra något hit för att fästa det högst upp"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:780
+#: frontend/src/metabase/admin/permissions/selectors.js:784
 #: frontend/src/metabase/home/containers/SearchApp.jsx:33
 msgid "Collections"
 msgstr "Samlingar"
@@ -2330,7 +2330,7 @@ msgstr "Arkivera denna samling"
 msgid "My personal collection"
 msgstr "Min personliga samling"
 
-#: frontend/src/metabase/collections/components/Header.jsx:53
+#: frontend/src/metabase/collections/components/Header/Header.jsx:67
 #: frontend/src/metabase/components/CollectionList.jsx:110
 msgid "New collection"
 msgstr "Ny samling"
@@ -2392,7 +2392,7 @@ msgstr "{0} för att gå till kontrollpanelen om det inte redan är gjort."
 msgid "How would you like to refer to this database?"
 msgstr "Under vilket namn vill du referera till denna databas?"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:195
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:204
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:254
 #: frontend/src/metabase/setup/components/DatabaseConnectionStep.jsx:146
 #: frontend/src/metabase/setup/components/DatabaseSchedulingStep.jsx:70
@@ -2457,7 +2457,7 @@ msgstr "Ladda ner resultat"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:53
 #: frontend/src/metabase/components/EntityMenu.info.js:105
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:99
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:107
 msgid "Sharing and embedding"
 msgstr "Dela och inbädda"
 
@@ -2503,35 +2503,35 @@ msgstr "Baserat på schemat"
 msgid "A look at your"
 msgstr "En titt på din"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:406
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:228
 msgid "Search the list"
 msgstr "Sök i listan"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:415
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:200
 msgid "Search by {0}"
 msgstr "Sök via {0}"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:417
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:202
 msgid " or enter an ID"
 msgstr "eller ange ett ID"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:422
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:210
 msgid "Enter an ID"
 msgstr "Ange ett ID"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:424
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:212
 msgid "Enter a number"
 msgstr "Ange en siffra"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:426
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:214
 msgid "Enter some text"
 msgstr "Ange någon text"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:542
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:563
 msgid "No matching {0} found."
 msgstr "Ingen matchande {0} hittades"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:551
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:572
 msgid "Including every option in your filter probably won’t do much…"
 msgstr "Genom att ta med varje alternativ i ditt sökfilter uppnår du inte så mycket..."
 
@@ -2628,7 +2628,7 @@ msgid "Questions"
 msgstr "Frågor"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:53
-#: frontend/src/metabase/routes.jsx:316
+#: frontend/src/metabase/routes.jsx:314
 msgid "Pulses"
 msgstr "Ögonblicksbilder"
 
@@ -2675,14 +2675,14 @@ msgstr "Tillfälligt lösenord"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:227
 #: frontend/src/metabase/components/PasswordReveal.jsx:67
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:454
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:469
 msgid "Hide"
 msgstr "Dölj"
 
 #: frontend/src/metabase/components/PasswordReveal.jsx:67
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:471
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
 msgid "Show"
 msgstr "Visa"
 
@@ -2830,7 +2830,7 @@ msgid "Creator"
 msgstr "Skapare"
 
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:244
-#: frontend/src/metabase/query_builder/components/data-search/SearchResults.jsx:31
+#: frontend/src/metabase/query_builder/components/data-search/SearchResults.jsx:45
 msgid "No results found"
 msgstr "Inga resultat hittades"
 
@@ -2846,7 +2846,7 @@ msgstr "Visa enligt"
 msgid "of"
 msgstr "av"
 
-#: frontend/src/metabase/containers/Overworld.jsx:98
+#: frontend/src/metabase/containers/Overworld.jsx:77
 msgid "Don't tell anyone, but you're my favorite."
 msgstr "Berätta inte för någon, men du är min favorit."
 
@@ -2854,19 +2854,19 @@ msgstr "Berätta inte för någon, men du är min favorit."
 msgid "Once you connect your own data, I can show you some automatic explorations called x-rays. Here are some examples with sample data."
 msgstr "När du väl kopplar dina egna data kan jag göra några automatiska visningar kallade genomlysningar. Här är några exemel med testdata."
 
-#: frontend/src/metabase/containers/Overworld.jsx:187
-#: frontend/src/metabase/containers/Overworld.jsx:398
+#: frontend/src/metabase/containers/Overworld.jsx:162
+#: frontend/src/metabase/containers/Overworld.jsx:373
 msgid "Start here"
 msgstr "Börja här"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:98
-#: frontend/src/metabase/containers/Overworld.jsx:393
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:93
+#: frontend/src/metabase/containers/Overworld.jsx:368
 #: frontend/src/metabase/entities/collections.js:20
 #: src/metabase/models/collection.clj
 msgid "Our analytics"
 msgstr "Våra analyser"
 
-#: frontend/src/metabase/containers/Overworld.jsx:259
+#: frontend/src/metabase/containers/Overworld.jsx:233
 msgid "Browse all items"
 msgstr "Bläddra igenom allt"
 
@@ -2874,11 +2874,11 @@ msgstr "Bläddra igenom allt"
 msgid "Replace or save as new?"
 msgstr "Ersätta eller spara som ny?"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:169
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:170
 msgid "Replace original question, \"{0}\""
 msgstr "Ersätta ursprunglig fråga, \"{0}\""
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:173
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:174
 msgid "Save as new question"
 msgstr "Spara som en ny fråga"
 
@@ -2890,15 +2890,15 @@ msgstr "Spara först din fråga"
 msgid "Save question"
 msgstr "Spara fråga"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:134
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:135
 msgid "What is the name of your card?"
 msgstr "Vad kallas din lista?"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:19
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:144
-#: frontend/src/metabase/entities/collections.js:142
-#: frontend/src/metabase/entities/dashboards.js:150
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:145
+#: frontend/src/metabase/entities/collections.js:144
+#: frontend/src/metabase/entities/dashboards.js:151
 #: frontend/src/metabase/entities/questions.js:91
 #: frontend/src/metabase/entities/questions.js:107
 #: frontend/src/metabase/lib/core.js:38
@@ -2912,18 +2912,18 @@ msgstr "Vad kallas din lista?"
 msgid "Description"
 msgstr "Beskrivning"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:145
-#: frontend/src/metabase/entities/collections.js:144
-#: frontend/src/metabase/entities/dashboards.js:152
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:146
+#: frontend/src/metabase/entities/collections.js:146
+#: frontend/src/metabase/entities/dashboards.js:153
 #: frontend/src/metabase/entities/questions.js:93
 #: frontend/src/metabase/entities/questions.js:109
 #: frontend/src/metabase/entities/snippet-collections.js:83
-#: frontend/src/metabase/entities/snippets.js:27
+#: frontend/src/metabase/entities/snippets.js:28
 msgid "It's optional but oh, so helpful"
 msgstr "Det är valfritt, men till stor hjälp"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:149
-#: frontend/src/metabase/entities/dashboards.js:156
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:150
+#: frontend/src/metabase/entities/dashboards.js:157
 msgid "Which collection should this go in?"
 msgstr "Vilken samling ska detta tillhöra?"
 
@@ -2948,6 +2948,7 @@ msgid "That question isn't compatible"
 msgstr "Den frågan är inte kompatibel"
 
 #: frontend/src/metabase/dashboard/components/AddSeriesModal.jsx:310
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:758
 msgid "Search for a question"
 msgstr "Leta efter en fråga"
 
@@ -2971,19 +2972,19 @@ msgstr "Kontrollpanelen verkar tom."
 msgid "Add a question to start making it useful!"
 msgstr "Lägg till en fråga för att göra den användbar."
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:125
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:169
 msgid "Daytime mode"
 msgstr "Färgval dagtid"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:125
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:169
 msgid "Nighttime mode"
 msgstr "Färgval kvällstid"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:145
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:189
 msgid "Exit fullscreen"
 msgstr "Stäng fullskärmsläge"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:145
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:189
 msgid "Enter fullscreen"
 msgstr "Öppna fullskärmsläge"
 
@@ -3122,12 +3123,12 @@ msgstr "Värdena i detta fält överlappar inte värdena i något annat valt fä
 msgid "No valid fields"
 msgstr "Inga giltiga fält"
 
-#: frontend/src/metabase/entities/collections.js:138
+#: frontend/src/metabase/entities/collections.js:140
 #: frontend/src/metabase/entities/snippet-collections.js:77
 msgid "Name must be 100 characters or less"
 msgstr "Namnet får bara vara max 100 tecken"
 
-#: frontend/src/metabase/entities/collections.js:152
+#: frontend/src/metabase/entities/collections.js:154
 #: frontend/src/metabase/entities/snippet-collections.js:91
 msgid "Color is required"
 msgstr "Färg krävs"
@@ -3188,6 +3189,9 @@ msgstr "mottog senaste data från"
 #: frontend/src/metabase/home/components/Activity.jsx:253
 #: frontend/src/metabase/lib/query_time.js:185
 #: frontend/src/metabase/visualizations/visualizations/ObjectDetail.jsx:334
+#: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
+#: enterprise/backend/src/metabase_enterprise/sso/integrations/jwt.clj
+#: src/metabase/integrations/ldap/default_implementation.clj
 msgid "Unknown"
 msgstr "Okänd"
 
@@ -3372,20 +3376,20 @@ msgid "Common"
 msgstr "Vanlig"
 
 #: frontend/src/metabase/lib/core.js:28
-#: frontend/src/metabase/meta/Dashboard.js:54
+#: frontend/src/metabase/meta/Dashboard.js:55
 #: frontend/src/metabase/meta/Parameter.js:178
 #: frontend/src/metabase/modes/components/drill/PivotByCategoryDrill.jsx:8
 msgid "Category"
 msgstr "Kategori"
 
 #: frontend/src/metabase/lib/core.js:55
-#: frontend/src/metabase/meta/Dashboard.js:39
+#: frontend/src/metabase/meta/Dashboard.js:40
 #: frontend/src/metabase/meta/Parameter.js:181
 msgid "City"
 msgstr "Stad"
 
 #: frontend/src/metabase/lib/core.js:60
-#: frontend/src/metabase/meta/Dashboard.js:51
+#: frontend/src/metabase/meta/Dashboard.js:52
 #: frontend/src/metabase/meta/Parameter.js:193
 msgid "Country"
 msgstr "Land"
@@ -3411,17 +3415,17 @@ msgid "Longitude"
 msgstr "Longitud"
 
 #: frontend/src/metabase/lib/core.js:43
-#: frontend/src/metabase/meta/Dashboard.js:104
-#: frontend/src/metabase/meta/Dashboard.js:110
+#: frontend/src/metabase/meta/Dashboard.js:105
+#: frontend/src/metabase/meta/Dashboard.js:111
 #: frontend/src/metabase/meta/Parameter.js:163
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:145
-#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:43
+#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:44
 msgid "Number"
 msgstr "Nummer"
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:20
 #: frontend/src/metabase/lib/core.js:75
-#: frontend/src/metabase/meta/Dashboard.js:43
+#: frontend/src/metabase/meta/Dashboard.js:44
 #: frontend/src/metabase/meta/Parameter.js:185
 msgid "State"
 msgstr "Stat"
@@ -3582,7 +3586,7 @@ msgstr "Metabase kommer aldrig att hämta detta fält. Använd detta för känsl
 
 #: frontend/src/metabase/lib/query/description.js:77
 #: frontend/src/metabase/lib/query/description.js:262
-#: frontend/src/metabase/lib/schema_metadata.js:578
+#: frontend/src/metabase/lib/schema_metadata.js:583
 #: frontend/src/metabase/visualizations/lib/utils.js:127
 #: src/metabase/query_processor/middleware/annotate.clj
 #: resources/automagic_dashboards/field/DateTime.yaml
@@ -3597,7 +3601,7 @@ msgstr "Antal"
 msgid "CumulativeCount"
 msgstr "Summerat antal"
 
-#: frontend/src/metabase/lib/schema_metadata.js:587
+#: frontend/src/metabase/lib/schema_metadata.js:592
 #: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:17
 #: frontend/src/metabase/visualizations/lib/utils.js:128
 msgid "Sum"
@@ -3615,20 +3619,20 @@ msgstr "Distinkt"
 msgid "StandardDeviation"
 msgstr "Standardavvikelse"
 
-#: frontend/src/metabase/lib/schema_metadata.js:596
+#: frontend/src/metabase/lib/schema_metadata.js:601
 #: frontend/src/metabase/visualizations/lib/utils.js:126
 msgid "Average"
 msgstr "Genomsnittlig"
 
-#: frontend/src/metabase/lib/schema_metadata.js:641
+#: frontend/src/metabase/lib/schema_metadata.js:646
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:484
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:483
 msgid "Min"
 msgstr "Min"
 
-#: frontend/src/metabase/lib/schema_metadata.js:650
+#: frontend/src/metabase/lib/schema_metadata.js:655
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:492
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:491
 msgid "Max"
 msgstr "Max"
 
@@ -3683,7 +3687,7 @@ msgstr "Vad vill du hitta?"
 
 #: frontend/src/metabase/lib/query/description.js:75
 #: frontend/src/metabase/lib/query/description.js:260
-#: frontend/src/metabase/lib/schema_metadata.js:569
+#: frontend/src/metabase/lib/schema_metadata.js:574
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:72
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:243
 msgid "Raw data"
@@ -3691,7 +3695,7 @@ msgstr "Rådata"
 
 #: frontend/src/metabase/lib/query/description.js:79
 #: frontend/src/metabase/lib/query/description.js:264
-#: frontend/src/metabase/lib/schema_metadata.js:623
+#: frontend/src/metabase/lib/schema_metadata.js:628
 msgid "Cumulative count"
 msgstr "Summerat antal"
 
@@ -3780,7 +3784,7 @@ msgstr "Ange höger longitud"
 #: frontend/src/metabase/lib/schema_metadata.js:444
 #: frontend/src/metabase/lib/schema_metadata.js:452
 #: frontend/src/metabase/lib/schema_metadata.js:462
-#: frontend/src/metabase/lib/schema_metadata.js:467
+#: frontend/src/metabase/lib/schema_metadata.js:472
 msgid "Is"
 msgstr "Är"
 
@@ -3801,7 +3805,7 @@ msgstr "Är inte"
 #: frontend/src/metabase/lib/schema_metadata.js:440
 #: frontend/src/metabase/lib/schema_metadata.js:448
 #: frontend/src/metabase/lib/schema_metadata.js:454
-#: frontend/src/metabase/lib/schema_metadata.js:468
+#: frontend/src/metabase/lib/schema_metadata.js:473
 msgid "Is empty"
 msgstr "Är tom"
 
@@ -3812,7 +3816,7 @@ msgstr "Är tom"
 #: frontend/src/metabase/lib/schema_metadata.js:441
 #: frontend/src/metabase/lib/schema_metadata.js:449
 #: frontend/src/metabase/lib/schema_metadata.js:455
-#: frontend/src/metabase/lib/schema_metadata.js:469
+#: frontend/src/metabase/lib/schema_metadata.js:474
 msgid "Not empty"
 msgstr "Inte tom"
 
@@ -3828,17 +3832,20 @@ msgstr "Inte lika med"
 
 #: frontend/src/metabase/lib/schema_metadata.js:401
 #: frontend/src/metabase/lib/schema_metadata.js:415
+#: frontend/src/metabase/lib/schema_metadata.js:465
 msgid "Greater than"
 msgstr "Större än"
 
 #: frontend/src/metabase/lib/schema_metadata.js:402
 #: frontend/src/metabase/lib/schema_metadata.js:416
+#: frontend/src/metabase/lib/schema_metadata.js:466
 msgid "Less than"
 msgstr "Mindre än"
 
 #: frontend/src/metabase/lib/schema_metadata.js:403
 #: frontend/src/metabase/lib/schema_metadata.js:417
 #: frontend/src/metabase/lib/schema_metadata.js:447
+#: frontend/src/metabase/lib/schema_metadata.js:467
 #: frontend/src/metabase/meta/Parameter.js:60
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:301
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:99
@@ -3847,12 +3854,14 @@ msgstr "Mellan"
 
 #: frontend/src/metabase/lib/schema_metadata.js:404
 #: frontend/src/metabase/lib/schema_metadata.js:418
+#: frontend/src/metabase/lib/schema_metadata.js:468
 #: frontend/src/metabase/meta/Parameter.js:65
 msgid "Greater than or equal to"
 msgstr "Större än eller lika med"
 
 #: frontend/src/metabase/lib/schema_metadata.js:405
 #: frontend/src/metabase/lib/schema_metadata.js:419
+#: frontend/src/metabase/lib/schema_metadata.js:469
 #: frontend/src/metabase/meta/Parameter.js:70
 msgid "Less than or equal to"
 msgstr "Mindre än eller lika med"
@@ -3897,43 +3906,43 @@ msgstr "Efter"
 msgid "Inside"
 msgstr "Innehåller"
 
-#: frontend/src/metabase/lib/schema_metadata.js:570
+#: frontend/src/metabase/lib/schema_metadata.js:575
 msgid "Just a table with the rows in the answer, no additional operations."
 msgstr "Bara en tabell med raderna i svaret, inga fler moment"
 
-#: frontend/src/metabase/lib/schema_metadata.js:577
+#: frontend/src/metabase/lib/schema_metadata.js:582
 msgid "Count of rows"
 msgstr "Antal rader"
 
-#: frontend/src/metabase/lib/schema_metadata.js:579
+#: frontend/src/metabase/lib/schema_metadata.js:584
 msgid "Total number of rows in the answer."
 msgstr "Totalt antal rader i svaret"
 
-#: frontend/src/metabase/lib/schema_metadata.js:586
+#: frontend/src/metabase/lib/schema_metadata.js:591
 msgid "Sum of ..."
 msgstr "Summan av ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:588
+#: frontend/src/metabase/lib/schema_metadata.js:593
 msgid "Sum of all the values of a column."
 msgstr "Summan av alla värdena i en kolumn"
 
-#: frontend/src/metabase/lib/schema_metadata.js:595
+#: frontend/src/metabase/lib/schema_metadata.js:600
 msgid "Average of ..."
 msgstr "Genomsnitttet av ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:597
+#: frontend/src/metabase/lib/schema_metadata.js:602
 msgid "Average of all the values of a column"
 msgstr "Genomsnittet av alla värden i en kolumn"
 
-#: frontend/src/metabase/lib/schema_metadata.js:604
+#: frontend/src/metabase/lib/schema_metadata.js:609
 msgid "Number of distinct values of ..."
 msgstr "Antal distinkta värden av ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:606
+#: frontend/src/metabase/lib/schema_metadata.js:611
 msgid "Number of unique values of a column among all the rows in the answer."
 msgstr "Antal unika värden i en kolumn jämsides med alla raderna i svaret"
 
-#: frontend/src/metabase/lib/schema_metadata.js:613
+#: frontend/src/metabase/lib/schema_metadata.js:618
 msgid "Cumulative sum of ..."
 msgstr "Sammanslagen summa av ..."
 
@@ -3941,7 +3950,7 @@ msgstr "Sammanslagen summa av ..."
 msgid "Additive sum of all the values of a column.\\\\ne.x. total revenue over time."
 msgstr "Ökande summa av alla värden i en kolumn. \\n T.ex total intäkt över tid."
 
-#: frontend/src/metabase/lib/schema_metadata.js:622
+#: frontend/src/metabase/lib/schema_metadata.js:627
 msgid "Cumulative count of rows"
 msgstr "Sammanslaget antal rader"
 
@@ -3949,27 +3958,27 @@ msgstr "Sammanslaget antal rader"
 msgid "Additive count of the number of rows.\\\\ne.x. total number of sales over time."
 msgstr "Ökande antal rader.\\n T.ex totalt antal försäljningar över tid"
 
-#: frontend/src/metabase/lib/schema_metadata.js:631
+#: frontend/src/metabase/lib/schema_metadata.js:636
 msgid "Standard deviation of ..."
 msgstr "Standardavvikelse över ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:633
+#: frontend/src/metabase/lib/schema_metadata.js:638
 msgid "Number which expresses how much the values of a column vary among all rows in the answer."
 msgstr "Siffra som visar hur mycket värdena i en kolumn avviker bland alla rader i svaret."
 
-#: frontend/src/metabase/lib/schema_metadata.js:640
+#: frontend/src/metabase/lib/schema_metadata.js:645
 msgid "Minimum of ..."
 msgstr "Min.värde av ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:642
+#: frontend/src/metabase/lib/schema_metadata.js:647
 msgid "Minimum value of a column"
 msgstr "Min.värde av en kolumn"
 
-#: frontend/src/metabase/lib/schema_metadata.js:649
+#: frontend/src/metabase/lib/schema_metadata.js:654
 msgid "Maximum of ..."
 msgstr "Maxvärde av ..."
 
-#: frontend/src/metabase/lib/schema_metadata.js:651
+#: frontend/src/metabase/lib/schema_metadata.js:656
 msgid "Maximum value of a column"
 msgstr "Maxvärde av en kolumn"
 
@@ -4104,35 +4113,35 @@ msgstr "Alla val"
 msgid "Contains all of the above"
 msgstr "Innehålla alla ovanstående"
 
-#: frontend/src/metabase/meta/Dashboard.js:47
+#: frontend/src/metabase/meta/Dashboard.js:48
 #: frontend/src/metabase/meta/Parameter.js:189
 msgid "ZIP or Postal Code"
 msgstr "Postnummer"
 
-#: frontend/src/metabase/meta/Dashboard.js:93
+#: frontend/src/metabase/meta/Dashboard.js:94
 #: frontend/src/metabase/meta/Parameter.js:171
 msgid "ID"
 msgstr "ID"
 
-#: frontend/src/metabase/meta/Dashboard.js:62
+#: frontend/src/metabase/meta/Dashboard.js:63
 #: frontend/src/metabase/modes/components/drill/PivotByTimeDrill.jsx:7
 msgid "Time"
 msgstr "Tid"
 
-#: frontend/src/metabase/meta/Dashboard.js:63
+#: frontend/src/metabase/meta/Dashboard.js:64
 msgid "Date range, relative date, time of day, etc."
 msgstr "Datum-intervall, relativt datum, klockslag osv."
 
 #: frontend/src/metabase/lib/core.js:56 frontend/src/metabase/lib/core.js:61
 #: frontend/src/metabase/lib/core.js:66 frontend/src/metabase/lib/core.js:71
 #: frontend/src/metabase/lib/core.js:76 frontend/src/metabase/lib/core.js:81
-#: frontend/src/metabase/meta/Dashboard.js:74
-#: frontend/src/metabase/meta/Dashboard.js:84
+#: frontend/src/metabase/meta/Dashboard.js:75
+#: frontend/src/metabase/meta/Dashboard.js:85
 #: frontend/src/metabase/modes/components/drill/PivotByLocationDrill.jsx:7
 msgid "Location"
 msgstr "Plats"
 
-#: frontend/src/metabase/meta/Dashboard.js:75
+#: frontend/src/metabase/meta/Dashboard.js:76
 msgid "City, State, Country, ZIP code."
 msgstr "Stad, stat, land, postnummer."
 
@@ -4140,11 +4149,11 @@ msgstr "Stad, stat, land, postnummer."
 msgid "User ID, product ID, event ID, etc."
 msgstr "Användar-id, produkt-id, händelse-id osv."
 
-#: frontend/src/metabase/meta/Dashboard.js:129
+#: frontend/src/metabase/meta/Dashboard.js:130
 msgid "Other Categories"
 msgstr "Andra kategorier"
 
-#: frontend/src/metabase/meta/Dashboard.js:130
+#: frontend/src/metabase/meta/Dashboard.js:131
 msgid "Category, Type, Model, Rating, etc."
 msgstr "Kategori, typ, modell, värdering osv."
 
@@ -4612,7 +4621,7 @@ msgid "We recommend keeping pulses small and focused to help keep them digestibl
 msgstr "Vi rekommenderar att man behåller ögonblicksbild små och fokuserade för att göra dem lättlästa och användbara för hela gruppen."
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:161
-#: frontend/src/metabase/query_builder/components/view/View.jsx:134
+#: frontend/src/metabase/query_builder/components/view/View.jsx:135
 msgid "Pick your data"
 msgstr "Välj dina data"
 
@@ -4719,30 +4728,30 @@ msgstr "Hjälp alla i din grupp att hålla sig ajour med dina data"
 msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
 msgstr "Ögonblicksbilder låter dig skicka data från Metabase via epost eller till Slack enligt angivet tidsschema."
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:94
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:91
 msgid "After {0}"
 msgstr "Efter {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:96
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:93
 msgid "Before {0}"
 msgstr "Före {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:98
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:95
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:311
 msgid "Is Empty"
 msgstr "Är tom"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:100
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:97
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:317
 msgid "Not Empty"
 msgstr "Inte tom"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:103
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:100
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker.jsx:231
 msgid "All Time"
 msgstr "Alltid"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:148
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:145
 msgid "Apply"
 msgstr "Tillämpa"
 
@@ -5046,31 +5055,31 @@ msgid "Pick a segment or table"
 msgstr "Välj ett segment eller en tabell"
 
 #: frontend/src/metabase/entities/databases/forms.js:296
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:79
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:81
 msgid "Select a database"
 msgstr "Välj en databas"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:94
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:96
 msgid "Select..."
 msgstr "Välj..."
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:88
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:90
 msgid "Select a table"
 msgstr "Välj en tabell"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1000
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1059
 msgid "No tables found in this database."
 msgstr "Tabeller saknas i denna databas"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:973
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1032
 msgid "Is a question missing?"
 msgstr "Saknas en fråga?"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:982
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1041
 msgid "Learn more about nested queries"
 msgstr "Upptäck mer om nästlade frågor"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1026
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:1085
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorSuggestions.jsx:16
 msgid "Fields"
 msgstr "Fält"
@@ -5150,7 +5159,7 @@ msgstr "Data"
 msgid "Filtered by"
 msgstr "Filtrerad på"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:92
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:95
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:360
 msgid "View"
 msgstr "Visa"
@@ -5337,7 +5346,7 @@ msgstr "Avancerat..."
 msgid "Sorry. Something went wrong."
 msgstr "Ursäkta, något gick fel..."
 
-#: frontend/src/metabase/query_builder/components/TimeGroupingPopover.jsx:42
+#: frontend/src/metabase/query_builder/components/TimeGroupingPopover.jsx:15
 msgid "Group time by"
 msgstr "Gruppera tid på"
 
@@ -5494,7 +5503,7 @@ msgstr "Tänk på detta som att skriva en formel i ett kalkyprogram. Du kan anv�
 
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:112
 #: enterprise/frontend/src/metabase-enterprise/store/containers/StoreAccount.jsx:283
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:154
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:164
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:20
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:77
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:79
@@ -5664,12 +5673,12 @@ msgstr "Namn på filter"
 msgid "Variable type"
 msgstr "Variabeltyp"
 
-#: frontend/src/metabase/meta/Dashboard.js:123
+#: frontend/src/metabase/meta/Dashboard.js:124
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:144
 msgid "Text"
 msgstr "Text"
 
-#: frontend/src/metabase/meta/Dashboard.js:68
+#: frontend/src/metabase/meta/Dashboard.js:69
 #: frontend/src/metabase/meta/Parameter.js:155
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:146
 msgid "Date"
@@ -5858,7 +5867,7 @@ msgstr "Saker att tänka på när det gäller denna databas"
 msgid "Databases and tables"
 msgstr "Databaser och tabeller"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:71
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:74
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:28
 #: frontend/src/metabase/reference/databases/FieldSidebar.jsx:38
 #: frontend/src/metabase/reference/databases/TableDetail.jsx:173
@@ -6234,24 +6243,24 @@ msgstr "Frågor om detta segment"
 msgid "X-ray this segment"
 msgstr "Genomlys detta segment"
 
-#: frontend/src/metabase/routes.jsx:168 frontend/src/metabase/routes.jsx:169
+#: frontend/src/metabase/routes.jsx:167 frontend/src/metabase/routes.jsx:168
 msgid "Login"
 msgstr "Inloggning"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableWithSearch.jsx:18
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:412
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:196
 #: frontend/src/metabase/containers/ItemPicker.jsx:160
 #: frontend/src/metabase/nav/components/SearchBar.jsx:134
-#: frontend/src/metabase/routes.jsx:194
+#: frontend/src/metabase/routes.jsx:192
 msgid "Search"
 msgstr "Sök"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:566
-#: frontend/src/metabase/routes.jsx:213
+#: frontend/src/metabase/routes.jsx:211
 msgid "Dashboard"
 msgstr "Instrumentpanel"
 
-#: frontend/src/metabase/routes.jsx:228
+#: frontend/src/metabase/routes.jsx:226
 msgid "New Question"
 msgstr "Ny fråga"
 
@@ -6364,13 +6373,13 @@ msgstr "Vad ska vi kalla dig?"
 msgid "Hi, {0}. nice to meet you!"
 msgstr "Hej {0}, trevligt att träffas!"
 
-#: frontend/src/metabase/entities/users/forms.js:48
+#: frontend/src/metabase/entities/users/forms.js:49
 msgid "Create a password"
 msgstr "Skapa ett lösenord"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:47
-#: frontend/src/metabase/entities/users/forms.js:50
-#: frontend/src/metabase/entities/users/forms.js:98
+#: frontend/src/metabase/entities/users/forms.js:51
+#: frontend/src/metabase/entities/users/forms.js:99
 msgid "Shhh..."
 msgstr "Schhh..."
 
@@ -6378,11 +6387,11 @@ msgstr "Schhh..."
 msgid "Confirm password"
 msgstr "Bekräfta lösenord"
 
-#: frontend/src/metabase/entities/users/forms.js:57
+#: frontend/src/metabase/entities/users/forms.js:58
 msgid "Shhh... but one more time so we get it right"
 msgstr "Schhh...men en gång till så vi får det rätt"
 
-#: frontend/src/metabase/entities/users/forms.js:86
+#: frontend/src/metabase/entities/users/forms.js:87
 msgid "Your company or team name"
 msgstr "Ditt företags- eller gruppnamn"
 
@@ -6551,7 +6560,7 @@ msgstr "Lösenordet uppdaterat!"
 msgid "Account updated successfully!"
 msgstr "Kontot uppdaterat!"
 
-#: frontend/src/metabase/entities/users/forms.js:97
+#: frontend/src/metabase/entities/users/forms.js:98
 msgid "Current password"
 msgstr "Nuvarande lösenord"
 
@@ -6563,11 +6572,11 @@ msgstr "Logga in med epost-adress från Google"
 msgid "User Details"
 msgstr "Användaruppgifter"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:351
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:366
 msgid "Reset to defaults"
 msgstr "Återställ förval"
 
-#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:167
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:166
 msgid "unknown map"
 msgstr "okänd karta"
 
@@ -6608,7 +6617,7 @@ msgstr "Knappnålskarta"
 msgid "Unset"
 msgstr "Avmarkera"
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:148
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:150
 msgid "Rows {0}-{1} of {2}"
 msgstr "Raderna {0}-{1} av {2}"
 
@@ -6616,28 +6625,28 @@ msgstr "Raderna {0}-{1} av {2}"
 msgid "Data truncated to {0} rows."
 msgstr "Datat förkortades till {0} rader."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:416
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:412
 msgid "Could not find visualization"
 msgstr "Kunde inte visa grafiskt"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:423
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:419
 msgid "Could not display this chart with this data."
 msgstr "Kunde inte visa diagrammet med denna data"
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:69
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:541
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:537
 msgid "No results!"
 msgstr "Inga resultat!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:562
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:558
 msgid "Still Waiting..."
 msgstr "Väntar fortfarande..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:565
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:561
 msgid "This usually takes an average of {0}."
 msgstr "Detta tar oftas ungefär {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:567
 msgid "(This is a bit long for a dashboard)"
 msgstr "Detta är lite långt för en instrumentpanel"
 
@@ -6907,7 +6916,7 @@ msgstr "Konfigurera detta diagram i diagram-inställningarna"
 msgid "Edit Settings"
 msgstr "Redigera inställningar"
 
-#: frontend/src/metabase/visualizations/lib/fill_data.js:39
+#: frontend/src/metabase/visualizations/lib/fill_data.js:41
 msgid "xValues missing!"
 msgstr "X-värden saknas!"
 
@@ -6995,79 +7004,79 @@ msgstr "Linjär interpolation"
 msgid "X-axis scale"
 msgstr "Skala på X-axel"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:422
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:421
 msgid "Timeseries"
 msgstr "Tidsserier"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:425
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:443
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:424
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:442
 msgid "Linear"
 msgstr "Linjär"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:427
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:426
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:443
 msgid "Power"
 msgstr "Dignitet"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:428
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:445
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:427
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
 msgid "Log"
 msgstr "Log"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:430
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:429
 msgid "Histogram"
 msgstr "Histogram"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:432
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:431
 msgid "Ordinal"
 msgstr "Ordningstal"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:438
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
 msgid "Y-axis scale"
 msgstr "Skala på Y-axel"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:451
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:450
 msgid "Show x-axis line and marks"
 msgstr "Visa x-axelns linje och markeringar"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:349
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:457
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
 msgid "Compact"
 msgstr "Kompakt"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:458
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:457
 msgid "Rotate 45°"
 msgstr "Rotera 45°"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:459
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:458
 msgid "Rotate 90°"
 msgstr "Rotera 90°"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:466
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:465
 msgid "Show y-axis line and marks"
 msgstr "Visa y-axelns linje och markeringar"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:478
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
 msgid "Auto y-axis range"
 msgstr "Automatiskt omfång på y-axeln"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:522
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:521
 msgid "Use a split y-axis when necessary"
 msgstr "Använd en delad y-axel när så krävs"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:529
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:528
 msgid "Show label on x-axis"
 msgstr "Visa benämningar på x-axeln"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:535
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
 msgid "X-axis label"
 msgstr "Benämning på x-axeln"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:544
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:543
 msgid "Show label on y-axis"
 msgstr "Visa benämningar på y-axeln"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:550
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:549
 msgid "Y-axis label"
 msgstr "Benämning på y-axeln"
 
@@ -7215,7 +7224,7 @@ msgstr "objekt"
 
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:138
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:252
-#: frontend/src/metabase/visualizations/lib/renderer_utils.js:349
+#: frontend/src/metabase/visualizations/lib/renderer_utils.js:352
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:380
 msgid "Total"
 msgstr "Totalt"
@@ -7264,7 +7273,7 @@ msgstr "Visualisering av framsteg kräver en siffra"
 msgid "Progress"
 msgstr "Framsteg"
 
-#: frontend/src/metabase/entities/collections.js:149
+#: frontend/src/metabase/entities/collections.js:151
 #: frontend/src/metabase/entities/snippet-collections.js:88
 #: frontend/src/metabase/visualizations/visualizations/Map.jsx:256
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:74
@@ -7604,7 +7613,7 @@ msgstr "Har du ett stort antal frågor sparade i {0}? Skapa samlingar för att h
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:100
 #: frontend/src/metabase/public/components/LogoBadge.jsx:21
 #: frontend/src/metabase/routes-public.jsx:13
-#: frontend/src/metabase/routes.jsx:139 src/metabase/api/setup.clj
+#: frontend/src/metabase/routes.jsx:138 src/metabase/api/setup.clj
 #: src/metabase/email/messages.clj
 msgid "Metabase"
 msgstr "Metabase"
@@ -9118,35 +9127,35 @@ msgstr "Datarättigheter"
 msgid "Collection permissions"
 msgstr "Samlingsrättigheter"
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:96
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:116
 msgid "See all collection permissions"
 msgstr "Visa alla samlingsrättigheter"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:813
+#: frontend/src/metabase/admin/permissions/selectors.js:817
 msgid "Also change sub-collections"
 msgstr "Ändra också under-samlingar"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:283
+#: frontend/src/metabase/admin/permissions/selectors.js:282
 msgid "Can edit this collection and its contents"
 msgstr "Kan redigera denna samling och dess innehåll"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:290
+#: frontend/src/metabase/admin/permissions/selectors.js:289
 msgid "Can view items in this collection"
 msgstr "Kan visa delar av denna samling"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:792
+#: frontend/src/metabase/admin/permissions/selectors.js:796
 msgid "Collection Access"
 msgstr "Tillgång till samling"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:878
+#: frontend/src/metabase/admin/permissions/selectors.js:882
 msgid "This group has permission to view at least one subcollection of this collection."
 msgstr "Denna grupp har rättighet att visa minst en av delarna i denna samling."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:883
+#: frontend/src/metabase/admin/permissions/selectors.js:887
 msgid "This group has permission to edit at least one subcollection of this collection."
 msgstr "Denna grupp har rättighet att redigera minst en av delarna i denna samling."
 
-#: frontend/src/metabase/admin/permissions/selectors.js:896
+#: frontend/src/metabase/admin/permissions/selectors.js:900
 msgid "View sub-collections"
 msgstr "Visa under-samlingar"
 
@@ -9158,7 +9167,7 @@ msgstr "Kom ihåg mig"
 msgid "X-ray this schema"
 msgstr "Genomlys detta schema"
 
-#: frontend/src/metabase/collections/components/Header.jsx:34
+#: frontend/src/metabase/collections/components/Header/Header.jsx:48
 msgid "Edit the permissions for this collection"
 msgstr "Redigera rättigheterna till denna samling"
 
@@ -9170,6 +9179,7 @@ msgstr "Lägg till en fråga till denna instrumentpanel"
 msgid "Create a new dashboard"
 msgstr "Skapa en ny instrumentpanel"
 
+#: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:124
 #: frontend/src/metabase/containers/ErrorPages.jsx:47
 msgid "The page you asked for couldn't be found."
 msgstr "Sidan du begärde kunde inte hittas."
@@ -9178,11 +9188,11 @@ msgstr "Sidan du begärde kunde inte hittas."
 msgid "Select a {0}"
 msgstr "Välj en {0}"
 
-#: frontend/src/metabase/containers/Overworld.jsx:245
+#: frontend/src/metabase/containers/Overworld.jsx:219
 msgid "Save dashboards, questions, and collections in \"{0}\""
 msgstr "Spara instrumentpaneler, frågor och samlingar i \"{0}\""
 
-#: frontend/src/metabase/containers/Overworld.jsx:246
+#: frontend/src/metabase/containers/Overworld.jsx:220
 msgid "Access dashboards, questions, and collections in \"{0}\""
 msgstr "Använda instrumentpaneler, frågor och samlingar i \"{0}\""
 
@@ -9202,7 +9212,7 @@ msgstr "Relaterade"
 msgid "More X-rays"
 msgstr "Flera genomlysningar"
 
-#: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableVisualization.jsx:80
+#: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableVisualization.jsx:81
 #: src/metabase/pulse/render/body.clj
 msgid "No results"
 msgstr "Inga resultat"
@@ -9417,10 +9427,10 @@ msgstr "Ej tillämpligt"
 msgid "Windows domain"
 msgstr "Windows-domän"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:528
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:543
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:549
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:527
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:533
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:542
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:548
 msgid "Labels"
 msgstr "Etiketter"
 
@@ -9428,7 +9438,7 @@ msgstr "Etiketter"
 msgid "Add members"
 msgstr "Lägg till medlemmar"
 
-#: frontend/src/metabase/entities/collections.js:156
+#: frontend/src/metabase/entities/collections.js:158
 msgid "Collection it's saved in"
 msgstr "Samlingen den sparats i"
 
@@ -9444,12 +9454,14 @@ msgstr "Administratörer"
 msgid "MetaBot"
 msgstr "MetaBot"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:59
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:66
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:132
 #: frontend/src/metabase/public/components/widgets/EmbedModalContent.jsx:287
+#: frontend/src/metabase/query_builder/containers/QuestionEmbedWidget.jsx:99
 msgid "Sharing"
 msgstr "Delning"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:24
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:27
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:218
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:251
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:280
@@ -9478,13 +9490,13 @@ msgid "Display"
 msgstr "Visa"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:402
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:450
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:465
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:483
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:491
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:521
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:436
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:464
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:476
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:482
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:490
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:520
 msgid "Axes"
 msgstr "Axlar"
 
@@ -9494,7 +9506,7 @@ msgstr "Axlar"
 msgid "Formatting"
 msgstr "Formattering"
 
-#: frontend/src/metabase/containers/Overworld.jsx:128
+#: frontend/src/metabase/containers/Overworld.jsx:103
 msgid "Try these x-rays based on your data."
 msgstr "Prova dessa genomlysningar på dina data"
 
@@ -9514,11 +9526,11 @@ msgstr "Bara en påminnelse:"
 msgid "{0} without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, but any questions you've saved using this data will be lost."
 msgstr "{0} utan exempeldatat kan inte frågebyggaren fungera. Du kan alltid återställa exempeldatat, men eventuella frågor du sparat mot detta data kommer att försvinna."
 
-#: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:32
+#: frontend/src/metabase/modes/components/drill/AutomaticDashboardDrill.jsx:41
 msgid "X-ray"
 msgstr "Genomlysning"
 
-#: frontend/src/metabase/modes/components/drill/CompareToRestDrill.js:33
+#: frontend/src/metabase/modes/components/drill/CompareToRestDrill.js:42
 msgid "Compare to the rest"
 msgstr "Jämför mot resten"
 
@@ -9531,11 +9543,11 @@ msgid "We suggest you leave this off unless you're doing manual timezone casting
 "many or most of your queries with this data."
 msgstr "Vi föreslår att du inte aktiverar denna om du inte använder manuell hantering av tidszon i många eller de flesta av dina frågor mot denna data."
 
-#: frontend/src/metabase/containers/Overworld.jsx:409
+#: frontend/src/metabase/containers/Overworld.jsx:384
 msgid "Your team's most important dashboards go here"
 msgstr "Din grupps viktigaste instrumentpaneler läggs här"
 
-#: frontend/src/metabase/containers/Overworld.jsx:410
+#: frontend/src/metabase/containers/Overworld.jsx:385
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr "Fäst instrumentpaneler i {0} för att de ska synas här för alla."
 
@@ -9580,15 +9592,15 @@ msgstr "Formatteringsalternativ"
 msgid "Task details"
 msgstr "Jobbdetaljer"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:39
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:42
 msgid "Troubleshooting logs"
 msgstr "Felsökningsloggar"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:41
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:44
 msgid "Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on."
 msgstr "Försöker du gå till botten med något? Denna avdelning visar loggar över Metabases bakgrundsjobb, vilka kan belysa vad som händer."
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:65
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:68
 msgid "Task"
 msgstr "Jobb"
 
@@ -9596,15 +9608,15 @@ msgstr "Jobb"
 msgid "DB ID"
 msgstr "DB-id"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:68
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:71
 msgid "Started at"
 msgstr "Började"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:69
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:72
 msgid "Ended at"
 msgstr "Slutade"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:70
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:73
 msgid "Duration (ms)"
 msgstr "Varaktighet (ms)"
 
@@ -9792,23 +9804,23 @@ msgstr "Räknare"
 msgid "Gauge ranges"
 msgstr "Räknaromfång"
 
-#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:105
+#: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:106
 msgid "Field to show"
 msgstr "Fält att visa"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:143
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:144
 msgid "last {0}"
 msgstr "senaste {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:218
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:219
 msgid "{0} was {1} {2}"
 msgstr "{0} var {1} {2}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:73
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:74
 msgid "Group by a time field to see how this has changed over time"
 msgstr "Grupperat på ett tidsfält för att se hur detta har ändrats över tid"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:52
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:53
 msgid "Switch positive / negative colors?"
 msgstr "Byta posittiva / negativa färger?"
 
@@ -11226,7 +11238,7 @@ msgstr "Hur detta mått fördelas över olika siffror"
 msgid "Sessions by page where the session began"
 msgstr "Sessioner per sida där sessionen började"
 
-#: frontend/src/metabase/lib/schema_metadata.js:605
+#: frontend/src/metabase/lib/schema_metadata.js:610
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Number.yaml
@@ -11727,11 +11739,11 @@ msgstr "Felaktig"
 msgid "Add a time"
 msgstr "Lägg till en tid"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:197
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:198
 msgid "Nothing to compare for the previous {0}."
 msgstr "Inget att jämföra för den föregående {0}."
 
-#: frontend/src/metabase-lib/lib/Dimension.js:835
+#: frontend/src/metabase-lib/lib/Dimension.js:843
 msgid "by {0}"
 msgstr "per {0}"
 
@@ -12614,7 +12626,7 @@ msgstr "Kör automatiska frågor för enkla summeringar och filter"
 msgid "When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 msgstr "När detta är aktiverat kommer Metabase att automatiskt köra frågor när användare kör enkel utforskning med Summa- och Filter-knapparna mot en tabell eller graf. Du kan slå av detta om frågorna mot databasen går långsamt. Denna inställning påverkar inte nedbrytning eller SQL-frågor."
 
-#: frontend/src/metabase/containers/Overworld.jsx:340
+#: frontend/src/metabase/containers/Overworld.jsx:314
 msgid "Learn about this database"
 msgstr "Lär dig om denna databas"
 
@@ -12681,7 +12693,7 @@ msgstr "Grundläggande mått"
 msgid "Custom…"
 msgstr "Anpassad..."
 
-#: frontend/src/metabase/query_builder/components/DimensionList.jsx:146
+#: frontend/src/metabase/query_builder/components/DimensionList.jsx:153
 msgid "Add grouping"
 msgstr "Lägg till gruppering"
 
@@ -12723,6 +12735,7 @@ msgstr "Anpassad kolumn"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:55
 #: frontend/src/metabase/query_builder/components/view/QuestionSummaries.jsx:61
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:224
 msgid "Summarize"
 msgstr "Summera"
 
@@ -12743,6 +12756,7 @@ msgid "Pick a column to group by"
 msgstr "Välj en kolumn att gruppera på"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/DataStep.jsx:30
+#: frontend/src/metabase/query_builder/components/view/NewQuestionHeader.jsx:9
 msgid "Pick your starting data"
 msgstr "Välj dina startdata"
 
@@ -12877,11 +12891,11 @@ msgstr "Lägg till ett mått"
 #: frontend/src/metabase/lib/core.js:137 frontend/src/metabase/lib/core.js:142
 #: frontend/src/metabase/lib/core.js:147 frontend/src/metabase/lib/core.js:152
 #: frontend/src/metabase/lib/core.js:157 frontend/src/metabase/lib/core.js:162
-#: frontend/src/metabase/user/components/UserSettings.jsx:65
+#: frontend/src/metabase/user/components/UserSettings.jsx:63
 msgid "Profile"
 msgstr "Profil"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:575
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:571
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "Detta är normalt ganska snabbt, men det ser ut att ta en stund just nu."
 
@@ -12893,7 +12907,7 @@ msgstr "Kombination"
 msgid "Row"
 msgstr "Rad"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:23
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:24
 msgid "Trend"
 msgstr "Trend"
 
@@ -13380,31 +13394,31 @@ msgstr "För att använda detta val krävs att angiven värd är en FQDN. Om ans
 msgid "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen."
 msgstr "Som förval användare Metabase en snabb synkning varje timme och en mera omfattande skanning av fältvärden dagligen. Om du har en stor databas rekommenderar vi att du aktiverar detta och tittar på hur ofta skanningen av fältvärden sker."
 
-#: frontend/src/metabase/containers/Overworld.jsx:133
+#: frontend/src/metabase/containers/Overworld.jsx:108
 msgid "Remove these suggestions"
 msgstr "Ta bort dessa förslag"
 
-#: frontend/src/metabase/containers/Overworld.jsx:142
+#: frontend/src/metabase/containers/Overworld.jsx:117
 msgid "Remove these suggestions?"
 msgstr "Ta bort bort dessa förslag?"
 
-#: frontend/src/metabase/containers/Overworld.jsx:158
+#: frontend/src/metabase/containers/Overworld.jsx:133
 msgid "These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables."
 msgstr "Dessa kommer inte att visas på första-sidan för någon av dina användare längre, men du kan alltid komma åt genomlysningar genom att titta på data från första-sidan och sedan klicka på blixten vid en av dina tabeller."
 
-#: frontend/src/metabase/containers/Overworld.jsx:285
+#: frontend/src/metabase/containers/Overworld.jsx:259
 msgid "Hide this section"
 msgstr "Göm denna sektion"
 
-#: frontend/src/metabase/containers/Overworld.jsx:293
+#: frontend/src/metabase/containers/Overworld.jsx:267
 msgid "Remove this section?"
 msgstr "Ta bort denna sektion?"
 
-#: frontend/src/metabase/containers/Overworld.jsx:309
+#: frontend/src/metabase/containers/Overworld.jsx:283
 msgid "\"Our Data\" won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation."
 msgstr "\"Våra data\" kommer inte att visas på första-sidan för någon av dina användare längre, men du kan alltid titta i dina databaser och tabeller genom att klicka på Visa data på första-sidan."
 
-#: frontend/src/metabase/entities/collections.js:135
+#: frontend/src/metabase/entities/collections.js:136
 msgid "My new fantastic collection"
 msgstr "Min nya fantastiska samling"
 
@@ -13444,11 +13458,11 @@ msgstr "Inkludera inte"
 msgid "This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries."
 msgstr "Detta fält kommer inte att visas eller kunna väljas i frågor skapade i guiden. Det kommer fortfarande att vara tillgängligt via SQL- eller interna frågor."
 
-#: frontend/src/metabase/lib/schema_metadata.js:614
+#: frontend/src/metabase/lib/schema_metadata.js:619
 msgid "Cumulative sum"
 msgstr "Ackumulerad summa"
 
-#: frontend/src/metabase/lib/schema_metadata.js:632
+#: frontend/src/metabase/lib/schema_metadata.js:637
 msgid "Standard deviation"
 msgstr "Standardavvikelse"
 
@@ -13800,11 +13814,11 @@ msgstr "För att tillåta användare logga in med Google behöver du ge Metabase
 msgid "Be sure to include the full client ID, including the apps.googleusercontent.com suffix."
 msgstr "Se till att du tar med hela \"client ID\" inklusive suffixet apps.googleusercontent.com"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:42
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:47
 msgid "Metabase {0} is available."
 msgstr "Metabase {0} är nu tillgänglig."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:43
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:48
 msgid "You're running {0}"
 msgstr "Du kör {0}"
 
@@ -13812,7 +13826,7 @@ msgstr "Du kör {0}"
 msgid "Sorry, we were unable to check for updates at this time."
 msgstr "Ursäkta, men vi kunde inte kontrollera uppdateringar just nu."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:119
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:125
 msgid "patch release"
 msgstr "patch-release"
 
@@ -13872,7 +13886,7 @@ msgstr "Av säkerhetsskäl upphör länkar för återställning av lösenord att
 msgid "Save new password"
 msgstr "Spara nytt lösenord"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:537
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:558
 msgid "No matching result"
 msgstr "Inga matchande resultat"
 
@@ -13900,7 +13914,7 @@ msgstr "eller"
 #: frontend/src/metabase/entities/databases/forms.js:48
 #: frontend/src/metabase/entities/databases/forms.js:271
 #: frontend/src/metabase/entities/databases/forms.js:302
-#: frontend/src/metabase/entities/users/forms.js:59
+#: frontend/src/metabase/entities/users/forms.js:60
 #: frontend/src/metabase/lib/validate.js:6
 msgid "required"
 msgstr "obligatorisk"
@@ -13922,15 +13936,15 @@ msgstr "Metabase kan skanna värden i varje fält i denna databas för att aktiv
 msgid "Collection"
 msgstr "Samling"
 
-#: frontend/src/metabase/entities/users/forms.js:55
+#: frontend/src/metabase/entities/users/forms.js:56
 msgid "Confirm your password"
 msgstr "Bekräfta ditt lösenord"
 
-#: frontend/src/metabase/entities/users/forms.js:60
+#: frontend/src/metabase/entities/users/forms.js:61
 msgid "passwords do not match"
 msgstr "lösenorden matchar inte varandra"
 
-#: frontend/src/metabase/entities/users/forms.js:87
+#: frontend/src/metabase/entities/users/forms.js:88
 msgid "Department of Awesome"
 msgstr "Avdelningen för stordåd"
 
@@ -14477,36 +14491,36 @@ msgstr "Byggd på {0}"
 msgid "To:"
 msgstr "Till:"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:40
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:45
 msgid "This question can't be used because it's based on a different database."
 msgstr "Denna fråga kan inte användas eftersom den är baserad på en annan databas."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:44
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:49
 msgid "Couldn't find a saved question with that ID number."
 msgstr "Kunde inte hitta en sparad fråga med det id:t"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:55
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:60
 msgid "Pick a saved question"
 msgstr "Välj en sparad fråga"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:57
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:62
 msgid "Pick a different question"
 msgstr "Välj en annan fråga"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:162
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:62
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:160
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:67
 msgid "Loading…"
 msgstr "Laddar..."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:79
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:84
 msgid "Question #…"
 msgstr "Fråga #..."
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:81
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:86
 msgid "Question #{0}"
 msgstr "Fråga #{0}"
 
-#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:115
+#: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:120
 msgid "Last edited {0}"
 msgstr "Senast redigerad {0}"
 
@@ -14562,7 +14576,7 @@ msgstr "Formattering av värden"
 msgid "Full"
 msgstr "Hela"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:199
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:200
 msgid "No change from last {0}"
 msgstr "Ingen ändring sedan {0}"
 
@@ -14618,6 +14632,7 @@ msgstr "Google Auth-biljett verkar vara felaktig"
 msgid "Double check that it matches in Google and Metabase."
 msgstr "Dubbelkolla att det matchar mellan Google och Metabase"
 
+#: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionPicker.jsx:40
 #: src/metabase/api/table.clj
 msgid "Everything else"
 msgstr "Allting annat"
@@ -15034,20 +15049,20 @@ msgstr "Fyll i enskilda fält"
 msgid "Enter some SQL here so you can reuse it later"
 msgstr "Ange någon SQL här så att du kan återanvända det senare."
 
-#: frontend/src/metabase/entities/snippets.js:20
+#: frontend/src/metabase/entities/snippets.js:21
 msgid "Give your snippet a name"
 msgstr "Ge din snutt ett namn"
 
-#: frontend/src/metabase/entities/snippets.js:21
+#: frontend/src/metabase/entities/snippets.js:22
 msgid "Current Customers"
 msgstr "Nuvarande kunder"
 
 #: frontend/src/metabase/entities/snippet-collections.js:81
-#: frontend/src/metabase/entities/snippets.js:26
+#: frontend/src/metabase/entities/snippets.js:27
 msgid "Add a description"
 msgstr "Lägg till en beskrivning"
 
-#: frontend/src/metabase/entities/users/forms.js:37
+#: frontend/src/metabase/entities/users/forms.js:38
 msgid "Use site default"
 msgstr "Använd förval från sajten"
 
@@ -15856,35 +15871,35 @@ msgstr "Slutsida"
 msgid "No groups"
 msgstr "Inga grupper"
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:81
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:101
 msgid "Permissions for {0}"
 msgstr "Rättigheter för {0}"
 
-#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:83
+#: frontend/src/metabase/admin/permissions/containers/CollectionPermissionsModal.jsx:103
 msgid "Permissions for this folder"
 msgstr "Rättigheter för denna mapp"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:295
+#: frontend/src/metabase/admin/permissions/selectors.js:294
 msgid "Grant Edit access"
 msgstr "Ge tillåtelse att redigera"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:296
+#: frontend/src/metabase/admin/permissions/selectors.js:295
 msgid "Can modify snippets in this folder"
 msgstr "Kan ändra i snuttar i denna mapp"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:301
+#: frontend/src/metabase/admin/permissions/selectors.js:300
 msgid "Grant View access"
 msgstr "Ge tillåtelse att se"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:302
+#: frontend/src/metabase/admin/permissions/selectors.js:301
 msgid "Can insert and use snippets in this folder, but can't edit the SQL they contain"
 msgstr "Kan lägga in och använda snuttar i denna mapp, men kan inte redigera den SQL de innehåller"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:308
+#: frontend/src/metabase/admin/permissions/selectors.js:307
 msgid "Can't view or insert snippets in this folder"
 msgstr "Kan inte visa eller lägga in snuttar i denna mapp"
 
-#: frontend/src/metabase/admin/permissions/selectors.js:812
+#: frontend/src/metabase/admin/permissions/selectors.js:816
 msgid "Also change sub-folders"
 msgstr "Också ändra undermappar"
 
@@ -15892,7 +15907,7 @@ msgstr "Också ändra undermappar"
 msgid "First day of the week"
 msgstr "Första dagen i veckan"
 
-#: frontend/src/metabase/auth/components/GoogleButton.jsx:75
+#: frontend/src/metabase/auth/components/GoogleButton.jsx:74
 msgid "There was an issue signing in with Google. Please contact an administrator."
 msgstr "Ett problem uppstod vid inloggning med Google. Kontakta en administratör."
 
@@ -15911,7 +15926,7 @@ msgstr "Öppna menyn för Metabase-åtgärder"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:47
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:372
-#: frontend/src/metabase/lib/click-behavior.js:168
+#: frontend/src/metabase/lib/click-behavior.js:169
 msgid "Do nothing"
 msgstr "Gör ingenting"
 
@@ -16128,37 +16143,37 @@ msgid "Something short but sweet"
 msgstr "Något kort och bra"
 
 #: frontend/src/metabase/entities/snippet-collections.js:95
-#: frontend/src/metabase/entities/snippets.js:55
+#: frontend/src/metabase/entities/snippets.js:56
 msgid "Folder this should be in"
 msgstr "Mapp denna ska ligga i"
 
-#: frontend/src/metabase/lib/click-behavior.js:167
+#: frontend/src/metabase/lib/click-behavior.js:168
 msgid "Open the action menu"
 msgstr "Öppna val-menyn"
 
-#: frontend/src/metabase/lib/click-behavior.js:176
+#: frontend/src/metabase/lib/click-behavior.js:177
 msgid "{0} column has custom behavior"
 msgid_plural "{0} columns have custom behavior"
 msgstr[0] "kolumnen {0} har anpassningar"
 msgstr[1] "kolumnerna {0} har anpassningar"
 
-#: frontend/src/metabase/lib/click-behavior.js:189
+#: frontend/src/metabase/lib/click-behavior.js:190
 msgid "Go to..."
 msgstr "Gå till..."
 
-#: frontend/src/metabase/lib/click-behavior.js:191
+#: frontend/src/metabase/lib/click-behavior.js:192
 msgid "Go to dashboard"
 msgstr "Gå till instrumentpanel"
 
-#: frontend/src/metabase/lib/click-behavior.js:193
+#: frontend/src/metabase/lib/click-behavior.js:194
 msgid "Go to question"
 msgstr "Gå till fråga"
 
-#: frontend/src/metabase/lib/click-behavior.js:194
+#: frontend/src/metabase/lib/click-behavior.js:195
 msgid "Go to url"
 msgstr "Gå till URL"
 
-#: frontend/src/metabase/lib/click-behavior.js:197
+#: frontend/src/metabase/lib/click-behavior.js:198
 msgid "Filter this dashboard"
 msgstr "Filtrera denna instrumentpanel"
 
@@ -16446,12 +16461,12 @@ msgstr "Är tomt"
 msgid "Not null"
 msgstr "Är inte tomt"
 
-#: frontend/src/metabase/lib/schema_metadata.js:615
+#: frontend/src/metabase/lib/schema_metadata.js:620
 msgid "Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "Ökande summa av alla värden i en kolumn, t.ex total intäkt över tid."
 
-#: frontend/src/metabase/lib/schema_metadata.js:624
+#: frontend/src/metabase/lib/schema_metadata.js:629
 msgid "Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "Ökande antal av antalet rader, t.ex totalt antal försäljningar över tid."
@@ -16880,23 +16895,23 @@ msgstr "Tillhandahållare av SAML-identitet"
 msgid "SAML Identity Provider SSO URL"
 msgstr "URL för tillhandahållare av SAML-identitet"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:66
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:69
 msgid "DB Name"
 msgstr "Databasnamn"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:67
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:70
 msgid "DB Engine"
 msgstr "Databastyp"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:83
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:86
 msgid "Unknown name"
 msgstr "Okänt namn"
 
-#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:84
+#: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:87
 msgid "Unknown engine"
 msgstr "Okänd databastyp"
 
-#: frontend/src/metabase/collections/components/Header.jsx:46
+#: frontend/src/metabase/collections/components/Header/Header.jsx:60
 msgid "Edit collection"
 msgstr "Redigera samling"
 
@@ -16904,15 +16919,15 @@ msgstr "Redigera samling"
 msgid "Pinned items"
 msgstr "Taggade delar"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:137
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:132
 msgid "Other users' personal collections"
 msgstr "Andras personliga samlingar"
 
-#: frontend/src/metabase/collections/containers/CollectionSidebar.jsx:145
+#: frontend/src/metabase/collections/containers/CollectionSidebar/CollectionSidebar.jsx:140
 msgid "View archive"
 msgstr "Visa arkiv"
 
-#: frontend/src/metabase/collections/utils.js:13
+#: frontend/src/metabase/collections/utils.js:18
 msgid "Your personal collection"
 msgstr "Din personliga samling"
 
@@ -17079,7 +17094,7 @@ msgstr "Du behöver {0} först."
 msgid "First, you'll have to {0}."
 msgstr "Först måste du {0}."
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:146
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:148
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Raderna {0}-{1} av de första {2}"
 
@@ -17091,7 +17106,7 @@ msgstr "Drag hit fält"
 msgid "Percentage"
 msgstr "Procenttal"
 
-#: frontend/src/metabase/lib/data_grid.js:371
+#: frontend/src/metabase/lib/data_grid.js:382
 msgid "Totals for {0}"
 msgstr "Total för {0}"
 
@@ -17726,11 +17741,12 @@ msgstr "minuter efter timmen"
 msgid "Email sent"
 msgstr "Email skickat"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:60
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:67
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:133
 msgid "Add data to share this dashboard"
 msgstr "Lägg till data för att dela denna instrumentpanel"
 
-#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:85
+#: frontend/src/metabase/dashboard/components/DashboardActions.jsx:92
 msgid "Dashboard subscriptions"
 msgstr "Dashboard-prenumerationer"
 
@@ -17901,11 +17917,11 @@ msgstr "Har din e-post konfigurerad för dig."
 msgid "Have your server maintained for you."
 msgstr "Låt din server underhållas åt dig."
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:149
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:159
 msgid "Want to have upgrades taken care of for you?"
 msgstr "Vill du ta hand om uppgraderingar för dig?"
 
-#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:150
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:160
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:17
 msgid "Migrate to Metabase Cloud."
 msgstr "Migrera till Metabase Cloud."
@@ -17986,7 +18002,7 @@ msgstr "Välj en konvertering"
 msgid "Don't cast"
 msgstr "Cast:a inte"
 
-#: frontend/src/metabase/components/ErrorCard.jsx:22
+#: frontend/src/metabase/components/AppErrorCard/AppErrorCard.jsx:39
 msgid "Something went wrong"
 msgstr "Något gick fel"
 
@@ -18035,7 +18051,7 @@ msgstr "Förväntade boolean men fick {0}"
 msgid "12:00 PM"
 msgstr "00:00"
 
-#: frontend/src/metabase/meta/Dashboard.js:105
+#: frontend/src/metabase/meta/Dashboard.js:106
 msgid "Subtotal, Age, Price, Quantity, etc."
 msgstr "Delsumma, ålder, pris, kvantitet osv."
 
@@ -18129,7 +18145,7 @@ msgid_plural "and {0} more filters"
 msgstr[0] "och ytterligare {0} selektion"
 msgstr[1] "och ytterligare {0} selektioner"
 
-#: frontend/src/metabase/user/components/UserSettings.jsx:70
+#: frontend/src/metabase/user/components/UserSettings.jsx:67
 msgid "Login History"
 msgstr "Inloggningshistorik"
 
@@ -18417,6 +18433,9 @@ msgid "Information about active and idle connections for all pools"
 msgstr "Information om aktiva och inaktiva anslutningar för alla pooler."
 
 #: frontend/src/metabase/browse/containers/TableBrowser.jsx:60
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:902
+#: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionPicker.jsx:113
+#: src/metabase/api/database.clj
 msgid "Saved Questions"
 msgstr "Sparade frågor"
 
@@ -18464,11 +18483,12 @@ msgstr "Stäng sidofältet"
 msgid "Add questions"
 msgstr "Lägg till frågor"
 
-#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionList.jsx:49
+#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionList.jsx:48
+#: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionList.jsx:37
 msgid "Nothing here"
 msgstr "Inget här"
 
-#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionPicker.jsx:67
+#: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionPicker.jsx:68
 msgid "Search…"
 msgstr "Sök..."
 
@@ -18500,15 +18520,15 @@ msgstr "Saknar en öppningsfäste"
 msgid "Invalid character: {0}"
 msgstr "Ogiltigt tecken: {0}"
 
-#: frontend/src/metabase/meta/Dashboard.js:94
+#: frontend/src/metabase/meta/Dashboard.js:95
 msgid "User ID, Product ID, Event ID, etc."
 msgstr "Användar-id, produkt-id, evenemangs-id osv."
 
-#: frontend/src/metabase/meta/Dashboard.js:117
+#: frontend/src/metabase/meta/Dashboard.js:118
 msgid "Text or Category"
 msgstr "Text eller kategori"
 
-#: frontend/src/metabase/meta/Dashboard.js:118
+#: frontend/src/metabase/meta/Dashboard.js:119
 msgid "Name, Rating, Description, etc."
 msgstr "Namn, betyg, beskrivning osv."
 
@@ -18516,7 +18536,7 @@ msgstr "Namn, betyg, beskrivning osv."
 msgid "String"
 msgstr "Sträng"
 
-#: frontend/src/metabase/query_builder/components/DataSelector.jsx:734
+#: frontend/src/metabase/query_builder/components/DataSelector.jsx:759
 msgid "Search for a table..."
 msgstr "Sök efter ett bord..."
 
@@ -18766,4 +18786,55 @@ msgstr "värdet måste vara en giltig koercitionsstrategi (nyckelord eller strä
 #: src/metabase/util/schema.clj
 msgid "password is too common."
 msgstr "lösenord är alltför vanligt."
+
+#: enterprise/frontend/src/metabase-enterprise/store/containers/StoreActivate.jsx:20
+msgid "Enter the token you received from the store"
+msgstr "Ange den token som du fick från butiken"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:26
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud håller din instans uppdaterad. Du har för närvarande version {0}. Tack för att du är kund!"
+
+#: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:83
+msgid "No successful checks yet."
+msgstr "Inga lyckade kontroller ännu."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:87
+#: src/metabase/api/geojson.clj
+msgid "Invalid custom GeoJSON"
+msgstr "Ogiltig anpassad GeoJSON"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:91
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:96
+msgid "Invalid custom GeoJSON: does not contain features"
+msgstr "Ogiltig anpassad GeoJSON: innehåller inte funktioner"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:101
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:108
+msgid "Invalid custom GeoJSON: feature is misssing properties"
+msgstr "Ogiltig anpassad GeoJSON: funktionen saknar egenskaper"
+
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:227
+msgid "Break out by a…"
+msgstr "Bryt ut genom en..."
+
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:231
+msgid "Automatic explorations"
+msgstr "Automatiska utforskningar"
+
+#: frontend/src/metabase/visualizations/components/ChartClickActions.jsx:236
+msgid "Filter by this value"
+msgstr "Filtrera efter detta värde"
+
+#: src/metabase/api/geojson.clj
+msgid "GeoJSON URL failed to load"
+msgstr "GeoJSON URL kunde inte laddas"
+
+#: src/metabase/driver/common/parameters/values.clj
+msgid "Error determining value for parameter: {0}"
+msgstr "Fel vid fastställande av värdet för parametern: {0}"
+
+#: src/metabase/driver/common/parameters/values.clj
+msgid "Error building query parameter map: {0}"
+msgstr "Fel i uppbyggnaden av en karta med frågeparametrar: {0}"
 

@@ -806,6 +806,7 @@ jobs:
     parameters:
       <<: *Params
     executor: clojure-and-node
+    resource_class: large
     steps:
       - attach-workspace
       - run-on-change:
@@ -880,9 +881,15 @@ jobs:
       source-folder:
         type: string
         default: ""
+      folder:
+        type: string
+        default: ""
       test-files:
         type: string
         default: ""
+      qa-db:
+        type: boolean
+        default: false
       before-steps:
         type: steps
         default: []
@@ -891,6 +898,7 @@ jobs:
     environment:
       MB_EDITION: << parameters.edition >>
       CYPRESS_GROUP:  << parameters.cypress-group >>
+      QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
     steps:
       - attach-workspace
@@ -1173,111 +1181,12 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-          name: e2e-tests-smoketest-<< matrix.edition >>
+              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "onboarding", "native", "native-filters", "question", "sharing", "smoketest", "visualizations"]
+          name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          cypress-group: "smoketest-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/smoketest
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-admin-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "admin-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/admin
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-collections-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "collections-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/collections
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-dashboard-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "dashboard-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/dashboard
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-filters-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "filters-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/filters
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-onboarding-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "onboarding-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/onboarding
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-native-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "native-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/native
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-question-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "question-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/question
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-binning-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "binning-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/binning
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-sharing-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "sharing-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/sharing
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-visualizations-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "visualizations-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/visualizations
+          cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
+          source-folder: << matrix.folder >>
 
       - fe-tests-cypress:
           name: e2e-tests-mongo-4-<< matrix.edition >>
@@ -1285,7 +1194,8 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-mongo-4
           cypress-group: "mongo"
-          source-folder: frontend/test/metabase-db/mongo
+          source-folder: mongo
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 27017
@@ -1297,7 +1207,8 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-postgres-12
           cypress-group: "postgres"
-          source-folder: frontend/test/metabase-db/postgres
+          source-folder: postgres
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 5432
@@ -1309,7 +1220,8 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-mysql-8
           cypress-group: "mysql"
-          source-folder: frontend/test/metabase-db/mysql
+          source-folder: mysql
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 3306

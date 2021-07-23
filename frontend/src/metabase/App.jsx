@@ -55,7 +55,6 @@ export default class App extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.log("COMPONENT DID CATCH LOLE");
     this.setState({ errorInfo });
   }
 

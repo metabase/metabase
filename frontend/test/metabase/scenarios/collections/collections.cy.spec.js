@@ -526,14 +526,15 @@ describe("scenarios > collection_defaults", () => {
           selectItemUsingCheckbox("Orders");
           cy.findByText("1 item selected").should("be.visible");
 
-          // Select all
-          cy.icon("dash").click();
-          cy.icon("dash").should("not.exist");
-          cy.findByText("4 items selected");
-
-          // Deselect all
           cy.findByTestId("bulk-action-bar").within(() => {
-            cy.icon("check").click();
+            // Select all
+            cy.findByTestId("checkbox-root").should("be.visible");
+            cy.icon("dash").click({ force: true });
+            cy.icon("dash").should("not.exist");
+            cy.findByText("4 items selected");
+
+            // Deselect all
+            cy.icon("check").click({ force: true });
           });
           cy.icon("check").should("not.exist");
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
@@ -630,8 +631,9 @@ function selectItemUsingCheckbox(item, icon = "table") {
     .closest("tr")
     .within(() => {
       cy.icon(icon).trigger("mouseover");
-      cy.findByRole("checkbox")
+      cy.findByTestId("checkbox-root")
         .should("be.visible")
+        .findByRole("checkbox")
         .click();
     });
 }

@@ -1,6 +1,5 @@
 import React from "react";
 import cx from "classnames";
-import pure from "recompose/pure";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
@@ -21,4 +20,4 @@ const TitleAndDescription = ({ title, description, className }: Attributes) => (
   </div>
 );
 
-export default pure(TitleAndDescription);
+export default React.memo(TitleAndDescription);
