@@ -36,7 +36,7 @@ By default caching is disabled so that we always re-run every question. However,
 
 **How to detect this:** Open the Admin Panel, go to "Settings", and look in the "Caching" tab to see whether caching is enabled or not.
 
-**How to fix this:** [This guide][admin-caching] explains how to change the minimum query duration (we cache anything that takes longer than that to run) and the maximum cache size (which is the total memory the cache will ever use). You may need to experiment with these values over several days to find the best balance. For example, if you increase the total memory used by the cache, you may also want to increase the memory that the JVM is allowed to use (discussed below).
+**How to fix this:** [This guide][admin-caching] explains how to change the minimum query duration (we cache anything that takes longer than that to run) and the maximum cache size for each query result. You may need to experiment with these values over several days to find the best balance.
 
 ### The answer you want isn't cached.
 
