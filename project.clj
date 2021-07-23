@@ -379,7 +379,7 @@
      [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
 
      :eastwood
-     {:exclude-namespaces [:test-paths dev dev.test]
+     {:exclude-namespaces [dev dev.test]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
                            ;; These linters are pretty useful but give a few false positives and can't be selectively
