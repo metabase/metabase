@@ -56,7 +56,5 @@
                                           column-viz-settings)
             updated-card-viz-settings   (assoc card-viz-settings ::mb.viz/column-settings updated-column-viz-settings)
             rff' (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
-        (def my-updated-card-viz-settings updated-card-viz-settings)
-        (comment (clojure.pprint/pprint my-updated-card-viz-settings))
         (qp query rff' context))
       (qp query rff context))))
