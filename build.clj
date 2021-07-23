@@ -167,7 +167,7 @@
       (clean!)
       (let [basis (create-basis edition)]
         (compile-sources! basis)
-        (copy-resources! basis)
+        (copy-resources! edition basis)
         (create-uberjar! basis)
         (update-manifest!))
       (c/announce "Built target/uberjar/metabase.jar in %.1f seconds."
