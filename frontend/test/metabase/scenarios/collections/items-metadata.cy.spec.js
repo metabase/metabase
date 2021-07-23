@@ -82,8 +82,8 @@ function changeDashboard() {
 
 function changeQuestion() {
   cy.intercept("PUT", "/api/card/**").as("updateQuestion");
-  cy.icon("pencil").click();
-  cy.findByText("Edit this question").click();
+  cy.findByTestId("saved-question-header-button").click();
+  cy.findByTestId("edit-details-button").click();
   cy.findByLabelText("Description")
     .click()
     .type("Very insightful");
