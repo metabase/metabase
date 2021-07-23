@@ -18,7 +18,7 @@ import Table from "metabase/entities/tables";
 
 function getColorForIconWrapper(props) {
   if (props.item.collection_position) {
-    return color("warning");
+    return color("saturated-yellow");
   }
   switch (props.type) {
     case "collection":
@@ -91,7 +91,7 @@ function ItemIcon({ item, type }) {
       {type === "table" ? (
         <Icon name="database" />
       ) : (
-        <Icon name={item.getIcon()} size={20} />
+        <Icon {...item.getIcon()} size={20} />
       )}
     </IconWrapper>
   );

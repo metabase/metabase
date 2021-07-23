@@ -37,7 +37,7 @@ const Segments = createEntity({
         segment.id,
       ),
     getColor: segment => color("accent7"),
-    getIcon: segment => "segment",
+    getIcon: segment => ({ name: "segment" }),
   },
 
   form: {

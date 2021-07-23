@@ -35,11 +35,14 @@ class ArchiveCollectionModal extends React.Component {
   close = () => {
     const { onClose, object, push } = this.props;
     onClose();
-    const parent =
-      object.effective_ancestors.length > 0
-        ? object.effective_ancestors.pop()
-        : null;
-    push(Urls.collection(parent));
+
+    if (object.archived) {
+      const parent =
+        object.effective_ancestors.length > 0
+          ? object.effective_ancestors.pop()
+          : null;
+      push(Urls.collection(parent));
+    }
   };
 
   render() {

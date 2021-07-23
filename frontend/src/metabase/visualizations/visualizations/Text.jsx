@@ -98,6 +98,8 @@ export default class Text extends Component {
     this.props.onUpdateVisualizationSettings({ text: text });
   }
 
+  preventDragging = e => e.stopPropagation();
+
   render() {
     const { className, gridSize, settings, isEditing } = this.props;
     const isSingleRow = gridSize && gridSize.height === 1;
@@ -112,8 +114,9 @@ export default class Text extends Component {
                 styles["text-card-markdown"],
                 getSettingsStyle(settings),
               )}
-              source={settings.text}
-            />
+            >
+              {settings.text}
+            </ReactMarkdown>
           ) : (
             <textarea
               className={cx(
@@ -124,6 +127,9 @@ export default class Text extends Component {
               placeholder={t`Write here, and use Markdown if you'd like`}
               value={settings.text}
               onChange={e => this.handleTextChange(e.target.value)}
+              // Prevents text cards from dragging when you actually want to select text
+              // See: https://github.com/metabase/metabase/issues/17039
+              onMouseDown={this.preventDragging}
             />
           )}
         </div>
@@ -144,8 +150,9 @@ export default class Text extends Component {
               styles["text-card-markdown"],
               getSettingsStyle(settings),
             )}
-            source={settings.text}
-          />
+          >
+            {settings.text}
+          </ReactMarkdown>
         </div>
       );
     }

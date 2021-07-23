@@ -120,6 +120,19 @@ describeWithToken("formatting > whitelabel", () => {
       cy.findByText(`${COMPANY_NAME} is up and running.`);
       cy.findByText("Metabase is up and running.").should("not.exist");
     });
+
+    it.skip("should not show the old name in the admin panel (metabase#17043)", () => {
+      cy.reload();
+
+      cy.findByDisplayValue(COMPANY_NAME);
+      cy.contains(
+        `These are the primary colors used in charts and throughout ${COMPANY_NAME}.`,
+      );
+      cy.contains(`The top nav bar of ${COMPANY_NAME}.`);
+
+      cy.visit("/admin/settings/general");
+      cy.contains(`The name used for this instance of ${COMPANY_NAME}.`);
+    });
   });
 
   describe("company color theme", () => {
@@ -137,54 +150,6 @@ describeWithToken("formatting > whitelabel", () => {
           nav: `#${colors.nav.hex}`,
         },
       });
-    });
-
-    it("should reflect color changes", () => {
-      cy.signOut();
-      cy.visit("/");
-
-      // Note that if we have modified the logo, the entire background turns the brand color.
-      // But if we _haven't_, as is the case now, then the existing logo is branded
-      // As is the "Remember me" and "Sign in" inputs
-      cy.get(".Icon.text-brand").should(
-        "have.css",
-        "color",
-        `rgb(${colors.primary.rgb.join(", ")})`,
-      );
-
-      cy.findByLabelText("Email address").type("some@email.test");
-      cy.findByLabelText("Password").type("1234");
-      cy.get(".Button--primary").should(
-        "have.css",
-        "background-color",
-        `rgb(${colors.primary.rgb.join(", ")})`,
-      );
-
-      cy.log("Normal users should have a green header");
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.get(".Nav").should(
-        "have.css",
-        "background-color",
-        `rgb(${colors.nav.rgb.join(", ")})`,
-      );
-
-      cy.log(
-        "Admin users should also have a green header, but yellow in the admin panel",
-      );
-      cy.signInAsAdmin();
-      cy.visit("/");
-      cy.get(".Nav").should(
-        "have.css",
-        "background-color",
-        `rgb(${colors.nav.rgb.join(", ")})`,
-      );
-      cy.visit("/admin");
-      cy.get(".Nav").should(
-        "have.css",
-        "background-color",
-        `rgb(${colors.additional5.rgb.join(", ")})`,
-      );
     });
 
     it.skip("should show color changes reflected in q visualizations (metabase-enterprise #470)", () => {

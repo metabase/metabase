@@ -206,7 +206,7 @@ export default class ItemPicker extends React.Component {
                       item={collection}
                       name={collection.name}
                       color={COLLECTION_ICON_COLOR}
-                      icon={getCollectionIcon(collection)}
+                      icon={getCollectionIcon(collection).name}
                       selected={canSelect && isSelected(collection)}
                       canSelect={canSelect}
                       hasChildren={hasChildren}
@@ -253,7 +253,7 @@ export default class ItemPicker extends React.Component {
                             item={item}
                             name={item.getName()}
                             color={item.getColor()}
-                            icon={item.getIcon()}
+                            icon={item.getIcon().name}
                             selected={isSelected(item)}
                             canSelect={hasPermission}
                             onChange={onChange}

@@ -1,19 +1,17 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
+import PropTypes from "prop-types";
 
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import Popover from "metabase/components/Popover";
 import Button from "metabase/components/Button";
-import Value from "metabase/components/Value";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import { normalizeValue } from "./normalizeValue";
 
-import type { Parameter } from "metabase-types/types/Parameter";
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
-import type { FilterOperator } from "metabase-types/types/Metadata";
 import cx from "classnames";
 import {
   getFilterArgumentFormatOptions,
@@ -21,41 +19,23 @@ import {
   isFuzzyOperator,
 } from "metabase/lib/schema_metadata";
 
-type Props = {
-  value: any,
-  setValue: () => void,
-
-  isEditing: boolean,
-
-  fields: Field[],
-  parentFocusChanged: boolean => void,
-
-  operator?: FilterOperator,
-  dashboard?: DashboardWithCards,
-  parameter?: Parameter,
-  parameters?: Parameter[],
-  placeholder?: string,
-};
-
-type State = {
-  value: any[],
-  isFocused: boolean,
-  widgetWidth: ?number,
+const propTypes = {
+  dashboard: PropTypes.object,
+  fields: PropTypes.array.isRequired,
+  isEditing: PropTypes.bool.isRequired,
+  operator: PropTypes.object.isRequired,
+  parameter: PropTypes.object.isRequired,
+  parameters: PropTypes.array.isRequired,
+  parentFocusChanged: PropTypes.bool,
+  placeholder: PropTypes.string.isRequired,
+  setValue: PropTypes.func.isRequired,
+  value: PropTypes.string,
 };
 
 const BORDER_WIDTH = 1;
 
-const normalizeValue = value =>
-  Array.isArray(value) ? value : value != null ? [value] : [];
-
-// TODO: rename this something else since we're using it for more than searching and more than text
-export default class ParameterFieldWidget extends Component<*, Props, State> {
-  props: Props;
-  state: State;
-
-  _unfocusedElement: React.Component;
-
-  constructor(props: Props) {
+export default class ParameterFieldWidget extends Component {
+  constructor(props) {
     super(props);
     this.state = {
       isFocused: false,
@@ -66,25 +46,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
 
   static noPopover = true;
 
-  static format(value, fields) {
-    value = normalizeValue(value);
-    if (value.length > 1) {
-      const n = value.length;
-      return ngettext(msgid`${n} selection`, `${n} selections`, n);
-    } else {
-      return (
-        <Value
-          // If there are multiple fields, turn off remapping since they might
-          // be remapped to different fields.
-          remap={fields.length === 1}
-          value={value[0]}
-          column={fields[0]}
-        />
-      );
-    }
-  }
-
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (this.props.value !== nextProps.value) {
       this.setState({ value: nextProps.value });
     }
@@ -145,7 +107,10 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           onClick={() => focusChanged(true)}
         >
           {savedValue.length > 0 ? (
-            ParameterFieldWidget.format(savedValue, fields)
+            <ParameterFieldWidgetValue
+              savedValue={savedValue}
+              fields={fields}
+            />
           ) : (
             <span>{placeholder}</span>
           )}
@@ -216,3 +181,5 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
     }
   }
 }
+
+ParameterFieldWidget.propTypes = propTypes;

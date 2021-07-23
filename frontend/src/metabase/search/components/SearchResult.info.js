@@ -5,11 +5,15 @@ export const category = "search";
 
 export const description = `Displays search results w/ optional context in typeahead and on the search results page`;
 
+const DEMO_URL = "/_internal/components/searchresult";
+
 const COLLECTION_EXAMPLE = {
   model: "collection",
   id: 1,
   name: "Revenue",
-  getIcon: () => "folder",
+  getIcon: () => ({ name: "folder" }),
+  getUrl: () => DEMO_URL,
+  getCollection: () => {},
 };
 
 const DASHBOARD_EXAMPLE = {
@@ -22,7 +26,9 @@ const DASHBOARD_EXAMPLE = {
     id: "root",
     name: "Our analytics",
   },
-  getIcon: () => "dashboard",
+  getIcon: () => ({ name: "dashboard" }),
+  getUrl: () => DEMO_URL,
+  getCollection: () => COLLECTION_EXAMPLE,
 };
 
 const QUESTION_EXAMPLE = {
@@ -30,7 +36,9 @@ const QUESTION_EXAMPLE = {
   id: 1,
   name: "Revenue by region",
   collection: COLLECTION_EXAMPLE,
-  getIcon: () => "table",
+  getIcon: () => ({ name: "table" }),
+  getUrl: () => DEMO_URL,
+  getCollection: () => COLLECTION_EXAMPLE,
 };
 
 const LONG_TITLE_DASHBOARD_EXAMPLE = {
@@ -41,10 +49,12 @@ const LONG_TITLE_DASHBOARD_EXAMPLE = {
 const QUESTION_CONTEXT_EXAMPLE = {
   ...QUESTION_EXAMPLE,
   name: "Poorly named item",
-  context: {
-    match: "description",
-    content: "This is actually about Revenue",
-  },
+  context: [
+    {
+      match: "description",
+      content: "This is actually about Revenue",
+    },
+  ],
 };
 
 export const examples = {
