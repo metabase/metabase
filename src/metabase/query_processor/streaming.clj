@@ -52,8 +52,11 @@
           row-count     (volatile! 0)]
       (fn
         ([]
-         (u/prog1 {:data (assoc initial-metadata :deduped-cols deduped-cols)}
-           (i/begin! results-writer <> viz-settings')))
+         (i/begin! results-writer
+                   {:data (assoc initial-metadata :deduped-cols deduped-cols)}
+                   viz-settings')
+         {:data initial-metadata})
+
 
         ([metadata]
          (assoc metadata
