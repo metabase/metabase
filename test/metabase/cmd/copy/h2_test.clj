@@ -1,6 +1,6 @@
 (ns metabase.cmd.copy.h2-test
-  (:require [clojure.test :refer :all]
-            [metabase.cmd.copy.h2 :as copy.h2]))
+  (:require [metabase.cmd.copy.h2 :as copy.h2]
+            [clojure.test :refer :all]))
 
 (deftest h2-jdbc-spec-test
   (testing "works without file: schema"

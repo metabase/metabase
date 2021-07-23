@@ -7,7 +7,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-(deftest ^:parallel generate-api-error-message-test
+(deftest generate-api-error-message-test
   (testing "check that the API error message generation is working as intended"
     (is (= (str "value may be nil, or if non-nil, value must satisfy one of the following requirements: "
                 "1) value must be a boolean. "
@@ -21,7 +21,7 @@
    dimension-name          su/NonBlankString})
 (alter-meta! #'POST_:id_dimension assoc :private true)
 
-(deftest ^:parallel api-param-test
+(deftest api-param-test
   (testing "check that API error message respects `api-param` when specified"
     (is (= (str "## `POST metabase.util.schema-test/:id/dimension`\n"
                 "\n"
@@ -50,7 +50,7 @@
       (is (re= #".*INTEGER GREATER THAN ZERO.*"
                (ex-info-msg #(s/validate su/IntGreaterThanZero -1)))))))
 
-(deftest ^:parallel distinct-test
+(deftest distinct-test
   (is (= nil
          (s/check (su/distinct [s/Int]) [])))
 
@@ -62,7 +62,7 @@
 
   (is (some? (s/check (su/distinct [s/Int]) [1 2 1]))))
 
-(deftest ^:parallel open-schema-test
+(deftest open-schema-test
   (let [value  {:thing     3
                 :extra-key 5
                 :sub       {:key 3 :another-extra 5}}

@@ -1,9 +1,10 @@
 (ns metabase.db.connection-pool-setup-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
-            [metabase.connection-pool :as connection-pool]
-            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
-            [metabase.test :as mt])
+            [metabase
+             [connection-pool :as connection-pool]
+             [test :as mt]]
+            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup])
   (:import com.mchange.v2.c3p0.PoolBackedDataSource))
 
 (deftest connection-pool-spec-test

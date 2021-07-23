@@ -6,16 +6,20 @@
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.models.database :refer [Database]]
+            [metabase.sync.analyze :as sync.analyze]
+            [metabase.sync.field-values :as sync.field-values]
             [metabase.sync.schedules :as sync.schedules]
+            [metabase.sync.sync-metadata :as sync.metadata]
             [metabase.task.sync-databases :as sync-db]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.cron :as cron-util]
+            [metabase.util.date-2 :as u.date]
             [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
-(deftest ^:parallel annotations-test
+(deftest annotations-test
   (testing "make sure our annotations are present"
     (is (.isAnnotationPresent SyncAndAnalyzeDatabase org.quartz.DisallowConcurrentExecution))
     (is (.isAnnotationPresent UpdateFieldValues org.quartz.DisallowConcurrentExecution))))
@@ -169,7 +173,7 @@
 ;;; |                                    CHECKING THAT SYNC TASKS RUN CORRECT FNS                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_(defn- check-if-sync-processes-ran-for-db {:style/indent 0} [waits db-info]
+(defn- check-if-sync-processes-ran-for-db {:style/indent 0} [waits db-info]
   (let [sync-db-metadata-ran?    (promise)
         analyze-db-ran?          (promise)
         update-field-values-ran? (promise)]
@@ -187,7 +191,7 @@
                           :ran-analyze?             analyze-db-ran?
                           :ran-update-field-values? update-field-values-ran?})))))))
 
-#_(defn- cron-schedule-for-next-year []
+(defn- cron-schedule-for-next-year []
   (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
 
 ;; this test fails all the time -- disabled for now until I figure out how to fix it - Cam
@@ -253,7 +257,7 @@
   (testing "It will fingerprint if under time and no other fingerprints"
     (is (should-refingerprint (results (dec threshold) 0)))))
 
-(deftest ^:parallel randomized-schedules-test
+(deftest randomized-schedules-test
   (testing "when user schedules it does not return new schedules"
     (is (nil? (sync-db/randomized-schedules {:details {:let-user-control-scheduling true}}))))
   (testing "when schedules are already 'randomized' it returns nil"

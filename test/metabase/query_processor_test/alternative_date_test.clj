@@ -11,7 +11,7 @@
             [metabase.util :as u])
   (:import java.time.OffsetDateTime))
 
-(deftest ^:parallel semantic-type->unix-timestamp-unit-test
+(deftest semantic-type->unix-timestamp-unit-test
   (testing "every descendant of `:Coercion/UNIXTime->Temporal` has a unit associated with it"
     (doseq [semantic-type (descendants :Coercion/UNIXTime->Temporal)]
       (is (sql.qp/semantic-type->unix-timestamp-unit semantic-type))))
@@ -28,7 +28,7 @@
     [[4 1433587200000000]
      [0 1433965860000000]]]])
 
-(deftest ^:parallel microseconds-test
+(deftest microseconds-test
   (mt/test-drivers (disj (mt/normal-drivers) :sqlite)
     (let [results (get {:sqlite #{[1 4 "2015-06-06 10:40:00"] [2 0 "2015-06-10 19:51:00"]}
                         :oracle #{[1M 4M "2015-06-06T10:40:00Z"] [2M 0M "2015-06-10T19:51:00Z"]}}
@@ -112,7 +112,7 @@
                        :limit       10}))
                   mt/rows (mt/format-rows-by [identity int])))))))
 
-(deftest ^:parallel substitute-native-parameters-test
+(deftest substitute-native-parameters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (testing "Make sure `:date/range` SQL field filters work correctly with UNIX timestamps (#11934)"
       (mt/dataset tupac-sightings
@@ -171,7 +171,7 @@
      ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
      ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
 
-(deftest ^:parallel iso-8601-text-fields
+(deftest iso-8601-text-fields
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "return as dates"
       (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :oracle :sparksql)
@@ -254,7 +254,7 @@
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
 
-(deftest ^:parallel yyyymmddhhmmss-binary-dates
+(deftest yyyymmddhhmmss-binary-dates
   (mt/test-drivers #{:postgres :h2 :mysql}
     (is (= (case driver/*driver*
              :postgres
@@ -273,7 +273,7 @@
                                   (assoc (mt/mbql-query times)
                                          :middleware {:format-rows? false})))))))))
 
-(deftest ^:parallel yyyymmddhhmmss-dates
+(deftest yyyymmddhhmmss-dates
   (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery :snowflake :redshift :sqlserver :presto}
     (is (= (case driver/*driver*
              :mongo

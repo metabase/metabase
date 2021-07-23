@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [java-time :as t]
             [metabase.models.task-history :refer [TaskHistory]]
-            [metabase.task :as task]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -68,9 +67,6 @@
 (deftest paging-test
   (testing "Check that paging information is applied when provided and included in the response"
     (db/delete! TaskHistory)
-    (testing "sanity check -- tests should not start the scheduler"
-      (is (nil?
-           (#'task/scheduler))))
     (let [[task-hist-1 task-hist-2 task-hist-3 task-hist-4] (generate-tasks 4)]
       (mt/with-temp* [TaskHistory [task-1 task-hist-1]
                       TaskHistory [task-2 task-hist-2]

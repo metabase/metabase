@@ -16,7 +16,6 @@
             [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor :as qp]
-            [metabase.test.data.env :as tx.env]
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -118,7 +117,6 @@
 
 
 (defn- require-driver-test-extensions-ns [driver & require-options]
-  (assert tx.env/test-drivers)
   (let [expected-ns (symbol (or (namespace driver)
                                 (str "metabase.test.data." (name driver))))]
     (println (format "Loading driver %s test extensions %s"

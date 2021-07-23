@@ -6,7 +6,7 @@
 
   for example, running the `migrate` command and passing it `force` can be done using one of the following ways:
 
-    clojure -M:run] migrate force
+    clojure -M:run migrate force
     java -jar metabase.jar migrate force
 
 

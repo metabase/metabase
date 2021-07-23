@@ -107,7 +107,7 @@
              (mt/run-mbql-query checkins
                {:aggregation [[:sum $venue_price]]}))))))
 
-(deftest avg-test-2
+(deftest avg-test
   (tqp.test/test-timeseries-drivers
     (is (= {:columns ["avg"]
             :rows    [[1.992]]}

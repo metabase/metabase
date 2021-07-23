@@ -64,8 +64,8 @@
                                   :region_key  nil
                                   :region_name nil}}]
           (if should-pass?
-            (is (valid? geojson) (str url))
-            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson)) (str url))))))))
+            (is (valid? geojson) url)
+            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson)) url)))))))
 
 (deftest update-endpoint-test
   (testing "PUT /api/setting/custom-geojson"

@@ -4,7 +4,7 @@
             [metabase.query-processor.error-type :as qp.error-type]
             [schema.core :as s]))
 
-(deftest ^:parallel to-clause-test
+(deftest to-clause-test
   (testing "number operations"
     (is (= (ops/to-clause {:type :number/=
                            :target [:dimension
@@ -46,13 +46,13 @@
   (testing "arity errors"
     (letfn [(f [op values]
               (try
-                (let [result (ops/to-clause {:type   op
-                                             :target [:dimension
-                                                      [:field
-                                                       26
-                                                       {:source-field 5}]]
-                                             :value  values})]
-                  (is (not result) "Did not throw"))
+                (ops/to-clause {:type op
+                                :target [:dimension
+                                         [:field
+                                          26
+                                          {:source-field 5}]]
+                                :value values})
+                (is false "Did not throw")
                 (catch Exception e
                   (ex-data e))))]
       (doseq [[op values] [[:string/starts-with ["a" "b"]]

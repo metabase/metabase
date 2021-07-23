@@ -1,4 +1,4 @@
-(ns ^:parallel metabase.query-processor-test.query-to-native-test
+(ns metabase.query-processor-test.query-to-native-test
   "Tests around the `query->native` function."
   (:require [clojure.test :refer :all]
             [metabase.api.common :as api]

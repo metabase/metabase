@@ -5,7 +5,7 @@
             [metabase.test :as mt]
             [metabase.test.data :as data]))
 
-(deftest ^:parallel page-test
+(deftest page-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Test that we can get \"pages\" of results."
       (letfn [(get-page [page-num]

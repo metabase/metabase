@@ -1,9 +1,10 @@
 (ns metabase.api.common.internal-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.api.common.internal :as internal :refer :all]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase
+             [test :as mt]
+             [util :as u]]
+            [metabase.api.common.internal :as internal :refer :all]))
 
 (deftest route-fn-name-test
   (mt/are+ [method route expected] (= expected

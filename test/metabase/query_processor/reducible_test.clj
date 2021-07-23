@@ -9,7 +9,8 @@
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.files :as u.files]))
 
 (deftest quit-test
   (testing "async-qp should properly handle `quit` exceptions"

@@ -234,6 +234,12 @@
 ;;; |                                      DATETIME EXTRACTION AND MANIPULATION                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- maybe-truncate
+  [dt]
+  (if (= :sqlite driver/*driver*)
+    (u.date/truncate dt :day)
+    dt))
+
 (defn- robust-dates
   [strs]
   ;; TIMEZONE FIXME — SQLite shouldn't return strings. And for whatever weird reason it's truncating to date as well?

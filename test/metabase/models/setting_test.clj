@@ -27,27 +27,27 @@
   (deferred-tru "Test setting - this only shows up in dev (3)")
   :visibility :internal)
 
-(defsetting test-boolean-setting
+(defsetting ^:private test-boolean-setting
   "Test setting - this only shows up in dev (3)"
   :visibility :internal
   :type :boolean)
 
-(defsetting test-json-setting
+(defsetting ^:private test-json-setting
   (deferred-tru "Test setting - this only shows up in dev (4)")
   :type :json)
 
-(defsetting test-csv-setting
+(defsetting ^:private test-csv-setting
   "Test setting - this only shows up in dev (5)"
   :visibility :internal
   :type :csv)
 
-(defsetting test-csv-setting-with-default
+(defsetting ^:private test-csv-setting-with-default
   "Test setting - this only shows up in dev (6)"
   :visibility :internal
   :type :csv
   :default "A,B,C")
 
-(defsetting test-env-setting
+(defsetting ^:private test-env-setting
   "Test setting - this only shows up in dev (7)"
   :visibility :internal)
 
@@ -258,7 +258,7 @@
                    :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
                setting))))))
 
-(defsetting test-i18n-setting
+(defsetting ^:private test-i18n-setting
   (deferred-tru "Test setting - with i18n"))
 
 (deftest validate-description-test
@@ -434,7 +434,7 @@
 
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
 
-(defsetting test-timestamp-setting
+(defsetting ^:private test-timestamp-setting
   "Test timestamp setting"
   :visibility :internal
   :type :timestamp)
@@ -461,7 +461,7 @@
   []
   (db/select-one-field :value Setting :key cache/settings-last-updated-key))
 
-(defsetting uncached-setting
+(defsetting ^:private uncached-setting
   "A test setting that should *not* be cached."
   :visibility :internal
   :cache? false)
@@ -551,7 +551,7 @@
                  (ex-message e))))
         (finally (in-ns current-ns))))))
 
-(defsetting test-setting-with-question-mark?
+(defsetting ^:private test-setting-with-question-mark?
   "Test setting - this only shows up in dev (6)"
   :visibility :internal)
 
@@ -570,29 +570,29 @@
             {:name :test-setting-with-question-mark????
              :munged-name "test-setting-with-question-mark"}}
            (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting test-setting-with-question-mark????
+                       (try (defsetting ^:private test-setting-with-question-mark????
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on first definition"
-    (defsetting test-setting-normal
+    (defsetting ^:private test-setting-normal
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:existing-setting {:name :test-setting-normal, :munged-name "test-setting-normal"},
             :new-setting {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
            (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting test-setting-normal??
+                       (try (defsetting ^:private test-setting-normal??
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on second definition"
-    (defsetting test-setting-normal-1??
+    (defsetting ^:private test-setting-normal-1??
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
              :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
            (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting test-setting-normal-1
+                       (try (defsetting ^:private test-setting-normal-1
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))

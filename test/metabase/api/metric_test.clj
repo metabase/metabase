@@ -11,6 +11,7 @@
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.test.data :as data]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))

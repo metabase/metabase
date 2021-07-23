@@ -1,5 +1,6 @@
 (ns metabase.api.search-test
-  (:require [clojure.string :as str]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
@@ -72,6 +73,8 @@
 
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
+
+(defn- subset-model [model res] (filter #(= (:model %) (name model)) res))
 
 (defn- default-archived-results []
   (for [result (default-search-results)
