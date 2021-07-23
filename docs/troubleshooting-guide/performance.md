@@ -80,10 +80,6 @@ Low performance when using Metabase can also be caused by incorrect typing of co
 
 **How to fix this:** Amend the database schema to store numbers as numbers, timestamps as timestamps, and so on, rather than as strings or other data types.
 
-### The Java Virtual Machine is using too much memory.
-
-We discuss this problem and its solutions in [this troubleshooting guide](./running.md).
-
 ### Metabase is running on an under-powered machine.
 
 **How to detect this:** Checking the performance logs for the server where Metabase is running will tell you whether it is hitting CPU or memory limits. However, it's much more likely that the database itself is hitting its limits, so please check it first.
