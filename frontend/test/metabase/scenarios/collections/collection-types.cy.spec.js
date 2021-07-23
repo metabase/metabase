@@ -23,6 +23,10 @@ describeWithToken("collections types", () => {
     cy.signInAsAdmin();
   });
 
+  const TREE_UPDATE_REGULAR_MESSAGE = "Make all sub-collections Regular, too.";
+  const TREE_UPDATE_OFFICIAL_MESSAGE =
+    "Make all sub-collections Official, too.";
+
   it("should be able to manage collection authority level", () => {
     cy.visit("/collection/root");
 
@@ -41,6 +45,56 @@ describeWithToken("collections types", () => {
 
   it("displays official badge throughout the application", () => {
     testOfficialBadgePresence();
+  });
+
+  it("should be able to update authority level for collection children", () => {
+    cy.visit("/collection/root");
+    cy.findByText("First collection").click();
+
+    // Test not visible when creating a new collection
+    cy.icon("new_folder").click();
+    modal().within(() => {
+      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
+      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
+      setOfficial();
+      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
+      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
+      cy.icon("close").click();
+    });
+
+    // Test can make all children official
+    editCollection();
+    modal().within(() => {
+      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
+      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
+      setOfficial();
+      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
+      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).click();
+      cy.button("Update").click();
+    });
+
+    getSidebarCollectionChildrenFor("First collection").within(() => {
+      expandCollectionChildren("Second collection");
+      cy.icon("badge").should("have.length", 3);
+      cy.icon("folder").should("not.exist");
+    });
+
+    // Test can make all children regular
+    editCollection();
+    modal().within(() => {
+      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).should("not.exist");
+      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
+      setOfficial(false);
+      cy.findByText(TREE_UPDATE_REGULAR_MESSAGE).click();
+      cy.findByText(TREE_UPDATE_OFFICIAL_MESSAGE).should("not.exist");
+      cy.button("Update").click();
+    });
+
+    getSidebarCollectionChildrenFor("First collection").within(() => {
+      expandCollectionChildren("Second collection");
+      cy.icon("folder").should("have.length", 3);
+      cy.icon("badge").should("not.exist");
+    });
   });
 });
 
@@ -132,6 +186,22 @@ function testOfficialBadgeInSearch({
 function editCollection() {
   cy.icon("pencil").click();
   cy.findByText("Edit this collection").click();
+}
+
+function expandCollectionChildren(collectionName) {
+  cy.findByText(collectionName)
+    .parent()
+    .find(".Icon-chevronright")
+    .eq(0) // there may be more nested icons, but we need the top level one
+    .click();
+}
+
+function getSidebarCollectionChildrenFor(collectionName) {
+  return sidebar()
+    .findByText(collectionName)
+    .closest("a")
+    .parent()
+    .parent();
 }
 
 function setOfficial(official = true) {
