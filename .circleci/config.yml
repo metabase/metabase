@@ -221,7 +221,9 @@ default_parameters: &Params
 # uncontrollably since old deps would continue to accumulate. Restoring big caches is really slow in Circle. It's
 # actually faster to recreate the deps cache from scratch whenever we need to which keeps the size down.
 cache-key-backend-deps: &CacheKeyBackendDeps
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
+  # TODO -- this should actually include the Java source files and the Spark SQL AOT source files as well since we now
+  # compile those as part of this step. FIXME
+  key: v2-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
 
 cache-key-frontend-deps: &CacheKeyFrontendDeps
   key: v1-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
@@ -589,6 +591,8 @@ jobs:
                 paths:
                   - /home/circleci/.m2
                   - /home/circleci/.gitlibs
+                  - /home/circleci/metabase/metabase/java/target/classes
+                  - /home/circleci/metabase/metabase/modules/drivers/sparksql/target/classes
 
   clojure:
     parameters:
