@@ -16,7 +16,7 @@ In order to troubleshoot performance problems, you first need to understand what
 
 7. The back end forwards those results to the front end.
 
-8. The front end creates the HTML to display them.
+8. The front end creates the HTML to display them in your browser.
 
 ## Specific Problems
 
