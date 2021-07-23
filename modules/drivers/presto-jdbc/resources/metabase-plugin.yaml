@@ -4,7 +4,6 @@ info:
   description: Allows Metabase to connect to Presto databases using the Presto JDBC driver
 dependencies:
   - plugin: Presto Common Driver
-  - env-var: mb-enable-presto-jdbc-driver
 driver:
   name: presto-jdbc
   display-name: Presto
