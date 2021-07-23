@@ -15,24 +15,54 @@ import {
   DriverWarningContainer,
   IconContainer,
 } from "./DriverWarning.styled";
+import ExternalLink from "metabase/components/ExternalLink";
+import MetabaseSettings from "metabase/lib/settings";
 
 const propTypes = {
   engine: PropTypes.string.isRequired,
 };
 
-function getSupersedesFor(engine) {
-  return t`This driver replaces the legacy version, which is called ${
-    allEngines[engine]["driver-name"]
-  }.  If you need
-    to use the legacy driver, you can select it now.  Please let us know if you have any issues with this new driver.`;
+const driverUpgradeHelpLink = MetabaseSettings.docsUrl(
+  "administration-guide/99-upgrading-drivers",
+);
+
+function getSupersedesWarningContent(newDriver, supersedesDriver) {
+  return (
+    <div>
+      <p className="text-medium m0">
+        {t`This is our new ${
+          allEngines[newDriver]["driver-name"]
+        } driver, which is faster and
+      more reliable.`}
+      </p>
+      <p>{t`The old driver has been deprecated and will be removed in the next release. If you really
+      need to use it, you can select ${
+        allEngines[supersedesDriver]["driver-name"]
+      } now.`}</p>
+    </div>
+  );
 }
 
-function getSupersededByMessageFor(engine) {
-  return t`This driver is a legacy driver, and will eventually be removed from Metabase.  Please use the newer version,
-    which is called ${
-      allEngines[engine]["driver-name"]
-    }. Please let us know if you have any issues with this new
-    driver.`;
+function getSupersededByWarningContent(engine) {
+  return (
+    <div>
+      <p className="text-medium m0">
+        {t`This driver has been deprecated and will be removed in the next release.`}
+      </p>
+      <p className="text-medium m0">
+        {t`We recommend that you upgrade to the new ${
+          allEngines[engine]["driver-name"]
+        } driver, which is faster and more
+         reliable.`}
+      </p>
+      <ExternalLink
+        href={driverUpgradeHelpLink}
+        className="text-brand text-bold"
+      >
+        {t`How to upgrade a driver (TODO: fix link)`}
+      </ExternalLink>
+    </div>
+  );
 }
 
 function DriverWarning({ engine, ...props }) {
@@ -44,9 +74,9 @@ function DriverWarning({ engine, ...props }) {
   }
 
   const tooltipWarning = supersedes ? t`New driver` : t`Driver deprecated`;
-  const message = supersedes
-    ? getSupersedesFor(supersedes)
-    : getSupersededByMessageFor(supersededBy);
+  const warningContent = supersedes
+    ? getSupersedesWarningContent(engine, supersedes)
+    : getSupersededByWarningContent(supersededBy);
 
   return (
     <DriverWarningContainer p={2} {...props}>
@@ -58,9 +88,7 @@ function DriverWarning({ engine, ...props }) {
         />
       </IconContainer>
       <CardContent flexDirection="column" justify="center" className="ml2">
-        <div>
-          <p className="text-medium m0">{message}</p>
-        </div>
+        {warningContent}
       </CardContent>
     </DriverWarningContainer>
   );
