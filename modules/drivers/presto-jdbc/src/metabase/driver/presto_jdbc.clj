@@ -346,7 +346,7 @@
   [driver database ^String timezone-id]
   ;; Presto supports setting the session timezone via a `PrestoConnection` instance method. Under the covers,
   ;; this is equivalent to the `X-Presto-Time-Zone` header in the HTTP request (i.e. the `:presto` driver)
-  (let [conn            (.getConnection (sql-jdbc.execute/datasource database))
+  (let [conn            (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))
         underlying-conn (pooled-conn->presto-conn conn)]
     (try
       (sql-jdbc.execute/set-best-transaction-level! driver conn)
