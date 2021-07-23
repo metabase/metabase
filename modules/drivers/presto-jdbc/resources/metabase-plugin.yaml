@@ -7,7 +7,7 @@ dependencies:
   - env-var: mb-enable-presto-jdbc-driver
 driver:
   name: presto-jdbc
-  display-name: Presto JDBC
+  display-name: Presto
   lazy-load: true
   parent: presto-common
   connection-properties:

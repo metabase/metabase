@@ -6,7 +6,7 @@ dependencies:
   - plugin: Presto Common Driver
 driver:
   name: presto
-  display-name: Presto
+  display-name: Presto (Deprecated Driver)
   lazy-load: true
   parent: presto-common
   connection-properties:
@@ -27,3 +27,4 @@ init:
     namespace: metabase.driver.presto-common
   - step: load-namespace
     namespace: metabase.driver.presto
+superseded-by: presto-jdbc
