@@ -6,6 +6,7 @@ import * as Urls from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
 import {
+  ChildrenContainer,
   ExpandCollectionButton,
   InitialIcon,
   ItemContainer,
@@ -13,7 +14,6 @@ import {
 
 import CollectionLink from "metabase/collections/components/CollectionLink";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   const iconName = isOpen ? "chevrondown" : "chevronright";
@@ -65,6 +65,7 @@ class CollectionsList extends React.Component {
         {collections.map(c => {
           const isOpen = openCollections.indexOf(c.id) >= 0;
           const action = isOpen ? this.props.onClose : this.props.onOpen;
+
           return (
             <Box key={c.id}>
               <CollectionDropTarget collection={c}>
@@ -92,7 +93,7 @@ class CollectionsList extends React.Component {
                 }}
               </CollectionDropTarget>
               {c.children && isOpen && (
-                <Box ml={-SIDEBAR_SPACER} pl={SIDEBAR_SPACER + 10}>
+                <ChildrenContainer>
                   <CollectionsList
                     openCollections={openCollections}
                     onOpen={this.props.onOpen}
@@ -102,7 +103,7 @@ class CollectionsList extends React.Component {
                     currentCollection={currentCollection}
                     depth={this.props.depth + 1}
                   />
-                </Box>
+                </ChildrenContainer>
               )}
             </Box>
           );

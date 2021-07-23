@@ -1,10 +1,16 @@
 import styled from "styled-components";
-import { Flex } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 
+import { SIDEBAR_SPACER } from "metabase/collections/constants";
 import { color } from "metabase/lib/colors";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Icon from "metabase/components/Icon";
+
+export const ChildrenContainer = styled(Box)`
+  margin-left: -${SIDEBAR_SPACER}px;
+  padding-left: ${SIDEBAR_SPACER + 10}px;
+`;
 
 export const ExpandCollectionButton = styled(IconButtonWrapper)`
   align-items: center;
