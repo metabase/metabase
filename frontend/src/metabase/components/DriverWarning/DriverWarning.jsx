@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import {
   allEngines,
@@ -20,13 +20,18 @@ import MetabaseSettings from "metabase/lib/settings";
 
 const propTypes = {
   engine: PropTypes.string.isRequired,
+  onEngineChange: PropTypes.func.isRequired,
 };
 
 const driverUpgradeHelpLink = MetabaseSettings.docsUrl(
   "administration-guide/01-managing-databases",
 );
 
-function getSupersedesWarningContent(newDriver, supersedesDriver) {
+function getSupersedesWarningContent(
+  newDriver,
+  supersedesDriver,
+  onEngineChange,
+) {
   return (
     <div>
       <p className="text-medium m0">
@@ -34,10 +39,12 @@ function getSupersedesWarningContent(newDriver, supersedesDriver) {
           allEngines[newDriver]["driver-name"]
         } driver, which is faster and more reliable.`}
       </p>
-      <p>{t`The old driver has been deprecated and will be removed in the next release. If you really
-      need to use it, you can select ${
-        allEngines[supersedesDriver]["driver-name"]
-      } now.`}</p>
+      <p>{jt`The old driver has been deprecated and will be removed in the next release. If you really
+      need to use it, you can ${(
+        <a className="link" onClick={() => onEngineChange(supersedesDriver)}>
+          find it here
+        </a>
+      )}.`}</p>
     </div>
   );
 }
@@ -63,7 +70,7 @@ function getSupersededByWarningContent(engine) {
   );
 }
 
-function DriverWarning({ engine, ...props }) {
+function DriverWarning({ engine, onEngineChange, ...props }) {
   const supersededBy = engineSupersedesMap["superseded_by"][engine];
   const supersedes = engineSupersedesMap["supersedes"][engine];
 
@@ -73,7 +80,7 @@ function DriverWarning({ engine, ...props }) {
 
   const tooltipWarning = supersedes ? t`New driver` : t`Driver deprecated`;
   const warningContent = supersedes
-    ? getSupersedesWarningContent(engine, supersedes)
+    ? getSupersedesWarningContent(engine, supersedes, onEngineChange)
     : getSupersededByWarningContent(supersededBy);
 
   return (
