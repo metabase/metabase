@@ -1,6 +1,38 @@
 import moment from "moment-timezone";
 import { t } from "ttag";
 
+addAbbreviatedLocale();
+
+// when you define a custom locale, moment automatically makes it the active global locale,
+// so we need to return to the user's initial locale.
+// also, you can't define a custom locale on a local instance
+function addAbbreviatedLocale() {
+  const initialLocale = moment.locale();
+
+  moment.locale("en-abbreviated", {
+    relativeTime: {
+      future: "in %s",
+      past: "%s",
+      s: "%d s",
+      ss: "%d s",
+      m: "%d m",
+      mm: "%d m",
+      h: "%d h",
+      hh: "%d h",
+      d: "%d d",
+      dd: "%d d",
+      w: "%d wk",
+      ww: "%d wks",
+      M: "a mth",
+      MM: "%d mths",
+      y: "%d y",
+      yy: "%d y",
+    },
+  });
+
+  moment.locale(initialLocale);
+}
+
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
   year: value =>
@@ -125,23 +157,13 @@ export function getRelativeTime(timestamp) {
 }
 
 export function getRelativeTimeAbbreviated(timestamp) {
-  return moment(timestamp).fromNow(
-    moment.updateLocale("en", {
-      relativeTime: {
-        future: "in %s",
-        past: "%s ",
-        s: "sec",
-        m: "%d m",
-        mm: "%d m",
-        h: "%d h",
-        hh: "%d h",
-        d: "%d d",
-        dd: "%d d",
-        M: "a mth",
-        MM: "%d mths",
-        y: "y",
-        yy: "%d y",
-      },
-    }),
-  );
+  const locale = moment().locale();
+
+  if (locale === "en") {
+    const ts = moment(timestamp);
+    ts.locale("en-abbreviated");
+    return ts.fromNow();
+  }
+
+  return getRelativeTime(timestamp);
 }
