@@ -35,13 +35,14 @@
   "Correlates the :name fields between cols and the :table.columns key of viz-settings
   to determine the order of columns that should included in the export."
   [cols {table-columns :table.columns}]
-  (let [enabled-table-columns (filter :enabled table-columns)
-        col-index-by-name     (reduce-kv (fn [m i col] (assoc m (:name col) i))
-                                         {}
-                                         (into [] cols))]
-    (map
-     (fn [{col-name :name}] (get col-index-by-name col-name))
-     enabled-table-columns)))
+  (when table-columns
+    (let [enabled-table-columns (filter :enabled table-columns)
+          col-index-by-name     (reduce-kv (fn [m i col] (assoc m (:name col) i))
+                                           {}
+                                           (into [] cols))]
+      (map
+       (fn [{col-name :name}] (get col-index-by-name col-name))
+       enabled-table-columns))))
 
 (defn- streaming-rff [results-writer]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
