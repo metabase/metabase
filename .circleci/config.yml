@@ -221,7 +221,7 @@ default_parameters: &Params
 # uncontrollably since old deps would continue to accumulate. Restoring big caches is really slow in Circle. It's
 # actually faster to recreate the deps cache from scratch whenever we need to which keeps the size down.
 cache-key-backend-deps: &CacheKeyBackendDeps
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "project.clj" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
+  key: v1-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
 
 cache-key-frontend-deps: &CacheKeyFrontendDeps
   key: v1-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
@@ -567,9 +567,8 @@ jobs:
     steps:
       - attach-workspace
       # This step is pretty slow, even with the cache, so only run it if project.clj has changed
-      # TODO -- we should cache the build script deps as well, and driver deps?
       - run-on-change:
-          checksum: '{{ checksum "project.clj" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
+          checksum: '{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
           steps:
             - restore-be-deps-cache
             - run:
