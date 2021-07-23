@@ -21,7 +21,7 @@
 ;; TODO add issue number for fixing hack
 ;; HACK: this function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
 ;; at this point in the code.
-(defn deduplicate-col-names
+(defn- deduplicate-col-names
   [cols]
   (map (fn [col unique-name]
          (let [col-with-display-name (if (:display_name col)
