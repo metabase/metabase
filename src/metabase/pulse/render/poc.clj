@@ -12,7 +12,7 @@
 
 (def ^:private bundle-path
   ;; todo: this will move to app/dist when the bundle is in the tree
-  "resources/frontend_shared/bundle.js")
+  "resources/frontend_client/app/dist/lib-static-viz.bundle.js")
 
 (def ^:private src-api
   "API for calling to the javascript bundle. Entry points are the functions
