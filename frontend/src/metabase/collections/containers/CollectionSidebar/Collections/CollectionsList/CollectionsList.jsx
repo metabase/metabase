@@ -53,7 +53,7 @@ function CollectionItem({ action, c, initialIcon, isOpen }) {
 }
 
 function Item({
-  c,
+  collection,
   depth,
   currentCollection,
   filter,
@@ -62,20 +62,21 @@ function Item({
   onOpen,
   openCollections,
 }) {
-  const isOpen = openCollections.indexOf(c.id) >= 0;
+  const { id, children } = collection;
+  const isOpen = openCollections.indexOf(id) >= 0;
   const action = isOpen ? onClose : onOpen;
 
   return (
-    <Box key={c.id}>
-      <CollectionDropTarget collection={c}>
+    <Box key={id}>
+      <CollectionDropTarget collection={collection}>
         {({ highlighted, hovered }) => {
           return (
             <CollectionLink
-              to={Urls.collection(c)}
-              selected={c.id === currentCollection}
+              to={Urls.collection(collection)}
+              selected={id === currentCollection}
               depth={depth}
               // when we click on a link, if there are children, expand to show sub collections
-              onClick={() => c.children && action(c.id)}
+              onClick={() => children && action(id)}
               hovered={hovered}
               highlighted={highlighted}
               role="treeitem"
@@ -83,7 +84,7 @@ function Item({
             >
               <CollectionItem
                 action={action}
-                c={c}
+                c={collection}
                 initialIcon={initialIcon}
                 isOpen={isOpen}
               />
@@ -92,13 +93,13 @@ function Item({
         }}
       </CollectionDropTarget>
 
-      {c.children && isOpen && (
+      {children && isOpen && (
         <ChildrenContainer>
           <CollectionsList
             openCollections={openCollections}
             onOpen={onOpen}
             onClose={onClose}
-            collections={c.children}
+            collections={children}
             filter={filter}
             currentCollection={currentCollection}
             depth={depth + 1}
@@ -109,24 +110,29 @@ function Item({
   );
 }
 
-class CollectionsList extends React.Component {
-  render() {
-    const { collections, filter, ...otherProps } = this.props;
-    const filteredCollections = collections.filter(filter);
+function CollectionsList({
+  collections,
+  filter,
+  initialIcon = "folder",
+  depth = 1,
+  ...otherProps
+}) {
+  const filteredCollections = collections.filter(filter);
 
-    return (
-      <Box>
-        {filteredCollections.map(c => (
-          <Item key={c.id} c={c} filter={filter} {...otherProps} />
-        ))}
-      </Box>
-    );
-  }
+  return (
+    <Box>
+      {filteredCollections.map(collection => (
+        <Item
+          collection={collection}
+          depth={depth}
+          filter={filter}
+          initialIcon={initialIcon}
+          key={collection.id}
+          {...otherProps}
+        />
+      ))}
+    </Box>
+  );
 }
-
-CollectionsList.defaultProps = {
-  initialIcon: "folder",
-  depth: 1,
-};
 
 export default CollectionsList;
