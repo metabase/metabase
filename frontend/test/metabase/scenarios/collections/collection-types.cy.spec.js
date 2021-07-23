@@ -20,7 +20,6 @@ const TEST_QUESTION_QUERY = {
 describeWithToken("collections types", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
   });
 
   const TREE_UPDATE_REGULAR_MESSAGE = "Make all sub-collections Regular, too.";
@@ -28,6 +27,7 @@ describeWithToken("collections types", () => {
     "Make all sub-collections Official, too.";
 
   it("should be able to manage collection authority level", () => {
+    cy.signInAsAdmin();
     cy.visit("/collection/root");
 
     createAndOpenOfficialCollection({ name: COLLECTION_NAME });
@@ -44,14 +44,17 @@ describeWithToken("collections types", () => {
   });
 
   it("displays official badge throughout the application", () => {
+    cy.signInAsAdmin();
     testOfficialBadgePresence();
   });
 
   it("should display a badge next to official questions in regular dashboards", () => {
+    cy.signInAsAdmin();
     testOfficialQuestionBadgeInRegularDashboard();
   });
 
   it("should be able to update authority level for collection children", () => {
+    cy.signInAsAdmin();
     cy.visit("/collection/root");
     cy.findByText("First collection").click();
 
@@ -100,6 +103,47 @@ describeWithToken("collections types", () => {
       cy.icon("badge").should("not.exist");
     });
   });
+
+  it("should not see collection type field if not admin", () => {
+    cy.signIn("normal");
+    cy.visit("/collection/root");
+
+    openCollection("First collection");
+
+    cy.icon("new_folder").click();
+    modal().within(() => {
+      assertNoCollectionTypeInput();
+      cy.icon("close").click();
+    });
+
+    editCollection();
+    modal().within(() => {
+      assertNoCollectionTypeInput();
+    });
+  });
+
+  it("should not be able to manage collection authority level for personal collections and their children", () => {
+    cy.signInAsAdmin();
+    cy.visit("/collection/root");
+
+    openCollection("Your personal collection");
+    cy.icon("pencil").should("not.exist");
+
+    cy.icon("new_folder").click();
+    modal().within(() => {
+      assertNoCollectionTypeInput();
+      cy.findByLabelText("Name").type("Personal collection child");
+      cy.button("Create").click();
+    });
+
+    openCollection("Personal collection child");
+
+    cy.icon("new_folder").click();
+    modal().within(() => {
+      assertNoCollectionTypeInput();
+      cy.icon("close").click();
+    });
+  });
 });
 
 describeWithoutToken("collection types", () => {
@@ -117,7 +161,7 @@ describeWithoutToken("collection types", () => {
       cy.icon("close").click();
     });
 
-    cy.findByText("First collection").click();
+    openCollection("First collection");
     editCollection();
     modal().within(() => {
       assertNoCollectionTypeInput();
@@ -213,6 +257,12 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
   cy.get(".DashboardGrid").within(() => {
     cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
   });
+}
+
+function openCollection(collectionName) {
+  sidebar()
+    .findByText(collectionName)
+    .click();
 }
 
 function editCollection() {
