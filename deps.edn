@@ -167,8 +167,9 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake                           {:mvn/version "1.0.3"
                                                            :exclusions  [slingshot/slingshot]}
-    jonase/eastwood                                       {:mvn/version "0.3.11"}
+    cloverage/cloverage                                   {:mvn/version "1.2.2"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
+    jonase/eastwood                                       {:mvn/version "0.3.11"}
     lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"}
     reifyhealth/specmonstah                               {:mvn/version "2.0.0"}
     ring/ring-mock                                        {:mvn/version "0.4.0"}
@@ -269,67 +270,74 @@
                                  :sha     "518d5a1cbfcd7c952f548e6dbfcb9a4a5faf9062"}}
    :main-opts  ["-m" "clj-check.check"]}
 
-    ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
+  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
   :eastwood
   {:exec-fn   metabase.linters.eastwood/eastwood
    :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood
                ;; errors in the test paths (once PR #17193 is merged)
-               :source-paths       ["src"
-                                    "shared/src"
-                                    "enterprise/backend/src"
-                                    "modules/drivers/bigquery/src"
-                                    "modules/drivers/druid/src"
-                                    "modules/drivers/google/src"
-                                    "modules/drivers/googleanalytics/src"
-                                    "modules/drivers/mongo/src"
-                                    "modules/drivers/oracle/src"
-                                    "modules/drivers/presto/src"
-                                    "modules/drivers/redshift/src"
-                                    "modules/drivers/snowflake/src"
-                                    "modules/drivers/sparksql/src"
-                                    "modules/drivers/sqlite/src"
-                                    "modules/drivers/sqlserver/src"
-                                    "modules/drivers/vertica/src"]
-               :add-linters        [:unused-private-vars
-                                    ;; These linters are pretty useful but give a few false
-                                    ;; positives and can't be selectively disabled (yet)
-                                    ;;
-                                    ;; For example see https://github.com/jonase/eastwood/issues/193
-                                    ;;
-                                    ;; It's still useful to re-enable them and run them every once
-                                    ;; in a while because they catch a lot of actual errors too.
-                                    ;; Keep an eye on the issue above and re-enable them if we can
-                                    ;; get them to work
-                                    #_:unused-fn-args
-                                    #_:unused-locals]
-               :exclude-linters    [ ;; Turn this off temporarily until we finish removing
-                                    ;; self-deprecated functions & macros
-                                    :deprecations
-                                    ;; this has a fit in libs that use Potemkin `import-vars` such
-                                    ;; as `java-time`
-                                    :implicit-dependencies
-                                    ;; too many false positives for now
-                                    :unused-ret-vals]}}
+               :source-paths    ["src"
+                                 "shared/src"
+                                 "enterprise/backend/src"
+                                 "modules/drivers/bigquery/src"
+                                 "modules/drivers/druid/src"
+                                 "modules/drivers/google/src"
+                                 "modules/drivers/googleanalytics/src"
+                                 "modules/drivers/mongo/src"
+                                 "modules/drivers/oracle/src"
+                                 "modules/drivers/presto/src"
+                                 "modules/drivers/redshift/src"
+                                 "modules/drivers/snowflake/src"
+                                 "modules/drivers/sparksql/src"
+                                 "modules/drivers/sqlite/src"
+                                 "modules/drivers/sqlserver/src"
+                                 "modules/drivers/vertica/src"]
+               :add-linters     [:unused-private-vars
+                                 ;; These linters are pretty useful but give a few false
+                                 ;; positives and can't be selectively disabled (yet)
+                                 ;;
+                                 ;; For example see https://github.com/jonase/eastwood/issues/193
+                                 ;;
+                                 ;; It's still useful to re-enable them and run them every once
+                                 ;; in a while because they catch a lot of actual errors too.
+                                 ;; Keep an eye on the issue above and re-enable them if we can
+                                 ;; get them to work
+                                 #_:unused-fn-args
+                                 #_:unused-locals]
+               :exclude-linters [ ;; Turn this off temporarily until we finish removing
+                                 ;; self-deprecated functions & macros
+                                 :deprecations
+                                 ;; this has a fit in libs that use Potemkin `import-vars` such
+                                 ;; as `java-time`
+                                 :implicit-dependencies
+                                 ;; too many false positives for now
+                                 :unused-ret-vals]}}
 
-  ;; TODO
+  ;; clojure -X:dev:ee:ee-dev:cloverage
   :cloverage
-  {}
-  ;; [:test-common
-  ;;  {:dependencies [[camsaul/cloverage "1.2.1.1" :exclusions [riddley]]]
-  ;;   :plugins      [[camsaul/lein-cloverage  "1.2.1.1"]]
-  ;;   :source-paths ^:replace ["src" "backend/mbql/src" "enterprise/backend/src" "shared/src"]
-  ;;   :test-paths   ^:replace ["test" "backend/mbql/test" "enterprise/backend/test" "shared/test"]
-  ;;   :cloverage    {:fail-threshold 69
-  ;;                  :exclude-call
-  ;;                  [ ;; don't instrument logging forms, since they won't get executed as part of tests anyway
-  ;;                   ;; log calls expand to these
-  ;;                   clojure.tools.logging/logf
-  ;;                   clojure.tools.logging/logp]
-  ;;                  ;; don't instrument Postgres/MySQL driver namespaces, because we don't current run tests for them
-  ;;                  ;; as part of recording test coverage, which means they can give us false positives.
-  ;;                  :ns-exclude-regex
-  ;;                  [#"metabase\.driver\.mysql"
-  ;;                   #"metabase\.driver\.postgres"]}}]
+  {:exec-fn   cloverage/run-project
+   :exec-args {:fail-threshold 69
+               :codecov?       true
+               ;; don't instrument logging forms, since they won't get executed as part of tests anyway
+               ;; log calls expand to these
+               :exclude-call
+               [clojure.tools.logging/logf
+                clojure.tools.logging/logp]
+
+               :source-ns-path
+               ["src" "enterprise/backend/src" "shared/src"]
+
+               :test-ns-path
+               ["test" "enterprise/backend/test" "shared/test"]
+
+               :ns-regex
+               ["^metabase.*" "^metabase-enterprise.*"]
+
+               ;; don't instrument Postgres/MySQL driver namespaces, because we don't current run tests for them
+               ;; as part of recording test coverage, which means they can give us false positives.
+               ;;
+               ;; regex literals aren't allowed in EDN. We parse them in `./test/cloverage.clj`
+               :ns-exclude-regex
+               ["metabase\\.driver\\.mysql" "metabase\\.driver\\.postgres"]}}
 
 ;;; building Uberjar
 

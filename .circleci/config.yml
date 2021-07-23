@@ -990,7 +990,7 @@ workflows:
           requires:
             - be-deps
           # TODO FIXME
-          clojure-command: cloverage --codecov
+          clojure-command: clojure -X:dev:ee:ee-dev:cloverage
           after-steps:
             - run:
                 name: Upload code coverage to codecov.io
