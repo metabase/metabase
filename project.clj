@@ -219,7 +219,7 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
-     [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
+     [jonase/eastwood "0.9.4" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.10.0"]
      [reifyhealth/specmonstah "2.0.0"]                                ; Generate fixtures to test huge databases
@@ -376,7 +376,7 @@
    :eastwood
    [:linters-common
     {:plugins
-     [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
+     [[jonase/eastwood "0.9.4" :exclusions [org.clojure/clojure]]]
 
      :eastwood
      {:exclude-namespaces [dev dev.test]
