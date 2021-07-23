@@ -20,19 +20,23 @@ In order to troubleshoot performance problems, you first need to understand what
 
 ## Specific Problems
 
-Each of the steps described is a potential performance bottleneck:
+Each of the steps described is a potential performance bottleneck. Before diving into specifics, you may want to read our article on [Metabase at scale][metabase-at-scale].
 
 ### The Metabase instance is getting so much traffic that loading the HTML page is slow.
 
-This is pretty rare, since our front end is not very large and browsers cache our JavaScript, but it's easy to rule out.
+This is extremely rare, since our front end is not very large and browsers cache our JavaScript, but it's easy to rule out. What is more common is the lack of HTTP/2 or the lack of available connections to the application database; we cover both topics in our article on [Metabase at scale][metabase-at-scale].
 
 **How to detect this:** Nothing appears on the page (not even the controls), or elements appear one by one.
 
-**How to fix this:** Look at page load times in the browser console [FIXME: link]. If it's taking a long time to load our HTML, CSS, or JavaScript, check to see whether a proxy, firewall, or other network component is slowing things down.
+**How to fix this:**
+
+1.  Check that you are using HTTP/2 by looking at the network tab in your browser and checking the response headers.
+2.  Check the server logs for Metabase's application database.
+3.  Look at page load times in the browser console. If it's taking a long time to load our HTML, CSS, or JavaScript, check to see whether a proxy, firewall, or other network component is slowing things down.
 
 ### Caching is disabled.
 
-By default caching is disabled so that we always re-run every question. However, if your data is only being updated every few seconds or minutes, you will improve performance by enabling caching.
+By default caching is disabled so that we always re-run every question. However, if your data is only being updated every few seconds or minutes, you will improve performance by enabling caching. Note that ad hoc queries and exports are *not* cached, so if you're doing a lot of either, performance may suffer.
 
 **How to detect this:** Open the Admin Panel, go to "Settings", and look in the "Caching" tab to see whether caching is enabled or not.
 
@@ -40,7 +44,7 @@ By default caching is disabled so that we always re-run every question. However,
 
 ### The answer you want isn't cached.
 
-If you have just restarted Metabase, it  has to refresh all its caches, so performance on some questions will be slower the first time you view them. This only happens once per question, but if you have thousands of users, each with their own custom questions, you may see a lot of slowdowns occurring all at once.
+Cached values are stored in the application database, so they will still be there if Metabase restarts, provided that the cache duration is still valid. Each question (and any filter combination) is its own query, so if different users are viewing the same question with different filters, each will have to load once before it's cached. This is particularly obvious with [data sandboxing][data-sandboxing], because each user essentially has their own query for each question.
 
 **How to detect this:** Look at Metabase's logs, or in the server's logs, to see when it was last restarted.
 
@@ -48,7 +52,7 @@ If you have just restarted Metabase, it  has to refresh all its caches, so perfo
 
 ### The database is overloaded by other traffic.
 
-Metabase is usually not the only application using your database.
+Metabase is usually not the only application using your database, and you may not be the only person using Metabase. If someone else has opened a dashboard that launches a couple of dozen long-running queries, everyone else may then have to wait until database connections become free. Our article on [Metabase at scale][metabase-at-scale] discusses this in more detail, and our article on [making dashboards faster][faster-dashboards] may help as well.
 
 **How to detect this:** Checking the performance logs of the database server or the machine it's running on often reveals that the real problem is caused by some third-party application.
 
@@ -64,7 +68,9 @@ Joining half a dozen tables, each with a few million rows, simply takes a lot of
 
 1. Run the same SQL that Metabase is running but using a different tool. For example, if you have created a question using the Notebook Editor and you are using Postgres as your database, you can view the SQL, copy it, and run it from the command line using `psql`. (If you have written the question in SQL you can just copy and paste it.) If the query runs noticeably faster this way than it does when you run it through Metabase, the problem is almost certainly one of the ones described above.
 
-2. If the query runs slowly when sent by another tool, see if you can write a SQL query that calculates the same result as the question you have built in Metabase, but does so more quickly.
+2. We also recommend running the query with a JDBC-based tool like [DBeaver][dbeaver], which is also Java-based and uses most of the same database drivers as Metabase. Using this, and running the test query from the same machine that Metabase is running on, can help you determine if the problem is a network bottleneck.
+
+3. If the query runs slowly when sent by another tool, see if you can write a SQL query that calculates the same result as the question you have built in Metabase, but does so more quickly.
 
 **How to fix this:* If the problem is the SQL we generate:
 
@@ -88,9 +94,7 @@ We discuss this problem and its solutions in [this troubleshooting guide](./runn
 
 **How to detect this:** Checking the performance logs for the server where Metabase is running will tell you whether it is hitting CPU or memory limits. However, it's much more likely that the database itself is hitting its limits, so please check it first.
 
-**How to fix this:** Upgrade to a more powerful server, or one with more memory.
-
-Note: If you are running in the cloud, the servers we select are enough for 98% of customers: we use a 2-node cluster for all our in-house analytics and a 3-node cluster for customers that autoscales whenever performance requires it. If you are using our cloud option and the Metabase server really is the problem, you should consider deploying your own instance.
+**How to fix this:** Upgrade to a more powerful server or one with more memory. If you are running in the cloud, the servers we select are enough for 98% of customers (including our own internal analytics). If you are using our cloud option and the Metabase server really is the problem, you should consider deploying your own instance---please contact us for support.
 
 ### A dashboard contains too many questions.
 
@@ -104,7 +108,10 @@ When Metabase displays a dashboard, it re-runs all of the questions. We do our b
 
 **How to detect this:** If you save a question that has not been executed, MB runs the question while saving, which can make the UI look frozen.
 
-**How to fix this:** This is [a bug](https://github.com/metabase/metabase/issues/14957) and we are working to fix it. Until it's corrected, the workaround is to run the question before saving it.
+**How to fix this:** This is [a bug](https://github.com/metabase/metabase/issues/14957) and we are working to fix it. Until it's corrected, the workaround is to run the question before saving it. However, it's very likely that the root cause is one of the more common problems described above.
 
 [admin-caching]: ../administration-guide/14-caching.html
+[data-sandboxing]: /learn/permissions/data-sandboxing-row-permissions.html
+[dbeaver]: https://dbeaver.io/
 [faster-dashboards]: /learn/administration/making-dashboards-faster.html
+[metabase-at-scale]: /learn/administration/metabase-at-scale.html
