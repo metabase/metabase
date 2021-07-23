@@ -49,10 +49,12 @@ describeWithToken("collections types", () => {
   });
 
   it("should display a badge next to official questions in regular dashboards", () => {
+    cy.signInAsAdmin();
     testOfficialQuestionBadgeInRegularDashboard();
   });
 
   it("should be able to update authority level for collection children", () => {
+    cy.signInAsAdmin();
     cy.visit("/collection/root");
     cy.findByText("First collection").click();
 
