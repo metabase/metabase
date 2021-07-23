@@ -206,9 +206,16 @@
                (qp/query->native
                  (mt/mbql-query venues
                                 {:filters     [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob   [:abs $latitude]
+                                 :expressions {:bob  [:abs $latitude]
                                                :cobb [:ceil [:expression "bob"]]}
-                                 :limit       5}))))))))
+                                 :limit       5}))))))
+    (testing "Should be able to deal with case"
+      (is (= {"bob" {"$abs" "$latitude"},
+              "cobb" {"$ceil" {"$abs" "$latitude"}}}
+             (qp/query->native
+               (mt/mbql-query venues
+                              {:expressions {:bob [:case [[[:< $price 2] 2] [[:< $price 4] 1]]]}
+                               :limit       5})))))))
 
 (deftest compile-time-interval-test
   (mt/test-driver :mongo
