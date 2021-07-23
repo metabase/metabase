@@ -536,6 +536,9 @@ jobs:
             else
                echo '' > .CACHE-PREFIX
             fi
+      - run-yarn-command:
+          command-name: Create static visualization js bundle
+          command: build-static-viz
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -580,9 +583,6 @@ jobs:
             - run: lein with-profile +include-all-drivers,+cloverage,+junit,+dev,+<< parameters.edition >> deps
             - run: |
                 cd /home/circleci/metabase/metabase/bin/build-mb && clojure -P
-            - run-yarn-command:
-                command-name: Create static visualization js bundle
-                command: build-static-viz
             - save_cache:
                 name: Cache backend dependencies
                 <<: *CacheKeyBackendDeps
