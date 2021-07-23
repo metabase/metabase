@@ -264,7 +264,7 @@ describe("collection permissions", () => {
                     // });
                   });
 
-                  it.skip("abandoning archive process should keep you in the same collection (metabase#15289)", () => {
+                  it("abandoning archive process should keep you in the same collection (metabase#15289)", () => {
                     cy.request("GET", "/api/collection").then(xhr => {
                       const { id: THIRD_COLLECTION_ID } = xhr.body.find(
                         collection => collection.slug === "third_collection",
@@ -277,7 +277,7 @@ describe("collection permissions", () => {
                         .click();
                       cy.location("pathname").should(
                         "eq",
-                        `/collection/${THIRD_COLLECTION_ID}`,
+                        `/collection/${THIRD_COLLECTION_ID}-third-collection`,
                       );
                       cy.get("[class*=PageHeading]")
                         .as("title")

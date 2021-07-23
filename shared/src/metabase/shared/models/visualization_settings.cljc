@@ -53,9 +53,11 @@
 (s/def ::click-behavior (s/keys))
 (s/def ::visualization-settings (s/keys :opt [::column-settings ::click-behavior]))
 
-(s/def ::db-column-ref-vec (s/or :field (s/tuple (partial = "ref") (s/tuple (partial = "field")
-                                                                            (s/or :field-id int? :field-str string?)
-                                                                            (s/or :field-metadata map? :nil nil?)))
+(s/def ::field-id-vec (s/tuple (partial = "ref") (s/tuple (partial = "field")
+                                                   (s/or :field-id int? :field-str string?)
+                                                   (s/or :field-metadata map? :nil nil?))))
+
+(s/def ::db-column-ref-vec (s/or :field ::field-id-vec
                                  :column-name (s/tuple (partial = "name") string?)))
 
 (s/def ::click-behavior-type keyword? #_(s/or :cross-filter ::cross-filter
@@ -285,7 +287,6 @@
            ::link-target-id      entity-id}
           (some? parameter-mapping) (assoc ::parameter-mapping parameter-mapping)))
 
-
 (s/fdef entity-click-action
   :args (s/cat :entity-type ::entity-type :entity-id int? :parameter-mapping ::parameter-mapping)
   :ret  ::click-behavior)
@@ -411,6 +412,17 @@
 (def ^:private norm->db-param-ref-keys
   (set/map-invert db->norm-param-ref-keys))
 
+(def ^:private db->norm-table-columns-keys
+  {:name     ::table-column-name
+   ; for now, do not translate the value of this key (the field vector)
+   :fieldRef ::table-column-field-ref
+   :enabled  ::table-column-enabled})
+
+(def ^:private norm->db-table-columns-keys
+  (set/map-invert db->norm-table-columns-keys))
+
+(s/def ::table-column-field-ref ::field-id-vec)
+
 (defn- db->norm-param-ref [parsed-id param-ref]
   (cond-> (set/rename-keys param-ref db->norm-param-ref-keys)
     (= "dimension" (:type param-ref)) (assoc ::param-ref-id parsed-id)))
@@ -500,6 +512,13 @@
       (dissoc :parameterMapping)
       (set/rename-keys db->norm-click-behavior-keys)))
 
+(defn- db->norm-table-columns [v]
+  (-> v
+    (assoc ::table-columns (mapv (fn [tbl-col]
+                                   (set/rename-keys tbl-col db->norm-table-columns-keys))
+                             (:table.columns v)))
+    (dissoc :table.columns)))
+
 (defn- db->norm-column-settings-entry
   "Converts the DB form of a :column_settings entry value to its normalized form. Does the opposite of
   `norm->db-column-settings-entry`."
@@ -533,6 +552,9 @@
           ;; click behavior key at top level; ex: non-table card
           (:click_behavior vs)
           (assoc ::click-behavior (db->norm-click-behavior (:click_behavior vs)))
+
+          (:table.columns vs)
+          db->norm-table-columns
 
           :always
           (dissoc :column_settings :click_behavior)))
@@ -587,6 +609,15 @@
        (m/map-kv (fn [k v]
                    [(norm->db-column-ref k) (reduce-kv norm->db-column-settings-entry {} v)]))))
 
+(defn- norm->db-table-columns [v]
+  (cond-> v
+    (some? (::table-columns v))
+    (assoc :table.columns (mapv (fn [tbl-col]
+                                  (set/rename-keys tbl-col norm->db-table-columns-keys))
+                            (::table-columns v)))
+    :always
+    (dissoc ::table-columns)))
+
 (defn norm->db
   "Converts the normalized form of visualization settings (i.e. a map having
   `::column-settings` into the equivalent DB form (i.e. a map having `:column_settings`).
@@ -600,4 +631,5 @@
                                      (dissoc ::column-settings))
     (::click-behavior settings)  (-> ; from cond->
                                      (assoc :click_behavior (norm->db-click-behavior-value (::click-behavior settings)))
-                                     (dissoc ::click-behavior))))
+                                     (dissoc ::click-behavior))
+    (::table-columns settings)   norm->db-table-columns))
