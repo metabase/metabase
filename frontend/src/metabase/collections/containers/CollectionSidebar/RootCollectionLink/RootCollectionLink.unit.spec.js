@@ -3,15 +3,14 @@ import { render, screen } from "@testing-library/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 
-import CollectionSidebarHeader from "./CollectionSidebarHeader";
+import RootCollectionLink from "./RootCollectionLink";
 
 it("displays link to main collection: Our Analytics", () => {
+  const root = { name: "name", id: "root" };
+
   render(
     <DragDropContextProvider backend={HTML5Backend}>
-      <CollectionSidebarHeader
-        isRoot={false}
-        root={{ name: "name", id: "root" }}
-      />
+      <RootCollectionLink isRoot={false} root={root} />
     </DragDropContextProvider>,
   );
 

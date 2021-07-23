@@ -7,7 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import CollectionLink from "metabase/collections/components/CollectionLink";
 
-import { Container } from "./CollectionSidebarHeader.styled";
+import { Container } from "./RootCollectionLink.styled";
 
 const propTypes = {
   isRoot: PropTypes.bool.isRequired,

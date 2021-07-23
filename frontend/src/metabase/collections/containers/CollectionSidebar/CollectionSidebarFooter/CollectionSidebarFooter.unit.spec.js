@@ -5,14 +5,14 @@ import { render, screen } from "@testing-library/react";
 import CollectionSidebarFooter from "./CollectionSidebarFooter";
 
 it("displays link to archive, including icon", () => {
-  render(<CollectionSidebarFooter isSuperUser={false} />);
+  render(<CollectionSidebarFooter isAdmin={false} />);
 
   screen.getByText("View archive");
   screen.getByLabelText("view_archive icon");
 });
 
 it("does not display link to other users personal collections if user is not superuser", () => {
-  render(<CollectionSidebarFooter isSuperUser={false} />);
+  render(<CollectionSidebarFooter isAdmin={false} />);
 
   expect(
     screen.queryByText("Other users' personal collections"),
@@ -21,7 +21,7 @@ it("does not display link to other users personal collections if user is not sup
 });
 
 it("displays link to other users personal collections if user is superuser", () => {
-  render(<CollectionSidebarFooter isSuperUser={true} />);
+  render(<CollectionSidebarFooter isAdmin={true} />);
 
   screen.getByText("Other users' personal collections");
   screen.queryByLabelText("group icon");

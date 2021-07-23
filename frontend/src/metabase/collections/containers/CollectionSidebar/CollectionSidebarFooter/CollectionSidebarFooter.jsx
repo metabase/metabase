@@ -6,13 +6,13 @@ import * as Urls from "metabase/lib/urls";
 import { Container, Icon, Link } from "./CollectionSidebarFooter.styled";
 
 const propTypes = {
-  isSuperUser: PropTypes.bool.isRequired,
+  isAdmin: PropTypes.bool.isRequired,
 };
 
-export default function CollectionSidebarFooter({ isSuperUser }) {
+export default function CollectionSidebarFooter({ isAdmin }) {
   return (
     <Container>
-      {isSuperUser && (
+      {isAdmin && (
         <Link to={Urls.collection({ id: "users" })}>
           <Icon name="group" />
           {t`Other users' personal collections`}

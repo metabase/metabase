@@ -12,7 +12,7 @@ import {
   ToggleMobileSidebarIcon,
 } from "./CollectionSidebar.styled";
 
-import Header from "./CollectionSidebarHeader/CollectionSidebarHeader";
+import RootCollectionLink from "./RootCollectionLink/RootCollectionLink";
 import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
 import Collections from "./Collections/Collections";
 
@@ -74,7 +74,9 @@ class CollectionSidebar extends React.Component {
         <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
 
         <Collection.Loader id="root">
-          {({ collection: root }) => <Header isRoot={isRoot} root={root} />}
+          {({ collection: root }) => (
+            <RootCollectionLink isRoot={isRoot} root={root} />
+          )}
         </Collection.Loader>
 
         <Collections
@@ -86,7 +88,7 @@ class CollectionSidebar extends React.Component {
           openCollections={this.state.openCollections}
         />
 
-        <Footer isSuperUser={currentUser.is_superuser} />
+        <Footer isAdmin={currentUser.is_superuser} />
       </React.Fragment>
     );
   };
@@ -99,13 +101,13 @@ class CollectionSidebar extends React.Component {
         role="tree"
         shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
       >
-        {allFetched ? this.renderContent() : <LoadingWarning />}
+        {allFetched ? this.renderContent() : <LoadingView />}
       </Sidebar>
     );
   }
 }
 
-function LoadingWarning() {
+function LoadingView() {
   return (
     <LoadingContainer>
       <LoadingSpinner />
