@@ -4,15 +4,23 @@ info:
   description: Allows Metabase to connect to Google BigQuery databases using the Google Cloud SDK.
 driver:
   name: bigquery-cloud-sdk
-  display-name: BigQuery (Cloud SDK)
+  display-name: BigQuery
   lazy-load: true
   parent:
     - sql
   connection-properties:
     - name: project-id
-      display-name: Project ID
+      display-name: Project ID (override)
       required: false
       placeholder: 1w08oDRKPrOqBt06yxY8uiCz2sSvOp3u
+    - name: service-account-json
+      display-name: Service account JSON file
+      required: true
+      type: textFile
+    - name: dataset-id
+      display-name: Dataset ID
+      required: true
+      placeholder: toucanSightings
 init:
   - step: load-namespace
     namespace: metabase.driver.bigquery-cloud-sdk
