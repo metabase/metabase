@@ -150,8 +150,6 @@ export default class DatabaseEditApp extends Component {
 
     const showTabs = editingExistingDatabase && letUserControlSchedulingSaved;
 
-    const { selectEngine } = this.props;
-
     return (
       <Box px={[3, 4, 5]} mt={[1, 2, 3]}>
         <Breadcrumbs
@@ -216,10 +214,6 @@ export default class DatabaseEditApp extends Component {
                 <Box>
                   <DriverWarning
                     engine={selectedEngine}
-                    onEngineChange={engine => {
-                      console.log("onEngineChange: " + engine);
-                      selectEngine(engine);
-                    }}
                     ml={26}
                     data-testid="database-setup-driver-warning"
                   />
