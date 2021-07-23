@@ -15,19 +15,24 @@
                                                              (u.date/format (t/zoned-date-time)))}
    :write-keepalive-newlines? false})
 
+(defn- select-indices
+  [data indices]
+  (if indices
+    (let [data-vec (into [] data)]
+      (for [i indices] (data-vec i)))
+    data))
+
 (defmethod i/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [deduped-cols]} :data} {:keys [output-order]}]
-        (let [cols-vec (into [] deduped-cols)
-              ordered-cols (for [i output-order] (cols-vec i))]
+        (let [ordered-cols (select-indices deduped-cols output-order)]
           (csv/write-csv writer [(map (some-fn :display_name :name) ordered-cols)])
           (.flush writer)))
 
       (write-row! [_ row row-num {:keys [output-order]}]
-        (let [row-vec (into [] row)
-              ordered-row (for [i output-order] (row-vec i))]
+        (let [ordered-row (select-indices row output-order)]
           (csv/write-csv writer [(map common/format-value ordered-row)])
           (.flush writer)))
 
