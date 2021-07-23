@@ -24,6 +24,7 @@ function getForeground(model) {
 }
 
 export const EntityIconWrapper = styled(IconButtonWrapper)`
+  background-color: ${color("bg-medium")};
   padding: 12px;
 
   color: ${props =>

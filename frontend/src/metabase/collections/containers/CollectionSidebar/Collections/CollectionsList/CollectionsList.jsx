@@ -5,10 +5,26 @@ import { Box, Flex } from "grid-styled";
 import * as Urls from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
+import { ExpandCollectionButton } from "./CollectionsList.styled";
 
 import CollectionLink from "metabase/collections/components/CollectionLink";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
+
+function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
+  const iconName = isOpen ? "chevrondown" : "chevronright";
+
+  function handleClick(e) {
+    e.preventDefault();
+    action(collectionId);
+  }
+
+  return (
+    <ExpandCollectionButton>
+      <Icon name={iconName} onClick={handleClick} size={12} />
+    </ExpandCollectionButton>
+  );
+}
 
 class CollectionsList extends React.Component {
   render() {
@@ -53,22 +69,13 @@ class CollectionsList extends React.Component {
                         }
                       >
                         {hasChildren && (
-                          <Flex
-                            className="absolute text-brand cursor-pointer"
-                            align="center"
-                            justifyContent="center"
-                            style={{ left: -20 }}
-                          >
-                            <Icon
-                              name={isOpen ? "chevrondown" : "chevronright"}
-                              onClick={ev => {
-                                ev.preventDefault();
-                                action(c.id);
-                              }}
-                              size={12}
-                            />
-                          </Flex>
+                          <ToggleChildCollectionButton
+                            action={action}
+                            collectionId={c.id}
+                            isOpen={isOpen}
+                          />
                         )}
+
                         <Icon
                           name={initialIcon}
                           mr={"6px"}

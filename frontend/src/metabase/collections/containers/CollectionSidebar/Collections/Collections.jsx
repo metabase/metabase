@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import CollectionsList from "metabase/collections/components/CollectionsList";
+import CollectionsList from "./CollectionsList/CollectionsList";
 import { Box } from "grid-styled";
 
 import {
