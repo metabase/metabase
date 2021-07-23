@@ -211,10 +211,6 @@
   :ci
   {:jvm-opts ["-Xmx2g"]}
 
-  ;; exists for symmetry with the ee profile
-  :oss
-  {}
-
   ;; include EE source code.
   :ee
   {:extra-paths ["enterprise/backend/src"]}
@@ -224,6 +220,13 @@
   ;; for ee tests: clojure -X:dev:ee:ee-dev:test
   :ee-dev
   {:extra-paths ["enterprise/backend/test"]}
+
+  ;; these aliases exist for symmetry with the ee aliases. Empty for now.
+  :oss
+  {}
+
+  :oss-dev
+  {}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
