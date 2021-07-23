@@ -1,11 +1,15 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { Box } from "grid-styled";
 
 import * as Urls from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
-import { ExpandCollectionButton } from "./CollectionsList.styled";
+import {
+  ExpandCollectionButton,
+  InitialIcon,
+  ItemContainer,
+} from "./CollectionsList.styled";
 
 import CollectionLink from "metabase/collections/components/CollectionLink";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
@@ -26,6 +30,26 @@ function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   );
 }
 
+function CollectionItem({ action, c, initialIcon, isOpen }) {
+  const hasChildren =
+    Array.isArray(c.children) && c.children.some(child => !child.archived);
+
+  return (
+    <ItemContainer>
+      {hasChildren && (
+        <ToggleChildCollectionButton
+          action={action}
+          collectionId={c.id}
+          isOpen={isOpen}
+        />
+      )}
+
+      <InitialIcon name={initialIcon} />
+      {c.name}
+    </ItemContainer>
+  );
+}
+
 class CollectionsList extends React.Component {
   render() {
     const {
@@ -41,9 +65,6 @@ class CollectionsList extends React.Component {
         {collections.map(c => {
           const isOpen = openCollections.indexOf(c.id) >= 0;
           const action = isOpen ? this.props.onClose : this.props.onOpen;
-          const hasChildren =
-            Array.isArray(c.children) &&
-            c.children.some(child => !child.archived);
           return (
             <Box key={c.id}>
               <CollectionDropTarget collection={c}>
@@ -60,29 +81,12 @@ class CollectionsList extends React.Component {
                       role="treeitem"
                       aria-expanded={isOpen}
                     >
-                      <Flex
-                        className="relative"
-                        align={
-                          // if a collection name is somewhat long, align things at flex-start ("top") for a slightly better
-                          // visual
-                          c.name.length > 25 ? "flex-start" : "center"
-                        }
-                      >
-                        {hasChildren && (
-                          <ToggleChildCollectionButton
-                            action={action}
-                            collectionId={c.id}
-                            isOpen={isOpen}
-                          />
-                        )}
-
-                        <Icon
-                          name={initialIcon}
-                          mr={"6px"}
-                          style={{ opacity: 0.4 }}
-                        />
-                        {c.name}
-                      </Flex>
+                      <CollectionItem
+                        action={action}
+                        c={c}
+                        initialIcon={initialIcon}
+                        isOpen={isOpen}
+                      />
                     </CollectionLink>
                   );
                 }}
