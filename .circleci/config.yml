@@ -223,7 +223,7 @@ default_parameters: &Params
 cache-key-backend-deps: &CacheKeyBackendDeps
   # TODO -- this should actually include the Java source files and the Spark SQL AOT source files as well since we now
   # compile those as part of this step. FIXME
-  key: v3-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
+  key: v4-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
 
 cache-key-frontend-deps: &CacheKeyFrontendDeps
   key: v1-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
@@ -570,7 +570,7 @@ jobs:
       - attach-workspace
       # This step is pretty slow, even with the cache, so only run it if project.clj has changed
       - run-on-change:
-          checksum: 'v2-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
+          checksum: 'v4-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
           steps:
             - restore-be-deps-cache
             - run:
@@ -583,8 +583,13 @@ jobs:
                 name: Fetch dependencies
                 command: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
             - run:
-                name: Fetch dependencies (./bin/build)
-                command: cd /home/circleci/metabase/metabase/bin/build-mb && clojure -P -X:test
+                name: Fetch dependencies (./bin/build/build-mb)
+                command: cd /home/circleci/metabase/metabase/bin/build-mb && clojure -P -M:test
+            # Not sure why this is needed since you would think build-mb would fetch this stuff as well. It doesn't
+            # seem to fetch everything tho. :shrug:
+            - run:
+                name: Fetch dependencies (./bin/build/build-drivers)
+                command: cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -P -M:test
             - save_cache:
                 name: Cache backend dependencies
                 <<: *CacheKeyBackendDeps
