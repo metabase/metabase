@@ -684,8 +684,7 @@ describe("collection permissions", () => {
                   expect(xhr.cause).not.to.exist;
                 });
                 cy.findAllByText(/Revert/).should("not.exist");
-                // We need to reload the page because of #12581
-                cy.reload();
+
                 cy.contains(/^Orders$/);
               });
 
@@ -700,10 +699,7 @@ describe("collection permissions", () => {
                   expect(xhr.status).to.eq(200);
                   expect(xhr.cause).not.to.exist;
                 });
-                cy.findByText("Reverted");
 
-                // We need to reload the page because of #12581
-                cy.reload();
                 cy.contains(/^Orders$/);
               });
             });
