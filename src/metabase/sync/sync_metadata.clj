@@ -13,7 +13,6 @@
             [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
             [metabase.sync.sync-metadata.tables :as sync-tables]
             [metabase.sync.util :as sync-util]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
