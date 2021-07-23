@@ -53,8 +53,9 @@ jobs:
     - name: Get M2 cache
       uses: actions/cache@v2
       with:
-        path: ~/.m2
-        path: ~/.gitlibs
+        path: |
+          ~/.m2
+          ~/.gitlibs
         key: ${{ runner.os }}-m2-${{ hashFiles('**/deps.edn') }}
 
     - run: yarn install --frozen-lockfile --prefer-offline

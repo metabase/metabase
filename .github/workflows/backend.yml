@@ -42,8 +42,9 @@ jobs:
     - name: Get M2 cache
       uses: actions/cache@v2
       with:
-        path: ~/.m2
-        path: ~/.gitlibs
+        path: |
+          ~/.m2
+          ~/.gitlibs
         key: ${{ runner.os }}-eastwood-${{ hashFiles('**/deps.edn') }}
     - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
       name: Run Eastwood linter
@@ -64,8 +65,9 @@ jobs:
     - name: Get M2 cache
       uses: actions/cache@v2
       with:
-        path: ~/.m2
-        path: ~/.gitlibs
+        path: |
+          ~/.m2
+          ~/.gitlibs
         key: ${{ runner.os }}-namespace-decls-${{ hashFiles('**/deps.edn') }}
     - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
       name: Check ns forms
@@ -86,8 +88,9 @@ jobs:
     - name: Get M2 cache
       uses: actions/cache@v2
       with:
-        path: ~/.m2
-        path: ~/.gitlibs
+        path: |
+          ~/.m2
+          ~/.gitlibs
         key: ${{ runner.os }}-reflection-warnings-${{ hashFiles('**/deps.edn') }}
     - run: ./bin/reflection-linter
       name: Run reflection warnings checker
