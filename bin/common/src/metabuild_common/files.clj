@@ -101,7 +101,7 @@
   `.git` in it."
   (loop [^File dir (File. ^String (env/env :user-dir))]
     (cond
-      (file-exists? (filename (.getAbsolutePath dir) ".git"))
+      (file-exists? (filename (.getAbsolutePath dir) "package.json"))
       (.getAbsolutePath dir)
 
       (.getParentFile dir)
