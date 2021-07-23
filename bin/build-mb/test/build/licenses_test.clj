@@ -207,28 +207,26 @@
 
 (deftest all-deps-have-licenses
   (testing "All deps on the classpath have licenses"
-    (loop-until-success #(u/sh {:dir u/project-root-directory} "lein" "with-profile" "+include-all-drivers,+oss,+ee" "deps") 3 "download deps")
-    (doseq [edition [:oss :ee]]
-      (let [classpath (u/sh {:dir    u/project-root-directory
-                             :quiet? true}
-                            "lein"
-                            "with-profile" (str \- "dev"
-                                                (str \, \+ (name edition))
-                                                \,"+include-all-drivers")
-                            "classpath")
-            classpath-entries (->> (str/split (last classpath) (re-pattern lic/classpath-separator))
-                                   (filter lic/jar-file?))]
-        (let [results (lic/process* {:classpath-entries classpath-entries
-                                     :backfill  (edn/read-string
-                                                 (slurp (io/resource "overrides.edn")))})]
-          (is (nil? (:without-license results))
-              (str "Deps without license information:\n"
-                   (str/join "\n" (map first (:without-license results)))))
-          (is (= (set classpath-entries)
-                 (into #{} (->> results :with-license (map first))))))
-        (is (some? (:without-license
-                    (lic/process* {:classpath-entries classpath-entries
-                                   :backfill  {}}))))))))
+    (loop-until-success #(u/sh {:dir u/project-root-directory} "clojure" "-A:ee" "-P") 3 "download deps")
+    (let [edition :ee
+          classpath (u/sh {:dir    u/project-root-directory
+                           :quiet? true}
+                          "clojure"
+                          "-A:ee"
+                          "-Spath")
+          classpath-entries (->> (str/split (last classpath) (re-pattern lic/classpath-separator))
+                                 (filter lic/jar-file?))]
+      (let [results (lic/process* {:classpath-entries classpath-entries
+                                   :backfill  (edn/read-string
+                                                (slurp (io/resource "overrides.edn")))})]
+        (is (nil? (:without-license results))
+            (str "Deps without license information:\n"
+                 (str/join "\n" (map first (:without-license results)))))
+        (is (= (set classpath-entries)
+               (into #{} (->> results :with-license (map first))))))
+      (is (some? (:without-license
+                  (lic/process* {:classpath-entries classpath-entries
+                                 :backfill  {}})))))))
 (comment
   (run-tests)
   (binding [clojure.test/*test-out* *out*] (run-tests))

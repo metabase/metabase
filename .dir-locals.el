@@ -21,6 +21,7 @@
                               (let-404)
                               (macros/case 0)
                               (match 1)
+                              (c/step 1)
                               (mbql.match/match 1)
                               (mt/test-drivers 1)
                               (mt/query 1)

@@ -1,5 +1,6 @@
 (ns build
-  (:require [clojure.java.io :as io]
+  (:require [build.licenses :as licenses]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.build.api :as b]
             [clojure.tools.build.util.zip :as b.zip]
@@ -83,7 +84,24 @@
                         :ns-compile ns-decls})
         (c/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
-(defn copy-resources! [basis]
+(defn copy-resources! [edition basis]
+  (c/step "Create license information"
+    (let [backend-path "license-backend-third-party.txt"
+          frontend-path "license-frontend-third-party.txt"]
+     (license/generate {:classpath-entries (keys (:classpath basis))
+                        :backfill          "overrides.edn"
+                        :output-filename   backend-path
+                        :report?           false})
+     (let [license-text (str/join \newline
+                                  (c/sh {:quiet? true}
+                                        "yarn" "licenses" "generate-disclaimer"))]
+       (spit frontend-path license-text))
+     (b/copy-file {:src frontend-path :target (str class-dir "/" frontend-path)})
+     (b/copy-file {:src backend-path :target (str class-dir "/" backend-path)})
+     (b/copy-file {:src (case edition
+                          :oss "LICENSE-AGPL.txt"
+                          :ee "LICENSE-MCL.txt")
+                   :target (str class-dir "/LICENSE")})))
   (c/step "Copy resources"
     ;; technically we don't NEED to copy the Clojure source files but it doesn't really hurt anything IMO.
     (doseq [path (all-paths basis)]
