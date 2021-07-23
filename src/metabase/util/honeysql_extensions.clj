@@ -204,12 +204,18 @@
   (unwrap-typed-honeysql-form [this]
     (:form this)))
 
+(defn type-info->db-type
+  "For a given type-info, returns the `database-type`."
+  [type-info]
+  {:added "0.39.0"}
+  (::database-type type-info))
+
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `database-type`?
 
     (is-of-type? expr \"datetime\") ; -> true"
   [honeysql-form database-type]
-  (= (::database-type (type-info honeysql-form))
+  (= (type-info->db-type (type-info honeysql-form))
      (some-> database-type name str/lower-case)))
 
 (s/defn with-database-type-info
