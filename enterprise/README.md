@@ -19,28 +19,15 @@ MB_EDITION=ee yarn build-hot
 
 ### Back-end
 
-You need to add the `:ee` profile to the leiningen command to run Metabase Enterprise Edition.
+You need to add the `:ee` alias to the Clojure CLI command to run Metabase Enterprise Edition.
 
 ```clj
-lein with-profile +ee run
-```
+# Start a local Metabase server that includes EE sources
+clojure -M:ee:run
 
-```clj
-lein with-profile +ee uberjar
-```
+# start a REPL that includes EE sources.
+clojure -A:ee
 
-```clj
-lein with-profile +ee repl
-```
-
-In Emacs/CIDER you can customize the `lein repl` command used to start the REPL by passing a prefix argument, e.g.
-
-```emacs-lisp
-C-u M-x cider-jack-in
-```
-
-or, programatically:
-
-```emacs-lisp
-(cider-jack-in '(4))
+# start a REPL that includes EE sources & test namespaces.
+clojure -A:dev:ee:ee-dev
 ```

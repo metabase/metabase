@@ -6,8 +6,7 @@
             [metabase-enterprise.sandbox.api.user :as user]
             [metabase.server.middleware.auth :as middleware.auth]))
 
-;; this is copied from `metabase.api.routes` because if we require that above we will destroy startup times for `lein
-;; ring server`
+;; Duplicated with `metabase.api.routes` but prevents circular deps between the two namespaces.
 (def ^:private +auth
   "Wrap `routes` so they may only be accessed with proper authentiaction credentials."
   middleware.auth/enforce-authentication)

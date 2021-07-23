@@ -367,7 +367,9 @@
              rules))))
 
 (defn -main
-  "Entry point for lein task `generate-automagic-dashboards-pot`"
+  "Entry point for Clojure CLI task `generate-automagic-dashboards-pot`. Run it with
+
+    clojure -M:generate-automagic-dashboards-pot"
   [& _]
   (->> (all-rules)
        (mapcat extract-localized-strings)

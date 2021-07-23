@@ -154,7 +154,7 @@ And of course your Jetty development server is available via
 ### Building drivers
 
 Most of the drivers Metabase uses to connect to external data warehouse databases are separate projects under the
-`modules/` subdirectory. When running Metabase via `lein`, you'll need to build these drivers in order to have access
+`modules/` subdirectory. When running Metabase via `clojure`, you'll need to build these drivers in order to have access
 to them. You can build drivers as follows:
 
 ```

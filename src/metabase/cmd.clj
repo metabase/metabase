@@ -1,6 +1,6 @@
 (ns metabase.cmd
-  "Functions for commands that can be ran from the command-line with `lein` or the Metabase JAR. These are ran as
-  follows:
+  "Functions for commands that can be ran from the command-line with the Clojure CLI or the Metabase JAR. These are ran
+  as follows:
 
     <metabase> <command> <options>
 
@@ -8,7 +8,6 @@
 
     clojure -M:run migrate force
     java -jar metabase.jar migrate force
-
 
   Logic below translates resolves the command itself to a function marked with `^:command` metadata and calls the
   function with arguments as appropriate.
