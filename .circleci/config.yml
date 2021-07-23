@@ -223,7 +223,7 @@ default_parameters: &Params
 cache-key-backend-deps: &CacheKeyBackendDeps
   # TODO -- this should actually include the Java source files and the Spark SQL AOT source files as well since we now
   # compile those as part of this step. FIXME
-  key: v2-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
+  key: v3-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
 
 cache-key-frontend-deps: &CacheKeyFrontendDeps
   key: v1-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
@@ -570,7 +570,7 @@ jobs:
       - attach-workspace
       # This step is pretty slow, even with the cache, so only run it if project.clj has changed
       - run-on-change:
-          checksum: '{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
+          checksum: 'v2-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
           steps:
             - restore-be-deps-cache
             - run:
