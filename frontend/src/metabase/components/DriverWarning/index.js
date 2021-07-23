@@ -1,1 +1,1 @@
-export * from "./DriverWarning";
+export { default } from "./DriverWarning";
