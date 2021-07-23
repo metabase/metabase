@@ -222,6 +222,11 @@ describe("scenarios > admin > databases > add", () => {
 
       chooseDatabase("BigQuery");
 
+      //Ensure deprecation warning is shown
+      cy.findByTestId("database-setup-driver-warning").within(() => {
+        cy.contains("The old driver has been deprecated");
+      });
+
       // enter text
       typeField("Name", "bq db");
       typeField("Dataset ID", "some-dataset");
