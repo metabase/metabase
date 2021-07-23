@@ -408,7 +408,7 @@ commands:
       - restore-be-deps-cache
       - steps: << parameters.before-steps >>
       - run:
-          name: clojure << parameters.clojure-command >>
+          name: clojure << parameters.clojure-command >>:<< parameters.edition >>:<< parameters.edition >>-dev
           command: |
             clojure << parameters.clojure-command >>:<< parameters.edition >>:<< parameters.edition >>-dev
           no_output_timeout: 15m
@@ -684,7 +684,7 @@ jobs:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: << parameters.driver >>
-                command: << parameters.extra-env >> clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test test
+                command: << parameters.extra-env >> clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/junit

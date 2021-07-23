@@ -1,10 +1,13 @@
 (ns metabase.test.util.log
   "Utils for controlling the logging that goes on when running tests."
-  (:require [clojure.tools.logging :as log])
+  (:require [clojure.tools.logging :as log]
+            test-runner)
   (:import java.io.PrintStream
            [org.apache.commons.io.output NullOutputStream NullWriter]
            [org.apache.logging.log4j Level LogManager]
            [org.apache.logging.log4j.core Logger LoggerContext]))
+
+(comment test-runner/keep-me)
 
 (def ^:private logger->original-level
   (delay
