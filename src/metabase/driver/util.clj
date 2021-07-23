@@ -100,7 +100,8 @@
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:details-fields props
-                      :driver-name    (driver/display-name driver)}])))
+                      :driver-name    (driver/display-name driver)
+                      :superseded-by  (driver/superseded-by driver)}])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             TLS Helpers                                                        |

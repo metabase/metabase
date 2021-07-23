@@ -8,6 +8,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
+import DriverWarning from "metabase/components/DriverWarning";
 import ExternalLink from "metabase/components/ExternalLink";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
@@ -203,6 +204,11 @@ export default class Setup extends Component {
           </div>
 
           <AddDatabaseHelpCardHolder isVisible={isDatabaseHelpCardVisible}>
+            <DriverWarning
+              engine={selectedDatabaseEngine}
+              ml={26}
+              data-testid="database-setup-driver-warning"
+            />
             <AddDatabaseHelpCard
               engine={selectedDatabaseEngine}
               hasCircle={false}
