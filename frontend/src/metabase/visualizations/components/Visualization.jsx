@@ -64,6 +64,12 @@ type Props = {
   isEditing: boolean,
   isSettings: boolean,
 
+  headerIcon?: {
+    name: string,
+    color?: string,
+    size?: Number,
+  },
+
   actionButtons: React.Element<any>,
 
   // errors
@@ -372,6 +378,7 @@ export default class Visualization extends React.PureComponent {
       isDashboard,
       width,
       height,
+      headerIcon,
       errorIcon,
       isSlow,
       expectedDuration,
@@ -497,18 +504,22 @@ export default class Visualization extends React.PureComponent {
 
     const CardVisualization = visualization;
 
+    const title = settings["card.title"];
+    const hasHeaderContent = title || extra;
+    const isHeaderEnabled = !(visualization && visualization.noHeader);
+
+    const hasLegendHeader =
+      (showTitle &&
+        hasHeaderContent &&
+        (loading || error || noResults || isHeaderEnabled)) ||
+      replacementContent;
+
     return (
       <div
         className={cx(className, "flex flex-column full-height")}
         style={style}
       >
-        {(showTitle &&
-          (settings["card.title"] || extra) &&
-          (loading ||
-            error ||
-            noResults ||
-            !(visualization && visualization.noHeader))) ||
-        replacementContent ? (
+        {!!hasLegendHeader && (
           <div className="p1 flex-no-shrink">
             <TitleLegendHeader
               classNameWidgets={classNameWidgets}
@@ -516,6 +527,7 @@ export default class Visualization extends React.PureComponent {
               actionButtons={extra}
               description={settings["card.description"]}
               settings={settings}
+              icon={headerIcon}
               onChangeCardAndRun={
                 this.props.onChangeCardAndRun && !replacementContent
                   ? this.handleOnChangeCardAndRun
@@ -523,7 +535,7 @@ export default class Visualization extends React.PureComponent {
               }
             />
           </div>
-        ) : null}
+        )}
         {replacementContent ? (
           replacementContent
         ) : // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
@@ -586,6 +598,7 @@ export default class Visualization extends React.PureComponent {
             card={series[0].card} // convenience for single-series visualizations
             data={series[0].data} // convenience for single-series visualizations
             hovered={hovered}
+            headerIcon={hasLegendHeader ? null : headerIcon}
             onHoverChange={this.handleHoverChange}
             onVisualizationClick={this.handleVisualizationClick}
             visualizationIsClickable={this.visualizationIsClickable}

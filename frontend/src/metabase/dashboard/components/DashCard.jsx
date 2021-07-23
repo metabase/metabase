@@ -17,7 +17,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
 
-import Icon from "metabase/components/Icon";
+import Icon, { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
 import { isVirtualDashCard } from "metabase/dashboard/dashboard";
@@ -59,6 +59,7 @@ export default class DashCard extends Component {
     markNewCardSeen: PropTypes.func.isRequired,
     fetchCardData: PropTypes.func.isRequired,
     navigateToNewCardFromDashboard: PropTypes.func.isRequired,
+    headerIcon: PropTypes.shape(iconPropTypes),
   };
 
   constructor(props) {
@@ -112,6 +113,7 @@ export default class DashCard extends Component {
       dashboard,
       parameterValues,
       mode,
+      headerIcon,
     } = this.props;
 
     const mainCard = {
@@ -205,6 +207,7 @@ export default class DashCard extends Component {
           })}
           classNameWidgets={isEmbed && "text-light text-medium-hover"}
           error={errorMessage}
+          headerIcon={headerIcon}
           errorIcon={errorIcon}
           isSlow={isSlow}
           expectedDuration={expectedDuration}

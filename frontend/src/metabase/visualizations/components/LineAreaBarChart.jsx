@@ -2,6 +2,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
+import { iconPropTypes } from "metabase/components/Icon";
+
 import CardRenderer from "./CardRenderer";
 import LegendHeader from "./LegendHeader";
 import TitleLegendHeader from "./TitleLegendHeader";
@@ -193,6 +196,7 @@ export default class LineAreaBarChart extends Component {
     actionButtons: PropTypes.node,
     showTitle: PropTypes.bool,
     isDashboard: PropTypes.bool,
+    headerIcon: PropTypes.shape(iconPropTypes),
   };
 
   static defaultProps = {};
@@ -260,6 +264,7 @@ export default class LineAreaBarChart extends Component {
       series,
       hovered,
       showTitle,
+      headerIcon,
       actionButtons,
       onChangeCardAndRun,
       onVisualizationClick,
@@ -302,6 +307,7 @@ export default class LineAreaBarChart extends Component {
             settings={settings}
             onChangeCardAndRun={onChangeCardAndRun}
             actionButtons={actionButtons}
+            icon={headerIcon}
           />
         )}
         {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
