@@ -31,21 +31,23 @@ function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
 }
 
 function CollectionItem({ action, c, initialIcon, isOpen }) {
+  const { archived, children, id, name } = c;
+
   const hasChildren =
-    Array.isArray(c.children) && c.children.some(child => !child.archived);
+    Array.isArray(children) && children.some(child => !archived);
 
   return (
     <ItemContainer>
       {hasChildren && (
         <ToggleChildCollectionButton
           action={action}
-          collectionId={c.id}
+          collectionId={id}
           isOpen={isOpen}
         />
       )}
 
       <InitialIcon name={initialIcon} />
-      {c.name}
+      {name}
     </ItemContainer>
   );
 }
