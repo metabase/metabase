@@ -18,9 +18,8 @@
          streaming.json/keep-me
          streaming.xlsx/keep-me)
 
-;; TODO add issue number for fixing hack
 ;; HACK: this function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
-;; at this point in the code.
+;; at this point in the code. (#17195)
 (defn- deduplicate-col-names
   [cols]
   (map (fn [col unique-name]
@@ -56,7 +55,6 @@
                    {:data (assoc initial-metadata :deduped-cols deduped-cols)}
                    viz-settings')
          {:data initial-metadata})
-
 
         ([metadata]
          (assoc metadata
