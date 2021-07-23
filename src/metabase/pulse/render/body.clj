@@ -248,7 +248,8 @@
                       (svg-poc/categorical-donut
                        (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
     {:attachments
-     nil
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
 
      :content
      [:div
