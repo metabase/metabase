@@ -30,8 +30,8 @@ function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
   );
 }
 
-function CollectionItem({ action, c, initialIcon, isOpen }) {
-  const { archived, children, id, name } = c;
+function CollectionLabel({ action, collection, initialIcon, isOpen }) {
+  const { archived, children, id, name } = collection;
 
   const hasChildren =
     Array.isArray(children) && children.some(child => !archived);
@@ -52,7 +52,7 @@ function CollectionItem({ action, c, initialIcon, isOpen }) {
   );
 }
 
-function Item({
+function Collection({
   collection,
   depth,
   currentCollection,
@@ -70,21 +70,29 @@ function Item({
     <Box key={id}>
       <CollectionDropTarget collection={collection}>
         {({ highlighted, hovered }) => {
+          const url = Urls.collection(collection);
+          const selected = id === currentCollection;
+
+          // when we click on a link, if there are children,
+          // expand to show sub collections
+          function handleClick() {
+            children && action(id);
+          }
+
           return (
             <CollectionLink
-              to={Urls.collection(collection)}
-              selected={id === currentCollection}
+              to={url}
+              selected={selected}
               depth={depth}
-              // when we click on a link, if there are children, expand to show sub collections
-              onClick={() => children && action(id)}
+              onClick={handleClick}
               hovered={hovered}
               highlighted={highlighted}
               role="treeitem"
               aria-expanded={isOpen}
             >
-              <CollectionItem
+              <CollectionLabel
                 action={action}
-                c={collection}
+                collection={collection}
                 initialIcon={initialIcon}
                 isOpen={isOpen}
               />
@@ -122,7 +130,7 @@ function CollectionsList({
   return (
     <Box>
       {filteredCollections.map(collection => (
-        <Item
+        <Collection
           collection={collection}
           depth={depth}
           filter={filter}
