@@ -294,6 +294,8 @@
 
 ;;; ---------------------------------------------------- functions ---------------------------------------------------
 
+;; It doesn't make 100% sense to have lvalues for all these but it's a formal requirement
+
 (defmethod ->lvalue :avg       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :stddev    [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :sum       [[_ inp]] (->lvalue inp))
@@ -326,6 +328,9 @@
 (defmethod ->lvalue :* [[_ & args]] (->lvalue (first args)))
 (defmethod ->lvalue :/ [[_ & args]] (->lvalue (first args)))
 
+(defmethod ->rvalue :coalesce [[_ & args]] (->lvalue (first args)))
+
+
 (defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
 (defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevPop" (->rvalue inp)})
 (defmethod ->rvalue :sum       [[_ inp]] {"$sum" (->rvalue inp)})
@@ -357,6 +362,8 @@
 (defmethod ->rvalue :- [[_ & args]] {"$subtract" (mapv ->rvalue args)})
 (defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
 (defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
+
+(defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
