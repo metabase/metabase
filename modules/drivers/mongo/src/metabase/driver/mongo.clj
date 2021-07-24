@@ -212,6 +212,7 @@
 
 (doseq [feature [:basic-aggregations
                  :nested-fields
+                 :expressions
                  :native-parameters]]
   (defmethod driver/supports? [:mongo feature] [_ _] true))
 
