@@ -1,0 +1,13 @@
+diff --git a/node_modules/grid-styled/dist/index.js b/node_modules/grid-styled/dist/index.js
+index 6f89d3d..66da33d 100644
+--- a/node_modules/grid-styled/dist/index.js
++++ b/node_modules/grid-styled/dist/index.js
+@@ -19,6 +19,6 @@ Box.displayName = 'Box';
+ 
+ var Flex = exports.Flex = (0, _systemComponents2.default)({
+   is: Box
+-}, { display: 'flex' }, 'flexWrap', 'flexDirection', 'alignItems', 'justifyContent');
++}, { display: 'flex' }, 'space', 'flexWrap', 'flexDirection', 'alignItems', 'justifyContent');
+ 
+ Flex.displayName = 'Flex';
+\ No newline at end of file
