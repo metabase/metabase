@@ -197,7 +197,6 @@
                                 {:filters     [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob   [:abs [:- $price 300]]}
                                  :limit       5}))))))
-
     (testing "Should be able to deal with a little indirection, with an expression in"
       (is (= {"bob" {"$abs" "$latitude"},
               "cobb" {"$ceil" {"$abs" "$latitude"}}}
@@ -209,13 +208,22 @@
                                  :expressions {:bob  [:abs $latitude]
                                                :cobb [:ceil [:expression "bob"]]}
                                  :limit       5}))))))
+    (testing "Should be able to deal with coalescing"
+      (is (= {"bob" {"$ifNull" ["$latitude" "$price"]}}
+             (extract-projections
+               ["bob"]
+               (qp/query->native
+                 (mt/mbql-query venues
+                                {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
+                                 :limit       5}))))))
     (testing "Should be able to deal with case"
-      (is (= {"bob" {"$abs" "$latitude"},
-              "cobb" {"$ceil" {"$abs" "$latitude"}}}
-             (qp/query->native
-               (mt/mbql-query venues
-                              {:expressions {:bob [:case [[[:< $price 2] 2] [[:< $price 4] 1]]]}
-                               :limit       5})))))))
+      (is (= {"bob" {"$case" ["$latitude"]}}
+             (extract-projections
+               ["bob"]
+               (qp/query->native
+                 (mt/mbql-query venues
+                                {:expressions {:bob [:case [[[:< $price 2] 2] [[:< $price 4] 1]]]}
+                                 :limit       5}))))))))
 
 (deftest compile-time-interval-test
   (mt/test-driver :mongo

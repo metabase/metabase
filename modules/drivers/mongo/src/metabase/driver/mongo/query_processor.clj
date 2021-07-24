@@ -365,14 +365,7 @@
 (defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
 (defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
-(defmethod ->rvalue :case [[_ cases options]]
-  (let [cases-mapvec    (mapv #(array-map :case (first %) :then (second %)) cases)
-        no-default-res  { "$switch" { "branches" cases-mapvec}}]
-    (if (:default options)
-      (assoc-in no-default-res ["$switch" "default"] (:default options))
-      no-default-res)))
-
-(defmethod ->rvalue :coalesce [[_ & args]] {})
+(defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
