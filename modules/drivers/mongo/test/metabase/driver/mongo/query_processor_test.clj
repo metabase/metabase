@@ -217,12 +217,13 @@
                                 {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
                                  :limit       5}))))))
     (testing "Should be able to deal with case"
-      (is (= {"bob" {"$case" ["$latitude"]}}
+      (is (= {"bob" {"$switch" {:branches [{:case nil, :then nil},
+                                           {:case nil, :then nil}], :default nil}}}
              (extract-projections
                ["bob"]
                (qp/query->native
                  (mt/mbql-query venues
-                                {:expressions {:bob [:case [[[:< $price 2] 2] [[:< $price 4] 1]]]}
+                                {:expressions {:bob [:case [[[:< $price 2] 2] [[:< $price 4] 1]] {}]}
                                  :limit       5}))))))))
 
 (deftest compile-time-interval-test

@@ -328,8 +328,6 @@
 (defmethod ->lvalue :* [[_ & args]] (->lvalue (first args)))
 (defmethod ->lvalue :/ [[_ & args]] (->lvalue (first args)))
 
-(defmethod ->lvalue :case [[_ cases options]] (->lvalue (first cases)))
-
 (defmethod ->rvalue :coalesce [[_ & args]] (->lvalue (first args)))
 
 
