@@ -12,7 +12,9 @@ import Tooltip from "metabase/components/Tooltip";
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
 
 import {
+  Container,
   DescriptionTooltipIcon,
+  MenuContainer,
   ToggleMobileSidebarIcon,
 } from "./CollectionHeader.styled";
 
@@ -101,11 +103,11 @@ function CreateCollectionLink({
 
 function Menu(props) {
   return (
-    <Flex ml="auto">
-      <PermissionsLink {...props} />
+    <MenuContainer>
       <EditMenu {...props} />
       <CreateCollectionLink {...props} />
-    </Flex>
+      <PermissionsLink {...props} />
+    </MenuContainer>
   );
 }
 
@@ -115,13 +117,13 @@ export default function CollectionHeader(props) {
   const hasWritePermission = collection && collection.can_write;
 
   return (
-    <Flex align="center" py={3}>
+    <Container>
       <Title {...props} />
       <Menu
         {...props}
         isPersonal={isPersonal}
         hasWritePermission={hasWritePermission}
       />
-    </Flex>
+    </Container>
   );
 }

@@ -44,6 +44,14 @@
                      "NODE_ENV"   "production"
                      "MB_EDITION" mb-edition}}
               "./node_modules/.bin/webpack" "--bail"))
+      ;; related to the above TODO -- not sure why `yarn build-static-viz` fails here
+      (u/step "Build static viz"
+        (u/sh {:dir u/project-root-directory
+               :env {"PATH"       (env/env :path)
+                     "HOME"       (env/env :user-home)
+                     "NODE_ENV"   "production"
+                     "MB_EDITION" mb-edition}}
+              "./node_modules/.bin/webpack" "--bail" "--config" "webpack.static-viz.config.js"))
       (u/announce "Frontend built successfully."))))
 
 (def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))

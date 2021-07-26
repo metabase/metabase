@@ -1,29 +1,23 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
-import { Box } from "grid-styled";
 import { t } from "ttag";
-
-import * as Urls from "metabase/lib/urls";
 
 import Collection from "metabase/entities/collections";
 
-import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
+import {
+  LoadingContainer,
+  LoadingTitle,
+  Sidebar,
+  ToggleMobileSidebarIcon,
+} from "./CollectionSidebar.styled";
 
-import { Sidebar, ToggleMobileSidebarIcon } from "./CollectionSidebar.styled";
-import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import RootCollectionLink from "./RootCollectionLink/RootCollectionLink";
+import Footer from "./CollectionSidebarFooter/CollectionSidebarFooter";
+import Collections from "./Collections/Collections";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import CollectionsList from "metabase/collections/components/CollectionsList";
-import CollectionLink from "metabase/collections/components/CollectionLink";
-
-import { SIDEBAR_SPACER } from "metabase/collections/constants";
-import {
-  nonPersonalOrArchivedCollection,
-  currentUserPersonalCollections,
-  getParentPath,
-} from "metabase/collections/utils";
+import { getParentPath } from "metabase/collections/utils";
 
 const getCurrentUser = ({ currentUser }) => ({ currentUser });
 
@@ -47,6 +41,7 @@ class CollectionSidebar extends React.Component {
   componentDidUpdate(prevProps) {
     const { collectionId, collections, loading } = this.props;
     const loaded = prevProps.loading && !loading;
+
     if (loaded) {
       const ancestors = getParentPath(collections, collectionId) || [];
       this.setState({ openCollections: ancestors });
@@ -65,9 +60,6 @@ class CollectionSidebar extends React.Component {
     });
   };
 
-  // TODO Should we update the API to filter archived collections?
-  filterPersonalCollections = collection => !collection.archived;
-
   renderContent = () => {
     const {
       currentUser,
@@ -79,90 +71,48 @@ class CollectionSidebar extends React.Component {
     return (
       <React.Fragment>
         <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
+
         <Collection.Loader id="root">
           {({ collection: root }) => (
-            <Box mb={1} mt={2}>
-              <CollectionDropTarget collection={root}>
-                {({ highlighted, hovered }) => (
-                  <CollectionLink
-                    to={Urls.collection({ id: "root" })}
-                    selected={isRoot}
-                    highlighted={highlighted}
-                    hovered={hovered}
-                  >
-                    {t`Our analytics`}
-                  </CollectionLink>
-                )}
-              </CollectionDropTarget>
-            </Box>
+            <RootCollectionLink isRoot={isRoot} root={root} />
           )}
         </Collection.Loader>
 
-        <Box pb={4}>
-          <CollectionsList
-            openCollections={this.state.openCollections}
-            onClose={this.onClose}
-            onOpen={this.onOpen}
-            collections={list}
-            filter={nonPersonalOrArchivedCollection}
-            currentCollection={collectionId}
-          />
+        <Collections
+          collectionId={collectionId}
+          currentUserId={currentUser.id}
+          list={list}
+          onClose={this.onClose}
+          onOpen={this.onOpen}
+          openCollections={this.state.openCollections}
+        />
 
-          <Box>
-            <CollectionsList
-              openCollections={this.state.openCollections}
-              onClose={this.onClose}
-              onOpen={this.onOpen}
-              collections={currentUserPersonalCollections(list, currentUser.id)}
-              initialIcon="person"
-              filter={this.filterPersonalCollections}
-              currentCollection={collectionId}
-            />
-          </Box>
-        </Box>
-
-        <Box className="mt-auto" pb={2} pl={SIDEBAR_SPACER * 2}>
-          {currentUser.is_superuser && (
-            <Link
-              my={2}
-              to={Urls.collection({ id: "users" })}
-              className="flex align-center text-bold text-light text-brand-hover"
-            >
-              <Icon name="group" mr={1} />
-              {t`Other users' personal collections`}
-            </Link>
-          )}
-          <Link
-            to={`/archive`}
-            className="flex align-center text-bold text-light text-brand-hover"
-          >
-            <Icon name="view_archive" mr={1} />
-            {t`View archive`}
-          </Link>
-        </Box>
+        <Footer isAdmin={currentUser.is_superuser} />
       </React.Fragment>
     );
   };
 
   render() {
-    const { allFetched } = this.props;
+    const { allFetched, shouldDisplayMobileSidebar } = this.props;
 
     return (
       <Sidebar
         role="tree"
-        shouldDisplayMobileSidebar={this.props.shouldDisplayMobileSidebar}
+        shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
       >
-        {allFetched ? (
-          this.renderContent()
-        ) : (
-          <div className="text-brand text-centered">
-            <LoadingSpinner />
-            <h2 className="text-normal text-light mt1">{t`Loading…`}</h2>
-          </div>
-        )}
+        {allFetched ? this.renderContent() : <LoadingView />}
       </Sidebar>
     );
   }
+}
+
+function LoadingView() {
+  return (
+    <LoadingContainer>
+      <LoadingSpinner />
+      <LoadingTitle>{t`Loading…`}</LoadingTitle>
+    </LoadingContainer>
+  );
 }
 
 export default connect(getCurrentUser)(CollectionSidebar);

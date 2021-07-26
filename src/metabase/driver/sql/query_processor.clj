@@ -100,7 +100,8 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti current-datetime-honeysql-form
-  "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`."
+  "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
+  include the database type info on the form (ex: via `hx/with-type-info`)."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
