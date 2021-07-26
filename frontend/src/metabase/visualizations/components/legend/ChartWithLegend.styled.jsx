@@ -3,6 +3,7 @@ import styled from "styled-components";
 export const ChartWithLegendRoot = styled.div`
   display: flex;
   min-height: 0;
+  padding: 0 1rem 1rem 1rem;
 `;
 
 export const ChartLegend = styled.div`

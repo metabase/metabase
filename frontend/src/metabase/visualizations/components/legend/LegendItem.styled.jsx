@@ -14,7 +14,7 @@ export const LegendItemRoot = styled.div`
 
 export const LegendItemLabel = styled.div`
   display: flex;
-  align-items: center;
+  align-items: baseline;
   color: ${colors["text-dark"]};
   opacity: ${props => (props.isMuted ? "0.4" : "")};
   cursor: ${props => (props.onClick ? "pointer" : "")};

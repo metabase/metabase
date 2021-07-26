@@ -76,9 +76,9 @@ const LegendItem = props => {
     <LegendItemRoot isVertical={isVertical}>
       <LegendItemLabel
         isMuted={isMuted}
-        onClick={handleItemClick}
-        onMouseEnter={handleItemMouseEnter}
-        onMouseLeave={handleItemMouseLeave}
+        onClick={onSelectSeries && handleItemClick}
+        onMouseEnter={onHoverChange && handleItemMouseEnter}
+        onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
         {showDot && (
           <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
@@ -87,7 +87,11 @@ const LegendItem = props => {
         )}
         {showTitle && (
           <LegendItemTitle showDot={showDot}>
-            <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
+            {isVertical ? (
+              title
+            ) : (
+              <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
+            )}
             {description && (
               <LegendItemDescription>
                 <Tooltip tooltip={description} maxWidth="22em">
