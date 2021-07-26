@@ -24,8 +24,8 @@
   (testing "no paging params"
     (is (= {:status  200
             :headers {}
-            :body    {:limit  @#'mw.offset-paging/default-limit
-                      :offset 0
+            :body    {:limit  nil
+                      :offset nil
                       :paged? false
                       :params {}}}
            (handler (ring.mock/request :get "/")))))
