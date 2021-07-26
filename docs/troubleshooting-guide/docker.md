@@ -15,7 +15,7 @@ Docker simplifies many aspects of running Metabase, but there are some pitfalls 
 
 ### Metabase container exits without starting the server
 
-**How to detect this:** Run `docker ps` to see if the Metabase container is currently running. If it is move on to the next step.
+**How to detect this:** Run `docker ps` to see if the Metabase container is currently running. If it is, move on to the next step.
 
 If `docker ps` does not show the running container, then list the stopped containers by running:
 
