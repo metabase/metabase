@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
   LegendItemDescription,
@@ -13,6 +13,7 @@ import Ellipsified from "metabase/components/Ellipsified";
 const propTypes = {
   title: PropTypes.string.isRequired,
   color: PropTypes.string.isRequired,
+  index: PropTypes.number.isRequired,
   description: PropTypes.string,
   isMuted: PropTypes.bool,
   showDot: PropTypes.bool,
@@ -21,12 +22,15 @@ const propTypes = {
   showDotTooltip: PropTypes.bool,
   infoClassName: PropTypes.string,
   onClick: PropTypes.func,
+  onMouseEnter: PropTypes.func,
+  onMouseLeave: PropTypes.func,
 };
 
 const LegendItem = props => {
   const {
     title,
     color,
+    index,
     description,
     isMuted = false,
     showDot = true,
@@ -35,10 +39,38 @@ const LegendItem = props => {
     showDotTooltip = true,
     infoClassName,
     onClick,
+    onMouseEnter,
+    onMouseLeave,
   } = props;
 
+  const handleClick = useCallback(
+    event => {
+      onClick(event, index);
+    },
+    [index, onClick],
+  );
+
+  const handleMouseEnter = useCallback(
+    event => {
+      onMouseEnter(event, index);
+    },
+    [index, onMouseEnter],
+  );
+
+  const handleMouseLeave = useCallback(
+    event => {
+      onMouseLeave(event, index);
+    },
+    [index, onMouseLeave],
+  );
+
   return (
-    <LegendItemRoot isMuted={isMuted} onClick={onClick}>
+    <LegendItemRoot
+      isMuted={isMuted}
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {showDot && (
         <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
           <LegendItemDot color={color} />
@@ -62,4 +94,4 @@ const LegendItem = props => {
 
 LegendItem.propTypes = propTypes;
 
-export default LegendItem;
+export default memo(LegendItem);
