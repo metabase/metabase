@@ -2,7 +2,7 @@ import styled from "styled-components";
 import Icon from "metabase/components/Icon";
 import colors from "metabase/lib/colors";
 
-export const LegendRoot = styled.div`
+export const LegendPanelRoot = styled.div`
   display: flex;
 `;
 
@@ -38,7 +38,7 @@ export const RemoveSeriesIcon = styled(Icon).attrs({
   }
 `;
 
-export const ActionButtons = styled.span`
+export const ActionButtonsGroup = styled.span`
   flex-shrink: 0;
   position: relative;
   margin-left: auto;

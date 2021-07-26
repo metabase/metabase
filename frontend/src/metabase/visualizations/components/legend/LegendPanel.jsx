@@ -1,16 +1,16 @@
 import React, { Fragment } from "react";
 import PropTypes from "prop-types";
 import {
-  ActionButtons,
+  ActionButtonsGroup,
   AddSeriesIcon,
-  LegendRoot,
+  LegendPanelRoot,
   RemoveSeriesIcon,
-} from "./LegendItemList.styled";
+} from "./LegendPanel.styled";
 import LegendItem from "./LegendItem";
 
 const propTypes = {
   titles: PropTypes.array.isRequired,
-  colors: PropTypes.object.isRequired,
+  colors: PropTypes.array.isRequired,
   description: PropTypes.string,
   actionButtons: PropTypes.node,
   hovered: PropTypes.shape({
@@ -27,7 +27,7 @@ const propTypes = {
   onItemMouseLeave: PropTypes.func,
 };
 
-const LegendItemList = props => {
+const LegendPanel = props => {
   const {
     titles,
     colors,
@@ -46,7 +46,7 @@ const LegendItemList = props => {
   } = props;
 
   return (
-    <LegendRoot className={className}>
+    <LegendPanelRoot className={className}>
       {titles.map((title, index) => (
         <Fragment key={index}>
           <LegendItem
@@ -69,14 +69,14 @@ const LegendItemList = props => {
       ))}
       {onAddClick && <AddSeriesIcon onClick={onAddClick} />}
       {actionButtons && (
-        <ActionButtons className={classNameWidgets}>
+        <ActionButtonsGroup className={classNameWidgets}>
           {actionButtons}
-        </ActionButtons>
+        </ActionButtonsGroup>
       )}
-    </LegendRoot>
+    </LegendPanelRoot>
   );
 };
 
-LegendItemList.propTypes = propTypes;
+LegendPanel.propTypes = propTypes;
 
-export default LegendItemList;
+export default LegendPanel;
