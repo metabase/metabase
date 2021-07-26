@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import {
   LegendContent,
@@ -15,12 +15,17 @@ const propTypes = {
 
 const LegendContainer = props => {
   const { className, showLegend, children, ...legendProps } = props;
+  const [isVertical, setIsVertical] = useState(false);
 
   return (
     <LegendContainerRoot className={className}>
       {showLegend && (
         <LegendPanel>
-          <Legend {...legendProps} isVertical />
+          <Legend
+            {...legendProps}
+            isVertical={isVertical}
+            onOrientationChange={setIsVertical}
+          />
         </LegendPanel>
       )}
       <LegendContent>{children}</LegendContent>
