@@ -1,13 +1,16 @@
 import React from "react";
+import _ from "underscore";
 import PropTypes from "prop-types";
 import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
 const propTypes = {
   titles: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
   description: PropTypes.string,
   actionButtons: PropTypes.node,
+  width: PropTypes.number,
   hovered: PropTypes.shape({
     index: PropTypes.number,
   }),
@@ -77,4 +80,4 @@ const Legend = props => {
 
 Legend.propTypes = propTypes;
 
-export default Legend;
+export default _.compose(ExplicitSize())(Legend);
