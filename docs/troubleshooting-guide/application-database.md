@@ -22,7 +22,7 @@ This command will manually clear the locks. When it's done, restart your Metabas
 
 ### Metabase H2 application database gets corrupted
 
-By default, Metabase uses [H2][what-is-h2] for its application database. Because H2 is an on-disk database, it is sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly. In these situations, you'll see errors on startup. These vary, but one example is:
+By default, Metabase uses [H2][what-is-h2] for its application database. Because H2 is an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly. In these situations, you'll see errors on startup. These vary, but one example is:
 
 ```
 myUser@myIp:~$ java -cp metabase.jar org.h2.tools.RunScript -script whatever.sql -url jdbc:h2:~/metabase.db
