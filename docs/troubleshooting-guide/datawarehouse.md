@@ -16,7 +16,7 @@ If you're having trouble connecting to your data warehouse, run through these st
 
 ### The data warehouse server is down
 
-**How to detect this:** Database servers occasionally go down. If you're using a hosted database service, go to its console and verify its status. If you have direct access to a command-line interface, log in and make sure that it is up and running and accepting queries.
+**How to detect this:** Database servers occasionally go down. If you're using a hosted database service, go to its console and verify its status. If you have direct access to a command-line interface, log in and make sure that it's up and running and accepting queries.
 
 **How to fix this:** It's out of the scope of this troubleshooting guide to get your data warehouse server back up---please check with whomever set it up for you.
 
