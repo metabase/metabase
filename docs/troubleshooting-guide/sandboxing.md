@@ -1,0 +1,56 @@
+# Sandboxing
+
+- Sandboxing means "giving some people access to only some data"
+- Can be set up [graphically][sandboxing-your-data]
+- Metabase runs a query that filters rows and/or selects a subset of columns
+- The user's query then runs on that
+
+So instead of:
+
+```
+select * from orders
+where price > 100.00;
+```
+
+we create a [common table expression][cte] as a replacement starting point for the query:
+
+```
+with temp01 as
+  (select *
+   from orders
+   where orders.customer_id = {{user_id}})
+select * from temp01
+where price > 100.00;
+```
+
+where `user_id` is bound to a property from the user record.
+
+## Troubleshooting Process
+
+### My question can't be sandboxed
+
+1. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data.
+
+2. Sandboxing doesn't work for non-SQL databases like MongoDB or Google Analytics that don't use common table expressions.
+
+### My user can't see any of the data they're supposed to
+
+1. Sandboxing relies on properties of the user record. If they logged in directly (with an account managed by Metabase) instead of using single sign-on, or vice versa, Metabase might not have the properties it's supposed to.
+
+2. Admins usually restrict access to tables as part of sandboxing. If the restrictions are too tight by mistake (e.g., "no access" instead of "no SQL access") the user might not be able to see any data.
+
+### I sandboxed my data but my users can still see it
+
+1. If the Admin forgot to restrict access, the user can see the original table.
+
+2. Sandboxing doesn't apply to queries written in SQL, so if a user has SQL access to a table, sandboxing won't restrict them. The solution is to turn off SQL access.
+
+3. If users are logging in with single sign-on but the expected attributes aren't being saved and made available, sandboxing will deny access - see [Authenticating with SAML][authenticating-with-saml] for more on setup.
+
+### I'm in a bunch of groups but can't see the sandboxed data
+
+- We only allow one group per user for sandboxing (https://www.metabase.com/docs/latest/enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table) - if someone is a member of two or more groups with different permissions, figuring out whether it should be allowed or disallowed becomes very tricky.
+
+[authenticating-with-saml]: /docs/latest/enterprise-guide/authenticating-with-saml.html
+[cte]: /glossary.html#cte
+[sandboxing-your-data]: /docs/latest/enterprise-guide/data-sandboxes.html
