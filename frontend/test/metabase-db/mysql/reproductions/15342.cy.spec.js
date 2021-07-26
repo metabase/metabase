@@ -2,7 +2,7 @@ import { restore, popover, addMySQLDatabase } from "__support__/e2e/cypress";
 
 const MYSQL_DB_NAME = "QA MySQL8";
 
-describe("15342", () => {
+describe.skip("15342", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
