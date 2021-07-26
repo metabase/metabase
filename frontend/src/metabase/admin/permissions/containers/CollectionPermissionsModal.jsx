@@ -17,15 +17,9 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 
-import PermissionsGrid from "../components/PermissionsGrid";
 import EmptyState from "metabase/components/EmptyState";
 import { PermissionsTable } from "../components/permissions-table";
 
-import {
-  getCollectionsPermissionsGrid,
-  getIsDirty,
-  getDiff,
-} from "../selectors";
 import { initialize, updatePermission, savePermissions } from "../permissions";
 
 const getCollectionEntity = props =>
@@ -34,13 +28,6 @@ const getCollectionEntity = props =>
 const mapStateToProps = (state, props) => {
   const collectionId = Urls.extractCollectionId(props.params.slug);
   return {
-    grid: getCollectionsPermissionsGrid(state, {
-      collectionId,
-      singleCollectionMode: true,
-      namespace: props.namespace,
-    }),
-    isDirty: getIsDirty(state, props),
-    diff: getDiff(state, props),
     collection: getCollectionEntity(props).selectors.getObject(state, {
       entityId: collectionId,
     }),
@@ -89,7 +76,6 @@ export default class CollectionPermissionsModal extends Component {
 
   render() {
     const {
-      grid,
       onUpdatePermission,
       isDirty,
       onClose,
@@ -97,41 +83,6 @@ export default class CollectionPermissionsModal extends Component {
       namespace,
       collection,
     } = this.props;
-
-    console.log(">>>grid", grid);
-
-    // const entities = grid.groups.map(group => {
-    //   return {
-    //     ...group,
-    //   };
-    // });
-
-    // const permissions = [
-    //   {
-    //     displayName: "Collection access",
-    //     name: "collection_access",
-    //     options: [
-    //       {
-    //         label: "Database",
-    //         value: "yo1",
-    //         icon: "arrow_left",
-    //         iconColor: "red",
-    //       },
-    //       {
-    //         label: "Database2",
-    //         value: "yo2",
-    //         icon: "arrow_left",
-    //         iconColor: "green",
-    //       },
-    //       {
-    //         label: "Database3",
-    //         value: "yo3",
-    //         icon: "arrow_left",
-    //         iconColor: "red",
-    //       },
-    //     ],
-    //   },
-    // ];
 
     return (
       <ModalContent
@@ -174,17 +125,6 @@ export default class CollectionPermissionsModal extends Component {
         ]}
       >
         <div className="relative" style={{ height: "50vh" }}>
-          {grid && (
-            <PermissionsGrid
-              className="spread"
-              grid={grid}
-              onUpdatePermission={onUpdatePermission}
-              cellHeight={60}
-              isPivoted={true}
-              showHeader={false}
-            />
-          )}
-
           {/* {grid && (
             <PermissionsTable
               entityName={t`Group name`}

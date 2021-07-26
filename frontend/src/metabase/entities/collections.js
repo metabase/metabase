@@ -83,6 +83,20 @@ const Collections = createEntity({
   },
 
   selectors: {
+    getCollectionsTree: createSelector(
+      [
+        state => state.entities.collections,
+        state => {
+          const { list } = state.entities.collections_list[{ tree: true }] || {
+            list: [],
+          };
+          return list;
+        },
+      ],
+      (collections, collectionTreeIds) => {
+        // getExpandedCollectionsById(list, )
+      },
+    ),
     getExpandedCollectionsById: createSelector(
       [
         state => state.entities.collections,

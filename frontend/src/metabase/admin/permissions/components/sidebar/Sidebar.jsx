@@ -24,7 +24,9 @@ const propTypes = {
   filterPlaceholder: PropTypes.string.isRequired,
   onSelect: PropTypes.func.isRequired,
   onBack: PropTypes.func,
+  selectedId: PropTypes.string,
   entityGroups: PropTypes.arrayOf(PropTypes.array),
+  onEntityChange: PropTypes.func,
   entitySwitch: PropTypes.shape({
     value: PropTypes.string.isRequired,
     options: PropTypes.arrayOf(
@@ -36,22 +38,35 @@ const propTypes = {
   }),
 };
 
+const searchItems = (items, filter) => {
+  const matchingItems = items.filter(item =>
+    item.name.toLowerCase().includes(filter),
+  );
+
+  const children = items
+    .map(c => c.children)
+    .filter(Boolean)
+    .flat();
+
+  const childrenMatches =
+    children.length > 0 ? searchItems(children, filter) : [];
+
+  return [...matchingItems, ...childrenMatches];
+};
+
 export function Sidebar({
   title,
   description,
   filterPlaceholder,
   entityGroups,
   entitySwitch,
+  selectedId,
+  onEntityChange,
   onSelect,
   onBack,
 }) {
   const [filter, setFilter] = useState("");
-  const [selectedId, setSelectedId] = useState(null);
 
-  const handleSelect = ({ id }) => {
-    setSelectedId(id);
-    onSelect && onSelect(id);
-  };
   const handleFilterChange = text => setFilter(text);
 
   const filteredList = useMemo(() => {
@@ -61,15 +76,13 @@ export function Sidebar({
       return null;
     }
 
-    return entityGroups
-      .flat()
-      .filter(entity => entity.name.toLowerCase().includes(trimmedFilter));
+    return searchItems(entityGroups.flat(), trimmedFilter);
   }, [entityGroups, filter]);
 
   return (
     <SidebarRoot>
       <SidebarHeader>
-        <Label>
+        <Label px={1}>
           {onBack && <Icon name="arrow_left" onClick={onBack} />}
           {title}
         </Label>
@@ -81,6 +94,7 @@ export function Sidebar({
               colorScheme="admin"
               options={entitySwitch.options}
               value={entitySwitch.value}
+              onChange={onEntityChange}
             />
           </Box>
         )}
@@ -101,7 +115,7 @@ export function Sidebar({
             colorScheme="admin"
             data={filteredList}
             selectedId={selectedId}
-            onSelect={handleSelect}
+            onSelect={onSelect}
             emptyState={
               <Box mt="100px">
                 <EmptyState message={t`Nothing here`} icon="all" />
@@ -118,7 +132,7 @@ export function Sidebar({
                   colorScheme="admin"
                   data={entities}
                   selectedId={selectedId}
-                  onSelect={handleSelect}
+                  onSelect={onSelect}
                 />
                 {!isLastGroup && <EntityGroupsDivider />}
               </React.Fragment>

@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import Radio from "metabase/components/Radio";
 
-const PermissionsTabs = ({ tab, onChangeTab }) => (
+export const PermissionsTabs = ({ tab, onChangeTab }) => (
   <div className="px3 mt1">
     <Radio
       colorScheme="admin"
@@ -20,4 +20,3 @@ const PermissionsTabs = ({ tab, onChangeTab }) => (
     />
   </div>
 );
-export default PermissionsTabs;
