@@ -42,4 +42,4 @@ It is expected that you will run the command against a brand-new (empty!) databa
 
 ### Troubleshooting
 
-If you get stuck, check out [Error when loading application database from H2](../troubleshooting-guides/loading-from-h2.md).
+If you get stuck, check out [Error when loading application database from H2](../troubleshooting-guide/loading-from-h2.md).

@@ -71,4 +71,4 @@ If your credentials are incorrect, you should see an error message letting you k
 [ec2-troubleshooting]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html
 [elb-timeout]: https://aws.amazon.com/blogs/aws/elb-idle-timeout-control/
 [heroku-timeout]: https://devcenter.heroku.com/articles/request-timeout
-[native-question]: ../users-guide/writing-sql.md
+[native-question]: ../users-guide/writing-sql.html

@@ -26,8 +26,8 @@ java -jar metabase.jar load-from-h2 /path/to/metabase.db.mv.db
 
 On a related note, if you're using Metabase Enterprise Edition, you might want to check out the [Serialization][serialization-docs] feature to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase.
 
-[backup]: ../operations-guide/backing-up-metabase-application-data.md
-[migrate]: ../operations-guide/migrating-from-h2.md
+[backup]: ../operations-guide/backing-up-metabase-application-data.html
+[migrate]: ../operations-guide/migrating-from-h2.html
 [postgres]: https://www.postgresql.org/
-[serialization-docs]: ../enterprise-guide/serialization.md
-[serialization-learn]: ../../learn/administration/serialization.md
+[serialization-docs]: ../enterprise-guide/serialization.html
+[serialization-learn]: ../../learn/administration/serialization.html

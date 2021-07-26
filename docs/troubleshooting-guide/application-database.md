@@ -65,7 +65,6 @@ In some situations on Windows 10, the Metabase JAR needs to have permissions to 
 Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to connect to Metabase DB.
 ```
 
-**How to fix this:** You can unblock the file by right-clicking on it, clicking "Properties," and then clicking "Unblock." See [Microsoft's documentation][ms-unblocking-file] for more details on unblocking downloaded files.
+**How to fix this:** You can unblock the file by right-clicking on it, clicking "Properties," and then clicking "Unblock." 
 
-[ms-unblocking-file]: https://blogs.msdn.microsoft.com/delay/p/unblockingdownloadedfile/
-[what-is-h2]: /faq/setup/what-is-h2.html
+[what-is-h2]: ../faq/setup/what-is-h2.md
