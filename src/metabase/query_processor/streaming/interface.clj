@@ -14,8 +14,9 @@
     "Write anything needed before writing the first row. `initial-metadata` is incomplete metadata provided before
     rows begin reduction; some metadata such as insights won't be available until we finish.")
 
-  (write-row! [this row row-num viz-settings]
-    "Write a row. `row` is a sequence of values in the row. `row-num` is the zero-indexed row number.")
+  (write-row! [this row row-num col viz-settings]
+    "Write a row. `row` is a sequence of values in the row. `row-num` is the zero-indexed row number. `cols` is
+    an ordered list of columns in the export.")
 
   (finish! [this final-metadata]
     "Write anything needed after writing the last row. `final-metadata` is the final, complete metadata available

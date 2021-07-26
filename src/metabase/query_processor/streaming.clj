@@ -7,6 +7,7 @@
             [metabase.query-processor.streaming.interface :as i]
             [metabase.query-processor.streaming.json :as streaming.json]
             [metabase.query-processor.streaming.xlsx :as streaming.xlsx]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            java.io.OutputStream
@@ -33,26 +34,28 @@
 (defn- export-column-order
   "Correlates the :name fields between cols and the :table.columns key of viz-settings
   to determine the order of columns that should included in the export."
-  [cols {table-columns :table.columns}]
+  [cols {table-columns ::mb.viz/table-columns}]
   (when table-columns
-    (let [enabled-table-columns (filter :enabled table-columns)
+    (let [enabled-table-columns (filter ::mb.viz/table-column-enabled table-columns)
           col-index-by-name     (reduce-kv (fn [m i col] (assoc m (:name col) i))
                                            {}
                                            (into [] cols))]
       (map
-       (fn [{col-name :name}] (get col-index-by-name col-name))
+       (fn [{col-name ::mb.viz/table-column-name}] (get col-index-by-name col-name))
        enabled-table-columns))))
 
 (defn- streaming-rff [results-writer]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [deduped-cols  (deduplicate-col-names cols)
           output-order  (export-column-order deduped-cols viz-settings)
+          ordered-cols  (let [v (into [] deduped-cols)]
+                          (for [i output-order] (v i)))
           viz-settings' (assoc viz-settings :output-order output-order)
           row-count     (volatile! 0)]
       (fn
         ([]
          (i/begin! results-writer
-                   {:data (assoc initial-metadata :deduped-cols deduped-cols)}
+                   {:data (assoc initial-metadata :ordered-cols ordered-cols)}
                    viz-settings')
          {:data initial-metadata})
 
@@ -62,7 +65,7 @@
                 :status :completed))
 
         ([metadata row]
-         (i/write-row! results-writer row (dec (vswap! row-count inc)) viz-settings')
+         (i/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
 (defn- streaming-reducedf [results-writer ^OutputStream os]

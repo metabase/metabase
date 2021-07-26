@@ -16,27 +16,20 @@
    :headers      {"Content-Disposition" (format "attachment; filename=\"query_result_%s.json\""
                                                 (u.date/format (t/zoned-date-time)))}})
 
-(defn- select-indices
-  [data indices]
-  (if indices
-    (let [data-vec (into [] data)]
-      (for [i indices] (data-vec i)))
-    data))
-
 (defmethod i/streaming-results-writer :json
   [_ ^OutputStream os]
   (let [writer    (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         col-names (volatile! nil)]
     (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [deduped-cols]} :data} {:keys [output-order]}]
+      (begin! [_ {{:keys [ordered-cols]} :data} _]
         ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
         ;; probably going to be parsed programatically
-        (let [ordered-cols (select-indices deduped-cols output-order)]
-          (vreset! col-names (mapv (some-fn :display_name :name) ordered-cols))
-          (.write writer "[\n")))
+        (vreset! col-names (mapv (some-fn :display_name :name) ordered-cols))
+        (.write writer "[\n"))
 
-      (write-row! [_ row row-num {:keys [output-order]}]
-        (let [ordered-row (select-indices row output-order)]
+      (write-row! [_ row row-num _ {:keys [output-order]}]
+        (let [ordered-row (let [row-v (into [] row)]
+                            (for [i output-order] (row-v i)))]
           (when-not (zero? row-num)
             (.write writer ",\n"))
           (json/generate-stream (zipmap @col-names (map common/format-value ordered-row))
@@ -67,7 +60,7 @@
       (begin! [_ _ _]
         (.write writer "{\"data\":{\"rows\":[\n"))
 
-      (write-row! [_ row row-num _]
+      (write-row! [_ row row-num _ _]
         (when-not (zero? row-num)
           (.write writer ",\n"))
         (json/generate-stream row writer)

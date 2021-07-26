@@ -114,26 +114,19 @@
                                (json/parse-string keyword)
                                :v))))
 
-(defn- select-indices
-  [data indices]
-  (if indices
-    (let [data-vec (into [] data)]
-      (for [i indices] (data-vec i)))
-    data))
-
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
   (let [workbook    (SXSSFWorkbook.)
         cell-styles (cell-style-delays workbook)
         sheet       (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [deduped-cols]} :data} {:keys [output-order]}]
-        (let [ordered-cols (select-indices deduped-cols output-order)]
-          (spreadsheet/add-row! sheet (map (some-fn :display_name :name) ordered-cols))))
+      (begin! [_ {{:keys [ordered-cols]} :data} _]
+        (spreadsheet/add-row! sheet (map (some-fn :display_name :name) ordered-cols)))
 
-      (write-row! [_ row _ {:keys [output-order]}]
+      (write-row! [_ row _ _ {:keys [output-order]}]
         (binding [*cell-styles* cell-styles]
-          (let [ordered-row (select-indices row output-order)]
+          (let [ordered-row (let [row-v (into [] row)]
+                              (for [i output-order] (row-v i)))]
             (spreadsheet/add-row! sheet ordered-row))))
 
       (finish! [_ _]
