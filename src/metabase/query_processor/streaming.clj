@@ -35,21 +35,24 @@
   "Correlates the :name fields between cols and the :table.columns key of viz-settings
   to determine the order of columns that should included in the export."
   [cols {table-columns ::mb.viz/table-columns}]
-  (when table-columns
+  (if table-columns
     (let [enabled-table-columns (filter ::mb.viz/table-column-enabled table-columns)
           col-index-by-name     (reduce-kv (fn [m i col] (assoc m (:name col) i))
                                            {}
                                            (into [] cols))]
       (map
        (fn [{col-name ::mb.viz/table-column-name}] (get col-index-by-name col-name))
-       enabled-table-columns))))
+       enabled-table-columns))
+    (range (count cols))))
 
 (defn- streaming-rff [results-writer]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [deduped-cols  (deduplicate-col-names cols)
           output-order  (export-column-order deduped-cols viz-settings)
-          ordered-cols  (let [v (into [] deduped-cols)]
-                          (for [i output-order] (v i)))
+          ordered-cols  (if output-order
+                          (let [v (into [] deduped-cols)]
+                            (for [i output-order] (v i)))
+                          deduped-cols)
           viz-settings' (assoc viz-settings :output-order output-order)
           row-count     (volatile! 0)]
       (fn
