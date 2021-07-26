@@ -24,7 +24,7 @@
 
 ### Accessing the Metabase server logs
 
-You can always look for the logs that Metabase leaves on your server's file system (or wherever else you collect logs). If you are logged into Metabase with an admin account you can also access them from the Logs tab in the Troubleshooting section of the Admin Panel. To get to the Admin Panel, click the gear icon in the top-right of Metabase.
+You can always look for the logs that Metabase leaves on your server's file system (or wherever else you collect logs). If you're logged into Metabase with an admin account, you can also access the logs from the **Logs** tab in the **Troubleshooting** section of the **Admin Panel**. To get to the Admin Panel, click the **gear icon** in the top-right of Metabase.
 
 ### Checking for Javascript console errors
 
