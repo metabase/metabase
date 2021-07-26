@@ -1,5 +1,5 @@
 (ns build
-  (:require [build.licenses :as licenses]
+  (:require [build.licenses :as license]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.build.api :as b]
