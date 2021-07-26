@@ -207,6 +207,7 @@ describe("scenarios > admin > people", () => {
       generateGroups(60);
 
       cy.visit("/admin/people/groups");
+      cy.scrollTo("bottom");
       cy.findByText("59");
     });
 
