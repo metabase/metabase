@@ -10,7 +10,7 @@ Options and settings for your variables will appear in the `Variables` side pane
 
 ### Defining Variables
 
-Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`. Variables can be given types in the side panel, which changes their behavior. All variable types other than "Field Filter" will cause a filter widget to be placed on this question corresponding to the chosen variable type. When a value is selected via a filter widget, that value replaces the corresponding variable in the SQL template, wherever it appears. If you have multiple filter widgets, you can click and drag on any of them to move and reorder them.
+Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`. Only alphanumeric characters are allowed in the variable name. Variables can be given types in the side panel, which changes their behavior. All variable types other than "Field Filter" will cause a filter widget to be placed on this question corresponding to the chosen variable type. When a value is selected via a filter widget, that value replaces the corresponding variable in the SQL template, wherever it appears. If you have multiple filter widgets, you can click and drag on any of them to move and reorder them.
 
 This example defines a variable called `cat`, allowing you to dynamically change the `WHERE` clause in this query:
 
