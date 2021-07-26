@@ -15,7 +15,8 @@ in the command line to manually clear the locks. Then restart your Metabase inst
 
 ### Metabase H2 application database gets corrupted
 
-Because H2 is an on-disk database, it is sensitive to filesystem errors. Sometimes drives get corrupted, or the file doesn't get flushed correctly, which can result in a corrupted database. In these situations, you'll see errors on startup. These vary, but one example is 
+Because H2 is an on-disk database, it is sensitive to filesystem errors. Sometimes drives get corrupted, or the file doesn't get flushed correctly, which can result in a corrupted database. In these situations, you'll see errors on startup. These vary, but one example is
+
 ```
 myUser@myIp:~$ java -cp metabase.jar org.h2.tools.RunScript -script whatever.sql -url jdbc:h2:~/metabase.db
 Exception in thread "main" org.h2.jdbc.JdbcSQLException: Row not found when trying to delete from index """"".I37: ( /* key:7864 */ X'5256470012572027c82fc5d2bfb855264ab45f8fec4cf48b0620ccad281d2fe4', 165)" [90112-194]
@@ -40,7 +41,6 @@ mv metabase.db.h2.db metabase.old.db
 touch metabase.db.h2.db
 java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db;MV_STORE=FALSE
 ```
-
 
 ### Metabase fails to connect to H2 Database on Windows 10
 
