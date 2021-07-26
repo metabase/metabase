@@ -51,7 +51,7 @@ const LegendPanel = props => {
   } = props;
 
   return (
-    <LegendPanelRoot className={className}>
+    <LegendPanelRoot className={className} isVertical={isVertical}>
       {titles.map((title, index) => (
         <LegendItem
           key={index}
