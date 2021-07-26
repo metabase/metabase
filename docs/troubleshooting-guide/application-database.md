@@ -40,7 +40,7 @@ touch metabase.db.mv.db
 java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db
 ```
 
-If you are using a legacy Metabase H2 application database (where the database file is named 'metabase.db.h2.db') use the command below instead:
+If you're using a legacy Metabase H2 application database (where the database file is named 'metabase.db.h2.db') use the command below instead:
 
 ```
 java -cp metabase.jar org.h2.tools.Recover
