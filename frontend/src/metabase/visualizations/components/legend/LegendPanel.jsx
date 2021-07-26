@@ -17,13 +17,15 @@ const propTypes = {
   }),
   showDots: PropTypes.bool,
   showTitles: PropTypes.bool,
+  showTooltip: PropTypes.bool,
+  showDotTooltip: PropTypes.bool,
   className: PropTypes.string,
   classNameWidgets: PropTypes.string,
   onAddClick: PropTypes.func,
   onRemoveClick: PropTypes.func,
-  onLabelClick: PropTypes.func,
-  onLabelMouseEnter: PropTypes.func,
-  onLabelMouseLeave: PropTypes.func,
+  onItemClick: PropTypes.func,
+  onItemMouseEnter: PropTypes.func,
+  onItemMouseLeave: PropTypes.func,
 };
 
 const LegendPanel = props => {
@@ -35,13 +37,15 @@ const LegendPanel = props => {
     hovered,
     showDots,
     showTitles,
+    showTooltip,
+    showDotTooltip,
     className,
     classNameWidgets,
     onAddClick,
     onRemoveClick,
-    onLabelClick,
-    onLabelMouseEnter,
-    onLabelMouseLeave,
+    onItemClick,
+    onItemMouseEnter,
+    onItemMouseLeave,
   } = props;
 
   return (
@@ -54,12 +58,14 @@ const LegendPanel = props => {
           color={colors[index % colors.length]}
           description={description}
           isMuted={hovered && hovered.index != null && index !== hovered.index}
-          showDots={showDots}
-          showTitles={showTitles}
+          showDot={showDots}
+          showTitle={showTitles}
+          showTooltip={showTooltip}
+          showDotTooltip={showDotTooltip}
           infoClassName={classNameWidgets}
-          onLabelClick={onLabelClick}
-          onLabelMouseEnter={onLabelMouseEnter}
-          onLabelMouseLeave={onLabelMouseLeave}
+          onItemClick={onItemClick}
+          onItemMouseEnter={onItemMouseEnter}
+          onItemMouseLeave={onItemMouseLeave}
           onRemoveClick={onRemoveClick}
         />
       ))}

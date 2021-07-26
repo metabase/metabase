@@ -23,9 +23,9 @@ const propTypes = {
   showTooltip: PropTypes.bool,
   showDotTooltip: PropTypes.bool,
   infoClassName: PropTypes.string,
-  onLabelClick: PropTypes.func,
-  onLabelMouseEnter: PropTypes.func,
-  onLabelMouseLeave: PropTypes.func,
+  onItemClick: PropTypes.func,
+  onItemMouseEnter: PropTypes.func,
+  onItemMouseLeave: PropTypes.func,
   onRemoveClick: PropTypes.func,
 };
 
@@ -35,37 +35,37 @@ const LegendItem = props => {
     index,
     color,
     description,
-    isMuted = false,
-    showDot = true,
-    showTitle = true,
-    showTooltip = true,
-    showDotTooltip = true,
+    isMuted,
+    showDot,
+    showTitle,
+    showTooltip,
+    showDotTooltip,
     infoClassName,
-    onLabelClick,
-    onLabelMouseEnter,
-    onLabelMouseLeave,
+    onItemClick,
+    onItemMouseEnter,
+    onItemMouseLeave,
     onRemoveClick,
   } = props;
 
-  const handleLabelClick = useCallback(
+  const handleItemClick = useCallback(
     event => {
-      onLabelClick && onLabelClick(event, index);
+      onItemClick && onItemClick(event, index);
     },
-    [index, onLabelClick],
+    [index, onItemClick],
   );
 
-  const handleLabelMouseEnter = useCallback(
+  const handleItemMouseEnter = useCallback(
     event => {
-      onLabelMouseEnter && onLabelMouseEnter(event, index);
+      onItemMouseEnter && onItemMouseEnter(event, index);
     },
-    [index, onLabelMouseEnter],
+    [index, onItemMouseEnter],
   );
 
-  const handleLabelMouseLeave = useCallback(
+  const handleItemMouseLeave = useCallback(
     event => {
-      onLabelMouseLeave && onLabelMouseLeave(event, index);
+      onItemMouseLeave && onItemMouseLeave(event, index);
     },
-    [index, onLabelMouseLeave],
+    [index, onItemMouseLeave],
   );
 
   const handleRemoveClick = useCallback(
@@ -79,9 +79,9 @@ const LegendItem = props => {
     <LegendItemRoot>
       <LegendItemLabel
         isMuted={isMuted}
-        onClick={handleLabelClick}
-        onMouseEnter={handleLabelMouseEnter}
-        onMouseLeave={handleLabelMouseLeave}
+        onClick={handleItemClick}
+        onMouseEnter={handleItemMouseEnter}
+        onMouseLeave={handleItemMouseLeave}
       >
         {showDot && (
           <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
