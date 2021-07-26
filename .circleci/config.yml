@@ -398,7 +398,7 @@ commands:
       before-steps:
         type: steps
         default: []
-      clojure-command:
+      clojure-args:
         type: string
       after-steps:
         type: steps
@@ -408,9 +408,9 @@ commands:
       - restore-be-deps-cache
       - steps: << parameters.before-steps >>
       - run:
-          name: clojure << parameters.clojure-command >>:<< parameters.edition >>:<< parameters.edition >>-dev
+          name: clojure << parameters.clojure-args >>:<< parameters.edition >>:<< parameters.edition >>-dev
           command: |
-            clojure << parameters.clojure-command >>:<< parameters.edition >>:<< parameters.edition >>-dev
+            clojure << parameters.clojure-args >>:<< parameters.edition >>:<< parameters.edition >>-dev
           no_output_timeout: 15m
       - steps: << parameters.after-steps >>
       - store_test_results:
@@ -607,7 +607,7 @@ jobs:
       before-steps:
         type: steps
         default: []
-      clojure-command:
+      clojure-args:
         type: string
       after-steps:
         type: steps
@@ -627,7 +627,7 @@ jobs:
                 steps:
                   - run-clojure-command:
                       before-steps: << parameters.before-steps >>
-                      clojure-command: << parameters.clojure-command >>
+                      clojure-args: << parameters.clojure-args >>
                       after-steps: << parameters.after-steps >>
                       edition: << parameters.edition >>
       - unless:
@@ -635,7 +635,7 @@ jobs:
           steps:
             - run-clojure-command:
                 before-steps: << parameters.before-steps >>
-                clojure-command: << parameters.clojure-command >>
+                clojure-args: << parameters.clojure-args >>
                 after-steps: << parameters.after-steps >>
                 edition: << parameters.edition >>
 
@@ -963,7 +963,7 @@ workflows:
           requires:
             - be-deps
           e: java-8
-          clojure-command: -X:dev:ci:test
+          clojure-args: -X:dev:ci:test
           skip-when-no-change: true
           <<: *Matrix
 
@@ -972,7 +972,7 @@ workflows:
           requires:
             - be-deps
           e: java-11
-          clojure-command: -X:dev:ci:test
+          clojure-args: -X:dev:ci:test
           skip-when-no-change: true
           <<: *Matrix
 
@@ -981,7 +981,7 @@ workflows:
           requires:
             - be-deps
           e: java-16
-          clojure-command: -X:dev:ci:test
+          clojure-args: -X:dev:ci:test
           skip-when-no-change: true
           <<: *Matrix
 
@@ -990,7 +990,7 @@ workflows:
           requires:
             - be-deps
           # TODO FIXME
-          clojure-command: clojure -X:dev:ee:ee-dev:cloverage
+          clojure-args: -X:dev:ee:ee-dev:cloverage
           after-steps:
             - run:
                 name: Upload code coverage to codecov.io

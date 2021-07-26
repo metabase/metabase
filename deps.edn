@@ -210,7 +210,9 @@
 
   ;; alias for CI-specific options.
   :ci
-  {:jvm-opts ["-Xmx2g"]}
+  {:jvm-opts ["-Xmx2g"
+              ;; normally CircleCI sets `CI` as an env var, so this is mostly to replicate that locally.
+              "-Dci=TRUE"]}
 
   ;; include EE source code.
   :ee

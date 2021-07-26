@@ -12,6 +12,7 @@
             eftest.report.pretty
             eftest.report.progress
             eftest.runner
+            [environ.core :as env]
             [metabase.db :as mdb]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs))
@@ -60,7 +61,7 @@
   (let [junit-reporter  (eftest.report/report-to-file
                          eftest.report.junit/report
                          "target/junit/test.xml")
-        stdout-reporter (if (System/getenv "CI")
+        stdout-reporter (if (env/env :ci)
                           eftest.report.pretty/report
                           eftest.report.progress/report)]
     (fn [m]
