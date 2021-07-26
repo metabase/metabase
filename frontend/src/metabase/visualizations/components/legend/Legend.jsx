@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
-import LegendList from "./LegendList";
 import { normal } from "metabase/lib/colors";
+import LegendItemList from "./LegendItemList";
 
 const DEFAULT_COLORS = Object.values(normal);
 
@@ -92,7 +92,7 @@ const Legend = props => {
   }, [onHoverChange]);
 
   return (
-    <LegendList
+    <LegendItemList
       titles={titles}
       colors={colors}
       description={description}

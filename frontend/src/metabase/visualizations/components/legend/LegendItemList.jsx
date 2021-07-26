@@ -5,7 +5,7 @@ import {
   AddSeriesIcon,
   LegendRoot,
   RemoveSeriesIcon,
-} from "./LegendList.styled";
+} from "./LegendItemList.styled";
 import LegendItem from "./LegendItem";
 
 const propTypes = {
@@ -27,7 +27,7 @@ const propTypes = {
   onItemMouseLeave: PropTypes.func,
 };
 
-const LegendList = props => {
+const LegendItemList = props => {
   const {
     titles,
     colors,
@@ -77,6 +77,6 @@ const LegendList = props => {
   );
 };
 
-LegendList.propTypes = propTypes;
+LegendItemList.propTypes = propTypes;
 
-export default LegendList;
+export default LegendItemList;
