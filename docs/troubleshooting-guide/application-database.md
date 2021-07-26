@@ -18,7 +18,7 @@ When this happens, open a shell on the server where Metabase is installed and ru
 java -jar metabase.jar migrate release-locks
 ```
 
-This command will manually clear the locks. When it is done, restart your Metabase instance.
+This command will manually clear the locks. When it's done, restart your Metabase instance.
 
 ### Metabase H2 application database gets corrupted
 
