@@ -1,12 +1,6 @@
-import React, { useCallback, useMemo, Fragment } from "react";
+import React, { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
-import {
-  ActionButtons,
-  AddSeriesIcon,
-  LegendRoot,
-  RemoveSeriesIcon,
-} from "./Legend.styled";
-import LegendItem from "./LegendItem";
+import LegendList from "./LegendList";
 import { normal } from "metabase/lib/colors";
 
 const DEFAULT_COLORS = Object.values(normal);
@@ -65,7 +59,7 @@ const Legend = props => {
       : series.map(single => single.card.name);
   }, [series, seriesSettings]);
 
-  const handleClick = useCallback(
+  const handleItemClick = useCallback(
     (event, index) => {
       const item = series[index];
 
@@ -86,46 +80,34 @@ const Legend = props => {
     ],
   );
 
-  const handleMouseEnter = useCallback(
+  const handleItemMouseEnter = useCallback(
     (event, index) => {
       onHoverChange && onHoverChange({ index });
     },
     [onHoverChange],
   );
 
-  const handleMouseLeave = useCallback(() => {
+  const handleItemMouseLeave = useCallback(() => {
     onHoverChange && onHoverChange(null);
   }, [onHoverChange]);
 
   return (
-    <LegendRoot className={className}>
-      {series.map((item, index) => (
-        <Fragment key={index}>
-          <LegendItem
-            title={titles[index]}
-            color={colors[index % colors.length]}
-            index={index}
-            description={description}
-            isMuted={
-              hovered && hovered.index != null && index !== hovered.index
-            }
-            showDots={showDots}
-            showTitles={showTitles}
-            infoClassName={classNameWidgets}
-            onClick={handleClick}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-          />
-          {onRemoveSeries && series.length > 1 && <RemoveSeriesIcon />}
-        </Fragment>
-      ))}
-      {onAddSeries && <AddSeriesIcon onClick={onAddSeries} />}
-      {actionButtons && (
-        <ActionButtons className={classNameWidgets}>
-          {actionButtons}
-        </ActionButtons>
-      )}
-    </LegendRoot>
+    <LegendList
+      titles={titles}
+      colors={colors}
+      description={description}
+      actionButtons={actionButtons}
+      hovered={hovered}
+      showDots={showDots}
+      showTitles={showTitles}
+      className={className}
+      classNameWidgets={classNameWidgets}
+      onAddClick={onAddSeries}
+      onRemoveClick={onRemoveSeries}
+      onItemClick={handleItemClick}
+      onItemMouseEnter={handleItemMouseEnter}
+      onItemMouseLeave={handleItemMouseLeave}
+    />
   );
 };
 
