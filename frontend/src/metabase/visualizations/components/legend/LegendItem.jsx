@@ -14,7 +14,7 @@ const propTypes = {
   title: PropTypes.string.isRequired,
   color: PropTypes.string.isRequired,
   description: PropTypes.string,
-  muted: PropTypes.bool,
+  isMuted: PropTypes.bool,
   showDot: PropTypes.bool,
   showTitle: PropTypes.bool,
   showTooltip: PropTypes.bool,
@@ -28,30 +28,32 @@ const LegendItem = props => {
     title,
     color,
     description,
-    muted,
-    showDot,
-    showTitle,
-    showTooltip,
-    showDotTooltip,
+    isMuted = false,
+    showDot = true,
+    showTitle = true,
+    showTooltip = true,
+    showDotTooltip = true,
     infoClassName,
     onClick,
   } = props;
 
   return (
-    <LegendItemRoot muted={muted} onClick={onClick}>
+    <LegendItemRoot isMuted={isMuted} onClick={onClick}>
       {showDot && (
         <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
           <LegendItemDot color={color} />
         </Tooltip>
       )}
       {showTitle && (
-        <LegendItemTitle>
+        <LegendItemTitle showDot={showDot}>
           <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
-          <LegendItemDescription>
-            <Tooltip tooltip={description} maxWidth="22em">
-              <Icon className={infoClassName} name="info" />
-            </Tooltip>
-          </LegendItemDescription>
+          {description && (
+            <LegendItemDescription>
+              <Tooltip tooltip={description} maxWidth="22em">
+                <Icon className={infoClassName} name="info" />
+              </Tooltip>
+            </LegendItemDescription>
+          )}
         </LegendItemTitle>
       )}
     </LegendItemRoot>

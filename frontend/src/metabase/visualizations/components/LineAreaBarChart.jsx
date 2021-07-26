@@ -3,8 +3,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import CardRenderer from "./CardRenderer";
-import LegendHeader from "./LegendHeader";
 import TitleLegendHeader from "./TitleLegendHeader";
+import Legend from "./legend/Legend";
 
 import "./LineAreaBarChart.css";
 
@@ -305,7 +305,7 @@ export default class LineAreaBarChart extends Component {
           />
         )}
         {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
-          <LegendHeader
+          <Legend
             className="flex-no-shrink"
             series={hasMultiSeriesHeaderSeries ? series : defaultSeries}
             settings={settings}
