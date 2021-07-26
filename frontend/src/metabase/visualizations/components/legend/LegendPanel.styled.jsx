@@ -4,9 +4,11 @@ import colors from "metabase/lib/colors";
 
 export const LegendPanelRoot = styled.div`
   display: flex;
+  flex-direction: ${props =>
+    props.direction === "horizontal" ? "row" : "column"};
 `;
 
-export const AddSeriesIcon = styled(Icon).attrs({
+export const LegendPanelAddIcon = styled(Icon).attrs({
   name: "add",
   size: 12,
 })`
@@ -24,21 +26,7 @@ export const AddSeriesIcon = styled(Icon).attrs({
   }
 `;
 
-export const RemoveSeriesIcon = styled(Icon).attrs({
-  name: "close",
-  size: 12,
-})`
-  flex-shrink: 0;
-  margin-right: 0.5rem;
-  color: ${colors["text-light"]}
-  cursor: pointer;
-
-  &:hover {
-   color: ${colors["text-medium"]}
-  }
-`;
-
-export const ActionButtonsGroup = styled.span`
+export const LegendPanelButtonGroup = styled.span`
   flex-shrink: 0;
   position: relative;
   margin-left: auto;

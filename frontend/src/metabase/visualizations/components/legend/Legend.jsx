@@ -59,7 +59,7 @@ const Legend = props => {
       : series.map(single => single.card.name);
   }, [series, seriesSettings]);
 
-  const handleItemClick = useCallback(
+  const handleLabelClick = useCallback(
     (event, index) => {
       const item = series[index];
 
@@ -80,14 +80,14 @@ const Legend = props => {
     ],
   );
 
-  const handleItemMouseEnter = useCallback(
+  const handleLabelMouseEnter = useCallback(
     (event, index) => {
       onHoverChange && onHoverChange({ index });
     },
     [onHoverChange],
   );
 
-  const handleItemMouseLeave = useCallback(() => {
+  const handleLabelMouseLeave = useCallback(() => {
     onHoverChange && onHoverChange(null);
   }, [onHoverChange]);
 
@@ -104,9 +104,9 @@ const Legend = props => {
       classNameWidgets={classNameWidgets}
       onAddClick={onAddSeries}
       onRemoveClick={onRemoveSeries}
-      onItemClick={handleItemClick}
-      onItemMouseEnter={handleItemMouseEnter}
-      onItemMouseLeave={handleItemMouseLeave}
+      onLabelClick={handleLabelClick}
+      onLabelMouseEnter={handleLabelMouseEnter}
+      onLabelMouseLeave={handleLabelMouseLeave}
     />
   );
 };

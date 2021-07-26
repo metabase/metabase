@@ -1,16 +1,16 @@
-import React, { Fragment } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import {
-  ActionButtonsGroup,
-  AddSeriesIcon,
+  LegendPanelAddIcon,
+  LegendPanelButtonGroup,
   LegendPanelRoot,
-  RemoveSeriesIcon,
 } from "./LegendPanel.styled";
 import LegendItem from "./LegendItem";
 
 const propTypes = {
   titles: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
+  direction: PropTypes.oneOf(["horizontal", "vertical"]),
   description: PropTypes.string,
   actionButtons: PropTypes.node,
   hovered: PropTypes.shape({
@@ -22,15 +22,16 @@ const propTypes = {
   classNameWidgets: PropTypes.string,
   onAddClick: PropTypes.func,
   onRemoveClick: PropTypes.func,
-  onItemClick: PropTypes.func,
-  onItemMouseEnter: PropTypes.func,
-  onItemMouseLeave: PropTypes.func,
+  onLabelClick: PropTypes.func,
+  onLabelMouseEnter: PropTypes.func,
+  onLabelMouseLeave: PropTypes.func,
 };
 
 const LegendPanel = props => {
   const {
     titles,
     colors,
+    direction,
     description,
     actionButtons,
     hovered,
@@ -40,38 +41,35 @@ const LegendPanel = props => {
     classNameWidgets,
     onAddClick,
     onRemoveClick,
-    onItemClick,
-    onItemMouseEnter,
-    onItemMouseLeave,
+    onLabelClick,
+    onLabelMouseEnter,
+    onLabelMouseLeave,
   } = props;
 
   return (
-    <LegendPanelRoot className={className}>
+    <LegendPanelRoot className={className} direction={direction}>
       {titles.map((title, index) => (
-        <Fragment key={index}>
-          <LegendItem
-            title={title}
-            color={colors[index % colors.length]}
-            index={index}
-            description={description}
-            isMuted={
-              hovered && hovered.index != null && index !== hovered.index
-            }
-            showDots={showDots}
-            showTitles={showTitles}
-            infoClassName={classNameWidgets}
-            onClick={onItemClick}
-            onMouseEnter={onItemMouseEnter}
-            onMouseLeave={onItemMouseLeave}
-          />
-          {onRemoveClick && <RemoveSeriesIcon onClick={onRemoveClick} />}
-        </Fragment>
+        <LegendItem
+          key={index}
+          title={title}
+          index={index}
+          color={colors[index % colors.length]}
+          description={description}
+          isMuted={hovered && hovered.index != null && index !== hovered.index}
+          showDots={showDots}
+          showTitles={showTitles}
+          infoClassName={classNameWidgets}
+          onLabelClick={onLabelClick}
+          onLabelMouseEnter={onLabelMouseEnter}
+          onLabelMouseLeave={onLabelMouseLeave}
+          onRemoveClick={onRemoveClick}
+        />
       ))}
-      {onAddClick && <AddSeriesIcon onClick={onAddClick} />}
+      {onAddClick && <LegendPanelAddIcon onClick={onAddClick} />}
       {actionButtons && (
-        <ActionButtonsGroup className={classNameWidgets}>
+        <LegendPanelButtonGroup className={classNameWidgets}>
           {actionButtons}
-        </ActionButtonsGroup>
+        </LegendPanelButtonGroup>
       )}
     </LegendPanelRoot>
   );

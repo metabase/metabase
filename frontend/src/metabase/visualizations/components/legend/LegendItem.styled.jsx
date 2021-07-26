@@ -1,7 +1,12 @@
 import styled from "styled-components";
 import colors from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
 export const LegendItemRoot = styled.div`
+  display: flex;
+`;
+
+export const LegendItemLabel = styled.div`
   display: flex;
   align-items: center;
   color: ${colors["text-dark"]};
@@ -31,4 +36,18 @@ export const LegendItemDescription = styled.div`
   align-items: center;
   color: ${colors["text-medium"]};
   margin-left: 0.5rem;
+`;
+
+export const LegendItemRemoveIcon = styled(Icon).attrs({
+  name: "close",
+  size: 12,
+})`
+  flex-shrink: 0;
+  margin-right: 0.5rem;
+  color: ${colors["text-light"]}
+  cursor: pointer;
+
+  &:hover {
+   color: ${colors["text-medium"]}
+  }
 `;
