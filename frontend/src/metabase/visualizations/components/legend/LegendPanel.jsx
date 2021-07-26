@@ -10,7 +10,6 @@ import LegendItem from "./LegendItem";
 const propTypes = {
   titles: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
-  direction: PropTypes.oneOf(["horizontal", "vertical"]),
   description: PropTypes.string,
   actionButtons: PropTypes.node,
   hovered: PropTypes.shape({
@@ -31,7 +30,6 @@ const LegendPanel = props => {
   const {
     titles,
     colors,
-    direction,
     description,
     actionButtons,
     hovered,
@@ -47,7 +45,7 @@ const LegendPanel = props => {
   } = props;
 
   return (
-    <LegendPanelRoot className={className} direction={direction}>
+    <LegendPanelRoot className={className}>
       {titles.map((title, index) => (
         <LegendItem
           key={index}

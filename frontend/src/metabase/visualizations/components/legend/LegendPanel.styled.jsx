@@ -4,8 +4,7 @@ import colors from "metabase/lib/colors";
 
 export const LegendPanelRoot = styled.div`
   display: flex;
-  flex-direction: ${props =>
-    props.direction === "horizontal" ? "row" : "column"};
+  flex-direction: column;
 `;
 
 export const LegendPanelAddIcon = styled(Icon).attrs({
