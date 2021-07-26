@@ -1,18 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import styled from "styled-components";
 import { t } from "ttag";
 import moment from "moment";
 
-import { color } from "metabase/lib/colors";
-
 import { getUser } from "metabase/selectors/user";
 
-const Label = styled.span`
-  font-weight: bold;
-  color: ${color("text-medium")};
-`;
+import { TextButton } from "metabase/components/Button.styled";
 
 function mapStateToProps(state) {
   return {
@@ -33,6 +27,7 @@ LastEditInfoLabel.propTypes = {
   user: PropTypes.shape({
     id: PropTypes.number,
   }).isRequired,
+  onClick: PropTypes.func.isRequired,
 };
 
 function formatEditorName(firstName, lastName) {
@@ -40,16 +35,23 @@ function formatEditorName(firstName, lastName) {
   return `${firstName} ${lastNameFirstLetter}.`;
 }
 
-function LastEditInfoLabel({ item, user, ...props }) {
+function LastEditInfoLabel({ item, user, onClick, ...props }) {
   const { first_name, last_name, id: editorId, timestamp } = item[
     "last-edit-info"
   ];
   const time = moment(timestamp).fromNow();
 
   const editor =
-    editorId === user.id ? "you" : formatEditorName(first_name, last_name);
+    editorId === user.id ? t`you` : formatEditorName(first_name, last_name);
 
-  return <Label {...props}>{t`Edited ${time} by ${editor}`}</Label>;
+  return (
+    <TextButton
+      size="small"
+      onClick={onClick}
+      data-testid="revision-history-button"
+      {...props}
+    >{t`Edited ${time} by ${editor}`}</TextButton>
+  );
 }
 
 export default connect(mapStateToProps)(LastEditInfoLabel);

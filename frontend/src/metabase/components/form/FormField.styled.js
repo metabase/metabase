@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import Icon from "metabase/components/Icon";
 
 import { color } from "metabase/lib/colors";
@@ -9,8 +9,13 @@ export const FieldRow = styled.div`
   margin-bottom: 0.5em;
 `;
 
-export const Label = styled.label`
+export const Label = styled.label.attrs({ className: "Form-label" })`
   margin-bottom: 0;
+  ${props =>
+    props.horizontal &&
+    css`
+      margin-right: auto;
+    `}
 `;
 
 export const InfoIcon = styled(Icon).attrs({ name: "info", size: 12 })`
@@ -20,4 +25,13 @@ export const InfoIcon = styled(Icon).attrs({ name: "info", size: 12 })`
   &:hover {
     color: ${color("brand")};
   }
+`;
+
+export const InputContainer = styled.div`
+  flex-shrink: 0;
+  ${props =>
+    props.horizontal &&
+    css`
+      margin-left: auto;
+    `}
 `;
