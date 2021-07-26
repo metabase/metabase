@@ -67,14 +67,14 @@ const Legend = props => {
 
   const handleClick = useCallback(
     (event, index) => {
-      const s = series[index];
+      const item = series[index];
 
       if (onEditSeries) {
         onEditSeries(event, index);
-      } else if (s.clicked && visualizationIsClickable(s.clicked)) {
-        onVisualizationClick({ ...s.clicked, element: event.currentTarget });
+      } else if (item.clicked && visualizationIsClickable(item.clicked)) {
+        onVisualizationClick({ ...item.clicked, element: event.currentTarget });
       } else if (onChangeCardAndRun) {
-        onChangeCardAndRun({ nextCard: s.card, seriesIndex: index });
+        onChangeCardAndRun({ nextCard: item.card, seriesIndex: index });
       }
     },
     [
@@ -99,7 +99,7 @@ const Legend = props => {
 
   return (
     <LegendRoot className={className}>
-      {series.map((s, index) => (
+      {series.map((item, index) => (
         <Fragment key={index}>
           <LegendItem
             title={titles[index]}
