@@ -2,12 +2,12 @@ import styled from "styled-components";
 import Icon from "metabase/components/Icon";
 import colors from "metabase/lib/colors";
 
-export const LegendPanelRoot = styled.div`
+export const LegendRoot = styled.div`
   display: flex;
   flex-direction: ${props => (props.isVertical ? "column" : "row")};
 `;
 
-export const LegendPanelAddIcon = styled(Icon).attrs({
+export const LegendAddIcon = styled(Icon).attrs({
   name: "add",
   size: 12,
 })`
@@ -25,7 +25,7 @@ export const LegendPanelAddIcon = styled(Icon).attrs({
   }
 `;
 
-export const LegendPanelButtonGroup = styled.span`
+export const LegendButtonGroup = styled.span`
   flex-shrink: 0;
   position: relative;
   margin-left: auto;

@@ -39,7 +39,7 @@ const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 const PERCENT_REGEX = /percent/i;
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import ChartWithLegend from "metabase/visualizations/components/legend/ChartWithLegend";
+import LegendContainer from "metabase/visualizations/components/legend/LegendContainer";
 
 export default class PieChart extends Component {
   constructor(props: VisualizationProps) {
@@ -411,7 +411,7 @@ export default class PieChart extends Component {
       isClickable && slices[index] !== otherSlice;
 
     return (
-      <ChartWithLegend
+      <LegendContainer
         className={className}
         titles={legendTitles}
         colors={legendColors}
@@ -478,7 +478,7 @@ export default class PieChart extends Component {
           </div>
         </div>
         <ChartTooltip series={series} hovered={hovered} />
-      </ChartWithLegend>
+      </LegendContainer>
     );
   }
 }

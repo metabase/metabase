@@ -1,10 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import {
-  LegendPanelAddIcon,
-  LegendPanelButtonGroup,
-  LegendPanelRoot,
-} from "./LegendPanel.styled";
+import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
 const propTypes = {
@@ -28,7 +24,7 @@ const propTypes = {
   onRemoveSeries: PropTypes.func,
 };
 
-const LegendPanel = props => {
+const Legend = props => {
   const {
     titles,
     colors,
@@ -49,7 +45,7 @@ const LegendPanel = props => {
   } = props;
 
   return (
-    <LegendPanelRoot className={className} isVertical={isVertical}>
+    <LegendRoot className={className} isVertical={isVertical}>
       {titles.map((title, index) => (
         <LegendItem
           key={index}
@@ -69,16 +65,16 @@ const LegendPanel = props => {
           onRemoveSeries={onRemoveSeries}
         />
       ))}
-      {onAddSeries && <LegendPanelAddIcon onClick={onAddSeries} />}
+      {onAddSeries && <LegendAddIcon onClick={onAddSeries} />}
       {actionButtons && (
-        <LegendPanelButtonGroup className={classNameWidgets}>
+        <LegendButtonGroup className={classNameWidgets}>
           {actionButtons}
-        </LegendPanelButtonGroup>
+        </LegendButtonGroup>
       )}
-    </LegendPanelRoot>
+    </LegendRoot>
   );
 };
 
-LegendPanel.propTypes = propTypes;
+Legend.propTypes = propTypes;
 
-export default LegendPanel;
+export default Legend;
