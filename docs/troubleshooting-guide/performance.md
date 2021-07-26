@@ -1,6 +1,6 @@
 ## Performance
 
-In order to troubleshoot performance problems, you first need to understand what happens when a question or dashboard is updated in Metabase:
+In order to troubleshoot performance problems, you first need to understand what happens when a question or dashboard is created or updated in Metabase. Before diving into specifics, you may want to read our article on [Metabase at scale][metabase-at-scale].
 
 1. Your browser goes to a web page that shows a Metabase question or dashboard.
 
@@ -14,13 +14,15 @@ In order to troubleshoot performance problems, you first need to understand what
 
 6. The database executes the query and returns the result to the back end.
 
-7. The back end forwards those results to the front end.
+7. If caching is enabled and the query took longer to execute than the time specified in the cache configuration, the back end saves the result in its cache.
 
-8. The front end creates the HTML to display them in your browser.
+8. The back end forwards the results to the front end.
+
+9. The front end creates the HTML to display the result in your browser.
 
 ## Specific Problems
 
-Each of the steps described is a potential performance bottleneck. Before diving into specifics, you may want to read our article on [Metabase at scale][metabase-at-scale].
+Each of the steps described is a potential performance bottleneck.
 
 ### The Metabase instance is getting so much traffic that loading the HTML page is slow.
 
@@ -36,7 +38,7 @@ This is extremely rare, since our front end is not very large and browsers cache
 
 ### Caching is disabled.
 
-By default caching is disabled so that we always re-run every question. However, if your data is only being updated every few seconds or minutes, you will improve performance by enabling caching. Note that ad hoc queries and exports are *not* cached, so if you're doing a lot of either, performance may suffer.
+By default caching is disabled so that we always re-run every question. However, if your data is only being updated every few seconds or minutes, you will improve performance by enabling caching. Note that ad hoc queries and exports are *not* cached, so doing a lot of either can impact performance.
 
 **How to detect this:** Open the Admin Panel, go to "Settings", and look in the "Caching" tab to see whether caching is enabled or not.
 
@@ -44,11 +46,13 @@ By default caching is disabled so that we always re-run every question. However,
 
 ### The answer you want isn't cached.
 
-Cached values are stored in the application database, so they will still be there if Metabase restarts, provided that the cache duration is still valid. Each question (and any filter combination) is its own query, so if different users are viewing the same question with different filters, each will have to load once before it's cached. This is particularly obvious with [data sandboxing][data-sandboxing], because each user essentially has their own query for each question.
+Each question (and any filter combination) is its own query, so if different users are viewing the same question with different filters, each will have to load once before it's cached. This is particularly obvious with [data sandboxing][data-sandboxing]: filtering the data based on the user's identity means that each user's question is slightly different.
 
-**How to detect this:** Look at Metabase's logs, or in the server's logs, to see when it was last restarted.
+Additionally, since cached values are stored in the application database they will still be there if Metabase restarts, but only if the cache duration is still valid. 
 
-**How to fix this:** Patience is a virtue.
+**How to detect this:** If you are sure that caching is enabled (discussed above), then look at Metabase's logs or in the server's logs to see when it was last restarted. If performance problems are caused by data sandboxing, you may want to consider enlarging the cache.
+
+**How to fix this:** 
 
 ### The database is overloaded by other traffic.
 
@@ -75,7 +79,7 @@ Joining half a dozen tables, each with a few million rows, simply takes a lot of
 **How to fix this:* If the problem is the SQL we generate:
 
 1. Check if you have the most recent version of Metabase: we fix problems as they're reported, and updating Metabase may make your problem go away.
-2. You can use your SQL in place of the code we generate, and make its result available to people who prefer the Notebook Editor as a starting point for their questions. [LINK]
+2. You can use your SQL in place of the code we generate, and [make its result available][organizing-sql] to people who prefer the Notebook Editor as a starting point for their questions.
 3. And please file a bug report to help us figure out how to generate better SQL.
 
 ### Values are repeatedly being converted on the fly.
@@ -90,7 +94,7 @@ Low performance when using Metabase can also be caused by incorrect typing of co
 
 **How to detect this:** Checking the performance logs for the server where Metabase is running will tell you whether it is hitting CPU or memory limits. However, it's much more likely that the database itself is hitting its limits, so please check it first.
 
-**How to fix this:** Upgrade to a more powerful server or one with more memory. If you are running in the cloud, the servers we select are enough for 98% of customers (including our own internal analytics). If you are using our cloud option and the Metabase server really is the problem, you should consider deploying your own instance---please contact us for support.
+**How to fix this:** Upgrade to a more powerful server or one with more memory. If you would like this taken care of you, along with backups, cache configuration, and so on, please consider using [Metabase Cloud][metabase-start].
 
 ### A dashboard contains too many questions.
 
@@ -111,3 +115,5 @@ When Metabase displays a dashboard, it re-runs all of the questions. We do our b
 [dbeaver]: https://dbeaver.io/
 [faster-dashboards]: /learn/administration/making-dashboards-faster.html
 [metabase-at-scale]: /learn/administration/metabase-at-scale.html
+[metabase-start]: /start/
+[organizing-sql]: /learn/sql-questions/organizing-sql.html
