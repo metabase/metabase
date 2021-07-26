@@ -204,11 +204,11 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should display more than 50 groups (metabase#17200)", () => {
-      generateGroups(60);
+      generateGroups(51);
 
       cy.visit("/admin/people/groups");
       cy.scrollTo("bottom");
-      cy.findByText("59");
+      cy.findByText("readonly");
     });
 
     describe("pagination", () => {
