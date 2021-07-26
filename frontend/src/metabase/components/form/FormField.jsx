@@ -78,7 +78,11 @@ function FormField(props) {
         <div>
           <FieldRow>
             {title && (
-              <Label id={`${name}-label`} htmlFor={name} horizontal>
+              <Label
+                id={`${name}-label`}
+                htmlFor={name}
+                horizontal={horizontal}
+              >
                 {title}
                 {error && <span className="text-error">: {error}</span>}
               </Label>
