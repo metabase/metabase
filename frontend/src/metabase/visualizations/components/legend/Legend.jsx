@@ -1,9 +1,9 @@
 import React from "react";
 import _ from "underscore";
 import PropTypes from "prop-types";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
-import ExplicitSize from "metabase/components/ExplicitSize";
 
 const propTypes = {
   titles: PropTypes.array.isRequired,
