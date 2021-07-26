@@ -617,3 +617,19 @@
   [_ db-details]
   ;; no normalization by default
   db-details)
+
+(defmulti superseded-by
+  "Returns the driver that supersedes the given `driver`.  A non-nil return value means that the given `driver` is
+  deprecated in Metabase and will eventually be replaced by the returned driver, in some future version (at which point
+  any databases using it will be migrated to the new one).
+
+  This is currently only used on the frontend for the purpose of showing/hiding deprecated drivers. A driver can make
+  use of this facility by adding a top-level `superseded-by` key to its plugin manifest YAML file, or (less preferred)
+  overriding this multimethod directly."
+  {:added "0.41.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod superseded-by :default
+  [_]
+  nil)

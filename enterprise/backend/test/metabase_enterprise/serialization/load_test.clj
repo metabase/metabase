@@ -265,7 +265,7 @@
     ;; in case it already exists
     (u/ignore-exceptions
       (delete-directory! dump-dir))
-    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions)
+    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions :foreign-keys)
                          ;; We will run this roundtrip test against any database supporting these features ^ except
                          ;; certain ones for specific reasons, outlined below.
                          ;;
