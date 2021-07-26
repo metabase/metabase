@@ -58,7 +58,7 @@ We do not currently apply a reporting time zone to the results of SQL queries, s
 This occurs when you are grouping by a date (rather than by a time) that does not have a time zone attached to it. Look at every time field your question uses in the Data Model Reference, and see if any of them are simply a "Date" field.
 
 **How to fix this:**
-Make sure the server time zone reflects the reporting time zone, because when a query is run on Metabase the server applies the time zone to which it is set to that date.
+Make sure the server time zone reflects the reporting time zone, because when a query is run on Metabase, the server applies the configured time zone to that date.
 
 ### Mixing explicit and implicit time zones
 
