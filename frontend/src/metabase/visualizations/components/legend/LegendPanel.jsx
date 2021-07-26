@@ -15,6 +15,7 @@ const propTypes = {
   hovered: PropTypes.shape({
     index: PropTypes.number,
   }),
+  isVertical: PropTypes.bool,
   showDots: PropTypes.bool,
   showTitles: PropTypes.bool,
   showTooltip: PropTypes.bool,
@@ -35,6 +36,7 @@ const LegendPanel = props => {
     description,
     actionButtons,
     hovered,
+    isVertical,
     showDots,
     showTitles,
     showTooltip,
@@ -58,6 +60,7 @@ const LegendPanel = props => {
           color={colors[index % colors.length]}
           description={description}
           isMuted={hovered && hovered.index != null && index !== hovered.index}
+          isVertical={isVertical}
           showDot={showDots}
           showTitle={showTitles}
           showTooltip={showTooltip}

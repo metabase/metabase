@@ -7,7 +7,8 @@ export const LegendItemRoot = styled.div`
   align-items: center;
 
   &:not(:first-child) {
-    margin-top: 0.5rem;
+    margin-top: ${props => (props.isVertical ? "0.5rem" : "")};
+    margin-left: ${props => (props.isVertical ? "" : "1rem")};
   }
 `;
 

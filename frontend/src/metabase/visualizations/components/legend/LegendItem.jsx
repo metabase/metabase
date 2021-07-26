@@ -18,6 +18,7 @@ const propTypes = {
   color: PropTypes.string.isRequired,
   description: PropTypes.string,
   isMuted: PropTypes.bool,
+  isVertical: PropTypes.bool,
   showDot: PropTypes.bool,
   showTitle: PropTypes.bool,
   showTooltip: PropTypes.bool,
@@ -36,6 +37,7 @@ const LegendItem = props => {
     color,
     description,
     isMuted,
+    isVertical,
     showDot,
     showTitle,
     showTooltip,
@@ -76,7 +78,7 @@ const LegendItem = props => {
   );
 
   return (
-    <LegendItemRoot>
+    <LegendItemRoot isVertical={isVertical}>
       <LegendItemLabel
         isMuted={isMuted}
         onClick={handleItemClick}
