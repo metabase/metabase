@@ -208,6 +208,7 @@ describe("scenarios > admin > people", () => {
 
       cy.visit("/admin/people/groups");
       cy.scrollTo("bottom");
+
       cy.findByText("readonly");
     });
 
@@ -305,4 +306,10 @@ function generateUsers(count, groupIds) {
   users.forEach(u => cy.createUserFromRawData(u));
 
   return users;
+}
+
+function generateGroups(count) {
+  _.range(count).map(index => {
+    cy.request("POST", "api/permissions/group", { name: "Group" + index });
+  });
 }
