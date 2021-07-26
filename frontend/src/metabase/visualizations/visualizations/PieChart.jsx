@@ -416,13 +416,11 @@ export default class PieChart extends Component {
         titles={legendTitles}
         colors={legendColors}
         hovered={hovered}
-        showDots
-        showTitles
-        showLegend={settings["pie.show_legend"]}
-        onItemMouseEnter={(event, index) =>
-          onHoverChange && onHoverChange(hoverForIndex(index, event))
+        onHoverChange={d =>
+          onHoverChange &&
+          onHoverChange(d && { ...d, ...hoverForIndex(d.index) })
         }
-        onItemMouseLeave={() => onHoverChange(null)}
+        showLegend={settings["pie.show_legend"]}
       >
         <div className={styles.ChartAndDetail}>
           <div ref={this.chartDetail} className={styles.Detail}>

@@ -24,10 +24,9 @@ const propTypes = {
   showTooltip: PropTypes.bool,
   showDotTooltip: PropTypes.bool,
   infoClassName: PropTypes.string,
-  onItemClick: PropTypes.func,
-  onItemMouseEnter: PropTypes.func,
-  onItemMouseLeave: PropTypes.func,
-  onRemoveClick: PropTypes.func,
+  onHoverChange: PropTypes.func,
+  onSelectSeries: PropTypes.func,
+  onRemoveSeries: PropTypes.func,
 };
 
 const LegendItem = props => {
@@ -38,43 +37,39 @@ const LegendItem = props => {
     description,
     isMuted = false,
     isVertical = false,
-    showDot = false,
-    showTitle = false,
+    showDot = true,
+    showTitle = true,
     showTooltip = false,
     showDotTooltip = false,
     infoClassName,
-    onItemClick,
-    onItemMouseEnter,
-    onItemMouseLeave,
-    onRemoveClick,
+    onHoverChange,
+    onSelectSeries,
+    onRemoveSeries,
   } = props;
 
   const handleItemClick = useCallback(
     event => {
-      onItemClick && onItemClick(event, index);
+      onSelectSeries && onSelectSeries(event, index);
     },
-    [index, onItemClick],
+    [index, onSelectSeries],
   );
 
   const handleItemMouseEnter = useCallback(
     event => {
-      onItemMouseEnter && onItemMouseEnter(event, index);
+      onHoverChange && onHoverChange({ index, element: event.currentTarget });
     },
-    [index, onItemMouseEnter],
+    [index, onHoverChange],
   );
 
-  const handleItemMouseLeave = useCallback(
-    event => {
-      onItemMouseLeave && onItemMouseLeave(event, index);
-    },
-    [index, onItemMouseLeave],
-  );
+  const handleItemMouseLeave = useCallback(() => {
+    onHoverChange && onHoverChange();
+  }, [onHoverChange]);
 
   const handleRemoveClick = useCallback(
     event => {
-      onRemoveClick && onRemoveClick(event, index);
+      onRemoveSeries && onRemoveSeries(event, index);
     },
-    [index, onRemoveClick],
+    [index, onRemoveSeries],
   );
 
   return (
@@ -103,7 +98,7 @@ const LegendItem = props => {
           </LegendItemTitle>
         )}
       </LegendItemLabel>
-      {onRemoveClick && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
+      {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );
 };

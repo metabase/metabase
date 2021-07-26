@@ -22,11 +22,10 @@ const propTypes = {
   showDotTooltip: PropTypes.bool,
   className: PropTypes.string,
   classNameWidgets: PropTypes.string,
-  onAddClick: PropTypes.func,
-  onRemoveClick: PropTypes.func,
-  onItemClick: PropTypes.func,
-  onItemMouseEnter: PropTypes.func,
-  onItemMouseLeave: PropTypes.func,
+  onHoverChange: PropTypes.func,
+  onAddSeries: PropTypes.func,
+  onSelectSeries: PropTypes.func,
+  onRemoveSeries: PropTypes.func,
 };
 
 const LegendPanel = props => {
@@ -43,11 +42,10 @@ const LegendPanel = props => {
     showDotTooltip,
     className,
     classNameWidgets,
-    onAddClick,
-    onRemoveClick,
-    onItemClick,
-    onItemMouseEnter,
-    onItemMouseLeave,
+    onHoverChange,
+    onAddSeries,
+    onSelectSeries,
+    onRemoveSeries,
   } = props;
 
   return (
@@ -66,13 +64,12 @@ const LegendPanel = props => {
           showTooltip={showTooltip}
           showDotTooltip={showDotTooltip}
           infoClassName={classNameWidgets}
-          onItemClick={onItemClick}
-          onItemMouseEnter={onItemMouseEnter}
-          onItemMouseLeave={onItemMouseLeave}
-          onRemoveClick={onRemoveClick}
+          onHoverChange={onHoverChange}
+          onSelectSeries={onSelectSeries}
+          onRemoveSeries={onRemoveSeries}
         />
       ))}
-      {onAddClick && <LegendPanelAddIcon onClick={onAddClick} />}
+      {onAddSeries && <LegendPanelAddIcon onClick={onAddSeries} />}
       {actionButtons && (
         <LegendPanelButtonGroup className={classNameWidgets}>
           {actionButtons}
