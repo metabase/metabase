@@ -4,6 +4,11 @@ import Icon from "metabase/components/Icon";
 
 export const LegendItemRoot = styled.div`
   display: flex;
+  align-items: center;
+
+  &:not(:first-child) {
+    margin-top: 0.5rem;
+  }
 `;
 
 export const LegendItemLabel = styled.div`
@@ -12,7 +17,6 @@ export const LegendItemLabel = styled.div`
   color: ${colors["text-dark"]};
   opacity: ${props => (props.isMuted ? "0.4" : "")};
   cursor: ${props => (props.onClick ? "pointer" : "")};
-  margin-right: 1rem;
 `;
 
 export const LegendItemDot = styled.div`
@@ -42,12 +46,13 @@ export const LegendItemRemoveIcon = styled(Icon).attrs({
   name: "close",
   size: 12,
 })`
+  display: flex;
   flex-shrink: 0;
-  margin-right: 0.5rem;
-  color: ${colors["text-light"]}
+  margin-left: 0.5rem;
+  color: ${colors["text-light"]};
   cursor: pointer;
 
   &:hover {
-   color: ${colors["text-medium"]}
+    color: ${colors["text-medium"]};
   }
 `;

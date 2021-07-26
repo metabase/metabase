@@ -101,7 +101,7 @@ const LegendItem = props => {
           </LegendItemTitle>
         )}
       </LegendItemLabel>
-      <LegendItemRemoveIcon onClick={handleRemoveClick} />
+      {onRemoveClick && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );
 };
