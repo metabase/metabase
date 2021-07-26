@@ -51,7 +51,7 @@ java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.
 
 ### Metabase fails to connect to H2 Database on Windows 10
 
-In some situations on Windows 10 the Metabase JAR needs to be unblocked so it has permissions to create local files for the application database. The sign you might need this is an error message like this when running the JAR:
+In some situations on Windows 10, the Metabase JAR needs to have permissions to create local files for the application database. If the Metabase JAR lacks permissions, you might see an error message like this when running the JAR:
 
 ```
 Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to connect to Metabase DB.
