@@ -67,4 +67,4 @@ Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to co
 
 **How to fix this:** You can unblock the file by right-clicking on it, clicking "Properties," and then clicking "Unblock." 
 
-[what-is-h2]: ../faq/setup/what-is-h2.md
+[what-is-h2]: ../faq/setup/what-is-h2.html

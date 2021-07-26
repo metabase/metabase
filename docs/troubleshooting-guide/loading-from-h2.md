@@ -30,4 +30,4 @@ On a related note, if you're using Metabase Enterprise Edition, you might want t
 [migrate]: ../operations-guide/migrating-from-h2.html
 [postgres]: https://www.postgresql.org/
 [serialization-docs]: ../enterprise-guide/serialization.html
-[serialization-learn]: ../../learn/administration/serialization.html
+[serialization-learn]: https://www.metabase.com/learn/administration/serialization.html
