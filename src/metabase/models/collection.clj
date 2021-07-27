@@ -485,6 +485,8 @@
    :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
 (s/defn effective-children :- #{CollectionInstance}
+  "Get the descendant Collections of `collection` that should be presented to the current User as direct children of
+  this Collection. See documentation for [[metabase.models.collection/effective-children-query]] for more details."
   {:hydrate :effective_children}
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   (set (db/select [Collection :id :name :description]
@@ -940,6 +942,9 @@
     (format-personal-collection-name first-name last-name)))
 
 (s/defn user->existing-personal-collection :- (s/maybe CollectionInstance)
+  "For a `user-or-id`, return their personal Collection, if it already exists.
+  Use [[metabase.models.collection/user->personal-collection]] to fetch their personal Collection *and* create it if
+  needed."
   [user-or-id]
   (db/select-one Collection :personal_owner_id (u/the-id user-or-id)))
 
