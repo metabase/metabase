@@ -1159,9 +1159,6 @@ workflows:
                 name: Create temp cacerts file based on bundled JDK one
                 command: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
             - run:
-                name: Install openssl
-                command: apk add openssl
-            - run:
                 name: Capture Presto server self signed CA
                 command: |
                   while [[ ! -s /tmp/presto-ssl-ca.pem ]];
