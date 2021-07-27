@@ -29,9 +29,13 @@ where `user_id` is bound to an attribute from the user properties.
 
 ### My question can't be sandboxed
 
-1. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data, so the user will be able to see *all* the data.
+1. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data and all results will be shown.
 
-2. Sandboxing doesn't work for non-SQL databases like MongoDB or Google Analytics that don't use common table expressions.
+2. [Signed embedding][signed-embedding] will also show all results, but it's possible to control filtering with locked parameters.
+
+3. Sandboxing doesn't work for non-SQL databases like MongoDB, Druid, or Google Analytics.
+
+4. SQL questions do not have sandboxing, so any user with permissions to view the question can see all the results.
 
 ### My user can't see any of the data they're supposed to
 
@@ -55,3 +59,4 @@ where `user_id` is bound to an attribute from the user properties.
 [one-sandbox-per-table]: /docs/latest/enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table
 [prepared-statement]: /glossary.html#prepared-statement
 [sandboxing-your-data]: /docs/latest/enterprise-guide/data-sandboxes.html
+[signed-embedding]: /learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications
