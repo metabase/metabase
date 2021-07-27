@@ -6,6 +6,8 @@
 
 - [Running Metabase on Docker](./docker.html)
 
+- [My question or dashboard is slow](performance.html)
+
 - [The Metabase Application Database](./application-database.html)
 
 - [Connecting to data warehouses with Metabase](./datawarehouse.html)
