@@ -29,9 +29,11 @@ where `user_id` is bound to a property from the user record.
 
 ### My question can't be sandboxed
 
-1. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data.
+1. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data and all results will be shown. Similar for Signed Embedding, which will also show all results, but it's possible to control filtering with "Locked" parameters.
 
-2. Sandboxing doesn't work for non-SQL databases like MongoDB or Google Analytics that don't use common table expressions.
+2. Sandboxing doesn't work for non-SQL databases like MongoDB, Druid or Google Analytics.
+
+3. SQL questions does not have sandboxing, so any user with permissions to view the question, can see all the results.
 
 ### My user can't see any of the data they're supposed to
 
