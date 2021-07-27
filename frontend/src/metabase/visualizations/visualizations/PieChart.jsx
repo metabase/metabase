@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import styles from "./PieChart.css";
 import { t } from "ttag";
 import ChartTooltip from "../components/ChartTooltip";
+import ChartWithLegend from "../components/legend/ChartWithLegend";
 
 import {
   ChartSettingsError,
@@ -39,7 +40,6 @@ const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 const PERCENT_REGEX = /percent/i;
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import ChartWithLegend from "metabase/visualizations/components/legend/ChartWithLegend";
 
 export default class PieChart extends Component {
   constructor(props: VisualizationProps) {
