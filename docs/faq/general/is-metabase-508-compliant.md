@@ -10,7 +10,7 @@ Metabase strives to be accessible, but is not yet fully compliant with [the US f
 - We do not yet have a published description of our accessibility and compatibility features.
 - Since Metabase is a React-based web application, it cannot function without scripting (i.e., JavaScript) turned on.
 
-If you would like to help us address these, please see [our developers' guide][developers-guide].
+If you'd like to help us address these accessibility gaps, please see [our developers' guide][developers-guide].
 
 [508-accessibility]: https://section508.gov/
 [developers-guide]: /docs/latest/developers-guide.html
