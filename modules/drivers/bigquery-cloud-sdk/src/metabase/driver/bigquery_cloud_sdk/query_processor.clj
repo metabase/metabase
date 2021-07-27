@@ -444,21 +444,6 @@
          (>= (count components) 2))
     true))
 
-(defn- maybe-escape-component
-  [component]
-  (if (and (str/includes? component "-")
-           (not= (first component) \`)
-           (not= (last component) \`))
-    (str "`" component "`")
-    component))
-
-(defn- maybe-escape-identifier
-  "If it's got dashes it's gotta get escaped in the special way BQ has.
-  This is the salient thing MB allows which BQ doesn't without quoting, although there might be others"
-  [{:keys [identifier-type components] :as identifier}]
-  (apply hx/identifier (concat [identifier-type]
-    (map maybe-escape-component components))))
-
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
   (hsql/call :parse_datetime (hx/literal "%Y%m%d%H%M%S") expr))
@@ -472,8 +457,8 @@
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
   [_ identifier]
   (if-not (should-qualify-identifier? identifier)
-    (maybe-escape-identifier identifier)
-    (-> (maybe-escape-identifier identifier)
+    identifier
+    (-> identifier
         (update :components (fn [[table & more]]
                               (cons (str (dataset-name-for-current-query) \. table)
                                     more)))
