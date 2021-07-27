@@ -1,6 +1,6 @@
-#!/bin/sh
+#! /usr/bin/env bash
 
-set -eu
+set -euo pipefail
 
 # gettext installed via homebrew is "keg-only", add it to the PATH
 if [ -d "/usr/local/opt/gettext/bin" ]; then
@@ -12,6 +12,16 @@ if ! command -v xgettext > /dev/null; then
   echo 'Please install the "xgettext" command (e.x. `brew install gettext`)'
   exit 1
 fi
+
+# switch to project root directory if we're not already there
+script_directory=`dirname "${BASH_SOURCE[0]}"`
+cd "$script_directory/../.."
+
+source "./bin/check-clojure-cli.sh"
+check_clojure_cli
+
+source "./bin/prep.sh"
+prep_deps
 
 POT_NAME="locales/metabase.pot"
 POT_BACKEND_NAME="locales/metabase-backend.pot"
@@ -68,7 +78,7 @@ rm "$POT_BACKEND_NAME.bak"
 # update auto dash pot #
 ########################
 
-lein generate-automagic-dashboards-pot
+clojure -M:generate-automagic-dashboards-pot
 
 ##################
 # merge all pots #
