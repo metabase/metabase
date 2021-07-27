@@ -13,34 +13,41 @@ import {
 import Legend from "./Legend";
 
 const MIN_WIDTH_PER_SERIES = 100;
-const MIN_WIDTH_PER_LEGEND = 400;
+const MIN_UNITS_PER_LEGEND = 6;
 
 type Props = {
   className?: string,
   titles: string[],
+  gridSize?: GridSize,
   showLegend?: boolean,
   isDashboard?: boolean,
   children?: React.ReactNode,
+};
+
+type GridSize = {
+  width: number,
+  height: number,
 };
 
 const ChartWithLegend = (props: Props) => {
   const {
     className,
     titles,
+    gridSize,
     showLegend,
     isDashboard,
     children,
     ...legendProps
   } = props;
-  const seriesCount = titles.length;
-
   const ref = useRef();
-  const [isNarrow, setIsNarrow] = useState(false);
   const [isVertical, setIsVertical] = useState(false);
+
+  const seriesCount = titles.length;
+  const isCompact = gridSize != null && gridSize.width < MIN_UNITS_PER_LEGEND;
+  const isVisible = !isDashboard || !(isCompact && isVertical);
 
   const handleResize = useCallback(
     width => {
-      setIsNarrow(width < MIN_WIDTH_PER_LEGEND);
       setIsVertical(width < seriesCount * MIN_WIDTH_PER_SERIES);
     },
     [seriesCount],
@@ -67,7 +74,7 @@ const ChartWithLegend = (props: Props) => {
       className={className}
       isVertical={isVertical}
     >
-      {showLegend && !(isNarrow && isDashboard) && (
+      {showLegend && isVisible && (
         <LegendContent isVertical={isVertical}>
           <Legend {...legendProps} titles={titles} isVertical={isVertical} />
         </LegendContent>

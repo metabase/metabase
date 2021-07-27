@@ -417,6 +417,7 @@ export default class PieChart extends Component {
         titles={legendTitles}
         colors={legendColors}
         hovered={hovered}
+        gridSize={gridSize}
         showLegend={settings["pie.show_legend"]}
         isDashboard={isDashboard}
         onHoverChange={d =>
