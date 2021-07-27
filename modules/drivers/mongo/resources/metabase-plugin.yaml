@@ -33,6 +33,10 @@ driver:
     - name: use-srv
       type: boolean
       default: false
+    - name: custexps
+      type: boolean
+      display-name: Custom Expressions (only in Mongo 5.0 and later)
+      default: false
     - merge:
         - ssl
     - name: ssl-cert
