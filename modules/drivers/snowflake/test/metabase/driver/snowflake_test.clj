@@ -178,3 +178,13 @@
                   ["2014-08-02T00:00:00-07:00" "2014-08-02T02:30:00-07:00"]]
                  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
                    (run-query)))))))))
+
+(deftest normalize-test
+  (mt/test-driver :snowflake
+    (testing "details should be normalized coming out of the DB"
+      (mt/with-temp Database [db {:name    "Legacy Snowflake DB"
+                                  :engine  :snowflake,
+                                  :details {:account  "my-instance"
+                                            :regionid "us-west-1"}}]
+                             (is (= {:account "my-instance.us-west-1"}
+                                    (:details db)))))))

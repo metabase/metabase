@@ -157,6 +157,10 @@ class Settings {
     return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
   }
 
+  storeUrl(path = "") {
+    return `https://store.metabase.com/${path}`;
+  }
+
   newVersionAvailable() {
     const result = MetabaseUtils.compareVersions(
       this.currentVersion(),

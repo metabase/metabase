@@ -15,6 +15,7 @@ import ActionButton from "metabase/components/ActionButton";
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import DriverWarning from "metabase/components/DriverWarning";
 import Radio from "metabase/components/Radio";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
@@ -210,15 +211,20 @@ export default class DatabaseEditApp extends Component {
                     )}
                   </LoadingAndErrorWrapper>
                 </Box>
-                {addingNewDatabase && (
-                  <Box>
+                <Box>
+                  <DriverWarning
+                    engine={selectedEngine}
+                    ml={26}
+                    data-testid="database-setup-driver-warning"
+                  />
+                  {addingNewDatabase && (
                     <AddDatabaseHelpCard
                       engine={selectedEngine}
                       ml={26}
                       data-testid="database-setup-help-card"
                     />
-                  </Box>
-                )}
+                  )}
+                </Box>
               </Flex>
             </div>
           </Box>
