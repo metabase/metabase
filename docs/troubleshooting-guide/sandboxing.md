@@ -4,6 +4,8 @@
 - Can be set up [graphically][sandboxing-your-data]
 - Metabase runs a query that filters rows and/or selects a subset of columns
 - The user's query then runs on that
+- Several databases did not support [common table expressions][cte] when sandboxing was added to Metabase,
+  so we use sub-queries (which were supported by all).
 
 So instead of:
 
@@ -12,18 +14,30 @@ select * from orders
 where price > 100.00;
 ```
 
-we create a [prepared statement][prepared-statement] as a replacement starting point for the query:
+we use a subquery as a replacement starting point for the query:
 
 ```
-with temp01 as
-  (select *
-   from orders
-   where orders.customer_id = {{user_id}})
-select * from temp01
-where price > 100.00;
+SELECT
+  made_up_name_01.customer_id AS customer_id,
+  made_up_name_01.price AS price,
+  made_up_name_01.whatever AS whatever
+FROM
+  (
+    SELECT
+      orders.customer_id AS customer_id,
+      orders.price AS price,
+      orders.whatever AS whatever
+    FROM
+      orders 
+    WHERE
+      orders.customer_id = {{user_id}}
+  )
+  made_up_name_01
+WHERE
+  made_up_name_01.price > 100
 ```
 
-where `user_id` is bound to an attribute from the user properties.
+`made_up_name_01` is something Metabase makes up (so that it doesn't collide with the names of any actual tables), and the `{{...}}` around `user_id` show that it is bound to an attribute from the user properties.
 
 ## Troubleshooting Process
 
