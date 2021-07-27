@@ -4,13 +4,9 @@ on:
   pull_request:
   push:
     branches:
-      - master
-      - 'release**'
-      - 'feature**'
-    tags:
       - '**'
     paths:
-    - '**.clj'
+    - '**.clj*'
     - '**.edn'
     - '**.java'
     - '**/metabase-plugin.yaml'

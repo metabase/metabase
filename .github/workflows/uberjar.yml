@@ -3,9 +3,6 @@ name: Uberjar
 on:
   push:
     branches:
-      - master
-      - 'release-**'
-    tags:
       - '**'
     paths-ignore:
     - 'docs/**'
