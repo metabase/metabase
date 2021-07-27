@@ -3,8 +3,12 @@ import styled from "styled-components";
 export const ChartWithLegendRoot = styled.div`
   display: flex;
   flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
-  padding: 0 1rem 1rem;
+  padding: 1rem;
   min-height: 0;
+
+  &:not(:first-child) {
+    padding-top: 0;
+  }
 `;
 
 export const LegendContent = styled.div`
