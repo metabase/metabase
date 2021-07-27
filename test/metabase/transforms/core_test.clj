@@ -16,7 +16,7 @@
             [toucan.db :as db]))
 
 (use-fixtures :each (fn [thunk]
-                      (mt/with-model-cleanup [Collection]
+                      (mt/with-model-cleanup [Card Collection]
                         (thunk))))
 
 (def ^:private test-bindings

@@ -96,5 +96,9 @@ jobs:
     - name: Compile Java & AOT Sources
       run: |
         clojure -X:deps prep && cd modules/drivers && clojure -X:deps prep && cd ../..
+    # TODO -- this can be deleted once things are working correctly.
+    - name: Check Clojure sources
+      run: |
+        clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check
     - run: ./bin/reflection-linter
       name: Run reflection warnings checker
