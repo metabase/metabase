@@ -10,5 +10,5 @@ This can occur for several reasons:
  - If you are using Metabase version 0.32 or earlier, you will need to either write a SQL query that contains joins, or have your Metabase administrator [set up foreign keys][editing-metadata].
  - If you are using Metabase version 0.33 or above, you can perform joins using the Notebook Editor.
  
-[editing-metadata]: ../../administration-guide/03-metadata-editing.md
-[setting-permissions]: ../../administration-guide/05-setting-permissions.md
+[editing-metadata]: ../../administration-guide/03-metadata-editing.html
+[setting-permissions]: ../../administration-guide/05-setting-permissions.html
