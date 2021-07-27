@@ -1,5 +1,4 @@
 import React, { memo, useCallback } from "react";
-import PropTypes from "prop-types";
 import {
   LegendItemDescription,
   LegendItemDot,
@@ -12,24 +11,24 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 
-const propTypes = {
-  title: PropTypes.string.isRequired,
-  index: PropTypes.number.isRequired,
-  color: PropTypes.string.isRequired,
-  description: PropTypes.string,
-  isMuted: PropTypes.bool,
-  isVertical: PropTypes.bool,
-  showDot: PropTypes.bool,
-  showTitle: PropTypes.bool,
-  showTooltip: PropTypes.bool,
-  showDotTooltip: PropTypes.bool,
-  infoClassName: PropTypes.string,
-  onHoverChange: PropTypes.func,
-  onSelectSeries: PropTypes.func,
-  onRemoveSeries: PropTypes.func,
+type Props = {
+  title: string,
+  index: number,
+  color: string,
+  description?: string,
+  isMuted?: boolean,
+  isVertical?: boolean,
+  showDot?: boolean,
+  showTitle?: boolean,
+  showTooltip?: boolean,
+  showDotTooltip?: boolean,
+  infoClassName?: string,
+  onHoverChange: ({ index: number, element: Element }) => void,
+  onSelectSeries: (event: Event, index: number) => void,
+  onRemoveSeries: (event: Event, index: number) => void,
 };
 
-const LegendItem = props => {
+const LegendItem = (props: Props) => {
   const {
     title,
     index,
@@ -106,7 +105,5 @@ const LegendItem = props => {
     </LegendItemRoot>
   );
 };
-
-LegendItem.propTypes = propTypes;
 
 export default memo(LegendItem);

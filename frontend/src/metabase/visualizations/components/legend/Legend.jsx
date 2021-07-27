@@ -1,30 +1,31 @@
 import React from "react";
-import PropTypes from "prop-types";
 import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
-const propTypes = {
-  titles: PropTypes.array.isRequired,
-  colors: PropTypes.array.isRequired,
-  description: PropTypes.string,
-  actionButtons: PropTypes.node,
-  hovered: PropTypes.shape({
-    index: PropTypes.number,
-  }),
-  isVertical: PropTypes.bool,
-  showDots: PropTypes.bool,
-  showTitles: PropTypes.bool,
-  showTooltip: PropTypes.bool,
-  showDotTooltip: PropTypes.bool,
-  className: PropTypes.string,
-  classNameWidgets: PropTypes.string,
-  onHoverChange: PropTypes.func,
-  onAddSeries: PropTypes.func,
-  onSelectSeries: PropTypes.func,
-  onRemoveSeries: PropTypes.func,
+type Props = {
+  titles: string[],
+  colors: string[],
+  description?: string,
+  actionButtons?: React.ReactNode,
+  hovered?: HoveredItem,
+  isVertical?: boolean,
+  showDots?: boolean,
+  showTitles?: boolean,
+  showTooltip?: boolean,
+  showDotTooltip?: boolean,
+  className?: string,
+  classNameWidgets?: string,
+  onHoverChange: ({ index: number, element: Element }) => void,
+  onAddSeries: () => void,
+  onSelectSeries: (event: Event, index: number) => void,
+  onRemoveSeries: (event: Event, index: number) => void,
 };
 
-const Legend = props => {
+type HoveredItem = {
+  index: number,
+};
+
+const Legend = (props: Props) => {
   const {
     titles,
     colors,
@@ -74,7 +75,5 @@ const Legend = props => {
     </LegendRoot>
   );
 };
-
-Legend.propTypes = propTypes;
 
 export default Legend;

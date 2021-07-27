@@ -5,7 +5,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import PropTypes from "prop-types";
 import {
   ChartContent,
   LegendContent,
@@ -16,15 +15,14 @@ import Legend from "./Legend";
 const MIN_WIDTH_PER_SERIES = 100;
 const MIN_WIDTH_PER_LEGEND = 400;
 
-const propTypes = {
-  titles: PropTypes.array,
-  showLegend: PropTypes.bool,
-  children: PropTypes.node,
-  className: PropTypes.string,
-  ...Legend.propTypes,
+type Props = {
+  titles: string[],
+  showLegend?: boolean,
+  children?: React.ReactNode,
+  className?: string,
 };
 
-const ChartWithLegend = props => {
+const ChartWithLegend = (props: Props) => {
   const { titles, showLegend, children, className, ...legendProps } = props;
   const seriesCount = titles.length;
 
@@ -70,7 +68,5 @@ const ChartWithLegend = props => {
     </ChartWithLegendRoot>
   );
 };
-
-ChartWithLegend.propTypes = propTypes;
 
 export default ChartWithLegend;
