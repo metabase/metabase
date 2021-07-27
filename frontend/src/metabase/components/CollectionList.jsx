@@ -6,9 +6,6 @@ import { connect } from "react-redux";
 import CollectionItem from "metabase/components/CollectionItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 
-import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-
 @connect(
   ({ currentUser }) => ({ currentUser }),
   null,
@@ -19,7 +16,6 @@ class CollectionList extends React.Component {
       analyticsContext,
       collections,
       currentUser,
-      currentCollection,
       w,
       asCards,
     } = this.props;
@@ -30,24 +26,11 @@ class CollectionList extends React.Component {
             .filter(c => c.id !== currentUser.personal_collection_id)
             .map(collection => (
               <GridItem w={w} key={collection.id}>
-                <CollectionDropTarget collection={collection}>
-                  {({ highlighted, hovered }) => (
-                    <ItemDragSource
-                      item={collection}
-                      collection={currentCollection}
-                    >
-                      <div>
-                        <CollectionItem
-                          collection={collection}
-                          highlighted={highlighted}
-                          hovered={hovered}
-                          event={`${analyticsContext};Collection List;Collection click`}
-                          asCard={asCards}
-                        />
-                      </div>
-                    </ItemDragSource>
-                  )}
-                </CollectionDropTarget>
+                <CollectionItem
+                  collection={collection}
+                  event={`${analyticsContext};Collection List;Collection click`}
+                  asCard={asCards}
+                />
               </GridItem>
             ))}
         </Grid>
