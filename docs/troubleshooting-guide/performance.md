@@ -50,7 +50,7 @@ Each question (and any filter combination) is its own query, so if different use
 
 Additionally, since cached values are stored in the application database they will still be there if Metabase restarts, but will only be used if the questions are re-run before the cache's time limit.
 
-**How to detect this:** If you are sure that caching is enabled (discussed above), then look at Metabase's logs or in the server's logs to see when it was last restarted. You can also check the logs to see what proportion of questions are sandboxed.
+**How to detect this:** If you are sure that caching is enabled (discussed above), then look at Metabase's logs or in the server's logs to see why it might not use cache for the specific question.
 
 **How to fix this:** If cached values have timed out because the restart took too long, re-running questions will refresh the cache and bring performance back up. If the problem appears to be caused by a high proportion of sandboxed queries, check that the cache is large enough to store all of their results.
 
