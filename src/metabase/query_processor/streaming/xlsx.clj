@@ -60,26 +60,27 @@
   [format-settings]
   (when (= (::mb.viz/number-style format-settings) "percent") "0%"))
 
-(defn- column-style-delays
+(def ^:private column-style-delays
   "Creates a map of column name or ids -> delay. This is bound to `*cell-styles*` by `streaming-results-writer`.
   Dereffing the delay will create the style and add it to the workbook if needed."
-  [^Workbook workbook column-settings]
-  (into {} (for [[field settings] column-settings]
-             ;; TODO reduce the number of data formats created?
-             (let [data-format (. workbook createDataFormat)
-                   id-or-name (or (::mb.viz/field-id field) (::mb.viz/column-name field))
+  (memoize
+   (fn [^Workbook workbook column-settings]
+     (into {}
+           (for [[field settings] column-settings]
+             (let [id-or-name (or (::mb.viz/field-id field) (::mb.viz/column-name field))
                    fmt-str (format-string settings)]
                (when fmt-str
-                 {id-or-name (delay
-                              (doto (.createCellStyle workbook)
-                                (.setDataFormat (. data-format getFormat fmt-str))))})))))
+                 (let [data-format (. workbook createDataFormat)]
+                   {id-or-name (delay
+                                (doto (.createCellStyle workbook)
+                                  (.setDataFormat (. data-format getFormat fmt-str))))}))))))))
 
 (defn- cell-style
   "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`."
   ^org.apache.poi.ss.usermodel.CellStyle [style-name]
   (some-> style-name *cell-styles* deref))
 
-(defmulti set-cell! (fn [^Cell _cell value column] (type value)))
+(defmulti set-cell! (fn [^Cell _cell value _column] (type value)))
 
 ;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell
 ;; styles applied that dictate how to format them
@@ -122,18 +123,18 @@
   (set-cell! cell (t/offset-date-time t)))
 
 (defmethod set-cell! String [^Cell cell value _]
-  (if (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/STRING))
+  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/STRING))
   (.setCellValue cell ^String value))
 
 (defmethod set-cell! Number [^Cell cell value column]
   (let [name-or-id (or (:id column) (:name column))]
     (def my-name-or-id name-or-id)
-    (if (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
+    (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
     (.setCellValue cell (double value))
     (.setCellStyle cell (cell-style name-or-id))))
 
 (defmethod set-cell! Boolean [^Cell cell value _]
-  (if (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/BOOLEAN))
+  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/BOOLEAN))
   (.setCellValue cell ^Boolean value))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
@@ -152,7 +153,7 @@
 
 (defmethod set-cell! nil [^Cell cell _value _col]
   (let [^String null nil]
-    (if (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/BLANK))
+    (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/BLANK))
     (.setCellValue cell null)))
 
 (defn add-row! [^Sheet sheet values cols]
@@ -162,7 +163,6 @@
         row (.createRow sheet row-num)]
     ;; TODO rewrite
     (doseq [[column-index value] (map-indexed #(list %1 %2) values)]
-      (def my-value value)
       (set-cell! (.createCell row column-index) value (nth cols column-index)))
     row))
 
@@ -182,6 +182,7 @@
                             row)
               col-settings (::mb.viz/column-settings viz-settings)
               col-styles (column-style-delays workbook col-settings)]
+          (def my-col-settings col-settings)
           (binding [*cell-styles* (merge cell-styles col-styles)]
             (add-row! sheet ordered-row ordered-cols))))
 
