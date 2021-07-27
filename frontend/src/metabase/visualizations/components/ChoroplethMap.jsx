@@ -9,9 +9,9 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { formatValue } from "metabase/lib/formatting";
 
+import ChartWithLegend from "./ChartWithLegend";
 import LegacyChoropleth from "./LegacyChoropleth";
 import LeafletChoropleth from "./LeafletChoropleth";
-import ChartWithLegend from "./legend/ChartWithLegend";
 
 import {
   computeMinimalBounds,
@@ -343,13 +343,14 @@ export default class ChoroplethMap extends Component {
 
     return (
       <ChartWithLegend
-        showLegend
         className={className}
-        titles={legendTitles}
-        colors={heatMapColors}
-        hovered={hovered}
+        aspectRatio={aspectRatio}
+        legendTitles={legendTitles}
+        legendColors={heatMapColors}
         gridSize={gridSize}
+        hovered={hovered}
         onHoverChange={onHoverChange}
+        isDashboard={this.props.isDashboard}
       >
         {projection ? (
           <LegacyChoropleth

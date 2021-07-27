@@ -1,0 +1,99 @@
+:local .ChartWithLegend {
+  display: flex;
+  justify-content: flex-end;
+}
+
+:local .ChartWithLegend .Legend {
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+}
+
+:local .ChartWithLegend .LegendSpacer,
+:local .ChartWithLegend .LegendWrapper {
+  flex-basis: auto;
+  flex-grow: 1;
+  /* allow legend and spacer to shrink */
+  min-width: 0;
+  min-height: 0;
+}
+
+:local .ChartWithLegend .LegendSpacer {
+  visibility: hidden;
+  flex-shrink: 10; /* shrink the spacer much faster than the wrapper */
+}
+
+:local .ChartWithLegend .LegendWrapper {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 1;
+}
+
+:local .ChartWithLegend .Chart {
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* SMALL */
+:local .ChartWithLegend.small .Legend {
+  display: none;
+}
+:local .ChartWithLegend.small .Chart {
+  flex: 1;
+}
+
+/* VERTICAL */
+:local .ChartWithLegend.vertical {
+  flex-direction: column-reverse;
+}
+:local .ChartWithLegend.vertical .Legend {
+  flex-shrink: 1;
+  overflow: hidden;
+}
+:local .ChartWithLegend.vertical .LegendWrapper {
+  flex-direction: column;
+}
+:local .ChartWithLegend.vertical.flexChart .Legend {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+:local .ChartWithLegend.vertical.flexChart .Chart {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-height: 75%;
+}
+
+/* HORIZONTAL */
+:local .ChartWithLegend.horizontal {
+  flex-direction: row;
+}
+:local .ChartWithLegend.horizontal .Legend {
+  flex-grow: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+:local .ChartWithLegend.horizontal .LegendWrapper {
+  flex-direction: row;
+}
+:local .ChartWithLegend.horizontal.flexChart .Legend {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+:local .ChartWithLegend.horizontal.flexChart .Chart {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 66%;
+}
+
+/* DEBUG */
+/*
+:local .ChartWithLegend .Legend {
+  background-color: color(var(--color-bg-black) alpha(-90%));
+}
+:local .ChartWithLegend .Chart {
+  background-color: color(var(--color-success) alpha(-90%));
+}
+:local .ChartWithLegend.flexChart .Chart {
+  background-color: color(var(--color-error) alpha(-90%));
+}
+*/
