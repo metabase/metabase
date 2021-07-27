@@ -1,20 +1,15 @@
 # Sandboxing
 
-- Sandboxing means "giving some people access to only some data"
-- Can be set up [graphically][sandboxing-your-data]
-- Metabase runs a query that filters rows and/or selects a subset of columns
-- The user's query then runs on that
-- Several databases did not support [common table expressions][cte] when sandboxing was added to Metabase,
-  so we use sub-queries (which were supported by all).
+[Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table; the user's query then runs on the initial query's result.
 
-So instead of:
+Several databases did not support [common table expressions][cte] when sandboxing was added to Metabase, so we implemented it using subqueries. Suppose you use the Notebook Editor to create a query like:
 
 ```
 select * from orders
-where price > 100.00;
+where price > 100.00
 ```
 
-we use a subquery as a replacement starting point for the query:
+If the `orders` table is sandboxed by the user's ID, what we actually run is something like this:
 
 ```
 SELECT
@@ -37,39 +32,44 @@ WHERE
   made_up_name_01.price > 100
 ```
 
-`made_up_name_01` is something Metabase makes up (so that it doesn't collide with the names of any actual tables), and the `{{...}}` around `user_id` show that it is bound to an attribute from the user properties.
+Metabase creates a unique temporary name like `made_up_name_01` to make sure the query doesn't actually pull in data from an existing table. The curly braces `{{...}}` around `user_id` show that it is bound to an attribute from the user properties.
 
 ## Troubleshooting Process
 
-### My question can't be sandboxed
+### Users can see data they're not supposed to be able to see
 
-1. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data and all results will be shown.
+**How to detect this:** People can view data that they shouldn't be able to.
 
-2. [Signed embedding][signed-embedding] will also show all results, but it's possible to control filtering with locked parameters.
+**How to fix this:** The fix depends on the root cause.
 
-3. Sandboxing doesn't work for non-SQL databases like MongoDB, Druid, or Google Analytics.
+1. Sandboxing isn't implemented for non-SQL databases like MongoDB, Druid, or Google Analytics.
 
-4. SQL questions do not have sandboxing, so any user with permissions to view the question can see all the results.
+2. Sandboxing isn't implemented for SQL questions: any user with permissions to view the question can see all the results. In general, administrators should restrict SQL access to as few people as necessary.
 
-### My user can't see any of the data they're supposed to
+3. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data, so all results will be shown. The fix is to 
 
-1. Sandboxing relies on properties of the user record. If they logged in directly (with an account managed by Metabase) instead of using single sign-on, or vice versa, Metabase might not have the properties it's supposed to.
+4. If the administrator didn't restrict access to the underlying table when setting up sandboxing, people will be able to see the original data. You can check this by going into the Admin Panel and viewing Permissions for the table in question.
 
-2. Admins usually restrict access to tables as part of sandboxing. If the restrictions are too tight by mistake (e.g., "no access" instead of "no SQL access") the user might not be able to see any data.
+5. [Signed embedding][signed-embedding] will show all results by default, though it's possible to control filtering with [locked parameters][locked-parameters].
 
-### I sandboxed my data but my users can still see it
+6. If users are logging in with single sign-on but the expected attributes aren't being saved and made available, sandboxing will deny access. Our article on [Authenticating with SAML][authenticating-with-saml] explains the required setup in detail.
 
-1. If the Admin forgot to restrict access, the user can see the original table.
+### Users can't see the data they're supposed to be able to see
 
-2. Sandboxing doesn't apply to queries written in SQL, so if a user has SQL access to a table, sandboxing won't restrict them. The solution is to turn off SQL access.
+**How to detect this:** Someone is supposed to be able to use some of the values in a table in their queries, but are denied access or get an empty set of results where there should be data.
 
-3. If users are logging in with single sign-on but the expected attributes aren't being saved and made available, sandboxing will deny access - see [Authenticating with SAML][authenticating-with-saml] for more on setup.
+**How to fix this:** Again, the fix depends on the root cause:
 
-### I'm in a bunch of groups but can't see the sandboxed data
+1. Administrators usually restrict access to tables as part of sandboxing. If the restrictions are too tight by mistake (e.g., "no access" instead of "no SQL access") then people might not be able to see any data at all. You can check this by going into the Admin Panel and viewing Permissions for the table in question.
 
-- We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is very confusing. We therefore only allow one rule, which sometimes means the administrator will create a new group to capture precisely who's allowed access to what.
+2. Sandboxing relies on properties of the user record. If someone logs in directly (i.e., if their account is managed by Metabase) instead of using single sign-on, or vice versa, Metabase might not have the properties you expect it to have. In that case, Metabase will deny access for security's sake.
+
+### A user is in several groups but can't see the sandboxed data
+
+We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule, which sometimes means the administrator will create a new group to capture precisely who's allowed access to what.
 
 [authenticating-with-saml]: /docs/latest/enterprise-guide/authenticating-with-saml.html
+[locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
 [one-sandbox-per-table]: /docs/latest/enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table
 [prepared-statement]: /glossary.html#prepared-statement
 [sandboxing-your-data]: /docs/latest/enterprise-guide/data-sandboxes.html
