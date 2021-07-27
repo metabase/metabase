@@ -6,7 +6,7 @@ Metabase stores information about users, questions, and so on in a database of i
 
 ### Metabase fails to start due to database locks
 
-Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly. 
+Sometimes Metabase will fail to start up because a database lock did not clear properly. 
 
 **How to detect this:** The error message will look something like:
 
