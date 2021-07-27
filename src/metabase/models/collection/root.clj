@@ -41,7 +41,7 @@
 
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
-  (map->RootCollection {::is-root? true}))
+  (map->RootCollection {::is-root? true, :authority_level nil}))
 
 (defn is-root-collection?
   "Is `x` the special placeholder object representing the Root Collection?"
