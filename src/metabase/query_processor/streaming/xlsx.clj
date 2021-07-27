@@ -125,8 +125,10 @@
 
       (write-row! [_ row _ _ {:keys [output-order]}]
         (binding [*cell-styles* cell-styles]
-          (let [ordered-row (let [row-v (into [] row)]
-                              (for [i output-order] (row-v i)))]
+          (let [ordered-row (if output-order
+                              (let [row-v (into [] row)]
+                                (for [i output-order] (row-v i)))
+                              row)]
             (spreadsheet/add-row! sheet ordered-row))))
 
       (finish! [_ _]

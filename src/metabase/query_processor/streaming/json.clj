@@ -28,8 +28,10 @@
         (.write writer "[\n"))
 
       (write-row! [_ row row-num _ {:keys [output-order]}]
-        (let [ordered-row (let [row-v (into [] row)]
-                            (for [i output-order] (row-v i)))]
+        (let [ordered-row (if output-order
+                            (let [row-v (into [] row)]
+                              (for [i output-order] (row-v i)))
+                            row)]
           (when-not (zero? row-num)
             (.write writer ",\n"))
           (json/generate-stream (zipmap @col-names (map common/format-value ordered-row))

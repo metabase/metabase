@@ -339,8 +339,7 @@
                    (when exists?
                      (testing "Should return 30 results (the redef'd limit) plus the header row"
                        (is (= 31
-                              (-> (slurp filename) str/split-lines count))
-                           )))))))))}})))
+                              (-> (slurp filename) str/split-lines count)))))))))))}})))
 
 (deftest multiple-recipients-test
   (testing "Pulse should be sent to two recipients"
