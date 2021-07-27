@@ -33,4 +33,4 @@ https://metabase.example.com/auth/reset_password/1_7db2b600-d538-4aeb-b4f7-0cf5b
 
 You should now see a page where you can input a new password for the admin account.
 
-[setting-up-email]: ../../administration-guide/02-setting-up-email.md
+[setting-up-email]: ../../administration-guide/02-setting-up-email.html
