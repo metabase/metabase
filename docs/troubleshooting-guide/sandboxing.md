@@ -12,7 +12,7 @@ select * from orders
 where price > 100.00;
 ```
 
-we create a [common table expression][cte] as a replacement starting point for the query:
+we create a [prepared statement][prepared-statement] as a replacement starting point for the query:
 
 ```
 with temp01 as
@@ -23,13 +23,13 @@ select * from temp01
 where price > 100.00;
 ```
 
-where `user_id` is bound to a property from the user record.
+where `user_id` is bound to an attribute from the user properties.
 
 ## Troubleshooting Process
 
 ### My question can't be sandboxed
 
-1. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data.
+1. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data, so the user will be able to see *all* the data.
 
 2. Sandboxing doesn't work for non-SQL databases like MongoDB or Google Analytics that don't use common table expressions.
 
@@ -49,8 +49,9 @@ where `user_id` is bound to a property from the user record.
 
 ### I'm in a bunch of groups but can't see the sandboxed data
 
-- We only allow one group per user for sandboxing (https://www.metabase.com/docs/latest/enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table) - if someone is a member of two or more groups with different permissions, figuring out whether it should be allowed or disallowed becomes very tricky.
+- We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is very confusing. We therefore only allow one rule, which sometimes means the administrator will create a new group to capture precisely who's allowed access to what.
 
 [authenticating-with-saml]: /docs/latest/enterprise-guide/authenticating-with-saml.html
-[cte]: /glossary.html#cte
+[one-sandbox-per-table]: /docs/latest/enterprise-guide/data-sandboxes.html#a-user-can-only-have-one-sandbox-per-table
+[prepared-statement]: /glossary.html#prepared-statement
 [sandboxing-your-data]: /docs/latest/enterprise-guide/data-sandboxes.html
