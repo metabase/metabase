@@ -11,17 +11,14 @@
     (get norm-form {::mb.viz/field-id id})))
 
 (defn- update-card-viz-settings
-  "For each column, fetch the settings for the underlying field from the QP store, convert the
-  settings into the normalized form for visualization settings, and then merge in the card-level
-  column settings."
-  [column-viz-settings]
-  (reduce-kv
-   (fn [m {field-id ::mb.viz/field-id} column-settings]
-     (let [field-settings            (:settings (qp.store/field field-id))
-           normalized-field-settings (normalize-field-settings field-id field-settings)]
-       (assoc m {::mb.viz/field-id field-id} (merge normalized-field-settings column-settings))))
-   {}
-   column-viz-settings))
+  "For each field, fetch its settings from the QP store, convert the settings into the normalized form
+  for visualization settings, and then merge in the card-level column settings."
+  [column-viz-settings field-ids]
+  (into {} (for [field-id field-ids]
+             (let [field-settings      (:settings (qp.store/field field-id))
+                   norm-field-settings (normalize-field-settings field-id field-settings)
+                   col-settings        (get column-viz-settings {::mb.viz/field-id field-id})]
+               [{::mb.viz/field-id field-id} (merge norm-field-settings col-settings)]))))
 
 (defn- viz-settings
   "Pull viz settings from either the query map or the DB"
@@ -52,7 +49,7 @@
       (let [card-viz-settings           (viz-settings query)
             column-viz-settings         (::mb.viz/column-settings card-viz-settings)
             updated-column-viz-settings (if (= (:type query) :query)
-                                          (update-card-viz-settings column-viz-settings)
+                                          (update-card-viz-settings column-viz-settings (map second (-> query :query :fields)))
                                           column-viz-settings)
             updated-card-viz-settings   (assoc card-viz-settings ::mb.viz/column-settings updated-column-viz-settings)
             rff' (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]

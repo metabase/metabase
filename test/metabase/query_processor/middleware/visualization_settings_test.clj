@@ -82,23 +82,26 @@
           (is (= expected result)))))
 
     (mt/with-temp* [Field [{field-id-1 :id} {:settings {:column_title "Test"}}]
-                    Field [{field-id-2 :id} {:settings {:decimals 4, :scale 10}}]]
+                    Field [{field-id-2 :id} {:settings {:decimals 4, :scale 10}}]
+                    Field [{field-id-3 :id} {:settings {:number_style "percent"}}]]
       (testing "Field settings in the DB are incorporated into visualization settings with a lower
                precedence than card settings"
         (testing "for a saved card"
           (mt/with-temp Card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
-            (let [query    (test-query [field-id-1 field-id-2] card-id {})
+            (let [query    (test-query [field-id-1 field-id-2 field-id-3] card-id {})
                   result   (update-viz-settings query)
-                  expected (assoc-in (processed-viz-settings field-id-1 field-id-2)
-                                     [::mb.viz/column-settings {::mb.viz/field-id field-id-2} ::mb.viz/scale] 10)]
+                  expected (-> (processed-viz-settings field-id-1 field-id-2)
+                               (assoc-in [::mb.viz/column-settings {::mb.viz/field-id field-id-2} ::mb.viz/scale] 10)
+                               (assoc-in [::mb.viz/column-settings {::mb.viz/field-id field-id-3} ::mb.viz/number-style] "percent"))]
               (is (= expected result)))))
 
         (testing "for an unsaved card"
           (let [viz-settings (into {} (processed-viz-settings field-id-1 field-id-2))
-                query        (test-query [field-id-1 field-id-2] nil viz-settings)
+                query        (test-query [field-id-1 field-id-2 field-id-3] nil viz-settings)
                 result       (update-viz-settings query)
-                expected     (assoc-in (processed-viz-settings field-id-1 field-id-2)
-                                       [::mb.viz/column-settings {::mb.viz/field-id field-id-2} ::mb.viz/scale] 10)]
+                expected     (-> (processed-viz-settings field-id-1 field-id-2)
+                                 (assoc-in [::mb.viz/column-settings {::mb.viz/field-id field-id-2} ::mb.viz/scale] 10)
+                                 (assoc-in [::mb.viz/column-settings {::mb.viz/field-id field-id-3} ::mb.viz/number-style] "percent"))]
             (is (= expected result))))))))
 
 (def ^:private test-native-query-viz-settings
