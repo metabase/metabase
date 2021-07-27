@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util.i18n :as i18n :refer [tru]]))
+            [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 

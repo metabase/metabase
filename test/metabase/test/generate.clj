@@ -1,15 +1,10 @@
 (ns metabase.test.generate
   (:require [clojure.spec.alpha :as s]
             [clojure.test.check.generators :as gen]
-            [clojure.tools.reader.edn :as edn]
             [java-time :as t]
-            [metabase.models
-             :refer
-             [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database Dimension Field
-              FieldValues Metric MetricImportantField NativeQuerySnippet PermissionsGroup PermissionsGroupMembership
-              Pulse PulseCard PulseChannel Table User]]
-            [metabase.test :as mt]
-            [metabase.util.date-2.parse :as u.date]
+            [metabase.models :refer [Activity Card Collection Dashboard DashboardCard DashboardCardSeries Database
+                                     Dimension Field Metric NativeQuerySnippet PermissionsGroup
+                                     PermissionsGroupMembership Pulse PulseCard PulseChannel Table User]]
             [reifyhealth.specmonstah.core :as rs]
             [reifyhealth.specmonstah.spec-gen :as rsg]
             [talltale.core :as tt]

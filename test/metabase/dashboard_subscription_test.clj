@@ -1,7 +1,5 @@
 (ns metabase.dashboard-subscription-test
   (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.integrations.slack :as slack]
             [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
             [metabase.models.pulse :as models.pulse]
             [metabase.pulse :as pulse]
@@ -9,8 +7,7 @@
             [metabase.pulse.test-util :refer :all]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (defn- do-with-dashboard-sub-for-card
   "Creates a Pulse, Dashboard, and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if

@@ -6,7 +6,6 @@
             [clojure.test :as t]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [environ.core :as env]
             [java-time :as java-time]
             [metabase.config :as config]
             [metabase.server.middleware.session :as mw.session]

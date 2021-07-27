@@ -2,15 +2,12 @@
   (:refer-clojure :exclude [load])
   (:require [clojure.data :as diff]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing use-fixtures]]
             [metabase-enterprise.serialization.cmd :refer [dump load]]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
-                                     Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel
-                                     Segment Table User]]
-            [metabase.test.data.users :as test-users]
-            [metabase.util :as u]
-            [toucan.db :as db]
+                                     Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel Segment Table User]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
@@ -18,9 +15,11 @@
             [metabase.shared.models.visualization-settings-test :as mb.viz-test]
             [metabase.shared.util.log :as log]
             [metabase.test :as mt]
+            [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util.i18n :refer [deferred-trs trs]]
-            [clojure.string :as str])
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
+            [toucan.db :as db])
   (:import org.apache.commons.io.FileUtils))
 
 (use-fixtures :once

@@ -3,7 +3,6 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
-            [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
             [metabase.sync.util-test :as sut]
             [metabase.test :as mt]
             [metabase.util :as u]

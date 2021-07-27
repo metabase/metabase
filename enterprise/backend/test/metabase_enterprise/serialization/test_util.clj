@@ -8,8 +8,7 @@
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase-enterprise.serialization.names :refer [fully-qualified-name]]))
+            [toucan.util.test :as tt]))
 
 (def root-card-name "My Root Card \\ with a/nasty: (*) //n`me ' * ? \" < > | ŠĐž")
 (def temp-db-name "Fingerprint test-data copy")
