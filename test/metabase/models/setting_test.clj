@@ -416,20 +416,21 @@
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
-    (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
-      (test-json-setting {:abc 123})
-      (is (not= "{\"abc\":123}"
-                (actual-value-in-db :test-json-setting))))
-    (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
-                  "rather than failing entirely")
-      (encryption-test/with-secret-key nil
-        (is (= {:key            :test-json-setting
-                :value          nil
-                :is_env_setting false
-                :env_name       "MB_TEST_JSON_SETTING"
-                :description    "Test setting - this only shows up in dev (4)"
-                :default        nil}
-               (#'setting/user-facing-info (setting/resolve-setting :test-json-setting))))))))
+    (mt/discard-setting-changes [test-json-setting]
+      (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+        (test-json-setting {:abc 123})
+        (is (not= "{\"abc\":123}"
+                  (actual-value-in-db :test-json-setting))))
+      (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
+                    "rather than failing entirely")
+        (encryption-test/with-secret-key nil
+          (is (= {:key            :test-json-setting
+                  :value          nil
+                  :is_env_setting false
+                  :env_name       "MB_TEST_JSON_SETTING"
+                  :description    "Test setting - this only shows up in dev (4)"
+                  :default        nil}
+                 (#'setting/user-facing-info (setting/resolve-setting :test-json-setting)))))))))
 
 
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------

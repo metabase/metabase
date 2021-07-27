@@ -6,7 +6,7 @@
   commons-codec/commons-codec   {:mvn/version "1.14"}
   hiccup/hiccup                 {:mvn/version "1.0.5"}
   io.forward/yaml               {:mvn/version "1.0.9"} ; don't upgrade to 1.0.10 -- doesn't work on Java 8 (!)
-  io.github.clojure/tools.build {:tag "v0.1.3", :sha "688245e"}
+  io.github.clojure/tools.build {:git/tag "v0.1.6" :git/sha "5636e61"}
   org.clojure/tools.deps.alpha  {:mvn/version "0.12.985"}
   org.flatland/ordered          {:mvn/version "1.5.9"} ; used by io.forward/yaml -- need the newer version
   stencil/stencil               {:mvn/version "0.5.0"}

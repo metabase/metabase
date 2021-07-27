@@ -142,7 +142,7 @@ executors:
   presto-jdbc-env:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.912-07-16-2021-node-browsers
       - image: metabase/presto-mb-ci:latest # version 0.254
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"

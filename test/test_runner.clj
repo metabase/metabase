@@ -96,7 +96,7 @@
              (if-let [[_ driver] (re-find #"modules/drivers/([^/]+)/" (str file))]
                (contains? (tx.env/test-drivers) (keyword driver))
                true))
-    (println "Looking for tests namespaces in directory" (str file))
+    (println "Looking for test namespaces in directory" (str file))
     (->> (ns-find/find-namespaces-in-dir file)
          (filter #(re-matches  #"^metabase.*test$" (name %)))
          (mapcat find-tests))))

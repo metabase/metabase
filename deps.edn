@@ -189,15 +189,16 @@
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
-  {:extra-paths   ["test_config"]
-   :exec-fn       test-runner/run-tests
-   :jvm-opts      ["-Dmb.run.mode=test"
-                   "-Dmb.db.in.memory=true"
-                   "-Dmb.jetty.join=false"
-                   "-Dmb.field.filter.operators.enabled=true"
-                   "-Dmb.api.key=test-api-key"
-                   "-Dmb.jetty.port=3200"    ; TODO -- figure out how to do a random port like in the old project.clj?
-                   ]}
+  {:extra-paths ["test_config"]
+   :exec-fn     test-runner/run-tests
+   :jvm-opts    ["-Dmb.run.mode=test"
+                 "-Dmb.db.in.memory=true"
+                 "-Dmb.jetty.join=false"
+                 "-Dmb.field.filter.operators.enabled=true"
+                 "-Dmb.api.key=test-api-key"
+                 ;; Different port from normal `:dev` so you can run tests on a different server.
+                 ;; TODO -- figure out how to do a random port like in the old project.clj?
+                 "-Dmb.jetty.port=3001"]}
 
   ;; run the dev server with
   ;; clojure -M:run
@@ -343,20 +344,22 @@
                ;;
                ;; regex literals aren't allowed in EDN. We parse them in `./test/cloverage.clj`
                :ns-exclude-regex
-               ["metabase\\.driver\\.mysql" "metabase\\.driver\\.postgres"]}}
+               ["metabase\\.driver\\.mysql" "metabase\\.driver\\.postgres"]}
+   ;; different port from `:test` so you can run it at the same time as `:test`.
+   :jvm-opts ["-Dmb.jetty.port=3002"]}
 
 ;;; building Uberjar
 
   ;; clojure -T:build uberjar
   ;; clojure -T:build uberjar :edition :ee
   :build
-  {:deps       {io.github.clojure/tools.build {:tag "v0.1.3", :sha "688245e"}
+  {:deps       {io.github.clojure/tools.build {:git/tag "v0.1.6" :git/sha "5636e61"}
                 metabase/build.common         {:local/root "bin/common"}}
    :ns-default build}
 
   ;; for working on the code in `build.clj`
   :build-dev
-  {:extra-deps {io.github.clojure/tools.build {:tag "v0.1.3", :sha "688245e"}
+  {:extra-deps {io.github.clojure/tools.build {:git/tag "v0.1.6" :git/sha "5636e61"}
                 metabase/build.common         {:local/root "bin/common"}}}
 
 ;;; Other misc convenience aliases
