@@ -50,7 +50,7 @@ Each question (and any filter combination) is its own query, so if different use
 
 Additionally, since cached values are stored in the application database they will still be there if Metabase restarts, but only if the cache duration is still valid. 
 
-**How to detect this:** If you are sure that caching is enabled (discussed above), then look at Metabase's logs or in the server's logs to see when it was last restarted.
+**How to detect this:** If you are sure that caching is enabled (discussed above), then look at Metabase's logs or in the server's logs to see why it might not use cache for the specific question.
 
 **How to fix this:** If the problem is due to a restart breaking the cache, re-running questions will make it go away. If performance problems are caused by data sandboxing, you may want to consider enlarging the cache.
 
