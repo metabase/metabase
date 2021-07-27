@@ -8,7 +8,6 @@ export const ChartWithLegendRoot = styled.div`
 `;
 
 export const LegendContent = styled.div`
-  width: ${({ isVertical }) => (isVertical ? "25%" : "")};
   min-width: ${({ isVertical }) => (isVertical ? "4rem" : "")};
   max-width: ${({ isVertical }) => (isVertical ? "20rem" : "")};
   overflow-y: ${({ isVertical }) => (isVertical ? "auto" : "")};

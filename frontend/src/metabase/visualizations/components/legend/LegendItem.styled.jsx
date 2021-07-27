@@ -39,6 +39,12 @@ export const LegendItemTitle = styled.div`
   overflow: hidden;
 `;
 
+export const LegendItemSubtitle = styled.div`
+  &:not(:first-child) {
+    padding-left: 0.5rem;
+  }
+`;
+
 export const LegendItemDescription = styled.div`
   display: flex;
   align-items: center;

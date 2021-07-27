@@ -5,6 +5,7 @@ import {
   LegendItemLabel,
   LegendItemRemoveIcon,
   LegendItemRoot,
+  LegendItemSubtitle,
   LegendItemTitle,
 } from "./LegendItem.styled";
 import Icon from "metabase/components/Icon";
@@ -12,7 +13,7 @@ import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 
 type Props = {
-  title: string,
+  title: string | string[],
   index: number,
   color: string,
   description?: string,
@@ -80,16 +81,20 @@ const LegendItem = (props: Props) => {
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
         {showDot && (
-          <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
+          <Tooltip
+            tooltip={getTitleText(title)}
+            isEnabled={showTooltip && showDotTooltip}
+          >
             <LegendItemDot color={color} />
           </Tooltip>
         )}
         {showTitle && (
           <LegendItemTitle showDot={showDot}>
-            {isVertical ? (
-              title
-            ) : (
-              <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
+            {isVertical && getTitleNodes(title)}
+            {!isVertical && (
+              <Ellipsified showTooltip={showTooltip}>
+                {getTitleNodes(title)}
+              </Ellipsified>
             )}
             {description && (
               <LegendItemDescription>
@@ -104,6 +109,24 @@ const LegendItem = (props: Props) => {
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );
+};
+
+const getTitleText = title => {
+  if (!Array.isArray(title)) {
+    return title;
+  }
+
+  return title[0];
+};
+
+const getTitleNodes = title => {
+  if (!Array.isArray(title)) {
+    return title;
+  }
+
+  return title.map((text, index) => (
+    <LegendItemSubtitle key={index}>{text}</LegendItemSubtitle>
+  ));
 };
 
 export default memo(LegendItem);

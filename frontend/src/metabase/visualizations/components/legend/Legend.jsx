@@ -3,7 +3,7 @@ import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
 type Props = {
-  titles: string[],
+  titles: string[] | string[][],
   colors: string[],
   description?: string,
   actionButtons?: React.ReactNode,
