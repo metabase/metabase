@@ -334,5 +334,7 @@
                                  (assert db)
                                  (assert (db/exists? Database :id (u/the-id db)))
                                  db))))]
-    (binding [*get-db* #(get-db-for-driver (tx/driver))]
+    (binding [*get-db* (fn []
+                         (locking do-with-dataset
+                           (get-db-for-driver (tx/driver))))]
       (f))))
