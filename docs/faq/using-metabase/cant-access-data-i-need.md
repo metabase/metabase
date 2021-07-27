@@ -1,4 +1,4 @@
-# I'm trying to ask a question, but it looks like I can't access some of the data I need.
+# I'm trying to ask a question, but it looks like I can't access some of the data I need
 
 This can occur for several reasons:
 
