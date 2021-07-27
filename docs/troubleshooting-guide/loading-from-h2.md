@@ -1,6 +1,6 @@
 ## Loading exported application database fails 
 
-If you've been using the default H2 application database that ships with Metabase, and want to [migrate from the default H2 application database][migrate] to a production database like [PostgreSQL][postgres], you'll need to use the `load-from-h2` command, which will fail if the database filename is incorrect. 
+If you've been using the default H2 application database that ships with Metabase, and want to [migrate from the default H2 application database][migrate] to a production database like [PostgreSQL][postgres] or MySQL/MariaDB, you'll need to use the `load-from-h2` command, which will fail if the database filename is incorrect. 
 
 **How to detect this:** When running the `load-from-h2` command, you'll see an error that looks something like:
 
@@ -24,7 +24,7 @@ export MB_DB_HOST=localhost
 java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
-On a related note, if you're using Metabase Enterprise Edition, you might want to check out the [Serialization][serialization-docs] feature to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase.
+If you're using Metabase Enterprise Edition, you should check out the [Serialization][serialization-docs] feature to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase instance.
 
 [backup]: ../operations-guide/backing-up-metabase-application-data.html
 [migrate]: ../operations-guide/migrating-from-h2.html

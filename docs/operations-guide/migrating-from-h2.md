@@ -4,12 +4,12 @@ If you decide to use the default application database (H2) when you initially st
 
 ## Before you migrate
 
-- Avoid upgrading and migrating at the same time, since it can cause problems with one of database schemas not matching.
+- Avoid upgrading and migrating at the same time, since it can cause problems if one of the database schemas doesn't match.
 - You must be able to connect to the target MySQL or Postgres database in whatever environment you're running this migration command in. So, if you are attempting to move the data to a cloud database, make sure you can connect to that database.
 
 ## How to migrate 
 
-Metabase provides a custom migration command for upgrading H2 application database files by copying their data to a new database. Here's what you'll want to do:
+Metabase provides a custom migration command for upgrading H2 application database files by copying their data to a new database. Here's what you'll do:
 
 1. Shutdown your Metabase instance so that it's not running. This ensures no accidental data gets written to the db while migrating.
 2. Make a backup copy of your H2 application database by following the instructions in [Backing up Metabase Application Data](backing-up-metabase-application-data.md). Safety first!
@@ -25,7 +25,7 @@ export MB_DB_HOST=localhost
 java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
-It is expected that you will run the command against a brand-new (empty!) database; Metabase will handle all of the work of creating the database schema and migrating the data for you.
+Metabase expects that you'll run the command against a brand-new (empty) database; it'll create the database schema and migrate the data for you.
 
 
 ### PostgreSQL notes
@@ -40,4 +40,4 @@ It is expected that you will run the command against a brand-new (empty!) databa
 
 ### Troubleshooting
 
-If you get stuck, check out [Error when loading application database from H2](../troubleshooting-guide/loading-from-h2.md).
+If you get an error, check out [Error when loading application database from H2](../troubleshooting-guide/loading-from-h2.md).
