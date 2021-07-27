@@ -36,8 +36,4 @@
  :aliases
  {:aot
   {:deps       {io.github.clojure/tools.build {:git/tag "v0.1.6" :git/sha "5636e61"}}
-   :ns-default build}
-
-  ;; dependencies needed for AOT compilation.
-  :compilation-basis
-  {:extra-deps {metabase/metabase-core {:local/root "../../.."}}}}}
+   :ns-default build}}}
