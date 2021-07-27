@@ -6,13 +6,15 @@ Metabase stores information about users, questions, and so on in a database of i
 
 ### Metabase fails to start due to database locks
 
-Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly. The error message will look something like:
+Sometimes Metabase will fail to start up because a database lock did not clear properly. 
+
+**How to detect this:** The error message will look something like:
 
 ```
 liquibase.exception.DatabaseException: liquibase.exception.LockException: Could not acquire change log lock.
 ```
 
-When this happens, open a shell on the server where Metabase is installed and run:
+**How to fix this:** When this happens, open a shell on the server where Metabase is installed and run:
 
 ```
 java -jar metabase.jar migrate release-locks
@@ -22,7 +24,9 @@ This command will manually clear the locks. When it's done, restart your Metabas
 
 ### Metabase H2 application database gets corrupted
 
-By default, Metabase uses [H2][what-is-h2] for its application database. Because H2 is an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly. In these situations, you'll see errors on startup. These vary, but one example is:
+By default, Metabase uses [H2][what-is-h2] for its application database. Because H2 is an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly. In these situations, you'll see errors on startup. 
+
+**How to detect this:** Error messages will vary, but one example is:
 
 ```
 myUser@myIp:~$ java -cp metabase.jar org.h2.tools.RunScript -script whatever.sql -url jdbc:h2:~/metabase.db
@@ -31,7 +35,7 @@ Exception in thread "main" org.h2.jdbc.JdbcSQLException: Row not found when tryi
     [etc]
 ```
 
-Not all H2 errors are recoverable (which is why if you're using H2, _please_ have a backup strategy for the application database file). To attempt to recover a corrupted H2 file with a recent version of Metabase, try the commands shown below:
+**How to fix this:** To attempt to recover a corrupted H2 file with a recent version of Metabase, try the commands shown below:
 
 ```
 java -cp metabase.jar org.h2.tools.Recover
@@ -49,15 +53,18 @@ touch metabase.db.h2.db
 java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.h2.sql -url jdbc:h2:`pwd`/metabase.db;MV_STORE=FALSE
 ```
 
+Not all H2 errors are recoverable (which is why if you're using H2, _please_ have a backup strategy for the application database file).
+
 ### Metabase fails to connect to H2 Database on Windows 10
 
-In some situations on Windows 10, the Metabase JAR needs to have permissions to create local files for the application database. If the Metabase JAR lacks permissions, you might see an error message like this when running the JAR:
+In some situations on Windows 10, the Metabase JAR needs to have permissions to create local files for the application database. 
+
+**How to detect this:** If the Metabase JAR lacks permissions, you might see an error message like this when running the JAR:
 
 ```
 Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to connect to Metabase DB.
 ```
 
-You can unblock the file by right-clicking on it, clicking "Properties," and then clicking "Unblock." See [Microsoft's documentation][ms-unblocking-file] for more details on unblocking downloaded files.
+**How to fix this:** You can unblock the file by right-clicking on it, clicking "Properties," and then clicking "Unblock." 
 
-[ms-unblocking-file]: https://blogs.msdn.microsoft.com/delay/p/unblockingdownloadedfile/
-[what-is-h2]: /faq/setup/what-is-h2.html
+[what-is-h2]: ../faq/setup/what-is-h2.html
