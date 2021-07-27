@@ -41,7 +41,9 @@ export const LegendItemTitle = styled.div`
   overflow: hidden;
 `;
 
-export const LegendItemSubtitle = styled.div`
+export const LegendItemSubtitle = styled.span`
+  display: inline-block;
+
   &:not(:first-child) {
     margin-left: auto;
     padding-left: 0.5rem;

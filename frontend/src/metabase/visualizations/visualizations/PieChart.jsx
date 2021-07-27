@@ -219,6 +219,7 @@ export default class PieChart extends Component {
       className,
       gridSize,
       settings,
+      isDashboard,
     } = this.props;
 
     const [
@@ -417,7 +418,7 @@ export default class PieChart extends Component {
         colors={legendColors}
         hovered={hovered}
         showLegend={settings["pie.show_legend"]}
-        gridSize={gridSize}
+        isDashboard={isDashboard}
         onHoverChange={d =>
           onHoverChange &&
           onHoverChange(d && { ...d, ...hoverForIndex(d.index) })
