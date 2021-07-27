@@ -56,24 +56,78 @@
                            (doto (.createCellStyle workbook)
                              (.setDataFormat (cell-format style-name))))])))
 
-(defn- format-string
+;; If any of these settings are present, we should format the column as a number
+(def ^:private number-viz-settings
+  #{::mb.viz/number-style
+    ::mb.viz/currency
+    ::mb.viz/currency-style
+    ::mb.viz/currency-in-header
+    ::mb.viz/decimals
+    ::mb.viz/scale
+    ::mb.viz/prefix
+    ::mb.viz/suffix})
+
+(defn- general-number-format?
+  "Use General for decimal number types that have no other format settings defined
+  aside from prefix, suffix or scale."
   [format-settings]
-  (when (= (::mb.viz/number-style format-settings) "percent") "0%"))
+  (and (or (= (::mb.viz/number-style format-settings) "decimal")
+           (not (::mb.viz/number-style format-settings)))
+       (not (seq (dissoc format-settings
+                         ::mb.viz/number-style
+                         ::mb.viz/scale
+                         ::mb.viz/prefix
+                         ::mb.viz/suffix)))))
+
+(defn- number-format-string
+  "Returns a format string for a number column corresponding to the given settings."
+  [format-settings]
+  (let [styled-string
+        (let [decimals (::mb.viz/decimals format-settings 2)
+              base-string (if (general-number-format? format-settings)
+                            "General"
+                            (apply str "0." (repeat decimals "0")))]
+          (condp = (::mb.viz/number-style format-settings)
+            "percent"
+            (str base-string "%")
+
+            "scientific"
+            (str base-string "E+0")
+
+            "currency"
+            ;; TODO
+            base-string
+
+            "decimal"
+            base-string
+
+            base-string))]
+    (str
+     (str "\"" (::mb.viz/prefix format-settings) "\"")
+     styled-string
+     (str "\"" (::mb.viz/suffix format-settings) "\""))))
+
+(defn- format-settings->format-string
+  "Returns a format string corresponding to the given settings."
+  [format-settings]
+  (cond
+    (some #(contains? number-viz-settings %) (keys format-settings))
+    (number-format-string format-settings)))
 
 (def ^:private column-style-delays
   "Creates a map of column name or ids -> delay. This is bound to `*cell-styles*` by `streaming-results-writer`.
   Dereffing the delay will create the style and add it to the workbook if needed."
   (memoize
    (fn [^Workbook workbook column-settings]
-     (into {}
-           (for [[field settings] column-settings]
-             (let [id-or-name (or (::mb.viz/field-id field) (::mb.viz/column-name field))
-                   fmt-str (format-string settings)]
-               (when fmt-str
-                 (let [data-format (. workbook createDataFormat)]
-                   {id-or-name (delay
-                                (doto (.createCellStyle workbook)
-                                  (.setDataFormat (. data-format getFormat fmt-str))))}))))))))
+       (into {}
+             (for [[field settings] column-settings]
+                  (let [id-or-name    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
+                        format-string (format-settings->format-string settings)]
+                    (when format-string
+                      (let [data-format (. workbook createDataFormat)]
+                        {id-or-name (delay
+                                     (doto (.createCellStyle workbook)
+                                       (.setDataFormat (. data-format getFormat format-string))))}))))))))
 
 (defn- cell-style
   "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`."
@@ -123,18 +177,20 @@
   (set-cell! cell (t/offset-date-time t)))
 
 (defmethod set-cell! String [^Cell cell value _]
-  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/STRING))
+  (when (= (.getCellType cell) CellType/FORMULA)
+    (.setCellType cell CellType/STRING))
   (.setCellValue cell ^String value))
 
 (defmethod set-cell! Number [^Cell cell value column]
   (let [name-or-id (or (:id column) (:name column))]
-    (def my-name-or-id name-or-id)
-    (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/NUMERIC))
+    (when (= (.getCellType cell) CellType/FORMULA)
+      (.setCellType cell CellType/NUMERIC))
     (.setCellValue cell (double value))
     (.setCellStyle cell (cell-style name-or-id))))
 
 (defmethod set-cell! Boolean [^Cell cell value _]
-  (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/BOOLEAN))
+  (when (= (.getCellType cell) CellType/FORMULA)
+    (.setCellType cell CellType/BOOLEAN))
   (.setCellValue cell ^Boolean value))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
@@ -153,17 +209,23 @@
 
 (defmethod set-cell! nil [^Cell cell _value _col]
   (let [^String null nil]
-    (when (= (.getCellType cell) CellType/FORMULA) (.setCellType cell CellType/BLANK))
+    (when (= (.getCellType cell) CellType/FORMULA)
+      (.setCellType cell CellType/BLANK))
     (.setCellValue cell null)))
 
-(defn add-row! [^Sheet sheet values cols]
+(defn add-row! [^Sheet sheet values cols col-settings]
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
         row (.createRow sheet row-num)]
-    ;; TODO rewrite
-    (doseq [[column-index value] (map-indexed #(list %1 %2) values)]
-      (set-cell! (.createCell row column-index) value (nth cols column-index)))
+    (doseq [[value col index] (map vector values cols (range (count values)))]
+      (let [name-or-id (or (:id col) (:name col))
+            settings   (or (get col-settings {::mb.viz/field-id name-or-id})
+                           (get col-settings {::mb.viz/column-name name-or-id}))
+            scaled-val (if (and value (::mb.viz/scale settings))
+                         (* value (::mb.viz/scale settings))
+                         value)]
+        (set-cell! (.createCell row index) scaled-val col)))
     row))
 
 (defmethod i/streaming-results-writer :xlsx
@@ -182,9 +244,8 @@
                             row)
               col-settings (::mb.viz/column-settings viz-settings)
               col-styles (column-style-delays workbook col-settings)]
-          (def my-col-settings col-settings)
           (binding [*cell-styles* (merge cell-styles col-styles)]
-            (add-row! sheet ordered-row ordered-cols))))
+            (add-row! sheet ordered-row ordered-cols col-settings))))
 
       (finish! [_ _]
         (spreadsheet/save-workbook-into-stream! os workbook)
