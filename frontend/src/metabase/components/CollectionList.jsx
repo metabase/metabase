@@ -6,6 +6,8 @@ import { connect } from "react-redux";
 import CollectionItem from "metabase/components/CollectionItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 
+import { getUser } from "metabase/selectors/user";
+
 const propTypes = {
   collections: PropTypes.arrayOf(PropTypes.object).isRequired,
   currentUser: PropTypes.shape({
@@ -15,36 +17,36 @@ const propTypes = {
   analyticsContext: PropTypes.string,
 };
 
-@connect(
-  ({ currentUser }) => ({ currentUser }),
-  null,
-)
-class CollectionList extends React.Component {
-  render() {
-    const { analyticsContext, collections, currentUser, w } = this.props;
-    return (
-      <Box className="relative">
-        <Grid>
-          {collections
-            .filter(c => c.id !== currentUser.personal_collection_id)
-            .map(collection => (
-              <GridItem w={w} key={collection.id}>
-                <CollectionItem
-                  collection={collection}
-                  event={`${analyticsContext};Collection List;Collection click`}
-                />
-              </GridItem>
-            ))}
-        </Grid>
-      </Box>
-    );
-  }
+function mapStateToProps(state) {
+  return {
+    currentUser: getUser(state),
+  };
+}
+
+function CollectionList({
+  collections,
+  currentUser,
+  w = [1, 1 / 2, 1 / 4],
+  analyticsContext,
+}) {
+  return (
+    <Box className="relative">
+      <Grid>
+        {collections
+          .filter(c => c.id !== currentUser.personal_collection_id)
+          .map(collection => (
+            <GridItem w={w} key={collection.id}>
+              <CollectionItem
+                collection={collection}
+                event={`${analyticsContext};Collection List;Collection click`}
+              />
+            </GridItem>
+          ))}
+      </Grid>
+    </Box>
+  );
 }
 
 CollectionList.propTypes = propTypes;
 
-CollectionList.defaultProps = {
-  w: [1, 1 / 2, 1 / 4],
-};
-
-export default CollectionList;
+export default connect(mapStateToProps)(CollectionList);
