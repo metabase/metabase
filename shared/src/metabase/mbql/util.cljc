@@ -121,6 +121,8 @@
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
 (s/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
+  "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
+  needed."
   [inner-query :- mbql.s/MBQLQuery new-clause :- (s/maybe mbql.s/Filter)]
   (if-not new-clause
     inner-query
