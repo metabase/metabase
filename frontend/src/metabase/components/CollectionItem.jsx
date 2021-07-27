@@ -9,28 +9,13 @@ import Link from "metabase/components/Link";
 
 import { color } from "metabase/lib/colors";
 
-const ItemLink = ({ collection, hovered, highlighted, event, children }) => (
+const ItemLink = ({ collection, event, children }) => (
   <Link
     to={collection.getUrl()}
-    bg={
-      hovered
-        ? color("brand")
-        : highlighted
-        ? color("bg-light")
-        : color("bg-medium")
-    }
-    color={hovered ? "white" : color("text-medium")}
+    bg={color("bg-medium")}
+    color={color("text-medium")}
     className="block rounded relative text-brand-hover"
     data-metabase-event={event}
-    style={{
-      borderSize: 1,
-      borderColor: hovered
-        ? color("brand")
-        : highlighted
-        ? color("bg-medium")
-        : "transparent",
-      borderStyle: hovered ? "solid" : highlighted ? "dotted" : "solid",
-    }}
     hover={{ color: color("brand") }}
   >
     {children}
