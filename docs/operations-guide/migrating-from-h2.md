@@ -22,7 +22,7 @@ export MB_DB_PORT=5432
 export MB_DB_USER=<username>
 export MB_DB_PASS=<password>
 export MB_DB_HOST=localhost
-java -jar metabase.jar load-from-h2 /path/to/metabase.db.mv.db 
+java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
 It is expected that you will run the command against a brand-new (empty!) database; Metabase will handle all of the work of creating the database schema and migrating the data for you.
@@ -32,13 +32,11 @@ It is expected that you will run the command against a brand-new (empty!) databa
 
 -  Minimum version is PostgreSQL 9.4, since the code that handles these migrations uses a command that is only available in version 9.4 or newer.
 
-## MySQL notes
+## MySQL/MariaDB notes
 
 - MySQL minimum recommended version is 5.7.7.
-
-### MariaDB notes
-
-- MariaDB minimum recommended version is 10.2.2, while the following is required: `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
+- MariaDB minimum recommended version is 10.2.2.
+- And the following database settings are required, which is the default in the above recommended versions: `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 
 ### Troubleshooting
 

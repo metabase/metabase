@@ -10,7 +10,7 @@ Command failed with exception: Unsupported database file version or invalid file
 
 **How to fix this:** First, make sure to create a copy of the exported H2 database (see [Backing up Metabase Application Data][backup]).
 
-Next, check that the exported, application database file (the H2 database you exported) is named `metabase.db.mv.db`. H2 automatically adds a `.h2.db` or `.mv.db` extension to the database path you specify, so make sure the path to the DB file you pass to the command is exactly `metabase.db.mv.db`
+Next, check that the exported, application database file (the H2 database you exported) is named `metabase.db.mv.db`. H2 automatically adds a `.mv.db` extension to the database path you specify, so make sure the path to the DB file you pass to the command does not include the `.mv.db` extension.
 
 For example, if you've exported an application database, and you want to load the data from that H2 database into a PostgreSQL database using `load-from-h2`, your command will look something like:
 
@@ -21,7 +21,7 @@ export MB_DB_PORT=5432
 export MB_DB_USER=<username>
 export MB_DB_PASS=<password>
 export MB_DB_HOST=localhost
-java -jar metabase.jar load-from-h2 /path/to/metabase.db.mv.db
+java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
 On a related note, if you're using Metabase Enterprise Edition, you might want to check out the [Serialization][serialization-docs] feature to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase.
