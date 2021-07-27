@@ -24,6 +24,8 @@ const isQaDatabase = process.env["QA_DB_ENABLED"];
 const webpack = require("@cypress/webpack-preprocessor");
 const { resolve } = require("../../../../webpack.config.js");
 
+const percyHealthCheck = require("@percy/cypress/task");
+
 const webpackPluginOptions = {
   webpackOptions: { resolve },
   watchOptions: {},
@@ -33,6 +35,9 @@ module.exports = (on, config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config
   require("cypress-grep/src/plugin")(config);
+
+  // Required for Percy
+  on("task", percyHealthCheck);
 
   /********************************************************************
    **                          WEBPACK                               **
