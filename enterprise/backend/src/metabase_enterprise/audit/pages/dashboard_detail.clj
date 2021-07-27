@@ -13,21 +13,23 @@
   (card-and-dash-detail/views-by-time "dashboard" dashboard-id datetime-unit))
 
 (s/defn ^:internal-query-fn revision-history
+  "Revision history for a specific Dashboard."
   [dashboard-id :- su/IntGreaterThanZero]
   (card-and-dash-detail/revision-history Dashboard dashboard-id))
 
 (s/defn ^:internal-query-fn audit-log
+  "View log for a specific Dashboard."
   [dashboard-id :- su/IntGreaterThanZero]
   (card-and-dash-detail/audit-log "dashboard" dashboard-id))
 
-
 (s/defn ^:internal-query-fn cards
+  "Information about the Saved Questions (Cards) in this instance."
   [dashboard-id :- su/IntGreaterThanZero]
   {:metadata [[:card_id             {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name           {:display_name "Title",                :base_type :type/Name,    :remapped_from :card_id}]
               [:collection_id       {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]
               [:collection_name     {:display_name "Collection",           :base_type :type/Text,    :remapped_from :collection_id}]
-              [:created_at          {:display_name  "Created At",          :base_type :type/DateTime}]
+              [:created_at          {:display_name "Created At",           :base_type :type/DateTime}]
               [:database_id         {:display_name "Database ID",          :base_type :type/Integer, :remapped_to   :database_name}]
               [:database_name       {:display_name "Database",             :base_type :type/Text,    :remapped_from :database_id}]
               [:table_id            {:display_name "Table ID",             :base_type :type/Integer, :remapped_to   :table_name}]

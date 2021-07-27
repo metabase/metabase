@@ -5,6 +5,7 @@
             [schema.core :as s]))
 
 (s/defn ^:internal-query-fn audit-log
+  "View log for a specific Table."
   [table-id :- su/IntGreaterThanZero]
   {:metadata [[:started_at {:display_name "Viewed on",  :base_type :type/DateTime}]
               [:card_id    {:display_name "Card ID",    :base_type :type/Integer, :remapped_to   :query}]

@@ -142,6 +142,7 @@
                 :limit     10})})
 
 (s/defn ^:internal-query-fn table
+  "A table of all the Users for this instance, and various statistics about them (see metadata below)."
   ([]
    (table nil))
 
