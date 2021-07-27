@@ -41,4 +41,5 @@
   ;; dependencies needed for AOT compilation. Same as deps above but without all the exclusions.
   :compilation-basis
   {:replace-deps {org.apache.hadoop/hadoop-common {:mvn/version "3.1.1"}
-                  org.apache.hive/hive-jdbc       {:mvn/version "1.2.2"}}}}}
+                  org.apache.hive/hive-jdbc       {:mvn/version "1.2.2"}
+                  org.clojure/clojure             {:mvn/version "1.10.3"}}}}}
