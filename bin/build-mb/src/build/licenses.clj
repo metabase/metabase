@@ -192,9 +192,10 @@
        (filter jar-file?)))
 
 (defn generate
-  "Process a classpath, creating a file of all license information, writing to `:output-filename`. Backfill is a clojure
-  data structure or a filename of an edn file of a clojure datastructure providing for backfilling license information
-  if it is not discernable from the jar. Should be of the form (note keys are strings not symbols)
+  "Process a classpath, creating a file of all license information, writing to `:output-filename`. `classpath-entries`
+  should be a seq of classpath roots. Split a classpath on the classpath separator. Backfill is a clojure data
+  structure or a filename of an edn file of a clojure datastructure providing for backfilling license information if
+  it is not discernable from the jar. Should be of the form (note keys are strings not symbols)
 
   {\"group\" {\"artifact\" \"license text\"}
    \"group\" {\"artifact\" {:resource \"filename-of-license\"}}
@@ -214,26 +215,24 @@
   Returns a map
   {:with-license [ [jar-filename {:coords {:group :artifact :version} :license <text>}] ...]
    :without-license [ [jar-filename {:coords {:group :artifact :version} :error <text>}] ... ]}"
-  [{:keys [classpath backfill output-filename report?] :or {report? true}}]
+  [{:keys [classpath-entries backfill output-filename report?] :or {report? true}}]
   (let [backfill (if (string? backfill)
-                   (edn/read-string (slurp backfill))
+                   (edn/read-string (slurp (io/resource backfill)))
                    (or backfill {}))
-        entries  (jar-entries classpath)]
-    (let [{:keys [with-license without-license] :as license-info}
-          (process* {:classpath-entries     entries
-                     :backfill              backfill})]
+        entries  (filter jar-file? classpath-entries)
+        {:keys [with-license without-license] :as license-info}
+        (process* {:classpath-entries     entries
+                   :backfill              backfill})]
+    (when (seq with-license)
+      (with-open [os (io/writer output-filename)]
+        (run! #(write-license os %) with-license)))
+    (when report?
+      (when (seq without-license)
+        (run! #(report-missing *err* %) without-license))
       (when (seq with-license)
-        (with-open [os (io/writer output-filename)]
-          (run! #(write-license os %) with-license)))
-      (when report?
-        (when (seq without-license)
-          (run! #(report-missing *err* %) without-license))
-        (when (seq with-license)
-          (println "License information for" (count with-license) "libraries written to "
-                   output-filename)
-          ;; we call this from the build script. if we switch to the shell we can reenable this and figure out the
-          ;; best defaults. Want to make sure we never kill our build script
-          #_(System/exit (if (seq without-license) 1 0))))
-      license-info)))
-
-;; clj -X build.licenses/generate :classpath \"$(cd ../.. && lein with-profile -dev,+ee,+include-all-drivers classpath | tail -n1)\" :backfill "\"resources/overrides.edn\"" :output-filename "\"backend-licenses-ee.txt\""
+        (println "License information for" (count with-license) "libraries written to "
+                 output-filename)
+        ;; we call this from the build script. if we switch to the shell we can reenable this and figure out the
+        ;; best defaults. Want to make sure we never kill our build script
+        #_(System/exit (if (seq without-license) 1 0))))
+    license-info))
