@@ -1,7 +1,6 @@
 name: Frontend
 
 on:
-  pull_request:
   push:
     branches:
       - '**'

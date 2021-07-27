@@ -1,7 +1,6 @@
 name: i18n
 
 on:
-  pull_request:
   push:
     branches:
       - '**'
