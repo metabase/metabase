@@ -4,7 +4,7 @@ import colors from "metabase/lib/colors";
 
 export const LegendRoot = styled.div`
   display: flex;
-  flex-direction: ${props => (props.isVertical ? "column" : "row")};
+  flex-direction: ${({ isVertical }) => (isVertical ? "column" : "row")};
 `;
 
 export const LegendAddIcon = styled(Icon).attrs({

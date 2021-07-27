@@ -1,18 +1,13 @@
-import React, { useLayoutEffect } from "react";
-import _ from "underscore";
+import React from "react";
 import PropTypes from "prop-types";
-import ExplicitSize from "metabase/components/ExplicitSize";
 import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
-
-const MIN_WIDTH_PER_SERIES = 100;
 
 const propTypes = {
   titles: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
   description: PropTypes.string,
   actionButtons: PropTypes.node,
-  width: PropTypes.number,
   hovered: PropTypes.shape({
     index: PropTypes.number,
   }),
@@ -27,7 +22,6 @@ const propTypes = {
   onAddSeries: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
-  onOrientationChange: PropTypes.func,
 };
 
 const Legend = props => {
@@ -36,7 +30,6 @@ const Legend = props => {
     colors,
     description,
     actionButtons,
-    width,
     hovered,
     isVertical,
     showDots,
@@ -49,16 +42,7 @@ const Legend = props => {
     onAddSeries,
     onSelectSeries,
     onRemoveSeries,
-    onOrientationChange,
   } = props;
-
-  useLayoutEffect(() => {
-    const isOverflow = width < MIN_WIDTH_PER_SERIES * titles.length;
-
-    if (isVertical !== isOverflow) {
-      onOrientationChange && onOrientationChange(isOverflow);
-    }
-  }, [width, titles, isVertical, onOrientationChange]);
 
   return (
     <LegendRoot className={className} isVertical={isVertical}>
@@ -93,4 +77,4 @@ const Legend = props => {
 
 Legend.propTypes = propTypes;
 
-export default _.compose(ExplicitSize())(Legend);
+export default Legend;

@@ -5,19 +5,21 @@ import Icon from "metabase/components/Icon";
 export const LegendItemRoot = styled.div`
   display: flex;
   align-items: center;
+  min-width: 0;
 
   &:not(:first-child) {
-    margin-top: ${props => (props.isVertical ? "0.5rem" : "")};
-    margin-left: ${props => (props.isVertical ? "" : "1rem")};
+    margin-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
+    margin-left: ${({ isVertical }) => (isVertical ? "" : "1rem")};
   }
 `;
 
 export const LegendItemLabel = styled.div`
   display: flex;
   align-items: baseline;
+  min-width: 0;
   color: ${colors["text-dark"]};
-  opacity: ${props => (props.isMuted ? "0.4" : "")};
-  cursor: ${props => (props.onClick ? "pointer" : "")};
+  opacity: ${({ isMuted }) => (isMuted ? "0.4" : "")};
+  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
 `;
 
 export const LegendItemDot = styled.div`
@@ -26,13 +28,14 @@ export const LegendItemDot = styled.div`
   width: 0.75rem;
   height: 0.75rem;
   border-radius: 50%;
-  background-color: ${props => props.color};
+  background-color: ${({ color }) => color};
 `;
 
 export const LegendItemTitle = styled.div`
   display: flex;
   align-items: center;
-  margin-left: ${props => (props.showDot ? "0.5rem" : "")};
+  min-width: 0;
+  margin-left: ${({ showDot }) => (showDot ? "0.5rem" : "")};
   overflow: hidden;
 `;
 

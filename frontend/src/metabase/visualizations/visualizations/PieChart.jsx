@@ -39,7 +39,7 @@ const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 const PERCENT_REGEX = /percent/i;
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import LegendContainer from "metabase/visualizations/components/legend/LegendContainer";
+import ChartWithLegend from "metabase/visualizations/components/legend/ChartWithLegend";
 
 export default class PieChart extends Component {
   constructor(props: VisualizationProps) {
@@ -411,16 +411,17 @@ export default class PieChart extends Component {
       isClickable && slices[index] !== otherSlice;
 
     return (
-      <LegendContainer
+      <ChartWithLegend
         className={className}
         titles={legendTitles}
         colors={legendColors}
         hovered={hovered}
+        showLegend={settings["pie.show_legend"]}
+        gridSize={gridSize}
         onHoverChange={d =>
           onHoverChange &&
           onHoverChange(d && { ...d, ...hoverForIndex(d.index) })
         }
-        showLegend={settings["pie.show_legend"]}
       >
         <div className={styles.ChartAndDetail}>
           <div ref={this.chartDetail} className={styles.Detail}>
@@ -438,7 +439,7 @@ export default class PieChart extends Component {
           <div className={cx(styles.Chart, "layout-centered")}>
             <svg
               data-testid="pie-chart"
-              className={cx(styles.Donut, "m1")}
+              className={styles.Donut}
               viewBox="0 0 100 100"
               style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
             >
@@ -478,7 +479,7 @@ export default class PieChart extends Component {
           </div>
         </div>
         <ChartTooltip series={series} hovered={hovered} />
-      </LegendContainer>
+      </ChartWithLegend>
     );
   }
 }
