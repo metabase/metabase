@@ -42,6 +42,9 @@ jobs:
           ~/.m2
           ~/.gitlibs
         key: ${{ runner.os }}-eastwood-${{ hashFiles('**/deps.edn') }}
+    - name: Compile Java & AOT Sources
+      run: |
+        clojure -X:deps prep && cd modules/drivers && clojure -X:deps prep && cd ../..
     - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
       name: Run Eastwood linter
 
@@ -65,6 +68,9 @@ jobs:
           ~/.m2
           ~/.gitlibs
         key: ${{ runner.os }}-namespace-decls-${{ hashFiles('**/deps.edn') }}
+    - name: Compile Java & AOT Sources
+      run: |
+        clojure -X:deps prep && cd modules/drivers && clojure -X:deps prep && cd ../..
     - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
       name: Check ns forms
 
@@ -88,5 +94,8 @@ jobs:
           ~/.m2
           ~/.gitlibs
         key: ${{ runner.os }}-reflection-warnings-${{ hashFiles('**/deps.edn') }}
+    - name: Compile Java & AOT Sources
+      run: |
+        clojure -X:deps prep && cd modules/drivers && clojure -X:deps prep && cd ../..
     - run: ./bin/reflection-linter
       name: Run reflection warnings checker
