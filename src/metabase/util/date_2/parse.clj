@@ -67,7 +67,7 @@
         [:zone   :date]     (ZonedDateTime/of  local-date (t/local-time 0) zone-id)
         [:offset :date]     (OffsetDateTime/of local-date (t/local-time 0) zone-offset)
         [:local  :date]     local-date
-        [:zone   :time]     (OffsetTime/of local-time zone-offset)
+        [:zone   :time]     (OffsetTime/of local-time (or zone-offset (common/standard-offset zone-id)))
         [:offset :time]     (OffsetTime/of local-time zone-offset)
         [:local  :time]     local-time
         (throw (ex-info (tru "Don''t know how to parse {0} using format {1}" (pr-str s) (pr-str formattr))

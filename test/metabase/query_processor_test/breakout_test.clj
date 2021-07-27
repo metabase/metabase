@@ -244,7 +244,8 @@
                    {:source-query
                     {:source-table $$venues
                      :aggregation  [[:count]]
-                     :breakout     [[:field %latitude {:binning {:strategy :default}}]]}}))))))
+                     :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
+                    :order-by [[:asc $latitude]]}))))))
 
     (testing "Binning is not supported when there is no fingerprint to determine boundaries"
       ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in
