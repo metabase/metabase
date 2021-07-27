@@ -82,7 +82,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed daily at 8:00 AM");
       });
 
-      it.skip("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
+      it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
         openDashboardSubscriptions();
 
         cy.findByText("Email it").click();

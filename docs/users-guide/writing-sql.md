@@ -37,8 +37,7 @@ You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code a
 
 ### Learn more
 
-- [Best practices for writing SQL queries](https://www.metabase.com/blog/sql-best-practices/index.html).
-
+- [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html) 
 
 ---
 
