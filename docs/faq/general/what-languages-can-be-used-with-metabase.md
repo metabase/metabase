@@ -34,7 +34,7 @@ The languages you can currently pick from are:
 
 Our community contributes to Metabase translations on our [POEditor project][metabase-poe]. If you'd like to help make Metabase available in a language you're fluent in, we'd love your help!
 
-For a new translation to be added to Metabase it must reach 100%. Once it does, we add it in the next major or minor release of Metabase. All _existing_ translations in Metabase _must stay at 100%_ to continue being included in the next _major_ version of Metabase. This is to ensure that no one encounters a confusing mishmash of English and another language when using Metabase.
+For a new translation to be added to Metabase, it must reach 100%. Once it does, we add it in the next major or minor release of Metabase. All _existing_ translations in Metabase _must stay at 100%_ to continue being included in the next _major_ version of Metabase. This rule ensures that no one encounters a confusing mishmash of English and another language when using Metabase.
 
 We understand that this is a high bar, so we commit to making sure that before each major release, any additions or changes to text in the product are completed at least 10 calendar days before the release ships, at which point we notify all translators that a new release will be happening soon.
 
