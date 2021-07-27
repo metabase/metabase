@@ -7,6 +7,7 @@
             [clojure.tools.namespace.dependency :as ns.deps]
             [clojure.tools.namespace.find :as ns.find]
             [clojure.tools.namespace.parse :as ns.parse]
+            [hf.depstar.api :as d]
             [metabuild-common.core :as c])
   (:import java.io.OutputStream
            java.net.URI
@@ -113,7 +114,7 @@
 (defn create-uberjar! [basis]
   (c/step "Create uberjar"
     (with-duration-ms [duration-ms]
-      (b/uber {:class-dir class-dir
+      (d/uber {:class-dir class-dir
                :uber-file uberjar-filename
                :basis     basis})
       (c/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
