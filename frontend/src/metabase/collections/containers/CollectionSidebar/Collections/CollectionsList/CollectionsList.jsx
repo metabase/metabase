@@ -31,10 +31,10 @@ function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
 }
 
 function Label({ action, collection, initialIcon, isOpen }) {
-  const { archived, children, id, name } = collection;
+  const { children, id, name } = collection;
 
   const hasChildren =
-    Array.isArray(children) && children.some(child => !archived);
+    Array.isArray(children) && children.some(child => !child.archived);
 
   return (
     <LabelContainer>
