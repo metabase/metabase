@@ -12,13 +12,7 @@ import { Grid, GridItem } from "metabase/components/Grid";
 )
 class CollectionList extends React.Component {
   render() {
-    const {
-      analyticsContext,
-      collections,
-      currentUser,
-      w,
-      asCards,
-    } = this.props;
+    const { analyticsContext, collections, currentUser, w } = this.props;
     return (
       <Box className="relative">
         <Grid>
@@ -29,7 +23,6 @@ class CollectionList extends React.Component {
                 <CollectionItem
                   collection={collection}
                   event={`${analyticsContext};Collection List;Collection click`}
-                  asCard={asCards}
                 />
               </GridItem>
             ))}
@@ -41,7 +34,6 @@ class CollectionList extends React.Component {
 
 CollectionList.defaultProps = {
   w: [1, 1 / 2, 1 / 4],
-  asCards: false,
 };
 
 export default CollectionList;

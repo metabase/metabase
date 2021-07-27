@@ -44,41 +44,28 @@ const ItemInfo = props => (
 );
 
 const CollectionItem = props => {
-  const icon = (
-    <Icon
-      name={props.iconName}
-      mx={props.asCard ? 0 : 1}
-      color={props.asCard ? "white" : color("bg-dark")}
-    />
-  );
-
-  const content = (
-    <Flex
-      align="center"
-      py={props.asCard ? 1 : 2}
-      px={props.asCard ? 1 : 0}
-      key={`collection-${props.collection.id}`}
-    >
-      {props.asCard ? (
-        <Flex
-          align="center"
-          justify="center"
-          w="42px"
-          bg={color("bg-dark")}
-          style={{ height: 42, borderRadius: 6, flexShrink: 0 }}
-          mr={1}
-        >
-          {icon}
-        </Flex>
-      ) : (
-        icon
-      )}
-      <ItemInfo {...props} />
-    </Flex>
-  );
   return (
     <ItemLink {...props}>
-      {props.asCard ? <Card hoverable>{content}</Card> : content}
+      <Card hoverable>
+        <Flex
+          align="center"
+          py={1}
+          px={1}
+          key={`collection-${props.collection.id}`}
+        >
+          <Flex
+            align="center"
+            justify="center"
+            w="42px"
+            bg={color("bg-dark")}
+            style={{ height: 42, borderRadius: 6, flexShrink: 0 }}
+            mr={1}
+          >
+            <Icon name={props.iconName} color={color("white")} />
+          </Flex>
+          <ItemInfo {...props} />
+        </Flex>
+      </Card>
     </ItemLink>
   );
 };
