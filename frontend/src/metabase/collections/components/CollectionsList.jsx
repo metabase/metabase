@@ -12,7 +12,7 @@ import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
-import { CollectionListIcon } from "./CollectionList.styled";
+import { CollectionListIcon } from "./CollectionsList.styled";
 
 const { isRegularCollection } = PLUGIN_COLLECTIONS;
 
