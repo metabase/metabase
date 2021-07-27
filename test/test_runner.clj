@@ -131,8 +131,10 @@
     (eftest.runner/run-tests
      tests
      (merge
-      {:multithread?    :vars
-       :capture-output? false
+      {:capture-output? false
+       ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
+       ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
+       :multithread?    false #_:vars
        :report          (reporter)}
       options))))
 
