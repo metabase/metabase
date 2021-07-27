@@ -36,4 +36,9 @@
  :aliases
  {:aot
   {:deps       {io.github.clojure/tools.build {:git/tag "v0.1.6" :git/sha "5636e61"}}
-   :ns-default build}}}
+   :ns-default build}
+
+  ;; dependencies needed for AOT compilation. Same as deps above but without all the exclusions.
+  :compilation-basis
+  {:replace-deps {org.apache.hadoop/hadoop-common {:mvn/version "3.1.1"}
+                  org.apache.hive/hive-jdbc       {:mvn/version "1.2.2"}}}}}

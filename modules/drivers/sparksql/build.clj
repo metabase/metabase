@@ -7,7 +7,7 @@
     (b/compile-clj
      {:src-dirs   ["src"]
       :class-dir  "target/classes"
-      :basis      (b/create-basis nil)
+      :basis      (b/create-basis {:aliases #{:compilation-basis}})
       :ns-compile '[metabase.driver.FixedHiveConnection
                     metabase.driver.FixedHiveDriver]})
     (catch Throwable e
