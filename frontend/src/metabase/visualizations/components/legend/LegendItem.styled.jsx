@@ -15,6 +15,7 @@ export const LegendItemRoot = styled.div`
 
 export const LegendItemLabel = styled.div`
   display: flex;
+  flex: 1 1 auto;
   align-items: baseline;
   min-width: 0;
   color: ${colors["text-dark"]};
@@ -24,7 +25,7 @@ export const LegendItemLabel = styled.div`
 
 export const LegendItemDot = styled.div`
   display: block;
-  flex-shrink: 0;
+  flex: 0 0 auto;
   width: 0.75rem;
   height: 0.75rem;
   border-radius: 50%;
@@ -33,6 +34,7 @@ export const LegendItemDot = styled.div`
 
 export const LegendItemTitle = styled.div`
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   min-width: 0;
   margin-left: ${({ showDot }) => (showDot ? "0.5rem" : "")};
@@ -41,6 +43,7 @@ export const LegendItemTitle = styled.div`
 
 export const LegendItemSubtitle = styled.div`
   &:not(:first-child) {
+    margin-left: auto;
     padding-left: 0.5rem;
   }
 `;
@@ -57,7 +60,7 @@ export const LegendItemRemoveIcon = styled(Icon).attrs({
   size: 12,
 })`
   display: flex;
-  flex-shrink: 0;
+  flex: 0 0 auto;
   margin-left: 0.5rem;
   color: ${colors["text-light"]};
   cursor: pointer;

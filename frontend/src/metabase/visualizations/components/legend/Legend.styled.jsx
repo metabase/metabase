@@ -11,7 +11,7 @@ export const LegendAddIcon = styled(Icon).attrs({
   name: "add",
   size: 12,
 })`
-  flex-shrink: 0;
+  flex: 0 0 auto;
   margin-left: 0.5rem;
   margin-right: 0.5rem;
   padding: 5px;
@@ -26,7 +26,7 @@ export const LegendAddIcon = styled(Icon).attrs({
 `;
 
 export const LegendButtonGroup = styled.span`
-  flex-shrink: 0;
+  flex: 0 0 auto;
   position: relative;
   margin-left: auto;
 `;
