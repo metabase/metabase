@@ -446,7 +446,9 @@
 
 (defn- maybe-escape-component
   [component]
-  (if (str/includes? component "-")
+  (if (and (str/includes? component "-")
+           (not= (first component) \`)
+           (not= (last component) \`))
     (str "`" component "`")
     component))
 
