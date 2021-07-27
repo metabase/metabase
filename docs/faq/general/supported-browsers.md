@@ -1,4 +1,4 @@
-# What browsers does Metabase support?
+# Which browsers does Metabase support?
 
 We try our best to make sure Metabase works in as many browsers as possible, but as this is the Internet, there may be little quirks from time to time in different settings. We believe Metabase works on these versions of these browsers and will attempt to fix specific bugs if any are found:
 
