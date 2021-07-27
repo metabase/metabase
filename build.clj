@@ -88,14 +88,16 @@
   (c/step "Create license information"
     (let [backend-path "license-backend-third-party.txt"
           frontend-path "license-frontend-third-party.txt"]
-     (license/generate {:classpath-entries (keys (:classpath basis))
-                        :backfill          "overrides.edn"
-                        :output-filename   backend-path
-                        :report?           false})
-     (let [license-text (str/join \newline
-                                  (c/sh {:quiet? true}
-                                        "yarn" "licenses" "generate-disclaimer"))]
-       (spit frontend-path license-text))
+      (c/step "Generate backend license information from jar files"
+        (license/generate {:classpath-entries (keys (:classpath basis))
+                           :backfill          "overrides.edn"
+                           :output-filename   backend-path
+                           :report?           false}))
+      (c/step "Run `yarn licenses generate-disclaimer`"
+        (let [license-text (str/join \newline
+                                     (c/sh {:quiet? true}
+                                           "yarn" "licenses" "generate-disclaimer"))]
+          (spit frontend-path license-text)))
      (b/copy-file {:src frontend-path :target (str class-dir "/" frontend-path)})
      (b/copy-file {:src backend-path :target (str class-dir "/" backend-path)})
      (b/copy-file {:src (case edition
