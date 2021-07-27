@@ -1,6 +1,5 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
 import { connect } from "react-redux";
 
 import CollectionItem from "metabase/components/CollectionItem";
@@ -30,20 +29,18 @@ function CollectionList({
   analyticsContext,
 }) {
   return (
-    <Box className="relative">
-      <Grid>
-        {collections
-          .filter(c => c.id !== currentUser.personal_collection_id)
-          .map(collection => (
-            <GridItem w={w} key={collection.id}>
-              <CollectionItem
-                collection={collection}
-                event={`${analyticsContext};Collection List;Collection click`}
-              />
-            </GridItem>
-          ))}
-      </Grid>
-    </Box>
+    <Grid>
+      {collections
+        .filter(c => c.id !== currentUser.personal_collection_id)
+        .map(collection => (
+          <GridItem w={w} key={collection.id}>
+            <CollectionItem
+              collection={collection}
+              event={`${analyticsContext};Collection List;Collection click`}
+            />
+          </GridItem>
+        ))}
+    </Grid>
   );
 }
 
