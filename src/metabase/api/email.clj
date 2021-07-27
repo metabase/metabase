@@ -6,7 +6,6 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE POST PUT]]
             [metabase.api.common :as api]
-            [metabase.config :as config]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
             [metabase.util.i18n :refer [tru]]
@@ -69,24 +68,18 @@
   [:as {settings :body}]
   {settings su/Map}
   (api/check-superuser)
-  (let [email-settings (select-keys settings (keys mb-to-smtp-settings))
-        smtp-settings  (-> (set/rename-keys email-settings mb-to-smtp-settings)
-                           (assoc :port (some-> (:email-smtp-port settings) Integer/parseInt)))
-        ;; TODO - this is :thumbs_down`, we should just use `with-redefs` for `email/test-smtp-connection` where
-        ;; needed in the tests. FIXME!
-        response       (if-not config/is-test?
-                         ;; in normal conditions, validate connection
-                         (email/test-smtp-connection smtp-settings)
-                         ;; for unit testing just respond with a success message
-                         {:error :SUCCESS})
-        tested-settings  (merge settings (select-keys response [:port :security]))
-        [_ corrections _] (data/diff settings tested-settings)
+  (let [email-settings             (select-keys settings (keys mb-to-smtp-settings))
+        smtp-settings              (-> (set/rename-keys email-settings mb-to-smtp-settings)
+                                       (assoc :port (some-> (:email-smtp-port settings) Integer/parseInt)))
+        response                   (email/test-smtp-connection smtp-settings)
+        tested-settings            (merge settings (select-keys response [:port :security]))
+        [_ corrections _]          (data/diff settings tested-settings)
         properly-named-corrections (set/rename-keys corrections (set/map-invert mb-to-smtp-settings))
-        corrected-settings (merge email-settings properly-named-corrections)]
+        corrected-settings         (merge email-settings properly-named-corrections)]
     (if (= :SUCCESS (:error response))
       ;; test was good, save our settings
       (assoc (setting/set-many! corrected-settings)
-        :with-corrections (humanize-email-corrections properly-named-corrections))
+             :with-corrections (humanize-email-corrections properly-named-corrections))
       ;; test failed, return response message
       {:status 500
        :body   (humanize-error-messages response)})))

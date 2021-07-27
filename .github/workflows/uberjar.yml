@@ -56,7 +56,7 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/deps.edn') }}
 
     - run: yarn install --frozen-lockfile --prefer-offline
-    - run: ./bin/build ${{ matrix.edition }}
+    - run: MB_EDITION=${{ matrix.edition }} ./bin/build
 
     - name: Mark with the commit hash
       run:  git rev-parse --short HEAD > COMMIT-ID

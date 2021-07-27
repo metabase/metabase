@@ -17,6 +17,7 @@
   (:refer-clojure :exclude [load])
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [environ.core :as env]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.mbql.util :as mbql.u]
@@ -63,8 +64,7 @@
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
   []
   ;; override env var that would normally make Jetty block forever
-  (classloader/require 'environ.core 'metabase.core)
-  (alter-var-root #'environ.core/env assoc :mb-jetty-join "false")
+  (alter-var-root #'env/env assoc :mb-jetty-join "false")
   (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password

@@ -1024,7 +1024,7 @@ workflows:
           requires:
             - be-deps
           # TODO FIXME
-          clojure-args: -X:dev:ee:ee-dev:cloverage
+          clojure-args: -X:dev:ee:ee-dev:test:cloverage
           after-steps:
             - run:
                 name: Upload code coverage to codecov.io
