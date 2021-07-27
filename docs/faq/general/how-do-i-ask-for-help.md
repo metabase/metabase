@@ -6,4 +6,4 @@ As hard as we've tried to make the documentation as complete as possible, we kno
 
 [contact]: https://www.metabase.com/contact/
 [discourse]: https://discourse.metabase.com/
-[troubleshooting]: ../../troubleshooting-guide/index.md
+[troubleshooting]: ../../troubleshooting-guide/index.html
