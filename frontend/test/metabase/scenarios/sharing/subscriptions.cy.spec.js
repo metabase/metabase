@@ -81,6 +81,15 @@ describe("scenarios > dashboard > subscriptions", () => {
         createEmailSubscription();
         cy.findByText("Emailed daily at 8:00 AM");
       });
+
+      it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
+        openDashboardSubscriptions();
+
+        cy.findByText("Email it").click();
+        cy.findByPlaceholderText("Enter user names or email addresses").click();
+
+        popover().isRenderedWithinViewport();
+      });
     });
 
     describe("with existing subscriptions", () => {

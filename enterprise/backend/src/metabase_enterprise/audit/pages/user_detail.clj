@@ -113,6 +113,7 @@
                :limit     10})})
 
 (s/defn ^:internal-query-fn query-views
+  "Query views by a specific User."
   [user-id :- su/IntGreaterThanZero]
   {:metadata [[:viewed_on     {:display_name "Viewed On",      :base_type :type/DateTime}]
               [:card_id       {:display_name "Card ID"         :base_type :type/Integer, :remapped_to   :card_name}]
@@ -152,6 +153,7 @@
    :xform    (map #(update (vec %) 3 codec/base64-encode))})
 
 (s/defn ^:internal-query-fn dashboard-views
+  "Dashboard views by a specific User."
   [user-id :- su/IntGreaterThanZero]
   {:metadata [[:timestamp       {:display_name "Viewed on",     :base_type :type/DateTime}]
               [:dashboard_id    {:display_name "Dashboard ID",  :base_type :type/Integer, :remapped_to   :dashboard_name}]
@@ -188,12 +190,14 @@
               :order-by [[(common/grouped-datetime datetime-unit :timestamp) :asc]]})})
 
 (s/defn ^:internal-query-fn created-dashboards
+  "Dashboards created by a specific User."
   ([user-id]
    (created-dashboards user-id nil))
   ([user-id :- su/IntGreaterThanZero, query-string :- (s/maybe s/Str)]
    (dashboards/table query-string [:= :u.id user-id])))
 
 (s/defn ^:internal-query-fn created-questions
+  "Questions created by a specific User."
   [user-id :- su/IntGreaterThanZero]
   {:metadata [[:card_id             {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name           {:display_name "Title",                :base_type :type/Name,    :remapped_from :card_id}]

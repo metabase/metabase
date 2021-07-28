@@ -23,17 +23,12 @@
    ;; "ring-ee"                           ["with-profile" "+ring,+ee" "ring"]
    "test"                              ["with-profile" "+test" "test"]
    "test-ee"                           ["with-profile" "+test,+ee" "test"]
-   "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
-                                        "--max-line-length" "205"
-                                        ;; see https://github.com/dakrone/lein-bikeshed/issues/41
-                                        "--exclude-profiles" "dev"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
-   "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
    "cloverage"                         ["with-profile" "+cloverage" "cloverage"]
    ;; `lein lint` will run all linters
-   "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
+   "lint"                              ["do" ["eastwood"] ["check-namespace-decls"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
    "repl-ee"                           ["with-profile" "+repl,+ee" "repl"]
    "uberjar"                           ["uberjar"]
@@ -368,11 +363,6 @@
     ;; always use in-memory H2 database for linters
     {:env {:mb-db-type "h2"}}]
 
-   :bikeshed
-   [:linters-common
-    {:plugins
-     [[lein-bikeshed "0.5.2"]]}]
-
    :eastwood
    [:linters-common
     {:plugins
@@ -404,17 +394,6 @@
    [:include-all-drivers
     :ee
     {:global-vars {*warn-on-reflection* true}}]
-
-   ;; Check that all public vars have docstrings. Run with 'lein docstring-checker'
-   :docstring-checker
-   [:linters-common
-    {:plugins
-     [[docstring-checker "1.1.0"]]
-
-     :docstring-checker
-     {:include [#"^metabase"]
-      :exclude [#"test"
-                #"^metabase\.http-client$"]}}]
 
    :check-namespace-decls
    [:linters-common
