@@ -36,7 +36,7 @@ Metabase creates a unique temporary name like `made_up_name_01` to make sure the
 
 ## Troubleshooting Process
 
-### Users can see data they're not supposed to be able to see
+### People can see data they're not supposed to be able to see
 
 **How to detect this:** People can view data that they shouldn't be able to.
 
