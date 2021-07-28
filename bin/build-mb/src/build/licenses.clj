@@ -215,11 +215,11 @@
   Returns a map
   {:with-license [ [jar-filename {:coords {:group :artifact :version} :license <text>}] ...]
    :without-license [ [jar-filename {:coords {:group :artifact :version} :error <text>}] ... ]}"
-  [{:keys [classpath-entries backfill output-filename report?] :or {report? true}}]
+  [{:keys [classpath backfill output-filename report?] :or {report? true}}]
   (let [backfill (if (string? backfill)
                    (edn/read-string (slurp (io/resource backfill)))
                    (or backfill {}))
-        entries  (filter jar-file? classpath-entries)
+        entries  (jar-entries classpath)
         {:keys [with-license without-license] :as license-info}
         (process* {:classpath-entries     entries
                    :backfill              backfill})]

@@ -54,6 +54,35 @@
               "./node_modules/.bin/webpack" "--bail" "--config" "webpack.static-viz.config.js"))
       (u/announce "Frontend built successfully."))))
 
+(defn- build-licenses!
+  [edition]
+  {:pre [(#{:oss :ee} edition)]}
+  (u/step "Generate backend license information from jar files"
+    (let [[classpath]               (u/sh {:dir    u/project-root-directory
+                                           :quiet? true}
+                                          "clojure" (str "-A" edition) "-Spath")
+          output-filename           (u/filename u/project-root-directory
+                                                "resources"
+                                                "license-backend-third-party.txt")
+          {:keys [without-license]} (license/generate {:classpath       classpath
+                                                       :backfill        (edn/read-string
+                                                                          (slurp (io/resource "overrides.edn")))
+                                                       :output-filename output-filename
+                                                       :report?         false})]
+      (when (seq without-license)
+        (run! (comp (partial u/error "Missing License: %s") first)
+              without-license))
+      (u/announce "License information generated at %s" output-filename)))
+
+  (u/step "Run `yarn licenses generate-disclaimer`"
+    (let [license-text (str/join \newline
+                                 (u/sh {:dir    u/project-root-directory
+                                        :quiet? true}
+                                       "yarn" "licenses" "generate-disclaimer"))]
+      (spit (u/filename u/project-root-directory
+                        "resources"
+                        "license-frontend-third-party.txt") license-text))))
+
 (def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
 
 (defn- build-uberjar! [edition]
@@ -74,6 +103,8 @@
                    (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
+   :licenses     (fn [{:keys [edition]}]
+                   (build-licenses! edition))
    :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
    :uberjar      (fn [{:keys [edition]}]
@@ -110,12 +141,9 @@
 
 ;; useful to call from command line `cd bin/build-mb && clojure -X build/list-without-license`
 (defn list-without-license [{:keys []}]
-  (let [classpath-and-logs        (u/sh {:dir    u/project-root-directory
-                                         :quiet? true}
-                                        "clojure"
-                                        "-A:ee"
-                                        "-Spath")
-        classpath                 (last classpath-and-logs)
+  (let [[classpath]        (u/sh {:dir    u/project-root-directory
+                                           :quiet? true}
+                                          "clojure" "-A:ee" "-Spath")
         classpath-entries (license/jar-entries classpath)
         {:keys [without-license]} (license/process*
                                    {:classpath-entries classpath-entries
