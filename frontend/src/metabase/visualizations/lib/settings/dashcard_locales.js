@@ -187,6 +187,78 @@ const TITLE_LOCALES_BN = {
   'school.dashboard.toilet.construction-type': {
     'en': 'Construction types of toilets',
     'bn': 'টয়লেট নির্মাণের ধরণ'
+  },
+  'admin.dashboard.total.students': {
+    'en': 'Total Students',
+    'bn': 'মোট ছাত্রছাত্রী'
+  },
+  'admin.dashboard.student.gender': {
+    'en': 'Statistics of Gender',
+    'bn': 'লিঙ্গ পরিসংখ্যান'
+  },
+  'admin.dashboard.student.ethnicity': {
+    'en': 'Statistics of Ethnicity',
+    'bn': 'জাতিগত গোষ্ঠীর পরিসংখ্যান'
+  },
+  'admin.dashboard.student.repeated': {
+    'en': 'Repeated Students',
+    'bn': 'পুনরাবৃত্তি ছাত্রছাত্রী'
+  },
+  'admin.dashboard.student.preprimarycompletion': {
+    'en': 'Statistics of Admission in Class One from Pre primary',
+    'bn': 'প্রাকপ্রাথমিক থেকে প্রথম শ্রেণীতে ভর্তির পরিসংখ্যান'
+  },
+  'admin.dashboard.student.disability': {
+    'en': 'Statistics of Disability',
+    'bn': 'প্রতিবন্ধীর পরিসংখ্যান'
+  },
+  'admin.dashboard.total.students.class-wise': {
+    'en': 'Statistics of Students in each Class',
+    'bn': 'প্রতি ক্লাসের ছাত্রছাত্রীর পরিসংখ্যান'
+  },
+  'admin.dashboard.student.gender.class-wise': {
+    'en': 'Statistics of Gender in each Class',
+    'bn': 'প্রতি ক্লাসের লিঙ্গ পরিসংখ্যান'
+  },
+  'admin.dashboard.student.repeated.class-wise': {
+    'en': 'Statistics of Repeated Students in each Class',
+    'bn': 'প্রতি ক্লাসের পুনরাবৃত্তি ছাত্রছাত্রীর পরিসংখ্যান'
+  },
+  'school.dashboard.student.total': {
+    'en': 'Total Students',
+    'bn': 'মোট ছাত্রছাত্রী'
+  },
+  'school.dashboard.student.gender': {
+    'en': 'Statistics of Gender',
+    'bn': 'লিঙ্গ পরিসংখ্যান'
+  },
+  'school.dashboard.student.ethnicity': {
+    'en': 'Statistics of Ethnicity',
+    'bn': 'জাতিগত গোষ্ঠীর পরিসংখ্যান'
+  },
+  'school.dashboard.student.repeated': {
+    'en': 'Repeated Students',
+    'bn': 'পুনরাবৃত্তি ছাত্রছাত্রী'
+  },
+  'school.dashboard.student.preprimarycompletion': {
+    'en': 'Statistics of Admission in Class One from Pre primary',
+    'bn': 'প্রাকপ্রাথমিক থেকে প্রথম শ্রেণীতে ভর্তির পরিসংখ্যান'
+  },
+  'school.dashboard.student.disability': {
+    'en': 'Statistics of Disability',
+    'bn': 'প্রতিবন্ধীর পরিসংখ্যান'
+  },
+  'school.dashboard.student.total.class-wise': {
+    'en': 'Statistics of Students in each Class',
+    'bn': 'প্রতি ক্লাসের ছাত্রছাত্রীর পরিসংখ্যান'
+  },
+  'school.dashboard.student.gender.class-wise': {
+    'en': 'Statistics of Gender in each Class',
+    'bn': 'প্রতি ক্লাসের লিঙ্গ পরিসংখ্যান'
+  },
+  'school.dashboard.student.repeated.class-wise': {
+    'en': 'Statistics of Repeated Students in each Class',
+    'bn': 'প্রতি ক্লাসের পুনরাবৃত্তি ছাত্রছাত্রীর পরিসংখ্যান'
   }
 }
 
