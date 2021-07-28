@@ -28,7 +28,7 @@ jobs:
 
   be-linter-eastwood:
     runs-on: ubuntu-20.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v2
     - name: Prepare JDK 11
