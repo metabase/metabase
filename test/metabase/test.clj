@@ -34,10 +34,13 @@
             [metabase.test.util.log :as tu.log]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util :as u]
+            [pjstadig.humane-test-output :as humane-test-output]
             [potemkin :as p]
             test-runner
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(humane-test-output/activate!)
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
