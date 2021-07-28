@@ -172,6 +172,7 @@
     eftest/eftest                                         {:mvn/version "0.5.9"}
     jonase/eastwood                                       {:mvn/version "0.3.11"}
     lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"}
+    pjstadig/humane-test-output                           {:mvn/version "0.11.0"}
     reifyhealth/specmonstah                               {:mvn/version "2.0.0"}
     ring/ring-mock                                        {:mvn/version "0.4.0"}
     talltale/talltale                                     {:mvn/version "0.5.4"}}
