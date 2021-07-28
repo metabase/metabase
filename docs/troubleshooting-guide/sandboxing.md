@@ -32,7 +32,7 @@ WHERE
   made_up_name_01.price > 100
 ```
 
-Metabase creates a unique temporary name like `made_up_name_01` to make sure the query doesn't actually pull in data from an existing table. The curly braces `{{...}}` around `user_id` show that it is bound to an attribute from the user properties.
+Metabase creates a unique temporary name like `made_up_name_01` to make sure the query doesn't actually pull in data from an existing table. The curly braces `{% raw %}{{...}}{% endraw %}` around `user_id` show that it is bound to an attribute from the user properties.
 
 ## Troubleshooting Process
 
