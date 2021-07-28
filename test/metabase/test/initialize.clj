@@ -108,5 +108,6 @@
   []
   (set (keys (methods do-initialization!))))
 
-;; change the arglists for `initialize-if-needed!` to list all the possible args for REPL-usage convenience
+;; change the arglists for `initialize-if-needed!` to list all the possible args for REPL-usage convenience. Don't do
+;; this directly in `initialize-if-needed!` itself because it breaks Eastwood.
 (alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (sort (all-components)))))

@@ -193,13 +193,13 @@
   "Find the bottom of the grid. Bottom is the first completely empty row with
    another empty row below it."
   [grid]
-  (let [row {:height 0 :width grid-width}]
-    (loop [bottom 0]
+  (let [row {:height 0, :width grid-width}]
+    (loop [bottom (long 0)]
       (let [[bottom _]      (card-position grid bottom row)
             [next-bottom _] (card-position grid (inc bottom) row)]
         (if (= (inc bottom) next-bottom)
           bottom
-          (recur next-bottom))))))
+          (recur (long next-bottom)))))))
 
 (def ^:private ^{:arglists '([card])} text-card?
   :text)

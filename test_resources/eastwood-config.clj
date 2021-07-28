@@ -7,13 +7,13 @@
                                     "in `core/match` macro expansions; some of our `mbql.u/match` macros exceed that depth.")})
 
 (disable-warning
- {:linter          :wrong-arity
-  :function-symbol 'metabase.test.data.users/user-http-request
+ {:linter               :wrong-arity
+  :function-symbol      'metabase.test.data.users/user-http-request
   :arglists-for-linting '([& args])})
 
 (disable-warning
- {:linter          :wrong-arity
-  :function-symbol 'metabase.test/user-http-request
+ {:linter               :wrong-arity
+  :function-symbol      'metabase.test/user-http-request
   :arglists-for-linting '([& args])})
 
 (disable-warning
@@ -90,3 +90,8 @@
                                   toucan.util.test/with-temp
                                   toucan.util.test/with-temp*}
   :within-depth                10})
+
+(disable-warning
+ {:linter                      :constant-test
+  :if-inside-macroexpansion-of #{'clojure.java.jdbc/with-db-connection}
+  :within-depth                5})

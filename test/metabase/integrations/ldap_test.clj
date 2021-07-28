@@ -6,7 +6,8 @@
             [metabase.public-settings.metastore :as metastore]
             [metabase.test :as mt]
             [metabase.test.integrations.ldap :as ldap.test]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
 
 (defn- get-ldap-details []
   {:host       "localhost"
@@ -46,7 +47,7 @@
 
     (testing "basic get-connection works, will throw otherwise"
       (is (= nil
-             (.close (#'ldap/get-connection)))))
+             (.close ^LDAPConnectionPool (#'ldap/get-connection)))))
 
     (testing "login should succeed"
       (is (= true

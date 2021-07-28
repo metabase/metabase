@@ -525,7 +525,6 @@
     (is (= "Banana Beak"
            (toucan-name)))))
 
-
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
     (is (defsetting foo (deferred-tru "A testing setting") :visibility :public))

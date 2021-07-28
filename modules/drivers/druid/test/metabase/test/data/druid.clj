@@ -10,7 +10,8 @@
 (defn- host []
   ;; force Druid to use localhost for now -- this is until we remove the env var in CircleCI so it doesn't override
   ;; this value.
-  (let [host "localhost" #_(tx/db-test-env-var-or-throw :druid :host "localhost")]
+  "http://localhost"
+  #_(let [host (tx/db-test-env-var-or-throw :druid :host "localhost")]
     (cond->> host
       (not (str/starts-with? host "http")) (str "http://"))))
 
