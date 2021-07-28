@@ -27,8 +27,6 @@ export default class Smart extends React.Component {
 
   static minSize = { width: 3, height: 3 };
 
-  static noHeader = true;
-
   _scalar: ?HTMLElement;
 
   static settings = {
@@ -55,6 +53,10 @@ export default class Smart extends React.Component {
     },
     click_behavior: {},
   };
+
+  static hasHeader() {
+    return false;
+  }
 
   static isSensible({ insights }) {
     return insights && insights.length > 0;

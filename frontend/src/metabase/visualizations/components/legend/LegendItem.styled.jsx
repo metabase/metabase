@@ -25,7 +25,7 @@ export const LegendItemLabel = styled.div`
   transition: opacity 0.25s linear;
 
   &:hover {
-    color: ${colors["brand"]};
+    color: ${({ onMouseEnter }) => (onMouseEnter ? colors["brand"] : "")};
   }
 `;
 

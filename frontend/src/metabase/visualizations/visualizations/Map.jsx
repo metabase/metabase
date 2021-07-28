@@ -43,6 +43,10 @@ export default class Map extends Component {
 
   static minSize = { width: 4, height: 4 };
 
+  static hasHeader(settings) {
+    return settings["map.type"] !== "region";
+  }
+
   static isSensible({ cols, rows }) {
     return (
       PinMap.isSensible({ cols, rows }) ||

@@ -35,12 +35,15 @@ const propTypes = {
 
 export default class AuditTableVisualization extends React.Component {
   static identifier = "audit-table";
-  static noHeader = true;
   static hidden = true;
 
   // copy Table's settings and columnSettings
   static settings = Table.settings;
   static columnSettings = Table.columnSettings;
+
+  static hasHeader() {
+    return false;
+  }
 
   handleColumnHeaderClick = column => {
     const { isSortable, onSortingChange, sorting } = this.props;

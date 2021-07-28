@@ -31,12 +31,14 @@ export default class Funnel extends Component {
   static identifier = "funnel";
   static iconName = "funnel";
 
-  static noHeader = true;
-
   static minSize = {
     width: 5,
     height: 4,
   };
+
+  static hasHeader() {
+    return false;
+  }
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;

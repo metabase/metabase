@@ -507,7 +507,11 @@ export default class Visualization extends React.PureComponent {
           (loading ||
             error ||
             noResults ||
-            !(visualization && visualization.noHeader))) ||
+            !(
+              visualization &&
+              visualization.hasHeader &&
+              !visualization.hasHeader(settings)
+            ))) ||
         replacementContent ? (
           <div className="p1 flex-no-shrink">
             <TitleLegendHeader

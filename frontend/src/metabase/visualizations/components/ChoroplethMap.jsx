@@ -9,7 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import ChartWithLegend from "./legend/ChartWithLegend";
+import LegendLayout from "./legend/LegendLayout";
 import LegacyChoropleth from "./LegacyChoropleth";
 import LeafletChoropleth from "./LeafletChoropleth";
 
@@ -167,6 +167,7 @@ export default class ChoroplethMap extends Component {
     }
 
     const {
+      card,
       series,
       className,
       gridSize,
@@ -175,6 +176,9 @@ export default class ChoroplethMap extends Component {
       visualizationIsClickable,
       onVisualizationClick,
       settings,
+      showTitle,
+      isDashboard,
+      onChangeCardAndRun,
     } = this.props;
     const { geoJson, minimalBounds } = this.state;
 
@@ -332,14 +336,21 @@ export default class ChoroplethMap extends Component {
     };
 
     return (
-      <ChartWithLegend
+      <LegendLayout
         className={className}
-        titles={legendTitles}
+        title={settings["card.title"] || card.title}
+        description={settings["card.description"]}
+        labels={legendTitles}
         colors={heatMapColors}
-        gridSize={gridSize}
         hovered={hovered}
-        onHoverChange={onHoverChange}
-        isDashboard={this.props.isDashboard}
+        gridSize={gridSize}
+        showTitle={showTitle}
+        isDashboard={isDashboard}
+        onHoverChange={!projection ? onHoverChange : undefined}
+        onTitleSelect={() =>
+          onChangeCardAndRun &&
+          onChangeCardAndRun({ nextCard: card, seriesIndex: 0 })
+        }
       >
         {projection ? (
           <LegacyChoropleth
@@ -363,7 +374,7 @@ export default class ChoroplethMap extends Component {
             onRenderError={this.props.onRenderError}
           />
         )}
-      </ChartWithLegend>
+      </LegendLayout>
     );
   }
 }
