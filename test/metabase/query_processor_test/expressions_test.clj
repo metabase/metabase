@@ -153,10 +153,10 @@
           (let [name->base-type (into {} (map (juxt :name :base_type) cols))]
             (testing "x"
               (is (isa? (name->base-type "x")
-                        :type/Integer)))
+                        :type/Number)))
             (testing "category_id"
               (is (isa? (name->base-type (mt/format-name "category_id"))
-                        :type/Integer)))))))))
+                        :type/Number)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
