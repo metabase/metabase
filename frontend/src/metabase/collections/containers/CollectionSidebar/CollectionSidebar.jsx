@@ -81,6 +81,7 @@ class CollectionSidebar extends React.Component {
         <Collections
           collectionId={collectionId}
           currentUserId={currentUser.id}
+          handleToggleMobileSidebar={handleToggleMobileSidebar}
           list={list}
           onClose={this.onClose}
           onOpen={this.onOpen}
