@@ -1,7 +1,5 @@
 #! /usr/bin/env bash
 
-set -eou pipefail
-
 you_need_to_upgrade() {
     echo "Clojure CLI must be at least version 1.10.3.905. Your version is $version."
     echo "See https://www.clojure.org/guides/getting_started for upgrade instructions."
