@@ -64,7 +64,7 @@ Metabase creates a unique temporary name like `made_up_name_01` to make sure the
 
 2. Some fields in a table which the person *does* have sandbox access to are using remapping to display information from another table which the person does *not* have sandbox access to. You can check this by going into the Admin Panel and viewing the Data Model for the fields in question.
 
-### A user is in several groups but can't see the sandboxed data
+### Someone is in several groups but can't see the sandboxed data
 
 We only allow [one sandbox per table][one-sandbox-per-table]: if someone is a member of two or more groups with different permissions, every rule for figuring out whether access should be allowed or not is confusing. We therefore only allow one rule, which sometimes means the administrator will create a new group to capture precisely who's allowed access to what.
 
