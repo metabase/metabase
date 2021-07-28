@@ -420,7 +420,7 @@ export default class PieChart extends Component {
         className={className}
         title={settings["card.title"] || card.title}
         description={settings["card.description"]}
-        items={legendTitles}
+        labels={legendTitles}
         colors={legendColors}
         hovered={hovered}
         gridSize={gridSize}
