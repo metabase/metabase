@@ -9,7 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import ChartWithLegend from "./ChartWithLegend";
+import ChartWithLegend from "./legend/ChartWithLegend";
 import LegacyChoropleth from "./LegacyChoropleth";
 import LeafletChoropleth from "./LeafletChoropleth";
 
@@ -344,9 +344,8 @@ export default class ChoroplethMap extends Component {
     return (
       <ChartWithLegend
         className={className}
-        aspectRatio={aspectRatio}
-        legendTitles={legendTitles}
-        legendColors={heatMapColors}
+        titles={legendTitles}
+        colors={heatMapColors}
         gridSize={gridSize}
         hovered={hovered}
         onHoverChange={onHoverChange}
