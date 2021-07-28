@@ -7,7 +7,8 @@
             [metabase-enterprise.serialization.cmd :refer [dump load]]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
-                                     Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel Segment Table User]]
+                                     Dimension Field FieldValues Metric NativeQuerySnippet Pulse PulseCard PulseChannel
+                                     Segment Table User]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]

@@ -406,7 +406,9 @@
    :check-namespace-decls
    [:linters-common
     {:plugins               [[lein-check-namespace-decls "1.0.3"]]
-     :check-namespace-decls {:prefix-rewriting false}}]
+     :check-namespace-decls {:prefix-rewriting false}
+     ;; include test namespaces
+     :source-paths          ["test" "enterprise/backend/test" "shared/test"]}]
 
    :cloverage
    [:test-common
