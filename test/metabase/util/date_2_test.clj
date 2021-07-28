@@ -138,7 +138,7 @@
                (u.date/parse "   ")))))))
 
 ;; TODO - more tests!
-(deftest ^:parallel format-test
+(deftest format-test
   (testing "ZonedDateTime"
     (testing "should get formatted as the same way as an OffsetDateTime"
       (is (= "2019-11-01T18:39:00-07:00"
@@ -154,7 +154,7 @@
            (u.date/format nil))
         "Passing `nil` should return `nil`")))
 
-(deftest ^:parallel format-human-readable-test
+(deftest format-human-readable-test
   ;; strings are localized slightly differently on different JVMs. For places where there are multiple possible
   ;; correct results, we'll use a set with all the possibilities below and check membership
   (doseq [[t expected] {#t "2021-04-02T14:42:09.524392-07:00[US/Pacific]" ; ZonedDateTime
@@ -198,7 +198,7 @@
             (is (contains? expected actual))
             (is (= expected actual))))))))
 
-(deftest ^:parallel format-sql-test
+(deftest format-sql-test
   (testing "LocalDateTime"
     (is (= "2019-11-05 19:27:00"
            (u.date/format-sql (t/local-date-time "2019-11-05T19:27")))))
@@ -207,7 +207,7 @@
            (u.date/format-sql (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))
         "should get formatted as the same way as an OffsetDateTime")))
 
-(deftest ^:parallel adjuster-test
+(deftest adjuster-test
   (let [now (t/zoned-date-time "2019-12-10T17:17:00-08:00[US/Pacific]")]
     (testing "adjust temporal value to first day of week (Sunday)"
       (is (= (t/zoned-date-time "2019-12-08T17:17-08:00[US/Pacific]")
@@ -220,7 +220,7 @@
       (is (= (t/zoned-date-time "2019-12-08T17:17-08:00[US/Pacific]")
              (t/adjust now (u.date/adjuster :week-of-year 50)))))))
 
-(deftest ^:parallel extract-test
+(deftest extract-test
   (testing "u.date/extract with 2 args"
     ;; everything is at `Sunday October 27th 2019 2:03:40.555 PM` or subset thereof
     (let [temporal-category->sample-values {:dates     [(t/local-date 2019 10 27)]
@@ -263,7 +263,7 @@
           (is (= (get unit->expected unit)
                  (u.date/extract #t "2021-02-23" unit))))))))
 
-(deftest ^:parallel truncate-test
+(deftest truncate-test
   (testing "u.date/truncate with 2 args"
     (let [t->unit->expected
           {(t/local-date 2019 10 27)
@@ -458,7 +458,7 @@
                   (u.date/comparison-range t :week :>= {:resolution :day})
                   (u.date/comparison-range t :week :<= {:resolution :day, :end :inclusive})))))))))
 
-(deftest ^:parallel period-duration-test
+(deftest period-duration-test
   (testing "Creating a period duration from a string"
     (is (= (org.threeten.extra.PeriodDuration/of (t/duration "PT59S"))
            (u.date/period-duration "PT59S"))))

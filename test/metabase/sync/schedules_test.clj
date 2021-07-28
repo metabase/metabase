@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.sync.schedules :as sched]))
 
-(deftest ^:parallel schedule-map->cron-strings-test
+(deftest schedule-map->cron-strings-test
   (is (= {} (sched/schedule-map->cron-strings {})))
   (is (= {:cache_field_values_schedule "0 0 4 * * ? *"}
          (sched/schedule-map->cron-strings {:cache_field_values {:schedule_type "daily"

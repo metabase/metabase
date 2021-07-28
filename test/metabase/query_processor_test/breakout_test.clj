@@ -12,7 +12,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(deftest ^:parallel basic-test
+(deftest basic-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "single column"
       (testing "with breakout"
@@ -170,7 +170,7 @@
         (update-in [:binning_info :min_value] round-to-decimal)
         (update-in [:binning_info :max_value] round-to-decimal))))
 
-(deftest ^:parallel binning-info-test
+(deftest binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = default"
@@ -261,7 +261,7 @@
                    (qp/process-query
                     (nested-venues-query card)))))))))))
 
-(deftest ^:parallel field-in-breakout-and-fields-test
+(deftest field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing (str "if we include a Field in both breakout and fields, does the query still work? (Normalization should "
                   "be taking care of this) (#8760)")

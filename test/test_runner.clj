@@ -139,11 +139,13 @@
       options))))
 
 (defn run-tests [options]
+  (println "Running tests with options" (pr-str options))
   (let [summary (run (tests options) options)
         fail?   (pos? (+ (:error summary) (:fail summary)))]
     (pprint/pprint summary)
     (println (if fail? "Tests failed." "All tests passed."))
     (System/exit (if fail? 1 0))))
 
-(defn -main []
-  (run-tests nil))
+;; This can be removed once the `tools.deps` PR lands.
+(defn -main [& args]
+  (run-tests (when (seq args) {:only args})))

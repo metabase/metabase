@@ -1,4 +1,4 @@
-(ns ^:parallel metabase.query-processor-test.implicit-joins-test
+(ns metabase.query-processor-test.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]

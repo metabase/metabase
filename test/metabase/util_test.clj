@@ -8,7 +8,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(deftest ^:parallel decolorize-test
+(deftest decolorize-test
   (is (= "[31mmessage[0m"
          (u/colorize 'red "message")))
   (is (= "message"
@@ -18,7 +18,7 @@
   (is (= nil
          (u/decolorize nil))))
 
-(deftest ^:parallel host-up?-test
+(deftest host-up?-test
   (testing "host-up?"
     (mt/are+ [s expected] (= expected
                              (u/host-up? s))
@@ -28,7 +28,7 @@
     (is (= false
            (u/host-port-up? "nosuchhost" 8005)))))
 
-(deftest ^:parallel url?-test
+(deftest url?-test
   (mt/are+ [s expected] (= expected
                         (u/url? s))
     "http://google.com"                                                                      true
@@ -56,7 +56,7 @@
     ;; nil .getAuthority needs to be handled or NullPointerException
     "http:/"                                                                                 false))
 
-(deftest ^:parallel state?-test
+(deftest state?-test
   (mt/are+ [s expected] (= expected
                         (u/state? s))
     "louisiana"      true
@@ -69,7 +69,7 @@
     3                false
     (Object.)        false))
 
-(deftest ^:parallel qualified-name-test
+(deftest qualified-name-test
   (mt/are+ [k expected] (= expected
                         (u/qualified-name k))
     :keyword                          "keyword"
@@ -86,19 +86,19 @@
     (is (thrown? ClassCastException
                  (u/qualified-name false)))))
 
-(deftest ^:parallel rpartial-test
+(deftest rpartial-test
   (is (= 3
          ((u/rpartial - 5) 8)))
   (is (= -7
          ((u/rpartial - 5 10) 8))))
 
-(deftest ^:parallel key-by-test
+(deftest key-by-test
   (is (= {1 {:id 1, :name "Rasta"}
           2 {:id 2, :name "Lucky"}}
          (u/key-by :id [{:id 1, :name "Rasta"}
                         {:id 2, :name "Lucky"}]))))
 
-(deftest ^:parallel remove-diacritical-marks-test
+(deftest remove-diacritical-marks-test
   (doseq [[s expected] {"üuuü" "uuuu"
                         "åéîü" "aeiu"
                         "åçñx" "acnx"
@@ -108,7 +108,7 @@
       (is (= expected
              (u/remove-diacritical-marks s))))))
 
-(deftest ^:parallel slugify-test
+(deftest slugify-test
   (doseq [[group s->expected]
           {nil
            {"ToucanFest 2017"               "toucanfest_2017"
@@ -127,7 +127,7 @@
           (is (= expected
                  (u/slugify s))))))))
 
-(deftest ^:parallel select-nested-keys-test
+(deftest select-nested-keys-test
   (mt/are+ [m keyseq expected] (= expected
                                (u/select-nested-keys m keyseq))
     {:a 100, :b {:c 200, :d 300}}              [:a [:b :d] :c]   {:a 100, :b {:d 300}}
@@ -143,7 +143,7 @@
     {:a 100, :b {:c 200, :d 300}}              []                {}
     {}                                         [:c]              {}))
 
-(deftest ^:parallel base64-string?-test
+(deftest base64-string?-test
   (mt/are+ [s expected]    (= expected
                         (u/base64-string? s))
     "ABc="         true
@@ -160,7 +160,7 @@
     ;; padding has to go at the end
     "==QQ"         false))
 
-(deftest ^:parallel select-keys-test
+(deftest select-keys-test
   (testing "select-non-nil-keys"
     (is (= {:a 100}
            (u/select-non-nil-keys {:a 100, :b nil} #{:a :b :c}))))
@@ -170,7 +170,7 @@
              :present #{:a :b :c}
              :non-nil #{:d :e :f})))))
 
-(deftest ^:parallel order-of-magnitude-test
+(deftest order-of-magnitude-test
   (mt/are+ [n expected] (= expected
                         (u/order-of-magnitude n))
     0.01  -2
@@ -182,7 +182,7 @@
     0     0
     -1444 3))
 
-(deftest ^:parallel index-of-test
+(deftest index-of-test
   (are [input expected] (= expected
                            (u/index-of pos? input))
     [-1 0 2 3]   2
@@ -190,11 +190,11 @@
     nil          nil
     []           nil))
 
-(deftest ^:parallel snake-key-test
+(deftest snake-key-test
   (is (= {:num_cans 2, :lisp_case? {:nested_maps? true}}
          (u/snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
 
-(deftest ^:parallel one-or-many-test
+(deftest one-or-many-test
   (mt/are+ [input expected] (= expected
                             (u/one-or-many input))
     nil   nil
@@ -202,7 +202,7 @@
     42    [42]
     [42]  [42]))
 
-(deftest ^:parallel topological-sort-test
+(deftest topological-sort-test
   (mt/are+ [input expected] (= expected
                             (u/topological-sort identity input))
     {:b []
@@ -225,7 +225,7 @@
     (is (= "ID"
            (u/upper-case-en "id")))))
 
-(deftest ^:parallel parse-currency-test
+(deftest parse-currency-test
   (mt/are+ [s expected] (= expected
                         (u/parse-currency s))
     nil             nil
@@ -246,7 +246,7 @@
     "$.05"          0.05M
     "0.05"          0.05M))
 
-(deftest ^:parallel or-with-test
+(deftest or-with-test
   (testing "empty case"
     (is (= (or) (u/or-with identity))))
   (testing "short-circuiting"
@@ -261,7 +261,7 @@
   (testing "failure"
     (is (nil? (u/or-with even? 1 3 5)))))
 
-(deftest ^:parallel ip-address?-test
+(deftest ip-address?-test
   (mt/are+ [x expected] (= expected
                            (u/ip-address? x))
     "8.8.8.8"              true
@@ -278,7 +278,7 @@
     100                    false))
 
 ;; this would be such a good spot for test.check
-(deftest ^:parallel sorted-take-test
+(deftest sorted-take-test
   (testing "It ensures there are never more than `size` items in the priority queue"
     (let [limit 5
           rf    (u/sorted-take limit compare)]
@@ -291,7 +291,7 @@
               (rf)
               (shuffle (range 30))))))
 
-(defspec ^:parallel sorted-take-test-size
+(defspec sorted-take-test-size
   (prop/for-all [coll (gen/list (gen/tuple gen/int gen/string))
                  size (gen/fmap inc gen/nat)]
     (= (vec (take-last size (sort coll)))
@@ -299,7 +299,7 @@
                   (u/sorted-take size compare)
                   coll))))
 
-(defspec ^:parallel sorted-take-test-comparator
+(defspec sorted-take-test-comparator
   (prop/for-all [coll (gen/list (gen/fmap (fn [x] {:score x}) gen/int))
                  size (gen/fmap inc gen/nat)]
     (let [coll    (shuffle coll)

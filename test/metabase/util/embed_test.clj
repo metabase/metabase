@@ -1,6 +1,5 @@
 (ns metabase.util.embed-test
   (:require [buddy.sign.jwt :as jwt]
-            [clojure.test :refer :all]
             [crypto.random :as crypto-random]
             [metabase.test :as mt]
             [metabase.util.embed :as embed]))
@@ -8,7 +7,7 @@
 (def ^:private ^String token-with-alg-none
   "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhZG1pbiI6dHJ1ZX0.3Dbtd6Z0yuSfw62fOzBGHyiL0BJp3pod_PZE-BBdR-I")
 
-(deftest ^:parallel validate-token-test
+(deftest validate-token-test
   (testing "check that are token is in fact valid"
     (is (= {:admin true}
            (jwt/unsign token-with-alg-none "")))))

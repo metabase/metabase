@@ -161,7 +161,7 @@
    {:model "user",      :model_id  90, :topic :user-joined,         :details {}}
    {:model nil,         :model_id nil, :topic :install,             :details {}}])
 
-(deftest ^:parallel activities->referenced-objects-test
+(deftest activities->referenced-objects-test
   (is (= {"dashboard" #{41 43 42}
           "card"      #{113 108 109 111 112 114}
           "user"      #{90}}
