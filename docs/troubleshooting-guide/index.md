@@ -32,15 +32,17 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Handling timezones][timezones].
 
+- [Manage data sandboxing][sandbox]
+
 ## Think you found a bug?
 
-Let us know by [filing a bug report][bugs]
+Let us know by [filing a bug report][bugs].
 
-## Troubleshooting resources
+## More troubleshooting resources
 
 Here are some other resources to help you solve your problem or find a workaround.
 
-### Server and console logs
+### Metabase server and console logs
 
 Metabase will log errors, both on the server and in the browser console, depending on where the error occurs, which can help you track down an issue. Administrators will have access to the server logs, and everyone with a browser can open the developer tools to see the console logs.
 
@@ -55,7 +57,7 @@ Metabase will log errors, both on the server and in the browser console, dependi
 
 ### Upgrading Metabase
 
-Metabase adds new features and squashes bugs with each release. Upgrading to the latest and greatest may resolve your issue. See [Upgrading Metabase][upgrade] If you're using [Metabase Cloud](), we'll handle the upgrades for you. You can checkout the release notes to see what's new.
+Metabase adds new features and squashes bugs with each release. Upgrading to the latest and greatest may resolve your issue. See [Upgrading Metabase][upgrade] If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
 
 ### Metabase tutorials 
 
@@ -74,6 +76,7 @@ For quick answers to common questions, check out our [Frequently Asked Questions
 
 [appdb]: ./application-database.html
 [bugs]: ./bugs.html
+[cloud]: https://www.metabase.com/start/ 
 [datawarehouse]: ./datawarehouse.html
 [docker]: ./docker.html
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
@@ -87,7 +90,9 @@ For quick answers to common questions, check out our [Frequently Asked Questions
 [loadh2]: ./loading-from-h2.html
 [performance]: ./performance.html
 [proxies]: ./proxies.html
+[releases]: https://github.com/metabase/metabase/releases
 [running]: ./running.html
+[sandbox]: ./sandboxing.html
 [safari]: https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac
 [timezones]: ./timezones.html
 [upgrade]: ../operations-guide/upgrading-metabase.html
