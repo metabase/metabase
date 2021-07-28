@@ -36,23 +36,17 @@ This is extremely rare, since our front end is not very large and browsers cache
 2.  Check the server logs for Metabase's application database.
 3.  Look at page load times in the browser console. If it's taking a long time to load our HTML, CSS, or JavaScript, check to see whether a proxy, firewall, or other network component is slowing things down.
 
-### Caching is disabled
+### The answer you want isn't cached
 
-By default caching is disabled so that we always re-run every question. However, if your data is only being updated every few seconds or minutes, you will improve performance by enabling caching. Note that ad hoc queries and exports are *not* cached, so doing a lot of either can impact performance.
+By default caching is disabled so that we always re-run every question. However, if your data is only being updated every few seconds or minutes, you will improve performance by enabling caching. Note that:
+
+1. Ad hoc queries and exports are *not* cached, so doing a lot of either can impact performance.
+2. Since cached values are stored in the application database they will still be there if Metabase restarts.
+3. Each question (and any filter combination) is its own query, so if different users are viewing the same question with different filters, each will have to load once before it's cached. This is particularly obvious with [data sandboxing][data-sandboxing]: filtering the data based on the user's identity means that each user's question is slightly different.
 
 **How to detect this:** Open the Admin Panel, go to "Settings", and look in the "Caching" tab to see whether caching is enabled or not.
 
-**How to fix this:** [This guide][admin-caching] explains how to change the minimum query duration (we cache anything that takes longer than that to run) and the maximum cache size for each query result. You may need to experiment with these values over several days to find the best balance.
-
-### The answer you want isn't cached
-
-Each question (and any filter combination) is its own query, so if different users are viewing the same question with different filters, each will have to load once before it's cached. This is particularly obvious with [data sandboxing][data-sandboxing]: filtering the data based on the user's identity means that each user's question is slightly different.
-
-Additionally, since cached values are stored in the application database they will still be there if Metabase restarts, but will only be used if the questions are re-run before the cache's time limit.
-
-**How to detect this:** If you are sure that caching is enabled (discussed above), then look at Metabase's logs or in the server's logs to see why it might not use cache for the specific question.
-
-**How to fix this:** If cached values have timed out because the restart took too long, re-running questions will refresh the cache and bring performance back up. If the problem appears to be caused by a high proportion of sandboxed queries, check that the cache is large enough to store all of their results.
+**How to fix this:** [This guide][admin-caching] explains how to change the minimum query duration (we cache anything that takes longer than that to run) and the maximum cache size for each query result. You may need to experiment with these values over several days to find the best balance. If the problem appears to be caused by a high proportion of sandboxed queries, check that the cache is large enough to store all of their results.
 
 ### The database is overloaded by other traffic
 
