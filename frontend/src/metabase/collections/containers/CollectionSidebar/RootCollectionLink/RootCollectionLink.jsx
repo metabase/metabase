@@ -10,17 +10,27 @@ import CollectionLink from "../CollectionLink/CollectionLink";
 import { Container } from "./RootCollectionLink.styled";
 
 const propTypes = {
+  handleToggleMobileSidebar: PropTypes.func.isRequired,
   isRoot: PropTypes.bool.isRequired,
   root: PropTypes.object.isRequired,
 };
 
-export default function CollectionSidebarHeader({ isRoot, root }) {
+export default function RootCollectionLink({
+  handleToggleMobileSidebar,
+  isRoot,
+  root,
+}) {
+  function handleClick() {
+    handleToggleMobileSidebar();
+  }
+
   return (
     <Container>
       <CollectionDropTarget collection={root}>
         {({ highlighted, hovered }) => (
           <CollectionLink
             to={Urls.collection({ id: "root" })}
+            onClick={handleClick}
             selected={isRoot}
             highlighted={highlighted}
             hovered={hovered}
@@ -33,4 +43,4 @@ export default function CollectionSidebarHeader({ isRoot, root }) {
   );
 }
 
-CollectionSidebarHeader.propTypes = propTypes;
+RootCollectionLink.propTypes = propTypes;

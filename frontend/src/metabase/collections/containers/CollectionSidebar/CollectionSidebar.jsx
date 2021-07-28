@@ -74,7 +74,11 @@ class CollectionSidebar extends React.Component {
 
         <Collection.Loader id="root">
           {({ collection: root }) => (
-            <RootCollectionLink isRoot={isRoot} root={root} />
+            <RootCollectionLink
+              handleToggleMobileSidebar={handleToggleMobileSidebar}
+              isRoot={isRoot}
+              root={root}
+            />
           )}
         </Collection.Loader>
 

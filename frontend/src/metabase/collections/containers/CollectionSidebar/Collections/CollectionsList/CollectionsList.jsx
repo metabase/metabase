@@ -79,7 +79,6 @@ function Collection({
           // expand to show sub collections
           function handleClick() {
             handleToggleMobileSidebar();
-            children && action(id);
           }
 
           return (
@@ -107,6 +106,7 @@ function Collection({
       {children && isOpen && (
         <ChildrenContainer>
           <CollectionsList
+            handleToggleMobileSidebar={handleToggleMobileSidebar}
             openCollections={openCollections}
             onOpen={onOpen}
             onClose={onClose}
