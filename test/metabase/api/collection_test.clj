@@ -11,6 +11,7 @@
             [metabase.models.collection-test :as collection-test]
             [metabase.models.collection.graph :as graph]
             [metabase.models.collection.graph-test :as graph.test]
+            [metabase.models.interface :as models]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.models.revision :as revision]
@@ -76,6 +77,11 @@
         (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                         Collection [collection-2 {:name "Collection 2"}]]
           (perms/grant-collection-read-permissions! (group/all-users) collection-1)
+          (testing "Sanity check: Rasta's personal collection should exist"
+            (is (db/exists? Collection :personal_owner_id (mt/user->id :rasta))))
+          (testing "Sanity check: Rasta should have read perms for her personal Collection"
+            (mt/with-test-user :rasta
+              (is (models/can-read? (db/select-one Collection :personal_owner_id (mt/user->id :rasta))))))
           (is (= ["Our analytics"
                   "Collection 1"
                   "Rasta Toucan's Personal Collection"]
