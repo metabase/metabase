@@ -331,16 +331,6 @@ export default class ChoroplethMap extends Component {
       return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
     };
 
-    let aspectRatio;
-    if (projection) {
-      const [[minX, minY], [maxX, maxY]] = projectionFrame.map(projection);
-      aspectRatio = (maxX - minX) / (maxY - minY);
-    } else {
-      aspectRatio =
-        (minimalBounds.getEast() - minimalBounds.getWest()) /
-        (minimalBounds.getNorth() - minimalBounds.getSouth());
-    }
-
     return (
       <ChartWithLegend
         className={className}
