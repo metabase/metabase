@@ -12,7 +12,8 @@ prep_deps
 
 printf "\e[1;34mChecking for reflection warnings. This may take a few minutes, so sit tight...\e[0m\n"
 
-warnings=`clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check 2>&1 | grep Reflection | grep metabase | sort | uniq`
+# --quiet below prevents grep from exiting with non-zero status if no lines match.
+warnings=`clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check 2>&1 | grep --quiet Reflection | grep --quiet metabase | sort | uniq`
 
 if [ ! -z "$warnings" ]; then
     printf "\e[1;31mYour code has introduced some reflection warnings.\e[0m 😞\n"
