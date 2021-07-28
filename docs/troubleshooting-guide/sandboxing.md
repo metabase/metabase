@@ -62,7 +62,7 @@ Metabase creates a unique temporary name like `made_up_name_01` to make sure the
 
 1. Administrators usually restrict access to tables as part of sandboxing. If the restrictions are too tight by mistake (e.g., "no access") then people might not be able to see any data at all. You can check this by going into the Admin Panel and viewing Permissions for the table in question.
 
-2. Some fields in a table which the user *does* have sandbox access to are using remapping to display information from another table which the user does *not* have sandbox access to. You can check this by going into the Admin Panel and viewing the Data Model for the fields in question.
+2. Some fields in a table which the person *does* have sandbox access to are using remapping to display information from another table which the person does *not* have sandbox access to. You can check this by going into the Admin Panel and viewing the Data Model for the fields in question.
 
 ### A user is in several groups but can't see the sandboxed data
 
