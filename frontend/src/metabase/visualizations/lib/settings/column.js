@@ -335,11 +335,14 @@ export const NUMBER_COLUMN_SETTINGS = {
       const name = getCurrency(c, "name");
       return {
         options: [
-          ... symbol !== code ?
-          [{
-            name: t`Symbol` + ` ` + `(${symbol})`,
-            value: "symbol",
-          }] : [],
+          ...(symbol !== code
+            ? [
+                {
+                  name: t`Symbol` + ` ` + `(${symbol})`,
+                  value: "symbol",
+                },
+              ]
+            : []),
           {
             name: t`Code` + ` ` + `(${code})`,
             value: "code",
