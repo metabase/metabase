@@ -1,6 +1,5 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
