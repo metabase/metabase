@@ -701,6 +701,24 @@
                                   "WHERE `v3_test_data.venues`.`name` = ?")
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
+(deftest acceptable-dataset-test
+  (mt/test-driver :bigquery
+    (testing "Make sure validation of dataset's name works correctly"
+      (testing "acceptable names"
+        (are [name] (= true (#'bigquery.qp/valid-bigquery-identifier? name))
+              "0"
+              "a"
+              "_"
+              "apple"
+              "banana.apple"
+              "my-fruits.orange"
+              (apply str (repeat 1054 "a"))))
+      (testing "rejected names"
+        (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier? name))
+              "have:dataset"
+              ""
+              (apply str (repeat 129 "a")))))))
+
 (deftest ->valid-field-identifier-test
   (testing "`->valid-field-identifier` should generate valid field identifiers"
     (testing "no need to change anything"
