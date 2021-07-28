@@ -44,7 +44,7 @@ Metabase creates a unique temporary name like `made_up_name_01` to make sure the
 
 1. Sandboxing isn't implemented for non-SQL databases like MongoDB, Druid, or Google Analytics.
 
-2. Sandboxing isn't implemented for SQL questions: any user with permissions to view the question can see all the results. In general, administrators should restrict SQL access to as few people as necessary.
+2. Sandboxing isn't implemented for SQL questions: any user with permissions to view the question can see all the results.
 
 3. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data, so all results will be shown. The fix is to 
 
