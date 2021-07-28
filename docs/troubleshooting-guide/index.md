@@ -55,13 +55,9 @@ Metabase will log errors, both on the server and in the browser console, dependi
 - [Safari][safari]
 - [Edge][edge]
 
-### Upgrading Metabase
-
-Metabase adds new features and squashes bugs with each release. Upgrading to the latest and greatest may resolve your issue. See [Upgrading Metabase][upgrade] If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
-
 ### Metabase tutorials 
 
-For tutorials that walk you through how to use Metabase features, checkout [Learn Metabase][learn].
+For tutorials that walk you through how to use Metabase features, check out [Learn Metabase][learn].
 
 ### Metabase forum
 
@@ -71,11 +67,13 @@ To see if someone else has run into a similar issue, check out [our forum on Dis
 
 For quick answers to common questions, check out our [Frequently Asked Questions][faq].
 
+### Upgrading Metabase
 
-[chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console
+Metabase adds new features and squashes bugs with each release. Upgrading to the latest and greatest may resolve your issue. See [Upgrading Metabase][upgrade] If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
 
 [appdb]: ./application-database.html
 [bugs]: ./bugs.html
+[chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console
 [cloud]: https://www.metabase.com/start/ 
 [datawarehouse]: ./datawarehouse.html
 [docker]: ./docker.html

@@ -1,8 +1,6 @@
-# The Metabase Application Database
+# Trouble with the Metabase Application Database
 
-Metabase stores information about users, questions, and so on in a database of its own that we call the "application database". If the application cannot do this, it will not run.
-
-## Specific Problems
+Metabase stores information about users, questions, and so on in a database of its own that we call the "application database". The default application database that ships with Metabase is an [H2 database][what-is-h2], which is not recommended for production. To use a production-ready database for you Metabase application database, see [Migrating from H2][migrating]. 
 
 ### Metabase fails to start due to database locks
 
@@ -68,3 +66,4 @@ Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to co
 **How to fix this:** You can unblock the file by right-clicking on it, clicking "Properties," and then clicking "Unblock." 
 
 [what-is-h2]: ../faq/setup/what-is-h2.html
+[migrating]: ../operations-guide/migrating-from-h2.html
