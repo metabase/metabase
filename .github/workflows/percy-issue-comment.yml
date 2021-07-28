@@ -7,6 +7,7 @@ on:
 
 jobs:
   pr_info:
+    if: github.event.comment.body == '@metabase-bot run visual tests'
     runs-on: ubuntu-20.04
     outputs:
       pull_request_number: ${{ fromJson(steps.fetch_pr.outputs.data).head.number }}
@@ -92,7 +93,6 @@ jobs:
             ./SHA256.sum
 
   percy:
-    if: github.event.comment.body == '@metabase-bot run visual tests'
     timeout-minutes: 30
     needs: [build, pr_info]
     runs-on: ubuntu-20.04
