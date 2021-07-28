@@ -1,5 +1,4 @@
 import styled from "styled-components";
-import { Box, Flex } from "grid-styled";
 
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 import { color } from "metabase/lib/colors";
@@ -7,7 +6,8 @@ import { color } from "metabase/lib/colors";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Icon from "metabase/components/Icon";
 
-export const ChildrenContainer = styled(Box)`
+export const ChildrenContainer = styled.div`
+  box-sizing: border-box;
   margin-left: -${SIDEBAR_SPACER}px;
   padding-left: ${SIDEBAR_SPACER + 10}px;
 `;
@@ -25,6 +25,7 @@ export const InitialIcon = styled(Icon)`
   opacity: 0.4;
 `;
 
-export const LabelContainer = styled(Flex)`
+export const LabelContainer = styled.div`
+  display: flex;
   position: relative;
 `;
