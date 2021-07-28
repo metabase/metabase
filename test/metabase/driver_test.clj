@@ -7,19 +7,12 @@
 (driver/register! ::test-driver, :abstract? true)
 
 (defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
-(defmethod driver/database-supports? [::test-driver :nested-queries] [_ _ db] (= "bob" db))
 
 (deftest driver-supports?-test
   (is (= true
          (driver/supports? ::test-driver :foreign-keys)))
   (is (= false
          (driver/supports? ::test-driver :expressions))))
-
-(deftest driver-database-supports?-test
-  (is (= true
-         (driver/database-supports? ::test-driver :nested-queries "bob")))
-  (is (= false
-         (driver/database-supports? ::test-driver :expressions 1337))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
