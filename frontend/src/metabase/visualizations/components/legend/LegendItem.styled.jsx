@@ -19,6 +19,7 @@ export const LegendItemLabel = styled.div`
   align-items: baseline;
   min-width: 0;
   color: ${colors["text-dark"]};
+  font-weight: bold;
   opacity: ${({ isMuted }) => (isMuted ? "0.4" : "1")};
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   transition: opacity 0.25s linear;

@@ -413,7 +413,7 @@ export default class PieChart extends Component {
 
     return (
       <ChartWithLegend
-        className={className}
+        className={cx(styles.ChartWithLegend, className)}
         titles={legendTitles}
         colors={legendColors}
         hovered={hovered}
