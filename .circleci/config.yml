@@ -1017,6 +1017,13 @@ workflows:
                 command: bash <(curl -s https://codecov.io/bash)
           skip-when-no-change: true
 
+      - lein:
+          name: be-eftest
+          requires:
+            - be-deps
+          lein-command: with-profile +eftest run
+          skip-when-no-change: true
+
       - test-driver:
           name: be-tests-bigquery-ee
           requires:

@@ -1,5 +1,6 @@
 (ns metabase.util.embed-test
   (:require [buddy.sign.jwt :as jwt]
+            [clojure.test :refer :all]
             [crypto.random :as crypto-random]
             [metabase.test :as mt]
             [metabase.util.embed :as embed]))
