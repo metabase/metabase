@@ -1,5 +1,6 @@
 (ns metabase.util.regex-test
-  (:require [metabase.util.regex :as u.regex]))
+  (:require [clojure.test :refer :all]
+            [metabase.util.regex :as u.regex]))
 
 (deftest rx-test
   (let [regex (u.regex/rx (and "^" (or "Cam" "can") (opt #"\s+") #"\d+"))]
