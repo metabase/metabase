@@ -1,11 +1,3 @@
-:local .ChartWithLegend {
-  composes: p2 from "style";
-}
-
-:local .ChartWithLegend:not(:first-child) {
-  padding-top: 0;
-}
-
 :local .ChartAndDetail {
 }
 

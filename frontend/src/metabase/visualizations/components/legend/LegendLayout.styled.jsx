@@ -1,9 +1,13 @@
 import styled from "styled-components";
 
-export const LegendContainerRoot = styled.div`
+export const LegendLayoutRoot = styled.div`
   display: flex;
   flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
   min-height: 0;
+`;
+
+export const LegendContent = styled.div`
+  flex: 1 1 auto;
 `;
 
 export const LegendPanel = styled.div`

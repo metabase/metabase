@@ -3,18 +3,17 @@ import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
 type Props = {
-  titles: string[] | string[][],
+  className?: string,
+  classNameWidgets?: string,
+  items: string[] | string[][],
   colors: string[],
-  description?: string,
   actionButtons?: ReactNode,
   hovered?: HoveredItem,
   isVertical?: boolean,
   showDots?: boolean,
-  showTitles?: boolean,
+  showItems?: boolean,
   showTooltip?: boolean,
   showDotTooltip?: boolean,
-  className?: string,
-  classNameWidgets?: string,
   onHoverChange: ({ index: number, element: Element }) => void,
   onAddSeries: () => void,
   onSelectSeries: (event: MouseEvent, index: number) => void,
@@ -27,18 +26,17 @@ type HoveredItem = {
 
 const Legend = (props: Props) => {
   const {
-    titles,
+    className,
+    classNameWidgets,
+    items,
     colors,
-    description,
     actionButtons,
     hovered,
     isVertical,
     showDots,
-    showTitles,
+    showItems,
     showTooltip,
     showDotTooltip,
-    className,
-    classNameWidgets,
     onHoverChange,
     onAddSeries,
     onSelectSeries,
@@ -47,20 +45,18 @@ const Legend = (props: Props) => {
 
   return (
     <LegendRoot className={className} isVertical={isVertical}>
-      {titles.map((title, index) => (
+      {items.map((title, index) => (
         <LegendItem
           key={index}
           title={title}
           index={index}
           color={colors[index % colors.length]}
-          description={description}
           isMuted={hovered && hovered.index != null && index !== hovered.index}
           isVertical={isVertical}
           showDot={showDots}
-          showTitle={showTitles}
+          showTitle={showItems}
           showTooltip={showTooltip}
           showDotTooltip={showDotTooltip}
-          classNameWidgets={classNameWidgets}
           onHoverChange={onHoverChange}
           onSelectSeries={onSelectSeries}
           onRemoveSeries={onRemoveSeries}
