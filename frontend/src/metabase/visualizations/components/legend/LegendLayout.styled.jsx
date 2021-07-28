@@ -12,6 +12,7 @@ export const LegendContent = styled.div`
   flex: 1 1 auto;
   flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
   margin-top: ${({ showTitle }) => (showTitle ? "1rem" : "")};
+  min-height: 0;
 `;
 
 export const LegendPanel = styled.div`

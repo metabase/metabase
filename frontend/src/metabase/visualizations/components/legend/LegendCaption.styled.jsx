@@ -9,6 +9,8 @@ export const LegendCaptionRoot = styled.div`
 `;
 
 export const LegendCaptionTitle = styled.div`
+  display: flex;
+  align-items: center;
   color: ${colors["text-dark"]};
   font-weight: bold;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};

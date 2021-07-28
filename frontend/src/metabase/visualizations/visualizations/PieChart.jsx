@@ -419,6 +419,7 @@ export default class PieChart extends Component {
       <LegendLayout
         className={className}
         title={settings["card.title"] || card.title}
+        description={settings["card.description"]}
         items={legendTitles}
         colors={legendColors}
         hovered={hovered}
