@@ -1,15 +1,15 @@
 import React, { ReactNode } from "react";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
-import Icon from "metabase/components/Icon";
 import {
   LegendCaptionButtonGroup,
-  LegendCaptionDescription,
+  LegendCaptionIcon,
   LegendCaptionRoot,
   LegendCaptionTitle,
 } from "./LegendCaption.styled";
 
 type Props = {
+  className?: string,
   title: string,
   description?: string,
   actionButtons?: ReactNode,
@@ -17,18 +17,16 @@ type Props = {
 };
 
 const LegendCaption = (props: Props) => {
-  const { title, description, actionButtons, onClick } = props;
+  const { className, title, description, actionButtons, onClick } = props;
 
   return (
-    <LegendCaptionRoot>
+    <LegendCaptionRoot className={className}>
       <LegendCaptionTitle onClick={onClick}>
-        <Ellipsified showTooltip>{title}</Ellipsified>)
+        <Ellipsified>{title}</Ellipsified>
         {description && (
-          <LegendCaptionDescription>
-            <Tooltip tooltip={description} maxWidth="22em">
-              <Icon name="info" />
-            </Tooltip>
-          </LegendCaptionDescription>
+          <Tooltip tooltip={description} maxWidth="22em">
+            <LegendCaptionIcon />
+          </Tooltip>
         )}
       </LegendCaptionTitle>
       {actionButtons && (

@@ -1,6 +1,5 @@
 import React, { memo, useCallback } from "react";
 import {
-  LegendItemDescription,
   LegendItemDot,
   LegendItemLabel,
   LegendItemRemoveIcon,
@@ -8,7 +7,6 @@ import {
   LegendItemSubtitle,
   LegendItemTitle,
 } from "./LegendItem.styled";
-import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 
@@ -16,14 +14,12 @@ type Props = {
   title: string | string[],
   index: number,
   color: string,
-  description?: string,
   isMuted?: boolean,
   isVertical?: boolean,
   showDot?: boolean,
   showTitle?: boolean,
   showTooltip?: boolean,
   showDotTooltip?: boolean,
-  classNameWidgets?: string,
   onHoverChange: ({ index: number, element: Element }) => void,
   onSelectSeries: (event: MouseEvent, index: number) => void,
   onRemoveSeries: (event: MouseEvent, index: number) => void,
@@ -34,14 +30,12 @@ const LegendItem = (props: Props) => {
     title,
     index,
     color,
-    description,
     isMuted = false,
     isVertical = false,
     showDot = true,
     showTitle = true,
     showTooltip = false,
     showDotTooltip = false,
-    classNameWidgets,
     onHoverChange,
     onSelectSeries,
     onRemoveSeries,
@@ -95,13 +89,6 @@ const LegendItem = (props: Props) => {
               <Ellipsified showTooltip={showTooltip}>
                 {getTitleNodes(title)}
               </Ellipsified>
-            )}
-            {description && (
-              <LegendItemDescription>
-                <Tooltip tooltip={description} maxWidth="22em">
-                  <Icon className={classNameWidgets} name="info" />
-                </Tooltip>
-              </LegendItemDescription>
             )}
           </LegendItemTitle>
         )}

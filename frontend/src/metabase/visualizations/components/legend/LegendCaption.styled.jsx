@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import colors from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
 export const LegendCaptionRoot = styled.div`
   display: flex;
@@ -10,11 +11,16 @@ export const LegendCaptionRoot = styled.div`
 export const LegendCaptionTitle = styled.div`
   color: ${colors["text-dark"]};
   font-weight: bold;
+  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
+
+  &:hover {
+    color: ${colors["brand"]};
+  }
 `;
 
-export const LegendCaptionDescription = styled.div`
-  display: flex;
-  align-items: center;
+export const LegendCaptionIcon = styled(Icon).attrs({
+  name: "info",
+})`
   color: ${colors["text-medium"]};
   margin-left: 0.5rem;
 `;
