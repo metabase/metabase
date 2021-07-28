@@ -398,7 +398,7 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations})
 
-(defmulti ^:deprecated supports?
+(defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
   `driver-features`.)
 
@@ -409,20 +409,6 @@
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
-
-(defmulti database-supports?
-  "Does this specific database support a certain `feature`?
-  (A feature is a keyword, and can be any of the ones listed above in `driver-features`.)
-
-    (supports? :postgres :set-timezone postgres-db) ; -> true"
-  {:arglists '([driver feature database])}
-  (fn [driver feature _]
-    (when-not (driver-features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
-    [(dispatch-on-initialized-driver driver) feature])
-  :hierarchy #'hierarchy)
-
-(defmethod database-supports? :default [driver feature _] (supports? driver feature))
 
 (defmethod supports? :default [_ _] false)
 
@@ -616,3 +602,18 @@
   {:added "0.39.0" :arglists '([driver db-details])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti normalize-db-details
+  "Normalizes db-details for the given driver. This is to handle migrations that are too difficult to perform via
+  regular Liquibase queries. This multimethod will be called from a `:post-select` handler within the database model.
+  The full `database` model object is passed as the 2nd parameter, and the multimethod implementation is expected to
+  update the value for `:details`. The default implementation is essentially `identity` (i.e returns `database`
+  unchanged). This multimethod will only be called if `:details` is actually present in the `database` map."
+  {:added "0.41.0" :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod normalize-db-details ::driver
+  [_ db-details]
+  ;; no normalization by default
+  db-details)
