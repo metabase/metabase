@@ -53,6 +53,7 @@ export default class PieChart extends Component {
   static identifier = "pie";
   static iconName = "pie";
 
+  static noHeader = true;
   static minSize = { width: 4, height: 4 };
 
   static isSensible({ cols, rows }) {

@@ -23,10 +23,10 @@ type Props = {
   showTitle?: boolean,
   showTooltip?: boolean,
   showDotTooltip?: boolean,
-  infoClassName?: string,
+  classNameWidgets?: string,
   onHoverChange: ({ index: number, element: Element }) => void,
-  onSelectSeries: (event: Event, index: number) => void,
-  onRemoveSeries: (event: Event, index: number) => void,
+  onSelectSeries: (event: MouseEvent, index: number) => void,
+  onRemoveSeries: (event: MouseEvent, index: number) => void,
 };
 
 const LegendItem = (props: Props) => {
@@ -41,7 +41,7 @@ const LegendItem = (props: Props) => {
     showTitle = true,
     showTooltip = false,
     showDotTooltip = false,
-    infoClassName,
+    classNameWidgets,
     onHoverChange,
     onSelectSeries,
     onRemoveSeries,
@@ -99,7 +99,7 @@ const LegendItem = (props: Props) => {
             {description && (
               <LegendItemDescription>
                 <Tooltip tooltip={description} maxWidth="22em">
-                  <Icon className={infoClassName} name="info" />
+                  <Icon className={classNameWidgets} name="info" />
                 </Tooltip>
               </LegendItemDescription>
             )}

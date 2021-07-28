@@ -17,8 +17,8 @@ type Props = {
   classNameWidgets?: string,
   onHoverChange: ({ index: number, element: Element }) => void,
   onAddSeries: () => void,
-  onSelectSeries: (event: Event, index: number) => void,
-  onRemoveSeries: (event: Event, index: number) => void,
+  onSelectSeries: (event: MouseEvent, index: number) => void,
+  onRemoveSeries: (event: MouseEvent, index: number) => void,
 };
 
 type HoveredItem = {
@@ -60,7 +60,7 @@ const Legend = (props: Props) => {
           showTitle={showTitles}
           showTooltip={showTooltip}
           showDotTooltip={showDotTooltip}
-          infoClassName={classNameWidgets}
+          classNameWidgets={classNameWidgets}
           onHoverChange={onHoverChange}
           onSelectSeries={onSelectSeries}
           onRemoveSeries={onRemoveSeries}
