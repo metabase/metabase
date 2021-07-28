@@ -1,7 +1,8 @@
 import styled from "styled-components";
+
 import Link from "metabase/components/Link";
 import { color } from "metabase/lib/colors";
-
+import { space } from "metabase/styled-components/theme";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 const CollectionLink = styled(Link)`
@@ -12,9 +13,9 @@ const CollectionLink = styled(Link)`
     // now pad it by the depth so we get hover states that are the full width of the sidebar
     props.depth * (SIDEBAR_SPACER * 2) + SIDEBAR_SPACER}px;
   position: relative;
-  padding-right: 8px;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding-right: ${space(1)};
+  padding-top: ${space(1)};
+  padding-bottom: ${space(1)};
   display: flex;
   flex-shrink: 0;
   align-items: center;
