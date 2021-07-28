@@ -330,18 +330,22 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     getProps: (column: Column, settings: ColumnSettings) => {
       const c = settings["currency"] || "USD";
+      const symbol = getCurrency(c, "symbol");
+      const code = getCurrency(c, "code");
+      const name = getCurrency(c, "name");
       return {
         options: [
-          {
-            name: t`Symbol` + ` ` + `(${getCurrency(c, "symbol")})`,
+          ... symbol !== code ?
+          [{
+            name: t`Symbol` + ` ` + `(${symbol})`,
             value: "symbol",
-          },
+          }] : [],
           {
-            name: t`Code` + ` ` + `(${getCurrency(c, "code")})`,
+            name: t`Code` + ` ` + `(${code})`,
             value: "code",
           },
           {
-            name: t`Name` + ` ` + `(${getCurrency(c, "name")})`,
+            name: t`Name` + ` ` + `(${name})`,
             value: "name",
           },
         ],
