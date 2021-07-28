@@ -199,14 +199,17 @@ export default class ItemPicker extends React.Component {
                   // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
                   const canSelect =
                     models.has("collection") && collection.can_write;
+
+                  const icon = getCollectionIcon(collection);
+
                   // only show if collection can be selected or has children
                   return canSelect || hasChildren ? (
                     <Item
                       key={`collection-${collection.id}`}
                       item={collection}
                       name={collection.name}
-                      color={COLLECTION_ICON_COLOR}
-                      icon={getCollectionIcon(collection).name}
+                      color={color(icon.color) || COLLECTION_ICON_COLOR}
+                      icon={icon.name}
                       selected={canSelect && isSelected(collection)}
                       canSelect={canSelect}
                       hasChildren={hasChildren}
