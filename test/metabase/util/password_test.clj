@@ -8,7 +8,7 @@
 
 ;; Password Complexity testing
 
-(deftest ^:parallel count-occurrences-test
+(deftest count-occurrences-test
   (testing "Check that password occurance counting works"
     (doseq [[input expected] {"abc"        {:total 3, :lower 3, :upper 0, :letter 3, :digit 0, :special 0}
                               "PASSWORD"   {:total 8, :lower 0, :upper 8, :letter 8, :digit 0, :special 0}
@@ -20,7 +20,7 @@
         (is (= expected
                (#'pwu/count-occurrences input)))))))
 
-(deftest ^:parallel password-has-char-counts?-test
+(deftest password-has-char-counts?-test
   (doseq [[group input->expected]
           {"Check that password length complexity applies"
            {[{:total 3} "god1"] true
@@ -51,7 +51,7 @@
           (is (= expected
                  (apply #'pwu/password-has-char-counts? input))))))))
 
-(deftest ^:parallel is-valid?-normal-test
+(deftest is-valid?-normal-test
   (testing "Do some tests with the default (:normal) password requirements"
     (doseq [[input expected] {"ABC"           false
                               "ABCDEF"        false

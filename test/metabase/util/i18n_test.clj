@@ -49,13 +49,13 @@
                 (is (= "deben tener 140 caracteres o menos"
                        (f)))))))))))
 
-(deftest ^:parallel localized-string?-test
+(deftest localized-string?-test
   (is (= true
          (i18n/localized-string? (i18n/deferred-trs "WOW"))))
   (is (= false
          (i18n/localized-string? "WOW"))))
 
-(deftest ^:parallel validate-number-of-args-test
+(deftest validate-number-of-args-test
   (testing "`trs` and `tru` should validate that the are being called with the correct number of args\n"
     (testing "not enough args"
       (is (thrown?

@@ -16,7 +16,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest ^:parallel bin-small-number-test
+(deftest bin-small-number-test
   (are [expected n] (= expected
                        (#'stats-util/bin-small-number n))
     "0"     0
@@ -29,7 +29,7 @@
     "25+"   26
     "25+"   500))
 
-(deftest ^:parallel bin-medium-number-test
+(deftest bin-medium-number-test
   (are [expected n] (= expected
                        (#'stats-util/bin-medium-number n))
     "0"       0
@@ -48,7 +48,7 @@
     "250+"    251
     "250+"    5000))
 
-(deftest ^:parallel bin-large-number-test
+(deftest bin-large-number-test
   (are [expected n] (= expected
                        (#'stats-util/bin-large-number n))
     "0"      0
@@ -81,7 +81,7 @@
           (is (= expected
                  (get stats k))))))))
 
-(deftest ^:parallel conversion-test
+(deftest conversion-test
   (is (= #{true}
          (let [system-stats (get-in (anonymous-usage-stats) [:stats :system])]
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
@@ -100,7 +100,7 @@
      :num_by_latency (frequencies (for [{latency :running_time} executions]
                                     (#'stats-util/bin-large-number (/ latency 1000))))}))
 
-(deftest ^:parallel new-impl-test
+(deftest new-impl-test
   (is (= (old-execution-metrics)
          (#'stats-util/execution-metrics))
       "the new lazy-seq version of the executions metrics works the same way the old one did"))

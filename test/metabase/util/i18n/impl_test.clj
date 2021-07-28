@@ -4,7 +4,7 @@
             [metabase.util.i18n.impl :as impl])
   (:import java.util.Locale))
 
-(deftest ^:parallel normalized-locale-string-test
+(deftest normalized-locale-string-test
   (doseq [[s expected] {"en"      "en"
                         "EN"      "en"
                         "En"      "en"
@@ -18,7 +18,7 @@
       (is (= expected
              (impl/normalized-locale-string s))))))
 
-(deftest ^:parallel locale-test
+(deftest locale-test
   (testing "Should be able to coerce various types of objects to Locales"
     (doseq [arg-type [:str :keyword]
             country   ["en" "En" "EN"]
@@ -41,7 +41,7 @@
     (is (= nil
            (impl/locale nil)))))
 
-(deftest ^:parallel available-locale?-test
+(deftest available-locale?-test
   (doseq [[locale expected] {"en"      true
                              "EN"      true
                              "en-US"   true
@@ -55,7 +55,7 @@
       (is (= expected
              (impl/available-locale? locale))))))
 
-(deftest ^:parallel parent-locale-test
+(deftest parent-locale-test
   (doseq [[locale expected] {nil                                       nil
                              :es                                       nil
                              "es"                                      nil
@@ -68,7 +68,7 @@
       (is (= expected
              (impl/parent-locale locale))))))
 
-(deftest ^:parallel graceful-fallback-test
+(deftest graceful-fallback-test
   (testing "If a resource bundle doesn't exist, we should gracefully fall back to English"
     (is (= "Translate me 100"
            (impl/translate "zz" "Translate me {0}" 100)))))

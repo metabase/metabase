@@ -29,44 +29,44 @@
 (def ^:private secret   (encryption/secret-key->hash "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ="))
 (def ^:private secret-2 (encryption/secret-key->hash "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="))
 
-(deftest ^:parallel repeatable-hashing-test
+(deftest repeatable-hashing-test
   (testing "test that hashing a secret key twice gives you the same results"
     (is (= (vec (encryption/secret-key->hash "Toucans"))
            (vec (encryption/secret-key->hash "Toucans"))))))
 
-(deftest ^:parallel unique-hashes-test
+(deftest unique-hashes-test
   (testing (is (not= (vec secret)
                      (vec secret-2)))))
 
-(deftest ^:parallel hash-pattern-test
+(deftest hash-pattern-test
   (is (re= #"^[0-9A-Za-z/+]+=*$"
            (encryption/encrypt secret "Hello!"))))
 
-(deftest ^:parallel hashing-isnt-idempotent-test
+(deftest hashing-isnt-idempotent-test
   (testing "test that encrypting something twice gives you two different ciphertexts"
     (is (not= (encryption/encrypt secret "Hello!")
               (encryption/encrypt secret "Hello!")))))
 
-(deftest ^:parallel  decrypt-test
+(deftest  decrypt-test
   (testing "test that we can decrypt something"
     (is (= "Hello!"
            (encryption/decrypt secret (encryption/encrypt secret "Hello!"))))))
 
-(deftest ^:parallel exception-with-wrong-decryption-key-test
+(deftest exception-with-wrong-decryption-key-test
   (testing "trying to decrypt something with the wrong key with `decrypt` should throw an Exception"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Message seems corrupt or manipulated"
          (encryption/decrypt secret-2 (encryption/encrypt secret "WOW"))))))
 
-(deftest ^:parallel maybe-decrypt-not-encrypted-test
+(deftest maybe-decrypt-not-encrypted-test
   (testing "trying to `maybe-decrypt` something that's not encrypted should return it as-is"
     (is (= "{\"a\":100}"
            (encryption/maybe-decrypt secret "{\"a\":100}")))
     (is (= "abc"
            (encryption/maybe-decrypt secret "abc")))))
 
-(deftest ^:parallel maybe-decrypt-with-wrong-key-test
+(deftest maybe-decrypt-with-wrong-key-test
   (testing (str "trying to decrypt something that is encrypted with the wrong key with `maybe-decrypt` should return "
                 "the ciphertext...")
     (let [original-ciphertext (encryption/encrypt secret "WOW")]
@@ -102,7 +102,7 @@
          (tu/with-log-messages-for-level :warn
            (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))))
 
-(deftest ^:parallel possibly-encrypted-test
+(deftest possibly-encrypted-test
   (testing "Something that is not encrypted, but might be should return the original text"
     (is (= fake-ciphertext
            (encryption/maybe-decrypt secret fake-ciphertext)))))
