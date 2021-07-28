@@ -717,7 +717,7 @@
         (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier? name))
               "have:dataset"
               ""
-              (apply str (repeat 129 "a")))))))
+              (apply str (repeat 1055 "a")))))))
 
 (deftest ->valid-field-identifier-test
   (testing "`->valid-field-identifier` should generate valid field identifiers"
