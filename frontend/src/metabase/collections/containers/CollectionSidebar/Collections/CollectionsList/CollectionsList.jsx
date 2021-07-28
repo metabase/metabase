@@ -12,7 +12,7 @@ import {
   LabelContainer,
 } from "./CollectionsList.styled";
 
-import CollectionLink from "metabase/collections/components/CollectionLink";
+import CollectionLink from "../../CollectionLink/CollectionLink";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 
 function ToggleChildCollectionButton({ action, collectionId, isOpen }) {
@@ -76,7 +76,8 @@ function Collection({
           // when we click on a link, if there are children,
           // expand to show sub collections
           function handleClick() {
-            children && action(id);
+            console.log("🚀");
+            // children && action(id);
           }
 
           return (

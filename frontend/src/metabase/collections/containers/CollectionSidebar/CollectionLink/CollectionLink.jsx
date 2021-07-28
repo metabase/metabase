@@ -2,7 +2,7 @@ import styled from "styled-components";
 import Link from "metabase/components/Link";
 import { color } from "metabase/lib/colors";
 
-import { SIDEBAR_SPACER } from "../constants";
+import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
 const CollectionLink = styled(Link)`
   margin-left: ${props =>
