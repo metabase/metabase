@@ -25,7 +25,7 @@ FROM
     FROM
       orders 
     WHERE
-      orders.customer_id = {{user_id}}
+      orders.customer_id = {% raw %} {{user_id}} {% endraw %}
   )
   made_up_name_01
 WHERE
