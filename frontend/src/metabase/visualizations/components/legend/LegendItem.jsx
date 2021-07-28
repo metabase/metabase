@@ -12,13 +12,13 @@ import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 
 const propTypes = {
-  title: PropTypes.oneOfType(PropTypes.string, PropTypes.array),
+  label: PropTypes.oneOfType(PropTypes.string, PropTypes.array),
   index: PropTypes.number,
   color: PropTypes.string,
   isMuted: PropTypes.bool,
   isVertical: PropTypes.bool,
   showDot: PropTypes.bool,
-  showTitle: PropTypes.bool,
+  showLabel: PropTypes.bool,
   showTooltip: PropTypes.bool,
   showDotTooltip: PropTypes.bool,
   onHoverChange: PropTypes.func,
@@ -27,13 +27,13 @@ const propTypes = {
 };
 
 const LegendItem = ({
-  title,
+  label,
   index,
   color,
   isMuted = false,
   isVertical = false,
   showDot = true,
-  showTitle = true,
+  showLabel = true,
   showTooltip = false,
   showDotTooltip = false,
   onHoverChange,
@@ -75,18 +75,18 @@ const LegendItem = ({
       >
         {showDot && (
           <Tooltip
-            tooltip={getTitleText(title)}
+            tooltip={getLabelText(label)}
             isEnabled={showTooltip && showDotTooltip}
           >
             <LegendItemDot color={color} />
           </Tooltip>
         )}
-        {showTitle && (
+        {showLabel && (
           <LegendItemTitle showDot={showDot}>
-            {isVertical && getTitleNodes(title)}
+            {isVertical && getLabelNodes(label)}
             {!isVertical && (
               <Ellipsified showTooltip={showTooltip}>
-                {getTitleNodes(title)}
+                {getLabelNodes(label)}
               </Ellipsified>
             )}
           </LegendItemTitle>
@@ -97,20 +97,20 @@ const LegendItem = ({
   );
 };
 
-const getTitleText = title => {
-  if (!Array.isArray(title)) {
-    return title;
+const getLabelText = label => {
+  if (!Array.isArray(label)) {
+    return label;
   }
 
-  return title[0];
+  return label[0];
 };
 
-const getTitleNodes = title => {
-  if (!Array.isArray(title)) {
-    return title;
+const getLabelNodes = label => {
+  if (!Array.isArray(label)) {
+    return label;
   }
 
-  return title.map((text, index) => (
+  return label.map((text, index) => (
     <LegendItemSubtitle key={index}>{text}</LegendItemSubtitle>
   ));
 };

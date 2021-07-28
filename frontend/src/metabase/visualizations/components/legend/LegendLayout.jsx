@@ -18,7 +18,7 @@ const propTypes = {
   className: PropTypes.string,
   title: PropTypes.string,
   description: PropTypes.string,
-  items: PropTypes.array.isRequired,
+  labels: PropTypes.array.isRequired,
   width: PropTypes.number,
   gridSize: PropTypes.object,
   showTitle: PropTypes.bool,
@@ -33,7 +33,7 @@ const LegendLayout = ({
   className,
   title,
   description,
-  items,
+  labels,
   width,
   gridSize,
   showTitle = true,
@@ -43,7 +43,7 @@ const LegendLayout = ({
   onTitleSelect,
   ...legendProps
 }) => {
-  const isVertical = width < items.length * MIN_WIDTH_PER_SERIES;
+  const isVertical = width < labels.length * MIN_WIDTH_PER_SERIES;
   const isCompact = gridSize != null && gridSize.width < MIN_UNITS_PER_LEGEND;
   const isVisible = showLegend && (!isDashboard || !(isVertical && isCompact));
 
@@ -59,7 +59,7 @@ const LegendLayout = ({
       <LegendContent showTitle={showTitle} isVertical={isVertical}>
         {isVisible && (
           <LegendPanel isVertical={isVertical}>
-            <Legend {...legendProps} items={items} isVertical={isVertical} />
+            <Legend {...legendProps} labels={labels} isVertical={isVertical} />
           </LegendPanel>
         )}
         <ChartPanel>{children}</ChartPanel>

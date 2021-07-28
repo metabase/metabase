@@ -6,13 +6,13 @@ import LegendItem from "./LegendItem";
 const propTypes = {
   className: PropTypes.string,
   classNameWidgets: PropTypes.string,
-  items: PropTypes.array.isRequired,
+  labels: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
   actionButtons: PropTypes.node,
   hovered: PropTypes.object,
   isVertical: PropTypes.bool,
   showDots: PropTypes.bool,
-  showItems: PropTypes.bool,
+  showLabels: PropTypes.bool,
   showTooltip: PropTypes.bool,
   showDotTooltip: PropTypes.bool,
   onHoverChange: PropTypes.func,
@@ -24,13 +24,13 @@ const propTypes = {
 const Legend = ({
   className,
   classNameWidgets,
-  items,
+  labels,
   colors,
   actionButtons,
   hovered,
   isVertical,
   showDots,
-  showItems,
+  showLabels,
   showTooltip,
   showDotTooltip,
   onHoverChange,
@@ -40,16 +40,16 @@ const Legend = ({
 }) => {
   return (
     <LegendRoot className={className} isVertical={isVertical}>
-      {items.map((title, index) => (
+      {labels.map((label, index) => (
         <LegendItem
           key={index}
-          title={title}
+          label={label}
           index={index}
           color={colors[index % colors.length]}
           isMuted={hovered && hovered.index != null && index !== hovered.index}
           isVertical={isVertical}
           showDot={showDots}
-          showTitle={showItems}
+          showTitle={showLabels}
           showTooltip={showTooltip}
           showDotTooltip={showDotTooltip}
           onHoverChange={onHoverChange}
