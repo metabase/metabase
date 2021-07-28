@@ -454,15 +454,22 @@
         identifier    (parent-method driver field)]
     (with-temporal-type identifier (temporal-type field))))
 
+(defn- replace-hyphens
+  "Escaping doesn't seem to have good behavior with regards to pesky hyphenated identifiers"
+  [{:keys [identifier-type components] :as identifier}]
+  (apply hx/identifier (concat [identifier-type]
+    (map #(str/replace % "-" "_") components))))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
   [_ identifier]
-  (if-not (should-qualify-identifier? identifier)
-    identifier
-    (-> identifier
-        (update :components (fn [[table & more]]
-                              (cons (str (dataset-name-for-current-query) \. table)
-                                    more)))
-        (vary-meta assoc ::already-qualified? true))))
+  (let [curr-identifier (replace-hyphens identifier)]
+    (if-not (should-qualify-identifier? identifier)
+      identifier
+      (-> identifier
+          (update :components (fn [[table & more]]
+                                (cons (str (dataset-name-for-current-query) \. table)
+                                      more)))
+        (vary-meta assoc ::already-qualified? true)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver clause]
