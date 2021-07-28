@@ -223,6 +223,21 @@ describe("formatting", () => {
       // but it's formatted as a link
       expect(formatted.props.className).toEqual("link link--wrappable");
     });
+    it("should render image with a click behavior in jsx + rich mode (metabase#17161)", () => {
+      const formatted = formatValue("http://metabase.com/logo.png", {
+        jsx: true,
+        rich: true,
+        view_as: "image",
+        click_behavior: {
+          linkTemplate: "foo",
+          linkType: "url",
+          type: "link",
+        },
+        clicked: {},
+      });
+      expect(formatted.type).toEqual("img");
+      expect(formatted.props.src).toEqual("http://metabase.com/logo.png");
+    });
     it("should return a component for email addresses in jsx + rich mode", () => {
       expect(
         isElementOfType(

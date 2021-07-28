@@ -500,16 +500,25 @@ Fetch a specific Collection with standard details added
 
 Fetch a specific Collection's items with the following options:
 
-  *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
+  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
   *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
+  *  `pinned_state` - when `is_pinned`, return pinned objects only.
+                   when `is_not_pinned`, return non pinned objects only.
+                   when `all`, return everything. By default returns everything
 
 ##### PARAMS:
 
 *  **`id`** 
 
-*  **`model`** value may be nil, or if non-nil, value must be one of: `card`, `collection`, `dashboard`, `pulse`, `snippet`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `no_models`, `pulse`, `snippet`. 2) value must be one of: `card`, `collection`, `dashboard`, `no_models`, `pulse`, `snippet`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
+*  **`pinned_state`** value may be nil, or if non-nil, value must be one of: `all`, `is_not_pinned`, `is_pinned`.
+
+*  **`sort_column`** value may be nil, or if non-nil, value must be one of: `last_edited_at`, `last_edited_by`, `model`, `name`.
+
+*  **`sort_direction`** value may be nil, or if non-nil, value must be one of: `asc`, `desc`.
 
 
 ## `GET /api/collection/graph`
@@ -550,11 +559,17 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 ##### PARAMS:
 
-*  **`model`** value may be nil, or if non-nil, value must be one of: `card`, `collection`, `dashboard`, `pulse`, `snippet`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `no_models`, `pulse`, `snippet`. 2) value must be one of: `card`, `collection`, `dashboard`, `no_models`, `pulse`, `snippet`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`pinned_state`** value may be nil, or if non-nil, value must be one of: `all`, `is_not_pinned`, `is_pinned`.
+
+*  **`sort_column`** value may be nil, or if non-nil, value must be one of: `last_edited_at`, `last_edited_by`, `model`, `name`.
+
+*  **`sort_direction`** value may be nil, or if non-nil, value must be one of: `asc`, `desc`.
 
 
 ## `GET /api/collection/tree`
@@ -569,6 +584,10 @@ Similar to `GET /`, but returns Collections in a tree structure, e.g.
                              {:name     "F"
                               :children [{:name "G"}]}]}]}
      {:name "H"}]
+
+##### PARAMS:
+
+*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
 
 ## `POST /api/collection/`
@@ -587,6 +606,8 @@ Create a new Collection.
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
+*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
+
 
 ## `PUT /api/collection/:id`
 
@@ -594,19 +615,23 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 ##### PARAMS:
 
-*  **`id`** 
-
-*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
-
-*  **`color`** value may be nil, or if non-nil, value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
 
 *  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
+*  **`collection-updates`** 
+
+*  **`color`** value may be nil, or if non-nil, value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
 *  **`parent_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`collection-updates`** 
+*  **`id`** 
+
+*  **`update_collection_tree_authority_level`** value may be nil, or if non-nil, value must be a boolean.
 
 
 ## `PUT /api/collection/graph`
@@ -693,7 +718,7 @@ Fetch possible values of the parameter whose ID is `:param-key` that contain `:q
     ;; to 100
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
-  Currently limited to first 100 results
+  Currently limited to first 1000 results.
 
 ##### PARAMS:
 
@@ -1692,9 +1717,9 @@ Update `Field` with ID.
 
 *  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`semantic_type`** value may be nil, or if non-nil, value must be a valid field type.
+*  **`semantic_type`** value may be nil, or if non-nil, value must be a valid field semantic or relation type (keyword or string).
 
-*  **`coercion_strategy`** value may be nil, or if non-nil, value must be a valid coercion type.
+*  **`coercion_strategy`** value may be nil, or if non-nil, value must be a valid coercion strategy (keyword or string).
 
 *  **`has_field_values`** value may be nil, or if non-nil, value must be one of: `auto-list`, `list`, `none`, `search`.
 
@@ -1705,6 +1730,20 @@ Update `Field` with ID.
 *  **`fk_target_field_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`id`** 
+
+
+## `GET /api/geojson/`
+
+Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
+  This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first.
+
+##### PARAMS:
+
+*  **`url`** value must be a non-blank string.
+
+*  **`respond`** 
+
+*  **`raise`** 
 
 
 ## `GET /api/geojson/:key`
@@ -2501,13 +2540,38 @@ Revert an object to a prior revision.
 
 ## `GET /api/search/`
 
-Search Cards, Dashboards, Collections and Pulses for the substring `q`.
+Search within a bunch of models for the substring `q`.
+  For the list of models, check `metabase.search.config/searchable-models.
+
+  To search in archived portions of models, pass in `archived=true`.
+  If you want, while searching tables, only tables of a certain DB id,
+  pass in a DB id value to `table_db_id`.
+
+  To specify a list of models, pass in an array to `models`.
+  
 
 ##### PARAMS:
 
 *  **`q`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
+*  **`table_db_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be a non-blank string. 2) value must be a non-blank string.
+
+
+## `GET /api/search/models`
+
+Get the set of models that a search query will return
+
+##### PARAMS:
+
+*  **`q`** 
+
+*  **`archived-string`** 
+
+*  **`table-db-id`** 
 
 
 ## `DELETE /api/segment/:id`
@@ -2672,7 +2736,7 @@ Reset password with a reset token.
 
 *  **`token`** value must be a non-blank string.
 
-*  **`password`** Password is insufficiently complex, or is too common
+*  **`password`** password is too common.
 
 *  **`request`** 
 
@@ -2750,7 +2814,7 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 
 *  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
 
-*  **`password`** Password is insufficiently complex, or is too common
+*  **`password`** password is too common.
 
 *  **`name`** 
 
@@ -2954,12 +3018,6 @@ Fetch a list of recent tasks stored as Task History
 
 You must be a superuser to do this.
 
-##### PARAMS:
-
-*  **`limit`** value may be nil, or if non-nil, value must be a valid integer greater than zero.
-
-*  **`offset`** value may be nil, or if non-nil, value must be a valid integer greater than or equal to zero.
-
 
 ## `GET /api/task/:id`
 
@@ -3029,11 +3087,26 @@ You must be a superuser to do this.
 
 ## `GET /api/user/`
 
-Fetch a list of `Users` for the admin People page or for Pulses. By default returns only active users. If
-  `include_deactivated` is true, return all Users (active and inactive). (Using `include_deactivated` requires
-  superuser permissions.). For users with segmented permissions, return only themselves.
+Fetch a list of `Users`. By default returns every active user but only active users.
+
+  If `status` is `deactivated`, include deactivated users only.
+  If `status` is `all`, include all users (active and inactive).
+  Also supports `include_deactivated`, which if true, is equivalent to `status=all`.
+  `status` and `included_deactivated` requires superuser permissions.
+
+  For users with segmented permissions, return only themselves.
+
+  Takes `limit`, `offset` for pagination.
+  Takes `query` for filtering on first name, last name, email.
+  Also takes `group_id`, which filters on group id.
 
 ##### PARAMS:
+
+*  **`status`** value may be nil, or if non-nil, value must be a string.
+
+*  **`query`** value may be nil, or if non-nil, value must be a string.
+
+*  **`group_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`include_deactivated`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -3115,7 +3188,7 @@ Update a user's password.
 
 *  **`id`** 
 
-*  **`password`** Password is insufficiently complex, or is too common
+*  **`password`** password is too common.
 
 *  **`old_password`** 
 
@@ -3147,6 +3220,13 @@ Returns version and system information relevant to filing a bug report against M
 You must be a superuser to do this.
 
 
+## `GET /api/util/diagnostic_info/connection_pool_info`
+
+Returns database connection pool info for the current Metabase instance.
+
+You must be a superuser to do this.
+
+
 ## `GET /api/util/logs`
 
 Logs.
@@ -3174,4 +3254,4 @@ Endpoint that checks if the supplied password meets the currently configured pas
 
 ##### PARAMS:
 
-*  **`password`** Password is insufficiently complex, or is too common
+*  **`password`** password is too common.

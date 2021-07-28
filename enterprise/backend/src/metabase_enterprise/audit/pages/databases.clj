@@ -70,6 +70,7 @@
 
 
 (s/defn ^:internal-query-fn table
+  "Table with information and statistics about all the data warehouse Databases in this Metabase instance."
   ([]
    (table nil))
   ([query-string :- (s/maybe s/Str)]
