@@ -602,6 +602,24 @@
            .getZone
            .getID)))))
 
+(defmulti with-model-cleanup-additional-conditions
+  "Additional conditions that should be used to restrict which instances automatically get deleted by
+  `with-model-cleanup`. Conditions should be a HoneySQL `:where` clause."
+  {:arglists '([model])}
+  type)
+
+(defmethod with-model-cleanup-additional-conditions :default
+  [_]
+  nil)
+
+(defmethod with-model-cleanup-additional-conditions (type Collection)
+  [_]
+  ;; NEVER delete personal collections for the test users.
+  [:or
+   [:= :personal_owner_id nil]
+   [:not-in :personal_owner_id (set (map (requiring-resolve 'metabase.test.data.users/user->id)
+                                         @(requiring-resolve 'metabase.test.data.users/usernames)))]])
+
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? t.models/model? models)]}
   (test-runner/assert-test-is-not-parallel "with-model-cleanup")
@@ -614,9 +632,15 @@
       (finally
         (doseq [model models
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
-                :let  [old-max-id (or (get model->old-max-id model)
-                                      0)]]
-          (db/simple-delete! model :id [:> old-max-id]))))))
+                :let  [old-max-id            (or (get model->old-max-id model)
+                                                 0)
+                       max-id-condition      [:> :id old-max-id]
+                       additional-conditions (with-model-cleanup-additional-conditions model)]]
+          (db/execute!
+           {:delete-from model
+            :where       (if (seq additional-conditions)
+                           [:and max-id-condition additional-conditions]
+                           max-id-condition)}))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
