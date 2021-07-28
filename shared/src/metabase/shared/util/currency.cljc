@@ -1,7 +1,7 @@
 (ns metabase.shared.util.currency
   "The list of currencies, and associated metadata, used by Metabase for number formatting.")
 
-(def ^:export currency-list
+(def currency-list
   [[:USD {:symbol "$",
           :name "US Dollar",
           :symbol_native "$",
