@@ -1,4 +1,5 @@
-import React, { ReactNode } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import {
@@ -8,69 +9,46 @@ import {
   LegendPanel,
 } from "./LegendLayout.styled";
 import Legend from "./Legend";
-import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
+import LegendCaption from "./LegendCaption";
 
 const MIN_WIDTH_PER_SERIES = 100;
 const MIN_UNITS_PER_LEGEND = 6;
 
-type Props = {
-  className?: string,
-  classNameWidgets?: string,
-  title: string,
-  description?: string,
-  items: string[],
-  colors: string[],
-  actionButtons?: ReactNode,
-  hovered?: HoveredItem,
-  width: number,
-  height: number,
-  gridSize?: GridSize,
-  showTitle?: boolean,
-  showLegend?: boolean,
-  showDots?: boolean,
-  showItems?: boolean,
-  showTooltip?: boolean,
-  showDotTooltip?: boolean,
-  isDashboard?: boolean,
-  children?: React.ReactNode,
-  onTitleSelect?: (event: MouseEvent) => void,
-  onHoverChange: ({ index: number, element: Element }) => void,
-  onAddSeries: () => void,
-  onSelectSeries: (event: MouseEvent, index: number) => void,
-  onRemoveSeries: (event: MouseEvent, index: number) => void,
+const propTypes = {
+  className: PropTypes.string,
+  title: PropTypes.string,
+  description: PropTypes.string,
+  items: PropTypes.array.isRequired,
+  width: PropTypes.number,
+  gridSize: PropTypes.object,
+  showTitle: PropTypes.bool,
+  showLegend: PropTypes.bool,
+  isDashboard: PropTypes.bool,
+  children: PropTypes.node,
+  onTitleSelect: PropTypes.func,
+  onRemoveSeries: PropTypes.func,
 };
 
-type HoveredItem = {
-  index: number,
-};
-
-type GridSize = {
-  width: number,
-  height: number,
-};
-
-const LegendLayout = (props: Props) => {
-  const {
-    className,
-    title,
-    description,
-    items,
-    width,
-    gridSize,
-    showTitle = true,
-    showLegend = true,
-    isDashboard = false,
-    children,
-    onTitleSelect,
-    ...legendProps
-  } = props;
-
+const LegendLayout = ({
+  className,
+  title,
+  description,
+  items,
+  width,
+  gridSize,
+  showTitle = true,
+  showLegend = true,
+  isDashboard = false,
+  children,
+  onTitleSelect,
+  ...legendProps
+}) => {
   const isVertical = width < items.length * MIN_WIDTH_PER_SERIES;
   const isCompact = gridSize != null && gridSize.width < MIN_UNITS_PER_LEGEND;
   const isVisible = showLegend && (!isDashboard || !(isVertical && isCompact));
 
   return (
-    <LegendLayoutRoot className={className} isVertical={isVertical}>
+    <LegendLayoutRoot className={className}>
       {showTitle && (
         <LegendCaption
           title={title}
@@ -78,7 +56,7 @@ const LegendLayout = (props: Props) => {
           onTitleSelect={onTitleSelect}
         />
       )}
-      <LegendContent>
+      <LegendContent showTitle={showTitle} isVertical={isVertical}>
         {isVisible && (
           <LegendPanel isVertical={isVertical}>
             <Legend {...legendProps} items={items} isVertical={isVertical} />
@@ -89,5 +67,7 @@ const LegendLayout = (props: Props) => {
     </LegendLayoutRoot>
   );
 };
+
+LegendLayout.propTypes = propTypes;
 
 export default _.compose(ExplicitSize())(LegendLayout);

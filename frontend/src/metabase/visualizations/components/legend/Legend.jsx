@@ -1,48 +1,43 @@
-import React, { ReactNode } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
-type Props = {
-  className?: string,
-  classNameWidgets?: string,
-  items: string[] | string[][],
-  colors: string[],
-  actionButtons?: ReactNode,
-  hovered?: HoveredItem,
-  isVertical?: boolean,
-  showDots?: boolean,
-  showItems?: boolean,
-  showTooltip?: boolean,
-  showDotTooltip?: boolean,
-  onHoverChange: ({ index: number, element: Element }) => void,
-  onAddSeries: () => void,
-  onSelectSeries: (event: MouseEvent, index: number) => void,
-  onRemoveSeries: (event: MouseEvent, index: number) => void,
+const propTypes = {
+  className: PropTypes.string,
+  classNameWidgets: PropTypes.string,
+  items: PropTypes.array.isRequired,
+  colors: PropTypes.array.isRequired,
+  actionButtons: PropTypes.node,
+  hovered: PropTypes.object,
+  isVertical: PropTypes.bool,
+  showDots: PropTypes.bool,
+  showItems: PropTypes.bool,
+  showTooltip: PropTypes.bool,
+  showDotTooltip: PropTypes.bool,
+  onHoverChange: PropTypes.func,
+  onAddSeries: PropTypes.func,
+  onSelectSeries: PropTypes.func,
+  onRemoveSeries: PropTypes.func,
 };
 
-type HoveredItem = {
-  index: number,
-};
-
-const Legend = (props: Props) => {
-  const {
-    className,
-    classNameWidgets,
-    items,
-    colors,
-    actionButtons,
-    hovered,
-    isVertical,
-    showDots,
-    showItems,
-    showTooltip,
-    showDotTooltip,
-    onHoverChange,
-    onAddSeries,
-    onSelectSeries,
-    onRemoveSeries,
-  } = props;
-
+const Legend = ({
+  className,
+  classNameWidgets,
+  items,
+  colors,
+  actionButtons,
+  hovered,
+  isVertical,
+  showDots,
+  showItems,
+  showTooltip,
+  showDotTooltip,
+  onHoverChange,
+  onAddSeries,
+  onSelectSeries,
+  onRemoveSeries,
+}) => {
   return (
     <LegendRoot className={className} isVertical={isVertical}>
       {items.map((title, index) => (
@@ -71,5 +66,7 @@ const Legend = (props: Props) => {
     </LegendRoot>
   );
 };
+
+Legend.propTypes = propTypes;
 
 export default Legend;

@@ -2,12 +2,16 @@ import styled from "styled-components";
 
 export const LegendLayoutRoot = styled.div`
   display: flex;
-  flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
+  flex-direction: column;
+  padding: 1rem;
   min-height: 0;
 `;
 
 export const LegendContent = styled.div`
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
+  margin-top: ${({ showTitle }) => (showTitle ? "1rem" : "")};
 `;
 
 export const LegendPanel = styled.div`

@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 import {
@@ -7,16 +8,14 @@ import {
   LegendCaptionTitle,
 } from "./LegendCaption.styled";
 
-type Props = {
-  className?: string,
-  title: string,
-  description?: string,
-  onTitleSelect?: (event: MouseEvent) => void,
+const propTypes = {
+  className: PropTypes.string,
+  title: PropTypes.string,
+  description: PropTypes.string,
+  onTitleSelect: PropTypes.func,
 };
 
-const LegendCaption = (props: Props) => {
-  const { className, title, description, onTitleSelect } = props;
-
+const LegendCaption = ({ className, title, description, onTitleSelect }) => {
   return (
     <LegendCaptionRoot className={className}>
       <LegendCaptionTitle onClick={onTitleSelect}>
@@ -30,5 +29,7 @@ const LegendCaption = (props: Props) => {
     </LegendCaptionRoot>
   );
 };
+
+LegendCaption.propTypes = propTypes;
 
 export default LegendCaption;
