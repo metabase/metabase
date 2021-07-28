@@ -54,7 +54,7 @@ Metabase creates a unique temporary name like `made_up_name_01` to make sure the
 
 6. If people are logging in with single sign-on, but the expected attributes aren't being saved and made available, sandboxing will deny access. Our article on [Authenticating with SAML][authenticating-with-saml] explains the required setup in detail.
 
-### Users can't see the data they're supposed to be able to see
+### People can't see the data they're supposed to be able to see
 
 **How to detect this:** Someone is supposed to be able to use some of the values in a table in their queries, but are denied access or get an empty set of results where there should be data.
 
