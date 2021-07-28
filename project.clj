@@ -31,6 +31,7 @@
    "lint"                              ["do" ["eastwood"] ["check-namespace-decls"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
    "repl-ee"                           ["with-profile" "+repl,+ee" "repl"]
+   "eftest"                            ["with-profile" "+eftest" "run"]
    "uberjar"                           ["uberjar"]
    "uberjar-ee"                        ["with-profile" "+ee" "uberjar"]}
 
@@ -214,6 +215,7 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
+     [eftest "0.5.9"]
      [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.10.0"]
@@ -342,6 +344,12 @@
 
    :test
    [:with-include-drivers-middleware :test-common]
+
+   :eftest
+   [:with-include-drivers-middleware
+    :test-common
+    {:main         test-runner
+     :source-paths ["test"]}]
 
    :include-all-drivers
    [:with-include-drivers-middleware

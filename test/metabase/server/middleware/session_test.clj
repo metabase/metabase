@@ -8,7 +8,6 @@
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models :refer [Session User]]
-            [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]
@@ -73,7 +72,7 @@
 
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for
 ;; this. Make sure they all work.
-(deftest secure-cookie-test
+(deftest ^:parallel secure-cookie-test
   (doseq [[headers expected] [[{"x-forwarded-proto" "https"}    true]
                               [{"x-forwarded-proto" "http"}     false]
                               [{"x-forwarded-protocol" "https"} true]
@@ -126,7 +125,7 @@
    :anti_csrf_token  test-anti-csrf-token
    :type             :full-app-embed})
 
-(deftest set-full-app-embedding-session-cookie-test
+(deftest ^:parallel set-full-app-embedding-session-cookie-test
   (testing "test that we can set a full-app-embedding session cookie"
     (is (= {:body    {}
             :status  200
@@ -151,20 +150,20 @@
    identity
    (fn [e] (throw e))))
 
-(deftest no-session-id-in-request-test
+(deftest ^:parallel no-session-id-in-request-test
   (testing "no session-id in the request"
     (is (= nil
            (-> (wrapped-handler (mock/request :get "/anyurl") )
                :metabase-session-id)))))
 
-(deftest header-test
+(deftest ^:parallel header-test
   (testing "extract session-id from header"
     (is (= "foobar"
            (:metabase-session-id
             (wrapped-handler
              (mock/header (mock/request :get "/anyurl") session-header "foobar")))))))
 
-(deftest cookie-test
+(deftest ^:parallel cookie-test
   (testing "extract session-id from cookie"
     (is (= "cookie-session"
            (:metabase-session-id
@@ -172,7 +171,7 @@
              (assoc (mock/request :get "/anyurl")
                     :cookies {session-cookie {:value "cookie-session"}})))))))
 
-(deftest both-header-and-cookie-test
+(deftest ^:parallel both-header-and-cookie-test
   (testing "if both header and cookie session-ids exist, then we expect the cookie to take precedence"
     (is (= "cookie-session"
            (:metabase-session-id
@@ -180,7 +179,7 @@
              (assoc (mock/header (mock/request :get "/anyurl") session-header "foobar")
                     :cookies {session-cookie {:value "cookie-session"}})))))))
 
-(deftest anti-csrf-headers-test
+(deftest ^:parallel anti-csrf-headers-test
   (testing "`wrap-session-id` should handle anti-csrf headers they way we'd expect"
     (let [request (-> (mock/request :get "/anyurl")
                       (assoc :cookies {embedded-session-cookie {:value (str test-uuid)}})

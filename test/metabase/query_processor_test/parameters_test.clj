@@ -47,7 +47,7 @@
                                  :target [:variable [:template-tag (name field)]]
                                  :value  param-value}]))))
 
-(deftest template-tag-param-test
+(deftest ^:parallel template-tag-param-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (letfn [(count-with-params [table param-name param-type value & [options]]
               (run-count-query
@@ -103,7 +103,7 @@
 ;; Tried manually syncing the DB (with attempted-murders dataset), and storing it to an initialized QP, to no avail.
 
 ;; this isn't a complete test for all possible field filter types, but it covers mostly everything
-(deftest field-filter-param-test
+(deftest ^:parallel field-filter-param-test
   (letfn [(is-count-= [expected-count table field value-type value]
             (let [query (field-filter-count-query table field value-type value)]
               (testing (format "\nquery = \n%s" (u/pprint-to-str 'cyan query))
@@ -157,7 +157,7 @@
                  (mt/formatted-rows :checkins
                    (qp/process-query query)))))))))
 
-(deftest string-escape-test
+(deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
   (mt/test-drivers (set (filter #(isa? driver/hierarchy % :sql) (mt/normal-drivers-with-feature :native-parameters)))
     (testing "Make sure field filter parameters are properly escaped"
@@ -166,7 +166,7 @@
         (is (= [[1]]
                (mt/formatted-rows [int] results)))))))
 
-(deftest native-with-spliced-params-test
+(deftest ^:parallel native-with-spliced-params-test
   (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Multiple values"
       (mt/dataset airports
@@ -203,7 +203,7 @@
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
 
-(deftest ignore-parameters-for-unparameterized-native-query-test
+(deftest ^:parallel ignore-parameters-for-unparameterized-native-query-test
   (testing "Parameters passed for unparameterized queries should get ignored"
     (let [query {:database (mt/id)
                  :type     :native

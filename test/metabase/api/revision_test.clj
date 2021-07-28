@@ -6,8 +6,8 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.revision :refer [push-revision! Revision revisions]]
             [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
             [metabase.test.data.users :as test-users]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))

@@ -19,7 +19,7 @@
             [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
-(deftest annotations-test
+(deftest ^:parallel annotations-test
   (testing "make sure our annotations are present"
     (is (.isAnnotationPresent SyncAndAnalyzeDatabase org.quartz.DisallowConcurrentExecution))
     (is (.isAnnotationPresent UpdateFieldValues org.quartz.DisallowConcurrentExecution))))
@@ -257,7 +257,7 @@
   (testing "It will fingerprint if under time and no other fingerprints"
     (is (should-refingerprint (results (dec threshold) 0)))))
 
-(deftest randomized-schedules-test
+(deftest ^:parallel randomized-schedules-test
   (testing "when user schedules it does not return new schedules"
     (is (nil? (sync-db/randomized-schedules {:details {:let-user-control-scheduling true}}))))
   (testing "when schedules are already 'randomized' it returns nil"

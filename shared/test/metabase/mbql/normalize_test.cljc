@@ -1,4 +1,4 @@
-(ns metabase.mbql.normalize-test
+(ns ^:parallel metabase.mbql.normalize-test
   (:require [clojure.set :as set]
             [clojure.test :as t]
             [metabase.mbql.normalize :as normalize]))

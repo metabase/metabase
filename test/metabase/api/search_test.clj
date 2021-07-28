@@ -1,6 +1,5 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
@@ -210,7 +209,7 @@
       (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2" :offset "0"))))))
   (testing "It offsets matches properly"
     (with-search-items-in-root-collection "test"
-      (is (= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
+      (is (<= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
   (testing "It subsets matches for model"
     (with-search-items-in-root-collection "test"
       (is (= 0 (count (search-request-data :crowberto :q "test" :models "database"))))

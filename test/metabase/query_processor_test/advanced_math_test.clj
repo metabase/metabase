@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.advanced-math-test
+(ns ^:parallel metabase.query-processor-test.advanced-math-test
   (:require [clojure.test :refer :all]
             [metabase.query-processor-test :refer :all]
             [metabase.test :as mt]

@@ -12,7 +12,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "single column"
       (testing "with breakout"
@@ -68,11 +68,11 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (let [{:keys [rows cols]} (qp.test/rows-and-cols
-                                  (mt/format-rows-by [int int str]
-                                    (mt/run-mbql-query venues
-                                      {:aggregation [[:count]]
-                                       :breakout    [$category_id]
-                                       :limit       5})))]
+                                 (mt/format-rows-by [int int str]
+                                   (mt/run-mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$category_id]
+                                      :limit       5})))]
         (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Category ID")
                 (qp.test/aggregate-col :count)
                 (#'add-dim-projections/create-remapped-col "Category ID" (mt/format-name "category_id") :type/Text)]
@@ -170,7 +170,7 @@
         (update-in [:binning_info :min_value] round-to-decimal)
         (update-in [:binning_info :max_value] round-to-decimal))))
 
-(deftest binning-info-test
+(deftest ^:parallel binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = default"
@@ -261,7 +261,7 @@
                    (qp/process-query
                     (nested-venues-query card)))))))))))
 
-(deftest field-in-breakout-and-fields-test
+(deftest ^:parallel field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing (str "if we include a Field in both breakout and fields, does the query still work? (Normalization should "
                   "be taking care of this) (#8760)")

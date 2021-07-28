@@ -20,7 +20,7 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with MBQL source-query"
       (is (= {:rows [[1 "Red Medicine"                  4 10.0646 -165.374 3]
@@ -39,7 +39,7 @@
                                    :limit        10}
                     :limit        5}))))))))
 
-(deftest basic-sql-source-query-test
+(deftest ^:parallel basic-sql-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with a SQL source-query"
       (is (= {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
@@ -75,7 +75,7 @@
                     :effective_type :coercion_strategy))
           (qp.test/aggregate-col :count)]})
 
-(deftest mbql-source-query-breakout-aggregation-test
+(deftest ^:parallel mbql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using an MBQL source query"
       (is (= (breakout-results)
@@ -86,7 +86,7 @@
                     :aggregation  [:count]
                     :breakout     [$price]}))))))))
 
-(deftest breakout-fk-column-test
+(deftest ^:parallel breakout-fk-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "Test including a breakout of a nested query column that follows an FK"
       (is (= {:rows [[1 174] [2 474] [3 78] [4 39]]
@@ -101,7 +101,7 @@
                     :order-by     [[:asc $venue_id->venues.price]]
                     :breakout     [$venue_id->venues.price]}))))))))
 
-(deftest two-breakout-fk-columns-test
+(deftest ^:parallel two-breakout-fk-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "Test two breakout columns from the nested query, both following an FK"
       (is (= {:rows [[2 33.7701 7]
@@ -123,7 +123,7 @@
                     :breakout     [$venue_id->venues.price
                                    $venue_id->venues.latitude]}))))))))
 
-(deftest two-breakouts-one-fk-test
+(deftest ^:parallel two-breakouts-one-fk-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "Test two breakout columns from the nested query, one following an FK the other from the source table"
       (is (= {:rows [[1 1 6]
@@ -145,7 +145,7 @@
                     :breakout     [$venue_id->venues.price $user_id]
                     :limit        5}))))))))
 
-(deftest sql-source-query-breakout-aggregation-test
+(deftest ^:parallel sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
       (is (= (breakout-results)
@@ -173,7 +173,6 @@
   {:style/indent 0}
   [& additional-clauses]
   (apply mbql-card-def :source-table (mt/id :venues) additional-clauses))
-
 
 (defn- query-with-source-card
   {:style/indent 1}
@@ -608,7 +607,7 @@
               (is (= "You don't have permissions to do that."
                      (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
 
-(deftest infer-source-fields-test
+(deftest ^:parallel infer-source-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing (str "make sure that if we refer to a Field that is actually inside the source query, the QP is smart "
                   "enough to figure out what you were referring to and behave appropriately")
@@ -620,7 +619,7 @@
                   :aggregation  [[:count]]
                   :filter       [:= $category_id 50]})))))))
 
-(deftest nested-query-with-joins-test
+(deftest ^:parallel nested-query-with-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "make sure that if a nested query includes joins queries based on it still work correctly (#8972)"
       (is (= [[31 "Bludso's BBQ"         5 33.8894 -118.207 2]
@@ -638,7 +637,7 @@
                     :filter       [:= $venues.category_id->categories.name "BBQ"]
                     :order-by     [[:asc $id]]}}))))))))
 
-(deftest parse-datetime-strings-test
+(deftest ^:parallel parse-datetime-strings-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "Make sure we parse datetime strings when compared against type/DateTime field literals (#9007)"
       (is (= [[395]
@@ -650,7 +649,7 @@
                   :fields       [$id]
                   :filter       [:= *date "2014-03-30"]})))))))
 
-(deftest apply-filters-test
+(deftest ^:parallel apply-filters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "make sure filters in source queries are applied correctly!"
       (is (= [["Fred 62"     1]
@@ -664,7 +663,7 @@
                   :breakout     [$venue_id->venues.name]
                   :filter       [:starts-with $venue_id->venues.name "F"]})))))))
 
-(deftest two-of-the-same-aggregations-test
+(deftest ^:parallel two-of-the-same-aggregations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "Do nested queries work with two of the same aggregation? (#9767)"
       (is (= [["2014-02-01T00:00:00Z" 302 1804]
@@ -698,7 +697,7 @@
                      (mt/run-mbql-query nil
                        {:source-table (str "card__" card-id)}))))))))))
 
-(deftest bucketing-already-bucketed-year-test
+(deftest ^:parallel bucketing-already-bucketed-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "If a field is bucketed as a year in a source query, bucketing it as a year shouldn't break things (#10446)"
       ;; (Normally, it would break things, but the new `simplify` middleware eliminates the duplicate cast. It is not
@@ -714,7 +713,7 @@
                                  :limit        1}
                   :fields       [!year.*date]})))))))
 
-(deftest correctly-alias-duplicate-names-in-breakout-test
+(deftest ^:parallel correctly-alias-duplicate-names-in-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :foreign-keys)
     (testing "Do we correctly alias name clashes in breakout (#10511)"
       (let [results (mt/run-mbql-query venues
@@ -811,7 +810,7 @@
                      4.0 "2017-12-31T14:41:56.87Z"]
                     (first (mt/rows results)))))))))))
 
-(deftest inception-metadata-test
+(deftest ^:parallel inception-metadata-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
     (mt/dataset sample-dataset
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
@@ -903,7 +902,7 @@
                         25.1 4.0 "2017-12-31T14:41:56.87Z"]
                        (mt/first-row result)))))))))))
 
-(deftest handle-unwrapped-joined-fields-correctly-test
+(deftest ^:parallel handle-unwrapped-joined-fields-correctly-test
   (mt/dataset sample-dataset
     (testing "References to joined fields should be handled correctly (#14766)"
       ;; using `$products.id` should give you the same results as properly referring to it with `&Products.products.id`
@@ -934,7 +933,7 @@
         (is (= (mt/rows expected-result)
                (mt/rows actual-result)))))))
 
-(deftest duplicate-column-names-in-nested-queries-test
+(deftest ^:parallel duplicate-column-names-in-nested-queries-test
   (testing "duplicate column names in nested queries (#10511)"
     (mt/dataset sample-dataset
       (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
@@ -1010,7 +1009,7 @@
                   (test-query (for [col metadata]
                                 (dissoc col :field_ref :id))))))))))))
 
-(deftest support-legacy-filter-clauses-test
+(deftest ^:parallel support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of field-literal inside filter clauses"
     (mt/dataset sample-dataset
       (testing "against joins (#14809)"
@@ -1033,7 +1032,7 @@
                         ;; not sure why FE is using `field-literal` here... but it should work anyway.
                         :filter       [:= *CATEGORY/Text "Widget"]})))))))
 
-(deftest support-legacy-dashboard-parameters-test
+(deftest ^:parallel support-legacy-dashboard-parameters-test
   (testing "We should handle legacy usage of field-literal inside (Dashboard) parameters (#14810)"
     (mt/dataset sample-dataset
       (is (schema= {:status   (s/eq :completed)
@@ -1051,7 +1050,7 @@
                                      :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]
                                      :value  "Widget"}]})))))))
 
-(deftest nested-queries-with-expressions-and-joins-test
+(deftest ^:parallel nested-queries-with-expressions-and-joins-test
   ;; sample-dataset doesn't work on Redshift yet -- see #14784
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join) :redshift)
     (mt/dataset sample-dataset
@@ -1104,7 +1103,7 @@
                                     :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
                                     :fk-field-id  %product_id}]}))))))))
 
-(deftest multi-level-aggregations-with-post-aggregation-filtering-test
+(deftest ^:parallel multi-level-aggregations-with-post-aggregation-filtering-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :nested-queries) :redshift) ; sample-dataset doesn't work on Redshift yet -- see #14784
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset sample-dataset

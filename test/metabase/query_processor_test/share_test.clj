@@ -7,7 +7,7 @@
             [metabase.query-processor-test :refer :all]
             [metabase.test :as mt]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= [[0.94]]
            (mt/formatted-rows [2.0]
@@ -61,7 +61,7 @@
                  (mt/run-mbql-query venues
                    {:aggregation [[:metric metric-id]]}))))))))
 
-(deftest expressions-test
+(deftest ^:parallel expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (testing "Share containing an expression"
       (is (= [[2 0.0]
