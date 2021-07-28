@@ -46,7 +46,7 @@ Metabase creates a unique temporary name like `made_up_name_01` to make sure the
 
 2. Sandboxing isn't implemented for SQL questions: any user with permissions to view the question can see all the results.
 
-3. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data, so all results will be shown. (We recommend that you do *not* using public sharing when you are sandboxing data.)
+3. Public questions can't be sandboxed: if someone doesn't have to log in to view the question, Metabase doesn't have user properties or group properties available for filtering the data, so all results will be shown. (We recommend that you *avoid* public sharing when you are sandboxing data.)
 
 4. If the administrator didn't restrict access to the underlying table when setting up sandboxing, people will be able to see the original data. You can check this by going into the Admin Panel and viewing Permissions for the table in question.
 
