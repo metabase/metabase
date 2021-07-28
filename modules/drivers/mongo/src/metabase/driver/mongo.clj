@@ -215,8 +215,6 @@
                  :native-parameters]]
   (defmethod driver/supports? [:mongo feature] [_ _] true))
 
-(defmethod driver/supports? [:mongo :expressions] [driver _] true)
-
 (defmethod driver/mbql->native :mongo
   [_ query]
   (qp/mbql->native query))
