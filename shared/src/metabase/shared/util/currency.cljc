@@ -1,4 +1,5 @@
-(ns metabase.shared.util.currency)
+(ns metabase.shared.util.currency
+  "The list of currencies, and associated metadata, used by Metabase for number formatting.")
 
 (def ^:export currency-list
   [[:USD {:symbol "$",
@@ -843,4 +844,5 @@
           :name_plural "Zambian kwachas"}]])
 
 (def ^:export currency
+  "Returns the list of currencies supported by Metabase, with associated metadata."
   #?(:cljs (clj->js currency-list)))
