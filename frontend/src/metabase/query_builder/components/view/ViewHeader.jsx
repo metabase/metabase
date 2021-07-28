@@ -4,18 +4,16 @@ import { t } from "ttag";
 import cx from "classnames";
 import { Box } from "grid-styled";
 
-import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-
+import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton";
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionEntityMenu from "./QuestionEntityMenu";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
@@ -25,6 +23,7 @@ import { QuestionSummarizeWidget } from "./QuestionSummaries";
 
 import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
+import { SavedQuestionHeaderButtonContainer } from "./ViewHeader.styled";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -44,6 +43,7 @@ const viewTitleHeaderPropTypes = {
   isNativeEditorOpen: PropTypes.bool,
   isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
+  isShowingQuestionDetailsSidebar: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -53,6 +53,8 @@ const viewTitleHeaderPropTypes = {
   onCloseSummary: PropTypes.func,
   onAddFilter: PropTypes.func,
   onCloseFilter: PropTypes.func,
+  onOpenQuestionDetails: PropTypes.func,
+  onCloseQuestionDetails: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
@@ -114,10 +116,12 @@ export class ViewTitleHeader extends React.Component {
       isShowingFilterSidebar,
       onAddFilter,
       onCloseFilter,
+      isShowingQuestionDetailsSidebar,
+      onOpenQuestionDetails,
+      onCloseQuestionDetails,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
-    const description = question.description();
     const lastEditInfo = question.lastEditInfo();
 
     const isStructured = question.isStructured();
@@ -142,41 +146,34 @@ export class ViewTitleHeader extends React.Component {
         {isSaved ? (
           <div>
             <div className="flex align-center">
-              <ViewHeading className="mr1">
-                {question.displayName()}
-              </ViewHeading>
-              {description && (
-                <Icon
-                  name="info"
-                  className="text-light mx1 cursor-pointer text-brand-hover"
-                  size={18}
-                  tooltip={description}
+              <SavedQuestionHeaderButtonContainer>
+                <SavedQuestionHeaderButton
+                  question={question}
+                  isActive={isShowingQuestionDetailsSidebar}
+                  onClick={
+                    isShowingQuestionDetailsSidebar
+                      ? onCloseQuestionDetails
+                      : onOpenQuestionDetails
+                  }
                 />
-              )}
-              <QuestionEntityMenu
-                question={question}
-                onOpenModal={onOpenModal}
-              />
+              </SavedQuestionHeaderButtonContainer>
               {lastEditInfo && (
                 <LastEditInfoLabel
                   className="ml1 text-light"
                   item={question.card()}
+                  onClick={() => onOpenModal("history")}
                 />
               )}
             </div>
-            <ViewSubHeading className="flex align-center flex-wrap">
+            <ViewSubHeading className="flex align-center flex-wrap pt1">
               <CollectionBadge
                 className="mb1"
                 collectionId={question.collectionId()}
               />
 
               {QuestionDataSource.shouldRender({ question }) && (
-                <span className="mb1 mx2 text-light text-smaller">•</span>
-              )}
-
-              {QuestionDataSource.shouldRender({ question }) && (
                 <QuestionDataSource
-                  className="mb1"
+                  className="ml3 mb1"
                   question={question}
                   subHead
                 />

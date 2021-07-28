@@ -8,9 +8,23 @@
             [yaml.core :as yaml]))
 
 (defn- driver-plugin-manifest [driver]
-  (let [manifest (io/file (format "modules/drivers/%s/resources/metabase-plugin.yaml" (name driver)))]
-    (when (.exists manifest)
-      (yaml/parse-string (slurp manifest)))))
+  (let [nm    (name driver)
+        paths (mapv
+                #(format "%s/drivers/%s/resources/metabase-plugin.yaml" % nm)
+                ;; look for driver definition in both the regular modules directory, as well as in a top-level
+                ;; test_modules directory, specifically designed for test driver definitions
+                ["modules" "test_modules"])]
+    (first (filter some?
+                   (for [path paths
+                         :let [manifest (io/file path)]
+                         :when (.exists manifest)]
+                     (do
+                       (println (u/format-color
+                                  'green
+                                  "Loading plugin manifest (from %s) for driver as if it were a real plugin: %s"
+                                  path
+                                  nm))
+                       (yaml/parse-string (slurp manifest))))))))
 
 (defn- driver-parents [driver]
   (let [parents-file (io/file (format "modules/drivers/%s/parents" (name driver)))]
@@ -31,7 +45,6 @@
    (doseq [driver drivers
            :let   [info (driver-plugin-manifest driver)]
            :when  info]
-     (println (u/format-color 'green "Loading plugin manifest for driver as if it were a real plugin: %s" driver))
      (plugins.init/init-plugin-with-info! info)
      ;; ok, now we need to make sure we load any depenencies for those drivers as well (!)
      (load-plugin-manifests! (driver-parents driver)))))

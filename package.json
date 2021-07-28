@@ -99,6 +99,8 @@
     "@babel/standalone": "^7.4.5",
     "@cypress/skip-test": "^2.6.0",
     "@cypress/webpack-preprocessor": "^4.1.0",
+    "@percy/cli": "^1.0.0-beta.48",
+    "@percy/cypress": "^2.3.4",
     "@slack/client": "^3.5.4",
     "@testing-library/cypress": "^5.0.2",
     "@testing-library/dom": "^7.29.0",
@@ -160,7 +162,7 @@
     "webpack-notifier": "^1.8.0",
     "webpack-postcss-tools": "^1.1.2",
     "xhr-mock": "^2.4.1",
-    "xlsx": "^0.16.8",
+    "xlsx": "^0.17.0",
     "yaml-lint": "^1.2.4"
   },
   "scripts": {
@@ -208,6 +210,9 @@
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-no-build --open",
     "test-cypress-no-build": "yarn && babel-node ./frontend/test/__runner__/run_cypress_tests.js",
+    "test-visual": "percy exec -- yarn build && ./bin/build-for-test && yarn test-visual-no-build",
+    "test-visual-no-build": "yarn test-cypress-no-build --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
+    "test-visual-open": "percy exec -- yarn test-cypress-open --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "prepare": "husky install"
   },
   "lint-staged": {

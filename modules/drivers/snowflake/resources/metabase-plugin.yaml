@@ -25,9 +25,6 @@ driver:
         - name: db
           required: true
           display-name: Database name (case sensitive)
-    - name: regionid
-      display-name: Region ID
-      placeholder: my_region
     - name: schema
       display-name: Schema
       placeholder: my_schema

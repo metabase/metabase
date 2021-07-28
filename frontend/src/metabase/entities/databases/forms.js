@@ -278,12 +278,50 @@ function getEngineFormFields(engine, details, id) {
     });
 }
 
-const ENGINE_OPTIONS = Object.entries(MetabaseSettings.get("engines") || {})
+const ENGINES = MetabaseSettings.get("engines", {});
+const ENGINE_OPTIONS = Object.entries(ENGINES)
   .map(([engine, info]) => ({
     name: info["driver-name"],
     value: engine,
   }))
   .sort((a, b) => a.name.localeCompare(b.name));
+
+// use top level constant for engines so we only need to compute these maps once
+const ENGINE_SUPERSEDES_MAPS = Object.keys(ENGINES).reduce(
+  (acc, engine) => {
+    const newEngine = ENGINES[engine]["superseded-by"];
+    if (newEngine) {
+      acc.supersedes[newEngine] = engine;
+      acc.superseded_by[engine] = newEngine;
+    }
+    return acc;
+  },
+  { supersedes: {}, superseded_by: {} },
+);
+
+/**
+ * Returns the options to show in the engines selection widget. An engine is available to be selected if either
+ *  - it is not superseded by any other engine
+ *  - it is the selected engine (i.e. someone is already using it)
+ *  - it is superseded by some engine, which happens to be the currently selected one
+ *
+ * The idea behind this behavior is to only show someone a "legacy" driver if they have at least selected the one that
+ * will replace it first, at which point they can "fall back" on the legacy one if needed.
+ *
+ * @param currentEngine the current (selected engine)
+ * @returns the filtered engine options to be shown in the selection widget
+ */
+function getEngineOptions(currentEngine) {
+  return ENGINE_OPTIONS.filter(engine => {
+    const engineName = engine.value;
+    const newDriver = ENGINE_SUPERSEDES_MAPS["superseded_by"][engineName];
+    return (
+      typeof newDriver === "undefined" ||
+      newDriver === currentEngine ||
+      engineName === currentEngine
+    );
+  });
+}
 
 const forms = {
   details: {
@@ -292,7 +330,7 @@ const forms = {
         name: "engine",
         title: t`Database type`,
         type: "select",
-        options: ENGINE_OPTIONS,
+        options: getEngineOptions(engine),
         placeholder: t`Select a database`,
       },
       {
@@ -382,3 +420,5 @@ const SCHEDULING_FIELDS = new Set([
 ]);
 
 export default forms;
+export const engineSupersedesMap = ENGINE_SUPERSEDES_MAPS;
+export const allEngines = ENGINES;

@@ -31,6 +31,7 @@ import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
+import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
 
 import Notebook from "../notebook/Notebook";
 import { Motion, spring } from "react-motion";
@@ -99,10 +100,12 @@ export default class View extends React.Component {
       isShowingSummarySidebar,
       isShowingFilterSidebar,
       isShowingSnippetSidebar,
+      isShowingQuestionDetailsSidebar,
       queryBuilderMode,
       mode,
       fitClassNames,
       height,
+      onOpenModal,
     } = this.props;
     const {
       aggregationIndex,
@@ -157,6 +160,8 @@ export default class View extends React.Component {
       />
     ) : isShowingChartTypeSidebar ? (
       <ChartTypeSidebar {...this.props} onClose={this.props.onCloseChartType} />
+    ) : isShowingQuestionDetailsSidebar ? (
+      <QuestionDetailsSidebar question={question} onOpenModal={onOpenModal} />
     ) : null;
 
     const rightSideBar =

@@ -278,11 +278,8 @@ export default class QueryBuilder extends Component {
       uiControls: { modal, recentlySaved },
     } = this.props;
 
-    // const Panel = queryBuilderMode === "notebook" ? Notebook : View;
-    const Panel = View;
-
     return (
-      <Panel
+      <View
         {...this.props}
         // NOTE: these were lifted from QueryHeader. Move to Redux?
         modal={modal}

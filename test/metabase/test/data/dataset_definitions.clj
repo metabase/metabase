@@ -209,5 +209,4 @@
        (t/local-time t)                 ; time
        (t/offset-time t)                ; time-ltz
        (t/offset-time t)                ; time-tz
-       cnt                              ; num-crows
-       ])]])
+       cnt])]])                              ; num-crows
