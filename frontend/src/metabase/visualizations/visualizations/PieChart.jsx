@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import styles from "./PieChart.css";
 import { t } from "ttag";
 import ChartTooltip from "../components/ChartTooltip";
-import ChartWithLegend from "../components/legend/ChartWithLegend";
+import ChartWithLegend from "../components/legend/LegendContainer";
 
 import {
   ChartSettingsError,

@@ -2,10 +2,10 @@ import React from "react";
 import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import {
-  ChartContent,
-  ChartWithLegendRoot,
-  LegendContent,
-} from "./ChartWithLegend.styled";
+  ChartPanel,
+  LegendContainerRoot,
+  LegendPanel,
+} from "./LegendContainer.styled";
 import Legend from "./Legend";
 
 const MIN_WIDTH_PER_SERIES = 100;
@@ -27,7 +27,7 @@ type GridSize = {
   height: number,
 };
 
-const ChartWithLegend = (props: Props) => {
+const LegendContainer = (props: Props) => {
   const {
     className,
     titles,
@@ -43,15 +43,15 @@ const ChartWithLegend = (props: Props) => {
   const isVisible = showLegend && (!isDashboard || !(isVertical && isCompact));
 
   return (
-    <ChartWithLegendRoot className={className} isVertical={isVertical}>
+    <LegendContainerRoot className={className} isVertical={isVertical}>
       {isVisible && (
-        <LegendContent isVertical={isVertical}>
+        <LegendPanel isVertical={isVertical}>
           <Legend {...legendProps} titles={titles} isVertical={isVertical} />
-        </LegendContent>
+        </LegendPanel>
       )}
-      <ChartContent>{children}</ChartContent>
-    </ChartWithLegendRoot>
+      <ChartPanel>{children}</ChartPanel>
+    </LegendContainerRoot>
   );
 };
 
-export default _.compose(ExplicitSize())(ChartWithLegend);
+export default _.compose(ExplicitSize())(LegendContainer);

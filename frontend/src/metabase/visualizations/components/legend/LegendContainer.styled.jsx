@@ -1,12 +1,12 @@
 import styled from "styled-components";
 
-export const ChartWithLegendRoot = styled.div`
+export const LegendContainerRoot = styled.div`
   display: flex;
   flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
   min-height: 0;
 `;
 
-export const LegendContent = styled.div`
+export const LegendPanel = styled.div`
   min-width: ${({ isVertical }) => (isVertical ? "4rem" : "")};
   max-width: ${({ isVertical }) => (isVertical ? "20rem" : "")};
   overflow-y: ${({ isVertical }) => (isVertical ? "auto" : "")};
@@ -14,7 +14,7 @@ export const LegendContent = styled.div`
   margin-bottom: ${({ isVertical }) => (isVertical ? "" : "1rem")};
 `;
 
-export const ChartContent = styled.div`
+export const ChartPanel = styled.div`
   display: flex;
   flex: 1 1 auto;
   position: relative;
