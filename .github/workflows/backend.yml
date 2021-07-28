@@ -96,9 +96,15 @@ jobs:
     - name: Compile Java & AOT Sources
       run: |
         clojure -X:deps prep && cd modules/drivers && clojure -X:deps prep && cd ../..
-    # TODO -- this can be deleted once things are working correctly.
+    # DEBUG NOCOMMIT
     - name: Check Clojure sources
       run: |
-        clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check
+        clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check 2>&1
+    - name: Check Clojure sources [2]
+      run: |
+        clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check 2>&1 | grep Reflection
+    - name: Check Clojure sources [3]
+      run: |
+        clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check 2>&1 | grep Reflection | grep metabase
     - run: ./bin/reflection-linter
       name: Run reflection warnings checker
