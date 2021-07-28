@@ -69,7 +69,7 @@ For quick answers to common questions, check out our [Frequently Asked Questions
 
 ### Upgrading Metabase
 
-Metabase adds new features and squashes bugs with each release. Upgrading to the latest and greatest may resolve your issue. See [Upgrading Metabase][upgrade] If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
+Metabase adds new features and squashes bugs with each release. [Upgrading to the latest and greatest][upgrade] may resolve your issue. If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
 
 [appdb]: ./application-database.html
 [bugs]: ./bugs.html
