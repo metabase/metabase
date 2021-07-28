@@ -213,7 +213,7 @@
                (search-request-data :crowberto :q "test"))))))
   (testing "It prioritizes exact matches"
     (with-search-items-in-root-collection "test"
-      (binding [search-config/*db-max-results* 1]
+      (with-redefs [search-config/*db-max-results* 1]
         (is (= [test-collection]
                (search-request-data :crowberto :q "test collection"))))))
   (testing "It limits matches properly"
