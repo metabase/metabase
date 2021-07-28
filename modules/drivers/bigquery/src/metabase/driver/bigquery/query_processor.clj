@@ -39,7 +39,7 @@
   [s]
   (boolean
    (and (string? s)
-        (re-matches #"^([a-zA-Z_\-.][a-zA-Z_0-9]*){1,128}$" s))))
+        (re-matches #"^([a-zA-Z_\-\.][a-zA-Z_0-9]*){1,128}$" s))))
 
 (def ^:private BigQueryIdentifierString
   (s/pred valid-bigquery-identifier? "Valid BigQuery identifier"))
