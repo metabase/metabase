@@ -68,8 +68,13 @@ jobs:
               ref: "heads/release-x.",
             });
 
-            const getVersionFromBranch = branch => parseInt(branch.match(/release-x\.(.*?)\.x/)[1]);
-            const latestReleaseBranch = releaseBranches.data.reduce((prev, current) => getVersionFromBranch(prev.ref) > getVersionFromBranch(current.ref) ? prev : current);
+            const getVersionFromBranch = branch => {
+              const match = branch.match(/release-x\.(.*?)\.x/);
+              return match && parseInt(match[1])
+            };
+            const latestReleaseBranch = releaseBranches.data
+              .filter(branch => getVersionFromBranch(branch.ref) !== null)
+              .reduce((prev, current) => getVersionFromBranch(prev.ref) > getVersionFromBranch(current.ref) ? prev : current);
             const latestReleaseBranchName = latestReleaseBranch.ref.replace(/^refs\/heads\//, "");
 
             console.log(`Latest release branch: ${latestReleaseBranchName}`)
