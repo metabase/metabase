@@ -200,7 +200,6 @@ class Overworld extends React.Component {
               <CollectionList
                 collections={this.props.list}
                 analyticsContext="Homepage"
-                asCards={true}
               />
             ) : (
               <Box className="text-centered">

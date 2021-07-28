@@ -49,6 +49,7 @@
                  :effective_ancestors []
                  :can_write           true
                  :name                "Our analytics"
+                 :authority_level     nil
                  :id                  "root"}
                 (assoc (into {} collection) :can_write true)]
                (for [collection (mt/user-http-request :crowberto :get 200 "collection")
@@ -305,15 +306,19 @@
               true))
           items))
 
-(defn- default-item [item-map]
-  (merge {:id true, :collection_position nil} item-map))
+(defn- default-item [{:keys [model] :as item-map}]
+  (merge {:id true, :collection_position nil}
+         (when (= model "collection")
+           {:authority_level nil})
+         item-map))
 
 (defn- collection-item [collection-name & {:as extra-keypairs}]
-  (merge {:id          true
-          :description nil
-          :can_write   (str/ends-with? collection-name "Personal Collection")
-          :model       "collection"
-          :name        collection-name}
+  (merge {:id              true
+          :description     nil
+          :can_write       (str/ends-with? collection-name "Personal Collection")
+          :model           "collection"
+          :authority_level nil
+          :name            collection-name}
          extra-keypairs))
 
 (deftest collection-items-test
@@ -508,7 +513,21 @@
         (is (= ["pass" "pass"]
                (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card"))
                     :data
-                    (map (comp :last_name :last-edit-info)))))))))
+                    (map (comp :last_name :last-edit-info)))))))
+    (testing "Results include authority_level"
+      (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
+                      Collection [_ {:name "subcollection"
+                                     :location (format "/%d/" collection-id)
+                                     :authority_level "official"}]
+                      Card       [_ {:name "card" :collection_id collection-id}]
+                      Dashboard  [_ {:name "dash" :collection_id collection-id}]]
+        (let [items (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?models=dashboard&models=card&models=collection"))
+                         :data)]
+          (is (= #{{:name "card"}
+                   {:name "dash"}
+                   {:name "subcollection" :authority_level "official"}}
+                 (into #{} (map #(select-keys % [:name :authority_level]))
+                       items))))))))
 
 (deftest children-sort-clause-test
   (testing "Default sort"
@@ -579,7 +598,11 @@
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
-    :effective_ancestors [{:metabase.models.collection.root/is-root? true, :name "Our analytics", :id "root", :can_write true}]
+    :effective_ancestors [{:metabase.models.collection.root/is-root? true
+                           :name "Our analytics"
+                           :id "root"
+                           :authority_level nil
+                           :can_write true}]
     :effective_location  "/"
     :parent_id           nil
     :id                  (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
@@ -763,6 +786,7 @@
               :can_write           true
               :effective_location  nil
               :effective_ancestors []
+              :authority_level     nil
               :parent_id           nil}
              (with-some-children-of-collection nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))
@@ -810,20 +834,22 @@
                          mt/boolean-ids-and-timestamps ))))))))
 
     (testing "So I suppose my Personal Collection should show up when I fetch the Root Collection, shouldn't it..."
-      (is (= [{:name        "Rasta Toucan's Personal Collection"
-               :id          (u/the-id (collection/user->personal-collection (mt/user->id :rasta)))
-               :description nil
-               :model       "collection"
-               :can_write   true}]
+      (is (= [{:name            "Rasta Toucan's Personal Collection"
+               :id              (u/the-id (collection/user->personal-collection (mt/user->id :rasta)))
+               :description     nil
+               :model           "collection"
+               :authority_level nil
+               :can_write       true}]
              (->> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection"))))))
 
     (testing "For admins, only return our own Personal Collection (!)"
-      (is (= [{:name        "Crowberto Corv's Personal Collection"
-               :id          (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
-               :description nil
-               :model       "collection"
-               :can_write   true}]
+      (is (= [{:name            "Crowberto Corv's Personal Collection"
+               :id              (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
+               :description     nil
+               :model           "collection"
+               :authority_level nil
+               :can_write       true}]
              (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection")))))
 
@@ -831,11 +857,12 @@
         (mt/with-temp Collection [_ {:name     "Lucky's Sub-Collection"
                                      :location (collection/children-location
                                                 (collection/user->personal-collection (mt/user->id :lucky)))}]
-          (is (= [{:name        "Crowberto Corv's Personal Collection"
-                   :id          (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
-                   :description nil
-                   :model       "collection"
-                   :can_write   true}]
+          (is (= [{:name            "Crowberto Corv's Personal Collection"
+                   :id              (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))
+                   :description     nil
+                   :model           "collection"
+                   :authority_level nil
+                   :can_write       true}]
                  (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                       (filter #(str/includes? (:name %) "Personal Collection"))))))))
 
@@ -1046,7 +1073,7 @@
                         :color (s/eq "#f38630")
                         :name (s/eq "foo")
                         :personal_owner_id (s/eq nil)
-                        :authority_level (s/eq nil)
+                        :authority_level (s/eq "official")
                         :id s/Int
                         :location (s/eq "/")
                         :namespace (s/eq nil)}

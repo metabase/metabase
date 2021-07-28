@@ -9,10 +9,11 @@ import {
   ItemIcon,
 } from "./SegmentedControl.styled";
 
-const optionShape = PropTypes.shape({
+export const optionShape = PropTypes.shape({
   name: PropTypes.node,
-  value: PropTypes.any.isRequired,
+  value: PropTypes.any,
   icon: PropTypes.string,
+  iconSize: PropTypes.number,
 
   // Expects a color alias, not a color code
   // Example: brand, accent1, success
@@ -28,6 +29,8 @@ const propTypes = {
   onChange: PropTypes.func,
   fullWidth: PropTypes.bool,
 };
+
+const DEFAULT_OPTION_ICON_SIZE = 16;
 
 export function SegmentedControl({
   name: nameFromProps,
@@ -64,7 +67,11 @@ export function SegmentedControl({
               compact={iconOnly}
             >
               {option.icon && (
-                <ItemIcon name={option.icon} iconOnly={iconOnly} />
+                <ItemIcon
+                  name={option.icon}
+                  size={option.iconSize || DEFAULT_OPTION_ICON_SIZE}
+                  iconOnly={iconOnly}
+                />
               )}
               <SegmentedControlRadio
                 id={id}
