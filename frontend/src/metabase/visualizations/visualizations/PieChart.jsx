@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import styles from "./PieChart.css";
 import { t } from "ttag";
 import ChartTooltip from "../components/ChartTooltip";
-import ChartWithLegend from "../components/legend/ChartWithLegend";
+import LegendLayout from "../components/legend/LegendLayout";
 
 import {
   ChartSettingsError,
@@ -53,6 +53,7 @@ export default class PieChart extends Component {
   static identifier = "pie";
   static iconName = "pie";
 
+  static noHeader = true;
   static minSize = { width: 4, height: 4 };
 
   static isSensible({ cols, rows }) {
@@ -211,6 +212,7 @@ export default class PieChart extends Component {
 
   render() {
     const {
+      card,
       series,
       hovered,
       onHoverChange,
@@ -219,7 +221,9 @@ export default class PieChart extends Component {
       className,
       gridSize,
       settings,
+      showTitle,
       isDashboard,
+      onChangeCardAndRun,
     } = this.props;
 
     const [
@@ -412,14 +416,21 @@ export default class PieChart extends Component {
       isClickable && slices[index] !== otherSlice;
 
     return (
-      <ChartWithLegend
+      <LegendLayout
         className={className}
-        titles={legendTitles}
+        title={settings["card.title"] || card.title}
+        description={settings["card.description"]}
+        items={legendTitles}
         colors={legendColors}
         hovered={hovered}
         gridSize={gridSize}
+        showTitle={showTitle}
         showLegend={settings["pie.show_legend"]}
         isDashboard={isDashboard}
+        onTitleSelect={() =>
+          onChangeCardAndRun &&
+          onChangeCardAndRun({ nextCard: card, seriesIndex: 0 })
+        }
         onHoverChange={d =>
           onHoverChange &&
           onHoverChange(d && { ...d, ...hoverForIndex(d.index) })
@@ -481,7 +492,7 @@ export default class PieChart extends Component {
           </div>
         </div>
         <ChartTooltip series={series} hovered={hovered} />
-      </ChartWithLegend>
+      </LegendLayout>
     );
   }
 }

@@ -1,17 +1,21 @@
 import styled from "styled-components";
 
-export const ChartWithLegendRoot = styled.div`
+export const LegendLayoutRoot = styled.div`
   display: flex;
-  flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
+  flex-direction: column;
   padding: 1rem;
   min-height: 0;
-
-  &:not(:first-child) {
-    padding-top: 0;
-  }
 `;
 
 export const LegendContent = styled.div`
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
+  margin-top: ${({ showTitle }) => (showTitle ? "1rem" : "")};
+  min-height: 0;
+`;
+
+export const LegendPanel = styled.div`
   min-width: ${({ isVertical }) => (isVertical ? "4rem" : "")};
   max-width: ${({ isVertical }) => (isVertical ? "20rem" : "")};
   overflow-y: ${({ isVertical }) => (isVertical ? "auto" : "")};
@@ -19,7 +23,8 @@ export const LegendContent = styled.div`
   margin-bottom: ${({ isVertical }) => (isVertical ? "" : "1rem")};
 `;
 
-export const ChartContent = styled.div`
+export const ChartPanel = styled.div`
+  display: flex;
   flex: 1 1 auto;
   position: relative;
 `;

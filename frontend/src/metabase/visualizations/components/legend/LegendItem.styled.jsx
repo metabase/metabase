@@ -19,9 +19,14 @@ export const LegendItemLabel = styled.div`
   align-items: baseline;
   min-width: 0;
   color: ${colors["text-dark"]};
+  font-weight: bold;
   opacity: ${({ isMuted }) => (isMuted ? "0.4" : "1")};
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   transition: opacity 0.25s linear;
+
+  &:hover {
+    color: ${colors["brand"]};
+  }
 `;
 
 export const LegendItemDot = styled.div`
@@ -49,13 +54,6 @@ export const LegendItemSubtitle = styled.span`
     margin-left: auto;
     padding-left: 0.5rem;
   }
-`;
-
-export const LegendItemDescription = styled.div`
-  display: flex;
-  align-items: center;
-  color: ${colors["text-medium"]};
-  margin-left: 0.5rem;
 `;
 
 export const LegendItemRemoveIcon = styled(Icon).attrs({

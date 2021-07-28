@@ -1,6 +1,6 @@
 import React, { memo, useCallback } from "react";
+import PropTypes from "prop-types";
 import {
-  LegendItemDescription,
   LegendItemDot,
   LegendItemLabel,
   LegendItemRemoveIcon,
@@ -8,45 +8,38 @@ import {
   LegendItemSubtitle,
   LegendItemTitle,
 } from "./LegendItem.styled";
-import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 
-type Props = {
-  title: string | string[],
-  index: number,
-  color: string,
-  description?: string,
-  isMuted?: boolean,
-  isVertical?: boolean,
-  showDot?: boolean,
-  showTitle?: boolean,
-  showTooltip?: boolean,
-  showDotTooltip?: boolean,
-  infoClassName?: string,
-  onHoverChange: ({ index: number, element: Element }) => void,
-  onSelectSeries: (event: Event, index: number) => void,
-  onRemoveSeries: (event: Event, index: number) => void,
+const propTypes = {
+  title: PropTypes.oneOfType(PropTypes.string, PropTypes.array),
+  index: PropTypes.number,
+  color: PropTypes.string,
+  isMuted: PropTypes.bool,
+  isVertical: PropTypes.bool,
+  showDot: PropTypes.bool,
+  showTitle: PropTypes.bool,
+  showTooltip: PropTypes.bool,
+  showDotTooltip: PropTypes.bool,
+  onHoverChange: PropTypes.func,
+  onSelectSeries: PropTypes.func,
+  onRemoveSeries: PropTypes.func,
 };
 
-const LegendItem = (props: Props) => {
-  const {
-    title,
-    index,
-    color,
-    description,
-    isMuted = false,
-    isVertical = false,
-    showDot = true,
-    showTitle = true,
-    showTooltip = false,
-    showDotTooltip = false,
-    infoClassName,
-    onHoverChange,
-    onSelectSeries,
-    onRemoveSeries,
-  } = props;
-
+const LegendItem = ({
+  title,
+  index,
+  color,
+  isMuted = false,
+  isVertical = false,
+  showDot = true,
+  showTitle = true,
+  showTooltip = false,
+  showDotTooltip = false,
+  onHoverChange,
+  onSelectSeries,
+  onRemoveSeries,
+}) => {
   const handleItemClick = useCallback(
     event => {
       onSelectSeries && onSelectSeries(event, index);
@@ -96,13 +89,6 @@ const LegendItem = (props: Props) => {
                 {getTitleNodes(title)}
               </Ellipsified>
             )}
-            {description && (
-              <LegendItemDescription>
-                <Tooltip tooltip={description} maxWidth="22em">
-                  <Icon className={infoClassName} name="info" />
-                </Tooltip>
-              </LegendItemDescription>
-            )}
           </LegendItemTitle>
         )}
       </LegendItemLabel>
@@ -128,5 +114,7 @@ const getTitleNodes = title => {
     <LegendItemSubtitle key={index}>{text}</LegendItemSubtitle>
   ));
 };
+
+LegendItem.propTypes = propTypes;
 
 export default memo(LegendItem);
