@@ -23,9 +23,9 @@
   (delay
    ;; If the Clojure runtime base loader is already an instance of DynamicClassLoader (e.g. it is something like
    ;; `clojure.lang.Compiler/LOADER` we can go ahead and use that in the future. This is usually the case when doing
-   ;; REPL-based development or running via the Clojure CLI; when running from the UberJAR
-   ;; `clojure.lang.Compiler/LOADER` is not set and thus this will return the current thread's context classloader,
-   ;; which is usually just the System classloader.
+   ;; REPL-based development or running via `lein`; when running from the UberJAR `clojure.lang.Compiler/LOADER` is
+   ;; not set and thus this will return the current thread's context classloader, which is usually just the System
+   ;; classloader.
    ;;
    ;; The base loader is what Clojure ultimately uses to loading namespaces with `require` so adding URLs to it is
    ;; they way to go, if we can)

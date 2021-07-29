@@ -10,7 +10,7 @@
   []
   (str "# API Documentation for Metabase"
        "\n\n"
-       "_This file was generated from source comments by `clojure -M:run api-documentation`_."
+       "_This file was generated from source comments by `lein run api-documentation`_."
        "\n\n"
        "Check out an introduction to the "
        "[Metabase API](https://www.metabase.com/learn/developing-applications/advanced-metabase/metabase-api.html)."

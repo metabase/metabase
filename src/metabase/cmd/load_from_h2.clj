@@ -1,7 +1,7 @@
 (ns metabase.cmd.load-from-h2
   "Commands for loading data from an H2 file into another database. Run this with
 
-    clojure -M:run load-from-h2
+    lein run load-from-h2
 
   or
 
@@ -12,11 +12,11 @@
     # Postgres
     psql -c 'DROP DATABASE IF EXISTS metabase;'
     psql -c 'CREATE DATABASE metabase;'
-    MB_DB_TYPE=postgres MB_DB_HOST=localhost MB_DB_PORT=5432 MB_DB_USER=camsaul MB_DB_DBNAME=metabase clojure -M:run load-from-h2
+    MB_DB_TYPE=postgres MB_DB_HOST=localhost MB_DB_PORT=5432 MB_DB_USER=camsaul MB_DB_DBNAME=metabase lein run load-from-h2
 
     # MySQL
     mysql -u root -e 'DROP DATABASE IF EXISTS metabase; CREATE DATABASE metabase;'
-    MB_DB_TYPE=mysql MB_DB_HOST=localhost MB_DB_PORT=3305 MB_DB_USER=root MB_DB_DBNAME=metabase clojure -M:run load-from-h2"
+    MB_DB_TYPE=mysql MB_DB_HOST=localhost MB_DB_PORT=3305 MB_DB_USER=root MB_DB_DBNAME=metabase lein run load-from-h2"
   (:require [metabase.cmd.copy :as copy]
             [metabase.cmd.copy.h2 :as copy.h2]
             [metabase.db.connection :as mdb.conn]
