@@ -44,7 +44,9 @@ function ensurePieChartRendered(rows, totalValue) {
 
     // legend
     rows.forEach((name, i) => {
-      cy.contains(name).should("be.visible");
+      cy.findAllByTestId("legend-item")
+        .contains(name)
+        .should("be.visible");
     });
   });
 }
