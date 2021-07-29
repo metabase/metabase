@@ -425,7 +425,12 @@ export default class PieChart extends Component {
     };
 
     return (
-      <div className={cx("flex flex-column p2", className)}>
+      <div
+        className={cx(
+          "flex flex-column shrink-below-content-size p2",
+          className,
+        )}
+      >
         {showTitle && (
           <LegendCaption
             className="pb2"
@@ -435,7 +440,6 @@ export default class PieChart extends Component {
           />
         )}
         <LegendLayout
-          className="flex-full"
           labels={legendTitles}
           colors={legendColors}
           hovered={hovered}
