@@ -6,6 +6,7 @@
             [metabase.query-processor.streaming.common :as common]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.shared.models.visualization-settings :as mb.viz]
+            [metabase.shared.util.currency :as currency]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
@@ -56,6 +57,36 @@
                            (doto (.createCellStyle workbook)
                              (.setDataFormat (cell-format style-name))))])))
 
+(defn- currency-suffix
+  [format-settings]
+  (when (= (::mb.viz/currency-style format-settings) "name")
+    (let [currency-code (::mb.viz/currency format-settings "USD")
+          name-plural   (get-in currency/currency [(keyword currency-code) :name_plural])]
+      (str "\" " name-plural "\""))))
+
+(defn- currency-prefix
+  [format-settings]
+  (let [currency-code (::mb.viz/currency format-settings "USD")]
+    (condp = (::mb.viz/currency-style format-settings "symbol")
+      "symbol"
+      (if (currency/supports-symbol? currency-code)
+        (let [currency-symbol (get-in currency/currency [(keyword currency-code) :symbol])]
+          (str "[$" currency-symbol "]"))
+        ;; Fall back to using code if symbol isn't not supported on the Metabase frontend
+        (str "[$" currency-code "] "))
+
+      "code"
+      (str "[$" currency-code "] ")
+
+      "name"
+      nil)))
+
+(defn- currency-format-string
+  [base-string format-settings]
+  (let [prefix (currency-prefix format-settings)
+        suffix (currency-suffix format-settings)]
+    (str prefix base-string suffix)))
+
 ;; If any of these settings are present, we should format the column as a number
 (def ^:private number-viz-settings
   #{::mb.viz/number-style
@@ -71,13 +102,17 @@
   "Use General for decimal number types that have no other format settings defined
   aside from prefix, suffix or scale."
   [format-settings]
-  (and (or (= (::mb.viz/number-style format-settings) "decimal")
-           (not (::mb.viz/number-style format-settings)))
-       (not (seq (dissoc format-settings
-                         ::mb.viz/number-style
-                         ::mb.viz/scale
-                         ::mb.viz/prefix
-                         ::mb.viz/suffix)))))
+  (and
+   ;; This is a decimal number (not a currency, percentage or scientific notation)
+   (or (= (::mb.viz/number-style format-settings) "decimal")
+       (not (::mb.viz/number-style format-settings)))
+   ;;
+   ;; Custom number formatting options are nto set
+   (not (seq (dissoc format-settings
+                     ::mb.viz/number-style
+                     ::mb.viz/scale
+                     ::mb.viz/prefix
+                     ::mb.viz/suffix)))))
 
 (defn- number-format-string
   "Returns a format string for a number column corresponding to the given settings."
@@ -86,7 +121,7 @@
         (let [decimals (::mb.viz/decimals format-settings 2)
               base-string (if (general-number-format? format-settings)
                             "General"
-                            (apply str "0." (repeat decimals "0")))]
+                            (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0")))))]
           (condp = (::mb.viz/number-style format-settings)
             "percent"
             (str base-string "%")
@@ -95,8 +130,7 @@
             (str base-string "E+0")
 
             "currency"
-            ;; TODO
-            base-string
+            (currency-format-string base-string format-settings)
 
             "decimal"
             base-string

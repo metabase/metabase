@@ -1,6 +1,30 @@
 (ns metabase.shared.util.currency
   "The list of currencies, and associated metadata, used by Metabase for number formatting.")
 
+(defn supports-symbol?
+  "Currencies for which the Metabase frontend supports formatting with
+  its symbol, rather than just its code or name. This list is referenced
+  during XLSX export to achieve parity in currency formatting."
+  [currency-code]
+  (contains?
+   #{:USD  ;; US dollar
+     :CAD  ;; Canadian dollar
+     :EUR  ;; Euro
+     :AUD  ;; Australian dollar
+     :BRL  ;; Brazilian real
+     :CNY  ;; Chinese yuan
+     :GBP  ;; British pound
+     :HKD  ;; Hong Kong dollar
+     :ILS  ;; Israeli new shekel
+     :INR  ;; Indian rupee
+     :JPY  ;; Japanese yen
+     :KRW  ;; South Korean won
+     :MXN  ;; Mexican peso
+     :NZD  ;; New Zealand dollar
+     :TWD  ;; New Taiwan dollar
+     :VND} ;; Vietnamese dong
+   (keyword currency-code)))
+
 (def ^:private currency-list
   [[:USD {:symbol "$",
           :name "US Dollar",
