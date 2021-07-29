@@ -40,6 +40,8 @@ const LegendItem = ({
   onSelectSeries,
   onRemoveSeries,
 }) => {
+  const labelText = Array.isArray(label) ? label.join(", ") : label;
+
   const handleItemClick = useCallback(
     event => {
       onSelectSeries && onSelectSeries(event, index);
@@ -75,7 +77,7 @@ const LegendItem = ({
       >
         {showDot && (
           <Tooltip
-            tooltip={getLabelText(label)}
+            tooltip={labelText}
             isEnabled={showTooltip && showDotTooltip}
           >
             <LegendItemDot color={color} />
@@ -83,11 +85,9 @@ const LegendItem = ({
         )}
         {showLabel && (
           <LegendItemTitle showDot={showDot}>
-            {isVertical && getLabelNodes(label)}
+            {isVertical && labelText}
             {!isVertical && (
-              <Ellipsified showTooltip={showTooltip}>
-                {getLabelNodes(label)}
-              </Ellipsified>
+              <Ellipsified showTooltip={showTooltip}>{labelText}</Ellipsified>
             )}
           </LegendItemTitle>
         )}
@@ -95,24 +95,6 @@ const LegendItem = ({
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );
-};
-
-const getLabelText = label => {
-  if (!Array.isArray(label)) {
-    return label;
-  }
-
-  return label[0];
-};
-
-const getLabelNodes = label => {
-  if (!Array.isArray(label)) {
-    return label;
-  }
-
-  return label.map((text, index) => (
-    <LegendItemSubtitle key={index}>{text}</LegendItemSubtitle>
-  ));
 };
 
 LegendItem.propTypes = propTypes;
