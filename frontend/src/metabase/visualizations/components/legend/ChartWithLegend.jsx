@@ -5,16 +5,17 @@ import LegendCaption from "./LegendCaption";
 import { ChartCaption, ChartRoot } from "./ChartWithLegend.styled";
 
 const propTypes = {
+  className: PropTypes.string,
   showCaption: PropTypes.bool,
   ...LegendCaption.propTypes,
   ...LegendLayout.propTypes,
 };
 
-const ChartWithLegend = props => {
+const ChartWithLegend = ({ className, showCaption, ...otherProps }) => {
   return (
-    <ChartRoot>
-      {props.showCaption && <ChartCaption {...props} />}
-      <LegendLayout {...props} />
+    <ChartRoot className={className}>
+      {showCaption && <ChartCaption {...otherProps} />}
+      <LegendLayout {...otherProps} />
     </ChartRoot>
   );
 };
