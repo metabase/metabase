@@ -222,7 +222,6 @@ export default class Funnel extends Component {
           />
         )}
         <LegendLayout
-          className="flex-full"
           labels={labels}
           colors={colors}
           gridSize={gridSize}
