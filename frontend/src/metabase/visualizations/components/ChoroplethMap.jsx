@@ -9,7 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import ChartWithLegend from "./ChartWithLegend";
+import ChartWithLegend from "./legend/ChartWithLegend";
 import LegacyChoropleth from "./LegacyChoropleth";
 import LeafletChoropleth from "./LeafletChoropleth";
 
@@ -160,6 +160,14 @@ export default class ChoroplethMap extends Component {
     }
   }
 
+  onSelectTitle = () => {
+    const { card, onChangeCardAndRun } = this.props;
+
+    if (onChangeCardAndRun) {
+      onChangeCardAndRun({ nextCard: card, seriesIndex: 0 });
+    }
+  };
+
   render() {
     const details = this._getDetails(this.props);
     if (!details) {
@@ -167,14 +175,17 @@ export default class ChoroplethMap extends Component {
     }
 
     const {
-      series,
       className,
-      gridSize,
-      hovered,
-      onHoverChange,
-      visualizationIsClickable,
-      onVisualizationClick,
+      card,
+      series,
       settings,
+      hovered,
+      gridSize,
+      showTitle,
+      isDashboard,
+      visualizationIsClickable,
+      onHoverChange,
+      onVisualizationClick,
     } = this.props;
     const { geoJson, minimalBounds } = this.state;
 
@@ -331,26 +342,19 @@ export default class ChoroplethMap extends Component {
       return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
     };
 
-    let aspectRatio;
-    if (projection) {
-      const [[minX, minY], [maxX, maxY]] = projectionFrame.map(projection);
-      aspectRatio = (maxX - minX) / (maxY - minY);
-    } else {
-      aspectRatio =
-        (minimalBounds.getEast() - minimalBounds.getWest()) /
-        (minimalBounds.getNorth() - minimalBounds.getSouth());
-    }
-
     return (
       <ChartWithLegend
         className={className}
-        aspectRatio={aspectRatio}
-        legendTitles={legendTitles}
-        legendColors={heatMapColors}
-        gridSize={gridSize}
+        title={settings["card.title"] || card.title}
+        description={settings["card.description"]}
+        labels={legendTitles}
+        colors={heatMapColors}
         hovered={hovered}
-        onHoverChange={onHoverChange}
-        isDashboard={this.props.isDashboard}
+        gridSize={gridSize}
+        showLegend
+        showCaption={showTitle}
+        isDashboard={isDashboard}
+        onSelectTitle={this.onSelectTitle}
       >
         {projection ? (
           <LegacyChoropleth
