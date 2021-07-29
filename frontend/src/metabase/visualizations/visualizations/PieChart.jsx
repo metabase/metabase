@@ -3,7 +3,8 @@ import React, { Component } from "react";
 import styles from "./PieChart.css";
 import { t } from "ttag";
 import ChartTooltip from "../components/ChartTooltip";
-import ChartWithLegend from "../components/ChartWithLegend";
+import LegendCaption from "../components/legend/LegendCaption";
+import LegendLayout from "../components/legend/LegendLayout";
 
 import {
   ChartSettingsError,
@@ -52,6 +53,7 @@ export default class PieChart extends Component {
   static uiName = t`Pie`;
   static identifier = "pie";
   static iconName = "pie";
+  static noHeader = true;
 
   static minSize = { width: 4, height: 4 };
 
@@ -211,14 +213,18 @@ export default class PieChart extends Component {
 
   render() {
     const {
-      series,
-      hovered,
-      onHoverChange,
-      visualizationIsClickable,
-      onVisualizationClick,
       className,
-      gridSize,
+      card,
+      series,
       settings,
+      hovered,
+      gridSize,
+      showTitle,
+      isDashboard,
+      visualizationIsClickable,
+      onHoverChange,
+      onVisualizationClick,
+      onChangeCardAndRun,
     } = this.props;
 
     const [
@@ -410,77 +416,92 @@ export default class PieChart extends Component {
     const getSliceIsClickable = index =>
       isClickable && slices[index] !== otherSlice;
 
+    const handleSelectTitle = () => {
+      onChangeCardAndRun({ nextCard: card, seriesIndex: 0 });
+    };
+
+    const handleHoverChange = data => {
+      onHoverChange(data && { ...data, ...hoverForIndex(data.index) });
+    };
+
     return (
-      <ChartWithLegend
-        className={className}
-        legendTitles={legendTitles}
-        legendColors={legendColors}
-        gridSize={gridSize}
-        hovered={hovered}
-        onHoverChange={d =>
-          onHoverChange &&
-          onHoverChange(d && { ...d, ...hoverForIndex(d.index) })
-        }
-        showLegend={settings["pie.show_legend"]}
-        isDashboard={this.props.isDashboard}
-      >
-        <div className={styles.ChartAndDetail}>
-          <div ref={this.chartDetail} className={styles.Detail}>
-            <div
-              data-testid="detail-value"
-              className={cx(
-                styles.Value,
-                "fullscreen-normal-text fullscreen-night-text",
-              )}
-            >
-              {value}
+      <div className={cx("flex flex-column p2", className)}>
+        {showTitle && (
+          <LegendCaption
+            className="pb2"
+            title={settings["card.title"] || card.title}
+            description={settings["card.description"]}
+            onSelectTitle={onChangeCardAndRun && handleSelectTitle}
+          />
+        )}
+        <LegendLayout
+          className="flex-full"
+          labels={legendTitles}
+          colors={legendColors}
+          hovered={hovered}
+          gridSize={gridSize}
+          showLegend={settings["pie.show_legend"]}
+          isDashboard={isDashboard}
+          onHoverChange={onHoverChange && handleHoverChange}
+        >
+          <div className={styles.ChartAndDetail}>
+            <div ref={this.chartDetail} className={styles.Detail}>
+              <div
+                data-testid="detail-value"
+                className={cx(
+                  styles.Value,
+                  "fullscreen-normal-text fullscreen-night-text",
+                )}
+              >
+                {value}
+              </div>
+              <div className={styles.Title}>{title}</div>
             </div>
-            <div className={styles.Title}>{title}</div>
+            <div className={cx(styles.Chart, "layout-centered")}>
+              <svg
+                data-testid="pie-chart"
+                className={cx(styles.Donut, "m1")}
+                viewBox="0 0 100 100"
+                style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
+              >
+                <g ref={this.chartGroup} transform={`translate(50,50)`}>
+                  {pie(slices).map((slice, index) => (
+                    <path
+                      data-testid="slice"
+                      key={index}
+                      d={arc(slice)}
+                      fill={slices[index].color}
+                      opacity={
+                        hovered &&
+                        hovered.index != null &&
+                        hovered.index !== index
+                          ? 0.3
+                          : 1
+                      }
+                      onMouseMove={e =>
+                        onHoverChange && onHoverChange(hoverForIndex(index, e))
+                      }
+                      onMouseLeave={() => onHoverChange && onHoverChange(null)}
+                      className={cx({
+                        "cursor-pointer": getSliceIsClickable(index),
+                      })}
+                      onClick={
+                        getSliceIsClickable(index) &&
+                        (e =>
+                          onVisualizationClick({
+                            ...getSliceClickObject(index),
+                            event: e.nativeEvent,
+                          }))
+                      }
+                    />
+                  ))}
+                </g>
+              </svg>
+            </div>
           </div>
-          <div className={cx(styles.Chart, "layout-centered")}>
-            <svg
-              data-testid="pie-chart"
-              className={cx(styles.Donut, "m1")}
-              viewBox="0 0 100 100"
-              style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
-            >
-              <g ref={this.chartGroup} transform={`translate(50,50)`}>
-                {pie(slices).map((slice, index) => (
-                  <path
-                    data-testid="slice"
-                    key={index}
-                    d={arc(slice)}
-                    fill={slices[index].color}
-                    opacity={
-                      hovered &&
-                      hovered.index != null &&
-                      hovered.index !== index
-                        ? 0.3
-                        : 1
-                    }
-                    onMouseMove={e =>
-                      onHoverChange && onHoverChange(hoverForIndex(index, e))
-                    }
-                    onMouseLeave={() => onHoverChange && onHoverChange(null)}
-                    className={cx({
-                      "cursor-pointer": getSliceIsClickable(index),
-                    })}
-                    onClick={
-                      getSliceIsClickable(index) &&
-                      (e =>
-                        onVisualizationClick({
-                          ...getSliceClickObject(index),
-                          event: e.nativeEvent,
-                        }))
-                    }
-                  />
-                ))}
-              </g>
-            </svg>
-          </div>
-        </div>
-        <ChartTooltip series={series} hovered={hovered} />
-      </ChartWithLegend>
+          <ChartTooltip series={series} hovered={hovered} />
+        </LegendLayout>
+      </div>
     );
   }
 }
