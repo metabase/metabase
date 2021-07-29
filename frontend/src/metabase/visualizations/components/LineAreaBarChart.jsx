@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { normal } from "metabase/lib/colors";
 import { iconPropTypes } from "metabase/components/Icon";
 import CardRenderer from "./CardRenderer";
 import LegendLayout from "./legend/LegendLayout";
@@ -17,6 +16,7 @@ import {
   isNumeric,
 } from "metabase/lib/schema_metadata";
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
+import { getLegendSettings } from "metabase/visualizations/lib/legend";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 
@@ -257,80 +257,6 @@ export default class LineAreaBarChart extends Component {
     return settings;
   }
 
-  getLegendSettings() {
-    const {
-      card,
-      series,
-      settings,
-      showTitle,
-      onAddSeries,
-      onEditSeries,
-      onRemoveSeries,
-    } = this.props;
-
-    const title = settings["card.title"] || card.title;
-    const description = settings["card.description"];
-    const showCaption = showTitle && !!title;
-    const hasBreakout = card._breakoutColumn != null;
-    const showLegend =
-      !showCaption ||
-      series.length > 1 ||
-      onAddSeries != null ||
-      onEditSeries != null ||
-      onRemoveSeries != null;
-    const showDots = series.length > 1 || onAddSeries != null;
-
-    const seriesSettings =
-      settings.series && series.map(single => settings.series(single));
-    const labels = seriesSettings
-      ? seriesSettings.map(s => s.title)
-      : series.map(single => single.card.name);
-    const colors = seriesSettings
-      ? seriesSettings.map(s => s.color)
-      : Object.values(normal);
-
-    return {
-      title,
-      description,
-      labels,
-      colors,
-      showCaption,
-      showLegend,
-      showDots,
-      hasBreakout,
-    };
-  }
-
-  onSelectTitle = () => {
-    const { card, onChangeCardAndRun } = this.props;
-
-    if (onChangeCardAndRun) {
-      onChangeCardAndRun({ nextCard: card, seriesIndex: 0 });
-    }
-  };
-
-  onSelectSeries = (event, index) => {
-    const {
-      card,
-      series,
-      visualizationIsClickable,
-      onEditSeries,
-      onVisualizationClick,
-      onChangeCardAndRun,
-    } = this.props;
-
-    const data = series[index];
-
-    if (onEditSeries && !card._breakoutColumn) {
-      onEditSeries(event, index);
-    } else if (data.clicked && visualizationIsClickable(data.clicked)) {
-      const data = { ...data.clicked, element: event.currentTarget };
-      onVisualizationClick(data);
-    } else if (onChangeCardAndRun) {
-      onChangeCardAndRun({ nextCard: data.card, seriesIndex: index });
-    }
-  };
-
   render() {
     const {
       className,
@@ -353,7 +279,9 @@ export default class LineAreaBarChart extends Component {
       showLegend,
       showDots,
       hasBreakout,
-    } = this.getLegendSettings();
+      onSelectTitle,
+      onSelectSeries,
+    } = getLegendSettings(this.props);
 
     return (
       <div
@@ -369,7 +297,7 @@ export default class LineAreaBarChart extends Component {
             title={title}
             description={description}
             icon={headerIcon}
-            onSelectTitle={this.onSelectTitle}
+            onSelectTitle={onSelectTitle}
           />
         )}
         <LegendLayout
@@ -386,7 +314,7 @@ export default class LineAreaBarChart extends Component {
           onHoverChange={onHoverChange}
           onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
-          onSelectSeries={this.onSelectSeries}
+          onSelectSeries={onSelectSeries}
         >
           <CardRenderer
             {...this.props}
