@@ -25,7 +25,7 @@ export const LegendCaptionTitle = styled.div`
   }
 `;
 
-export const LegendCaptionInfo = styled(Icon).attrs({
+export const LegendCaptionInfoIcon = styled(Icon).attrs({
   name: "info",
 })`
   color: ${colors["text-medium"]};

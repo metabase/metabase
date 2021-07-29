@@ -5,7 +5,7 @@ import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 import {
   LegendCaptionIcon,
-  LegendCaptionInfo,
+  LegendCaptionInfoIcon,
   LegendCaptionRoot,
   LegendCaptionTitle,
 } from "./LegendCaption.styled";
@@ -32,7 +32,7 @@ const LegendCaption = ({
         <Ellipsified>{title}</Ellipsified>
         {description && (
           <Tooltip tooltip={description} maxWidth="22em">
-            <LegendCaptionInfo />
+            <LegendCaptionInfoIcon />
           </Tooltip>
         )}
       </LegendCaptionTitle>
