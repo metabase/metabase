@@ -254,14 +254,15 @@
                          ;; query processor, this seems like an acceptable tradeoff (ex: if they dump and load to the
                          ;; same native form on one database, then it's likely they would on any, since that is
                          ;; orthogonal to the issues that serialization has when performing this roundtrip).
-                         (disj :oracle    ; no bare table names allowed
-                               :presto    ; no bare table names allowed
-                               :redshift  ; bare table name doesn't work; it's test_data_venues instead of venues
-                               :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
-                               :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
-                               :vertica   ; bare table name doesn't work; it's test_data_venues instead of venues
-                               :sqlite    ; foreign-keys is not supported by this driver
-                               :sparksql))  ; foreign-keys is not supported by this driver
+                         (disj :oracle              ; no bare table names allowed
+                               :presto              ; no bare table names allowed
+                               :redshift            ; bare table name doesn't work; it's test_data_venues instead of venues
+                               :snowflake           ; bare table name doesn't work; it's test_data_venues instead of venues
+                               :sqlserver           ; ORDER BY not allowed not allowed in derived tables (subselects)
+                               :vertica             ; bare table name doesn't work; it's test_data_venues instead of venues
+                               :sqlite              ; foreign-keys is not supported by this driver
+                               :bigquery-cloud-sdk  ; foreign-keys is not supported by this driver
+                               :sparksql))          ; foreign-keys is not supported by this driver
 
       (let [fingerprint (ts/with-world
                           (qp.store/fetch-and-store-database! db-id)
