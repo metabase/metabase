@@ -331,7 +331,11 @@
                   ffirst))))))
 
 (deftest expression-with-slashes
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+  (mt/test-drivers (disj
+                     (mt/normal-drivers-with-feature :expressions)
+                     ;; Slashes are documented as not allowed in BQ
+                     ;; https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
+                     :bigquery-cloud-sdk)
     (testing "Make sure an expression with a / in its name works (#12305)"
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4.0]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3.0]
