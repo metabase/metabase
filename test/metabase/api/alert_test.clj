@@ -364,7 +364,7 @@
 ;;; |                                               PUT /api/alert/:id                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest put-alert-test
+(deftest put-alert-test-2
   (is (= {:errors {:alert_condition "value may be nil, or if non-nil, value must be one of: `goal`, `rows`."}}
          ((user->client :rasta) :put 400 "alert/1" {:alert_condition "not rows"})))
 

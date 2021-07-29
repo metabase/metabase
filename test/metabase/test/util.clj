@@ -264,10 +264,6 @@
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
 
-(defn- namespace-or-symbol? [x]
-  (or (symbol? x)
-      (instance? clojure.lang.Namespace x)))
-
 (defn obj->json->obj
   "Convert an object to JSON and back again. This can be done to ensure something will match its serialized +
   deserialized form, e.g. keywords that aren't map keys, record types vs. plain map types, or timestamps vs ISO-8601

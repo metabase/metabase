@@ -28,11 +28,11 @@
 
 (defmethod tx/dbdef->connection-details :presto
   [_ context {:keys [database-name]}]
-  (merge {:host    (tx/db-test-env-var-or-throw :presto :host "localhost")
-          :port    (tx/db-test-env-var-or-throw :presto :port "8080")
-          :user    (tx/db-test-env-var-or-throw :presto :user "metabase")
-          :ssl     false
-          :catalog test-catalog-name}))
+  {:host    (tx/db-test-env-var-or-throw :presto :host "localhost")
+   :port    (tx/db-test-env-var-or-throw :presto :port "8080")
+   :user    (tx/db-test-env-var-or-throw :presto :user "metabase")
+   :ssl     false
+   :catalog test-catalog-name})
 
 (defmethod sql.tx/qualified-name-components :presto
   ;; use the default schema from the in-memory connector
