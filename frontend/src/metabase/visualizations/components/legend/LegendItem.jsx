@@ -66,7 +66,7 @@ const LegendItem = ({
   );
 
   return (
-    <LegendItemRoot isVertical={isVertical}>
+    <LegendItemRoot isVertical={isVertical} data-testid="legend-item">
       <LegendItemLabel
         isMuted={isMuted}
         onClick={onSelectSeries && handleItemClick}
