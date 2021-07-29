@@ -8,7 +8,7 @@ export const LegendLayoutRoot = styled.div`
 `;
 
 export const LegendPanel = styled.div`
-  flex: 1 0 auto;
+  flex: ${({ isVertical }) => (isVertical ? "1 0 auto" : "")};
   position: relative;
   min-width: ${({ isVertical }) => (isVertical ? "4rem" : "")};
   max-width: ${({ isVertical }) => (isVertical ? "min(25%, 20rem)" : "")};
