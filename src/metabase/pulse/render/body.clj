@@ -239,14 +239,25 @@
                                                                               :max-value  max-value}))
         (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
+(def colors ["#42a5f5" ; blue
+             "#66bb6a" ; green
+             "#ffab91" ; peach
+             "#e53935" ; red
+             "#ffd54f" ; yellow
+             "#ce93d8" ; purple
+             "#69f0ae" ; lighter green
+             ])
+
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
+        legend-colors (zipmap (map (comp str x-axis-rowfn) rows) (cycle colors))
         image-bundle (image-bundle/make-image-bundle
                       render-type
                       (svg-poc/categorical-donut
-                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
+                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                       legend-colors))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -254,7 +265,16 @@
      :content
      [:div
       [:img {:style (style/style {:display :block :width :100%})
-             :src (:image-src image-bundle)}]]}))
+             :src (:image-src image-bundle)}]
+      (into [:div {:style (style/style {:clear :both :width "540px"})}]
+            (for [label (map (comp str x-axis-rowfn) rows)]
+              [:div {:style (style/style {:float :left :margin-right "12px"
+                                          :font-family "Lato, sans-serif"
+                                          :font-size "44px"})}
+               [:span {:style (style/style {:color (legend-colors label)})}
+                "•"]
+               [:span {:style (style/style {:margin-left "6px"})}
+                label]]))]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id card {:keys [cols rows]}]

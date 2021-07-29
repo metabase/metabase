@@ -30,6 +30,14 @@ const toJSArray = (a) => {
   return jsArray;
 }
 
+function toJSMap(m) {
+  var o = {};
+  for (var i = 0; i < m.length; i++) {
+    o[m[i][0]] = m[i][1];
+  }
+  return o;
+}
+
 const date_accessors = {
   x: (row) => new Date(row[0]).valueOf(),
   y: (row) => row[1],
@@ -54,12 +62,14 @@ function timeseries_bar (data) {
  })
 }
 
-function categorical_donut (data) {
+function categorical_donut (rows, colors) {
   return StaticViz.RenderChart(\"categorical/donut\", {
-    data: toJSArray(data),
+    data: toJSArray(rows),
+    colors: toJSMap(colors),
     accessors: dimension_accessors
  })
 }
+
 ")
 
 (def ^:private ^Context context
@@ -146,6 +156,6 @@ function categorical_donut (data) {
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
-  [rows]
-  (let [svg-string (.asString ^Value (execute-fn @context "categorical_donut" rows))]
+  [rows colors]
+  (let [svg-string (.asString ^Value (execute-fn @context "categorical_donut" rows (seq colors)))]
     (svg-string->bytes svg-string)))
