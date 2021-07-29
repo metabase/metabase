@@ -184,6 +184,13 @@
   :setter     :none
   :getter     (fn [] (and config/ee-available? (boolean ((token-features) "sso")))))
 
+(defsetting is-hosted?
+  "Is the Metabase instance running in the cloud?"
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean ((token-features) "hosting"))))
+
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
 ;; future.)

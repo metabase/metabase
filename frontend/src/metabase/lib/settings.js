@@ -86,11 +86,8 @@ class Settings {
     return this.get("email-configured?");
   }
 
-  // Right now, all Metabase Cloud hosted instances run on *.metabaseapp.com
-  // We plan on changing this to look at an envvar in the future instead.
   isHosted() {
-    // matches <custom>.metabaseapp.com and <custom>.metabaseapp.com/
-    return /.+\.metabaseapp.com\/?$/i.test(this.get("site-url"));
+    return this.get("is-hosted?");
   }
 
   googleAuthEnabled() {
@@ -111,10 +108,6 @@ class Settings {
 
   searchTypeaheadEnabled() {
     return this.get("search-typeahead-enabled");
-  }
-
-  ssoEnabled() {
-    return this.get("google-auth-client-id") != null;
   }
 
   trackingEnabled() {
