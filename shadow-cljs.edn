@@ -24,7 +24,8 @@
   {:target     :npm-module
    :output-dir "frontend/src/cljs/"
    :entries    [metabase.mbql.js
-                metabase.types]}
+                metabase.types
+                metabase.shared.util.currency]}
 
   :test
   {:target    :node-test

@@ -29,7 +29,7 @@ import {
   hasHour,
 } from "metabase/lib/formatting/date";
 
-import currency from "metabase/lib/currency";
+import { currency } from "cljs/metabase.shared.util.currency";
 
 import type { Settings, SettingDef } from "../settings";
 import type { DateStyle, TimeStyle } from "metabase/lib/formatting/date";
@@ -312,8 +312,8 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "select",
     props: {
       // FIXME: rest of these options
-      options: Object.values(currency).map(
-        (currency: { name: string, code: string }) => ({
+      options: currency.map(
+        ([_, currency: { name: string, code: string }]) => ({
           name: currency.name,
           value: currency.code,
         }),
