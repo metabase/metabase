@@ -20,5 +20,7 @@ export const LegendPanel = styled.div`
 export const ChartPanel = styled.div`
   display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
   position: relative;
+  min-width: 0;
 `;

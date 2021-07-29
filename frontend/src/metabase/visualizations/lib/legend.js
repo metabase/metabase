@@ -41,7 +41,7 @@ export const getLegendSettings = ({
   const onSelectSeries = (event, index) => {
     const data = series[index];
 
-    if (onEditSeries && !card._breakoutColumn) {
+    if (onEditSeries && !hasBreakout) {
       onEditSeries(event, index);
     } else if (data.clicked && visualizationIsClickable(data.clicked)) {
       const data = { ...data.clicked, element: event.currentTarget };

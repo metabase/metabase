@@ -7,6 +7,8 @@ import {
 } from "metabase/visualizations/lib/errors";
 
 import { iconPropTypes } from "metabase/components/Icon";
+import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
+import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -15,17 +17,16 @@ import {
   metricSetting,
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
+import { getLegendSettings } from "metabase/visualizations/lib/legend";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
-import LegendHeader from "../components/LegendHeader";
 
 import _ from "underscore";
 import cx from "classnames";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import TitleLegendHeader from "metabase/visualizations/components/TitleLegendHeader";
 
 const propTypes = {
   headerIcon: PropTypes.shape(iconPropTypes),
@@ -179,43 +180,51 @@ export default class Funnel extends Component {
   }
 
   render() {
-    const { headerIcon, settings } = this.props;
-
-    const hasTitle = settings["card.title"];
+    const { settings } = this.props;
 
     if (settings["funnel.type"] === "bar") {
       return <FunnelBar {...this.props} />;
-    } else {
-      const {
-        actionButtons,
-        className,
-        onChangeCardAndRun,
-        series,
-      } = this.props;
-      return (
-        <div className={cx(className, "flex flex-column p1")}>
-          {hasTitle && (
-            <TitleLegendHeader
-              series={series}
-              settings={settings}
-              onChangeCardAndRun={onChangeCardAndRun}
-              actionButtons={actionButtons}
-              icon={headerIcon}
-            />
-          )}
-          {!hasTitle &&
-          actionButtons && ( // always show action buttons if we have them
-              <LegendHeader
-                className="flex-no-shrink"
-                series={series._raw || series}
-                actionButtons={actionButtons}
-                onChangeCardAndRun={onChangeCardAndRun}
-              />
-            )}
-          <FunnelNormal {...this.props} className="flex-full" />
-        </div>
-      );
     }
+
+    const { className, gridSize, headerIcon, isDashboard } = this.props;
+
+    const {
+      title,
+      description,
+      labels,
+      colors,
+      showCaption,
+      showLegend,
+      showDots,
+      onSelectTitle,
+    } = getLegendSettings(this.props);
+
+    return (
+      <div className={cx(className, "flex flex-column p2")}>
+        {showCaption && (
+          <LegendCaption
+            className="pb2"
+            title={title}
+            description={description}
+            icon={headerIcon}
+            onSelectTitle={onSelectTitle}
+          />
+        )}
+        <LegendLayout
+          className="flex-full"
+          labels={labels}
+          colors={colors}
+          gridSize={gridSize}
+          showDots={showDots}
+          showLegend={showLegend}
+          isDashboard={isDashboard}
+          showTooltip
+          showDotTooltip
+        >
+          <FunnelNormal {...this.props} className="flex-full" />
+        </LegendLayout>
+      </div>
+    );
   }
 }
 
