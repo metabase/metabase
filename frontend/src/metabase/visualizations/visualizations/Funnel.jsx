@@ -212,10 +212,8 @@ export default class Funnel extends Component {
 
     return (
       <div
-        className={cx(
-          className,
-          "flex flex-column shrink-below-content-size p2",
-        )}
+        className={cx(className, "flex flex-column p2")}
+        style={{ minHeight: 0 }}
       >
         {showCaption && (
           <LegendCaption
