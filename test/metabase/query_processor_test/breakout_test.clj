@@ -162,14 +162,6 @@
                                     [:> $latitude 20]]
                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
 
-(defn- round-binning-decimals [result]
-  (let [round-to-decimal #(u/round-to-decimals 4 %)]
-    (-> result
-        (update :min_value round-to-decimal)
-        (update :max_value round-to-decimal)
-        (update-in [:binning_info :min_value] round-to-decimal)
-        (update-in [:binning_info :max_value] round-to-decimal))))
-
 (deftest binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Validate binning info is returned with the binning-strategy"

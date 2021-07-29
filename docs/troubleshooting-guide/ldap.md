@@ -1,14 +1,8 @@
 # LDAP
 
-Metabase can use LDAP for authentication. [This article][ldap-learn] explains how to set it up, and the guide below will help you troubleshoot if anything goes wrong.
+Metabase can use LDAP for authentication. [This article][ldap-learn] explains how to set it up, and the guide below will help you troubleshoot if anything goes wrong. You may also want to check [our troubleshooting guide for logging in](./loggingin.html).
 
-## Troubleshooting Process
-
-FIXME
-
-You may also want to check [our troubleshooting guide for logging in](./loggingin.html).
-
-### LDAP sample configuration
+## LDAP sample configuration
 
 You can test Metabase with LDAP by using this `docker-compose` definition:
 
@@ -69,11 +63,11 @@ If you don't pass environment variables to Metabase and you want to configure th
 
 For the `USER FILTER`, you can leave the default value, which will look for the user ID in both the `uid` or `email` field.
 
-### Related software for troubleshooting
+## Related software for troubleshooting
 
 If you run into an issue, check that you can login to your LDAP directory and issue queries using software like [Apache Directory Studio][apache-directory-studio]. It will let you see the whole LDAP tree and view the logs of your LDAP application to see queries run.
 
-### Current limitations
+## Current limitations
 
 - When using Metabase Enterprise with a MySQL database and LDAP enabled, make sure that you disable synchronization of binary fields from your LDAP directory by using the `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST` environment variable. If you do not, you may hit the 60K field size limitation of the text field in MySQL, which will prevent you from creating users or those users from logging in.
 

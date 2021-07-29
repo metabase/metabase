@@ -155,8 +155,6 @@
 
 (def ^:private ^:const max-preprocessing-level 20)
 
-(def ^:private ^:const preprocessing-timeout-ms 10000)
-
 (defn- preprocess-query [query context]
   (binding [*preprocessing-level* (inc *preprocessing-level*)]
     ;; record the number of recursive preprocesses taking place to prevent infinite preprocessing loops.

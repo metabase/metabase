@@ -33,13 +33,6 @@
                              :type/TimeWithTZ             "TIME WITH TIME ZONE"}]
   (defmethod sql.tx/field-base-type->sql-type [:presto-jdbc base-type] [_ _] db-type))
 
-;; in the past, we had to manually update our Docker image and add a new catalog for every new dataset definition we
-;; added. That's insane. Just use the `test-data` catalog and put everything in that, and use
-;; `db-qualified-table-name` like everyone else.
-(def ^:private test-catalog-name "test_data")
-
-(def ^:private test-schema-name "default")
-
 (defn- dash->underscore [nm]
   (str/replace nm #"-" "_"))
 
