@@ -8,13 +8,17 @@ prep_deps() {
     cd "$script_directory/.."
     project_root=`pwd`
 
-    echo 'Compile Java source files if needed'
-    cd "$project_root"
-    clojure -X:deps prep
+    if [ ! -d "$project_root/java/target/classes" ]; then
+        echo 'Compile Java source files'
+        cd "$project_root"
+        clojure -X:deps prep
+    fi
 
-    echo 'Compile driver AOT source files if needed'
-    cd "$project_root/modules/drivers"
-    clojure -X:deps prep
+    if [ ! -d "$project_root/modules/drivers/sparksql/target/classes" ]; then
+        echo 'Compile Spark SQL AOT source files'
+        cd "$project_root/modules/drivers"
+        clojure -X:deps prep
+    fi
 
     cd "$project_root"
 }
