@@ -257,6 +257,36 @@ export default class LineAreaBarChart extends Component {
     return settings;
   }
 
+  onSelectTitle = () => {
+    const { card, onChangeCardAndRun } = this.props;
+
+    if (onChangeCardAndRun) {
+      onChangeCardAndRun({ nextCard: card, seriesIndex: 0 });
+    }
+  };
+
+  onSelectSeries = (event, index) => {
+    const {
+      card,
+      series,
+      visualizationIsClickable,
+      onEditSeries,
+      onVisualizationClick,
+      onChangeCardAndRun,
+    } = this.props;
+
+    const data = series[index];
+
+    if (onEditSeries && !card._breakoutColumn) {
+      onEditSeries(event, index);
+    } else if (data.clicked && visualizationIsClickable(data.clicked)) {
+      const data = { ...data.clicked, element: event.currentTarget };
+      onVisualizationClick(data);
+    } else if (onChangeCardAndRun) {
+      onChangeCardAndRun({ nextCard: data.card, seriesIndex: index });
+    }
+  };
+
   render() {
     const {
       className,
@@ -279,8 +309,6 @@ export default class LineAreaBarChart extends Component {
       showLegend,
       showDots,
       hasBreakout,
-      onSelectTitle,
-      onSelectSeries,
     } = getLegendSettings(this.props);
 
     return (
@@ -297,7 +325,7 @@ export default class LineAreaBarChart extends Component {
             title={title}
             description={description}
             icon={headerIcon}
-            onSelectTitle={onSelectTitle}
+            onSelectTitle={this.onSelectTitle}
           />
         )}
         <LegendLayout
@@ -314,7 +342,7 @@ export default class LineAreaBarChart extends Component {
           onHoverChange={onHoverChange}
           onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
-          onSelectSeries={onSelectSeries}
+          onSelectSeries={this.onSelectSeries}
         >
           <CardRenderer
             {...this.props}

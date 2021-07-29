@@ -5,12 +5,9 @@ export const getLegendSettings = ({
   series,
   settings,
   showTitle,
-  visualizationIsClickable,
   onAddSeries,
   onEditSeries,
   onRemoveSeries,
-  onVisualizationClick,
-  onChangeCardAndRun,
 }) => {
   const title = settings["card.title"] || card.title;
   const description = settings["card.description"];
@@ -32,25 +29,6 @@ export const getLegendSettings = ({
     ? seriesSettings.map(s => s.color)
     : Object.values(normal);
 
-  const onSelectTitle = () => {
-    if (onChangeCardAndRun) {
-      onChangeCardAndRun({ nextCard: card, seriesIndex: 0 });
-    }
-  };
-
-  const onSelectSeries = (event, index) => {
-    const data = series[index];
-
-    if (onEditSeries && !hasBreakout) {
-      onEditSeries(event, index);
-    } else if (data.clicked && visualizationIsClickable(data.clicked)) {
-      const data = { ...data.clicked, element: event.currentTarget };
-      onVisualizationClick(data);
-    } else if (onChangeCardAndRun) {
-      onChangeCardAndRun({ nextCard: data.card, seriesIndex: index });
-    }
-  };
-
   return {
     title,
     description,
@@ -60,7 +38,5 @@ export const getLegendSettings = ({
     showLegend,
     showDots,
     hasBreakout,
-    onSelectTitle,
-    onSelectSeries,
   };
 };
