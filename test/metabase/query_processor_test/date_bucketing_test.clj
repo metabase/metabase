@@ -14,9 +14,7 @@
 
   If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries or
   their results."
-  (:require [clj-time.core :as time]
-            [clj-time.format :as tformat]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
@@ -35,7 +33,7 @@
             [pretty.core :as pretty]
             [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime]
-           [org.joda.time DateTime DateTimeZone]))
+           org.joda.time.DateTime))
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -381,15 +379,6 @@
              (sad-toucan-incidents-with-bucketing :hour-of-day :utc))
           "With all databases in UTC, the results should be the same for all DBs"))))
 
-
-(defn- ^:deprecated offset-time
-  "Add to `date` offset from UTC found in `tz`"
-  [timezone-id, ^DateTime date]
-  (let [^DateTimeZone tz (time/time-zone-for-id (->timezone-id timezone-id))]
-    (time/minus date
-                (time/seconds
-                 (/ (.getOffset tz date) 1000)))))
-
 (defn- find-events-in-range
   "Find the number of sad toucan events between `start-date-str` and `end-date-str`"
   [start-date-str end-date-str]
@@ -592,18 +581,6 @@
     (testing "\nUTC timezone"
       (is (= [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]]
              (sad-toucan-incidents-with-bucketing :day-of-year :utc))))))
-
-(defn- new-weekly-events-after-tz-shift
-  "Finds the change in sad toucan events if the timezone is shifted to `tz`"
-  [date-str tz]
-  (let [date-obj    (tformat/parse (tformat/formatters :date) date-str)
-        next-week   (time/plus date-obj (time/days 7))
-        unparse-utc #(tformat/unparse (format-in-timezone-fn :utc) %)]
-    (-
-     ;; Once the time is shifted to `TZ`, how many new events will this add
-     (find-events-in-range (unparse-utc next-week) (unparse-utc (offset-time tz next-week)))
-     ;; Subtract the number of events that we will loose with the timezone shift
-     (find-events-in-range (unparse-utc date-obj) (unparse-utc (offset-time tz date-obj))))))
 
 ;; This test helps in debugging why event counts change with a given timezone. It queries only a UTC H2 datatabase to
 ;; find how those counts would change if time was in pacific time. The results of this test are also in the UTC test
@@ -915,24 +892,24 @@
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 
 (defn- count-of-grouping [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
-  (-> (mt/dataset dataset
-        ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
-        ;; was created more than (interval-seconds * 5) seconds ago, delete the Database and recreate it to make sure
-        ;; the tests pass.
-        ;;
-        ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
-        (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
-          (binding [*recreate-db-if-stale?* false]
-            (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
-            (db/delete! Database :id (mt/id))
-            (apply count-of-grouping dataset field-grouping relative-datetime-args))
-          (let [results (mt/run-mbql-query checkins
-                          {:aggregation [[:count]]
-                           :filter      [:=
-                                         [:field %timestamp {:temporal-unit field-grouping}]
-                                         (cons :relative-datetime relative-datetime-args)]})]
-            (or (some-> results mt/first-row first int)
-                results))))))
+  (mt/dataset dataset
+    ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
+    ;; was created more than (interval-seconds * 5) seconds ago, delete the Database and recreate it to make sure
+    ;; the tests pass.
+    ;;
+    ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
+    (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
+      (binding [*recreate-db-if-stale?* false]
+        (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
+        (db/delete! Database :id (mt/id))
+        (apply count-of-grouping dataset field-grouping relative-datetime-args))
+      (let [results (mt/run-mbql-query checkins
+                      {:aggregation [[:count]]
+                       :filter      [:=
+                                     [:field %timestamp {:temporal-unit field-grouping}]
+                                     (cons :relative-datetime relative-datetime-args)]})]
+        (or (some-> results mt/first-row first int)
+            results)))))
 
 ;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
 ;;        are ran and loading data into these DBs is mind-bogglingly slow.

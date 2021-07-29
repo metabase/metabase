@@ -140,7 +140,7 @@
     card))
 
 (defn- collection-parent-name [collection]
-  (let [[_ parent-id] (re-matches #".*/(\d+)/$" (:location collection))]
+  (let [[_ ^String parent-id] (re-matches #".*/(\d+)/$" (:location collection))]
     (db/select-one-field :name Collection :id (Integer. parent-id))))
 
 (defmethod assert-loaded-entity (type Collection)
@@ -155,8 +155,10 @@
                                                (collection-parent-name collection)))
     "Deeply Nested Personal Collection" (is (= "Nested Personal Collection"
                                                (collection-parent-name collection)))
-    "Felicia's Personal Collection"     (is false "Should not have loaded different user's PC")
-    "Felicia's Nested Collection"       (is false "Should not have loaded different user's PC"))
+    "Felicia's Personal Collection"     (is (nil? (:name collection))
+                                            "Should not have loaded different user's PC")
+    "Felicia's Nested Collection"       (is (nil? (:name collection))
+                                            "Should not have loaded different user's PC"))
   collection)
 
 (defmethod assert-loaded-entity (type NativeQuerySnippet)
@@ -200,12 +202,12 @@
           ;; check that the linked :card_id matches the expected name for each in the series
           ;; based on the entities declared in test_util.clj
           (let [series-pos    (:position series)
-                expected-name (case series-pos
+                expected-name (case (int series-pos)
                                 0 "My Card"
                                 1 "My Nested Card"
                                 2 ts/root-card-name)]
             (is (= expected-name (db/select-one-field :name Card :id (:card_id series))))
-            (case series-pos
+            (case (int series-pos)
               1
               (testing "Top level click action was preserved for dashboard card"
                 (let [viz-settings (:visualization_settings dashcard)

@@ -240,49 +240,49 @@
               (check-row))))))))
 
 (deftest test-ssh-tunnel-reconnection-h2
-  "We need a customized version of this test for H2. It will bring up a new H2 TCP server, pointing to an existing DB
-   file (stored in source control, called 'tiny-db', with a single table called 'my_tbl' and a GUEST user with
-   password 'guest'); it will then use an SSH tunnel over localhost to connect to this H2 server's TCP port to execute
-   native queries against that table."
-  (mt/with-driver :h2
-    (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed (H2 version)"
-      (let [h2-port (tu/find-free-port)
-            server  (init-h2-tcp-server h2-port)
-            uri     (format "tcp://localhost:%d/./test_resources/ssh/tiny-db;USER=GUEST;PASSWORD=guest" h2-port)
-            h2-db   {:port               h2-port
-                     :host               "localhost"
-                     :db                 uri
-                     :tunnel-enabled     true
-                     :tunnel-host        "localhost"
-                     :tunnel-auth-option "password"
-                     :tunnel-port        ssh-mock-server-with-password-port
-                     :tunnel-user        ssh-username
-                     :tunnel-pass        ssh-password}]
-        (try
-          (mt/with-temp Database [db {:engine :h2, :details h2-db}]
-            (mt/with-db db
-              (sync/sync-database! db)
-              (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text
-                                                     :display_name "COL1"
-                                                     :field_ref    [:field "COL1" {:base-type :type/Text}]
-                                                     :name         "COL1"
-                                                     :source       :native}
-                                                    {:base_type    :type/Decimal
-                                                     :display_name "COL2"
-                                                     :field_ref    [:field "COL2" {:base-type :type/Decimal}]
-                                                     :name         "COL2"
-                                                     :source       :native}]
-                                             :rows [["First Row"  19.10M]
-                                                    ["Second Row" 100.40M]
-                                                    ["Third Row"  91884.10M]]}
-                                            (-> {:query "SELECT col1, col2 FROM my_tbl;"}
-                                                (mt/native-query)
-                                                (qp/process-query)
-                                                (qp.test/rows-and-cols)))))]
-                ;; check that some data can be queried
-                (check-data)
-                ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
-                (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec db))
-                ;; check the query again; the tunnel should have been reestablished
-                (check-data))))
-          (finally (.stop ^Server server)))))))
+  (testing (str "We need a customized version of this test for H2. It will bring up a new H2 TCP server, pointing to "
+                "an existing DB file (stored in source control, called 'tiny-db', with a single table called 'my_tbl' "
+                "and a GUEST user with password 'guest'); it will then use an SSH tunnel over localhost to connect to "
+                "this H2 server's TCP port to execute native queries against that table.")
+    (mt/with-driver :h2
+      (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed (H2 version)"
+        (let [h2-port (tu/find-free-port)
+              server  (init-h2-tcp-server h2-port)
+              uri     (format "tcp://localhost:%d/./test_resources/ssh/tiny-db;USER=GUEST;PASSWORD=guest" h2-port)
+              h2-db   {:port               h2-port
+                       :host               "localhost"
+                       :db                 uri
+                       :tunnel-enabled     true
+                       :tunnel-host        "localhost"
+                       :tunnel-auth-option "password"
+                       :tunnel-port        ssh-mock-server-with-password-port
+                       :tunnel-user        ssh-username
+                       :tunnel-pass        ssh-password}]
+          (try
+            (mt/with-temp Database [db {:engine :h2, :details h2-db}]
+              (mt/with-db db
+                (sync/sync-database! db)
+                (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text
+                                                       :display_name "COL1"
+                                                       :field_ref    [:field "COL1" {:base-type :type/Text}]
+                                                       :name         "COL1"
+                                                       :source       :native}
+                                                      {:base_type    :type/Decimal
+                                                       :display_name "COL2"
+                                                       :field_ref    [:field "COL2" {:base-type :type/Decimal}]
+                                                       :name         "COL2"
+                                                       :source       :native}]
+                                               :rows [["First Row"  19.10M]
+                                                      ["Second Row" 100.40M]
+                                                      ["Third Row"  91884.10M]]}
+                                              (-> {:query "SELECT col1, col2 FROM my_tbl;"}
+                                                  (mt/native-query)
+                                                  (qp/process-query)
+                                                  (qp.test/rows-and-cols)))))]
+                  ;; check that some data can be queried
+                  (check-data)
+                  ;; kill the ssh tunnel; fortunately, we have an existing function that can do that
+                  (ssh/close-tunnel! (sql-jdbc.conn/db->pooled-connection-spec db))
+                  ;; check the query again; the tunnel should have been reestablished
+                  (check-data))))
+            (finally (.stop ^Server server))))))))
