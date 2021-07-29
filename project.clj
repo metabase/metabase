@@ -25,7 +25,6 @@
    "test-ee"                           ["with-profile" "+test,+ee" "test"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
-   "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
    "cloverage"                         ["with-profile" "+cloverage" "cloverage"]
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["check-namespace-decls"] ["cloverage"]]
@@ -216,7 +215,7 @@
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
      [eftest "0.5.9"]
-     [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
+     [jonase/eastwood "0.9.4" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.10.0"]
      [reifyhealth/specmonstah "2.0.0"]                                ; Generate fixtures to test huge databases
@@ -374,10 +373,10 @@
    :eastwood
    [:linters-common
     {:plugins
-     [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
+     [[jonase/eastwood "0.9.4" :exclusions [org.clojure/clojure]]]
 
      :eastwood
-     {:exclude-namespaces [:test-paths dev dev.test]
+     {:exclude-namespaces [dev dev.test dev.debug-qp]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
                            ;; These linters are pretty useful but give a few false positives and can't be selectively
@@ -390,18 +389,14 @@
                            ;; get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-      :exclude-linters    [    ; Turn this off temporarily until we finish removing self-deprecated functions & macros
-                           :deprecations
+      :exclude-linters    [:deprecations
                            ;; this has a fit in libs that use Potemkin `import-vars` such as `java-time`
                            :implicit-dependencies
                            ;; too many false positives for now
-                           :unused-ret-vals]}}]
-
-   ;; run ./bin/reflection-linter to check for reflection warnings
-   :reflection-warnings
-   [:include-all-drivers
-    :ee
-    {:global-vars {*warn-on-reflection* true}}]
+                           :unused-ret-vals
+                           :unused-ret-vals-in-try
+                           :def-in-def
+                           :wrong-ns-form]}}]
 
    :check-namespace-decls
    [:linters-common

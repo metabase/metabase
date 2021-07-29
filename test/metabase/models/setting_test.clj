@@ -27,27 +27,27 @@
   (deferred-tru "Test setting - this only shows up in dev (3)")
   :visibility :internal)
 
-(defsetting ^:private test-boolean-setting
+(defsetting test-boolean-setting
   "Test setting - this only shows up in dev (3)"
   :visibility :internal
   :type :boolean)
 
-(defsetting ^:private test-json-setting
+(defsetting test-json-setting
   (deferred-tru "Test setting - this only shows up in dev (4)")
   :type :json)
 
-(defsetting ^:private test-csv-setting
+(defsetting test-csv-setting
   "Test setting - this only shows up in dev (5)"
   :visibility :internal
   :type :csv)
 
-(defsetting ^:private test-csv-setting-with-default
+(defsetting test-csv-setting-with-default
   "Test setting - this only shows up in dev (6)"
   :visibility :internal
   :type :csv
   :default "A,B,C")
 
-(defsetting ^:private test-env-setting
+(defsetting test-env-setting
   "Test setting - this only shows up in dev (7)"
   :visibility :internal)
 
@@ -258,7 +258,7 @@
                    :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
                setting))))))
 
-(defsetting ^:private test-i18n-setting
+(defsetting test-i18n-setting
   (deferred-tru "Test setting - with i18n"))
 
 (deftest validate-description-test
@@ -435,7 +435,7 @@
 
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
 
-(defsetting ^:private test-timestamp-setting
+(defsetting test-timestamp-setting
   "Test timestamp setting"
   :visibility :internal
   :type :timestamp)
@@ -462,7 +462,7 @@
   []
   (db/select-one-field :value Setting :key cache/settings-last-updated-key))
 
-(defsetting ^:private uncached-setting
+(defsetting uncached-setting
   "A test setting that should *not* be cached."
   :visibility :internal
   :cache? false)
@@ -523,7 +523,6 @@
     (is (= "Banana Beak"
            (toucan-name)))))
 
-
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
     (is (defsetting foo (deferred-tru "A testing setting") :visibility :public))
@@ -552,7 +551,7 @@
                  (ex-message e))))
         (finally (in-ns current-ns))))))
 
-(defsetting ^:private test-setting-with-question-mark?
+(defsetting test-setting-with-question-mark?
   "Test setting - this only shows up in dev (6)"
   :visibility :internal)
 
@@ -571,29 +570,29 @@
             {:name :test-setting-with-question-mark????
              :munged-name "test-setting-with-question-mark"}}
            (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting ^:private test-setting-with-question-mark????
+                       (try (defsetting test-setting-with-question-mark????
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on first definition"
-    (defsetting ^:private test-setting-normal
+    (defsetting test-setting-normal
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:existing-setting {:name :test-setting-normal, :munged-name "test-setting-normal"},
             :new-setting {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
            (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting ^:private test-setting-normal??
+                       (try (defsetting test-setting-normal??
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on second definition"
-    (defsetting ^:private test-setting-normal-1??
+    (defsetting test-setting-normal-1??
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
              :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
            (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting ^:private test-setting-normal-1
+                       (try (defsetting test-setting-normal-1
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal)
                             (catch Exception e (ex-data e)))))))
