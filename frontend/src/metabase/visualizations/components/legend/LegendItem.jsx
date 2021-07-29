@@ -5,14 +5,13 @@ import {
   LegendItemLabel,
   LegendItemRemoveIcon,
   LegendItemRoot,
-  LegendItemSubtitle,
   LegendItemTitle,
 } from "./LegendItem.styled";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 
 const propTypes = {
-  label: PropTypes.oneOfType(PropTypes.string, PropTypes.array),
+  label: PropTypes.string,
   index: PropTypes.number,
   color: PropTypes.string,
   isMuted: PropTypes.bool,
@@ -74,20 +73,15 @@ const LegendItem = ({
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
         {showDot && (
-          <Tooltip
-            tooltip={getLabelText(label)}
-            isEnabled={showTooltip && showDotTooltip}
-          >
+          <Tooltip tooltip={label} isEnabled={showTooltip && showDotTooltip}>
             <LegendItemDot color={color} />
           </Tooltip>
         )}
         {showLabel && (
           <LegendItemTitle showDot={showDot}>
-            {isVertical && getLabelNodes(label)}
+            {isVertical && label}
             {!isVertical && (
-              <Ellipsified showTooltip={showTooltip}>
-                {getLabelNodes(label)}
-              </Ellipsified>
+              <Ellipsified showTooltip={showTooltip}>{label}</Ellipsified>
             )}
           </LegendItemTitle>
         )}
@@ -95,24 +89,6 @@ const LegendItem = ({
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );
-};
-
-const getLabelText = label => {
-  if (!Array.isArray(label)) {
-    return label;
-  }
-
-  return label[0];
-};
-
-const getLabelNodes = label => {
-  if (!Array.isArray(label)) {
-    return label;
-  }
-
-  return label.map((text, index) => (
-    <LegendItemSubtitle key={index}>{text}</LegendItemSubtitle>
-  ));
 };
 
 LegendItem.propTypes = propTypes;
