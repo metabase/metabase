@@ -39,7 +39,7 @@ const LegendItem = ({
   onSelectSeries,
   onRemoveSeries,
 }) => {
-  const labelText = Array.isArray(label) ? label.join(", ") : label;
+  const labelText = Array.isArray(label) ? label.join(" ") : label;
 
   const handleItemClick = useCallback(
     event => {
