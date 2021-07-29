@@ -1,65 +1,50 @@
 # Synchronizing with the database
 
-Metabase needs to know what's in your database in order to populate dropdown menus and suggest good visualizations, but loading all the data would be very slow (or simply impossible if you have a lot of data). It therefore does three things:
+Metabase needs to know what's in your database in order to show tables and fields, populate dropdown menus, and suggest good visualizations, but loading all the data would be very slow (or simply impossible if you have a lot of data). It therefore does three things:
 
-1. Metabase periodically asks the database what tables are available, then asks which columns are available for each table. We call this *syncing*, and happens every hour unless you configure it to run more or less frequently. It's very fast with most relational databases, but can be slower with MongoDB, Athena, and Presto back-ends.
+1. Metabase periodically asks the database what tables are available, then asks which columns are available for each table. We call this *syncing*, and happens [hourly or daily][sync-frequency] depending on how you've configured it. It's very fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers][community-db-drivers].
 
-2. Metabase *fingerprints* the database the first time it connects. Fingerprinting fetches the first 10,000 rows from each table and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. Metabase only fingerprints each database once unless the administrator explicitly tells it to run again.
+2. Metabase *fingerprints* the column the first time it synchronizes. Fingerprinting fetches the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. Metabase only fingerprints each column once unless the administrator explicitly tells it to run again, or when there has been changes to the fingerprinting logic in newer versions (happens rarely).
 
-3. *Scan* is basically the same as fingerprinting, but is done every 24 hours (unless it's configured to run more or less often).  Scanning looks at 5000 records instead of 10,000, and keeps track of things like how many distinct values are present. If the textual result of scanning a column is more than 10 kbyte long, for example, we display a search box instead of a dropdown.
+3. *Scan* is similar to fingerprinting, but is done every 24 hours (unless it's configured to run less often or disabled).  Scanning looks at the first 5000 distinct records ordered ascending, when a field is set to "A list of all values" in the Data Model, which is used to display options in dropdowns. If the textual result of scanning a column is more than 10 kbyte long, for example, we display a search box instead of a dropdown.
 
 ## Specific Problems
 
 ### Metabase can't sync, fingerprint, or scan
 
-If Metabase can't connect to the database, or the credentials that Metabase is using don't give it permission to read the tables, the first sign will often be a failure to sync, fingerprint, or scan.
+If the credentials Metabase is using to connect to the database don't give it privileges to read the tables, the first sign will often be a failure to sync, which would then also stop fingerprint and scan.
 
-**How to detect this:** You are unable to see any of the tables in the database, or a question that used to run is no longer able to run at all. If the root cause is that Metabase can't connect to the database, there will be lots of messages in the log.
+**How to detect this:** You are unable to see any of the tables in the database, or column that have just been added don't show up in Metabase.
 
 **How to fix this:** [This guide][troubleshooting-db-connection] explains how to troubleshoot database connections. The relevant steps for solving this problem are:
 
-1. Is the data warehouse server running?
-2. Can you connect to the data warehouse using another client from a machine you know should have access?
-3. Can you connect to the data warehouse from another client from the machine you're running Metabase on?
-4. Can you run a query like the one shown below (which returns an empty set of results) for each table you're supposed to be able to access?
+1. If you have just set up a new database in Metabase, the sync process might still be running---it's normally fast, but does sometimes take a while. You can follow its progress in Admin > Troubleshooting > Logs.
+2. If you have just added a table or a column, Metabase might not have synced yet. You can manually run the sync process by going to the Admin Panel, selecting "Databases", choosing your database, and clicking on "Sync database schema now".
+3. Sometimes browsers will show an old cached list of tables or columns. Refreshing the page will update the cache.
+4. Try running a query like the one below for each table you think you should be able to access to see if the problem is caused by lack of database privileges:
 
 ```
-SELECT TRUE
+SELECT *
 FROM table
-WHERE 1 <> 1
-LIMIT 0
+LIMIT 1
 ```
+
+Note that we only get the first 10,000 documents when scanning a MongoDB collection, so if you are not seeing new fields, those fields might not exist in the documents we looked at. Please see [this discussion][metabase-mongo-missing] for more details.
 
 ### Metabase isn't showing all of the values I expect to see
 
 **How to detect this:**
 
-1. Some of the tables you expect to be able to query aren't being displayed.
-2. Some of the results you expect from a question aren't showing up.
-3. The UI isn't displaying some of the values you expect to see in a dropdown menu.
-4. The UI is showing a search box for selecting values where you expect a dropdown menu or vice versa.
+1. The UI isn't displaying some of the values you expect to see in a dropdown menu.
+2. The UI is showing a search box for selecting values where you expect a dropdown menu.
 
 **How to fix this:**
 
-1. Go to the Admin Panel and select "Databases"
-2. Select the database in question.
-3. Choose "Sync database schema now" and "Re-scan field values now".
-4. Check the log for error messages.
-5. Re-run the question or re-try the operation that alerted you to the problem.
-
-Please note that we only scan the first 10,000 records (or documents in MongoDB), so if your data is ordered or otherwise structured so that some values don't occur in the set we sample, they will not show up. Please see [this discussion][metabase-mongo-missing] for more details on MongoDB in particular.
-
-### The DESCRIPTION fields for my columns are empty
-
-Many relational databases allow administrators to add descriptions to columns when creating tables. These descriptions are separate from Metabase's internal metadata, but when Metabase syncs with the database, it loads these descriptions so that they can be displayed along with our metadata.
-
-**How to detect this:** Descriptions that are in the database aren't showing up.
-
-**How to fix this:**
-
-1. The usual cause is that the descriptions don't exist: most database administrators don't add descriptions to columns.
-2. Additionally, Oracle manages descriptions differently from other relational databases, and non-relational databases such as MongoDB don't have column descriptions at all.
-3. If you are sure that the descriptions are there and you are using a relational database other than Oracle, you may have found a bug: please [let us know][bugs].
+1. Go to the Admin Panel and select "Data Model"
+2. Select the database, schema, table and field in question.
+3. Click the gear-icon to view all the field's settings.
+4. Set "Field Type" to "Category" and "Filtering on this field" to "A list of all values"
+5. Click the button "Re-scan this field" in the bottom.
 
 ### I cannot force Metabase to sync or scan using the API
 
@@ -80,14 +65,18 @@ Metabase syncs and scans regularly, but if the database administrator has just c
 
 ### Sync and scan take a very long time to run
 
-**How to detect this:** Sync and scan take longer than a few seconds to complete, and/or the UI freezes while you are waiting for them to finish.
+**How to detect this:** Sync and scan take a long time to complete.
 
-**How to fix this:** The root cause is usually an unusual database schema. For example, if you have a table with several thousand columns (not rows---columns), it will take Metabase a while to scan them all. While this may seem unlikely, it can sometimes happen when a table has been pivoted so that (for example) customer IDs have been turned into columns.
+**How to fix this:** 
+1. For sync, this is usually caused by a large database with hundreds of schema, thousands of table and with hundreds of columns in each table. If only few of those are needed in Metabase, then restricting the privileges used to connect to the database with will make sure that Metabase can only sync a limited subset of the database.
+2. Scanning normally takes longer than sync, but changing the amount of fields which has "Filtering on this field" set to "A list of all values" to either "Search box" or "Plain input box" will mean that those will not be included in the scan.
 
-You can "fix" this by disabling scan entirely by going to the database in the Admin Panel and telling Metabase, "This is a large database," and then going to the Scheduling tab. However, sync is necessary: without it, Metabase won't know what tables exist or what columns they contain. To actually solve the problem, you will have to re-think the organization of your database.
+You can "fix" this by disabling scan entirely by going to the database in the Admin Panel and telling Metabase, "This is a large database," and then going to the Scheduling tab. However, sync is necessary: without it, Metabase won't know what tables exist or what columns they contain.
 
 [bugs]: ./bugs.html
+[community-db-drivers]: /docs/latest/developers-guide-drivers.html
 [etl]: /glossary.html#etl
 [metabase-api]: ../docs/latest/api-documentation.html
 [metabase-mongo-missing]: /docs/latest/administration-guide/databases/mongodb.html#i-added-fields-to-my-database-but-dont-see-them-in-metabase
+[sync-frequency]: /docs/latest/administration-guide/01-managing-databases.html#choose-when-metabase-syncs-and-scans
 [troubleshooting-db-connection]: ./datawarehouse.html#troubleshooting-your-database-connection
