@@ -1,3 +1,9 @@
+:local .ChartRoot {
+  composes: flex p2 from "style";
+  flex-direction: column;
+  min-height: 0;
+}
+
 :local .ChartAndDetail {
 }
 

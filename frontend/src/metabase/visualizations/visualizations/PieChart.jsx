@@ -425,12 +425,7 @@ export default class PieChart extends Component {
     };
 
     return (
-      <div
-        className={cx(
-          "flex flex-column shrink-below-content-size p2",
-          className,
-        )}
-      >
+      <div className={cx(styles.ChartRoot, className)}>
         {showTitle && (
           <LegendCaption
             className="pb2"
