@@ -133,10 +133,10 @@ function categorical_donut (rows, colors) {
     (-> s parse-svg-string render-svg)))
 
 (defn- execute-fn
-  [^Context context fn & args]
-  (let [fn-ref (.eval context "js" fn)
+  [^Context context js-fn-name & args]
+  (let [fn-ref (.eval context "js" js-fn-name)
         args   (into-array Object args)]
-    (assert (.canExecute fn-ref) (str "cannot execute " fn))
+    (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
     (.execute fn-ref args)))
 
 (defn timelineseries-line
