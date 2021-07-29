@@ -63,6 +63,12 @@ jobs:
     - name: Get M2 cache
       uses: actions/cache@v2
       with:
-        path: ~/.m2
-        key: ${{ runner.os }}-namespace-decls-${{ hashFiles('**/project.clj') }}
-    - run: lein with-profile +ci check-namespace-decls
+        path: |
+          ~/.m2
+          ~/.gitlibs
+        key: ${{ runner.os }}-namespace-decls-${{ hashFiles('**/deps.edn') }}
+    - name: Compile Java & AOT Sources
+      run: |
+        clojure -X:deps prep && cd modules/drivers && clojure -X:deps prep && cd ../..
+    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
+      name: Check ns forms
