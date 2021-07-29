@@ -168,7 +168,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
 
   return (
     <JoinClauseRoot>
-      <NotebookCellItem color={color} icon="table2">
+      <NotebookCellItem color={color}>
         {(lhsTable && lhsTable.displayName()) || `Previous results`}
       </NotebookCellItem>
 
@@ -256,7 +256,7 @@ function JoinTablePicker({
   }
 
   return (
-    <NotebookCellItem color={color} icon="table2" inactive={!joinedTable}>
+    <NotebookCellItem color={color} inactive={!joinedTable}>
       <DatabaseSchemaAndTableDataSelector
         hasTableSearch
         canChangeDatabase={false}
@@ -392,11 +392,7 @@ class JoinDimensionPicker extends React.Component {
       <PopoverWithTrigger
         ref={ref => (this._popover = ref)}
         triggerElement={
-          <NotebookCellItem
-            color={color}
-            icon={dimension && dimension.icon()}
-            inactive={!dimension}
-          >
+          <NotebookCellItem color={color} inactive={!dimension}>
             {dimension ? dimension.displayName() : `Pick a column...`}
           </NotebookCellItem>
         }

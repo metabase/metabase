@@ -26,10 +26,6 @@ NotebookCell.displayName = "NotebookCell";
 
 export const NotebookCellItem = styled(Flex).attrs({
   align: "center",
-  children: ({ icon, children }) => [
-    icon && <Icon className="mr1" name={icon} size={10} />,
-    children,
-  ],
 })`
   font-weight: bold;
   border: 2px solid transparent;
