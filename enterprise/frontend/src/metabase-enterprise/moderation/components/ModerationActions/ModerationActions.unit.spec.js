@@ -5,9 +5,11 @@ import { render, screen } from "@testing-library/react";
 describe("ModerationActions", () => {
   describe("when the user is not a moderator", () => {
     it("should not render", () => {
-      const { getByTestId } = render(<ModerationActions isModerator={false} />);
-      expect(() => getByTestId("moderation-verify-action")).toThrow();
-      expect(() => screen.getByText("Moderation")).toThrow();
+      const { queryByTestId } = render(
+        <ModerationActions isModerator={false} />,
+      );
+      expect(queryByTestId("moderation-verify-action")).toBeNull();
+      expect(screen.queryByText("Moderation")).toBeNull();
     });
   });
 
