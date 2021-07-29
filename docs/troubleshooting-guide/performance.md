@@ -70,7 +70,7 @@ Joining half a dozen tables, each with a few million rows, simply takes a lot of
 
 3. If the query runs slowly when sent by another tool, see if you can write a SQL query that calculates the same result as the question you have built in Metabase, but does so more quickly.
 
-**How to fix this:* If the problem is the SQL we generate:
+**How to fix this:** If the problem is the SQL we generate:
 
 1. Check if you have the most recent version of Metabase: we fix problems as they're reported, and updating Metabase may make your problem go away.
 2. You can use your SQL in place of the code we generate, and [make its result available][organizing-sql] to people who prefer the Notebook Editor as a starting point for their questions.
