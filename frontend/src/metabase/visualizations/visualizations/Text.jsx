@@ -37,12 +37,15 @@ export default class Text extends Component {
   static iconName = "text";
 
   static disableSettingsConfig = false;
-  static noHeader = true;
   static supportsSeries = false;
   static hidden = true;
   static supportPreviewing = true;
 
   static minSize = { width: 4, height: 1 };
+
+  static isHeaderEnabled() {
+    return false;
+  }
 
   static checkRenderable() {
     // text can always be rendered, nothing needed here

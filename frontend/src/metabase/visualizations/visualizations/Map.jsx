@@ -42,7 +42,10 @@ export default class Map extends Component {
   static aliases = ["state", "country", "pin_map"];
 
   static minSize = { width: 4, height: 4 };
-  static noHeader = true;
+
+  static isHeaderEnabled(settings) {
+    return settings["map.type"] !== "region";
+  }
 
   static isSensible({ cols, rows }) {
     return (

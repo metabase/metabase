@@ -76,10 +76,13 @@ export default class LineAreaBarChart extends Component {
   static identifier: string;
   static renderer: (element: Element, props: VisualizationProps) => any;
 
-  static noHeader = true;
   static supportsSeries = true;
 
   static minSize = { width: 4, height: 3 };
+
+  static isHeaderEnabled() {
+    return false;
+  }
 
   static isSensible({ cols, rows }) {
     return (

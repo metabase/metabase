@@ -52,12 +52,15 @@ export default class PieChart extends Component {
   static uiName = t`Pie`;
   static identifier = "pie";
   static iconName = "pie";
-  static noHeader = true;
 
   static minSize = { width: 4, height: 4 };
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;
+  }
+
+  static isHeaderEnabled() {
+    return false;
   }
 
   static checkRenderable(

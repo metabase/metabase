@@ -506,7 +506,9 @@ export default class Visualization extends React.PureComponent {
 
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
-    const isHeaderEnabled = !(visualization && visualization.noHeader);
+    const isHeaderEnabled =
+      visualization.isHeaderEnabled == null ||
+      visualization.isHeaderEnabled(settings);
 
     const hasLegendHeader =
       (showTitle &&

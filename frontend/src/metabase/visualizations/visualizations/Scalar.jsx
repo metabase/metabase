@@ -45,12 +45,15 @@ export default class Scalar extends Component {
   static identifier = "scalar";
   static iconName = "number";
 
-  static noHeader = true;
   static supportsSeries = true;
 
   static minSize = { width: 3, height: 3 };
 
   _scalar: ?HTMLElement;
+
+  static isHeaderEnabled() {
+    return false;
+  }
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
