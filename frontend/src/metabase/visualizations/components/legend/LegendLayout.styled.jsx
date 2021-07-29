@@ -9,8 +9,8 @@ export const LegendLayoutRoot = styled.div`
 `;
 
 export const LegendPanel = styled.div`
+  width: ${({ isVertical }) => (isVertical ? "25%" : "")};
   min-width: ${({ isVertical }) => (isVertical ? "4rem" : "")};
-  max-width: ${({ isVertical }) => (isVertical ? "25%" : "")};
   max-width: ${({ isVertical }) => (isVertical ? "min(25%, 20rem)" : "")};
   overflow-y: ${({ isVertical }) => (isVertical ? "auto" : "")};
   margin-right: ${({ isVertical }) => (isVertical ? space(2) : "")};
