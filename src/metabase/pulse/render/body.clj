@@ -239,14 +239,35 @@
                                                                               :max-value  max-value}))
         (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
-(def colors ["#42a5f5" ; blue
-             "#66bb6a" ; green
-             "#ffab91" ; peach
-             "#e53935" ; red
-             "#ffd54f" ; yellow
-             "#ce93d8" ; purple
-             "#69f0ae" ; lighter green
-             ])
+;; copied from https://stats.metabase.com/_internal/colors chart colors
+(def colors ["#509EE3"
+             "#88BF4D"
+             "#A989C5"
+             "#EF8C8C"
+             "#F9D45C"
+             "#F2A86F"
+             "#98D9D9"
+             "#7172AD"
+             "#6450e3"
+             "#4dbf5e"
+             "#c589b9"
+             "#efce8c"
+             "#b5f95c"
+             "#e35850"
+             "#554dbf"
+             "#bec589"
+             "#8cefc6"
+             "#5cc2f9"
+             "#55e350"
+             "#bf4d4f"
+             "#89c3c5"
+             "#be8cef"
+             "#f95cd0"
+             "#50e3ae"
+             "#bf974d"
+             "#899bc5"
+             "#ef8cde"
+             "#f95c67"])
 
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
