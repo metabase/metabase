@@ -5,6 +5,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import {
   ChartPanel,
   LegendLayoutRoot,
+  LegendOverflow,
   LegendPanel,
 } from "./LegendLayout.styled";
 import Legend from "metabase/visualizations/components/legend/Legend";
@@ -44,7 +45,9 @@ const LegendLayout = ({
     <LegendLayoutRoot className={className} isVertical={isVertical}>
       {isVisible && (
         <LegendPanel isVertical={isVertical}>
-          <Legend {...otherProps} labels={labels} isVertical={isVertical} />
+          <LegendOverflow isVertical={isVertical}>
+            <Legend {...otherProps} labels={labels} isVertical={isVertical} />
+          </LegendOverflow>
         </LegendPanel>
       )}
       <ChartPanel>{children}</ChartPanel>
