@@ -82,7 +82,7 @@ const LegendItem = ({
           </Tooltip>
         )}
         {showLabel && (
-          <LegendItemTitle showDot={showDot}>
+          <LegendItemTitle hasSubtitle={hasSubtitle(label)}>
             {isVertical && getLabelNodes(label)}
             {!isVertical && (
               <Ellipsified showTooltip={showTooltip}>
@@ -97,8 +97,12 @@ const LegendItem = ({
   );
 };
 
+const hasSubtitle = label => {
+  return Array.isArray(label);
+};
+
 const getLabelText = label => {
-  if (!Array.isArray(label)) {
+  if (!hasSubtitle(label)) {
     return label;
   }
 
@@ -106,7 +110,7 @@ const getLabelText = label => {
 };
 
 const getLabelNodes = label => {
-  if (!Array.isArray(label)) {
+  if (!hasSubtitle(label)) {
     return label;
   }
 

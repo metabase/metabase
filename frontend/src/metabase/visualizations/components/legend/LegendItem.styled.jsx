@@ -42,18 +42,19 @@ export const LegendItemDot = styled.div`
 export const LegendItemTitle = styled.div`
   display: flex;
   flex: 1 1 auto;
+  flex-wrap: wrap;
   align-items: center;
   min-width: 0;
-  margin-left: ${({ showDot }) => (showDot ? space(1) : "")};
   overflow: hidden;
+
+  &:not(:first-child) {
+    margin-left: ${({ hasSubtitle }) => (hasSubtitle ? "0.25rem" : "0.5rem")};
+  }
 `;
 
 export const LegendItemSubtitle = styled.span`
-  display: inline-block;
-
-  &:not(:first-child) {
-    padding-left: ${space(1)};
-  }
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
 `;
 
 export const LegendItemRemoveIcon = styled(Icon).attrs({
