@@ -10,6 +10,7 @@ import {
 import Legend from "metabase/visualizations/components/legend/Legend";
 
 const MIN_WIDTH_PER_SERIES = 100;
+const MIN_WIDTH_PER_LEGEND = 400;
 const MIN_UNITS_PER_LEGEND = 6;
 
 const propTypes = {
@@ -34,8 +35,10 @@ const LegendLayout = ({
   ...otherProps
 }) => {
   const isVertical = width < labels.length * MIN_WIDTH_PER_SERIES;
-  const isCompact = gridSize != null && gridSize.width < MIN_UNITS_PER_LEGEND;
-  const isVisible = showLegend && (!isDashboard || !(isVertical && isCompact));
+  const isGridSmall = gridSize != null && gridSize.width < MIN_UNITS_PER_LEGEND;
+  const isWidthSmall = width < MIN_WIDTH_PER_LEGEND;
+  const isHidden = isVertical && isDashboard && (isWidthSmall || isGridSmall);
+  const isVisible = showLegend && !isHidden;
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
