@@ -171,7 +171,7 @@
     cloverage/cloverage                                   {:mvn/version "1.2.2"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
     jonase/eastwood                                       {:mvn/version "0.9.4"}
-    lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"}
+    lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"} ; misnomer since this works on Clojure CLI now too
     pjstadig/humane-test-output                           {:mvn/version "0.11.0"}
     reifyhealth/specmonstah                               {:mvn/version "2.0.0"}
     ring/ring-mock                                        {:mvn/version "0.4.0"}

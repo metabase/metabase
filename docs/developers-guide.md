@@ -169,41 +169,58 @@ to them. You can build drivers as follows:
 ./bin/build-drivers.sh
 ```
 
-The first time you build a driver, it will be a bit slow, because Metabase needs to build the core project a couple of times so the driver can use it as a dependency; you can take comfort in the
-fact that you won't need to build the driver again after that. Alternatively, running Metabase 1.0+ from the uberjar will unpack all of the pre-built drivers into your plugins directory; you can
-do this instead if you already have a Metabase uberjar (just make sure `plugins` is in the root directory of the Metabase source, i.e. the same directory as `project.clj`).
+### Including driver source paths for development or other tasks
 
-### Including driver source paths for development or other Leiningen tasks
-
-For development when running various Leiningen tasks you can add the `include-all-drivers` profile to merge the drivers' dependencies and source paths into the Metabase
-project:
+For development when running various Leiningen tasks you can add the `drivers` and `drivers-dev` aliases to merge the
+drivers' dependencies and source paths into the Metabase project:
 
 ```
-# Install dependencies
-lein with-profiles +include-all-drivers deps
+# Install dependencies, including for drivers
+clojure -P -X:dev:ci:drivers:drivers-dev
 ```
-
-This profile is added by default when running `lein repl`, tests, and linters.
 
 #### Unit Tests / Linting
 
 Run unit tests with
 
-    lein test
+    # OSS tests only
+    clojure -X:dev:test
 
-or a specific test with
+    # OSS + EE tests
+    clojure -X:dev:ee:ee-dev:test
 
-    lein test metabase.api.session-test
+or a specific test (or test namespace) with
+
+    # run tests in only one namespace (pass in a symbol)
+    clojure -X:dev:test :only metabase.api.session-test
+
+    # run one specific test (pass in a qualified symbol)
+    clojure -X:dev:test :only metabase.api.session-test/my-test
+
+    # run tests in one specific folder (test/metabase/util in this example)
+    # pass arg in double-quotes so Clojure CLI interprets it as a string;
+    # our test runner treats strings as directories
+    clojure -X:dev:test :only '"test/metabase/util"'
 
 By default, the tests only run against the `h2` driver. You can specify which drivers to run tests against with the env var `DRIVERS`:
 
-    DRIVERS=h2,postgres,mysql,mongo lein test
+    DRIVERS=h2,postgres,mysql,mongo clojure -X:dev:drivers:drivers-dev:test
 
 Some drivers require additional environment variables when testing since they are impossible to run locally (such as Redshift and Bigquery). The tests will fail on launch and let you know what parameters to supply if needed.
 
 ##### Run the linters:
 
-    lein eastwood && lein bikeshed && lein docstring-checker && lein check-namespace-decls && ./bin/reflection-linter
+`clj-kondo` must be installed separately; see https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md for
+instructions.
+
+    # Run Eastwood
+    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
+
+    # Run the namespace checker
+    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
+
+    # Run clj-kondo
+    clj-kondo --parallel --lint src shared/src enterprise/backend/src --config lint-config.edn
 
 #### Developing with Emacs
 
