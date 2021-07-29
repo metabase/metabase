@@ -176,7 +176,10 @@
               (a/>! canceled-chan ::request-canceled)
               (recur))))))))
 
-(defn- respond
+;; This used to be marked `^:private` but Eastwood is complaining that it's not used anywhere else -- even tho it's
+;; used in the `deftype+` above... so it can just be public for now so Eastwood stops complaining.
+(defn respond
+  "Invoke `f` and Write its results to a Jetty `async-context` -- impl for [[StreamingResponse]] below."
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
    f {:keys [content-type status headers], :as options} finished-chan]
   (let [canceled-chan (a/promise-chan)]
@@ -223,7 +226,11 @@
     (respond* (compojure.response/render this request))))
 
 ;; TODO -- don't think any of this is needed any mo
-(defn- render [^StreamingResponse streaming-response gzip?]
+;;
+; This is public for the same reason [[respond]] is -- see above
+(defn render
+  "Wrap a `StreamingResponse` object in a Ring response map. Implementation of a Compojure protocol."
+  [^StreamingResponse streaming-response gzip?]
   (let [{:keys [headers content-type], :as options} (.options streaming-response)]
     (assoc (ring.response/response (if gzip?
                                      (StreamingResponse. (.f streaming-response)
