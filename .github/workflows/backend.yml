@@ -32,8 +32,8 @@ jobs:
         java-version: 11
     - name: Install Clojure CLI
       run: |
-        curl -O https://download.clojure.org/install/linux-install-1.10.3.929.sh &&
-        sudo bash ./linux-install-1.10.3.929.sh
+        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+        sudo bash ./linux-install-1.10.3.933.sh
     - name: Get M2 cache
       uses: actions/cache@v2
       with:
@@ -58,8 +58,8 @@ jobs:
         java-version: 11
     - name: Install Clojure CLI
       run: |
-        curl -O https://download.clojure.org/install/linux-install-1.10.3.929.sh &&
-        sudo bash ./linux-install-1.10.3.929.sh
+        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+        sudo bash ./linux-install-1.10.3.933.sh
     - name: Get M2 cache
       uses: actions/cache@v2
       with:
