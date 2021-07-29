@@ -3,23 +3,31 @@ import { space } from "metabase/styled-components/theme";
 
 export const LegendLayoutRoot = styled.div`
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
-  min-height: 0;
 `;
 
 export const LegendPanel = styled.div`
-  width: ${({ isVertical }) => (isVertical ? "25%" : "")};
+  flex: ${({ isVertical }) => (isVertical ? "1 0 auto" : "")};
+  position: relative;
   min-width: ${({ isVertical }) => (isVertical ? "4rem" : "")};
   max-width: ${({ isVertical }) => (isVertical ? "min(25%, 20rem)" : "")};
-  overflow-y: ${({ isVertical }) => (isVertical ? "auto" : "")};
   margin-right: ${({ isVertical }) => (isVertical ? space(2) : "")};
   margin-bottom: ${({ isVertical }) => (isVertical ? "" : space(2))};
 `;
 
+export const LegendOverflow = styled.div`
+  position: ${({ isVertical }) => (isVertical ? "absolute" : "")};
+  overflow-y: ${({ isVertical }) => (isVertical ? "auto" : "")};
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+`;
+
 export const ChartPanel = styled.div`
   display: flex;
-  flex: 1 1 auto;
+  flex: 3 1 auto;
   flex-direction: column;
   position: relative;
   min-width: 0;

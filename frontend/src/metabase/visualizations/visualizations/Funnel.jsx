@@ -7,8 +7,7 @@ import {
 } from "metabase/visualizations/lib/errors";
 
 import { iconPropTypes } from "metabase/components/Icon";
-import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
-import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
+import ChartWithLegend from "metabase/visualizations/components/legend/ChartWithLegend";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -24,7 +23,6 @@ import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
 
 import _ from "underscore";
-import cx from "classnames";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
@@ -211,32 +209,24 @@ export default class Funnel extends Component {
     } = getLegendSettings(this.props);
 
     return (
-      <div
-        className={cx(className, "flex flex-column p2")}
-        style={{ minHeight: 0 }}
+      <ChartWithLegend
+        className={className}
+        title={title}
+        description={description}
+        icon={headerIcon}
+        labels={labels}
+        colors={colors}
+        gridSize={gridSize}
+        showDots={showDots}
+        showLegend={showLegend}
+        showCaption={showCaption}
+        isDashboard={isDashboard}
+        showTooltip
+        showDotTooltip
+        onSelectTitle={this.onSelectTitle}
       >
-        {showCaption && (
-          <LegendCaption
-            className="pb2"
-            title={title}
-            description={description}
-            icon={headerIcon}
-            onSelectTitle={this.onSelectTitle}
-          />
-        )}
-        <LegendLayout
-          labels={labels}
-          colors={colors}
-          gridSize={gridSize}
-          showDots={showDots}
-          showLegend={showLegend}
-          isDashboard={isDashboard}
-          showTooltip
-          showDotTooltip
-        >
-          <FunnelNormal {...this.props} className="flex-full" />
-        </LegendLayout>
-      </div>
+        <FunnelNormal {...this.props} className="flex-full" />
+      </ChartWithLegend>
     );
   }
 }
