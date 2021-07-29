@@ -1,7 +1,7 @@
 (ns metabase.shared.util.currency
   "The list of currencies, and associated metadata, used by Metabase for number formatting.")
 
-(def currency-list
+(def ^:private currency-list
   [[:USD {:symbol "$",
           :name "US Dollar",
           :symbol_native "$",
@@ -844,5 +844,8 @@
           :name_plural "Zambian kwachas"}]])
 
 (def ^:export currency
-  "Returns the list of currencies supported by Metabase, with associated metadata."
-  #?(:cljs (clj->js currency-list)))
+  "Returns the list of currencies supported by Metabase, with associated metadata.
+  In Clojure, it is converted to a map for quick lookup of currency symbols during XLSX
+  exports. In ClojureScript, it is kept as a 2D array to maintain the order of currencies."
+  #?(:clj (into {} currency-list)
+     :cljs (clj->js currency-list)))
