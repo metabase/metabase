@@ -329,7 +329,6 @@ export default class LineAreaBarChart extends Component {
           />
         )}
         <LegendLayout
-          className="flex-full"
           labels={labels}
           colors={colors}
           hovered={hovered}
