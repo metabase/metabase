@@ -266,7 +266,7 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src (:image-src image-bundle)}]
-      (into [:div {:style (style/style {:clear :both :width "540px"})}]
+      (into [:div {:style (style/style {:clear :both :width "540px" :color "#4C5773"})}]
             (for [label (map (comp str x-axis-rowfn) rows)]
               [:div {:style (style/style {:float :left :margin-right "12px"
                                           :font-family "Lato, sans-serif"
