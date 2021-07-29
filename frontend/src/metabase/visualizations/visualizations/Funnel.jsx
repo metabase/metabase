@@ -179,14 +179,26 @@ export default class Funnel extends Component {
     }
   }
 
+  onSelectTitle = () => {
+    const { card, onChangeCardAndRun } = this.props;
+
+    if (onChangeCardAndRun) {
+      onChangeCardAndRun({ nextCard: card, seriesIndex: 0 });
+    }
+  };
+
   render() {
-    const { settings } = this.props;
+    const {
+      className,
+      settings,
+      gridSize,
+      headerIcon,
+      isDashboard,
+    } = this.props;
 
     if (settings["funnel.type"] === "bar") {
       return <FunnelBar {...this.props} />;
     }
-
-    const { className, gridSize, headerIcon, isDashboard } = this.props;
 
     const {
       title,
@@ -196,7 +208,6 @@ export default class Funnel extends Component {
       showCaption,
       showLegend,
       showDots,
-      onSelectTitle,
     } = getLegendSettings(this.props);
 
     return (
@@ -207,7 +218,7 @@ export default class Funnel extends Component {
             title={title}
             description={description}
             icon={headerIcon}
-            onSelectTitle={onSelectTitle}
+            onSelectTitle={this.onSelectTitle}
           />
         )}
         <LegendLayout
