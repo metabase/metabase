@@ -464,8 +464,8 @@
   [_ identifier]
   (let [curr-identifier (replace-hyphens identifier)]
     (if-not (should-qualify-identifier? identifier)
-      identifier
-      (-> identifier
+      curr-identifier
+      (-> curr-identifier
           (update :components (fn [[table & more]]
                                 (cons (str (dataset-name-for-current-query) \. table)
                                       more)))
