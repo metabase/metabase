@@ -4,6 +4,10 @@ Has some helper functions to help out with rendering debugging.
 
 In this namespace, you can run `(help)` to get a bit of help. It's principle usage right now is to render and debug the svg images.
 
+### NOTE!
+
+You must build the js bundle used to create the svgs with visx. Run `yarn build-static-viz` to ensure that this bundle is created and the file `resources/frontend_client/app/dist/lib-static-viz.bundle.js` exists
+
 Example usage below:
 
 ```clojure
