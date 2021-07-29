@@ -432,7 +432,7 @@ export default class PieChart extends Component {
         colors={legendColors}
         hovered={hovered}
         gridSize={gridSize}
-        showLegend={settings["pie.show_legend"]}
+        showLegend={settings["pie.show_legend"] !== false}
         showCaption={showTitle}
         isDashboard={isDashboard}
         onSelectTitle={onChangeCardAndRun && handleSelectTitle}

@@ -48,6 +48,14 @@ export const LegendItemTitle = styled.div`
   overflow: hidden;
 `;
 
+export const LegendItemSubtitle = styled.span`
+  display: inline-block;
+
+  &:not(:first-child) {
+    padding-left: ${space(1)};
+  }
+`;
+
 export const LegendItemRemoveIcon = styled(Icon).attrs({
   name: "close",
   size: 12,
