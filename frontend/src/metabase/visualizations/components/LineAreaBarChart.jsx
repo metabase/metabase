@@ -4,8 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { iconPropTypes } from "metabase/components/Icon";
 import CardRenderer from "./CardRenderer";
-import LegendLayout from "./legend/LegendLayout";
-import LegendCaption from "./legend/LegendCaption";
+import ChartWithLegend from "./legend/ChartWithLegend";
 
 import "./LineAreaBarChart.css";
 
@@ -312,47 +311,36 @@ export default class LineAreaBarChart extends Component {
     } = getLegendSettings(this.props);
 
     return (
-      <div
-        className={cx(
-          "LineAreaBarChart flex flex-column p2",
-          this.getHoverClasses(),
-          className,
-        )}
+      <ChartWithLegend
+        className={cx("LineAreaBarChart", this.getHoverClasses(), className)}
+        title={title}
+        description={description}
+        icon={headerIcon}
+        labels={labels}
+        colors={colors}
+        hovered={hovered}
+        gridSize={gridSize}
+        showDots={showDots}
+        showLegend={showLegend}
+        showCaption={showCaption}
+        isDashboard={isDashboard}
+        showTooltip
+        showDotTooltip
+        onSelectTitle={this.onSelectTitle}
+        onHoverChange={onHoverChange}
+        onAddSeries={!hasBreakout ? onAddSeries : undefined}
+        onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
+        onSelectSeries={this.onSelectSeries}
       >
-        {showCaption && (
-          <LegendCaption
-            className="pb2"
-            title={title}
-            description={description}
-            icon={headerIcon}
-            onSelectTitle={this.onSelectTitle}
-          />
-        )}
-        <LegendLayout
-          labels={labels}
-          colors={colors}
-          hovered={hovered}
-          gridSize={gridSize}
-          showDots={showDots}
-          showLegend={showLegend}
-          isDashboard={isDashboard}
-          showTooltip
-          showDotTooltip
-          onHoverChange={onHoverChange}
-          onAddSeries={!hasBreakout ? onAddSeries : undefined}
-          onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
-          onSelectSeries={this.onSelectSeries}
-        >
-          <CardRenderer
-            {...this.props}
-            series={series}
-            settings={this.getSettings()}
-            className="renderer flex-full"
-            maxSeries={MAX_SERIES}
-            renderer={this.constructor.renderer}
-          />
-        </LegendLayout>
-      </div>
+        <CardRenderer
+          {...this.props}
+          series={series}
+          settings={this.getSettings()}
+          className="renderer flex-full"
+          maxSeries={MAX_SERIES}
+          renderer={this.constructor.renderer}
+        />
+      </ChartWithLegend>
     );
   }
 }
