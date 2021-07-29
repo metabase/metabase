@@ -211,7 +211,12 @@ export default class Funnel extends Component {
     } = getLegendSettings(this.props);
 
     return (
-      <div className={cx(className, "flex flex-column p2")}>
+      <div
+        className={cx(
+          className,
+          "flex flex-column shrink-below-content-size p2",
+        )}
+      >
         {showCaption && (
           <LegendCaption
             className="pb2"
