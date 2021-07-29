@@ -26,7 +26,7 @@
             [toucan.util.test :as tt]))
 
 (deftest connection-details->spec-test
-  (doseq [[message expected-spec details]
+  (doseq [[^String message expected-spec details]
           [["You should be able to connect with an SID"
             {:classname   "oracle.jdbc.OracleDriver"
              :subprotocol "oracle:thin"

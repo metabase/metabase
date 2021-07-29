@@ -49,6 +49,6 @@
      ;; ok, now we need to make sure we load any depenencies for those drivers as well (!)
      (load-plugin-manifests! (driver-parents driver)))))
 
-(defn- init! []
+(defn init! []
   (plugins/load-plugins!)
   (load-plugin-manifests!))

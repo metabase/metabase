@@ -166,7 +166,7 @@
 (defn- execute-ddl! [ddl-statements]
   (mt/with-driver :presto-jdbc
     (let [jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc (:details (mt/db)))]
-      (with-open [conn (doto (jdbc/get-connection jdbc-spec))]
+      (with-open [conn (jdbc/get-connection jdbc-spec)]
         (doseq [ddl-stmt ddl-statements]
           (with-open [stmt (.prepareStatement conn ddl-stmt)]
             (.executeUpdate stmt)))))))
