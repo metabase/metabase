@@ -17,7 +17,6 @@ export const getLegendSettings = ({
   const showCaption = showTitle && !!title;
   const hasBreakout = card._breakoutColumn != null;
   const showLegend =
-    !showCaption ||
     series.length > 1 ||
     onAddSeries != null ||
     onEditSeries != null ||
