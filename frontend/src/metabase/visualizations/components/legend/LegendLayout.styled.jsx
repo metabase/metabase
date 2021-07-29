@@ -27,6 +27,8 @@ export const LegendOverflow = styled.div`
 
 export const ChartPanel = styled.div`
   display: flex;
-  flex: 3 0 auto;
+  flex: 3 1 auto;
+  flex-direction: column;
   position: relative;
+  min-width: 0;
 `;
