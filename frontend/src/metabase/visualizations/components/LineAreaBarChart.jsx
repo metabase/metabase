@@ -314,7 +314,7 @@ export default class LineAreaBarChart extends Component {
     return (
       <div
         className={cx(
-          "LineAreaBarChart flex flex-column p2",
+          "LineAreaBarChart flex flex-column shrink-below-content-size p2",
           this.getHoverClasses(),
           className,
         )}
