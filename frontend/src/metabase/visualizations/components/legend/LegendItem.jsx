@@ -5,7 +5,6 @@ import {
   LegendItemLabel,
   LegendItemRemoveIcon,
   LegendItemRoot,
-  LegendItemSubtitle,
   LegendItemTitle,
 } from "./LegendItem.styled";
 import Tooltip from "metabase/components/Tooltip";
