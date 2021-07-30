@@ -11,6 +11,7 @@ const MIN_UNITS_PER_LEGEND = 6;
 
 const propTypes = {
   className: PropTypes.string,
+  labels: PropTypes.array.isRequired,
   gridSize: PropTypes.object,
   showLegend: PropTypes.bool,
   isDashboard: PropTypes.bool,
@@ -20,6 +21,7 @@ const propTypes = {
 
 const LegendLayout = ({
   className,
+  labels,
   gridSize,
   showLegend,
   isDashboard,
@@ -30,6 +32,7 @@ const LegendLayout = ({
   const [isMeasured, setIsMeasured] = useState(false);
   const [isVertical, setIsVertical] = useState(false);
 
+  const labelsText = labels.toString();
   const gridWidth = gridSize && gridSize.width;
   const isCompact = gridWidth < MIN_UNITS_PER_LEGEND;
   const isHidden = isVertical && isCompact && isDashboard;
@@ -40,7 +43,7 @@ const LegendLayout = ({
       setIsMeasured(false);
       setIsVertical(false);
     }
-  }, [gridWidth, showLegend]);
+  }, [labelsText, gridWidth, showLegend]);
 
   useLayoutEffect(() => {
     const legend = ref.current;
@@ -55,7 +58,12 @@ const LegendLayout = ({
     <LegendLayoutRoot className={className} isVertical={isVertical}>
       {isVisible && (
         <LegendPanel isVertical={isVertical}>
-          <Legend ref={ref} isVertical={isVertical} {...otherProps} />
+          <Legend
+            ref={ref}
+            labels={labels}
+            isVertical={isVertical}
+            {...otherProps}
+          />
         </LegendPanel>
       )}
       <ChartPanel>{children}</ChartPanel>
