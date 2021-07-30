@@ -34,7 +34,7 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Managing data sandboxing][sandbox].
 
-- [Synchronizing with the database][sync-fingerprint-scan]: tables are empty or columns are not visible.
+- [Fixing missing or out-of-sync tables and columns][sync-fingerprint-scan].
 
 ## Think you found a bug?
 
