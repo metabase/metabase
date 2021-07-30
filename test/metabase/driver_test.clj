@@ -6,13 +6,20 @@
 
 (driver/register! ::test-driver, :abstract? true)
 
+(def ^:private db "dummy")
+
 (defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
+(defmethod driver/supports? [::test-driver :expressions db] [_ _ db] (= db "dummy"))
 
 (deftest driver-supports?-test
   (is (= true
          (driver/supports? ::test-driver :foreign-keys)))
+  (is (= true
+         (driver/supports? ::test-driver :expressions "dummy")))
   (is (= false
-         (driver/supports? ::test-driver :expressions))))
+         (driver/supports? ::test-driver :expressions)))
+  (is (= false
+         (driver/supports? ::test-driver :expressions "walla"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "

@@ -403,12 +403,15 @@
   `driver-features`.)
 
     (supports? :postgres :set-timezone) ; -> true"
-  {:arglists '([driver feature])}
+  {:arglists '([driver feature] [driver feature db]) :hierarchy #'hierarchy}
   (fn [driver feature]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
-  :hierarchy #'hierarchy)
+  (fn [driver feature database]
+    (when-not (driver-features feature)
+      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+    [(dispatch-on-initialized-driver driver) feature]))
 
 (defmethod supports? :default [_ _] false)
 
