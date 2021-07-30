@@ -9,18 +9,15 @@ import {
   LegendItemTitle,
 } from "./LegendItem.styled";
 import Tooltip from "metabase/components/Tooltip";
-import Ellipsified from "metabase/components/Ellipsified";
 
 const propTypes = {
-  label: PropTypes.oneOfType(PropTypes.string, PropTypes.array),
+  label: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),
   index: PropTypes.number,
   color: PropTypes.string,
   isMuted: PropTypes.bool,
   isVertical: PropTypes.bool,
   showDot: PropTypes.bool,
-  showLabel: PropTypes.bool,
   showTooltip: PropTypes.bool,
-  showDotTooltip: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
@@ -33,9 +30,7 @@ const LegendItem = ({
   isMuted = false,
   isVertical = false,
   showDot = true,
-  showLabel = true,
   showTooltip = false,
-  showDotTooltip = false,
   onHoverChange,
   onSelectSeries,
   onRemoveSeries,
@@ -67,31 +62,19 @@ const LegendItem = ({
 
   return (
     <LegendItemRoot isVertical={isVertical} data-testid="legend-item">
-      <LegendItemLabel
-        isMuted={isMuted}
-        onClick={onSelectSeries && handleItemClick}
-        onMouseEnter={onHoverChange && handleItemMouseEnter}
-        onMouseLeave={onHoverChange && handleItemMouseLeave}
-      >
-        {showDot && (
-          <Tooltip
-            tooltip={getLabelText(label)}
-            isEnabled={showTooltip && showDotTooltip}
-          >
-            <LegendItemDot color={color} />
-          </Tooltip>
-        )}
-        {showLabel && (
-          <LegendItemTitle hasSubtitle={hasSubtitle(label)}>
-            {isVertical && getLabelNodes(label)}
-            {!isVertical && (
-              <Ellipsified showTooltip={showTooltip}>
-                {getLabelNodes(label)}
-              </Ellipsified>
-            )}
+      <Tooltip tooltip={getLabelText(label)} isEnabled={showTooltip}>
+        <LegendItemLabel
+          isMuted={isMuted}
+          onClick={onSelectSeries && handleItemClick}
+          onMouseEnter={onHoverChange && handleItemMouseEnter}
+          onMouseLeave={onHoverChange && handleItemMouseLeave}
+        >
+          {showDot && <LegendItemDot color={color} />}
+          <LegendItemTitle showDot={showDot} hasSubtitle={hasSubtitle(label)}>
+            {getLabelNode(label)}
           </LegendItemTitle>
-        )}
-      </LegendItemLabel>
+        </LegendItemLabel>
+      </Tooltip>
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );
@@ -109,7 +92,7 @@ const getLabelText = label => {
   return label[0];
 };
 
-const getLabelNodes = label => {
+const getLabelNode = label => {
   if (!hasSubtitle(label)) {
     return label;
   }

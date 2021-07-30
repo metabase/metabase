@@ -11,7 +11,7 @@ export const getLegendSettings = ({
 }) => {
   const title = settings["card.title"] || card.title;
   const description = settings["card.description"];
-  const showCaption = showTitle && !!title;
+  const hasTitle = !!title;
   const hasBreakout = card._breakoutColumn != null;
   const showLegend =
     series.length > 1 ||
@@ -34,7 +34,7 @@ export const getLegendSettings = ({
     description,
     labels,
     colors,
-    showCaption,
+    showTitle: showTitle && hasTitle,
     showLegend,
     showDots,
     hasBreakout,
