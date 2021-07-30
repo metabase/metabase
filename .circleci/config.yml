@@ -242,23 +242,23 @@ default_parameters: &Params
 cache-key-backend-deps: &CacheKeyBackendDeps
   # TODO -- this should actually include the Java source files and the Spark SQL AOT source files as well since we now
   # compile those as part of this step. FIXME
-  key: v4-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
 
 cache-key-frontend-deps: &CacheKeyFrontendDeps
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-fe-deps-{{ checksum "yarn.lock" }}
 
 # Key used for implementation of run-on-change -- this is the cache key that contains the .SUCCESS dummy file
 # By default the key ALWAYS includes the name of the test job itself ($CIRCLE_STAGE) so you don't need to add that yourself.
 cache-key-run-on-change: &CacheKeyRunOnChange
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-run-on-change-{{ .Environment.CIRCLE_STAGE }}-<< parameters.checksum >>
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-run-on-change-{{ .Environment.CIRCLE_STAGE }}-<< parameters.checksum >>
 
 # Key for the local maven installation of metabase-core (used by build-uberjar-drivers)
 cache-key-metabase-core: &CacheKeyMetabaseCore
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-metabase-core-{{ checksum ".BACKEND-CHECKSUMS" }}
 
 # Key for the drivers built by build-uberjar-drivers
 cache-key-drivers: &CacheKeyDrivers
-  key: v2-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}-<< parameters.edition >>
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}-<< parameters.edition >>
 
 # This is also used by the uberjar-build-drivers step; this is a unique situation because the build-drivers script has
 # logic to determine whether to rebuild drivers or not that is quite a bit more sophisticated that the run-on-change
@@ -266,17 +266,17 @@ cache-key-drivers: &CacheKeyDrivers
 # redshift driver.
 cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
   keys:
-    - v2-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-    - v2-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}
-    - v2-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-
 
 # Key for frontend client built by uberjar-build-frontend step
 cache-key-frontend: &CacheKeyFrontend
-  key: v2-{{ checksum ".CACHE-PREFIX" }}-frontend-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-frontend-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
 
 # Key for uberjar built by build-uberjar
 cache-key-uberjar: &CacheKeyUberjar
-  key: v2-{{ checksum ".CACHE-PREFIX" }}-uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
 
 
 ########################################################################################################################
@@ -598,7 +598,7 @@ jobs:
       - attach-workspace
       # This step is pretty slow, even with the cache, so only run it if project.clj has changed
       - run-on-change:
-          checksum: 'v4-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
+          checksum: 'v5-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}'
           steps:
             - restore-be-deps-cache
             - run:
