@@ -272,7 +272,7 @@ cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
 
 # Key for frontend client built by uberjar-build-frontend step
 cache-key-frontend: &CacheKeyFrontend
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-frontend-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
+  key: v2-{{ checksum ".CACHE-PREFIX" }}-frontend-<< parameters.edition >>-{{ checksum ".FRONTEND-CHECKSUMS" }}
 
 # Key for uberjar built by build-uberjar
 cache-key-uberjar: &CacheKeyUberjar
@@ -872,6 +872,7 @@ jobs:
                 <<: *CacheKeyFrontend
                 paths:
                   - /home/circleci/metabase/metabase/resources/frontend_client
+                  - /home/circleci/metabase/metabase/resources/version.properties
 
   # Build the uberjar. parmeters.edition determines whether we build the OSS or EE version.
   build-uberjar:
