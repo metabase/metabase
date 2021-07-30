@@ -21,6 +21,8 @@
   (str/lower-case (name moderated-item)))
 
 (defn moderation-reviews-for-items
+  "Hydrate moderation reviews onto a seq of items. All are cards or the nils that end up here on text dashboard
+  cards. In the future could have dashboards here as well."
   {:batched-hydrate :moderation_reviews}
   [items]
   ;; no need to do work on empty items. Also, can have nil here due to text cards. I think this is a bug in toucan. To
