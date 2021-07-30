@@ -1,45 +1,42 @@
-import React from "react";
+import React, { forwardRef, memo } from "react";
 import PropTypes from "prop-types";
 import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
 const propTypes = {
   className: PropTypes.string,
-  classNameWidgets: PropTypes.string,
   labels: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
-  actionButtons: PropTypes.node,
   hovered: PropTypes.object,
   isVertical: PropTypes.bool,
   showDots: PropTypes.bool,
-  showLabels: PropTypes.bool,
   showTooltip: PropTypes.bool,
-  showDotTooltip: PropTypes.bool,
+  actionButtons: PropTypes.node,
   onHoverChange: PropTypes.func,
   onAddSeries: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
 };
 
-const Legend = ({
-  className,
-  classNameWidgets,
-  labels,
-  colors,
-  actionButtons,
-  hovered,
-  isVertical,
-  showDots,
-  showLabels,
-  showTooltip,
-  showDotTooltip,
-  onHoverChange,
-  onAddSeries,
-  onSelectSeries,
-  onRemoveSeries,
-}) => {
+const Legend = (
+  {
+    className,
+    labels,
+    colors,
+    hovered,
+    isVertical,
+    showDots,
+    showTooltip,
+    actionButtons,
+    onHoverChange,
+    onAddSeries,
+    onSelectSeries,
+    onRemoveSeries,
+  },
+  ref,
+) => {
   return (
-    <LegendRoot className={className} isVertical={isVertical}>
+    <LegendRoot className={className} innerRef={ref} isVertical={isVertical}>
       {labels.map((label, index) => (
         <LegendItem
           key={index}
@@ -49,9 +46,7 @@ const Legend = ({
           isMuted={hovered && hovered.index != null && index !== hovered.index}
           isVertical={isVertical}
           showDot={showDots}
-          showTitle={showLabels}
           showTooltip={showTooltip}
-          showDotTooltip={showDotTooltip}
           onHoverChange={onHoverChange}
           onSelectSeries={onSelectSeries}
           onRemoveSeries={onRemoveSeries}
@@ -59,7 +54,7 @@ const Legend = ({
       ))}
       {onAddSeries && <LegendAddIcon onClick={onAddSeries} />}
       {actionButtons && (
-        <LegendButtonGroup className={classNameWidgets}>
+        <LegendButtonGroup isVertical={isVertical}>
           {actionButtons}
         </LegendButtonGroup>
       )}
@@ -69,4 +64,4 @@ const Legend = ({
 
 Legend.propTypes = propTypes;
 
-export default Legend;
+export default memo(forwardRef(Legend));
