@@ -1,6 +1,7 @@
 name: YAML
 
 on:
+  pull_request:
   push:
     branches:
       - '**'
