@@ -258,7 +258,7 @@ cache-key-metabase-core: &CacheKeyMetabaseCore
 
 # Key for the drivers built by build-uberjar-drivers
 cache-key-drivers: &CacheKeyDrivers
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}-<< parameters.edition >>
+  key: v2-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}-<< parameters.edition >>
 
 # This is also used by the uberjar-build-drivers step; this is a unique situation because the build-drivers script has
 # logic to determine whether to rebuild drivers or not that is quite a bit more sophisticated that the run-on-change
@@ -266,9 +266,9 @@ cache-key-drivers: &CacheKeyDrivers
 # redshift driver.
 cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
   keys:
-    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}
-    - v1-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-
+    - v2-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+    - v2-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}
+    - v2-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-
 
 # Key for frontend client built by uberjar-build-frontend step
 cache-key-frontend: &CacheKeyFrontend
@@ -832,21 +832,7 @@ jobs:
                 name: Cache the built drivers
                 <<: *CacheKeyDrivers
                 paths:
-                  - /home/circleci/metabase/metabase/modules/drivers/bigquery/target
-                  - /home/circleci/metabase/metabase/modules/drivers/druid/target
-                  - /home/circleci/metabase/metabase/modules/drivers/google/target
-                  - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
-                  - /home/circleci/metabase/metabase/modules/drivers/mongo/target
-                  - /home/circleci/metabase/metabase/modules/drivers/oracle/target
-                  - /home/circleci/metabase/metabase/modules/drivers/presto-common/target
-                  - /home/circleci/metabase/metabase/modules/drivers/presto/target
-                  - /home/circleci/metabase/metabase/modules/drivers/presto-jdbc/target
-                  - /home/circleci/metabase/metabase/modules/drivers/redshift/target
-                  - /home/circleci/metabase/metabase/modules/drivers/snowflake/target
-                  - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
-                  - /home/circleci/metabase/metabase/modules/drivers/sqlite/target
-                  - /home/circleci/metabase/metabase/modules/drivers/sqlserver/target
-                  - /home/circleci/metabase/metabase/modules/drivers/vertica/target
+                  - /home/circleci/metabase/metabase/resources/modules
 
   # Build the frontend client. parameters.edition determines whether we build the OSS or EE version.
   build-uberjar-frontend:
@@ -872,7 +858,6 @@ jobs:
                 <<: *CacheKeyFrontend
                 paths:
                   - /home/circleci/metabase/metabase/resources/frontend_client
-                  - /home/circleci/metabase/metabase/resources/version.properties
 
   # Build the uberjar. parmeters.edition determines whether we build the OSS or EE version.
   build-uberjar:
@@ -906,7 +891,7 @@ jobs:
                   # INTERACTIVE=false will tell the clojure build scripts not to do interactive retries etc.
                   INTERACTIVE: "false"
                   MB_EDITION: << parameters.edition >>
-                command: ./bin/build version drivers uberjar
+                command: ./bin/build version uberjar
                 no_output_timeout: 15m
             - store_artifacts:
                 path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
