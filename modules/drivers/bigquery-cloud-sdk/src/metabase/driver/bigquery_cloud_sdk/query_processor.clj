@@ -730,7 +730,7 @@
   [driver {:keys [field], :as field-filter}]
   (let [field-temporal-type (temporal-type field)
         parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
-        result              (parent-method driver field-filter)]
+        result              (parent-method driver (reconcile-temporal-types field-filter))]
     (cond-> result
       field-temporal-type (update :prepared-statement-args (fn [args]
                                                              (for [arg args]
