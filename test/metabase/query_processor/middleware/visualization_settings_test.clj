@@ -57,11 +57,11 @@
   ([field-ids card-id viz-settings query-type]
    (let [query {:type query-type
                 :query {:fields (into [] (map #(vector :field % nil) field-ids))}
-                :viz-settings viz-settings
-                :info {:context :xlsx-download}}]
-     (if card-id
-       (assoc-in query [:info :card-id] card-id)
-       query))))
+                :info {:context :xlsx-download}}
+         query' (if card-id
+                  (assoc-in query [:info :card-id] card-id)
+                  query)]
+     (if viz-settings (assoc query' :viz-settings viz-settings) query'))))
 
 (deftest card-viz-settings-test
   (mt/with-everything-store
