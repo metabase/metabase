@@ -10,8 +10,8 @@
        (filter (fn [^File d]
                  (and (.isDirectory d) ;; watch for errant DS_Store files on os_x
                    ;; only consider a directory to be a driver if it contains a lein or deps build file
-                   (first (filter true? (map (fn [f]
-                                               (.exists (io/file d f))) ["project.clj" "deps.edn"]))))))
+                   (some true? (map (fn [f]
+                                      (.exists (io/file d f))) ["project.clj" "deps.edn"])))))
        (map (comp keyword #(.getName %)))))
 
 (defn build-drivers! [edition]
