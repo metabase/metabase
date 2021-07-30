@@ -4,6 +4,7 @@ import { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 import {
+  LegendTitleButtonGroup,
   LegendTitleIcon,
   LegendTitleInfo,
   LegendTitleLabel,
@@ -15,6 +16,7 @@ const propTypes = {
   title: PropTypes.string,
   description: PropTypes.string,
   icon: PropTypes.shape(iconPropTypes),
+  actionButtons: PropTypes.node,
   onSelectTitle: PropTypes.func,
 };
 
@@ -23,6 +25,7 @@ const LegendTitle = ({
   title,
   description,
   icon,
+  actionButtons,
   onSelectTitle,
 }) => {
   return (
@@ -35,6 +38,9 @@ const LegendTitle = ({
         <Tooltip tooltip={description} maxWidth="22em">
           <LegendTitleInfo />
         </Tooltip>
+      )}
+      {actionButtons && (
+        <LegendTitleButtonGroup>{actionButtons}</LegendTitleButtonGroup>
       )}
     </LegendTitleRoot>
   );

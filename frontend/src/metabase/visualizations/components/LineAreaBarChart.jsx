@@ -294,6 +294,7 @@ export default class LineAreaBarChart extends Component {
       gridSize,
       headerIcon,
       isDashboard,
+      actionButtons,
       onHoverChange,
       onAddSeries,
       onRemoveSeries,
@@ -320,6 +321,7 @@ export default class LineAreaBarChart extends Component {
         colors={colors}
         hovered={hovered}
         gridSize={gridSize}
+        actionButtons={actionButtons}
         showDots={showDots}
         showLegend={showLegend}
         showTitle={showTitle}

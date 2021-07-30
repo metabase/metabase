@@ -22,3 +22,9 @@ export const LegendAddIcon = styled(Icon).attrs({
     color: ${colors["brand"]};
   }
 `;
+
+export const LegendButtonGroup = styled.span`
+  flex: 0 0 auto;
+  position: relative;
+  margin-left: auto;
+`;

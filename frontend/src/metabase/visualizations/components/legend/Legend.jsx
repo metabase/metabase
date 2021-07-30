@@ -1,6 +1,6 @@
 import React, { forwardRef, memo } from "react";
 import PropTypes from "prop-types";
-import { LegendAddIcon, LegendRoot } from "./Legend.styled";
+import { LegendAddIcon, LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
 const propTypes = {
@@ -11,6 +11,7 @@ const propTypes = {
   isVertical: PropTypes.bool,
   showDots: PropTypes.bool,
   showTooltip: PropTypes.bool,
+  actionButtons: PropTypes.node,
   onHoverChange: PropTypes.func,
   onAddSeries: PropTypes.func,
   onSelectSeries: PropTypes.func,
@@ -26,6 +27,7 @@ const Legend = (
     isVertical,
     showDots,
     showTooltip,
+    actionButtons,
     onHoverChange,
     onAddSeries,
     onSelectSeries,
@@ -51,6 +53,7 @@ const Legend = (
         />
       ))}
       {onAddSeries && <LegendAddIcon onClick={onAddSeries} />}
+      {actionButtons && <LegendButtonGroup>{actionButtons}</LegendButtonGroup>}
     </LegendRoot>
   );
 };
