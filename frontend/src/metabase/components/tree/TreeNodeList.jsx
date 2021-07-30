@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 
 const propTypes = {
   TreeNodeComponent: PropTypes.object.isRequired,
@@ -22,6 +23,8 @@ export function TreeNodeList({
   depth,
   variant,
 }) {
+  const selectedRef = useScrollOnMount();
+
   return (
     <ul role="menu">
       {items.map(item => {
@@ -33,6 +36,7 @@ export function TreeNodeList({
         return (
           <React.Fragment key={item.id}>
             <TreeNodeComponent
+              ref={isSelected ? selectedRef : null}
               variant={variant}
               item={item}
               onToggleExpand={onToggleExpand}

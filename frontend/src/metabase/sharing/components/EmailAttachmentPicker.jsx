@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { t } from "ttag";
 
-import ButtonGroup from "metabase/components/ButtonGroup";
+import { SegmentedControl } from "metabase/components/SegmentedControl";
 import CheckBox from "metabase/components/CheckBox";
 import Label from "metabase/components/type/Label";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
@@ -179,13 +179,14 @@ export default class EmailAttachmentPicker extends Component {
           <div>
             <div className="my1 flex justify-between">
               <Label className="pt1">{t`File format`}</Label>
-              <ButtonGroup
+              <SegmentedControl
                 options={[
                   { name: ".csv", value: "csv" },
                   { name: ".xlsx", value: "xls" },
                 ]}
                 onChange={this.setAttachmentType}
                 value={selectedAttachmentType}
+                fullWidth
               />
             </div>
             <div className="text-bold pt1 pb2 flex justify-between align-center">

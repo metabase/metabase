@@ -58,7 +58,7 @@ export function QuestionList({
                 key={item.id}
                 id={item.id}
                 name={item.getName()}
-                icon={item.getIcon()}
+                icon={item.getIcon().name}
                 onSelect={onSelect}
               />
             ))}

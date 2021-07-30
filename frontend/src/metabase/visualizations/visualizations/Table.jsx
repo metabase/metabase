@@ -160,6 +160,11 @@ export default class Table extends Component {
       widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>
+        // If "table.columns" happened to be an empty array,
+        // it will be treated as "all columns are hidden",
+        // This check ensures it's not empty,
+        // otherwise it will be overwritten by `getDefault` below
+        card.visualization_settings["table.columns"].length !== 0 &&
         _.all(
           card.visualization_settings["table.columns"],
           columnSetting =>
@@ -392,15 +397,15 @@ export default class Table extends Component {
     const { data } = this.state;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = settings["table.pivot"];
-    const isColumnsDisabled =
-      (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
+    const columnSettings = settings["table.columns"] || [];
+    const areAllColumnsHidden = !columnSettings.some(f => f.enabled);
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
 
     if (!data) {
       return null;
     }
 
-    if (isColumnsDisabled) {
+    if (areAllColumnsHidden) {
       return (
         <div
           className={cx(
@@ -420,16 +425,16 @@ export default class Table extends Component {
           <span className="h4 text-bold">{t`Every field is hidden right now`}</span>
         </div>
       );
-    } else {
-      return (
-        <TableComponent
-          {...this.props}
-          data={data}
-          isPivoted={isPivoted}
-          sort={sort}
-          getColumnTitle={this.getColumnTitle}
-        />
-      );
     }
+
+    return (
+      <TableComponent
+        {...this.props}
+        data={data}
+        isPivoted={isPivoted}
+        sort={sort}
+        getColumnTitle={this.getColumnTitle}
+      />
+    );
   }
 }

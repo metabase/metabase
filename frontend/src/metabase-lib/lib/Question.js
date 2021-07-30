@@ -645,7 +645,8 @@ export default class Question {
 
   syncColumnsAndSettings(previous, queryResults) {
     const query = this.query();
-    if (query instanceof NativeQuery && queryResults) {
+    const isQueryResultValid = queryResults && !queryResults.error;
+    if (query instanceof NativeQuery && isQueryResultValid) {
       return this._syncNativeQuerySettings(queryResults);
     }
     const previousQuery = previous && previous.query();

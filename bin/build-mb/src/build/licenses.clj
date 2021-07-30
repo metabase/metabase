@@ -185,6 +185,12 @@
     {:with-license    (categorized true)
      :without-license (categorized false)}))
 
+(defn jar-entries
+  "Returns a seq of jar entries on the classpath"
+  [classpath]
+  (->> (str/split classpath (re-pattern classpath-separator))
+       (filter jar-file?)))
+
 (defn generate
   "Process a classpath, creating a file of all license information, writing to `:output-filename`. Backfill is a clojure
   data structure or a filename of an edn file of a clojure datastructure providing for backfilling license information
@@ -212,8 +218,7 @@
   (let [backfill (if (string? backfill)
                    (edn/read-string (slurp backfill))
                    (or backfill {}))
-        entries  (->> (str/split classpath (re-pattern classpath-separator))
-                      (filter jar-file?))]
+        entries  (jar-entries classpath)]
     (let [{:keys [with-license without-license] :as license-info}
           (process* {:classpath-entries     entries
                      :backfill              backfill})]

@@ -20,7 +20,7 @@ const ActiveSearchColor = lighten(color("nav"), 0.1);
 
 import Search from "metabase/entities/search";
 
-const SearchWrapper = Flex.extend`
+const SearchWrapper = styled(Flex)`
   position: relative;
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
@@ -158,7 +158,11 @@ export default class SearchBar extends React.Component {
                     debounced
                   >
                     {({ list }) => {
-                      return <ol>{this.renderResults(list)}</ol>;
+                      return (
+                        <ol data-testid="search-results-list">
+                          {this.renderResults(list)}
+                        </ol>
+                      );
                     }}
                   </Search.ListLoader>
                 </Card>

@@ -134,7 +134,7 @@ executors:
        - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
        - image: circleci/mongo:4.0
 
-  presto:
+  presto-186:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
@@ -143,6 +143,25 @@ executors:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     # Run instance with 8GB or RAM instead of the default 4GB for medium instances. The Presto Docker image runs
     # OOM sometimes with the default medium size.
+    resource_class: large
+
+  presto-jdbc-env:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:lein-2.9.5-clojure-1.10.3.814
+      - image: metabase/presto-mb-ci:latest # version 0.254
+        environment:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
+          MB_PRESTO_JDBC_TEST_CATALOG: test_data
+          MB_PRESTO_JDBC_TEST_HOST: localhost
+          MB_PRESTO_JDBC_TEST_PORT: 8443
+          MB_PRESTO_JDBC_TEST_SSL: true
+          MB_PRESTO_JDBC_TEST_USER: metabase
+          MB_PRESTO_JDBC_TEST_PASSWORD: metabase
+          MB_ENABLE_PRESTO_JDBC_DRIVER: true
+          MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS: >
+            SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit
+    # (see above)
     resource_class: large
 
   sparksql:
@@ -487,6 +506,15 @@ commands:
             wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
           no_output_timeout: 15m
 
+  run-command:
+    parameters:
+      command:
+        type: string
+    steps:
+      - run:
+          name: Run command
+          command: << parameters.command >>
+
 jobs:
 
 ########################################################################################################################
@@ -652,6 +680,9 @@ jobs:
       before-steps:
         type: steps
         default: []
+      after-steps:
+        type: steps
+        default: []
       description:
         type: string
         default: ""
@@ -675,6 +706,7 @@ jobs:
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/junit
+            - steps: << parameters.after-steps >>
 
   test-build-scripts:
     executor: clojure-and-node
@@ -794,7 +826,9 @@ jobs:
                   - /home/circleci/metabase/metabase/modules/drivers/googleanalytics/target
                   - /home/circleci/metabase/metabase/modules/drivers/mongo/target
                   - /home/circleci/metabase/metabase/modules/drivers/oracle/target
+                  - /home/circleci/metabase/metabase/modules/drivers/presto-common/target
                   - /home/circleci/metabase/metabase/modules/drivers/presto/target
+                  - /home/circleci/metabase/metabase/modules/drivers/presto-jdbc/target
                   - /home/circleci/metabase/metabase/modules/drivers/redshift/target
                   - /home/circleci/metabase/metabase/modules/drivers/snowflake/target
                   - /home/circleci/metabase/metabase/modules/drivers/sparksql/target
@@ -807,6 +841,7 @@ jobs:
     parameters:
       <<: *Params
     executor: clojure-and-node
+    resource_class: large
     steps:
       - attach-workspace
       - run-on-change:
@@ -881,9 +916,15 @@ jobs:
       source-folder:
         type: string
         default: ""
+      folder:
+        type: string
+        default: ""
       test-files:
         type: string
         default: ""
+      qa-db:
+        type: boolean
+        default: false
       before-steps:
         type: steps
         default: []
@@ -892,6 +933,7 @@ jobs:
     environment:
       MB_EDITION: << parameters.edition >>
       CYPRESS_GROUP:  << parameters.cypress-group >>
+      QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
     steps:
       - attach-workspace
@@ -1092,11 +1134,47 @@ workflows:
           name: be-tests-presto-ee
           requires:
             - be-tests-ee
-          e: presto
+          e: presto-186
           before-steps:
             - wait-for-port:
                 port: 8080
           driver: presto
+
+      - test-driver:
+          name: be-tests-presto-jdbc-ee
+          requires:
+            - be-tests-ee
+          e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
+          before-steps:
+            - wait-for-port:
+                port: 8443
+            - run:
+                name: Create temp cacerts file based on bundled JDK one
+                command: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+            - run:
+                name: Install openssl
+                command: apk add openssl
+            - run:
+                name: Capture Presto server self signed CA
+                command: |
+                  while [[ ! -s /tmp/presto-ssl-ca.pem ]];
+                    do echo "Waiting to capture SSL CA" \
+                      && openssl s_client -connect localhost:8443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/presto-ssl-ca.pem \
+                      && sleep 1; done
+            - run:
+                name: Convert Presto CA from PEM to DER
+                command: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
+            - run:
+                name: Import Presto CA into temp cacerts file
+                command: |
+                  keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
+                   -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
+          after-steps:
+            - run:
+                name: Capture max memory usage
+                command: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
+                when: always
+          driver: presto-jdbc
 
       - test-driver:
           name: be-tests-redshift-ee
@@ -1180,111 +1258,12 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-          name: e2e-tests-smoketest-<< matrix.edition >>
+              folder: ["admin", "binning", "collections", "dashboard", "dashboard-filters", "onboarding", "native", "native-filters", "question", "sharing", "smoketest", "visualizations"]
+          name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-          cypress-group: "smoketest-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/smoketest
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-admin-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "admin-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/admin
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-collections-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "collections-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/collections
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-dashboard-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "dashboard-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/dashboard
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-filters-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "filters-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/filters
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-onboarding-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "onboarding-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/onboarding
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-native-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "native-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/native
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-question-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "question-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/question
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-binning-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "binning-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/binning
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-sharing-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "sharing-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/sharing
-
-      - fe-tests-cypress:
-          matrix:
-            parameters:
-              edition: ["ee", "oss"]
-          name: e2e-tests-visualizations-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "visualizations-<< matrix.edition >>"
-          source-folder: frontend/test/metabase/scenarios/visualizations
+          cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
+          source-folder: << matrix.folder >>
 
       - fe-tests-cypress:
           name: e2e-tests-mongo-4-<< matrix.edition >>
@@ -1292,7 +1271,8 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-mongo-4
           cypress-group: "mongo"
-          source-folder: frontend/test/metabase-db/mongo
+          source-folder: mongo
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 27017
@@ -1304,7 +1284,8 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-postgres-12
           cypress-group: "postgres"
-          source-folder: frontend/test/metabase-db/postgres
+          source-folder: postgres
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 5432
@@ -1316,7 +1297,8 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           e: fe-mysql-8
           cypress-group: "mysql"
-          source-folder: frontend/test/metabase-db/mysql
+          source-folder: mysql
+          qa-db: true
           before-steps:
             - wait-for-port:
                 port: 3306

@@ -184,6 +184,17 @@ describe("scenarios > admin > databases > add", () => {
     );
   });
 
+  it("should display a deprecation warning for a driver", () => {
+    cy.visit("/admin/databases/create");
+
+    cy.get("#formField-engine").click();
+    cy.findByText("BigQuery").click();
+
+    cy.findByTestId("database-setup-driver-warning").within(() => {
+      cy.contains("The old driver has been deprecated");
+    });
+  });
+
   describe("BigQuery", () => {
     it("should let you upload the service account json from a file", () => {
       cy.visit("/admin/databases/create");

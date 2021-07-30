@@ -191,14 +191,28 @@ const VizTypeButton = ({ question, result, ...props }) => {
   const icon = visualization && visualization.iconName;
 
   return (
-    <ViewButton medium p={[2, 1]} icon={icon} labelBreakpoint="sm" {...props}>
+    <ViewButton
+      medium
+      p={[2, 1]}
+      icon={icon}
+      labelBreakpoint="sm"
+      data-testid="viz-type-button"
+      {...props}
+    >
       {t`Visualization`}
     </ViewButton>
   );
 };
 
 const VizSettingsButton = ({ ...props }) => (
-  <ViewButton medium p={[2, 1]} icon="gear" labelBreakpoint="sm" {...props}>
+  <ViewButton
+    medium
+    p={[2, 1]}
+    icon="gear"
+    labelBreakpoint="sm"
+    data-testid="viz-settings-button"
+    {...props}
+  >
     {t`Settings`}
   </ViewButton>
 );

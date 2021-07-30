@@ -23,17 +23,11 @@
    ;; "ring-ee"                           ["with-profile" "+ring,+ee" "ring"]
    "test"                              ["with-profile" "+test" "test"]
    "test-ee"                           ["with-profile" "+test,+ee" "test"]
-   "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
-                                        "--max-line-length" "205"
-                                        ;; see https://github.com/dakrone/lein-bikeshed/issues/41
-                                        "--exclude-profiles" "dev"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
-   "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
-   "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
    "cloverage"                         ["with-profile" "+cloverage" "cloverage"]
    ;; `lein lint` will run all linters
-   "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
+   "lint"                              ["do" ["eastwood"] ["check-namespace-decls"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
    "repl-ee"                           ["with-profile" "+repl,+ee" "repl"]
    "uberjar"                           ["uberjar"]
@@ -173,9 +167,7 @@
   :main ^:skip-aot metabase.core
 
   :manifest
-  {;; log4j is multi-release and lein uberjar doesn't set this correctly in the manifest
-   "Multi-Release" true
-   ;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
+  {;; Liquibase uses this manifest parameter to dynamically find extensions at startup (via classpath scanning, etc)
    "Liquibase-Package"
    #= (eval
        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
@@ -221,7 +213,7 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
-     [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
+     [jonase/eastwood "0.9.4" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.10.0"]
      [reifyhealth/specmonstah "2.0.0"]                                ; Generate fixtures to test huge databases
@@ -370,18 +362,13 @@
     ;; always use in-memory H2 database for linters
     {:env {:mb-db-type "h2"}}]
 
-   :bikeshed
-   [:linters-common
-    {:plugins
-     [[lein-bikeshed "0.5.2"]]}]
-
    :eastwood
    [:linters-common
     {:plugins
-     [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
+     [[jonase/eastwood "0.9.4" :exclusions [org.clojure/clojure]]]
 
      :eastwood
-     {:exclude-namespaces [:test-paths dev dev.test]
+     {:exclude-namespaces [dev dev.test dev.debug-qp]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
                            ;; These linters are pretty useful but give a few false positives and can't be selectively
@@ -394,34 +381,21 @@
                            ;; get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-      :exclude-linters    [    ; Turn this off temporarily until we finish removing self-deprecated functions & macros
-                           :deprecations
+      :exclude-linters    [:deprecations
                            ;; this has a fit in libs that use Potemkin `import-vars` such as `java-time`
                            :implicit-dependencies
                            ;; too many false positives for now
-                           :unused-ret-vals]}}]
-
-   ;; run ./bin/reflection-linter to check for reflection warnings
-   :reflection-warnings
-   [:include-all-drivers
-    :ee
-    {:global-vars {*warn-on-reflection* true}}]
-
-   ;; Check that all public vars have docstrings. Run with 'lein docstring-checker'
-   :docstring-checker
-   [:linters-common
-    {:plugins
-     [[docstring-checker "1.1.0"]]
-
-     :docstring-checker
-     {:include [#"^metabase"]
-      :exclude [#"test"
-                #"^metabase\.http-client$"]}}]
+                           :unused-ret-vals
+                           :unused-ret-vals-in-try
+                           :def-in-def
+                           :wrong-ns-form]}}]
 
    :check-namespace-decls
    [:linters-common
     {:plugins               [[lein-check-namespace-decls "1.0.3"]]
-     :check-namespace-decls {:prefix-rewriting false}}]
+     :check-namespace-decls {:prefix-rewriting false}
+     ;; include test namespaces
+     :source-paths          ["test" "enterprise/backend/test" "shared/test"]}]
 
    :cloverage
    [:test-common

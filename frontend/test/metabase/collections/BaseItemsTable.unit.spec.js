@@ -27,7 +27,7 @@ describe("Collections BaseItemsTable", () => {
       last_name: "Doe",
       timestamp: timestamp,
     },
-    getIcon: () => "dashboard",
+    getIcon: () => ({ name: "dashboard" }),
     getUrl: () => "/dashboard/1",
   };
 

@@ -773,3 +773,21 @@
                                 :name   "p2"
                                 :target [:variable [:template-tag "p2"]]
                                 :value  "bar"}]})))))))
+
+(deftest acceptable-dataset-test
+  (mt/test-driver :bigquery
+    (testing "Make sure validation of dataset's name works correctly"
+      (testing "acceptable names"
+        (are [name] (= true (#'bigquery.qp/valid-bigquery-identifier? name))
+                    "0"
+                    "a"
+                    "_"
+                    "apple"
+                    "banana.apple"
+                    "my-fruits.orange"
+                    (apply str (repeat 1054 "a"))))
+      (testing "rejected names"
+        (are [name] (= false (#'bigquery.qp/valid-bigquery-identifier? name))
+                    "have:dataset"
+                    ""
+                    (apply str (repeat 1055 "a")))))))

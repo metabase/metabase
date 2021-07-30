@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import styles from "./Legend.css";
 
 import ExplicitSize from "../../components/ExplicitSize";
-import Icon from "metabase/components/Icon";
+import Icon, { iconPropTypes } from "metabase/components/Icon";
 import LegendItem from "./LegendItem";
 
 import cx from "classnames";
@@ -26,6 +26,7 @@ export default class LegendHeader extends Component {
     actionButtons: PropTypes.node,
     description: PropTypes.string,
     classNameWidgets: PropTypes.string,
+    icon: PropTypes.shape(iconPropTypes),
   };
 
   static defaultProps = {
@@ -40,6 +41,7 @@ export default class LegendHeader extends Component {
       hovered,
 
       actionButtons,
+      icon,
       onHoverChange,
       onChangeCardAndRun,
       settings,
@@ -82,6 +84,7 @@ export default class LegendHeader extends Component {
           <LegendItem
             key={index}
             title={titles[index]}
+            icon={icon}
             description={description}
             color={colors[index % colors.length]}
             className={cx({ "text-brand-hover": !isBreakoutSeries })}

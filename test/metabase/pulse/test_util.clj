@@ -1,5 +1,6 @@
 (ns metabase.pulse.test-util
   (:require [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.integrations.slack :as slack]
             [metabase.models.pulse :as models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
@@ -132,14 +133,8 @@
       (invoke [_ x1 x2 x3 x4 x5 x6]
         (invoke-with-wrapping input output func [x1 x2 x3 x4 x5 x6])))))
 
-(defn force-bytes-thunk
-  "Grabs the thunk that produces the image byte array and invokes it"
-  [results]
-  ((-> results
-       :attachments
-       first
-       :attachment-bytes-thunk)))
-
 (defn thunk->boolean [{:keys [attachments] :as result}]
   (assoc result :attachments (for [attachment-info attachments]
-                               (update attachment-info :attachment-bytes-thunk fn?))))
+                               (-> attachment-info
+                                   (update :rendered-info (fn [ri]
+                                                            (m/map-vals some? ri)))))))

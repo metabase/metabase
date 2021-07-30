@@ -1,19 +1,96 @@
-## What are you having trouble with?
+# What are you having trouble with?
 
-### [Logging in](loggingin.md)
+This page collects resources for getting you unstuck.
 
-### [Running Metabase](running.md)
+## Troubleshooting guides
 
-### [Running Metabase on Docker](docker.md)
+Problems, their causes, how to detect them, and how to fix them.
 
-### [The Metabase Application Database](application-database.md)
+### Using Metabase
 
-### [Connecting to databases and data warehouses with Metabase](datawarehouse.md)
+- [Logging in][login].
 
-### [Incorrect results due to time zones](timezones.md)
+- [Saving questions or dashboards][proxies].
 
-### [Problems with saving questions/dashboards or blank page](proxies.md)
+- [My question or dashboard is slow][performance].
 
-### [LDAP](ldap.md)
+### Setup and administration
 
-### [I think I found a bug](bugs.md)
+- [Running the Metabase JAR][running].
+
+- [Running Metabase on Docker][docker].
+
+- [Connecting to data warehouses with Metabase][datawarehouse].
+
+- [Loading an exported application database][loadh2].
+
+- [Setting up LDAP][ldap].
+
+- [Setting up Email][email].
+
+- [Using the default H2 application database][appdb].
+
+- [Handling timezones][timezones].
+
+- [Manage data sandboxing][sandbox]
+
+## Think you found a bug?
+
+Let us know by [filing a bug report][bugs].
+
+## More troubleshooting resources
+
+Here are some other resources to help you solve your problem or find a workaround.
+
+### Metabase server and console logs
+
+Metabase will log errors, both on the server and in the browser console, depending on where the error occurs, which can help you track down an issue. Administrators will have access to the server logs, and everyone with a browser can open the developer tools to see the console logs.
+
+**Accessing the Metabase server logs**: You can look for the logs that Metabase leaves on the server's file system (or wherever else you collect logs). If you're logged into Metabase with an Admin account, you can also access the logs by clicking on the **gears icon** in the top right of the main nav, selecting **Admin**, clicking on the **Troubleshooting** tab, then viewing the **Logs** tab.
+
+**Checking for Javascript console errors:** Metabase will send debugging information and errors to your browser's developer console. To open the developer console, follow the instructions for web browser:
+
+- [Chrome][chrome]
+- [Firefox][firefox]
+- [Safari][safari]
+- [Edge][edge]
+
+### Metabase tutorials 
+
+For tutorials that walk you through how to use Metabase features, check out [Learn Metabase][learn].
+
+### Metabase forum
+
+To see if someone else has run into a similar issue, check out [our forum on Discourse][forum].
+
+### Frequently asked questions
+
+For quick answers to common questions, check out our [Frequently Asked Questions][faq].
+
+### Upgrading Metabase
+
+Metabase adds new features and squashes bugs with each release. [Upgrading to the latest and greatest][upgrade] may resolve your issue. If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
+
+[appdb]: ./application-database.html
+[bugs]: ./bugs.html
+[chrome]: https://developers.google.com/web/tools/chrome-devtools/open#console
+[cloud]: https://www.metabase.com/start/ 
+[datawarehouse]: ./datawarehouse.html
+[docker]: ./docker.html
+[edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
+[email]: ../operations-guide/upgrading-metabase.html
+[faq]: /faq
+[firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
+[forum]: https://discourse.metabase.com/
+[ldap]: ./ldap.html
+[learn]: https://www.metabase.com/learn
+[login]: ./loggingin.html
+[loadh2]: ./loading-from-h2.html
+[performance]: ./performance.html
+[proxies]: ./proxies.html
+[releases]: https://github.com/metabase/metabase/releases
+[running]: ./running.html
+[sandbox]: ./sandboxing.html
+[safari]: https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac
+[timezones]: ./timezones.html
+[upgrade]: ../operations-guide/upgrading-metabase.html

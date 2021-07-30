@@ -21,71 +21,79 @@ const propTypes = {
   item: PropTypes.shape({
     name: PropTypes.string.isRequired,
     icon: PropTypes.string,
+    iconColor: PropTypes.string,
     hasRightArrow: PropTypes.string,
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,
   variant: PropTypes.string,
 };
 
-export const TreeNode = React.memo(function TreeNode({
-  isExpanded,
-  isSelected,
-  hasChildren,
-  onToggleExpand,
-  onSelect,
-  depth,
-  item,
-  variant,
-}) {
-  const { name, icon, hasRightArrow, id } = item;
+// eslint-disable-next-line react/display-name
+export const TreeNode = React.memo(
+  React.forwardRef(function TreeNode(
+    {
+      isExpanded,
+      isSelected,
+      hasChildren,
+      onToggleExpand,
+      onSelect,
+      depth,
+      item,
+      variant,
+    },
+    ref,
+  ) {
+    const { name, icon, iconColor, hasRightArrow, id } = item;
 
-  const handleSelect = () => {
-    onSelect(item);
-    onToggleExpand(id);
-  };
+    const handleSelect = () => {
+      onSelect(item);
+      onToggleExpand(id);
+    };
 
-  const handleKeyDown = ({ key }) => {
-    switch (key) {
-      case "Enter":
-        onSelect(item);
-        break;
-      case "ArrowRight":
-        !isExpanded && onToggleExpand(id);
-        break;
-      case "ArrowLeft":
-        isExpanded && onToggleExpand(id);
-        break;
-    }
-  };
+    const handleKeyDown = ({ key }) => {
+      switch (key) {
+        case "Enter":
+          onSelect(item);
+          break;
+        case "ArrowRight":
+          !isExpanded && onToggleExpand(id);
+          break;
+        case "ArrowLeft":
+          isExpanded && onToggleExpand(id);
+          break;
+      }
+    };
 
-  return (
-    <TreeNodeRoot
-      role="menuitem"
-      tabIndex={0}
-      variant={variant}
-      depth={depth}
-      onClick={handleSelect}
-      isSelected={isSelected}
-      onKeyDown={handleKeyDown}
-    >
-      <ExpandToggleButton hidden={!hasChildren}>
-        <ExpandToggleIcon isExpanded={isExpanded} />
-      </ExpandToggleButton>
+    return (
+      <TreeNodeRoot
+        innerRef={ref}
+        role="menuitem"
+        tabIndex={0}
+        variant={variant}
+        depth={depth}
+        onClick={handleSelect}
+        isSelected={isSelected}
+        onKeyDown={handleKeyDown}
+      >
+        <ExpandToggleButton hidden={!hasChildren}>
+          <ExpandToggleIcon isExpanded={isExpanded} />
+        </ExpandToggleButton>
 
-      {icon && (
-        <IconContainer variant={variant}>
-          <Icon name={icon} />
-        </IconContainer>
-      )}
-      <NameContainer>{name}</NameContainer>
+        {icon && (
+          <IconContainer variant={variant}>
+            <Icon name={icon} color={iconColor} />
+          </IconContainer>
+        )}
+        <NameContainer>{name}</NameContainer>
 
-      {hasRightArrow && (
-        <RightArrowContainer isSelected={isSelected}>
-          <Icon name="chevronright" size={14} />
-        </RightArrowContainer>
-      )}
-    </TreeNodeRoot>
-  );
-});
+        {hasRightArrow && (
+          <RightArrowContainer isSelected={isSelected}>
+            <Icon name="chevronright" size={14} />
+          </RightArrowContainer>
+        )}
+      </TreeNodeRoot>
+    );
+  }),
+);
 
 TreeNode.propTypes = propTypes;

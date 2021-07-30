@@ -10,10 +10,15 @@ import CollectionLink from "metabase/collections/components/CollectionLink";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
 import { SIDEBAR_SPACER } from "metabase/collections/constants";
 
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+
+import { CollectionListIcon } from "./CollectionsList.styled";
+
+const { isRegularCollection } = PLUGIN_COLLECTIONS;
+
 class CollectionsList extends React.Component {
   render() {
     const {
-      initialIcon,
       currentCollection,
       filter = () => true,
       openCollections,
@@ -39,6 +44,7 @@ class CollectionsList extends React.Component {
                       depth={this.props.depth}
                       // when we click on a link, if there are children, expand to show sub collections
                       onClick={() => c.children && action(c.id)}
+                      dimmedIcon={isRegularCollection(c)}
                       hovered={hovered}
                       highlighted={highlighted}
                       role="treeitem"
@@ -69,11 +75,7 @@ class CollectionsList extends React.Component {
                             />
                           </Flex>
                         )}
-                        <Icon
-                          name={initialIcon}
-                          mr={"6px"}
-                          style={{ opacity: 0.4 }}
-                        />
+                        <CollectionListIcon collection={c} />
                         {c.name}
                       </Flex>
                     </CollectionLink>
@@ -102,8 +104,9 @@ class CollectionsList extends React.Component {
 }
 
 CollectionsList.defaultProps = {
-  initialIcon: "folder",
   depth: 1,
 };
+
+CollectionsList.Icon = CollectionListIcon;
 
 export default CollectionsList;

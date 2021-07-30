@@ -77,6 +77,7 @@ export default class PublicQuestion extends Component {
     this.state = {
       card: null,
       result: null,
+      initialized: false,
       parameterValues: {},
     };
   }
@@ -116,14 +117,29 @@ export default class PublicQuestion extends Component {
         parameterValues[String(parameter.id)] = query[parameter.slug];
       }
 
-      this.setState({ card, parameterValues }, this.run);
+      this.setState({ card, parameterValues }, async () => {
+        await this.run();
+        this.setState({ initialized: true });
+      });
     } catch (error) {
       console.error("error", error);
       setErrorPage(error);
     }
   }
 
-  setParameterValue = parameterValues => {
+  setParameterValue = (parameterId, value) => {
+    this.setState(
+      {
+        parameterValues: {
+          ...this.state.parameterValues,
+          [parameterId]: value,
+        },
+      },
+      this.run,
+    );
+  };
+
+  setMultipleParameterValues = parameterValues => {
     this.setState(
       {
         parameterValues: {
@@ -180,7 +196,7 @@ export default class PublicQuestion extends Component {
     const {
       params: { uuid, token },
     } = this.props;
-    const { card, result, parameterValues } = this.state;
+    const { card, result, initialized, parameterValues } = this.state;
 
     const actionButtons = result && (
       <QueryDownloadWidget
@@ -197,14 +213,15 @@ export default class PublicQuestion extends Component {
       <EmbedFrame
         name={card && card.name}
         description={card && card.description}
-        parameters={parameters}
+        parameters={initialized ? parameters : []}
         actionButtons={actionButtons}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
+        setMultipleParameterValues={this.setMultipleParameterValues}
       >
         <LoadingAndErrorWrapper
           className="flex-full"
-          loading={!result}
+          loading={!result || !initialized}
           error={typeof result === "string" ? result : null}
           noWrapper
         >

@@ -135,8 +135,16 @@
   necessary when dealing with the full MBQL query tree (which can have arbitrary nesting of maps and
   vectors)."
   [m]
-  (reduce (fn [acc ks]
-            (pull-unresolved-names-up acc (drop-last ks))) m (paths-to-key-in m ::unresolved-names)))
+  (let [paths (paths-to-key-in m ::unresolved-names)]
+    (if-not (empty? paths)
+      (reduce (fn [acc ks]
+                (let [ks* (drop-last ks)]
+                  (if-not (empty? ks*)
+                    (pull-unresolved-names-up acc ks*)
+                    acc)))
+              m
+              paths)
+      m)))
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
@@ -376,18 +384,46 @@
       (pull-unresolved-names-up vs-norm [::mb.viz/click-behavior] resolved-cb))
     vs-norm))
 
-(defn- resolve-column-settings [vs-norm]
+(defn- resolve-column-settings
+  "Resolve the entries in a :column_settings map (which is under a :visualization_settings map). These map entries
+  may contain fully qualified field names, or even other cards. In case of an unresolved name (i.e. a card that hasn't
+  yet been loaded), we will track it under ::unresolved-names and revisit on the next pass."
+  [vs-norm]
   (if-let [col-settings (::mb.viz/column-settings vs-norm)]
     (let [resolved-cs (reduce-kv accumulate-converted-column-settings {} col-settings)]
       (pull-unresolved-names-up vs-norm [::mb.viz/column-settings] resolved-cs))
     vs-norm))
 
+(defn- resolve-table-columns
+  "Resolve the :table.columns key from a :visualization_settings map, which may contain fully qualified field names.
+  Such fully qualified names will be converted to the numeric field ID before being filled into the loaded card. Only
+  other field names (not cards, or other collection based entity types) should be referenced here, so there is no need
+  to detect or track ::unresolved-names."
+  [vs-norm]
+  (if (::mb.viz/table-columns vs-norm)
+    (letfn [(resolve-table-column-field-ref [[f-type f-str f-md]]
+              (if (names/fully-qualified-field-name? f-str)
+                [f-type ((comp :field fully-qualified-name->context) f-str) f-md]
+                [f-type f-str f-md]))
+            (resolve-field-id [{:keys [::mb.viz/table-column-field-ref] :as tbl-col}]
+              (update tbl-col ::mb.viz/table-column-field-ref resolve-table-column-field-ref))]
+      (update vs-norm ::mb.viz/table-columns (fn [tbl-cols]
+                                               (mapv resolve-field-id tbl-cols))))
+    vs-norm))
+
 (defn- resolve-visualization-settings
+  "Resolve all references from a :visualization_settings map, the various submaps of which may contain:
+    - fully qualified field names
+    - fully qualified card or dashboard names
+
+  Any unresolved entities from this resolution process will be tracked via ::unresolved-named so that the card or
+  dashboard card holding these visualization settings can be revisited in a future pass."
   [entity]
   (if-let [viz-settings (:visualization_settings entity)]
     (let [resolved-vs (-> (mb.viz/db->norm viz-settings)
                           resolve-top-level-click-behavior
                           resolve-column-settings
+                          resolve-table-columns
                           mb.viz/norm->db)]
       (pull-unresolved-names-up entity [:visualization_settings] resolved-vs))
     entity))

@@ -391,12 +391,10 @@ export class ExpressionParser extends CstParser {
   }
 
   canTokenTypeBeInsertedInRecovery() {
-    // console.log("insert", this.tokenRecoveryEnabled);
     return this.tokenRecoveryEnabled;
   }
 
   canRecoverWithSingleTokenDeletion() {
-    // console.log("delete", this.tokenRecoveryEnabled);
     return this.tokenRecoveryEnabled;
   }
 }

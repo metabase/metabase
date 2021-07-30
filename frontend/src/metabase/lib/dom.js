@@ -396,7 +396,7 @@ export function initializeIframeResizer(readyCallback = () => {}) {
   } else {
     window.iFrameResizer = {
       autoResize: true,
-      heightCalculationMethod: "bodyScroll",
+      heightCalculationMethod: "max",
       readyCallback: readyCallback,
     };
 

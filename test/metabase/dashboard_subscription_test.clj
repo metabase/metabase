@@ -1,7 +1,5 @@
 (ns metabase.dashboard-subscription-test
   (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.integrations.slack :as slack]
             [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
             [metabase.models.pulse :as models.pulse]
             [metabase.pulse :as pulse]
@@ -9,8 +7,7 @@
             [metabase.pulse.test-util :refer :all]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (defn- do-with-dashboard-sub-for-card
   "Creates a Pulse, Dashboard, and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if
@@ -170,18 +167,18 @@
       (fn [{:keys [card-id]} [pulse-results]]
         ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be
         ;; called
-        (force-bytes-thunk pulse-results)
         (testing "\"more results in attachment\" text should not be present for Slack Pulses"
           (testing "Pulse results"
             (is (= {:channel-id "#general"
                     :message    "Aviary KPIs"
                     :attachments
-                    [{:title                  card-name
-                      :attachment-bytes-thunk true
-                      :title_link             (str "https://metabase.com/testmb/question/" card-id)
-                      :attachment-name        "image.png"
-                      :channel-id             "FOO"
-                      :fallback               card-name}]}
+                    [{:title           card-name
+                      :rendered-info   {:attachments false
+                                        :content     true}
+                      :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                      :attachment-name "image.png"
+                      :channel-id      "FOO"
+                      :fallback        card-name}]}
                    (thunk->boolean pulse-results))))
           (testing "attached-results-text should be invoked exactly once"
             (is (= 1

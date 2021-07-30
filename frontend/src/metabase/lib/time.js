@@ -119,3 +119,7 @@ export function formatFrame(frame) {
       return frame;
   }
 }
+
+export function getRelativeTime(timestamp) {
+  return moment(timestamp).fromNow();
+}

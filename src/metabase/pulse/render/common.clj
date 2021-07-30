@@ -11,8 +11,9 @@
 
 (def RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
-  {:attachments (s/maybe {s/Str URL})
-   :content     [s/Any]})
+  {:attachments                  (s/maybe {s/Str URL})
+   :content                      [s/Any]
+   (s/optional-key :render/text) (s/maybe s/Str)})
 
 (p.types/defrecord+ NumericWrapper [num-str]
   hutil/ToString

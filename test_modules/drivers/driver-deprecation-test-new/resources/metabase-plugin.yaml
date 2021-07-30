@@ -1,0 +1,15 @@
+info:
+  name: New Driver
+  version: 0.0.0-SNAPSHOT
+  description: Test plugin for driver deprecation (new)
+driver:
+  name: driver-deprecation-test-new
+  display-name: Driver Deprecation Test Plugin (New)
+  lazy-load: true
+  parent: sql
+  connection-properties:
+    - host
+    - port
+init:
+  - step: load-namespace
+    namespace: metabase.driver.driver-deprecation-test-new

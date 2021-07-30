@@ -22,7 +22,6 @@
             [metabase.models.table :refer [Table]]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
-            [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.field-values :as sync-field-values]
             [metabase.sync.schedules :as sync.schedules]
@@ -168,13 +167,9 @@
 
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
-                           include-saved-questions-tables?
-                           limit
-                           offset]}]
+                           include-saved-questions-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database
-                                                      {:order-by [:%lower.name :%lower.engine]
-                                                       :limit limit
-                                                       :offset offset})))]
+                                                      {:order-by [:%lower.name :%lower.engine]})))]
     (cond-> (add-native-perms-info dbs)
       include-tables?             add-tables
       include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
@@ -217,16 +212,13 @@
         include-saved-questions-tables? (when include-saved-questions-db?
                                           (if (seq include_cards)
                                             true
-                                            include-tables?))]
-    {:data  (or (dbs-list :include-tables?                  include-tables?
-                          :include-saved-questions-db?      include-saved-questions-db?
-                          :include-saved-questions-tables?  include-saved-questions-tables?
-                          :limit                            offset-paging/*limit*
-                          :offset                           offset-paging/*offset*)
-                [])
-     :limit  offset-paging/*limit*
-     :offset offset-paging/*offset*
-     :total  (db/count Database)}))
+                                            include-tables?))
+        db-list-res                     (or (dbs-list :include-tables?                  include-tables?
+                                                      :include-saved-questions-db?      include-saved-questions-db?
+                                                      :include-saved-questions-tables?  include-saved-questions-tables?)
+                                            [])]
+    {:data  db-list-res
+     :total (count db-list-res)}))
 
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------

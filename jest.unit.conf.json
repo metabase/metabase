@@ -6,8 +6,7 @@
   },
   "testPathIgnorePatterns": ["<rootDir>/frontend/test/.*/.*.tz.unit.spec.js"],
   "testMatch": [
-    "<rootDir>/frontend/test/**/*.unit.spec.js?(x)",
-    "<rootDir>/enterprise/frontend/test/**/*.unit.spec.js?(x)"
+    "<rootDir>/**/*.unit.spec.js"
   ],
   "modulePaths": [
     "<rootDir>/frontend/test",

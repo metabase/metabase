@@ -869,7 +869,6 @@ export default class TableInteractive extends Component {
   _benchmark() {
     const grid = ReactDOM.findDOMNode(this.grid);
     const height = grid.scrollHeight;
-    console.log("height", height);
     let top = 0;
     let start = Date.now();
     // console.profile();

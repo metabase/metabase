@@ -14,11 +14,11 @@
 
   If a report timezone is specified and the database supports it, the JVM timezone should have no impact on queries or
   their results."
-  (:require [clj-time.core :as time]
-            [clj-time.format :as tformat]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor-test :as sql.qp.test]
             [metabase.models.database :refer [Database]]
@@ -28,11 +28,12 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime]
-           [org.joda.time DateTime DateTimeZone]))
+           org.joda.time.DateTime))
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -378,15 +379,6 @@
              (sad-toucan-incidents-with-bucketing :hour-of-day :utc))
           "With all databases in UTC, the results should be the same for all DBs"))))
 
-
-(defn- ^:deprecated offset-time
-  "Add to `date` offset from UTC found in `tz`"
-  [timezone-id, ^DateTime date]
-  (let [^DateTimeZone tz (time/time-zone-for-id (->timezone-id timezone-id))]
-    (time/minus date
-                (time/seconds
-                 (/ (.getOffset tz date) 1000)))))
-
 (defn- find-events-in-range
   "Find the number of sad toucan events between `start-date-str` and `end-date-str`"
   [start-date-str end-date-str]
@@ -589,18 +581,6 @@
     (testing "\nUTC timezone"
       (is (= [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]]
              (sad-toucan-incidents-with-bucketing :day-of-year :utc))))))
-
-(defn- new-weekly-events-after-tz-shift
-  "Finds the change in sad toucan events if the timezone is shifted to `tz`"
-  [date-str tz]
-  (let [date-obj    (tformat/parse (tformat/formatters :date) date-str)
-        next-week   (time/plus date-obj (time/days 7))
-        unparse-utc #(tformat/unparse (format-in-timezone-fn :utc) %)]
-    (-
-     ;; Once the time is shifted to `TZ`, how many new events will this add
-     (find-events-in-range (unparse-utc next-week) (unparse-utc (offset-time tz next-week)))
-     ;; Subtract the number of events that we will loose with the timezone shift
-     (find-events-in-range (unparse-utc date-obj) (unparse-utc (offset-time tz date-obj))))))
 
 ;; This test helps in debugging why event counts change with a given timezone. It queries only a UTC H2 datatabase to
 ;; find how those counts would change if time was in pacific time. The results of this test are also in the UTC test
@@ -849,13 +829,24 @@
   (pretty [_]
     (list 'TimestampDatasetDef. intervalSeconds)))
 
+(defn- driver->current-datetime-base-type
+  "Returns the :base-type of the \"current timestamp\" HoneySQL form defined by the driver `d`. Relies upon the driver
+  implementation having set that explicitly via `hx/with-type-info`. Returns `nil` if it can't be determined."
+  [d]
+  (when (isa? driver/hierarchy driver/*driver* :sql)
+    (let [db-type (-> (sql.qp/current-datetime-honeysql-form d)
+                    hx/type-info
+                    hx/type-info->db-type)]
+      (when-not (str/blank? db-type)
+        (sql-jdbc.sync/database-type->base-type d db-type)))))
+
 (defmethod mt/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)]
     (mt/dataset-definition (str "checkins_interval_" interval-seconds)
       ["checkins"
        [{:field-name "timestamp"
-         :base-type  :type/DateTime}]
+         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
        (vec (for [i (range -15 15)]
               ;; TIMESTAMP FIXME — not sure if still needed
               ;;
@@ -902,24 +893,24 @@
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 
 (defn- count-of-grouping [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
-  (-> (mt/dataset dataset
-        ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
-        ;; was created more than (interval-seconds * 5) seconds ago, delete the Database and recreate it to make sure
-        ;; the tests pass.
-        ;;
-        ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
-        (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
-          (binding [*recreate-db-if-stale?* false]
-            (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
-            (db/delete! Database :id (mt/id))
-            (apply count-of-grouping dataset field-grouping relative-datetime-args))
-          (let [results (mt/run-mbql-query checkins
-                          {:aggregation [[:count]]
-                           :filter      [:=
-                                         [:field %timestamp {:temporal-unit field-grouping}]
-                                         (cons :relative-datetime relative-datetime-args)]})]
-            (or (some-> results mt/first-row first int)
-                results))))))
+  (mt/dataset dataset
+    ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
+    ;; was created more than (interval-seconds * 5) seconds ago, delete the Database and recreate it to make sure
+    ;; the tests pass.
+    ;;
+    ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
+    (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
+      (binding [*recreate-db-if-stale?* false]
+        (printf "DB for %s is stale! Deleteing and running test again\n" dataset)
+        (db/delete! Database :id (mt/id))
+        (apply count-of-grouping dataset field-grouping relative-datetime-args))
+      (let [results (mt/run-mbql-query checkins
+                      {:aggregation [[:count]]
+                       :filter      [:=
+                                     [:field %timestamp {:temporal-unit field-grouping}]
+                                     (cons :relative-datetime relative-datetime-args)]})]
+        (or (some-> results mt/first-row first int)
+            results)))))
 
 ;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
 ;;        are ran and loading data into these DBs is mind-bogglingly slow.
@@ -1078,9 +1069,15 @@
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
     (mt/test-drivers (mt/normal-drivers)
       (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
-        (testing (format "\nunit = %s" unit)
-          (is (= expected-count (count-of-checkins unit filter-value))
-              (format "count of rows where (= (%s date) %s) should be %d" (name unit) filter-value expected-count)))))))
+        (doseq [tz [nil "UTC"]] ;iterate on at least two report time zones to suss out bugs related to that
+          (mt/with-temporary-setting-values [report-timezone tz]
+            (testing (format "\nunit = %s" unit)
+              (is (= expected-count (count-of-checkins unit filter-value))
+                  (format
+                    "count of rows where (= (%s date) %s) should be %d"
+                    (name unit)
+                    filter-value
+                    expected-count)))))))))
 
 (deftest legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "

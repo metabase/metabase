@@ -234,12 +234,6 @@
 ;;; |                                      DATETIME EXTRACTION AND MANIPULATION                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- maybe-truncate
-  [dt]
-  (if (= :sqlite driver/*driver*)
-    (u.date/truncate dt :day)
-    dt))
-
 (defn- robust-dates
   [strs]
   ;; TIMEZONE FIXME — SQLite shouldn't return strings. And for whatever weird reason it's truncating to date as well?
@@ -357,11 +351,11 @@
                  {:source-query {:source-table (mt/id :venues)
                                  :aggregation  [[:min (mt/id :venues :price)]
                                                 [:max (mt/id :venues :price)]]
-                                 :breakout     [[:field (mt/id :venues :name) nil]]}
+                                 :breakout     [[:field (mt/id :venues :name) nil]]
+                                 :limit        3}
                   :expressions  {:price-range [:-
                                                [:field "max" {:base-type :type/Number}]
-                                               [:field "min" {:base-type :type/Number}]]}
-                  :limit        3})))))))
+                                               [:field "min" {:base-type :type/Number}]]}})))))))
 
 (deftest fk-field-and-duplicate-names-test
   ;; Redshift hangs on sample-dataset -- See #14784

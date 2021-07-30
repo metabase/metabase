@@ -446,7 +446,7 @@
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- include-personal-collection-name
+(defn include-personal-collection-name
   {:hydrate :personal_collection_name}
   [user]
   (db/select-one-field :name Collection :id (:personal_collection_id user)))

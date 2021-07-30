@@ -3,9 +3,6 @@
             [metabase.mbql.schema :as mbql.s]
             [schema.core :as s]))
 
-(defn- valid? [clause]
-  (not (s/check mbql.s/field clause)))
-
 (t/deftest field-clause-test
   (t/testing "Make sure our schema validates `:field` clauses correctly"
     (t/are [clause expected] (= expected

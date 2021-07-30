@@ -74,17 +74,6 @@
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
 
-(defn- add-schedules [db]
-  (assoc db :schedules {:cache_field_values {:schedule_day   nil
-                                             :schedule_frame nil
-                                             :schedule_hour  0
-                                             :schedule_type  "daily"}
-                        :metadata_sync      {:schedule_day    nil
-                                             :schedule_frame  nil
-                                             :schedule_hour   nil
-                                             :schedule_type   "hourly"
-                                             :schedule_minute 50}}))
-
 (deftest get-database-test
   (testing "GET /api/database/:id"
     (testing "DB details visibility"
@@ -324,13 +313,6 @@
                    :type     :query
                    :query    inner-query-clauses}})
 
-(defn- saved-questions-virtual-db {:style/indent 0} [& card-tables]
-  {:name               "Saved Questions"
-   :id                 mbql.s/saved-questions-virtual-database-id
-   :features           ["basic-aggregations"]
-   :tables             card-tables
-   :is_saved_questions true})
-
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge
    {:id           (format "card__%d" (u/the-id card))
@@ -360,17 +342,13 @@
           (doseq [db (:data ((mt/user->client :rasta) :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
-                     (set (keys db)))))))))
+                     (set (keys db))))))))
+      (testing "Make sure databases don't paginate"
+        (mt/with-temp* [Database [{db-id-1 :id} {:engine ::test-driver}]
+                        Database [{db-id-2 :id} {:engine ::test-driver}]
+                        Database [{db-id-3 :id} {:engine ::test-driver}]]
+          (is (< 1 (count (:data ((mt/user->client :rasta) :get 200 "database" :limit 1 :offset 0))))))))
 
-    (doseq [query-param ["?limit=2"
-                         "?limit=2&offset=1"]]
-      (testing query-param
-        (mt/with-temp*
-          [Database [{db-id :id1, db-name :name1} {:engine (u/qualified-name ::test-driver)}]
-           Database [{db-id :id2, db-name :name2} {:engine (u/qualified-name ::test-driver)}]]
-
-          (let [db (:data ((mt/user->client :rasta) :get 200 (str "database" query-param)))]
-            (is (= 2 (count db)))))))
 
     ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
     (doseq [query-param ["?include_tables=true"
@@ -394,9 +372,9 @@
                (last (:data ((mt/user->client :lucky) :get 200 "database?saved=true")))))))
 
     (testing "We should not include the saved questions virtual DB if there aren't any cards"
-      (not-any?
-       :is_saved_questions
-       ((mt/user->client :lucky) :get 200 "database?saved=true")))
+      (is (not-any?
+           :is_saved_questions
+           ((mt/user->client :lucky) :get 200 "database?saved=true"))))
     (testing "Omit virtual DB if nested queries are disabled"
       (tu/with-temporary-setting-values [enable-nested-queries false]
         (every? some? (:data ((mt/user->client :lucky) :get 200 "database?saved=true")))))))

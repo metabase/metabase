@@ -203,6 +203,16 @@ describe("scenarios > admin > people", () => {
       assertTableRowsCount(TOTAL_USERS);
     });
 
+    it.skip("should display more than 50 groups (metabase#17200)", () => {
+      generateGroups(50);
+
+      cy.visit("/admin/people/groups");
+      // The assertion depends on the way we'll implement this.
+      // a) if we go with the pagination, the assertion will have to be updated
+      // b) if we remove the limit, the current assertion will work
+      cy.findByText("readonly");
+    });
+
     describe("pagination", () => {
       const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
@@ -297,4 +307,10 @@ function generateUsers(count, groupIds) {
   users.forEach(u => cy.createUserFromRawData(u));
 
   return users;
+}
+
+function generateGroups(count) {
+  _.range(count).map(index => {
+    cy.request("POST", "api/permissions/group", { name: "Group" + index });
+  });
 }

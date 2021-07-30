@@ -1,14 +1,14 @@
 (ns metabase.cmd.load-from-h2-test
   (:require [clojure.test :refer :all]
             [metabase.cmd.load-from-h2 :as load-from-h2]
+            [metabase.cmd.test-util :as cmd.test-util]
             [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models :refer [Table]]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
-            [toucan.db :as db]
-            [metabase.cmd.test-util :as cmd.test-util]))
+            [toucan.db :as db]))
 
 (deftest load-from-h2-test
   ;; enable this test in the REPL with something like (mt/set-test-drivers! #{:postgres})

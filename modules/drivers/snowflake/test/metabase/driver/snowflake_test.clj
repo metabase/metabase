@@ -134,17 +134,16 @@
     (testing "Make sure temporal parameters are set and returned correctly when report-timezone is set (#11036)"
       (letfn [(run-query []
                 (mt/rows
-                  (qp/process-query
-                    (merge
-                     {:database   (mt/id)
-                      :type       :native
-                      :native     {:query         (str "SELECT {{filter_date}}")
-                                   :template-tags {:filter_date {:name         "filter_date"
-                                                                 :display_name "Just A Date"
-                                                                 :type         "date"}}}
-                      :parameters [{:type   "date/single"
-                                    :target ["variable" ["template-tag" "filter_date"]]
-                                    :value  "2014-08-02"}]}))))]
+                 (qp/process-query
+                  {:database   (mt/id)
+                   :type       :native
+                   :native     {:query         (str "SELECT {{filter_date}}")
+                                :template-tags {:filter_date {:name         "filter_date"
+                                                              :display_name "Just A Date"
+                                                              :type         "date"}}}
+                   :parameters [{:type   "date/single"
+                                 :target ["variable" ["template-tag" "filter_date"]]
+                                 :value  "2014-08-02"}]})))]
         (testing "baseline"
           (is (= [["2014-08-02T00:00:00Z"]]
                  (run-query))))
@@ -155,20 +154,19 @@
     (testing "Make sure temporal values are returned correctly when report-timezone is set (#11036)"
       (letfn [(run-query []
                 (mt/rows
-                  (qp/process-query
-                    (merge
-                     {:database   (mt/id)
-                      :type       :native
-                      :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
-                                                       "FROM \"v3_test-data\".\"PUBLIC\".\"users\" "
-                                                       "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
-                                                       "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
-                                   :template-tags {:filter_date {:name         "filter_date"
-                                                                 :display_name "Just A Date"
-                                                                 :type         "date"}}}
-                      :parameters [{:type   "date/single"
-                                    :target ["variable" ["template-tag" "filter_date"]]
-                                    :value  "2014-08-02"}]}))))]
+                 (qp/process-query
+                  {:database   (mt/id)
+                   :type       :native
+                   :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
+                                                    "FROM \"v3_test-data\".\"PUBLIC\".\"users\" "
+                                                    "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
+                                                    "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
+                                :template-tags {:filter_date {:name         "filter_date"
+                                                              :display_name "Just A Date"
+                                                              :type         "date"}}}
+                   :parameters [{:type   "date/single"
+                                 :target ["variable" ["template-tag" "filter_date"]]
+                                 :value  "2014-08-02"}]})))]
         (testing "baseline (no report-timezone set)"
           (is (= [["2014-08-02T00:00:00Z" "2014-08-02T12:30:00Z"]
                   ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
@@ -178,3 +176,13 @@
                   ["2014-08-02T00:00:00-07:00" "2014-08-02T02:30:00-07:00"]]
                  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
                    (run-query)))))))))
+
+(deftest normalize-test
+  (mt/test-driver :snowflake
+    (testing "details should be normalized coming out of the DB"
+      (mt/with-temp Database [db {:name    "Legacy Snowflake DB"
+                                  :engine  :snowflake,
+                                  :details {:account  "my-instance"
+                                            :regionid "us-west-1"}}]
+                             (is (= {:account "my-instance.us-west-1"}
+                                    (:details db)))))))

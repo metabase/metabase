@@ -27,7 +27,7 @@ describe("scenarios > question > notebook", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
+  it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
     openOrdersTable();
     // save question initially
     cy.findByText("Save").click();

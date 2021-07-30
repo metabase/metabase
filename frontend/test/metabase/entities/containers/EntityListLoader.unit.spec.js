@@ -2,6 +2,7 @@
 import React from "react";
 
 import { render } from "@testing-library/react";
+import "mutationobserver-shim";
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import { Provider } from "react-redux";
 

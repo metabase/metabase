@@ -289,7 +289,9 @@
   []
   ((comp (filter some?) (take column-info-sample-size) (map class))
    (fn
-     ([] (java.util.HashMap. {nil 0})) ; fallback to keep `max-key` happy if no values
+     ([]
+      (doto (java.util.HashMap.)
+        (.put nil 0)))                  ; fallback to keep `max-key` happy if no values
      ([^java.util.HashMap freqs, klass]
       (.put freqs klass (inc (.getOrDefault freqs klass 0)))
       freqs)

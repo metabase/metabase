@@ -151,12 +151,6 @@
     (jdbc/execute! (dbspec) sql))
   (println (u/format-color 'blue "[ok]")))
 
-(defn- clean-session-schemas! []
-  "Delete any old session users that for some reason or another were never deleted. For REPL usage."
-  (doseq [schema (non-session-schemas)
-          :when  (re-find #"^CAM_" schema)]
-    (execute! "DROP USER %s CASCADE" schema)))
-
 (defn create-user!
   ;; default to using session-password for all users created this session
   ([username]

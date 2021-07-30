@@ -221,7 +221,9 @@
         (let [results (lic/process* {:classpath-entries classpath-entries
                                      :backfill  (edn/read-string
                                                  (slurp (io/resource "overrides.edn")))})]
-          (is (nil? (:without-license results)) "Some deps don't have identifiable licenses")
+          (is (nil? (:without-license results))
+              (str "Deps without license information:\n"
+                   (str/join "\n" (map first (:without-license results)))))
           (is (= (set classpath-entries)
                  (into #{} (->> results :with-license (map first))))))
         (is (some? (:without-license

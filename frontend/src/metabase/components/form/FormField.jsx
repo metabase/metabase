@@ -1,88 +1,106 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
-
 import cx from "classnames";
 
-export default class FormField extends Component {
-  static propTypes = {
-    field: PropTypes.object,
-    formField: PropTypes.object,
+import Tooltip from "metabase/components/Tooltip";
 
-    // redux-form compatible:
-    name: PropTypes.string,
-    error: PropTypes.any,
-    visited: PropTypes.bool,
-    active: PropTypes.bool,
+import { FieldRow, Label, InfoIcon, InputContainer } from "./FormField.styled";
 
-    hidden: PropTypes.bool,
-    title: PropTypes.string,
-    description: PropTypes.string,
+const formFieldCommon = {
+  title: PropTypes.string,
+  description: PropTypes.string,
+  info: PropTypes.string,
+  hidden: PropTypes.bool,
+  horizontal: PropTypes.bool,
+};
 
-    children: PropTypes.oneOfType([
-      PropTypes.arrayOf(PropTypes.node),
-      PropTypes.node,
-    ]),
+const propTypes = {
+  ...formFieldCommon,
+
+  field: PropTypes.object,
+  formField: PropTypes.shape({
+    ...formFieldCommon,
+    type: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+  }),
+
+  // redux-form compatible:
+  name: PropTypes.string,
+  error: PropTypes.any,
+  visited: PropTypes.bool,
+  active: PropTypes.bool,
+
+  children: PropTypes.oneOfType([
+    PropTypes.arrayOf(PropTypes.node),
+    PropTypes.node,
+  ]),
+  className: PropTypes.string,
+};
+
+const ALL_DOT_CHARS = /\./g;
+
+function FormField(props) {
+  const {
+    className,
+    formField,
+    title = formField && formField.title,
+    description = formField && formField.description,
+    info = formField && formField.info,
+    hidden = formField && (formField.hidden || formField.type === "hidden"),
+    horizontal = formField &&
+      (formField.horizontal || formField.type === "boolean"),
+    children,
+  } = props;
+
+  if (hidden) {
+    return null;
+  }
+
+  let { name, error, visited, active } = {
+    ...(props.field || {}),
+    ...props,
   };
 
-  render() {
-    const {
-      className,
-      formField,
-      title = formField && formField.title,
-      description = formField && formField.description,
-      hidden = formField &&
-        (formField.hidden != null
-          ? formField.hidden
-          : formField.type === "hidden"),
-      horizontal = formField &&
-        (formField.horizontal != null
-          ? formField.horizontal
-          : formField.type === "boolean"),
-      children,
-    } = this.props;
+  const formFieldId = `formField-${name.replace(ALL_DOT_CHARS, "-")}`;
 
-    if (hidden) {
-      return null;
-    }
+  if (!visited || active) {
+    // if the field hasn't been visited or is currently active then don't show the error
+    error = null;
+  }
 
-    let { name, error, visited, active } = {
-      ...(this.props.field || {}),
-      ...this.props,
-    };
+  const rootClassNames = cx("Form-field", className, {
+    "Form--fieldError": !!error,
+    flex: horizontal,
+  });
 
-    if (visited === false || active === true) {
-      // if the field hasn't been visited or is currently active then don't show the error
-      error = null;
-    }
-
-    return (
-      <div
-        className={cx("Form-field", className, {
-          "Form--fieldError": !!error,
-          flex: horizontal,
-        })}
-        id={`formField-${name.replace(/\./g, "-")}`}
-      >
-        {(title || description) && (
-          <div>
+  return (
+    <div id={formFieldId} className={rootClassNames}>
+      {(title || description) && (
+        <div>
+          <FieldRow>
             {title && (
-              <label
-                className={cx("Form-label", { "mr-auto": horizontal })}
-                htmlFor={name}
+              <Label
                 id={`${name}-label`}
+                htmlFor={name}
+                horizontal={horizontal}
               >
                 {title}
                 {error && <span className="text-error">: {error}</span>}
-              </label>
+              </Label>
             )}
-            {description && <div className="mb1">{description}</div>}
-          </div>
-        )}
-        <div className={cx("flex-no-shrink", { "ml-auto": horizontal })}>
-          {children}
+            {info && (
+              <Tooltip tooltip={info}>
+                <InfoIcon />
+              </Tooltip>
+            )}
+          </FieldRow>
+          {description && <div className="mb1">{description}</div>}
         </div>
-      </div>
-    );
-  }
+      )}
+      <InputContainer horizontal={horizontal}>{children}</InputContainer>
+    </div>
+  );
 }
+
+FormField.propTypes = propTypes;
+
+export default FormField;
