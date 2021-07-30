@@ -49,8 +49,9 @@
       (let [card-viz-settings           (viz-settings query)
             column-viz-settings         (::mb.viz/column-settings card-viz-settings)
             fields                      (-> query :query :fields)
-            updated-column-viz-settings (if (and (= (:type query) :query) fields)
-                                          (update-card-viz-settings column-viz-settings (map second fields))
+            field-ids                   (filter int? (map second fields))
+            updated-column-viz-settings (if (and (= (:type query) :query) (seq field-ids))
+                                          (update-card-viz-settings column-viz-settings field-ids)
                                           column-viz-settings)
             updated-card-viz-settings   (assoc card-viz-settings ::mb.viz/column-settings updated-column-viz-settings)
             rff' (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
