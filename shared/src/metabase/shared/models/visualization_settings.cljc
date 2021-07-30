@@ -10,10 +10,10 @@
   ex:
 
   ```
-  (-> (mb.viz/from-db-form (:visualization_settings my-card))
+  (-> (mb.viz/db->norm (:visualization_settings my-card))
       tweak-viz-settings
       tweak-more-viz-settings
-      mb.viz/db-form)
+      mb.viz/norm->db)
   ```
 
   In general, conversion functions in this namespace (i.e. those that convert various pieces from one form to the other)
@@ -372,19 +372,25 @@
   (set/map-invert db->norm-click-behavior-keys))
 
 (def ^:private db->norm-column-settings-keys
-  {:column_title      ::column-title
-   :date_style        ::date-style
-   :date_abbreviate   ::date-abbreviate
-   :time_style        ::time-style
-   :time_enabled      ::time-enabled
-   :decimals          ::decimals
-   :number_separators ::number-separators
-   :number_style      ::number-style
-   :prefix            ::prefix
-   :suffix            ::suffix
-   :view_as           ::view-as
-   :link_text         ::link-text
-   :show_mini_bar     ::show-mini-barchart})
+  {:column_title       ::column-title
+   :date_style         ::date-style
+   :date_separator     ::date-separator
+   :date_abbreviate    ::date-abbreviate
+   :time_enabled       ::time-enabled
+   :time_style         ::time-style
+   :number_style       ::number-style
+   :currency           ::currency
+   :currency_style     ::currency-style
+   :currency_in_header ::currency-in-header
+   :number_separators  ::number-separators
+   :decimals           ::decimals
+   :scale              ::scale
+   :prefix             ::prefix
+   :suffix             ::suffix
+   :view_as            ::view-as
+   :link_text          ::link-text
+   :link_url           ::link-url
+   :show_mini_bar      ::show-mini-bar})
 
 (def ^:private norm->db-column-settings-keys
   (set/map-invert db->norm-column-settings-keys))
@@ -514,12 +520,21 @@
     (dissoc :table.columns)))
 
 (defn- db->norm-column-settings-entry
-  "Converts a :column_settings DB form to qualified form. Does the opposite of
+  "Converts the DB form of a :column_settings entry value to its normalized form. Does the opposite of
   `norm->db-column-settings-entry`."
   [m k v]
   (case k
     :click_behavior (assoc m ::click-behavior (db->norm-click-behavior v))
     (assoc m (db->norm-column-settings-keys k) v)))
+
+(defn db->norm-column-settings
+  "Converts a :column_settings DB form to its normalized form."
+  [settings]
+  (m/map-kv (fn [k v]
+              (let [k1 (parse-db-column-ref k)
+                    v1 (reduce-kv db->norm-column-settings-entry {} v)]
+                [k1 v1]))
+            settings))
 
 (defn db->norm
   "Converts a DB form of visualization settings (i.e. map with key `:visualization_settings`) into the equivalent
@@ -532,10 +547,7 @@
           ;; column_settings at top level; ex: table card
           (:column_settings vs)
           (assoc ::column-settings (->> (:column_settings vs)
-                                        (m/map-kv (fn [k v]
-                                                    (let [k1 (parse-db-column-ref k)
-                                                          v1 (reduce-kv db->norm-column-settings-entry {} v)]
-                                                      [k1 v1])))))
+                                        db->norm-column-settings))
 
           ;; click behavior key at top level; ex: non-table card
           (:click_behavior vs)

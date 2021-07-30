@@ -77,8 +77,8 @@
                                ::mb.viz/link-type           ::mb.viz/card
                                ::mb.viz/parameter-mapping   {}
                                ::mb.viz/link-target-id      target-id}
-          norm-col-nm         {::mb.viz/column-title       "Name Column"
-                               ::mb.viz/show-mini-barchart true}
+          norm-col-nm         {::mb.viz/column-title  "Name Column"
+                               ::mb.viz/show-mini-bar true}
           norm-click-bhvr-map {::mb.viz/click-behavior norm-click-behavior}
           norm-col-settings {(mb.viz/field-id->column-ref f-id {"base-type" "type/Integer"}) norm-click-bhvr-map
                              (mb.viz/column-name->column-ref col-name)                       norm-col-nm}
