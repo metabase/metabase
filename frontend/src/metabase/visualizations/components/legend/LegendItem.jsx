@@ -5,12 +5,13 @@ import {
   LegendItemLabel,
   LegendItemRemoveIcon,
   LegendItemRoot,
+  LegendItemSubtitle,
   LegendItemTitle,
 } from "./LegendItem.styled";
 import Tooltip from "metabase/components/Tooltip";
 
 const propTypes = {
-  label: PropTypes.string,
+  label: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),
   index: PropTypes.number,
   color: PropTypes.string,
   isMuted: PropTypes.bool,
@@ -61,7 +62,7 @@ const LegendItem = ({
 
   return (
     <LegendItemRoot isVertical={isVertical} data-testid="legend-item">
-      <Tooltip tooltip={label} isEnabled={showTooltip}>
+      <Tooltip tooltip={getLabelText(label)} isEnabled={showTooltip}>
         <LegendItemLabel
           isMuted={isMuted}
           onClick={onSelectSeries && handleItemClick}
@@ -69,12 +70,36 @@ const LegendItem = ({
           onMouseLeave={onHoverChange && handleItemMouseLeave}
         >
           {showDot && <LegendItemDot color={color} />}
-          <LegendItemTitle showDot={showDot}>{label}</LegendItemTitle>
+          <LegendItemTitle showDot={showDot} hasSubtitle={hasSubtitle(label)}>
+            {getLabelNode(label)}
+          </LegendItemTitle>
         </LegendItemLabel>
       </Tooltip>
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );
+};
+
+const hasSubtitle = label => {
+  return Array.isArray(label);
+};
+
+const getLabelText = label => {
+  if (!hasSubtitle(label)) {
+    return label;
+  }
+
+  return label[0];
+};
+
+const getLabelNode = label => {
+  if (!hasSubtitle(label)) {
+    return label;
+  }
+
+  return label.map((text, index) => (
+    <LegendItemSubtitle key={index}>{text}</LegendItemSubtitle>
+  ));
 };
 
 LegendItem.propTypes = propTypes;

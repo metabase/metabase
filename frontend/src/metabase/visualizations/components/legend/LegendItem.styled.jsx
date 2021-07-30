@@ -18,7 +18,6 @@ export const LegendItemDot = styled.div`
   flex-shrink: 0;
   width: 0.75rem;
   height: 0.75rem;
-  margin-right: ${space(1)};
   border-radius: 50%;
   background-color: ${({ color }) => color};
 `;
@@ -38,6 +37,17 @@ export const LegendItemLabel = styled.div`
 export const LegendItemTitle = styled.div`
   color: ${colors["text-dark"]};
   font-weight: bold;
+  display: ${({ hasSubtitle }) => (hasSubtitle ? "flex" : "")};
+  flex-wrap: ${({ hasSubtitle }) => (hasSubtitle ? "wrap" : "")};
+
+  &:not(:first-child) {
+    margin-left: ${({ hasSubtitle }) => (hasSubtitle ? "0.25rem" : "0.5rem")};
+  }
+`;
+
+export const LegendItemSubtitle = styled.span`
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
 `;
 
 export const LegendItemRemoveIcon = styled(Icon).attrs({
