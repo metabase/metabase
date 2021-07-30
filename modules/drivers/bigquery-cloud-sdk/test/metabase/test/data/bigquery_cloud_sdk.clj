@@ -6,20 +6,18 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
-            [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [honeysql.format :as hformat])
+            [schema.core :as s])
   (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption
-                                      BigQuery$DatasetOption BigQuery$TableListOption BigQuery$TableOption DatasetId
-                                      DatasetInfo Field LegacySQLTypeName InsertAllRequest InsertAllRequest$RowToInsert
-                                      InsertAllResponse Schema StandardTableDefinition TableId TableInfo TableResult]
-           (java.util HashMap)))
+                                      BigQuery$DatasetOption BigQuery$TableListOption BigQuery$TableOption Dataset
+                                      DatasetId DatasetInfo Field LegacySQLTypeName InsertAllRequest
+                                      InsertAllRequest$RowToInsert InsertAllResponse Schema StandardTableDefinition
+                                      TableId TableInfo TableResult]))
 
 (sql.tx/add-test-extensions! :bigquery-cloud-sdk)
 
@@ -96,25 +94,25 @@
 
 (s/defn ^:private delete-table!
   [dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
-  (.delete (bigquery) dataset-id table-id)
+  (.delete (bigquery) (TableId/of dataset-id table-id))
   (println (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
 
 (s/defn ^:private create-table!
-  [dataset-id       :- su/NonBlankString
-   table-id         :- su/NonBlankString
-   field-name->type :- {ValidFieldName (apply s/enum valid-field-types)}]
+  [^String dataset-id :- su/NonBlankString
+   table-id           :- su/NonBlankString
+   field-name->type   :- {ValidFieldName (apply s/enum valid-field-types)}]
   (u/ignore-exceptions
    (delete-table! dataset-id table-id)
    (let [tbl-id (TableId/of dataset-id table-id)
-         schema (Schema/of (u/varargs Field (for [[field-name field-type] field-name->type]
+         schema (Schema/of (u/varargs Field (for [[^String field-name field-type] field-name->type]
                                               (Field/of
                                                 field-name
                                                 (LegacySQLTypeName/valueOf (name field-type))
-                                                (into-array Field [])))))
-         tbl    (doto (TableInfo/of tbl-id (StandardTableDefinition/of schema)))]
+                                                (u/varargs Field [])))))
+         tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
      (.create (bigquery) tbl (u/varargs BigQuery$TableOption))))
   ;; now verify that the Table was created
-  (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption []))
+  (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption))
   (println (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
@@ -171,7 +169,7 @@
 (defn- rows->request ^InsertAllRequest [^String dataset-id ^String table-id row-maps]
   (let [insert-rows (map (fn [r]
                            (InsertAllRequest$RowToInsert/of (str (get r :id)) (->json r))) row-maps)]
-    (InsertAllRequest/of (TableId/of dataset-id table-id) insert-rows)))
+    (InsertAllRequest/of (TableId/of dataset-id table-id) (u/varargs InsertAllRequest$RowToInsert insert-rows))))
 
 (def ^:private max-rows-per-request
   "Max number of rows BigQuery lets us insert at once."
@@ -276,7 +274,7 @@
 (defn- existing-dataset-names
   "Fetch a list of *all* dataset names that currently exist in the BQ test project."
   []
-  (for [dataset (.iterateAll (.listDatasets (bigquery) (into-array BigQuery$DatasetListOption [])))
+  (for [^Dataset dataset (.iterateAll (.listDatasets (bigquery) (into-array BigQuery$DatasetListOption [])))
         :let    [dataset-name (.. dataset getDatasetId getDataset)]
         ;; don't consider that checkins_interval_ datasets created in
         ;; `metabase.query-processor-test.date-bucketing-test` to be already created, since those test things relative

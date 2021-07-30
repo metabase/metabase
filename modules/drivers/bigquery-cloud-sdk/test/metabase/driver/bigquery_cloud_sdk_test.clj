@@ -33,12 +33,12 @@
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
-       (with-bindings {#'bigquery/max-results-per-page  25
-                       #'bigquery/page-callback         page-callback
+       (with-bindings {#'bigquery/*max-results-per-page*  25
+                       #'bigquery/*page-callback*         page-callback
                        ;; for this test, set timeout to 0 to prevent setting it
                        ;; so that the "fast" query path can be used (so that the max-results-per-page actually takes
                        ;; effect); see com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported
-                       #'bigquery/query-timeout-seconds 0}
+                       #'bigquery/*query-timeout-seconds* 0}
          (let [actual (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
                              [(Field (mt/id :venues :id))
                               (Field (mt/id :venues :name))]
@@ -127,4 +127,4 @@
                :native   {:query "SELECT abc FROM 123;"}})))
         (testing "Should return the error *before* the query timeout"
           (let [duration-ms (- (System/currentTimeMillis) before-ms)]
-            (is (< duration-ms (u/seconds->ms @#'bigquery/query-timeout-seconds)))))))))
+            (is (< duration-ms (u/seconds->ms @#'bigquery/*query-timeout-seconds*)))))))))

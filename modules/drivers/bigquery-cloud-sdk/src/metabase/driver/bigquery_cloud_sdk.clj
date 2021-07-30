@@ -153,13 +153,13 @@
 ;;; |                                                Running Queries                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:dynamic ^Integer query-timeout-seconds 60)
+(def ^:private ^:dynamic ^Integer *query-timeout-seconds* 60)
 
-(def ^:private ^:dynamic ^Long max-results-per-page
+(def ^:private ^:dynamic ^Long *max-results-per-page*
   "Maximum number of rows to return per page in a query."
   20000)
 
-(def ^:private ^:dynamic page-callback
+(def ^:private ^:dynamic *page-callback*
   "Callback to execute when a new page is retrieved, used for testing"
   nil)
 
@@ -183,7 +183,7 @@
   [response f]
   ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
   ;; wait a few seconds for the job to finish.
-  (loop [remaining-timeout (double query-timeout-seconds)]
+  (loop [remaining-timeout (double *query-timeout-seconds*)]
     (cond
       (job-complete? response)
       (f response)
@@ -213,13 +213,13 @@
   {:pre [client (not (str/blank? sql))]}
   (try
     (let [request        (doto (QueryJobConfiguration/newBuilder sql)
-                           (.setJobTimeoutMs (if (> query-timeout-seconds 0)
-                                               (* query-timeout-seconds 1000)
+                           (.setJobTimeoutMs (if (> *query-timeout-seconds* 0)
+                                               (* *query-timeout-seconds* 1000)
                                                nil))
                            ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
                            (.setUseLegacySql (str/includes? (str/lower-case sql) "#legacysql"))
                            (bigquery.params/set-parameters! parameters)
-                           (.setMaxResults max-results-per-page))]
+                           (.setMaxResults *max-results-per-page*))]
       (.query client (.build request) (make-array BigQuery$JobOption 0)))
     (catch Throwable e
       (throw (ex-info (tru "Error executing query")
@@ -259,8 +259,8 @@
       {:cols columns}
       (letfn [(fetch-page [^TableResult response]
                 (when response
-                  (when page-callback
-                    (page-callback))
+                  (when *page-callback*
+                    (*page-callback*))
                   (lazy-cat
                     (.getValues response)
                     (when (some? (.getNextPageToken response))
