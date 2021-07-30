@@ -398,6 +398,16 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations})
 
+(defn- supports?*
+  ([driver feature]
+   (when-not (driver-features feature)
+     (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+   [(dispatch-on-initialized-driver driver) feature])
+  ([driver feature & db]
+   (when-not (driver-features feature)
+     (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+   [(dispatch-on-initialized-driver driver) feature]))
+
 (defmulti supports?
   "Does this driver support a certain `feature`?
   (A feature is a keyword, and can be any of the ones listed above in `driver-features`.)
@@ -405,10 +415,8 @@
 
     (supports? :postgres :set-timezone) ; -> true"
   {:arglists '([driver feature & db])}
-  (fn [driver feature & db]
-    (when-not (driver-features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
-    [(dispatch-on-initialized-driver driver) feature]))
+  supports?*
+  :hierarchy #'hierarchy)
 
 (defmethod supports? :default [_ _] false)
 
