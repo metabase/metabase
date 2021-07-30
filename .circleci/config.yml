@@ -276,7 +276,7 @@ cache-key-frontend: &CacheKeyFrontend
 
 # Key for uberjar built by build-uberjar
 cache-key-uberjar: &CacheKeyUberjar
-  key: v1-{{ checksum ".CACHE-PREFIX" }}-uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
+  key: v2-{{ checksum ".CACHE-PREFIX" }}-uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
 
 
 ########################################################################################################################
