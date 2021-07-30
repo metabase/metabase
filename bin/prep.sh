@@ -41,7 +41,6 @@ compile_spark_sql_aot_sources() {
     else
         echo 'Spark SQL AOT source files are already compiled'
     fi
-
 }
 
 prep_deps() {
