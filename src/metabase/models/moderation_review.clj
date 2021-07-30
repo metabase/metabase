@@ -42,15 +42,20 @@
   10)
 
 (s/defn delete-extra-reviews! [item-id :- s/Int item-type :- s/Str]
-  (let [ids (map :id (db/query {:select [:id]
-                                :from [:moderation_review]
-                                :where [:and
-                                        [:= :moderated_item_id item-id]
-                                        [:= :moderated_item_type item-type]]
-                                :order-by [[:id :desc]]
-                                :offset (dec max-moderation-reviews)}))]
-    (when (seq ids)
-      (db/delete! ModerationReview :id [:in ids]))))
+    (let [ids (into #{} (comp (map :id)
+                              (drop (dec max-moderation-reviews)))
+                    (db/query {:select [:id]
+                               :from [:moderation_review]
+                               :where [:and
+                                       [:= :moderated_item_id item-id]
+                                       [:= :moderated_item_type item-type]]
+                               ;; cannot put the offset in this query as mysql doesnt place nice. It requires a limit
+                               ;; as well which we do not want to give. The offset is only 10 though so its not a huge
+                               ;; savings and we run this on every entry so the max number is 10, delete the extra,
+                               ;; and insert a new one to arrive at 10 again, our invariant.
+                               :order-by [[:id :desc]]}))]
+      (when (seq ids)
+        (db/delete! ModerationReview :id [:in ids]))))
 
 (s/defn create-review!
   "Create a new ModerationReview"
