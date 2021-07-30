@@ -12,11 +12,8 @@ export const LegendAddIcon = styled(Icon).attrs({
   name: "add",
   size: 12,
 })`
-  flex: 0 0 auto;
-  margin-left: ${space(1)};
-  margin-right: ${space(1)};
-  padding: 5px;
   color: ${colors["text-medium"]};
+  margin-left: ${space(1)};
   border-radius: 8px;
   background-color: ${colors["bg-medium"]};
   cursor: pointer;
@@ -24,10 +21,4 @@ export const LegendAddIcon = styled(Icon).attrs({
   &:hover {
     color: ${colors["brand"]};
   }
-`;
-
-export const LegendButtonGroup = styled.span`
-  flex: 0 0 auto;
-  position: relative;
-  margin-left: auto;
 `;

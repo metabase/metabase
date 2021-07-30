@@ -1,22 +1,22 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { ChartWithLegendRoot } from "./ChartWithLegend.styled";
+import LegendTitle from "./LegendTitle";
 import LegendLayout from "./LegendLayout";
-import LegendCaption from "./LegendCaption";
-import { ChartCaption, ChartRoot } from "./ChartWithLegend.styled";
 
 const propTypes = {
   className: PropTypes.string,
-  showCaption: PropTypes.bool,
-  ...LegendCaption.propTypes,
+  showTitle: PropTypes.bool,
+  children: PropTypes.node,
   ...LegendLayout.propTypes,
 };
 
-const ChartWithLegend = ({ className, showCaption, ...otherProps }) => {
+const ChartWithLegend = ({ className, showTitle, children, ...otherProps }) => {
   return (
-    <ChartRoot className={className}>
-      {showCaption && <ChartCaption {...otherProps} />}
-      <LegendLayout {...otherProps} />
-    </ChartRoot>
+    <ChartWithLegendRoot className={className}>
+      {showTitle && <LegendTitle {...otherProps} />}
+      <LegendLayout {...otherProps}>{children}</LegendLayout>
+    </ChartWithLegendRoot>
   );
 };
 

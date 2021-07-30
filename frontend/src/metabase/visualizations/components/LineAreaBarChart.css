@@ -1,7 +1,3 @@
-.LineAreaBarChart {
-  min-height: 0;
-}
-
 .LineAreaBarChart .renderer {
   margin-top: -5px;
   margin-left: -0.5em;

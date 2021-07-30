@@ -1,23 +1,16 @@
-import React from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import _ from "underscore";
-import ExplicitSize from "metabase/components/ExplicitSize";
 import {
   ChartPanel,
   LegendLayoutRoot,
-  LegendOverflow,
   LegendPanel,
 } from "./LegendLayout.styled";
 import Legend from "metabase/visualizations/components/legend/Legend";
 
-const MIN_WIDTH_PER_SERIES = 100;
-const MIN_WIDTH_PER_LEGEND = 400;
 const MIN_UNITS_PER_LEGEND = 6;
 
 const propTypes = {
   className: PropTypes.string,
-  labels: PropTypes.array.isRequired,
-  width: PropTypes.number,
   gridSize: PropTypes.object,
   showLegend: PropTypes.bool,
   isDashboard: PropTypes.bool,
@@ -27,27 +20,42 @@ const propTypes = {
 
 const LegendLayout = ({
   className,
-  labels,
-  width,
   gridSize,
   showLegend,
   isDashboard,
   children,
   ...otherProps
 }) => {
-  const isVertical = width < labels.length * MIN_WIDTH_PER_SERIES;
-  const isGridSmall = gridSize != null && gridSize.width < MIN_UNITS_PER_LEGEND;
-  const isWidthSmall = width < MIN_WIDTH_PER_LEGEND;
-  const isHidden = isVertical && isDashboard && (isWidthSmall || isGridSmall);
+  const ref = useRef();
+  const [isMeasured, setIsMeasured] = useState(false);
+  const [isVertical, setIsVertical] = useState(false);
+
+  const gridWidth = gridSize && gridSize.width;
+  const isCompact = gridWidth < MIN_UNITS_PER_LEGEND;
+  const isHidden = isVertical && isCompact && isDashboard;
   const isVisible = showLegend && !isHidden;
+
+  useLayoutEffect(() => {
+    if (showLegend) {
+      setIsMeasured(false);
+      setIsVertical(false);
+    }
+  }, [gridWidth, showLegend]);
+
+  useLayoutEffect(() => {
+    const legend = ref.current;
+
+    if (legend && !isMeasured) {
+      setIsVertical(legend.scrollWidth > legend.offsetWidth);
+      setIsMeasured(true);
+    }
+  }, [isMeasured]);
 
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
       {isVisible && (
         <LegendPanel isVertical={isVertical}>
-          <LegendOverflow isVertical={isVertical}>
-            <Legend {...otherProps} labels={labels} isVertical={isVertical} />
-          </LegendOverflow>
+          <Legend ref={ref} isVertical={isVertical} {...otherProps} />
         </LegendPanel>
       )}
       <ChartPanel>{children}</ChartPanel>
@@ -57,4 +65,4 @@ const LegendLayout = ({
 
 LegendLayout.propTypes = propTypes;
 
-export default _.compose(ExplicitSize())(LegendLayout);
+export default LegendLayout;

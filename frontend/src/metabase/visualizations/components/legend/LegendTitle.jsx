@@ -4,11 +4,11 @@ import { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 import {
-  LegendCaptionIcon,
-  LegendCaptionInfo,
-  LegendCaptionRoot,
-  LegendCaptionTitle,
-} from "./LegendCaption.styled";
+  LegendTitleIcon,
+  LegendTitleInfo,
+  LegendTitleLabel,
+  LegendTitleRoot,
+} from "./LegendTitle.styled";
 
 const propTypes = {
   className: PropTypes.string,
@@ -18,7 +18,7 @@ const propTypes = {
   onSelectTitle: PropTypes.func,
 };
 
-const LegendCaption = ({
+const LegendTitle = ({
   className,
   title,
   description,
@@ -26,20 +26,20 @@ const LegendCaption = ({
   onSelectTitle,
 }) => {
   return (
-    <LegendCaptionRoot className={className}>
-      {icon && <LegendCaptionIcon {...icon} />}
-      <LegendCaptionTitle onClick={onSelectTitle}>
+    <LegendTitleRoot className={className}>
+      {icon && <LegendTitleIcon {...icon} />}
+      <LegendTitleLabel onClick={onSelectTitle}>
         <Ellipsified>{title}</Ellipsified>
-        {description && (
-          <Tooltip tooltip={description} maxWidth="22em">
-            <LegendCaptionInfo />
-          </Tooltip>
-        )}
-      </LegendCaptionTitle>
-    </LegendCaptionRoot>
+      </LegendTitleLabel>
+      {description && (
+        <Tooltip tooltip={description} maxWidth="22em">
+          <LegendTitleInfo />
+        </Tooltip>
+      )}
+    </LegendTitleRoot>
   );
 };
 
-LegendCaption.propTypes = propTypes;
+LegendTitle.propTypes = propTypes;
 
-export default LegendCaption;
+export default LegendTitle;

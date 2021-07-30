@@ -304,7 +304,7 @@ export default class LineAreaBarChart extends Component {
       description,
       labels,
       colors,
-      showCaption,
+      showTitle,
       showLegend,
       showDots,
       hasBreakout,
@@ -322,7 +322,7 @@ export default class LineAreaBarChart extends Component {
         gridSize={gridSize}
         showDots={showDots}
         showLegend={showLegend}
-        showCaption={showCaption}
+        showTitle={showTitle}
         isDashboard={isDashboard}
         showTooltip
         showDotTooltip
