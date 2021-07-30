@@ -53,7 +53,11 @@ const Legend = (
         />
       ))}
       {onAddSeries && <LegendAddIcon onClick={onAddSeries} />}
-      {actionButtons && <LegendButtonGroup>{actionButtons}</LegendButtonGroup>}
+      {actionButtons && (
+        <LegendButtonGroup isVertical={isVertical}>
+          {actionButtons}
+        </LegendButtonGroup>
+      )}
     </LegendRoot>
   );
 };
