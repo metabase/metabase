@@ -33,5 +33,4 @@ export const LegendTitleInfo = styled(Icon).attrs({
 export const LegendTitleButtonGroup = styled.span`
   flex: 0 0 auto;
   position: relative;
-  margin-left: auto;
 `;
