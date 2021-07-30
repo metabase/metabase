@@ -69,7 +69,7 @@
                     Field [{field-id-2 :id}]]
       (testing "Viz settings for a saved card are fetched from the DB and normalized"
         (mt/with-temp Card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
-          (let [query    (test-query [field-id-1 field-id-2] card-id {})
+          (let [query    (test-query [field-id-1 field-id-2] card-id nil)
                 result   (update-viz-settings query)
                 expected (processed-viz-settings field-id-1 field-id-2)]
             (is (= expected result)))))
@@ -88,7 +88,7 @@
                precedence than card settings"
         (testing "for a saved card"
           (mt/with-temp Card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
-            (let [query    (test-query [field-id-1 field-id-2 field-id-3] card-id {})
+            (let [query    (test-query [field-id-1 field-id-2 field-id-3] card-id nil)
                   result   (update-viz-settings query)
                   expected (-> (processed-viz-settings field-id-1 field-id-2)
                                (assoc-in [::mb.viz/column-settings {::mb.viz/field-id field-id-2} ::mb.viz/scale] 10)
