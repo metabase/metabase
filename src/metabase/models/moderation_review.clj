@@ -41,7 +41,10 @@
   "The amount of moderation reviews we will keep on hand."
   10)
 
-(s/defn delete-extra-reviews! [item-id :- s/Int item-type :- s/Str]
+(s/defn delete-extra-reviews!
+  "Delete extra reviews to maintain an invariant of only `max-moderation-reviews`. Called before inserting so actuall
+  insures there are one fewer than that so you can add afterwards."
+  [item-id :- s/Int item-type :- s/Str]
     (let [ids (into #{} (comp (map :id)
                               (drop (dec max-moderation-reviews)))
                     (db/query {:select [:id]
