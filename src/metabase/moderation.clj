@@ -20,14 +20,19 @@
   [moderated-item]
   (str/lower-case (name moderated-item)))
 
-(defn moderation-reviews-for-item
-  "ModerationReviews for the `moderated-item` (either a Card or a Dashboard)."
-  {:hydrate :moderation_reviews}
-  [moderated-item]
-  (db/select 'ModerationReview
-             :moderated_item_type (object->type moderated-item)
-             :moderated_item_id (u/the-id moderated-item)
-             {:order-by [[:id :desc]]}))
+(defn moderation-reviews-for-items
+  {:batched-hydrate :moderation_reviews}
+  [items]
+  (when (seq items)
+    (let [all-reviews (group-by (juxt :moderated_item_type :moderated_item_id)
+                                (db/select 'ModerationReview
+                                           :moderated_item_type "card"
+                                           :moderated_item_id [:in (map :id items)]
+                                           {:order-by [[:id :desc]]}))]
+      (tap> all-reviews)
+      (for [item items]
+        (let [k ((juxt (comp keyword object->type) u/the-id) item)]
+          (assoc item :moderation_reviews (get all-reviews k ())))))))
 
 (defn moderated-item
   "The moderated item for a given request or review"
