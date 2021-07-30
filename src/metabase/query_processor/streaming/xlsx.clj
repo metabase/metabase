@@ -1,8 +1,8 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.streaming.common :as common]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.shared.models.visualization-settings :as mb.viz]
@@ -11,7 +11,7 @@
             [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [org.apache.poi.ss.usermodel BuiltinFormats Cell CellType DateUtil Sheet Workbook]
+           [org.apache.poi.ss.usermodel Cell CellType DateUtil Sheet Workbook]
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
 (defmethod i/stream-options :xlsx
@@ -27,35 +27,17 @@
    of 64,000 cell styles in a single workbook."
   nil)
 
+;; TODO update comment
 ;; Since we can only have a limited number of styles we'll enumerate the possible styles we'll want to use. Then we'll
 ;; create a bunch of delays for them that will create them if needed and bind this to `*cell-styles*`; we'll use them
 ;; as needed in various `set-cell!` method impls.
 
-(def ^:private ^{:arglists '(^String [style-name])} cell-style->format-string
+(def ^:private ^{:arglists '(^String [style-name])} default-format-strings
   "Predefined cell format strings. These are used to get the corresponding predefined cell format number using
   `BuiltinFormats/getBuiltinFormat`. See `(BuiltinFormats/getAll)` for all predefined formats"
-  {:date     "m/d/yy"
-   :datetime "m/d/yy h:mm"
-   :time     "h:mm:ss"})
-
-(defn- cell-format
-  "Fetch the predefined cell format integer associated with `style-name`."
-  ^Integer [style-name]
-  (or (some-> style-name cell-style->format-string BuiltinFormats/getBuiltinFormat)
-      (throw (ex-info (tru "Invalid cell format")
-                      {:type          qp.error-type/qp
-                       :style-name    style-name
-                       :known-formats cell-style->format-string
-                       :all-formats   (BuiltinFormats/getAll)}))))
-
-(defn- cell-style-delays
-  "Create a map of style name -> delay. This is bound to `*cell-styles*` by `streaming-results-writer`. Dereffing the
-  delay will create the style and add it to the workbook if needed."
-  [^Workbook workbook]
-  (into {} (for [style-name (keys cell-style->format-string)]
-             [style-name (delay
-                           (doto (.createCellStyle workbook)
-                             (.setDataFormat (cell-format style-name))))])))
+  {:date     "MMMM D, YYYY"
+   :datetime "MMMM D, YYYY, H:MM AM/PM"
+   :time     "H:MM AM/PM"})
 
 (defn- currency-suffix
   [format-settings]
@@ -87,8 +69,8 @@
         suffix (currency-suffix format-settings)]
     (str prefix base-string suffix)))
 
-;; If any of these settings are present, we should format the column as a number
 (def ^:private number-viz-settings
+  "If any of these settings are present, we should format the column as a number"
   #{::mb.viz/number-style
     ::mb.viz/currency
     ::mb.viz/currency-style
@@ -98,6 +80,14 @@
     ::mb.viz/prefix
     ::mb.viz/suffix})
 
+(def ^:private datetime-viz-settings
+  "If any of these settings are present, we should format the column as a date and/or time"
+  #{::mb.viz/date-style
+    ::mb.viz/date-separator
+    ::mb.viz/date-abbreviate
+    ::mb.viz/time-enabled
+    ::mb.viz/time-style})
+
 (defn- general-number-format?
   "Use General for decimal number types that have no other format settings defined
   aside from prefix, suffix or scale."
@@ -106,8 +96,7 @@
    ;; This is a decimal number (not a currency, percentage or scientific notation)
    (or (= (::mb.viz/number-style format-settings) "decimal")
        (not (::mb.viz/number-style format-settings)))
-   ;;
-   ;; Custom number formatting options are nto set
+   ;; Custom number formatting options are not set
    (not (seq (dissoc format-settings
                      ::mb.viz/number-style
                      ::mb.viz/scale
@@ -141,52 +130,121 @@
      styled-string
      (str "\"" (::mb.viz/suffix format-settings) "\""))))
 
+(defn- abbreviate-date-names
+  [format-settings format-string]
+  (if (::mb.viz/date-abbreviate format-settings false)
+    (-> format-string
+     (str/replace "MMMM" "MMM")
+     (str/replace "dddd" "ddd"))
+    format-string))
+
+(defn- replace-date-separators
+  [format-settings format-string]
+  (let [separator (::mb.viz/date-separator format-settings "/")]
+    (str/replace format-string "/" separator)))
+
+(defn- add-time-format
+  [format-settings format-string]
+  (def my-format-settings format-settings)
+  (clojure.pprint/pprint my-format-settings)
+  (let [base-time-format (condp = (::mb.viz/time-enabled format-settings)
+                           "minutes"
+                           "H:MM"
+
+                           "seconds"
+                           "H:MM:SS"
+
+                           "milliseconds"
+                           "H:MM:SS.000"
+
+                           nil
+                           nil
+
+                           ;; Default: minutes
+                           "H:MM")
+        time-format      (when base-time-format
+                           (condp = (::mb.viz/time-style format-settings)
+                             "HH:mm"
+                             (str "H" base-time-format)
+
+                             "h:mm A"
+                             (str base-time-format " AM/PM")
+
+                             ;; Default: AM/PM
+                             (str base-time-format " AM/PM")))]
+    (if time-format
+      (str format-string ", " time-format)
+      format-string)))
+
+(defn- datetime-format-string
+  [format-settings]
+  (->> (::mb.viz/date-style format-settings (default-format-strings :date))
+       (abbreviate-date-names format-settings)
+       (replace-date-separators format-settings)
+       (add-time-format format-settings)))
+
 (defn- format-settings->format-string
   "Returns a format string corresponding to the given settings."
   [format-settings]
   (cond
     (some #(contains? number-viz-settings %) (keys format-settings))
-    (number-format-string format-settings)))
+    (number-format-string format-settings)
 
-(def ^:private column-style-delays
-  "Creates a map of column name or ids -> delay. This is bound to `*cell-styles*` by `streaming-results-writer`.
-  Dereffing the delay will create the style and add it to the workbook if needed."
+    (some #(contains? datetime-viz-settings %) (keys format-settings))
+    (datetime-format-string format-settings)))
+
+(defn- format-string-delay
+  [^Workbook workbook format-string]
+    ;; TODO can data-format just be created once?
+  (let [data-format (. workbook createDataFormat)]
+    (delay
+     (doto (.createCellStyle workbook)
+       (.setDataFormat (. data-format getFormat format-string))))))
+
+(defn- column-style-delays
+  [^Workbook workbook column-settings]
+  (into {} (for [[field settings] column-settings]
+             (let [name-or-id    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
+                   format-string (format-settings->format-string settings)]
+               (when format-string
+                 {name-or-id (format-string-delay workbook format-string)})))))
+
+(def ^:private cell-style-delays
+  "Creates a map of column name or id -> delay, or keyword representing default -> delay. This is bound to
+  `*cell-styles*` by `streaming-results-writer`. Dereffing the delay will create the style and add it to
+  the workbook if needed."
   (memoize
    (fn [^Workbook workbook column-settings]
-       (into {}
-             (for [[field settings] column-settings]
-                  (let [id-or-name    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
-                        format-string (format-settings->format-string settings)]
-                    (when format-string
-                      (let [data-format (. workbook createDataFormat)]
-                        {id-or-name (delay
-                                     (doto (.createCellStyle workbook)
-                                       (.setDataFormat (. data-format getFormat format-string))))}))))))))
+     (let [column-styles (column-style-delays workbook column-settings)]
+       (into column-styles
+             (for [[name-keyword format-string] (seq default-format-strings)]
+               {name-keyword (format-string-delay workbook format-string)}))))))
 
 (defn- cell-style
   "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`."
   ^org.apache.poi.ss.usermodel.CellStyle [style-name]
   (some-> style-name *cell-styles* deref))
 
-(defmulti set-cell! (fn [^Cell _cell value _column] (type value)))
+(defmulti set-cell! (fn [^Cell _cell value _name-or-id] (type value)))
 
 ;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell
 ;; styles applied that dictate how to format them
 
 (defmethod set-cell! LocalDate
-  [^Cell cell ^LocalDate t _]
+  [^Cell cell ^LocalDate t name-or-id]
   (.setCellValue cell t)
   (.setCellType cell CellType/NUMERIC)
-  (.setCellStyle cell (cell-style :date)))
+  ;; TODO Make sure these fallback to default format strings
+  (.setCellStyle cell (or (cell-style name-or-id) (cell-style :date))))
 
 (defmethod set-cell! LocalDateTime
-  [^Cell cell ^LocalDateTime t _]
+  [^Cell cell ^LocalDateTime t name-or-id]
   (.setCellValue cell t)
   (.setCellType cell CellType/NUMERIC)
-  (.setCellStyle cell (cell-style :datetime)))
+  (.setCellStyle cell (or (cell-style name-or-id) (cell-style :datetime))))
 
 (defmethod set-cell! LocalTime
-  [^Cell cell t _]
+  [^Cell cell t name-or-id]
   ;; there's no `.setCellValue` for a `LocalTime` -- but all the built-in impls for `LocalDate` and `LocalDateTime` do
   ;; anyway is convert the date(time) to an Excel datetime floating-point number and then set that.
   ;;
@@ -196,33 +254,35 @@
   ;; See https://poi.apache.org/apidocs/4.1/org/apache/poi/ss/usermodel/DateUtil.html#convertTime-java.lang.String-
   (.setCellValue cell (DateUtil/convertTime (u.date/format "HH:mm:ss" t)))
   (.setCellType cell CellType/NUMERIC)
-  (.setCellStyle cell (cell-style :time)))
+  (.setCellStyle cell (or (cell-style name-or-id) (cell-style :time))))
 
 (defmethod set-cell! OffsetTime
-  [cell t _]
-  (set-cell! cell (t/local-time (common/in-result-time-zone t))))
+  [^Cell cell t name-or-id]
+  (set-cell! cell (t/local-time (common/in-result-time-zone t)) name-or-id))
 
 (defmethod set-cell! OffsetDateTime
-  [cell t _]
-  (set-cell! cell (t/local-date-time (common/in-result-time-zone t))))
+  [^Cell cell t name-or-id]
+  (set-cell! cell (t/local-date-time (common/in-result-time-zone t)) name-or-id))
 
 (defmethod set-cell! ZonedDateTime
-  [cell t _]
-  (set-cell! cell (t/offset-date-time t)))
+  [^Cell cell t name-or-id]
+  (set-cell! cell (t/offset-date-time t) name-or-id))
 
-(defmethod set-cell! String [^Cell cell value _]
+(defmethod set-cell! String
+  [^Cell cell value _]
   (when (= (.getCellType cell) CellType/FORMULA)
     (.setCellType cell CellType/STRING))
   (.setCellValue cell ^String value))
 
-(defmethod set-cell! Number [^Cell cell value column]
-  (let [name-or-id (or (:id column) (:name column))]
-    (when (= (.getCellType cell) CellType/FORMULA)
-      (.setCellType cell CellType/NUMERIC))
-    (.setCellValue cell (double value))
-    (.setCellStyle cell (cell-style name-or-id))))
+(defmethod set-cell! Number
+  [^Cell cell value name-or-id]
+  (when (= (.getCellType cell) CellType/FORMULA)
+    (.setCellType cell CellType/NUMERIC))
+  (.setCellValue cell (double value))
+  (.setCellStyle cell (cell-style name-or-id)))
 
-(defmethod set-cell! Boolean [^Cell cell value _]
+(defmethod set-cell! Boolean
+  [^Cell cell value _]
   (when (= (.getCellType cell) CellType/FORMULA)
     (.setCellType cell CellType/BOOLEAN))
   (.setCellValue cell ^Boolean value))
@@ -259,26 +319,25 @@
             scaled-val (if (and value (::mb.viz/scale settings))
                          (* value (::mb.viz/scale settings))
                          value)]
-        (set-cell! (.createCell row index) scaled-val col)))
+        (set-cell! (.createCell row index) scaled-val name-or-id)))
     row))
 
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
-  (let [workbook    (SXSSFWorkbook.)
-        cell-styles (cell-style-delays workbook)
-        sheet       (spreadsheet/add-sheet! workbook (tru "Query result"))]
+  (let [workbook            (SXSSFWorkbook.)
+        sheet               (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols]} :data} viz-settings]
         (spreadsheet/add-row! sheet (map (some-fn :display_name :name) ordered-cols)))
 
       (write-row! [_ row _ ordered-cols {:keys [output-order] :as viz-settings}]
-        (let [ordered-row (if output-order
-                            (let [row-v (into [] row)]
-                              (for [i output-order] (row-v i)))
-                            row)
+        (let [ordered-row  (if output-order
+                             (let [row-v (into [] row)]
+                               (for [i output-order] (row-v i)))
+                             row)
               col-settings (::mb.viz/column-settings viz-settings)
-              col-styles (column-style-delays workbook col-settings)]
-          (binding [*cell-styles* (merge cell-styles col-styles)]
+              cell-styles  (cell-style-delays workbook col-settings)]
+          (binding [*cell-styles* cell-styles]
             (add-row! sheet ordered-row ordered-cols col-settings))))
 
       (finish! [_ _]

@@ -54,6 +54,7 @@
                                           (update-card-viz-settings column-viz-settings field-ids)
                                           column-viz-settings)
             updated-card-viz-settings   (assoc card-viz-settings ::mb.viz/column-settings updated-column-viz-settings)
-            rff' (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
-        (qp query rff' context))
+            query'                      (dissoc query :viz-settings)
+            rff'                        (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
+        (qp query' rff' context))
       (qp query rff context))))

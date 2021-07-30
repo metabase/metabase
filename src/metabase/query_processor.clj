@@ -84,7 +84,6 @@
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
-   #'viz-settings/update-viz-settings
    #'annotate/add-column-info
    #'perms/check-query-permissions
    #'pre-alias-ags/pre-alias-aggregations
@@ -119,6 +118,7 @@
    #'store/initialize-store
    #'validate/validate-query
    #'normalize/normalize
+   #'viz-settings/update-viz-settings
    #'add-rows-truncated/add-rows-truncated
    (resolve 'ee.audit/handle-internal-queries)
    #'results-metadata/record-and-return-metadata!])
