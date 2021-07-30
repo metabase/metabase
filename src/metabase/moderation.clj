@@ -23,13 +23,14 @@
 (defn moderation-reviews-for-items
   {:batched-hydrate :moderation_reviews}
   [items]
-  (when (seq items)
+  ;; no need to do work on empty items. Also, can have nil here due to text cards. I think this is a bug in toucan. To
+  ;; get here we are `(hydrate dashboard [:ordered_cards [:card :moderation_reviews] :series] ...)` But ordered_cards dont have to have cards. but the hydration will pass the nil card id into
+  (when-some [items (seq (keep identity items))]
     (let [all-reviews (group-by (juxt :moderated_item_type :moderated_item_id)
                                 (db/select 'ModerationReview
                                            :moderated_item_type "card"
                                            :moderated_item_id [:in (map :id items)]
                                            {:order-by [[:id :desc]]}))]
-      (tap> all-reviews)
       (for [item items]
         (let [k ((juxt (comp keyword object->type) u/the-id) item)]
           (assoc item :moderation_reviews (get all-reviews k ())))))))
