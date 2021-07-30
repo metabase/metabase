@@ -43,7 +43,7 @@ jobs:
         key: ${{ runner.os }}-eastwood-${{ hashFiles('**/deps.edn') }}
     - name: Compile Java & AOT Sources
       run: |
-        clojure -X:deps prep && cd modules/drivers && clojure -X:deps prep && cd ../..
+        source ./bin/prep.sh && prep_deps
     - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
       name: Run Eastwood linter
 
@@ -69,6 +69,6 @@ jobs:
         key: ${{ runner.os }}-namespace-decls-${{ hashFiles('**/deps.edn') }}
     - name: Compile Java & AOT Sources
       run: |
-        clojure -X:deps prep && cd modules/drivers && clojure -X:deps prep && cd ../..
+        source ./bin/prep.sh && prep_deps
     - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
       name: Check ns forms

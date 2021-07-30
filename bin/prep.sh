@@ -8,16 +8,22 @@ prep_deps() {
     cd "$script_directory/.."
     project_root=`pwd`
 
+    echo "Compile Java source files in $project_root/java if needed..."
     if [ ! -d "$project_root/java/target/classes" ]; then
         echo 'Compile Java source files'
         cd "$project_root"
-        clojure -X:deps prep
+        clojure -Sforce -X:deps prep
+    else
+        echo 'Java source files are already compiled'
     fi
 
+    echo "Compile Spark SQL AOT source files in $project_root/modules/drivers/sparksql if needed..."
     if [ ! -d "$project_root/modules/drivers/sparksql/target/classes" ]; then
         echo 'Compile Spark SQL AOT source files'
         cd "$project_root/modules/drivers"
-        clojure -X:deps prep
+        clojure -Sforce -X:deps prep
+    else
+        echo 'Spark SQL AOT source files are already compiled'
     fi
 
     cd "$project_root"
