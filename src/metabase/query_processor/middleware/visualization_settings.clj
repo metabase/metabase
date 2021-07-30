@@ -48,8 +48,9 @@
     (if (non-api-export-contexts (-> query :info :context))
       (let [card-viz-settings           (viz-settings query)
             column-viz-settings         (::mb.viz/column-settings card-viz-settings)
-            updated-column-viz-settings (if (= (:type query) :query)
-                                          (update-card-viz-settings column-viz-settings (map second (-> query :query :fields)))
+            fields                      (-> query :query :fields)
+            updated-column-viz-settings (if (and (= (:type query) :query) fields)
+                                          (update-card-viz-settings column-viz-settings (map second fields))
                                           column-viz-settings)
             updated-card-viz-settings   (assoc card-viz-settings ::mb.viz/column-settings updated-column-viz-settings)
             rff' (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
