@@ -398,30 +398,19 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations})
 
-(defmulti db-supports?
-  "Does this driver support a certain `feature` with respect to a specific database?
-  (A feature is a keyword, and can be any of the ones listed above in `driver-features`.)
-
-    (supports? :postgres :set-timezone db) ; -> true"
-  {:arglists '([driver feature db])}
-  (fn [driver feature db]
-    (when-not (driver-features feature)
-      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
-    [(dispatch-on-initialized-driver driver) feature]))
-
 (defmulti supports?
-  "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
-  `driver-features`.)
+  "Does this driver support a certain `feature`?
+  (A feature is a keyword, and can be any of the ones listed above in `driver-features`.)
+  Variadic in case if you want to check some feature of the DB or other data
 
     (supports? :postgres :set-timezone) ; -> true"
-  {:arglists '([driver feature])}
-  (fn [driver feature]
+  {:arglists '([driver feature & db])}
+  (fn [driver feature & db]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature]))
 
 (defmethod supports? :default [_ _] false)
-(defmethod db-supports? :default [_ _ _] false)
 
 (defmethod supports? [::driver :basic-aggregations] [_ _] true)
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
