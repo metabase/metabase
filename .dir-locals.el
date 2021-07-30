@@ -40,7 +40,7 @@
                               (qp.streaming/streaming-response 1)
                               (prop/for-all 1)
                               (tools.macro/macrolet '(1 (:defn))))))
-                  (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:user")
+                  (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:build:user")
                   (clojure-indent-style . always-align)
                   ;; if you're using clj-refactor (highly recommended!)
                   (cljr-favor-prefix-notation . nil)

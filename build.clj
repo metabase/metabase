@@ -73,10 +73,10 @@
 
 (defn compile-sources! [basis]
   (c/step "Compile Clojure source files"
-    (let [paths (all-paths basis)
+    (let [paths    (all-paths basis)
+          _        (c/announce "Compiling Clojure files in %s" (pr-str paths))
           ns-decls (c/step "Determine compilation order for Metabase files"
-                       (metabase-namespaces-in-topo-order basis))]
-      (c/announce "Compiling Clojure files in %s" (pr-str paths))
+                     (metabase-namespaces-in-topo-order basis))]
       (with-duration-ms [duration-ms]
         (b/compile-clj {:basis      basis
                         :src-dirs   paths

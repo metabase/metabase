@@ -116,21 +116,24 @@
 
   Added benefit -- this is also thread-safe, unlike vanilla require."
   [& args]
-  ;; done for side-effects to ensure context classloader is the right one
-  (the-classloader)
-  ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
-  ;; that's the one that will have access to the JARs we've added to the classpath at runtime
-  (try
-    (binding [*use-context-classloader* true]
-      ;; serialize requires
-      (locking clojure.lang.RT/REQUIRE_LOCK
-        (apply clojure.core/require args)))
-    (catch Throwable e
-      (throw (ex-info (.getMessage e)
-                      {:classloader      (the-classloader)
-                       :classpath-urls   (map str (dynapath/all-classpath-urls (the-classloader)))
-                       :system-classpath (sort (str/split (System/getProperty "java.class.path") #"[:;]"))}
-                      e)))))
+  ;; during compilation, don't load any namespaces. This is going to totally screw up our compilation because
+  ;; namespaces can end up being compiled twice
+  (when-not *compile-files*
+    ;; done for side-effects to ensure context classloader is the right one
+    (the-classloader)
+    ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
+    ;; that's the one that will have access to the JARs we've added to the classpath at runtime
+    (try
+      (binding [*use-context-classloader* true]
+        ;; serialize requires
+        (locking clojure.lang.RT/REQUIRE_LOCK
+          (apply clojure.core/require args)))
+      (catch Throwable e
+        (throw (ex-info (.getMessage e)
+                        {:classloader      (the-classloader)
+                         :classpath-urls   (map str (dynapath/all-classpath-urls (the-classloader)))
+                         :system-classpath (sort (str/split (System/getProperty "java.class.path") #"[:;]"))}
+                        e))))))
 
 (defonce ^:private already-added (atom #{}))
 
