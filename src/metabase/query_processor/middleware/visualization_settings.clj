@@ -14,20 +14,19 @@
   "For each field, fetch its settings from the QP store, convert the settings into the normalized form
   for visualization settings, and then merge in the card-level column settings."
   [column-viz-settings field-ids]
-  (into {} (for [field-id field-ids]
-             (let [field-settings      (:settings (qp.store/field field-id))
-                   norm-field-settings (normalize-field-settings field-id field-settings)
-                   col-settings        (get column-viz-settings {::mb.viz/field-id field-id})]
-               [{::mb.viz/field-id field-id} (merge norm-field-settings col-settings)]))))
+  (merge (into {} (for [field-id field-ids]
+                    (let [field-settings      (:settings (qp.store/field field-id))
+                          norm-field-settings (normalize-field-settings field-id field-settings)
+                          col-settings        (get column-viz-settings {::mb.viz/field-id field-id})]
+                      [{::mb.viz/field-id field-id} (merge norm-field-settings col-settings)])))
+         column-viz-settings))
 
 (defn- viz-settings
   "Pull viz settings from either the query map or the DB"
   [query]
-  (if-let [card-id (-> query :info :card-id)]
-    ;; Saved card -> fetch viz settings from DB
-    (mb.viz/db->norm (db/select-one-field :visualization_settings Card :id card-id))
-    ;; Unsaved card or native query -> viz settings passed in query
-    (-> query :viz-settings)))
+  (or (-> query :viz-settings)
+      (when-let [card-id (-> query :info :card-id)]
+        (mb.viz/db->norm (db/select-one-field :visualization_settings Card :id card-id)))))
 
 (def ^:private non-api-export-contexts
   #{:json-download :csv-download :xlsx-download})
@@ -48,9 +47,10 @@
     (if (non-api-export-contexts (-> query :info :context))
       (let [card-viz-settings           (viz-settings query)
             column-viz-settings         (::mb.viz/column-settings card-viz-settings)
-            fields                      (-> query :query :fields)
+            fields                      (or (-> query :query :fields)
+                                            (-> query :query :source-query :fields))
             field-ids                   (filter int? (map second fields))
-            updated-column-viz-settings (if (and (= (:type query) :query) (seq field-ids))
+            updated-column-viz-settings (if (= (:type query) :query)
                                           (update-card-viz-settings column-viz-settings field-ids)
                                           column-viz-settings)
             updated-card-viz-settings   (assoc card-viz-settings ::mb.viz/column-settings updated-column-viz-settings)
