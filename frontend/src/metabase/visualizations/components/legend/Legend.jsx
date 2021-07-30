@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, memo } from "react";
 import PropTypes from "prop-types";
 import { LegendAddIcon, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
@@ -57,4 +57,4 @@ const Legend = (
 
 Legend.propTypes = propTypes;
 
-export default forwardRef(Legend);
+export default memo(forwardRef(Legend));
