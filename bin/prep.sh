@@ -3,21 +3,18 @@
 # functions for running prep steps to compile Java and AOT source files, needed before running other stuff.
 
 script_directory=`dirname "${BASH_SOURCE[0]}"`
-
-switch_to_project_root() {
-    cd "$script_directory/.."
-}
+cd "$script_directory/.."
+project_root=`pwd`
 
 clear_cpcaches() {
-    switch_to_project_root
+    cd "$project_root"
     for file in `find . -type d -name .cpcache`; do
         rm -rf "$file"
     done
 }
 
 compile_java_sources() {
-    switch_to_project_root
-    project_root=`pwd`
+    cd "$project_root"
 
     echo "Compile Java source files in $project_root/java if needed..."
     if [ ! -d "$project_root/java/target/classes" ]; then
@@ -30,8 +27,7 @@ compile_java_sources() {
 }
 
 compile_spark_sql_aot_sources() {
-    switch_to_project_root
-    project_root=`pwd`
+    cd "$project_root"
 
     echo "Compile Spark SQL AOT source files in $project_root/modules/drivers/sparksql if needed..."
     if [ ! -d "$project_root/modules/drivers/sparksql/target/classes" ]; then
@@ -60,5 +56,5 @@ prep_deps() {
         compile_spark_sql_aot_sources
     fi
 
-    switch_to_project_root
+    cd "$project_root"
 }
