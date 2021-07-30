@@ -41,7 +41,7 @@ export function getTextForReviewBanner(
   moderator,
   currentUser,
 ) {
-  const moderatorName = getUserDisplayName(moderator, currentUser);
+  const moderatorName = getModeratorDisplayName(moderator, currentUser);
   const { status } = moderationReview;
 
   if (status === "verified") {
@@ -53,7 +53,7 @@ export function getTextForReviewBanner(
   return {};
 }
 
-function getUserDisplayName(user, currentUser) {
+function getModeratorDisplayName(user, currentUser) {
   const { id: userId, display_name } = user || {};
   const { id: currentUserId } = currentUser || {};
 
@@ -62,7 +62,7 @@ function getUserDisplayName(user, currentUser) {
   } else if (userId != null) {
     return display_name;
   } else {
-    return t`Someone`;
+    return t`A moderator`;
   }
 }
 

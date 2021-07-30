@@ -82,7 +82,7 @@ describe("moderation/service", () => {
   describe("getTextForReviewBanner", () => {
     it("should return text for a verified review", () => {
       expect(getTextForReviewBanner({ status: "verified" })).toEqual({
-        bannerText: "Someone verified this",
+        bannerText: "A moderator verified this",
         tooltipText: "Remove verification",
       });
     });

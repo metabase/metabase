@@ -29,7 +29,10 @@ const mapStateToProps = (state, props) => ({
 });
 
 export default _.compose(
-  User.load({ id: (state, props) => props.moderationReview.moderator_id }),
+  User.load({
+    id: (state, props) => props.moderationReview.moderator_id,
+    loadingAndErrorWrapper: false,
+  }),
   connect(mapStateToProps),
 )(ModerationReviewBanner);
 

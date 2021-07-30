@@ -59,7 +59,7 @@ describeWithToken("scenarios > saved question moderation", () => {
         cy.icon("verified").should("be.visible");
 
         cy.findByTestId("saved-question-header-button").click();
-        cy.findByText("Someone verified this").should("be.visible");
+        cy.findByText("A moderator verified this").should("be.visible");
       });
     });
   });
