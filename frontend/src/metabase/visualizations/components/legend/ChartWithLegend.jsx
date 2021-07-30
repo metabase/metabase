@@ -1,7 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { ChartWithLegendRoot } from "./ChartWithLegend.styled";
-import LegendTitle from "./LegendTitle";
+import { ChartRoot, ChartTitle } from "./ChartWithLegend.styled";
 import LegendLayout from "./LegendLayout";
 
 const propTypes = {
@@ -13,10 +12,10 @@ const propTypes = {
 
 const ChartWithLegend = ({ className, showTitle, children, ...otherProps }) => {
   return (
-    <ChartWithLegendRoot className={className}>
-      {showTitle && <LegendTitle {...otherProps} />}
+    <ChartRoot className={className}>
+      {showTitle && <ChartTitle {...otherProps} />}
       <LegendLayout {...otherProps}>{children}</LegendLayout>
-    </ChartWithLegendRoot>
+    </ChartRoot>
   );
 };
 
