@@ -911,7 +911,7 @@
                  :description         nil
                  :collection_position nil
                  :display             "table"
-                 :moderated_status    "verified"
+                 :moderated_status    nil
                  :favorite            false
                  :model               "card"}]
                (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
