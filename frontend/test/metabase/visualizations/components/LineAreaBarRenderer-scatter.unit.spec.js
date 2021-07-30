@@ -19,6 +19,14 @@ const DEFAULT_SETTINGS = {
   column: () => ({}),
 };
 
+// jsdom doesn't support layout methods like getBBox, so we need to mock it.
+window.SVGElement.prototype.getBBox = () => ({
+  x: 0,
+  y: 0,
+  width: 1000,
+  height: 1000,
+});
+
 describe("LineAreaBarRenderer-scatter", () => {
   let element;
   const qsa = selector => [

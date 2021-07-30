@@ -27,7 +27,7 @@ mkdir -p "locales"
 #######################
 
 # NOTE: about twice as fast to call babel directly rather than a full webpack build
-BABEL_ENV=extract ./node_modules/.bin/babel -q -x .js,.jsx -o /dev/null {enterprise/,}frontend/src
+BABEL_ENV=extract ./node_modules/.bin/babel --quiet -x .js,.jsx -o /dev/null {enterprise/,}frontend/src
 # BABEL_ENV=extract BABEL_DISABLE_CACHE=1 yarn run build
 
 # NOTE: replace ttag's "${ 0 }" style references with xgettext "{0}" style references for consistency
