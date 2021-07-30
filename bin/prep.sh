@@ -2,14 +2,15 @@
 
 # functions for running prep steps to compile Java and AOT source files, needed before running other stuff.
 
+script_directory=`dirname "${BASH_SOURCE[0]}"`
+
 switch_to_project_root() {
-    script_directory=`dirname "${BASH_SOURCE[0]}"`
     cd "$script_directory/.."
 }
 
 clear_cpcaches() {
     switch_to_project_root
-    for file in `find . -name .cpcache`; do
+    for file in `find . -type d -name .cpcache`; do
         rm -rf "$file"
     done
 }
