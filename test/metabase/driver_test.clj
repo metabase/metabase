@@ -6,8 +6,6 @@
 
 (driver/register! ::test-driver, :abstract? true)
 
-(def ^:private db "dummy")
-
 (defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
 (defmethod driver/supports? [::test-driver :expressions] [_ _ & db] (= (first db) "dummy"))
 
