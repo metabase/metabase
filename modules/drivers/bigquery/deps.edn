@@ -1,0 +1,7 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {com.google.apis/google-api-services-bigquery {:mvn/version "v2-rev20200523-1.30.9"}}
+
+ :metabase.build-driver/parents #{:google}}
