@@ -3,12 +3,6 @@ import ReactDOM from "react-dom";
 import CheckBox from "metabase/components/CheckBox";
 import cx from "classnames";
 
-import * as babel from "@babel/standalone";
-import reactPreset from "babel-preset-react";
-const BABEL_CONFIG = {
-  presets: [reactPreset],
-};
-
 import AceEditor from "metabase/components/TextEditor";
 
 import context from "../lib/scratch-context";
@@ -31,9 +25,8 @@ export default class ScratchApp extends React.Component {
 
   async _update() {
     try {
-      // transpile using babel, for JSX etc
-      const { code } = await babel.transform(this.state.code, BABEL_CONFIG);
-      // compile
+      const { code } = this.state;
+
       let fn;
       try {
         // if the module is an expression

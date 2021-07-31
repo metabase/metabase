@@ -32,7 +32,9 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Handling timezones][timezones].
 
-- [Manage data sandboxing][sandbox]
+- [Managing data sandboxing][sandbox].
+
+- [Fixing missing or out-of-sync tables and columns][sync-fingerprint-scan].
 
 ## Think you found a bug?
 
@@ -90,7 +92,8 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [proxies]: ./proxies.html
 [releases]: https://github.com/metabase/metabase/releases
 [running]: ./running.html
-[sandbox]: ./sandboxing.html
 [safari]: https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac
+[sandbox]: ./sandboxing.html
+[sync-fingerprint-scan]: ./sync-fingerprint-scan.html
 [timezones]: ./timezones.html
 [upgrade]: ../operations-guide/upgrading-metabase.html

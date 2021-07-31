@@ -1,11 +1,13 @@
 (ns metabase.query-processor.streaming
   (:require [clojure.core.async :as a]
             [metabase.async.streaming-response :as streaming-response]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.streaming.csv :as streaming.csv]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.query-processor.streaming.json :as streaming.json]
             [metabase.query-processor.streaming.xlsx :as streaming.xlsx]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            java.io.OutputStream
@@ -17,13 +19,48 @@
          streaming.json/keep-me
          streaming.xlsx/keep-me)
 
+;; HACK: this function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
+;; at this point in the code. (#17195)
+(defn- deduplicate-col-names
+  [cols]
+  (map (fn [col unique-name]
+         (let [col-with-display-name (if (:display_name col)
+                                       col
+                                       (assoc col :display_name (:name col)))]
+           (assoc col-with-display-name :name unique-name)))
+       cols
+       (mbql.u/uniquify-names (map :name cols))))
+
+(defn- export-column-order
+  "Correlates the :name fields between cols and the :table.columns key of viz-settings
+  to determine the order of columns that should included in the export."
+  [cols {table-columns ::mb.viz/table-columns}]
+  (if table-columns
+    (let [enabled-table-columns (filter ::mb.viz/table-column-enabled table-columns)
+          col-index-by-name     (reduce-kv (fn [m i col] (assoc m (:name col) i))
+                                           {}
+                                           (into [] cols))]
+      (map
+       (fn [{col-name ::mb.viz/table-column-name}] (get col-index-by-name col-name))
+       enabled-table-columns))
+    (range (count cols))))
+
 (defn- streaming-rff [results-writer]
-  (fn [initial-metadata]
-    (let [row-count (volatile! 0)]
+  (fn [{:keys [cols viz-settings] :as initial-metadata}]
+    (let [deduped-cols  (deduplicate-col-names cols)
+          output-order  (export-column-order deduped-cols viz-settings)
+          ordered-cols  (if output-order
+                          (let [v (into [] deduped-cols)]
+                            (for [i output-order] (v i)))
+                          deduped-cols)
+          viz-settings' (assoc viz-settings :output-order output-order)
+          row-count     (volatile! 0)]
       (fn
         ([]
-         (u/prog1 {:data initial-metadata}
-           (i/begin! results-writer <>)))
+         (i/begin! results-writer
+                   {:data (assoc initial-metadata :ordered-cols ordered-cols)}
+                   viz-settings')
+         {:data initial-metadata})
 
         ([metadata]
          (assoc metadata
@@ -31,7 +68,7 @@
                 :status :completed))
 
         ([metadata row]
-         (i/write-row! results-writer row (dec (vswap! row-count inc)))
+         (i/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
 (defn- streaming-reducedf [results-writer ^OutputStream os]

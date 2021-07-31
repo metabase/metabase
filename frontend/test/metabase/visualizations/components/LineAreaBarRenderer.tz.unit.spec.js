@@ -16,6 +16,14 @@ import {
 const WIDTH = 4000;
 const HEIGHT = 1000;
 
+// jsdom doesn't support layout methods like getBBox, so we need to mock it.
+window.SVGElement.prototype.getBBox = () => ({
+  x: 0,
+  y: 0,
+  width: WIDTH,
+  height: HEIGHT,
+});
+
 describe("LineAreaBarRenderer-bar", () => {
   let element;
   let onHoverChange;
