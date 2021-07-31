@@ -19,8 +19,8 @@
             [monger.collection :as mc]
             [monger.command :as cmd]
             [monger.conversion :as m.conversion]
-            [monger.db :as mdb]
             [monger.core :as mcore]
+            [monger.db :as mdb]
             [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
