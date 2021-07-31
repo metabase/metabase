@@ -145,8 +145,6 @@
 
 (defn- add-time-format
   [format-settings format-string]
-  (def my-format-settings format-settings)
-  (clojure.pprint/pprint my-format-settings)
   (let [base-time-format (condp = (::mb.viz/time-enabled format-settings)
                            "minutes"
                            "H:MM"
@@ -194,20 +192,18 @@
     (datetime-format-string format-settings)))
 
 (defn- format-string-delay
-  [^Workbook workbook format-string]
-    ;; TODO can data-format just be created once?
-  (let [data-format (. workbook createDataFormat)]
-    (delay
-     (doto (.createCellStyle workbook)
-       (.setDataFormat (. data-format getFormat format-string))))))
+  [^Workbook workbook data-format format-string]
+  (delay
+   (doto (.createCellStyle workbook)
+     (.setDataFormat (. data-format getFormat format-string)))))
 
 (defn- column-style-delays
-  [^Workbook workbook column-settings]
+  [^Workbook workbook data-format column-settings]
   (into {} (for [[field settings] column-settings]
              (let [name-or-id    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
                    format-string (format-settings->format-string settings)]
                (when format-string
-                 {name-or-id (format-string-delay workbook format-string)})))))
+                 {name-or-id (format-string-delay workbook data-format format-string)})))))
 
 (def ^:private cell-style-delays
   "Creates a map of column name or id -> delay, or keyword representing default -> delay. This is bound to
@@ -215,10 +211,11 @@
   the workbook if needed."
   (memoize
    (fn [^Workbook workbook column-settings]
-     (let [column-styles (column-style-delays workbook column-settings)]
+     (let [data-format (. workbook createDataFormat)
+           column-styles (column-style-delays workbook data-format column-settings)]
        (into column-styles
              (for [[name-keyword format-string] (seq default-format-strings)]
-               {name-keyword (format-string-delay workbook format-string)}))))))
+               {name-keyword (format-string-delay workbook data-format format-string)}))))))
 
 (defn- cell-style
   "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`."
@@ -234,7 +231,6 @@
   [^Cell cell ^LocalDate t name-or-id]
   (.setCellValue cell t)
   (.setCellType cell CellType/NUMERIC)
-  ;; TODO Make sure these fallback to default format strings
   (.setCellStyle cell (or (cell-style name-or-id) (cell-style :date))))
 
 (defmethod set-cell! LocalDateTime
