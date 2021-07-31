@@ -96,10 +96,11 @@
 
 (deftest describe-database-test
   (mt/test-driver :mongo
-    (is (= {:tables #{{:schema nil, :name "checkins"}
-                      {:schema nil, :name "categories"}
-                      {:schema nil, :name "users"}
-                      {:schema nil, :name "venues"}}}
+    (is (= {:tables  #{{:schema nil, :name "checkins"}
+                       {:schema nil, :name "categories"}
+                       {:schema nil, :name "users"}
+                       {:schema nil, :name "venues"}}
+            :version nil}
            (driver/describe-database :mongo (mt/db))))))
 
 (deftest describe-table-test

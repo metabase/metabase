@@ -20,6 +20,7 @@
             [monger.command :as cmd]
             [monger.conversion :as m.conversion]
             [monger.db :as mdb]
+            [monger.core :as mcore]
             [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
@@ -174,8 +175,10 @@
 (defmethod driver/describe-database :mongo
   [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
-                    {:schema nil, :name collection}))}))
+    {:tables  (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
+                    {:schema nil, :name collection}))
+     :version (:version (mcore/command conn {:buildInfo 1}))
+     }))
 
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
