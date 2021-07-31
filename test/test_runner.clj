@@ -128,15 +128,17 @@
 
 (defn run [tests options]
   (binding [*junit-reporter-context* (atom {})]
-    (eftest.runner/run-tests
-     tests
-     (merge
-      {:capture-output? false
-       ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
-       ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
-       :multithread?    false #_:vars
-       :report          (reporter)}
-      options))))
+    ;; don't randomize test order for now please, thanks anyway
+    (with-redefs [eftest.runner/deterministic-shuffle (fn [_ tests] tests)]
+      (eftest.runner/run-tests
+       tests
+       (merge
+        {:capture-output? false
+         ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
+         ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
+         :multithread?    false #_:vars
+         :report          (reporter)}
+        options)))))
 
 (defn run-tests [options]
   (let [summary (run (tests options) options)

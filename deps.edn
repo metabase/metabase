@@ -186,7 +186,9 @@
                  ;; Exceptions that get thrown repeatedly are created without stacktraces as a performance
                  ;; optimization in newer Java versions. This makes debugging pretty hard when working on stuff
                  ;; locally -- prefer debuggability over performance for local dev work.
-                 "-XX:-OmitStackTraceInFastThrow"]}
+                 "-XX:-OmitStackTraceInFastThrow"
+                 ;; prevent Java icon from randomly popping up in macOS dock
+                 "-Djava.awt.headless=true"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
