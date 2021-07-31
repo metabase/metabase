@@ -410,7 +410,10 @@
                      :order-by sql-order}
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
-        limit-query (if (= (:collection-namespace options) "snippets")
+        limit-query (if (or
+                          (nil? offset-paging/*limit*)
+                          (nil? offset-paging/*offset*)
+                          (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
                              :limit  offset-paging/*limit*

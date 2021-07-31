@@ -72,7 +72,7 @@
                   :user    nil})]
                ;; remove other activities from the API response just in case -- we're not interested in those
                (let [these-activity-ids (set (map u/the-id [activity1 activity2 activity3]))]
-                 (for [activity (mt/user-http-request :crowberto :get 200 "activity")
+                 (for [activity (mt/user-http-request :crowberto :get 200 "activity" :limit Integer/MAX_VALUE)
                        :when    (contains? these-activity-ids (u/the-id activity))]
                    (dissoc activity :timestamp)))))))))
 
@@ -166,7 +166,6 @@
           "card"      #{113 108 109 111 112 114}
           "user"      #{90}}
          (#'activity-api/activities->referenced-objects fake-activities))))
-
 
 (deftest referenced-objects->existing-objects-test
   (mt/with-temp Dashboard [{dashboard-id :id}]

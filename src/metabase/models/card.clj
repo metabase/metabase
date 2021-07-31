@@ -166,7 +166,7 @@
 
   For the OSS edition, there is no implementation for this function -- it is a no-op. For Metabase Enterprise Edition,
   the implementation of this function is
-  `metabase-enterprise.sandbox.models.group-table-access-policy/update-card-check-gtaps` and is installed by that
+  [[metabase-enterprise.sandbox.models.group-table-access-policy/update-card-check-gtaps]] and is installed by that
   namespace."} pre-update-check-sandbox-constraints
   (atom identity))
 

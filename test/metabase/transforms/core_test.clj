@@ -4,6 +4,7 @@
             [metabase.domain-entities.core :as de]
             [metabase.domain-entities.specs :as de.specs]
             [metabase.models.card :as card :refer [Card]]
+            [metabase.models.collection :refer [Collection]]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
@@ -14,12 +15,16 @@
             [metabase.util :as u]
             [toucan.db :as db]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-model-cleanup [Card Collection]
+                        (thunk))))
+
 (def ^:private test-bindings
   (delay
-   (with-test-domain-entity-specs
-     (let [table (m/find-first (comp #{(mt/id :venues)} u/the-id) (#'t/tableset (mt/id) "PUBLIC"))]
-       {"Venues" {:dimensions (m/map-vals de/mbql-reference (get-in table [:domain_entity :dimensions]))
-                  :entity     table}}))))
+    (with-test-domain-entity-specs
+      (let [table (m/find-first (comp #{(mt/id :venues)} u/the-id) (#'t/tableset (mt/id) "PUBLIC"))]
+        {"Venues" {:dimensions (m/map-vals de/mbql-reference (get-in table [:domain_entity :dimensions]))
+                   :entity     table}}))))
 
 (deftest add-bindings-test
   (testing "Can we accure bindings?"
