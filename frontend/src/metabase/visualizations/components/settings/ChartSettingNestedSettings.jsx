@@ -64,29 +64,9 @@ const chartSettingNestedSettings = ({
 
     constructor(props: Props) {
       super(props);
-      this.state = {
-        editingObjectKey:
-          props.initialKey ||
-          (props.objects.length === 1 ? getObjectKey(props.objects[0]) : null),
-      };
-    }
-
-    UNSAFE_componentWillReceiveProps(nextProps: Props) {
-      // reset editingObjectKey if there's only one object
-      if (
-        nextProps.objects.length === 1 &&
-        this.state.editingObjectKey !== getObjectKey(nextProps.objects[0])
-      ) {
-        this.setState({
-          editingObjectKey: getObjectKey(nextProps.objects[0]),
-        });
-      }
     }
 
     handleChangeEditingObject = (editingObject: ?NestedObject) => {
-      this.setState({
-        editingObjectKey: editingObject ? getObjectKey(editingObject) : null,
-      });
       // special prop to notify ChartSettings it should unswap replaced widget
       if (!editingObject && this.props.onEndShowWidget) {
         this.props.onEndShowWidget();
@@ -94,9 +74,11 @@ const chartSettingNestedSettings = ({
     };
 
     handleChangeSettingsForEditingObject = (newSettings: Settings) => {
-      const { editingObjectKey } = this.state;
-      if (editingObjectKey) {
-        this.handleChangeSettingsForObjectKey(editingObjectKey, newSettings);
+      if (this.props.initialKey) {
+        this.handleChangeSettingsForObjectKey(
+          this.props.initialKey,
+          newSettings,
+        );
       }
     };
 
@@ -126,7 +108,7 @@ const chartSettingNestedSettings = ({
 
     render() {
       const { series, objects, extra } = this.props;
-      const { editingObjectKey } = this.state;
+      const editingObjectKey = this.props.initialKey;
 
       if (editingObjectKey) {
         const editingObject = _.find(
