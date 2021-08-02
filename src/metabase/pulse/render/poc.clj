@@ -96,9 +96,14 @@ function categorical_donut (rows, colors) {
       (.createDocument factory "file:///fake.svg" is))))
 
 (defn- high-quality-png-transcoder ^PNGTranscoder []
-  (proxy [PNGTranscoder] []
+  (PNGTranscoder.)
+  ;; the following generates a reflective call for the `proxy-super`. The problem is that `createRenderer` is
+  ;; protected and the reflector cannot find non-public methods. See
+  ;; https://gist.github.com/dpsutton/3f1c5c80a434cf2940e0973d4e01a80c
+  #_(proxy [PNGTranscoder] []
     (createRenderer []
       (let [add-hint                (fn [^RenderingHints hints k v] (.add hints (RenderingHints. k v)))
+            ^PNGTranscoder this     this
             ^ImageRenderer renderer (proxy-super createRenderer)
             hints                   (RenderingHints.
                                      RenderingHints/KEY_ALPHA_INTERPOLATION
