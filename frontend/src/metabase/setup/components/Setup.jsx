@@ -204,11 +204,6 @@ export default class Setup extends Component {
           </div>
 
           <AddDatabaseHelpCardHolder isVisible={isDatabaseHelpCardVisible}>
-            <DriverWarning
-              engine={selectedDatabaseEngine}
-              ml={26}
-              data-testid="database-setup-driver-warning"
-            />
             <AddDatabaseHelpCard
               engine={selectedDatabaseEngine}
               hasCircle={false}
@@ -217,6 +212,11 @@ export default class Setup extends Component {
                 border: `1px solid ${color("border")}`,
                 backgroundColor: color("white"),
               }}
+            />
+            <DriverWarning
+              engine={selectedDatabaseEngine}
+              ml={26}
+              data-testid="database-setup-driver-warning"
             />
           </AddDatabaseHelpCardHolder>
         </div>

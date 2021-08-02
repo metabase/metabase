@@ -8,25 +8,31 @@ import {
   engineSupersedesMap,
 } from "metabase/entities/databases/forms";
 
-import Warnings from "metabase/query_builder/components/Warnings";
-
 import {
   CardContent,
   DriverWarningContainer,
   IconContainer,
 } from "./DriverWarning.styled";
+
 import ExternalLink from "metabase/components/ExternalLink";
+import Icon from "metabase/components/Icon";
 import MetabaseSettings from "metabase/lib/settings";
 
 const propTypes = {
   engine: PropTypes.string.isRequired,
+  hasCircle: PropTypes.bool.isRequired,
+  onChangeEngine: PropTypes.func.isRequired,
 };
 
 const driverUpgradeHelpLink = MetabaseSettings.docsUrl(
   "administration-guide/01-managing-databases",
 );
 
-function getSupersedesWarningContent(newDriver, supersedesDriver) {
+function getSupersedesWarningContent(
+  newDriver,
+  supersedesDriver,
+  onChangeEngine,
+) {
   return (
     <div>
       <p className="text-medium m0">
@@ -34,24 +40,35 @@ function getSupersedesWarningContent(newDriver, supersedesDriver) {
           allEngines[newDriver]["driver-name"]
         } driver, which is faster and more reliable.`}
       </p>
-      <p>{t`The old driver has been deprecated and will be removed in the next release. If you really
-      need to use it, you can select ${
-        allEngines[supersedesDriver]["driver-name"]
-      } now.`}</p>
+
+      <p className="text-medium m0" style={{ marginTop: 8 }}>
+        {t`The old driver has been deprecated and will be removed in the next release. If you really
+      need to use it, you can `}
+        &nbsp;
+        <a
+          className="text-brand text-bold"
+          onClick={() => onChangeEngine(supersedesDriver)}
+        >{t`find it here`}</a>
+        .
+      </p>
     </div>
   );
 }
 
-function getSupersededByWarningContent(engine) {
+function getSupersededByWarningContent(engine, onChangeEngine) {
   return (
     <div>
       <p className="text-medium m0">
         {t`This driver has been deprecated and will be removed in the next release.`}
       </p>
-      <p className="text-medium m0">
-        {t`We recommend that you upgrade to the new ${
-          allEngines[engine]["driver-name"]
-        } driver, which is faster and more reliable.`}
+      <p className="text-medium m0" style={{ marginTop: 8, marginBottom: 8 }}>
+        {t`We recommend that you upgrade to the`}
+        &nbsp;
+        <a
+          className="text-brand text-bold"
+          onClick={() => onChangeEngine(engine)}
+        >{t`new ${allEngines[engine]["driver-name"]} driver`}</a>
+        {t`, which is faster and more reliable.`}
       </p>
       <ExternalLink
         href={driverUpgradeHelpLink}
@@ -63,7 +80,7 @@ function getSupersededByWarningContent(engine) {
   );
 }
 
-function DriverWarning({ engine, ...props }) {
+function DriverWarning({ engine, hasCircle = true, onChangeEngine, ...props }) {
   const supersededBy = engineSupersedesMap["superseded_by"][engine];
   const supersedes = engineSupersedesMap["supersedes"][engine];
 
@@ -73,16 +90,21 @@ function DriverWarning({ engine, ...props }) {
 
   const tooltipWarning = supersedes ? t`New driver` : t`Driver deprecated`;
   const warningContent = supersedes
-    ? getSupersedesWarningContent(engine, supersedes)
-    : getSupersededByWarningContent(supersededBy);
+    ? getSupersedesWarningContent(engine, supersedes, onChangeEngine)
+    : getSupersededByWarningContent(supersededBy, onChangeEngine);
 
   return (
     <DriverWarningContainer p={2} {...props}>
-      <IconContainer>
-        <Warnings
-          className="mx2 text-gold"
-          warnings={[tooltipWarning]}
+      <IconContainer
+        align="center"
+        justify="center"
+        className="flex-no-shrink circular"
+        hasCircle={hasCircle}
+      >
+        <Icon
           size={20}
+          name={supersedes ? "info" : "warning"}
+          className={supersededBy && "text-dark-orange"}
         />
       </IconContainer>
       <CardContent flexDirection="column" justify="center" className="ml2">

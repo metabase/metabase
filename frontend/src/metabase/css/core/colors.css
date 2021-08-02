@@ -196,6 +196,11 @@
   color: var(--color-warning);
 }
 
+.text-dark-orange,
+.text-dark-orange-hover:hover {
+  color: var(--color-accent5);
+}
+
 .text-slate {
   color: var(--color-text-medium);
 }
