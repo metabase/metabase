@@ -51,4 +51,4 @@ MB_PRESTO_JDBC_TEST_KERBEROS_REMOTE_SERVICE_NAME=HTTP \
 MB_PRESTO_JDBC_TEST_KERBEROS_KEYTAB_PATH=$RESOURCES_DIR/client.keytab \
 MB_PRESTO_JDBC_TEST_KERBEROS_CONFIG_PATH=$RESOURCES_DIR/krb5.conf \
 MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS=$ADDITIONAL_OPTS \
-lein with-profile +ci,+junit,+ee test :only metabase.driver.presto-jdbc-test
+clojure -X:dev:test :only metabase.driver.presto-jdbc-test
