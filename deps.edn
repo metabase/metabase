@@ -209,7 +209,8 @@
   ;; clojure -M:run:ee (include EE code)
   :run
   {:main-opts ["-m" "metabase.core"]
-   :jvm-opts  ["-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
+   :jvm-opts  ["-Dmb.run.mode=dev"
+               "-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
                "-Dmb.jetty.port=3000"]}
 
   ;; alias for CI-specific options.
