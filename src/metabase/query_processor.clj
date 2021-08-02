@@ -90,7 +90,7 @@
    #'cumulative-ags/handle-cumulative-aggregations
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
-   #'resolve-joined-fields/resolve-joined-fields
+   #'viz-settings/update-viz-settings
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
    #'large-int-id/convert-id-to-string
@@ -98,6 +98,7 @@
    #'add-default-temporal-unit/add-default-temporal-unit
    #'desugar/desugar
    #'binning/update-binning-strategy
+   #'resolve-joined-fields/resolve-joined-fields
    #'resolve-fields/resolve-fields
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
@@ -118,7 +119,6 @@
    #'store/initialize-store
    #'validate/validate-query
    #'normalize/normalize
-   #'viz-settings/update-viz-settings
    #'add-rows-truncated/add-rows-truncated
    (resolve 'ee.audit/handle-internal-queries)
    #'results-metadata/record-and-return-metadata!])

@@ -333,12 +333,10 @@
     (let [name-or-id       (or (:id col) (:name col))
           col-viz-settings (or (get col-settings {::mb.viz/field-id name-or-id})
                                (get col-settings {::mb.viz/column-name name-or-id}))
-          is-currency?     (isa? (:semantic_type col) :type/Currency)
+          _is-currency?     (isa? (:semantic_type col) :type/Currency)
           column-title     (or (::mb.viz/column-title col-viz-settings)
                                (:display_name col)
                                (:name col))]
-      (def my-col col)
-      (def my-is-currency? is-currency?)
       column-title)))
 
 (defmethod i/streaming-results-writer :xlsx
