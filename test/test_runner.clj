@@ -32,7 +32,11 @@
 
 (def ^:dynamic *parallel?* nil)
 
-(defn test-var [varr]
+(defn test-var
+  "Run the tests associated with `varr`. Wraps original version in `clojure.test/test-var`.
+
+    (test-var #'my.namespace/my-test)"
+  [varr]
   (binding [*parallel?* (parallel? varr)]
     (orig-test-var varr)))
 
