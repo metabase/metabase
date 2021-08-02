@@ -111,7 +111,6 @@ export default function DefaultPicker({
             disableSearch={disableSearch}
             minWidth={minWidth}
             maxWidth={maxWidth}
-            optionsMaxHeight={isSidebar ? null : undefined}
           />
         );
       } else if (operatorField.type === "text") {
