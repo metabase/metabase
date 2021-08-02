@@ -1,8 +1,10 @@
 #! /usr/bin/env bash
 # runs one or more Metabase test(s) against a Kerberized Presto instance
 
-# install clojure
-apt-get -y install clojure
+# install clojure version needed for Metabase
+curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh
+chmod +x linux-install-1.10.3.933.sh
+./linux-install-1.10.3.933.sh
 
 RESOURCES_DIR=/app/source/resources
 
