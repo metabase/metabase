@@ -39,38 +39,44 @@
    :datetime "MMMM D, YYYY, H:MM AM/PM"
    :time     "H:MM AM/PM"})
 
-(defn- currency-suffix
-  [format-settings]
-  (when (= (::mb.viz/currency-style format-settings) "name")
-    (let [currency-code (::mb.viz/currency format-settings "USD")
-          name-plural   (get-in currency/currency [(keyword currency-code) :name_plural])]
-      (str "\" " name-plural "\""))))
-
-(defn- currency-prefix
+(defn- currency-identifier
+  "Given the format settings for a currency column, returns the symbol, code or name for the
+  approrpiate currency."
   [format-settings]
   (let [currency-code (::mb.viz/currency format-settings "USD")]
     (condp = (::mb.viz/currency-style format-settings "symbol")
       "symbol"
       (if (currency/supports-symbol? currency-code)
-        (let [currency-symbol (get-in currency/currency [(keyword currency-code) :symbol])]
-          (str "[$" currency-symbol "]"))
+        (get-in currency/currency [(keyword currency-code) :symbol])
         ;; Fall back to using code if symbol isn't not supported on the Metabase frontend
-        (str "[$" currency-code "] "))
+        currency-code)
 
       "code"
-      (str "[$" currency-code "] ")
+      currency-code
 
       "name"
-      nil)))
+      (get-in currency/currency [(keyword currency-code) :name_plural]))))
 
 (defn- currency-format-string
+  "Adds a currency to the base format string as either a suffix (for pluralized names) or
+  prefix (for symbols or codes)."
   [base-string format-settings]
-  (let [prefix (currency-prefix format-settings)
-        suffix (currency-suffix format-settings)]
-    (str prefix base-string suffix)))
+  (let [currency-code (::mb.viz/currency format-settings "USD")
+        currency-identifier (currency-identifier format-settings)]
+    (condp = (::mb.viz/currency-style format-settings "symbol")
+      "symbol"
+      (if (currency/supports-symbol? currency-code)
+        (str "[$" currency-identifier "]" base-string)
+        (str "[$" currency-identifier "] " base-string))
+
+      "code"
+      (str "[$" currency-identifier "] " base-string)
+
+      "name"
+      (str base-string "\" " currency-identifier "\""))))
 
 (def ^:private number-viz-settings
-  "If any of these settings are present, we should format the column as a number"
+  "If any of these settings are present, we should format the column as a number."
   #{::mb.viz/number-style
     ::mb.viz/currency
     ::mb.viz/currency-style
@@ -81,7 +87,7 @@
     ::mb.viz/suffix})
 
 (def ^:private datetime-viz-settings
-  "If any of these settings are present, we should format the column as a date and/or time"
+  "If any of these settings are present, we should format the column as a date and/or time."
   #{::mb.viz/date-style
     ::mb.viz/date-separator
     ::mb.viz/date-abbreviate
@@ -118,13 +124,15 @@
             "scientific"
             (str base-string "E+0")
 
-            "currency"
-            (currency-format-string base-string format-settings)
-
             "decimal"
             base-string
 
-            base-string))]
+            (if (false? (::mb.viz/currency-in-header format-settings))
+              ;; Always format values as currency if currency-in-header is included as false.
+              ;; Don't check number-style, since it may not be included if the column's semantic
+              ;; type is "currency".
+              (currency-format-string base-string format-settings)
+              base-string)))]
     (str
      (str "\"" (::mb.viz/prefix format-settings) "\"")
      styled-string
@@ -318,13 +326,28 @@
         (set-cell! (.createCell row index) scaled-val name-or-id)))
     row))
 
+;; TODO include currency in header
+(defn- column-titles
+  [ordered-cols col-settings]
+  (for [col ordered-cols]
+    (let [name-or-id       (or (:id col) (:name col))
+          col-viz-settings (or (get col-settings {::mb.viz/field-id name-or-id})
+                               (get col-settings {::mb.viz/column-name name-or-id}))
+          is-currency?     (isa? (:semantic_type col) :type/Currency)
+          column-title     (or (::mb.viz/column-title col-viz-settings)
+                               (:display_name col)
+                               (:name col))]
+      (def my-col col)
+      (def my-is-currency? is-currency?)
+      column-title)))
+
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
   (let [workbook            (SXSSFWorkbook.)
         sheet               (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols]} :data} viz-settings]
-        (spreadsheet/add-row! sheet (map (some-fn :display_name :name) ordered-cols)))
+      (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings}]
+        (spreadsheet/add-row! sheet (column-titles ordered-cols col-settings)))
 
       (write-row! [_ row _ ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row  (if output-order
