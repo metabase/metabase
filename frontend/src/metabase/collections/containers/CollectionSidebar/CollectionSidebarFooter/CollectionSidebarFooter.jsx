@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import CollectionsList from "metabase/collections/components/CollectionsList";
 import { Container, Icon, Link } from "./CollectionSidebarFooter.styled";
 
 const propTypes = {
@@ -14,7 +16,7 @@ export default function CollectionSidebarFooter({ isAdmin }) {
     <Container>
       {isAdmin && (
         <Link to={Urls.collection({ id: "users" })}>
-          <Icon name="group" />
+          <CollectionsList.Icon collection={PERSONAL_COLLECTIONS} />
           {t`Other users' personal collections`}
         </Link>
       )}

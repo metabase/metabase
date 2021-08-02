@@ -862,10 +862,6 @@
     (is (seq metadata))
     (db/update! Card card-id :result_metadata metadata)))
 
-(defn- unset-query-metadata-for-gtap-card! [group table-name]
-  (let [card-id (db/select-one-field :card_id GroupTableAccessPolicy :group_id (u/the-id group), :table_id (mt/id table-name))]
-    (db/update! Card card-id :result_metadata nil)))
-
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
     (mt/dataset sample-dataset

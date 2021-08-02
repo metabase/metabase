@@ -7,10 +7,10 @@
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]))
 
 (deftest basic-test
@@ -143,14 +143,20 @@
 (deftest expressions-should-include-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Custom aggregation expressions should include their type"
-      (is (= (conj #{{:name "x" :base_type (:base_type (qp.test/aggregate-col :sum :venues :price))}}
-                   {:name      (mt/format-name "category_id")
-                    :base_type (:base_type (qp.test/breakout-col :venues :category_id))})
-             (set (map #(select-keys % [:name :base_type])
-                       (mt/cols
-                         (mt/run-mbql-query venues
-                           {:aggregation [[:aggregation-options [:sum [:* $price -1]] {:name "x"}]]
-                            :breakout    [$category_id]})))))))))
+      (let [cols (mt/cols
+                  (mt/run-mbql-query venues
+                    {:aggregation [[:aggregation-options [:sum [:* $price -1]] {:name "x"}]]
+                     :breakout    [$category_id]}))]
+        (testing (format "cols = %s" (u/pprint-to-str cols))
+          (is (= #{"x" (mt/format-name "category_id")}
+                 (set (map :name cols))))
+          (let [name->base-type (into {} (map (juxt :name :base_type) cols))]
+            (testing "x"
+              (is (isa? (name->base-type "x")
+                        :type/Number)))
+            (testing "category_id"
+              (is (isa? (name->base-type (mt/format-name "category_id"))
+                        :type/Number)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -233,12 +239,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      DATETIME EXTRACTION AND MANIPULATION                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- maybe-truncate
-  [dt]
-  (if (= :sqlite driver/*driver*)
-    (u.date/truncate dt :day)
-    dt))
 
 (defn- robust-dates
   [strs]

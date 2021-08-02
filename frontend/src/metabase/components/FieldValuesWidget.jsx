@@ -93,7 +93,6 @@ type Props = {
   formatOptions?: FormattingOptions,
   maxWidth?: number,
   minWidth?: number,
-  optionsMaxHeight?: Number,
   alwaysShowOptions?: boolean,
   disableSearch?: boolean,
 
@@ -443,7 +442,7 @@ export class FieldValuesWidget extends Component {
       color,
       className,
       style,
-      optionsMaxHeight,
+      parameter,
     } = this.props;
     const { loadingState } = this.state;
 
@@ -482,11 +481,7 @@ export class FieldValuesWidget extends Component {
           style={style}
           className={className}
           parameter={this.props.parameter}
-          optionsStyle={
-            optionsMaxHeight !== undefined
-              ? { maxHeight: optionsMaxHeight }
-              : {}
-          }
+          optionsStyle={!parameter ? { maxHeight: "none" } : {}}
           // end forwarded props
           options={options}
           valueKey={0}

@@ -120,12 +120,16 @@
         cell-styles (cell-style-delays workbook)
         sheet       (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [cols]} :data}]
-        (spreadsheet/add-row! sheet (map (some-fn :display_name :name) cols)))
+      (begin! [_ {{:keys [ordered-cols]} :data} _]
+        (spreadsheet/add-row! sheet (map (some-fn :display_name :name) ordered-cols)))
 
-      (write-row! [_ row _]
+      (write-row! [_ row _ _ {:keys [output-order]}]
         (binding [*cell-styles* cell-styles]
-          (spreadsheet/add-row! sheet row)))
+          (let [ordered-row (if output-order
+                              (let [row-v (into [] row)]
+                                (for [i output-order] (row-v i)))
+                              row)]
+            (spreadsheet/add-row! sheet ordered-row))))
 
       (finish! [_ _]
         (spreadsheet/save-workbook-into-stream! os workbook)

@@ -1,7 +1,7 @@
 import styled, { css } from "styled-components";
 
 import Label from "metabase/components/type/Label";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const ItemTitle = styled(Label)`
@@ -12,15 +12,15 @@ export const ItemTitle = styled(Label)`
 
 export const ItemIcon = styled(Icon)`
   color: ${props =>
-    props.isHighlighted ? colors["brand"] : colors["text-light"]};
+    props.isHighlighted ? color(props.color) : color("text-light")};
 `;
 
 const activeItemCss = css`
-  background-color: ${colors["brand"]};
+  background-color: ${color("brand")};
 
   ${ItemIcon},
   ${ItemTitle} {
-    color: ${colors["white"]};
+    color: ${color("white")};
   }
 `;
 

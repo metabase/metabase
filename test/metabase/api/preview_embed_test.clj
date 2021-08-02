@@ -249,7 +249,7 @@
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:abc "disabled"}})
                                                                   "?abc=200"))))))))))
 
-(deftest dashcard-disabled-params-test
+(deftest dashcard-disabled-params-test-2
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
     (testing "ENABLED params"
       (embed-test/with-embedding-enabled-and-new-secret-key
@@ -304,10 +304,10 @@
                                                                                    :target       [:variable
                                                                                                   [:template-tag :num]]
                                                                                    :parameter_id "537e37b4"}]}}]
-          (-> (is (= [[50]]
-                     (mt/rows (mt/user-http-request :crowberto :get
-                                                    (str (dashcard-url dashcard {:_embedding_params {:num "enabled"}})
-                                                         "?num=50")))))))))))
+          (is (= [[50]]
+                 (mt/rows (mt/user-http-request :crowberto :get
+                                                (str (dashcard-url dashcard {:_embedding_params {:num "enabled"}})
+                                                     "?num=50"))))))))))
 
 (deftest postgres-convert-parameters-to-numbers-test
   (mt/test-driver :postgres

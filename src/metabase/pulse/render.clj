@@ -170,5 +170,6 @@
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card result) card-width))
 
 (s/defn png-from-render-info :- bytes
+  "Create a PNG file (as a byte array) from rendering info."
   [rendered-info :- common/RenderedPulseCard]
   (png/render-html-to-png rendered-info card-width))

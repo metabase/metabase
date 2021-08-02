@@ -446,7 +446,7 @@
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- include-personal-collection-name
+(defn include-personal-collection-name
   {:hydrate :personal_collection_name}
   [user]
   (db/select-one-field :name Collection :id (:personal_collection_id user)))
@@ -579,8 +579,8 @@
                               {:email "adifferentemail@metabase.com"}))))))))
 
 (defn- do-with-preserved-rasta-personal-collection-name [thunk]
-  (let [{collection-name :name, collection-id :id} (collection/user->personal-collection (mt/user->id :rasta))]
-    (mt/with-temp-vals-in-db Collection collection-id {:name collection-name}
+  (let [{collection-name :name, :keys [slug id]} (collection/user->personal-collection (mt/user->id :rasta))]
+    (mt/with-temp-vals-in-db Collection id {:name collection-name, :slug slug}
       (thunk))))
 
 (defmacro ^:private with-preserved-rasta-personal-collection-name
@@ -669,7 +669,14 @@
                               {:group_ids [(u/the-id (group/all-users))
                                            (u/the-id (group/admin))]})
         (is (= {:is-superuser? true, :pgm-exists? true}
-               (superuser-and-admin-pgm-info email)))))))
+               (superuser-and-admin-pgm-info email))))))
+
+  (testing "Double-check that the test cleaned up after itself"
+    (is (= "Rasta"
+           (db/select-one-field :first_name User :id (mt/user->id :rasta))))
+    (is (= {:name "Rasta Toucan's Personal Collection"
+            :slug "rasta_toucan_s_personal_collection"}
+           (mt/derecordize (db/select-one [Collection :name :slug] :personal_owner_id (mt/user->id :rasta)))))))
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"

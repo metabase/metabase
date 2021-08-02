@@ -62,9 +62,9 @@
                  :has_field_values "list"
                  :dimensions       []
                  :name_field       nil})
-               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at]))
+               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
-               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at]))))))
+               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))))))
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"
@@ -438,7 +438,7 @@
             (is (= expected
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1))))))))))
 
-(deftest remove-fk-semantic-type-test
+(deftest remove-fk-semantic-type-test-2
   (testing "When removing the FK semantic type, the fk_target_field_id should be cleared as well"
     (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                     Field [{field-id-2 :id} {:name               "Field Test 2"
@@ -462,7 +462,7 @@
                 :fk_target_field_id false}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2)))))))))
 
-(deftest update-fk-target-field-id-test
+(deftest update-fk-target-field-id-test-2
   (testing "Checking update of the fk_target_field_id"
     (mt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
                     Field [{field-id-2 :id} {:name "Field Test 2"}]

@@ -62,7 +62,7 @@
 
 (defn- expected-tables [db-or-id]
   (map table-details (db/select Table
-                       :db_id (u/the-id db-or-id), :active true
+                       :db_id (u/the-id db-or-id), :active true, :visibility_type nil
                        {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
@@ -73,17 +73,6 @@
     (select-keys
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
-
-(defn- add-schedules [db]
-  (assoc db :schedules {:cache_field_values {:schedule_day   nil
-                                             :schedule_frame nil
-                                             :schedule_hour  0
-                                             :schedule_type  "daily"}
-                        :metadata_sync      {:schedule_day    nil
-                                             :schedule_frame  nil
-                                             :schedule_hour   nil
-                                             :schedule_type   "hourly"
-                                             :schedule_minute 50}}))
 
 (deftest get-database-test
   (testing "GET /api/database/:id"
@@ -324,13 +313,6 @@
                    :type     :query
                    :query    inner-query-clauses}})
 
-(defn- saved-questions-virtual-db {:style/indent 0} [& card-tables]
-  {:name               "Saved Questions"
-   :id                 mbql.s/saved-questions-virtual-database-id
-   :features           ["basic-aggregations"]
-   :tables             card-tables
-   :is_saved_questions true})
-
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge
    {:id           (format "card__%d" (u/the-id card))
@@ -390,9 +372,9 @@
                (last (:data ((mt/user->client :lucky) :get 200 "database?saved=true")))))))
 
     (testing "We should not include the saved questions virtual DB if there aren't any cards"
-      (not-any?
-       :is_saved_questions
-       ((mt/user->client :lucky) :get 200 "database?saved=true")))
+      (is (not-any?
+           :is_saved_questions
+           ((mt/user->client :lucky) :get 200 "database?saved=true"))))
     (testing "Omit virtual DB if nested queries are disabled"
       (tu/with-temporary-setting-values [enable-nested-queries false]
         (every? some? (:data ((mt/user->client :lucky) :get 200 "database?saved=true")))))))
@@ -825,9 +807,9 @@
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
-        (is (= ["Everything else"
-                "My Collection"]
-               ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id))))))
+        (let [schemas (set ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id)))]
+          (is (contains? schemas "Everything else"))
+          (is (contains? schemas "My Collection")))))
 
     (testing "null and empty schemas should both come back as blank strings"
       (mt/with-temp* [Database [{db-id :id}]

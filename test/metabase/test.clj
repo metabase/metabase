@@ -27,15 +27,20 @@
             [metabase.test.data.interface :as tx]
             [metabase.test.data.users :as test-users]
             [metabase.test.initialize :as initialize]
+            metabase.test.redefs
             [metabase.test.util :as tu]
             [metabase.test.util.async :as tu.async]
             [metabase.test.util.i18n :as i18n.tu]
             [metabase.test.util.log :as tu.log]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util :as u]
+            [pjstadig.humane-test-output :as humane-test-output]
             [potemkin :as p]
+            test-runner
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(humane-test-output/activate!)
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
@@ -48,6 +53,7 @@
   http/keep-me
   i18n.tu/keep-me
   initialize/keep-me
+  metabase.test.redefs/keep-me
   mt.tu/keep-me
   mw.session/keep-me
   qp/keep-me
@@ -180,9 +186,6 @@
   with-discarded-collections-perms-changes
   with-env-keys-renamed-by
   with-locale
-  with-log-level
-  with-log-messages
-  with-log-messages-for-level
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
@@ -238,6 +241,7 @@
 ;; TODO -- move this stuff into some other namespace and refer to it here
 
 (defn do-with-clock [clock thunk]
+  (test-runner/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                   (t/clock? clock)           clock
@@ -352,4 +356,4 @@
   `(doseq [args# ~(mapv vec (partition (count argv) args))
            :let [~argv args#]]
      (is ~expr
-         (are+-message '~expr '~argv args#))))
+         (str (are+-message '~expr '~argv args#)))))

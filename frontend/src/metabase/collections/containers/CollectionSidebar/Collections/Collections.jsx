@@ -53,7 +53,6 @@ export default function Collections({
           onClose={onClose}
           onOpen={onOpen}
           collections={currentUserPersonalCollections}
-          initialIcon="person"
           filter={filterPersonalCollections}
           currentCollection={collectionId}
         />

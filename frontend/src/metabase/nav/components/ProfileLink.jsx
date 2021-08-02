@@ -45,25 +45,21 @@ export default class ProfileLink extends Component {
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
       },
-      ...(MetabaseSettings.isHosted() &&
-        admin && [
-          {
-            title: t`Manage Metabase Cloud`,
-            link: MetabaseSettings.storeUrl("login"),
-            event: `Navbar;Profile Dropdown;ManageHosting ${tag}`,
-            externalLink: true,
-          },
-        ]),
-      ...(admin && [
-        {
-          title: adminContext ? t`Exit admin` : t`Admin`,
-          icon: null,
-          link: adminContext ? "/" : "/admin",
-          event: `Navbar;Profile Dropdown;${
-            adminContext ? "Exit Admin" : "Enter Admin"
-          }`,
+      MetabaseSettings.isHosted() &&
+        admin && {
+          title: t`Manage Metabase Cloud`,
+          link: MetabaseSettings.storeUrl("login"),
+          event: `Navbar;Profile Dropdown;ManageHosting ${tag}`,
+          externalLink: true,
         },
-      ]),
+      admin && {
+        title: adminContext ? t`Exit admin` : t`Admin`,
+        icon: null,
+        link: adminContext ? "/" : "/admin",
+        event: `Navbar;Profile Dropdown;${
+          adminContext ? "Exit Admin" : "Enter Admin"
+        }`,
+      },
       {
         title: t`Activity`,
         icon: null,
@@ -89,7 +85,7 @@ export default class ProfileLink extends Component {
         link: "auth/logout",
         event: `Navbar;Profile Dropdown;Logout`,
       },
-    ];
+    ].filter(Boolean);
   };
 
   render() {

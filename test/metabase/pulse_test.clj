@@ -136,8 +136,8 @@
 
 (defn- produces-bytes? [{:keys [rendered-info]}]
   (when rendered-info
-    (pos? (alength ^bytes (or (render/png-from-render-info rendered-info)
-                              (byte-array 0))))))
+    (pos? (alength (or (render/png-from-render-info rendered-info)
+                       (byte-array 0))))))
 
 (defn- email-body? [{message-type :type, ^String content :content}]
   (and (= "text/html; charset=utf-8" message-type)
@@ -339,8 +339,7 @@
                    (when exists?
                      (testing "Should return 30 results (the redef'd limit) plus the header row"
                        (is (= 31
-                              (-> (slurp filename) str/split-lines count))
-                           )))))))))}})))
+                              (-> (slurp filename) str/split-lines count)))))))))))}})))
 
 (deftest multiple-recipients-test
   (testing "Pulse should be sent to two recipients"

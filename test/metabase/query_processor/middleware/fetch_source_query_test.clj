@@ -18,11 +18,6 @@
    :type         :query
    :query        query})
 
-(defn- default-result-with-inner-query [inner-query]
-  {:database (mt/id)
-   :type     :query
-   :query    (assoc inner-query :source-metadata nil)})
-
 (defn- default-result-with-inner-query
   ([inner-query]
    (default-result-with-inner-query inner-query ::infer))

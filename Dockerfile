@@ -2,65 +2,31 @@
 # STAGE 1.1: builder frontend
 ###################
 
-FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as frontend
+FROM metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers as frontend
 
 ARG MB_EDITION=oss
 
-WORKDIR /app/source
+WORKDIR /home/circleci
 
-COPY . .
+COPY --chown=circleci . .
 RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn --frozen-lockfile && yarn build && bin/i18n/build-translation-resources
-
-###################
-# STAGE 1.2: backend deps
-###################
-
-FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as backend
-
-WORKDIR /app/source
-
-# backend dependencies
-COPY project.clj .
-RUN lein deps :tree
-
-###################
-# STAGE 1.3: drivers
-###################
-
-FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as drivers
-
-ARG MB_EDITION=oss
-
-WORKDIR /app/source
-
-COPY --from=backend /root/.m2/repository/. /root/.m2/repository/.
-
-# add the rest of the source
-COPY . .
-
-# build the app
-RUN INTERACTIVE=false MB_EDITION=$MB_EDITION sh bin/build-drivers.sh
 
 ###################
 # STAGE 1.4: main builder
 ###################
 
-FROM metabase/ci:java-11-lein-2.9.6-clj-1.10.3.822-04-22-2021 as builder
+FROM metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers as builder
 
 ARG MB_EDITION=oss
 
-WORKDIR /app/source
+WORKDIR /home/circleci
 
 # try to reuse caching as much as possible
-COPY --from=frontend /root/.m2/repository/. /root/.m2/repository/.
-COPY --from=frontend /app/source/. .
-COPY --from=backend /root/.m2/repository/. /root/.m2/repository/.
-COPY --from=backend /app/source/. .
-COPY --from=drivers /root/.m2/repository/. /root/.m2/repository/.
-COPY --from=drivers /app/source/. .
+COPY --from=frontend /home/circleci/.m2/repository/. /home/circleci/.m2/repository/.
+COPY --from=frontend /home/circleci/. .
 
 # build the app
-RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build version uberjar
+RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build version drivers uberjar
 
 # ###################
 # # STAGE 2: runner
@@ -83,7 +49,7 @@ RUN apk upgrade && apk add --update-cache --no-cache bash ttf-dejavu fontconfig 
     mkdir -p /plugins && chmod a+rwx /plugins
 
 # add Metabase script and uberjar
-COPY --from=builder /app/source/target/uberjar/metabase.jar /app/
+COPY --from=builder /home/circleci/target/uberjar/metabase.jar /app/
 COPY bin/docker/run_metabase.sh /app/
 
 # expose our default runtime port
