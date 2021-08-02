@@ -168,7 +168,6 @@
           "user"      #{90}}
          (#'activity-api/activities->referenced-objects fake-activities))))
 
-
 (deftest referenced-objects->existing-objects-test
   (mt/with-temp Dashboard [{dashboard-id :id}]
     (is (= {"dashboard" #{dashboard-id}, "card" nil}
