@@ -378,6 +378,13 @@
   :generate-automagic-dashboards-pot
   {:main-opts ["-m" "metabase.automagic-dashboards.rules"]}
 
+  ;; Start a Network REPL (nrepl) that you can connect your editor to.
+  ;;
+  ;; clojure -M:dev:nrepl (etc.)
+  :nrepl
+  {:extra-deps {nrepl/nrepl {:mvn/version "0.8.3"}}
+   :main-opts  ["-m" "nrepl.cmdline"]}
+
   ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
   ;; on them all from a single REPL process.
   }}
