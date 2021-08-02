@@ -18,7 +18,7 @@
            [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            javax.imageio.ImageIO
-           (org.fit.cssbox.awt GraphicsEngine)
+           org.fit.cssbox.awt.GraphicsEngine
            [org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin]
            [org.fit.cssbox.io DefaultDOMSource StreamDocumentSource]
            org.fit.cssbox.layout.Dimension
