@@ -17,8 +17,8 @@
   ;;
   ;; TODO -- there's not really a reason that we can't use with-temp in parallel tests -- it depends on the test -- so
   ;; once we're a little more comfortable with the current parallel stuff we should remove this restriction.
-  (classloader/require 'test-runner)
-  ((resolve 'test-runner/assert-test-is-not-parallel) "with-temp")
+  (classloader/require 'metabase.test-runner)
+  ((resolve 'metabase.test-runner/assert-test-is-not-parallel) "with-temp")
   (apply orig-do-with-temp args))
 
 (alter-var-root #'tt/do-with-temp (constantly do-with-temp))

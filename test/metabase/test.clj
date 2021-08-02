@@ -20,6 +20,7 @@
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.server.middleware.session :as mw.session]
+            metabase.test-runner
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.data.env :as tx.env]
@@ -36,7 +37,6 @@
             [metabase.util :as u]
             [pjstadig.humane-test-output :as humane-test-output]
             [potemkin :as p]
-            test-runner
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -241,7 +241,7 @@
 ;; TODO -- move this stuff into some other namespace and refer to it here
 
 (defn do-with-clock [clock thunk]
-  (test-runner/assert-test-is-not-parallel "with-clock")
+  (metabase.test-runner/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                   (t/clock? clock)           clock

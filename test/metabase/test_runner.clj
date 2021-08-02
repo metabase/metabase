@@ -1,4 +1,4 @@
-(ns test-runner
+(ns metabase.test-runner
   "Simple wrapper to let us use eftest with the Clojure CLI. Pass `:only` to specify where to look for tests (see dox
   for [[find-tests]] for more info.)"
   (:require [clojure.java.classpath :as classpath]

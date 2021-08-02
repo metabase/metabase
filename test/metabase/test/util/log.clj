@@ -1,13 +1,11 @@
 (ns metabase.test.util.log
   "Utils for controlling the logging that goes on when running tests."
   (:require [clojure.tools.logging :as log]
-            test-runner)
+            metabase.test-runner)
   (:import java.io.PrintStream
            [org.apache.commons.io.output NullOutputStream NullWriter]
            [org.apache.logging.log4j Level LogManager]
            [org.apache.logging.log4j.core Logger LoggerContext]))
-
-(comment test-runner/keep-me)
 
 (def ^:private logger->original-level
   (delay
@@ -80,7 +78,7 @@
    :trace Level/TRACE})
 
 (defn do-with-log-messages-for-level [x thunk]
-  (test-runner/assert-test-is-not-parallel "with-log-level")
+  (metabase.test-runner/assert-test-is-not-parallel "with-log-level")
   (let [[namespace-symb level] (if (sequential? x)
                                  x
                                  ['metabase x])
