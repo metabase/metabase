@@ -62,7 +62,7 @@
 
 (defn- expected-tables [db-or-id]
   (map table-details (db/select Table
-                       :db_id (u/the-id db-or-id), :active true
+                       :db_id (u/the-id db-or-id), :active true, :visibility_type nil
                        {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
@@ -807,9 +807,9 @@
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
-        (is (= ["Everything else"
-                "My Collection"]
-               ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id))))))
+        (let [schemas (set ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id)))]
+          (is (contains? schemas "Everything else"))
+          (is (contains? schemas "My Collection")))))
 
     (testing "null and empty schemas should both come back as blank strings"
       (mt/with-temp* [Database [{db-id :id}]

@@ -1,17 +1,29 @@
 {:paths ["src"]
 
  :deps
- {common/common               {:local/root "../common"}
-  cheshire/cheshire           {:mvn/version "5.8.1"}
-  commons-codec/commons-codec {:mvn/version "1.14"}
-  hiccup/hiccup               {:mvn/version "1.0.5"}
-  io.forward/yaml             {:mvn/version "1.0.9"}  ; don't upgrade to 1.0.10 -- doesn't work on Java 8 (!)
-  leiningen/leiningen         {:mvn/version "2.9.5"}  ; for parsing Leiningen projects
-  org.flatland/ordered        {:mvn/version "1.5.9"}  ; used by io.forward/yaml -- need the newer version
-  stencil/stencil             {:mvn/version "0.5.0"}}
+ {common/common                   {:local/root "../common"}
+  com.github.seancorfield/depstar {:git/tag "v2.1.267", :git/sha "1a45f79"}
+  cheshire/cheshire               {:mvn/version "5.8.1"}
+  commons-codec/commons-codec     {:mvn/version "1.14"}
+  hiccup/hiccup                   {:mvn/version "1.0.5"}
+  io.forward/yaml                 {:mvn/version "1.0.9"} ; don't upgrade to 1.0.10 -- doesn't work on Java 8 (!)
+  io.github.clojure/tools.build   {:git/tag "v0.1.6", :git/sha "5636e61"}
+  org.clojure/tools.deps.alpha    {:mvn/version "0.12.985"}
+  org.flatland/ordered            {:mvn/version "1.5.9"} ; used by io.forward/yaml -- need the newer version
+  stencil/stencil                 {:mvn/version "0.5.0"}
+  ;; local source
+  metabase/metabase-core          {:local/root "../.."}
+  metabase/driver-modules         {:local/root "../../modules/drivers"}}
+
+ :jvm-opts
+ ["-XX:-OmitStackTraceInFastThrow"]
 
  :aliases
- {:test {:extra-paths ["test"]
-         :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
-                                                  :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}}
-         :main-opts   ["-m" "cognitect.test-runner"]}}}
+ {:dev
+  {:extra-paths ["test"]}
+
+  :test
+  {:extra-paths ["test"]
+   :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
+                                            :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}}
+   :main-opts   ["-m" "cognitect.test-runner"]}}}

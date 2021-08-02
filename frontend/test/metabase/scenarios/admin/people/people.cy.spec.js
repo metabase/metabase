@@ -203,13 +203,11 @@ describe("scenarios > admin > people", () => {
       assertTableRowsCount(TOTAL_USERS);
     });
 
-    it.skip("should display more than 50 groups (metabase#17200)", () => {
-      generateGroups(50);
+    it("should display more than 50 groups (metabase#17200)", () => {
+      generateGroups(51);
 
       cy.visit("/admin/people/groups");
-      // The assertion depends on the way we'll implement this.
-      // a) if we go with the pagination, the assertion will have to be updated
-      // b) if we remove the limit, the current assertion will work
+      cy.scrollTo("bottom");
       cy.findByText("readonly");
     });
 

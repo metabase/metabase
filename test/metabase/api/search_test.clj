@@ -221,7 +221,7 @@
       (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2" :offset "0"))))))
   (testing "It offsets matches properly"
     (with-search-items-in-root-collection "test"
-      (is (= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
+      (is (<= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
   (testing "It offsets without limit properly"
     (with-search-items-in-root-collection "test"
       (is (= 4 (count (search-request-data :crowberto :q "test" :offset "2"))))))

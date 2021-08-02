@@ -1,0 +1,45 @@
+{:paths
+ ["src" "resources" "target/classes"]
+
+ ;; Exclusions below are all either things that are already part of metabase-core, or provide conflicting
+ ;; implementations of things like log4j <-> slf4j, or are part of both hadoop-common and hive-jdbc;
+ :deps
+ {org.apache.hadoop/hadoop-common
+  {:mvn/version "3.1.1"
+   :exclusions  [com.fasterxml.jackson.core/jackson-core
+                 com.google.guava/guava
+                 commons-logging/commons-logging
+                 org.apache.httpcomponents/httpcore
+                 org.codehaus.jackson/jackson-core-asl
+                 org.codehaus.jackson/jackson-mapper-asl
+                 org.eclipse.jetty/jetty-http
+                 org.eclipse.jetty/jetty-io
+                 org.eclipse.jetty/jetty-server
+                 org.eclipse.jetty/jetty-util
+                 org.slf4j/slf4j-log4j12
+                 org.tukaani/xz]}
+
+  org.apache.hive/hive-jdbc
+  {:mvn/version "1.2.2"
+   :exclusions  [commons-logging/commons-logging
+                 org.apache.curator/curator-framework
+                 org.codehaus.jackson/jackson-jaxrs
+                 org.codehaus.jackson/jackson-xc
+                 org.slf4j/slf4j-log4j12
+                 org.eclipse.jetty.aggregate/jetty-all]}}
+
+ :deps/prep-lib
+ {:ensure "target/classes"
+  :alias  :aot
+  :fn     aot}
+
+ :aliases
+ {:aot
+  {:deps       {io.github.clojure/tools.build {:git/tag "v0.1.6" :git/sha "5636e61"}}
+   :ns-default build}
+
+  ;; dependencies needed for AOT compilation. Same as deps above but without all the exclusions.
+  :compilation-basis
+  {:replace-deps {org.apache.hadoop/hadoop-common {:mvn/version "3.1.1"}
+                  org.apache.hive/hive-jdbc       {:mvn/version "1.2.2"}
+                  org.clojure/clojure             {:mvn/version "1.10.3"}}}}}

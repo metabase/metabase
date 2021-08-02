@@ -1,6 +1,6 @@
 (ns metabase.cmd.refresh-integration-test-db-metadata
   (:require [clojure.java.io :as io]
-            [environ.core :refer [env]]
+            [environ.core :as env]
             [metabase.db :as mdb]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
@@ -22,7 +22,7 @@
   []
   (let [db-path (test-fixture-db-path)]
     ;; now set the path at MB_DB_FILE
-    (alter-var-root #'environ.core/env assoc :mb-db-type "h2", :mb-db-file db-path)
+    (alter-var-root #'env/env assoc :mb-db-type "h2", :mb-db-file db-path)
     ;; set up the DB, make sure sample dataset is added
     (mdb/setup-db!)
     (sample-data/add-sample-dataset!)

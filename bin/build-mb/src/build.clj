@@ -54,47 +54,46 @@
               "./node_modules/.bin/webpack" "--bail" "--config" "webpack.static-viz.config.js"))
       (u/announce "Frontend built successfully."))))
 
+(defn- build-licenses!
+  [edition]
+  {:pre [(#{:oss :ee} edition)]}
+  (u/step "Generate backend license information from jar files"
+    (let [[classpath]               (u/sh {:dir    u/project-root-directory
+                                           :quiet? true}
+                                          "clojure" (str "-A" edition) "-Spath")
+          output-filename           (u/filename u/project-root-directory
+                                                "resources"
+                                                "license-backend-third-party.txt")
+          {:keys [without-license]} (license/generate {:classpath       classpath
+                                                       :backfill        (edn/read-string
+                                                                          (slurp (io/resource "overrides.edn")))
+                                                       :output-filename output-filename
+                                                       :report?         false})]
+      (when (seq without-license)
+        (run! (comp (partial u/error "Missing License: %s") first)
+              without-license))
+      (u/announce "License information generated at %s" output-filename)))
+
+  (u/step "Run `yarn licenses generate-disclaimer`"
+    (let [license-text (str/join \newline
+                                 (u/sh {:dir    u/project-root-directory
+                                        :quiet? true}
+                                       "yarn" "licenses" "generate-disclaimer"))]
+      (spit (u/filename u/project-root-directory
+                        "resources"
+                        "license-frontend-third-party.txt") license-text))))
+
 (def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
 
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}
   (u/delete-file-if-exists! uberjar-filename)
   (u/step (format "Build uberjar with profile %s" edition)
-    (u/sh {:dir u/project-root-directory} "lein" "clean")
-    (u/sh {:dir u/project-root-directory} "lein" "with-profile" (str \+ (name edition)) "uberjar")
+    ;; TODO -- we (probably) don't need to shell out in order to do this anymore, we should be able to do all this
+    ;; stuff directly in Clojure land by including this other `build` namespace directly (once we dedupe the names)
+    (u/sh {:dir u/project-root-directory} "clojure" "-T:build" "uberjar" :edition edition)
     (u/assert-file-exists uberjar-filename)
     (u/announce "Uberjar built successfully.")))
-
-(defn- build-backend-licenses-file! [edition]
-  {:pre [(#{:oss :ee} edition)]}
-  (let [classpath-and-logs        (u/sh {:dir    u/project-root-directory
-                                         :quiet? true}
-                                        "lein"
-                                        "with-profile" (str \- "dev"
-                                                            (str \, \+ (name edition))
-                                                            \,"+include-all-drivers")
-                                        "classpath")
-        classpath                 (last
-                                   classpath-and-logs)
-        output-filename           (u/filename u/project-root-directory "license-backend-third-party")
-        {:keys [with-license
-                without-license]} (license/generate {:classpath       classpath
-                                                     :backfill        (edn/read-string
-                                                                       (slurp (io/resource "overrides.edn")))
-                                                     :output-filename output-filename
-                                                     :report?         false})]
-    (when (seq without-license)
-      (run! (comp (partial u/error "Missing License: %s") first)
-            without-license))
-    (u/announce "License information generated at %s" output-filename)))
-
-(defn- build-frontend-licenses-file!
-  []
-  (let [license-text (str/join \newline
-                               (u/sh {:dir    u/project-root-directory
-                                      :quiet? true}
-                                     "yarn" "licenses" "generate-disclaimer"))]
-    (spit (u/filename u/project-root-directory "license-frontend-third-party") license-text)))
 
 (def all-steps
   (ordered-map/ordered-map
@@ -104,12 +103,10 @@
                    (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
                    (build-frontend! edition))
+   :licenses     (fn [{:keys [edition]}]
+                   (build-licenses! edition))
    :drivers      (fn [{:keys [edition]}]
                    (build-drivers/build-drivers! edition))
-   :backend-licenses (fn [{:keys [edition]}]
-                       (build-backend-licenses-file! edition))
-   :frontend-licenses (fn [{:keys []}]
-                        (build-frontend-licenses-file!))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 
@@ -142,14 +139,11 @@
                    (when-let [steps (not-empty steps)]
                      {:steps steps})))))
 
+;; useful to call from command line `cd bin/build-mb && clojure -X build/list-without-license`
 (defn list-without-license [{:keys []}]
-  (let [classpath-and-logs        (u/sh {:dir    u/project-root-directory
-                                         :quiet? true}
-                                        "lein"
-                                        "with-profile"
-                                        "-dev,+ee,+include-all-drivers"
-                                        "classpath")
-        classpath                 (last classpath-and-logs)
+  (let [[classpath]        (u/sh {:dir    u/project-root-directory
+                                           :quiet? true}
+                                          "clojure" "-A:ee" "-Spath")
         classpath-entries (license/jar-entries classpath)
         {:keys [without-license]} (license/process*
                                    {:classpath-entries classpath-entries

@@ -115,15 +115,16 @@
            (tu/db-timezone-id)))))
 
 (deftest insert-rows-ddl-test
-  (is (= [[(str "INSERT ALL"
-                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 1)"
-                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 2) "
-                "SELECT * FROM dual")
-           "A"
-           "B"]]
-         (ddl/insert-rows-ddl-statements :oracle (hx/identifier :table "my_db" "my_table") [{:col1 "A", :col2 1}
-                                                                                            {:col1 "B", :col2 2}]))
-      "Make sure we're generating correct DDL for Oracle to insert all rows at once."))
+  (mt/test-driver :oracle
+    (testing "Make sure we're generating correct DDL for Oracle to insert all rows at once."
+      (is (= [[(str "INSERT ALL"
+                    " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 1)"
+                    " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 2) "
+                    "SELECT * FROM dual")
+               "A"
+               "B"]]
+             (ddl/insert-rows-ddl-statements :oracle (hx/identifier :table "my_db" "my_table") [{:col1 "A", :col2 1}
+                                                                                                {:col1 "B", :col2 2}]))))))
 
 (defn- do-with-temp-user [username f]
   (let [username (or username (tu/random-name))]

@@ -3,7 +3,7 @@
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models.card :refer [Card]]
-            [metabase.models.collection :refer [Collection]]
+            [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :as dashboard :refer :all]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
@@ -235,17 +235,13 @@
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"
     (tu/with-model-cleanup [Card Dashboard DashboardCard Collection]
-      (binding [api/*current-user-id*              (users/user->id :rasta)
-                api/*current-user-permissions-set* (-> :rasta
-                                                       users/user->id
-                                                       user/permissions-set
-                                                       atom)]
-        (let [dashboard                  (magic/automagic-analysis (Table (id :venues)) {})
-              rastas-personal-collection (db/select-one-field :id 'Collection
-                                           :personal_owner_id api/*current-user-id*)
-              saved-dashboard            (save-transient-dashboard! dashboard rastas-personal-collection)]
-          (is (= (db/count 'DashboardCard :dashboard_id (:id saved-dashboard))
-                 (-> dashboard :ordered_cards count))))))))
+      (let [rastas-personal-collection (collection/user->personal-collection (users/user->id :rasta))]
+        (binding [api/*current-user-id*              (users/user->id :rasta)
+                  api/*current-user-permissions-set* (-> :rasta users/user->id user/permissions-set atom)]
+          (let [dashboard       (magic/automagic-analysis (Table (id :venues)) {})
+                saved-dashboard (save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
+            (is (= (db/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
+                   (-> dashboard :ordered_cards count)))))))))
 
 (deftest validate-collection-namespace-test
   (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
