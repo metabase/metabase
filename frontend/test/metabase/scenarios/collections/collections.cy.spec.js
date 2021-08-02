@@ -7,6 +7,7 @@ import {
   openOrdersTable,
   sidebar,
 } from "__support__/e2e/cypress";
+import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { nocollection } = USERS;
@@ -122,7 +123,7 @@ describe("scenarios > collection_defaults", () => {
       it("should allow a user to expand a collection without navigating to it", () => {
         cy.visit("/collection/root");
         // 1. click on the chevron to expand the sub collection
-        openDropdownFor("First collection");
+        displaySidebarChildOf("First collection");
         // 2. I should see the nested collection name
         cy.findByText("First collection");
         cy.findByText("Second collection");
@@ -153,10 +154,10 @@ describe("scenarios > collection_defaults", () => {
           });
           cy.visit("/collection/root");
           // 1. Expand out via the chevrons so that all collections are showing
-          openDropdownFor("First collection");
-          openDropdownFor("Second collection");
-          openDropdownFor("Third collection");
-          openDropdownFor("Fourth collection");
+          displaySidebarChildOf("First collection");
+          displaySidebarChildOf("Second collection");
+          displaySidebarChildOf("Third collection");
+          displaySidebarChildOf("Fourth collection");
           // 2. Ensure we can see the entire "Fifth level with a long name" collection text
           cy.findByText("Fifth collection with a very long name");
         });
@@ -324,7 +325,7 @@ describe("scenarios > collection_defaults", () => {
       cy.visit("/collection/root");
       cy.get("[class*=CollectionSidebar]").as("sidebar");
 
-      openDropdownFor("Your personal collection");
+      displaySidebarChildOf("Your personal collection");
       cy.findByText(COLLECTION);
       cy.get("@sidebar")
         .contains("Our analytics")
@@ -396,7 +397,7 @@ describe("scenarios > collection_defaults", () => {
     it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
       cy.visit("/collection/root");
       cy.log("Move 'Second collection' to the root");
-      openDropdownFor("First collection");
+      displaySidebarChildOf("First collection");
       cy.findByText("Second collection").click();
       cy.icon("pencil").click();
       cy.findByText("Edit this collection").click();
@@ -454,6 +455,7 @@ describe("scenarios > collection_defaults", () => {
 
     it("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
       cy.visit("/collection/root");
+
       sidebar()
         .findByText("Your personal collection")
         .parent()
@@ -461,9 +463,8 @@ describe("scenarios > collection_defaults", () => {
         .should("not.exist");
 
       // Ensure if sub-collection is archived, the chevron is not displayed
+      displaySidebarChildOf("First collection");
       sidebar()
-        .findByText("First collection")
-        .click()
         .findByText("Second collection")
         .click();
       cy.icon("pencil").click();
@@ -609,14 +610,6 @@ function createPulse() {
   cy.findByText("Robert Tableton").should("not.exist");
   cy.findByText("Bobby Tables");
   cy.findByText("Create pulse").click();
-}
-
-function openDropdownFor(collectionName) {
-  cy.findByText(collectionName)
-    .parent()
-    .find(".Icon-chevronright")
-    .eq(0) // there may be more nested icons, but we need the top level one
-    .click();
 }
 
 function openEllipsisMenuFor(item) {
