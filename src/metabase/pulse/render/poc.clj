@@ -1,14 +1,12 @@
 (ns metabase.pulse.render.poc
   (:require [clojure.java.io :as io]
             [clojure.string :as str])
-  (:import java.awt.RenderingHints
-           [java.io ByteArrayInputStream ByteArrayOutputStream]
+  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
-           org.apache.batik.gvt.renderer.ImageRenderer
            [org.apache.batik.transcoder TranscoderInput TranscoderOutput]
            org.apache.batik.transcoder.image.PNGTranscoder
-           (org.graalvm.polyglot Context HostAccess Source Value)))
+           [org.graalvm.polyglot Context HostAccess Source Value]))
 
 (def ^:private bundle-path
   ;; todo: this will move to app/dist when the bundle is in the tree
