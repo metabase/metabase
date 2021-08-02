@@ -4,19 +4,10 @@ import { Pie } from "@visx/shape";
 import { scaleOrdinal } from "@visx/scale";
 import { Group } from "@visx/group";
 
-export default function Donut({ data, accessors }, layout) {
+export default function Donut({ data, colors, accessors }, layout) {
   const scale = scaleOrdinal({
     domain: data.map(accessors.dimension),
-    range: [
-      "#509ee3",
-      "#A989C5",
-      "#7172AD",
-      "#EF8C8C",
-      "#F2A86F",
-      "#88BF4D",
-      "#F9D45C",
-      "#98D9D9",
-    ],
+    range: Object.keys(colors).map(c => ({ name: c, fill: colors[c] })),
   });
 
   const innerWidth = layout.width - layout.margin.left - layout.margin.right;
@@ -47,12 +38,12 @@ export default function Donut({ data, accessors }, layout) {
           {pie => {
             return pie.arcs.map((arc, index) => {
               const arcPath = pie.path(arc);
+              const dimension = arc.data[0];
+              const fill = scale.range().filter(r => r.name === dimension)[0]
+                .fill;
               return (
                 <g key={`arc-${index}`}>
-                  <path
-                    d={arcPath}
-                    fill={scale(accessors.dimension(arc.data))}
-                  />
+                  <path d={arcPath} fill={fill} />
                 </g>
               );
             });

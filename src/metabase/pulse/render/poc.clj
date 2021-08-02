@@ -28,6 +28,14 @@ const toJSArray = (a) => {
   return jsArray;
 }
 
+function toJSMap(m) {
+  var o = {};
+  for (var i = 0; i < m.length; i++) {
+    o[m[i][0]] = m[i][1];
+  }
+  return o;
+}
+
 const date_accessors = {
   x: (row) => new Date(row[0]).valueOf(),
   y: (row) => row[1],
@@ -52,12 +60,14 @@ function timeseries_bar (data) {
  })
 }
 
-function categorical_donut (data) {
+function categorical_donut (rows, colors) {
   return StaticViz.RenderChart(\"categorical/donut\", {
-    data: toJSArray(data),
+    data: toJSArray(rows),
+    colors: toJSMap(colors),
     accessors: dimension_accessors
  })
 }
+
 ")
 
 (def ^:private ^Context context
@@ -84,9 +94,14 @@ function categorical_donut (data) {
       (.createDocument factory "file:///fake.svg" is))))
 
 (defn- high-quality-png-transcoder ^PNGTranscoder []
-  (proxy [PNGTranscoder] []
+  (PNGTranscoder.)
+  ;; the following generates a reflective call for the `proxy-super`. The problem is that `createRenderer` is
+  ;; protected and the reflector cannot find non-public methods. See
+  ;; https://gist.github.com/dpsutton/3f1c5c80a434cf2940e0973d4e01a80c
+  #_(proxy [PNGTranscoder] []
     (createRenderer []
       (let [add-hint                (fn [^RenderingHints hints k v] (.add hints (RenderingHints. k v)))
+            ^PNGTranscoder this     this
             ^ImageRenderer renderer (proxy-super createRenderer)
             hints                   (RenderingHints.
                                      RenderingHints/KEY_ALPHA_INTERPOLATION
@@ -121,10 +136,10 @@ function categorical_donut (data) {
     (-> s parse-svg-string render-svg)))
 
 (defn- execute-fn
-  [^Context context fn & args]
-  (let [fn-ref (.eval context "js" fn)
+  [^Context context js-fn-name & args]
+  (let [fn-ref (.eval context "js" js-fn-name)
         args   (into-array Object args)]
-    (assert (.canExecute fn-ref) (str "cannot execute " fn))
+    (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
     (.execute fn-ref args)))
 
 (defn timelineseries-line
@@ -144,6 +159,6 @@ function categorical_donut (data) {
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
-  [rows]
-  (let [svg-string (.asString ^Value (execute-fn @context "categorical_donut" rows))]
+  [rows colors]
+  (let [svg-string (.asString ^Value (execute-fn @context "categorical_donut" rows (seq colors)))]
     (svg-string->bytes svg-string)))

@@ -86,11 +86,15 @@
         donut-data    [["alpha" 32]
                        ["beta" 49]
                        ["gamma" 23]
-                       ["delta" 67]]]
+                       ["delta" 67]]
+        donut-colors {"alpha" "red"
+                      "beta" "green"
+                      "gamma" "blue"
+                      "delta" "yellow"}]
     (case kind
       :line  (poc/timelineseries-line line|bar-data)
       :bar   (poc/timelineseries-bar line|bar-data)
-      :donut (poc/categorical-donut donut-data)
+      :donut (poc/categorical-donut donut-data donut-colors)
       (throw (ex-info (str "Invalid chart type: " kind "\n Valid choices are :line, :bar, :donut")
                       {})))))
 

@@ -239,14 +239,47 @@
                                                                               :max-value  max-value}))
         (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
+(def ^:private colors
+  "Colors to cycle through for charts. These are copied from https://stats.metabase.com/_internal/colors"
+  ["#509EE3"
+   "#88BF4D"
+   "#A989C5"
+   "#EF8C8C"
+   "#F9D45C"
+   "#F2A86F"
+   "#98D9D9"
+   "#7172AD"
+   "#6450e3"
+   "#4dbf5e"
+   "#c589b9"
+   "#efce8c"
+   "#b5f95c"
+   "#e35850"
+   "#554dbf"
+   "#bec589"
+   "#8cefc6"
+   "#5cc2f9"
+   "#55e350"
+   "#bf4d4f"
+   "#89c3c5"
+   "#be8cef"
+   "#f95cd0"
+   "#50e3ae"
+   "#bf974d"
+   "#899bc5"
+   "#ef8cde"
+   "#f95c67"])
+
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
+        legend-colors (zipmap (map (comp str x-axis-rowfn) rows) (cycle colors))
         image-bundle (image-bundle/make-image-bundle
                       render-type
                       (svg-poc/categorical-donut
-                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
+                       (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                       legend-colors))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -254,7 +287,16 @@
      :content
      [:div
       [:img {:style (style/style {:display :block :width :100%})
-             :src (:image-src image-bundle)}]]}))
+             :src (:image-src image-bundle)}]
+      (into [:div {:style (style/style {:clear :both :width "540px" :color "#4C5773"})}]
+            (for [label (map (comp str x-axis-rowfn) rows)]
+              [:div {:style (style/style {:float :left :margin-right "12px"
+                                          :font-family "Lato, sans-serif"
+                                          :font-size "44px"})}
+               [:span {:style (style/style {:color (legend-colors label)})}
+                "•"]
+               [:span {:style (style/style {:margin-left "6px"})}
+                label]]))]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id card {:keys [cols rows]}]

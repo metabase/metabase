@@ -18,7 +18,7 @@
            [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            javax.imageio.ImageIO
-           (org.fit.cssbox.awt BrowserCanvas GraphicsEngine)
+           org.fit.cssbox.awt.GraphicsEngine
            [org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin]
            [org.fit.cssbox.io DefaultDOMSource StreamDocumentSource]
            org.fit.cssbox.layout.Dimension
@@ -64,22 +64,12 @@
     (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
     .getStyleSheets))
 
-(defn- content-canvas
-  ^BrowserCanvas [^Document doc, ^StreamDocumentSource doc-source, ^Dimension dimension]
-  (let [da          (dom-analyzer doc doc-source dimension)
-        canvas      (BrowserCanvas. (.getRoot da) da (.getURL doc-source))]
-    (doto (.getConfig canvas)
-      (.setClipViewport false)
-      (.setLoadImages true)
-      (.setLoadBackgroundImages true))
-    (doto canvas
-      (.createLayout dimension))))
-
 (defn- render-to-png!
   [^String html, ^ByteArrayOutputStream os, width]
   (register-fonts-if-needed!)
   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
+    ;; todo: get rid of this hardcoded 1200. it is passed down from metabase.pulse.render/card-width = 400
     (let [dimension       (Dimension. 1200 1)
           doc             (.parse (DefaultDOMSource. doc-source))
           da              (dom-analyzer doc doc-source dimension)

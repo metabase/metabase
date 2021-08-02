@@ -1,5 +1,5 @@
 (ns metabase.api.routes
-  (:require [compojure.core :refer [context defroutes GET]]
+  (:require [compojure.core :refer [context defroutes]]
             [compojure.route :as route]
             [metabase.api.activity :as activity]
             [metabase.api.alert :as alert]
