@@ -21,9 +21,8 @@ fi
 
 set -euo pipefail
 
-# Copy the JDK 8 cacerts file to our resources
-# TODO: see if there is a cleaner way for sdkman to output this path?
-cp /usr/local/sdkman/candidates/java/8*/jre/lib/security/cacerts $RESOURCES_DIR/cacerts-with-presto-ca.jks
+# Copy the JDK cacerts file to our resources
+cp $JAVA_HOME/lib/security/cacerts $RESOURCES_DIR/cacerts-with-presto-ca.jks
 
 # Capture the Presto server self signed CA in PEM format
 openssl s_client -showcerts -connect presto-kerberos:7778 </dev/null \
