@@ -15,9 +15,9 @@
             [schema.core :as s])
   (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption
                                       BigQuery$DatasetOption BigQuery$TableListOption BigQuery$TableOption Dataset
-                                      DatasetId DatasetInfo Field LegacySQLTypeName InsertAllRequest
-                                      InsertAllRequest$RowToInsert InsertAllResponse Schema StandardTableDefinition
-                                      TableId TableInfo TableResult]))
+                                      DatasetId DatasetInfo Field  InsertAllRequest InsertAllRequest$RowToInsert
+                                      InsertAllResponse LegacySQLTypeName Schema StandardTableDefinition TableId
+                                      TableInfo TableResult]))
 
 (sql.tx/add-test-extensions! :bigquery-cloud-sdk)
 
