@@ -32,16 +32,18 @@
        (mbql.u/uniquify-names (map :name cols))))
 
 (defn- export-column-order
-  "Correlates the :name fields between cols and the :table.columns key of viz-settings
-  to determine the order of columns that should included in the export."
+  "Correlates the :name or :id fields on cols with the field refs in the :table.columns key
+  of viz-settings to determine the order of columns that should included in the export."
   [cols {table-columns ::mb.viz/table-columns}]
   (if table-columns
-    (let [enabled-table-columns (filter ::mb.viz/table-column-enabled table-columns)
-          col-index-by-name     (reduce-kv (fn [m i col] (assoc m (:name col) i))
-                                           {}
-                                           (into [] cols))]
+    (let [enabled-table-columns   (filter ::mb.viz/table-column-enabled table-columns)
+          col-index-by-name-or-id (reduce-kv (fn [m i col]
+                                               (let [name-or-id (or (:id col) (:name col))]
+                                                 (assoc m name-or-id i)))
+                                             {}
+                                             (into [] cols))]
       (map
-       (fn [{col-name ::mb.viz/table-column-name}] (get col-index-by-name col-name))
+       (fn [{[_ name-or-id _] ::mb.viz/table-column-field-ref}] (get col-index-by-name-or-id name-or-id))
        enabled-table-columns))
     (range (count cols))))
 
