@@ -1,6 +1,9 @@
 #! /usr/bin/env bash
 # runs one or more Metabase test(s) against a Kerberized Presto instance
 
+# install clojure
+apt-get -y install clojure
+
 RESOURCES_DIR=/app/source/resources
 
 # ensure the expected files are in place, in the resources dir
