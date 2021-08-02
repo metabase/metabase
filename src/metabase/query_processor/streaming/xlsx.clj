@@ -193,11 +193,11 @@
   "Returns a format string corresponding to the given settings."
   [format-settings]
   (cond
-    (some #(contains? number-viz-settings %) (keys format-settings))
-    (number-format-string format-settings)
-
     (some #(contains? datetime-viz-settings %) (keys format-settings))
-    (datetime-format-string format-settings)))
+    (datetime-format-string format-settings)
+
+    (some #(contains? number-viz-settings %) (keys format-settings))
+    (number-format-string format-settings)))
 
 (defn- format-string-delay
   [^Workbook workbook data-format format-string]
@@ -208,10 +208,10 @@
 (defn- column-style-delays
   [^Workbook workbook data-format column-settings]
   (into {} (for [[field settings] column-settings]
-             (let [name-or-id    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
+             (let [id-or-name    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
                    format-string (format-settings->format-string settings)]
                (when format-string
-                 {name-or-id (format-string-delay workbook data-format format-string)})))))
+                 {id-or-name (format-string-delay workbook data-format format-string)})))))
 
 (def ^:private cell-style-delays
   "Creates a map of column name or id -> delay, or keyword representing default -> delay. This is bound to
@@ -230,25 +230,25 @@
   ^org.apache.poi.ss.usermodel.CellStyle [style-name]
   (some-> style-name *cell-styles* deref))
 
-(defmulti set-cell! (fn [^Cell _cell value _name-or-id] (type value)))
+(defmulti set-cell! (fn [^Cell _cell value _id-or-name] (type value)))
 
 ;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell
 ;; styles applied that dictate how to format them
 
 (defmethod set-cell! LocalDate
-  [^Cell cell ^LocalDate t name-or-id]
+  [^Cell cell ^LocalDate t id-or-name]
   (.setCellValue cell t)
   (.setCellType cell CellType/NUMERIC)
-  (.setCellStyle cell (or (cell-style name-or-id) (cell-style :date))))
+  (.setCellStyle cell (or (cell-style id-or-name) (cell-style :date))))
 
 (defmethod set-cell! LocalDateTime
-  [^Cell cell ^LocalDateTime t name-or-id]
+  [^Cell cell ^LocalDateTime t id-or-name]
   (.setCellValue cell t)
   (.setCellType cell CellType/NUMERIC)
-  (.setCellStyle cell (or (cell-style name-or-id) (cell-style :datetime))))
+  (.setCellStyle cell (or (cell-style id-or-name) (cell-style :datetime))))
 
 (defmethod set-cell! LocalTime
-  [^Cell cell t name-or-id]
+  [^Cell cell t id-or-name]
   ;; there's no `.setCellValue` for a `LocalTime` -- but all the built-in impls for `LocalDate` and `LocalDateTime` do
   ;; anyway is convert the date(time) to an Excel datetime floating-point number and then set that.
   ;;
@@ -258,19 +258,19 @@
   ;; See https://poi.apache.org/apidocs/4.1/org/apache/poi/ss/usermodel/DateUtil.html#convertTime-java.lang.String-
   (.setCellValue cell (DateUtil/convertTime (u.date/format "HH:mm:ss" t)))
   (.setCellType cell CellType/NUMERIC)
-  (.setCellStyle cell (or (cell-style name-or-id) (cell-style :time))))
+  (.setCellStyle cell (or (cell-style id-or-name) (cell-style :time))))
 
 (defmethod set-cell! OffsetTime
-  [^Cell cell t name-or-id]
-  (set-cell! cell (t/local-time (common/in-result-time-zone t)) name-or-id))
+  [^Cell cell t id-or-name]
+  (set-cell! cell (t/local-time (common/in-result-time-zone t)) id-or-name))
 
 (defmethod set-cell! OffsetDateTime
-  [^Cell cell t name-or-id]
-  (set-cell! cell (t/local-date-time (common/in-result-time-zone t)) name-or-id))
+  [^Cell cell t id-or-name]
+  (set-cell! cell (t/local-date-time (common/in-result-time-zone t)) id-or-name))
 
 (defmethod set-cell! ZonedDateTime
-  [^Cell cell t name-or-id]
-  (set-cell! cell (t/offset-date-time t) name-or-id))
+  [^Cell cell t id-or-name]
+  (set-cell! cell (t/offset-date-time t) id-or-name))
 
 (defmethod set-cell! String
   [^Cell cell value _]
@@ -279,11 +279,11 @@
   (.setCellValue cell ^String value))
 
 (defmethod set-cell! Number
-  [^Cell cell value name-or-id]
+  [^Cell cell value id-or-name]
   (when (= (.getCellType cell) CellType/FORMULA)
     (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell (double value))
-  (.setCellStyle cell (cell-style name-or-id)))
+  (.setCellStyle cell (cell-style id-or-name)))
 
 (defmethod set-cell! Boolean
   [^Cell cell value _]
@@ -317,22 +317,22 @@
                   (inc (.getLastRowNum sheet)))
         row (.createRow sheet row-num)]
     (doseq [[value col index] (map vector values cols (range (count values)))]
-      (let [name-or-id (or (:id col) (:name col))
-            settings   (or (get col-settings {::mb.viz/field-id name-or-id})
-                           (get col-settings {::mb.viz/column-name name-or-id}))
+      (let [id-or-name (or (:id col) (:name col))
+            settings   (or (get col-settings {::mb.viz/field-id id-or-name})
+                           (get col-settings {::mb.viz/column-name id-or-name}))
             scaled-val (if (and value (::mb.viz/scale settings))
                          (* value (::mb.viz/scale settings))
                          value)]
-        (set-cell! (.createCell row index) scaled-val name-or-id)))
+        (set-cell! (.createCell row index) scaled-val id-or-name)))
     row))
 
 ;; TODO include currency in header
 (defn- column-titles
   [ordered-cols col-settings]
   (for [col ordered-cols]
-    (let [name-or-id       (or (:id col) (:name col))
-          col-viz-settings (or (get col-settings {::mb.viz/field-id name-or-id})
-                               (get col-settings {::mb.viz/column-name name-or-id}))
+    (let [id-or-name       (or (:id col) (:name col))
+          col-viz-settings (or (get col-settings {::mb.viz/field-id id-or-name})
+                               (get col-settings {::mb.viz/column-name id-or-name}))
           _is-currency?     (isa? (:semantic_type col) :type/Currency)
           column-title     (or (::mb.viz/column-title col-viz-settings)
                                (:display_name col)
