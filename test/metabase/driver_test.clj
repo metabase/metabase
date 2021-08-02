@@ -19,7 +19,11 @@
   (is (= false
          (driver/supports? ::test-driver :expressions "walla")))
   (is (= true
-         (driver/supports? ::test-driver :expressions "dummy"))))
+         (driver/supports? ::test-driver :expressions "dummy")))
+  (is (thrown? java.lang.Exception
+         (driver/supports? ::test-driver :dummy)))
+  (is (thrown? java.lang.Exception
+         (driver/supports? ::test-driver :dummy "dummy"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
