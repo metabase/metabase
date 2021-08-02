@@ -333,9 +333,9 @@
         (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
     stmt))
 
-(defmethod driver/can-connect? :sql-jdbc
+(defmethod driver/can-connect? :presto-jdbc
   [driver details]
-  (sql-jdbc.conn/can-connect? driver details))
+  (sql-jdbc.conn/can-connect? driver (dissoc details :engine)))
 
 (defn- ^PrestoConnection pooled-conn->presto-conn
   "Unwraps the C3P0 `pooled-conn` and returns the underlying `PrestoConnection` it holds."
