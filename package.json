@@ -164,8 +164,8 @@
   },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
-    "dev": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'lein run' 'yarn build-hot:js' 'yarn build-hot:cljs' 'yarn docs'",
-    "dev-ee": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'lein with-profiles +ee run' 'MB_EDITION=ee yarn build-hot:js' 'MB_EDITION=ee yarn build-hot:cljs' 'yarn docs'",
+    "dev": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'clojure -M:run' 'yarn build-hot:js' 'yarn build-hot:cljs' 'yarn docs'",
+    "dev-ee": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'clojure -M:run:ee' 'MB_EDITION=ee yarn build-hot:js' 'MB_EDITION=ee yarn build-hot:cljs' 'yarn docs'",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml",
     "lint-eslint": "yarn build-quick:cljs && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 enterprise/frontend/src frontend/src frontend/test",
     "lint-prettier": "yarn && prettier -l '{enterprise/,}frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",

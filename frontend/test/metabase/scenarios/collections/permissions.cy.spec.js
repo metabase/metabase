@@ -17,6 +17,7 @@ import {
   sidebar,
   openNativeEditor,
 } from "__support__/e2e/cypress";
+import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
@@ -45,8 +46,8 @@ describe("collection permissions", () => {
                 it("should offer to save dashboard to a currently opened collection", () => {
                   cy.visit("/collection/root");
                   sidebar().within(() => {
-                    cy.findByText("First collection").click();
-                    cy.findByText("Second collection").click();
+                    displaySidebarChildOf("First collection");
+                    displaySidebarChildOf("Second collection");
                   });
                   cy.icon("add").click();
                   cy.findByText("New dashboard").click();

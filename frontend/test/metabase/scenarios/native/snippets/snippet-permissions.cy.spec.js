@@ -3,6 +3,7 @@ import {
   modal,
   popover,
   describeWithToken,
+  openNativeEditor,
 } from "__support__/e2e/cypress";
 
 describeWithToken("scenarios > question > snippets", () => {
@@ -158,20 +159,74 @@ describeWithToken("scenarios > question > snippets", () => {
     cy.findByText("snippet 1");
   });
 
-  it("should not display snippet folder as part of collections (metabase#14907)", () => {
-    cy.server();
-    cy.route("GET", "/api/collection/root").as("collections");
+  describe("existing snippet folder", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/collection/root").as("collections");
 
-    cy.request("POST", "/api/collection", {
-      name: "Snippet Folder",
-      description: null,
-      color: "#509EE3",
-      parent_id: null,
-      namespace: "snippets",
+      cy.request("POST", "/api/collection", {
+        name: "Snippet Folder",
+        description: null,
+        color: "#509EE3",
+        parent_id: null,
+        namespace: "snippets",
+      });
     });
 
-    cy.visit("/collection/root");
-    cy.wait("@collections");
-    cy.findByText("Snippet Folder").should("not.exist");
+    it("should not display snippet folder as part of collections (metabase#14907)", () => {
+      cy.visit("/collection/root");
+
+      cy.wait("@collections");
+      cy.findByText("Snippet Folder").should("not.exist");
+    });
+
+    it.skip("shouldn't update root permissions when changing permissions on a created folder (metabase#17268)", () => {
+      cy.intercept("PUT", "/api/collection/graph").as("updatePermissions");
+
+      openNativeEditor();
+      cy.icon("snippet").click();
+
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Snippet Folder")
+          .next()
+          .find(".Icon-ellipsis")
+          .click({ force: true });
+      });
+
+      cy.findByText("Change permissions").click();
+
+      // Update permissions for "All users"
+      modal().within(() => {
+        cy.findAllByRole("grid")
+          .last()
+          .find(".Icon-close")
+          .first()
+          .click();
+      });
+
+      cy.findByText("Grant View access").click();
+      cy.button("Save").click();
+
+      cy.wait("@updatePermissions");
+
+      cy.findByText("Snippets")
+        .parent()
+        .next()
+        .find(".Icon-ellipsis")
+        .click();
+      cy.findByText("Change permissions").click();
+
+      // UI check
+      modal().within(() => {
+        cy.icon("eye").should("not.exist");
+      });
+
+      // API check
+      cy.get("@updatePermissions").then(intercept => {
+        const { groups } = intercept.response.body;
+        const allUsers = groups["1"];
+
+        expect(allUsers.root).to.equal("none");
+      });
+    });
   });
 });
