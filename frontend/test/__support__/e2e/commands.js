@@ -4,6 +4,7 @@ import "./commands/ui/icon";
 import "./commands/api/question";
 import "./commands/api/dashboard";
 import "./commands/api/dashboardFilters";
+import "./commands/api/collection";
 
 import "./commands/api/composite/createQuestionAndDashboard";
 import "./commands/api/composite/createNativeQuestionAndDashboard";

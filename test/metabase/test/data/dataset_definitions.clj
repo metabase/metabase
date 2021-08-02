@@ -165,7 +165,7 @@
                                                1
                                                idx)])))))
 
-(tx/defdataset ^:private attempted-murders
+(tx/defdataset attempted-murders
   "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the
   date/time when they spotting occured in several different column types.
 
@@ -209,5 +209,4 @@
        (t/local-time t)                 ; time
        (t/offset-time t)                ; time-ltz
        (t/offset-time t)                ; time-tz
-       cnt                              ; num-crows
-       ])]])
+       cnt])]])                              ; num-crows

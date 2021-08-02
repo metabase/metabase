@@ -121,6 +121,8 @@
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
 (s/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
+  "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
+  needed."
   [inner-query :- mbql.s/MBQLQuery new-clause :- (s/maybe mbql.s/Filter)]
   (if-not new-clause
     inner-query
@@ -585,8 +587,7 @@
 (s/defn update-field-options :- mbql.s/field
   "Like `clojure.core/update`, but for the options in a `:field` clause."
   [[_ id-or-name opts] :- mbql.s/field f & args]
-  ;; TODO -- this should canonicalize the clause afterwards
-  [:field id-or-name (not-empty (apply f opts args))])
+  [:field id-or-name (remove-empty (apply f opts args))])
 
 (defn assoc-field-options
   "Like `clojure.core/assoc`, but for the options in a `:field` clause."

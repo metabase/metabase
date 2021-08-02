@@ -279,7 +279,8 @@
                      :joins           {::sequence normalize-join}}
    :parameters      {::sequence normalize-query-parameter}
    :context         #(some-> % maybe-normalize-token)
-   :source-metadata {::sequence normalize-source-metadata}})
+   :source-metadata {::sequence normalize-source-metadata}
+   :viz-settings    maybe-normalize-token})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.

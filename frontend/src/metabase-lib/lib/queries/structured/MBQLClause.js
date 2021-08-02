@@ -10,6 +10,15 @@ export default class MBQLArrayClause extends Array {
     _private(this, "_query", query);
   }
 
+  // There is a mismatch between the constructor args for `MBQLArrayClause` and `Array`
+  // so we need to reconcile things in the MBQLArrayClause[Symbol.species] constructor function
+  // See https://stackoverflow.com/questions/54522949
+  static get [Symbol.species]() {
+    return Object.assign(function(...items) {
+      return new MBQLArrayClause(new Array(...items), this._index, this._query);
+    }, MBQLArrayClause);
+  }
+
   set(mbql: any[]) {
     return new this.constructor(mbql, this._index, this._query);
   }

@@ -650,5 +650,5 @@
              (mbql.u/update-field-options [:field 1 {:a 1}] dissoc :a))))
 
   (t/testing "Should normalize the clause"
-    [:field 1 nil]
-    (mbql.u/update-field-options [:field 1 {:a {:b 1}}] assoc-in [:a :b] nil)))
+    (t/is (= [:field 1 nil]
+             (mbql.u/update-field-options [:field 1 {:a {:b 1}}] assoc-in [:a :b] nil)))))

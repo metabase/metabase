@@ -1,0 +1,5 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {org.xerial/sqlite-jdbc {:mvn/version "3.25.2"}}}

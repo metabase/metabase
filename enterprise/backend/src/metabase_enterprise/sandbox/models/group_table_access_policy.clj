@@ -20,6 +20,19 @@
 
 (models/defmodel GroupTableAccessPolicy :group_table_access_policy)
 
+;; This guard is to make sure this file doesn't get compiled twice when building the uberjar -- that will totally
+;; screw things up because Toucan models use Potemkin `defrecord+` under the hood.
+(when *compile-files*
+  (defonce previous-compilation-trace (atom nil))
+  (when @previous-compilation-trace
+    (println "THIS FILE HAS ALREADY BEEN COMPILED!!!!!")
+    (println "This compilation trace:")
+    ((requiring-resolve 'clojure.pprint/pprint) (vec (.getStackTrace (Thread/currentThread))))
+    (println "Previous compilation trace:")
+    ((requiring-resolve 'clojure.pprint/pprint) @previous-compilation-trace)
+    (throw (ex-info "THIS FILE HAS ALREADY BEEN COMPILED!!!!!" {})))
+  (reset! previous-compilation-trace (vec (.getStackTrace (Thread/currentThread)))))
+
 (defn- normalize-attribute-remapping-targets [attribute-remappings]
   (m/map-vals
    normalize/normalize

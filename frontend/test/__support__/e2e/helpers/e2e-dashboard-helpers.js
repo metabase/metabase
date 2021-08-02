@@ -36,3 +36,17 @@ export function checkFilterLabelAndValue(label, value) {
 
   cy.get("fieldset").contains(value);
 }
+
+export function setFilter(type, subType) {
+  cy.icon("filter").click();
+
+  cy.findByText("What do you want to filter?");
+
+  popover().within(() => {
+    cy.findByText(type).click();
+
+    if (subType) {
+      cy.findByText(subType).click();
+    }
+  });
+}

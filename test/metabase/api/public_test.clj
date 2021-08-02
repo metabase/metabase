@@ -128,7 +128,7 @@
       (is (= "An error occurred."
              (http/client :get 400 (str "public/card/" uuid "/query")))))))
 
-(deftest check-that-we-get-a-400-if-the-publiccard-doesn-t-exist
+(deftest check-that-we-get-a-400-if-the-publiccard-doesn-t-exist-query
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (is (= "An error occurred."
            (http/client :get 400 (str "public/card/" (UUID/randomUUID) "/query"))))))

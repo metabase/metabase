@@ -1,11 +1,24 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard DashboardCard DashboardFavorite Database
-                                     Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard Segment Table]]
+            [metabase.models
+             :refer
+             [Card
+              CardFavorite
+              Collection
+              Dashboard
+              DashboardCard
+              DashboardFavorite
+              Database
+              Metric
+              PermissionsGroup
+              PermissionsGroupMembership
+              Pulse
+              PulseCard
+              Segment
+              Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.search.config :as search-config]
@@ -73,8 +86,6 @@
 
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
-
-(defn- subset-model [model res] (filter #(= (:model %) (name model)) res))
 
 (defn- default-archived-results []
   (for [result (default-search-results)
@@ -202,7 +213,7 @@
                (search-request-data :crowberto :q "test"))))))
   (testing "It prioritizes exact matches"
     (with-search-items-in-root-collection "test"
-      (with-redefs [search-config/db-max-results 1]
+      (with-redefs [search-config/*db-max-results* 1]
         (is (= [test-collection]
                (search-request-data :crowberto :q "test collection"))))))
   (testing "It limits matches properly"
@@ -210,7 +221,7 @@
       (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2" :offset "0"))))))
   (testing "It offsets matches properly"
     (with-search-items-in-root-collection "test"
-      (is (= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
+      (is (<= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
   (testing "It subsets matches for model"
     (with-search-items-in-root-collection "test"
       (is (= 0 (count (search-request-data :crowberto :q "test" :models "database"))))

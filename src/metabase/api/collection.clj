@@ -167,7 +167,7 @@
 (defmethod post-process-collection-children :pulse
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display)))
+    (dissoc row :description :display :authority_level)))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived? pinned-state]}]
@@ -180,7 +180,7 @@
 (defmethod post-process-collection-children :snippet
   [_ rows]
   (for [row rows]
-    (dissoc row :description :collection_position :display)))
+    (dissoc row :description :collection_position :display :authority_level)))
 
 (defmethod collection-children-query :card
   [_ collection {:keys [archived? pinned-state]}]
@@ -208,7 +208,7 @@
 
 (defmethod post-process-collection-children :card
   [_ rows]
-  (hydrate rows :favorite))
+  (hydrate (map #(dissoc % :authority_level) rows) :favorite))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
@@ -235,7 +235,7 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (hydrate (map #(dissoc % :display) rows) :favorite))
+  (hydrate (map #(dissoc % :display :authority_level) rows) :favorite))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -248,7 +248,8 @@
              :select [:id
                       :name
                       :description
-                      [(hx/literal "collection") :model]])
+                      [(hx/literal "collection") :model]
+                      :authority_level])
       ;; the nil indicates that collections are never pinned.
       (h/merge-where (pinned-state->clause pinned-state nil))))
 
@@ -317,7 +318,7 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :display :model :collection_position
+  [:id :name :description :display :model :collection_position :authority_level
    :last_edit_email :last_edit_first_name :last_edit_last_name
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
@@ -409,7 +410,10 @@
                      :order-by sql-order}
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
-        limit-query (if (= (:collection-namespace options) "snippets")
+        limit-query (if (or
+                          (nil? offset-paging/*limit*)
+                          (nil? offset-paging/*offset*)
+                          (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
                              :limit  offset-paging/*limit*
@@ -566,6 +570,7 @@
      {:name        name
       :color       color
       :description description
+      :authority_level authority_level
       :namespace   namespace}
      (when parent_id
        {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))

@@ -11,21 +11,12 @@
             [ring.util.codec :refer [base64-encode]])
   (:import java.security.MessageDigest))
 
-(defn- file-hash [resource-filename]
-  (base64-encode
-    (.digest (doto (java.security.MessageDigest/getInstance "SHA-256")
-               (.update (.getBytes (slurp (io/resource resource-filename))))))))
-
-(def ^:private ^:const index-bootstrap-js-hash (file-hash "frontend_client/inline_js/index_bootstrap.js"))
-(def ^:private ^:const index-ganalytics-js-hash (file-hash "frontend_client/inline_js/index_ganalytics.js"))
-(def ^:private ^:const init-js-hash (file-hash "frontend_client/inline_js/init.js"))
-
 (defonce ^:private ^:const inline-js-hashes
-  (let [file-hash (fn [resource-filename]
-                    (base64-encode
-                     (.digest (doto (java.security.MessageDigest/getInstance "SHA-256")
-                                (.update (.getBytes (slurp (io/resource resource-filename))))))))]
-    (mapv file-hash [;; inline script in index.html that sets `MetabaseBootstrap` and the like
+  (letfn [(file-hash [resource-filename]
+            (base64-encode
+             (.digest (doto (MessageDigest/getInstance "SHA-256")
+                        (.update (.getBytes (slurp (io/resource resource-filename))))))))]
+    (mapv file-hash [ ;; inline script in index.html that sets `MetabaseBootstrap` and the like
                      "frontend_client/inline_js/index_bootstrap.js"
                      ;; inline script in index.html that loads Google Analytics
                      "frontend_client/inline_js/index_ganalytics.js"

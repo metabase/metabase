@@ -5,9 +5,7 @@
     "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
   },
   "testPathIgnorePatterns": ["<rootDir>/frontend/test/.*/.*.tz.unit.spec.js"],
-  "testMatch": [
-    "<rootDir>/**/*.unit.spec.js"
-  ],
+  "testMatch": ["<rootDir>/**/*.unit.spec.js"],
   "modulePaths": [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
@@ -31,5 +29,6 @@
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js",
     "/frontend/src/cljs/"
-  ]
+  ],
+  "testEnvironment": "jsdom"
 }

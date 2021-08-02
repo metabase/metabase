@@ -123,6 +123,13 @@ export const onCloseChartSettings = createAction(
   "metabase/qb/CLOSE_CHART_SETTINGS",
 );
 export const onOpenChartType = createAction("metabase/qb/OPEN_CHART_TYPE");
+export const onOpenQuestionDetails = createAction(
+  "metabase/qb/OPEN_QUESTION_DETAILS",
+);
+export const onCloseQuestionDetails = createAction(
+  "metabase/qb/CLOSE_QUESTION_DETAILS",
+);
+
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
@@ -721,10 +728,26 @@ export const setParameterValue = createAction(
   },
 );
 
+// refetches the card without triggering a run of the card's query
+export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
+export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
+  return async (dispatch, getState) => {
+    const outdatedCard = getCard(getState());
+    const action = await dispatch(
+      Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
+    );
+
+    return Questions.HACK_getObjectFromAction(action);
+  };
+});
+
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    const outdatedCard = getState().qb.card;
+    const outdatedCard = getCard(getState());
+
+    dispatch(resetQB());
+
     const action = await dispatch(
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
     );
@@ -1333,3 +1356,14 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
+
+export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
+export const revertToRevision = createThunkAction(
+  REVERT_TO_REVISION,
+  revision => {
+    return async dispatch => {
+      await revision.revert();
+      await dispatch(reloadCard());
+    };
+  },
+);
