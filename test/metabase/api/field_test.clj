@@ -609,7 +609,8 @@
               ["977" "Fred 62"]]
              (field-api/search-values (Field (mt/id :checkins :id))
                                       (Field (mt/id :checkins :venue_name))
-                                      "Red")))))
+                                      "Red"
+                                      nil)))))
   (testing "make sure limit works"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]]
