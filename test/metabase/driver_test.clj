@@ -13,8 +13,6 @@
   (is (= true
          (driver/supports? ::test-driver :foreign-keys)))
   (is (= false
-         (driver/supports? ::test-driver :foreign-keys "dummy")))
-  (is (= false
          (driver/supports? ::test-driver :expressions)))
   (is (= false
          (driver/supports? ::test-driver :expressions 1337)))
