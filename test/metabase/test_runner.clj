@@ -7,13 +7,12 @@
             [clojure.string :as str]
             [clojure.test :as t]
             [clojure.tools.namespace.find :as ns-find]
-            eftest.report
-            eftest.report.junit
             eftest.report.pretty
             eftest.report.progress
             eftest.runner
             [environ.core :as env]
             [metabase.db :as mdb]
+            [metabase.test-runner.junit :as junit]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs))
 
@@ -33,9 +32,8 @@
 (def ^:dynamic *parallel?* nil)
 
 (defn test-var
-  "Run the tests associated with `varr`. Wraps original version in `clojure.test/test-var`.
-
-    (test-var #'my.namespace/my-test)"
+  "Run the tests associated with `varr`. Wraps original version in [[clojure.test/test-var]]. Not meant to be used
+  directly; use [[run]] below instead."
   [varr]
   (binding [*parallel?* (parallel? varr)]
     (orig-test-var varr)))
@@ -50,6 +48,8 @@
       (t/is (throw e)))))
 
 ;; wrap `with-redefs-fn` (used by `with-redefs`) so it calls `assert-test-is-not-parallel`
+;;
+;; TODO -- shouldn't this go in `metabase.test.redefs` with the other redefs?
 
 (defonce orig-with-redefs-fn with-redefs-fn)
 
@@ -59,21 +59,16 @@
 
 (alter-var-root #'with-redefs-fn (constantly new-with-redefs-fn))
 
-(def ^:dynamic *junit-reporter-context* nil)
-
 (defn- reporter []
-  (let [junit-reporter  (eftest.report/report-to-file
-                         eftest.report.junit/report
-                         "target/junit/test.xml")
+  (let [junit-reporter  (junit/junit-reporter)
         stdout-reporter (if (env/env :ci)
                           eftest.report.pretty/report
                           eftest.report.progress/report)]
-    (fn [m]
-      (let [start (System/currentTimeMillis)]
-        (binding [eftest.report/*context* *junit-reporter-context*
-                  t/*report-counters*     nil]
-          (junit-reporter m)))
-      (stdout-reporter m))))
+    ;; called once with the report map for every test that's ran, as well as a few other events like
+    ;; `:begin-test-run`.
+    (fn [test-report-map]
+      (junit-reporter test-report-map)
+      (stdout-reporter test-report-map))))
 
 (defmulti find-tests
   "Find test vars in `arg`, which can be a string directory name, symbol naming a specific namespace or test, or a
@@ -130,8 +125,10 @@
     (println "Running" (count tests) "tests")
     tests))
 
-(defn run [tests options]
-  (binding [*junit-reporter-context* (atom {})]
+(defn run
+  "Run `tests`, a collection of test vars, with options. Options are passed directly to [[eftest.runner/run-tests]]."
+  [tests options]
+  (junit/with-reporter-context
     ;; don't randomize test order for now please, thanks anyway
     (with-redefs [eftest.runner/deterministic-shuffle (fn [_ tests] tests)]
       (eftest.runner/run-tests
@@ -144,7 +141,12 @@
          :report          (reporter)}
         options)))))
 
-(defn run-tests [options]
+(defn run-tests
+  "`clojure -X` entrypoint for the test runner. `options` are passed directly to `eftest`; see
+  https://github.com/weavejester/eftest for full list of options.
+
+  To use our test runner from the REPL, use [[run]] instead."
+  [options]
   (let [summary (run (tests options) options)
         fail?   (pos? (+ (:error summary) (:fail summary)))]
     (pprint/pprint summary)
