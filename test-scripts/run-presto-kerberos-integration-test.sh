@@ -43,6 +43,13 @@ keytool -noprompt -import -alias presto-kerberos -keystore $RESOURCES_DIR/cacert
 ADDITIONAL_OPTS="SSLKeyStorePath=$RESOURCES_DIR/ssl_keystore.jks&SSLKeyStorePassword=presto\
 &SSLTrustStorePath=$RESOURCES_DIR/cacerts-with-presto-ca.jks&SSLTrustStorePassword=changeit"
 
+# Prepare dependencies; see
+# https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps#preparing-dependencies
+clojure -X:deps prep
+cd modules/drivers
+clojure -X:deps prep
+cd -
+
 # Set up the environment variables pointing to all of this, and run some tests
 DRIVERS=presto-jdbc \
 MB_ENABLE_PRESTO_JDBC_DRIVER=true \
