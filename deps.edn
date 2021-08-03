@@ -73,7 +73,7 @@
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [joda-time/joda-time  ; exclude joda time 2.3 which has outdated timezone information
                                                            org.slf4j/slf4j-api]}
-  net.sf.cssbox/cssbox                      {:mvn/version "5.0.0"               ; HTML / CSS rendering
+  net.sf.cssbox/cssbox                      {:mvn/version "4.17"                ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api]}
   org.apache.commons/commons-compress       {:mvn/version "1.21"}               ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.12.0"}             ; helper methods for working with java.lang stuff
@@ -107,7 +107,7 @@
   org.clojure/tools.namespace               {:mvn/version "1.1.0"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.6"}             ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
+  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.43.v20210629"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.5.9"}              ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "21.2.0"}             ; JavaScript engine
   org.graalvm.js/js-scriptengine            {:mvn/version "21.2.0"}
