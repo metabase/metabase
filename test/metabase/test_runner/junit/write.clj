@@ -1,5 +1,6 @@
 (ns metabase.test-runner.junit.write
-  "Logic related to writing test results for a namespace to a JUnit XML file."
+  "Logic related to writing test results for a namespace to a JUnit XML file. See
+  https://stackoverflow.com/a/9410271/1198455 for the JUnit output spec."
   (:require [clojure.java.io :as io]
             [clojure.pprint :as pp]
             [clojure.string :as str]
@@ -130,7 +131,9 @@
      {:classname  (name (ns-name (:ns result)))
       :name       (name (symbol (:var result)))
       :time       (/ (:duration-ms result) 1000.0)
-      :assertions (:assertion-count result)}
+      :assertions (:assertion-count result)
+      ;; NOCOMMIT
+      :system-out (escape-unprintable-characters "System output (testing)\nWOW")}
      (fn []
        (doseq [result (:results result)]
          (write-assertion-result! w result))))
