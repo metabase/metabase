@@ -11,7 +11,6 @@
             eftest.report.progress
             eftest.runner
             [environ.core :as env]
-            [metabase.db :as mdb]
             [metabase.test-runner.junit :as junit]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs
@@ -121,9 +120,12 @@
 (defn tests [{:keys [only]}]
   (when only
     (println "Running tests in" (pr-str only)))
-  (let [tests (with-redefs [mdb/setup-db! (fn []
-                                            (throw (ex-info "Shouldn't be setting up the app DB as a side effect of loading test namespaces!" {})))]
-                (find-tests only))]
+  (let [tests (find-tests only)
+        ;; disabled for now because loading `metabase.db` makes the test runner start a bit too slow especially when
+        ;; we're not even using the application DB. Maybe we can enable this only in CI or something
+        #_(with-redefs [mdb/setup-db! (fn []
+                                        (throw (ex-info "Shouldn't be setting up the app DB as a side effect of loading test namespaces!" {})))]
+            (find-tests only))]
     (println "Running" (count tests) "tests")
     tests))
 

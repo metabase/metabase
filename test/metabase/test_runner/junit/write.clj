@@ -3,10 +3,9 @@
   (:require [clojure.java.io :as io]
             [clojure.pprint :as pp]
             [clojure.string :as str]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
             [pjstadig.print :as p])
-  (:import [javax.xml.stream XMLOutputFactory XMLStreamWriter]
+  (:import [java.util.concurrent Executors ThreadFactory ThreadPoolExecutor TimeUnit]
+           [javax.xml.stream XMLOutputFactory XMLStreamWriter]
            org.apache.commons.io.FileUtils))
 
 (def ^String ^:private output-dir "target/junit")
@@ -29,10 +28,15 @@
                 (format "&#%d;" (int c))
                 c))))
 
+;; this *is* duplicated with `metabase.util`, but we don't want to load that entire namespace just so we can run tests
+;; if we can help it.
+(defn- decolorize [s]
+  (some-> s (str/replace #"\[[;\d]*m" "")))
+
 (defn- decolorize-and-escape
   "Remove ANSI color escape sequences, then encode things as character entities as needed"
   ^String [s]
-  (-> s u/decolorize escape-unprintable-characters))
+  (-> s decolorize escape-unprintable-characters))
 
 (defn- print-result-description [{:keys [file line message testing-contexts], :as result}]
   (println (format "%s:%d" file line))
@@ -137,14 +141,14 @@
 
 ;; write one output file for each test namespace.
 
-(defn write-ns-result!
+(defn- write-ns-result!*
   ([{test-namespace :ns, :as result}]
    (let [filename (str (munge (ns-name (the-ns test-namespace))) ".xml")]
      (with-open [w (.createXMLStreamWriter (XMLOutputFactory/newInstance)
                                            (io/writer (io/file output-dir filename)
                                                       :encoding "UTF-8"))]
        (.writeStartDocument w)
-       (write-ns-result! w result)
+       (write-ns-result!* w result)
        (.writeEndDocument w))))
 
   ([w {test-namespace :ns, :as result}]
@@ -153,7 +157,7 @@
       w "testsuite"
       {:name      (name (ns-name test-namespace))
        :time      (/ (:duration-ms result) 1000.0)
-       :timestamp (u.date/format (:timestamp result))
+       :timestamp (str (:timestamp result))
        :tests     (:test-count result)
        :errors    (:error-count result)
        :failures  (:failure-count result)}
@@ -164,3 +168,27 @@
        (throw (ex-info (str "Error writing XML for test namespace result: " (ex-message e))
                        {:result result}
                        e))))))
+
+(defonce ^:private thread-pool (atom nil))
+
+(defn create-thread-pool! []
+  (let [[^ThreadPoolExecutor old-val] (reset-vals! thread-pool (Executors/newCachedThreadPool
+                                                                (reify ThreadFactory
+                                                                  (newThread [_ r]
+                                                                    (doto (Thread. r)
+                                                                      (.setName "JUnit XML output writer")
+                                                                      (.setDaemon true))))))]
+    (when old-val
+      (.shutdown old-val))))
+
+(defn write-ns-result! [result]
+  (let [^Callable thunk (fn []
+                          (write-ns-result!* result))]
+    (.submit ^ThreadPoolExecutor @thread-pool thunk)))
+
+(defn wait-for-writes-to-finish
+  "Wait up to 10 seconds for the thread pool that writes results to finish."
+  []
+  (.shutdown ^ThreadPoolExecutor @thread-pool)
+  (.awaitTermination ^ThreadPoolExecutor @thread-pool 10 TimeUnit/SECONDS)
+  (reset! thread-pool nil))

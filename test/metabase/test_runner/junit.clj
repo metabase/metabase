@@ -1,8 +1,6 @@
 (ns metabase.test-runner.junit
-  (:require [clojure.pprint :as pprint]
-            [clojure.test :as t]
-            [metabase.test-runner.junit.write :as write]
-            [metabase.util :as u]))
+  (:require [clojure.test :as t]
+            [metabase.test-runner.junit.write :as write]))
 
 (defmulti ^:private handle-event!*
   {:arglists '([event])}
@@ -24,20 +22,28 @@
                         {:event event}
                         e))))))
 
+;; for unknown event types (e.g. `:clojure.test.check.clojure-test/trial`) just ignore them.
+(defmethod handle-event!* :default
+  [_])
+
 (defmethod handle-event!* :begin-test-run
   [_]
-  ;; TODO clear output directory.
-  )
+  (write/clean-output-dir!)
+  (write/create-thread-pool!))
 
 (defmethod handle-event!* :summary
-  [_])
+  [_]
+  (let [start-time-ms (System/currentTimeMillis)]
+    (write/wait-for-writes-to-finish)
+    ;; NOCOMMIT
+    (println (format "\nWaited %d ms for JUnit writes to finish." (- (System/currentTimeMillis) start-time-ms)))))
 
 (defmethod handle-event!* :begin-test-ns
   [{test-ns :ns}]
   (alter-meta!
    test-ns assoc ::context
    {:start-time-ms   (System/currentTimeMillis)
-    :timestamp       (java-time/offset-date-time)
+    :timestamp       (java.time.OffsetDateTime/now)
     :test-count      0
     :error-count     0
     :failure-count   0
@@ -50,8 +56,7 @@
                  event
                  context
                  {:duration-ms (- (System/currentTimeMillis) (:start-time-ms context))})]
-    (u/profile "Write XML results"
-      (write/write-ns-result! result))))
+    (write/write-ns-result! result)))
 
 (defmethod handle-event!* :begin-test-var
   [{test-var :var}]
@@ -79,7 +84,7 @@
                                            ks))))
 
 (defn- record-assertion-result! [{test-var :var, :as event}]
-  (let [event (assoc event :testing-contexts t/*testing-contexts*)]
+  (let [event (assoc event :testing-contexts (vec t/*testing-contexts*))]
     (alter-meta! test-var update ::context
                  (fn [context]
                    (-> context
@@ -99,10 +104,6 @@
 (defmethod handle-event!* :error
   [{test-var :var, :as event}]
   ;; some `:error` events happen because of errors in fixture initialization and don't have associated vars/namespaces
-  (if-not test-var
-    (do
-      (println "Warning: event does not have an associated test namespace")
-      (pprint/pprint event))
-    (do
-      (inc-ns-test-counts! event :test-count :error-count)
-      (record-assertion-result! event))))
+  (when test-var
+    (inc-ns-test-counts! event :test-count :error-count)
+    (record-assertion-result! event)))
