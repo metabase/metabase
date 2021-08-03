@@ -1,4 +1,4 @@
-(ns test.bad-test-NOCOMMIT
+(ns metabase.bad-test
   (:require [clojure.test :refer :all]))
 
 (deftest failing-test
