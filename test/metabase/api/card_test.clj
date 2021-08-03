@@ -10,8 +10,8 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel
-                                     PulseChannelRecipient Table ViewLog]]
+            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview
+                                     Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
@@ -48,6 +48,7 @@
    :enable_embedding    false
    :embedding_params    nil
    :made_public_by_id   nil
+   :moderation_reviews  ()
    :public_uuid         nil
    :query_type          nil
    :cache_ttl           nil
@@ -593,7 +594,20 @@
             (is (= {:id true :email "user@test.com" :first_name "Test" :last_name "User" :timestamp true}
                    (-> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                        mt/boolean-ids-and-timestamps
-                       :last-edit-info)))))))))
+                       :last-edit-info)))))
+        (testing "Card should include moderation reviews"
+          (letfn [(clean [mr] (select-keys [mr] [:status :text])) ]
+            (mt/with-temp* [ModerationReview [review {:moderated_item_id (:id card)
+                                                      :moderated_item_type "card"
+                                                      :moderator_id (mt/user->id :rasta)
+                                                      :most_recent true
+                                                      :status "verified"
+                                                      :text "lookin good"}]]
+              (is (= [(clean review)]
+                     (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
+                          mt/boolean-ids-and-timestamps
+                          :moderation_reviews
+                          (map clean)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                UPDATING A CARD                                                 |

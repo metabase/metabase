@@ -8283,6 +8283,70 @@ databaseChangeLog:
             - sql: ALTER SEQUENCE collection_revision_id_seq RENAME TO collection_permission_graph_revision_id_seq
 
   - changeSet:
+      id: 303
+      author: tsmacdonald
+      comment: Added 0.40.0
+      changes:
+        - createTable:
+            tableName: moderation_review
+            remarks: "Reviews (from moderators) for a given question/dashboard (BUCM)"
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: "most recent modification time"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: "creation time"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(255)
+                  remarks: "verified, misleading, confusing, not_misleading, pending"
+              - column:
+                  name: text
+                  type: text
+                  remarks: "Explanation of the review"
+                  # I don't think it needs to be non-nullable
+              - column:
+                  name: moderated_item_id
+                  type: int
+                  remarks: "either a document or question ID; the item that needs review"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: moderated_item_type
+                  type: varchar(255)
+                  remarks: "whether it's a question or dashboard"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: moderator_id
+                  type: int
+                  remarks: "ID of the user who did the review"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: most_recent
+                  type: boolean
+                  remarks: "tag for most recent review"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: 304
       author: camsaul
       comment: Added 0.40.0 (replaces a data migration dating back to 0.20.0)
