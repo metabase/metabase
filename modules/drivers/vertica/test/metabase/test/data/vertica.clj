@@ -7,12 +7,12 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.files :as files]))
 

@@ -4,13 +4,9 @@ on:
   pull_request:
   push:
     branches:
-      - master
-      - 'release**'
-      - 'feature**'
-    tags:
       - '**'
     paths:
-    - '**.clj'
+    - '**.clj*'
     - '**.js'
     - '**.jsx'
     - '.github/workflows/**'
@@ -38,8 +34,8 @@ jobs:
 
     - name: Install Clojure CLI
       run: |
-        curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
-        sudo bash ./linux-install-1.10.1.708.sh
+        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+        sudo bash ./linux-install-1.10.3.933.sh
 
     - run: ./bin/i18n/update-translation-template
       name: Check i18n tags/make sure template can be built

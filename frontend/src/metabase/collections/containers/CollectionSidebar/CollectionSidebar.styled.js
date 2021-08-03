@@ -37,6 +37,11 @@ export const Sidebar = styled(Box.withComponent("aside"))`
       box-shadow: 5px 0px 8px rgba(0, 0, 0, 0.35),
         40px 0px rgba(5, 14, 31, 0.32);
       width: calc(100vw - 40px);
+
+      ${breakpointMinSmall} {
+        box-shadow: none;
+        width: ${SIDEBAR_WIDTH};
+      }
     `}
 
   ${breakpointMinSmall} {

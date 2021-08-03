@@ -11,7 +11,6 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.test.data.interface :as tx]
-            [metabase.test.data.presto-common]
             [metabase.test.data.sql :as sql.tx]))
 
 (sql.tx/add-test-extensions! :presto)

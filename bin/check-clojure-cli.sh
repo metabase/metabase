@@ -1,9 +1,7 @@
 #! /usr/bin/env bash
 
-set -eou pipefail
-
 you_need_to_upgrade() {
-    echo "Clojure CLI must be at least version 1.10.1.708. Your version is $version."
+    echo "Clojure CLI must be at least version 1.10.3.905. Your version is $version."
     echo "See https://www.clojure.org/guides/getting_started for upgrade instructions."
     exit -3
 }
@@ -24,8 +22,8 @@ check_clojure_cli() {
     elif [ "$minor_version" -eq "10" ]; then
         if [ "$patch_version" -lt "1" ]; then
             you_need_to_upgrade
-        elif [ "$patch_version" -eq "1" ]; then
-            if [ "$build_version" -lt "708" ]; then
+        elif [ "$patch_version" -eq "3" ]; then
+            if [ "$build_version" -lt "905" ]; then
                 you_need_to_upgrade
             fi
         fi

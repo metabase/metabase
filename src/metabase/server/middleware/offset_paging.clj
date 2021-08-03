@@ -3,14 +3,11 @@
             [metabase.server.middleware.security :as mw.security ]
             [metabase.util.i18n :refer [tru]]))
 
+(def ^:dynamic *limit* "Limit for offset-limit paging." nil)
 (def ^:private default-limit 50)
 
-(def ^:dynamic *limit*
-  "Limit for offset-limit paging.
-  Default set by default-limit in offset paging middleware."
-  default-limit)
-
-(def ^:dynamic *offset* "Offset for offset-limit paging. Default is no offset." 0)
+(def ^:dynamic *offset* "Offset for offset-limit paging." nil)
+(def ^:private default-offset 0)
 
 (def ^:dynamic *paged?*
   "Bool for whether a request is paged or not.
@@ -24,7 +21,7 @@
   (let [limit  (or (some-> limit Integer/parseUnsignedInt)
                    default-limit)
         offset (or (some-> offset Integer/parseUnsignedInt)
-                   0)]
+                   default-offset)]
     {:limit limit, :offset offset}))
 
 (defn- with-paging-params [request {:keys [limit offset]}]
@@ -56,7 +53,7 @@
                                  {:message (tru "Error parsing paging parameters: {0}" (ex-message e))})}))
           (let [{:keys [limit offset]} paging-params
                 request                (with-paging-params request paging-params)]
-            (binding [*limit*         limit
-                      *offset*        offset
+            (binding [*limit*  limit
+                      *offset* offset
                       *paged?* true]
               (handler request respond raise))))))))
