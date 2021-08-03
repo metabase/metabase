@@ -179,7 +179,7 @@ describeWithToken("scenarios > question > snippets", () => {
       cy.findByText("Snippet Folder").should("not.exist");
     });
 
-    it.skip("shouldn't update root permissions when changing permissions on a created folder (metabase#17268)", () => {
+    it("shouldn't update root permissions when changing permissions on a created folder (metabase#17268)", () => {
       cy.intercept("PUT", "/api/collection/graph").as("updatePermissions");
 
       openNativeEditor();
