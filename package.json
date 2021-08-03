@@ -194,7 +194,6 @@
     "build-stats": "yarn && webpack --json > stats.json",
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "build-static-viz": "yarn && webpack --config webpack.static-viz.config.js",
-    "start": "yarn build && lein ring server",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write '{enterprise/,}frontend/**/*.{js,jsx,css}'",
