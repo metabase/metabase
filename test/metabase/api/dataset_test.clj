@@ -286,7 +286,7 @@
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
 (deftest pivot-dataset-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
@@ -335,7 +335,7 @@
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
 (deftest pivot-filter-dataset-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
@@ -352,7 +352,7 @@
             (is (= [nil nil 3 7562] (last rows)))))))))
 
 (deftest pivot-parameter-dataset-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
