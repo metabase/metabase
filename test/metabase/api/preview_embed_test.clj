@@ -340,7 +340,7 @@
        "/query"))
 
 (deftest pivot-query-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "GET /api/preview_embed/pivot/card/:token/query"
         (testing "successful preview"
@@ -380,7 +380,7 @@
        "/card/" (:card_id dashcard)))
 
 (deftest pivot-card-id-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
         (testing "successful preview"

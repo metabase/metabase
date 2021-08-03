@@ -22,13 +22,15 @@
     "ga": {},
     "document": {}
   },
-  "coverageDirectory": "./",
-  "coverageReporters": ["text", "json-summary"],
+  "coverageDirectory": "./coverage",
+  "coverageReporters": ["text", "html", "lcov"],
   "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js",
-    "/frontend/src/cljs/"
+    "/frontend/src/cljs/",
+    "/frontend/src/metabase/internal/",
+    "/frontend/test/"
   ],
   "testEnvironment": "jsdom"
 }

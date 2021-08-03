@@ -1,4 +1,4 @@
-(ns cloverage
+(ns metabase.cloverage-runner
   (:require cloverage.coverage))
 
 (defn run-project [options]
