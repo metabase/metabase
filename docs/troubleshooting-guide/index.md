@@ -22,13 +22,13 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Connecting to data warehouses with Metabase][datawarehouse].
 
-- [Loading an exported application database][loadh2].
-
 - [Setting up LDAP][ldap].
 
 - [Setting up Email][email].
 
 - [Using the default H2 application database][appdb].
+
+- [Loading an exported H2 application database][loadh2].
 
 - [Handling timezones][timezones].
 
@@ -46,7 +46,7 @@ Here are some other resources to help you solve your problem or find a workaroun
 
 Metabase will log errors, both on the server and in the browser console, depending on where the error occurs, which can help you track down an issue. Administrators will have access to the server logs, and everyone with a browser can open the developer tools to see the console logs.
 
-**Accessing the Metabase server logs**: You can look for the logs that Metabase leaves on the server's file system (or wherever else you collect logs). If you're logged into Metabase with an Admin account, you can also access the logs by clicking on the **gears icon** in the top right of the main nav, selecting **Admin**, clicking on the **Troubleshooting** tab, then viewing the **Logs** tab.
+**Accessing the Metabase server logs**: You can look for the logs that Metabase leaves on the server's file system (or wherever else you collect logs). If you're logged into Metabase with an Admin account, you can also access the logs by clicking on the **gears icon** in the top right of the main nav, selecting **Admin**, clicking on the **Troubleshooting** tab, then viewing the **Logs** tab. Check out [How to read the server logs][server-logs].
 
 **Checking for Javascript console errors:** Metabase will send debugging information and errors to your browser's developer console. To open the developer console, follow the instructions for web browser:
 
@@ -92,5 +92,6 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [running]: ./running.html
 [sandbox]: ./sandboxing.html
 [safari]: https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac
+[server-logs]: ./server-logs.html
 [timezones]: ./timezones.html
 [upgrade]: ../operations-guide/upgrading-metabase.html
