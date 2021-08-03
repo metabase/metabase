@@ -424,9 +424,7 @@
   [limit offset]
   (do
     (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
-    (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")])
-    ))
-
+    (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")])))
 
 (s/defn column-will-change? :- s/Bool
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the

@@ -12,7 +12,7 @@
   :default    true
   :visibility :authenticated)
 
-(def ^:dynamic db-max-results
+(def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
   returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
   that results are truncated.

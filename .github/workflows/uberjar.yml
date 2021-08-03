@@ -3,9 +3,6 @@ name: Uberjar
 on:
   push:
     branches:
-      - master
-      - 'release-**'
-    tags:
       - '**'
     paths-ignore:
     - 'docs/**'
@@ -35,15 +32,15 @@ jobs:
         java-version: 8
     - name: Install Clojure CLI
       run: |
-        curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
-        sudo bash ./linux-install-1.10.1.708.sh
+        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+        sudo bash ./linux-install-1.10.3.933.sh
     - name: Check versions
       run: |
         echo "Node.js `node --version`"
         echo "yarn `yarn --version`"
         java -version
         echo "Clojure `clojure -e "(println (clojure-version))"`"
-        lein --version
+        clojure --help | grep Version
 
     - name: Get yarn cache
       uses: actions/cache@v2
@@ -53,12 +50,13 @@ jobs:
     - name: Get M2 cache
       uses: actions/cache@v2
       with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}-${{ hashFiles('**/deps.edn') }}
+        path: |
+          ~/.m2
+          ~/.gitlibs
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/deps.edn') }}
 
     - run: yarn install --frozen-lockfile --prefer-offline
-    - run: lein with-profile +include-all-drivers,+cloverage,+junit,+${{ matrix.edition }} deps
-    - run: ./bin/build
+    - run: MB_EDITION=${{ matrix.edition }} ./bin/build
 
     - name: Mark with the commit hash
       run:  git rev-parse --short HEAD > COMMIT-ID

@@ -1,12 +1,27 @@
-.babel_cache/*
+.babel_cache
 docs/*
 OSX/*
 target/*
+.circleci
+.cpcache
+.devcontainer
+.github
+.husky
+.lsp
+.shadow-cljs
+.github
+.git
+.vscode
+hooks/*
+test/*
+test_config/*
+test_modules/*
+test_resources/*
+node_modules
 
-**node_modules
 **metabase.jar
 
 *.db
 
-.dockerignore
 Dockerfile
+.dockerignore

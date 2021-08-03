@@ -10,8 +10,9 @@ import Button from "metabase/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
 import { isCurrency } from "metabase/lib/schema_metadata";
 import { isFK } from "metabase/lib/types";
-import currency from "metabase/lib/currency";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+
+import { currency } from "cljs/metabase.shared.util.currency";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -238,7 +239,7 @@ export class SemanticTypeAndTargetPicker extends Component {
             searchProp="name"
             searchCaseSensitive={false}
           >
-            {Object.values(currency).map(c => (
+            {currency.map(([_, c]) => (
               <Option name={c.name} value={c.code} key={c.code}>
                 <span className="flex full align-center">
                   <span>{c.name}</span>

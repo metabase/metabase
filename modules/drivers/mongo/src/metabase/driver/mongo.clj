@@ -12,7 +12,6 @@
             [metabase.driver.mongo.parameters :as parameters]
             [metabase.driver.mongo.query-processor :as qp]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
@@ -21,6 +20,7 @@
             [monger.conversion :as m.conversion]
             [monger.core :as mcore]
             [monger.db :as mdb]
+            monger.json
             [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
@@ -30,7 +30,7 @@
 
 ;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
 ;; integrations with Cheshire.
-(classloader/require 'monger.json)
+(comment monger.json/keep-me)
 
 ;; JSON Encoding (etc.)
 

@@ -68,11 +68,11 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (let [{:keys [rows cols]} (qp.test/rows-and-cols
-                                  (mt/format-rows-by [int int str]
-                                    (mt/run-mbql-query venues
-                                      {:aggregation [[:count]]
-                                       :breakout    [$category_id]
-                                       :limit       5})))]
+                                 (mt/format-rows-by [int int str]
+                                   (mt/run-mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$category_id]
+                                      :limit       5})))]
         (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Category ID")
                 (qp.test/aggregate-col :count)
                 (#'add-dim-projections/create-remapped-col "Category ID" (mt/format-name "category_id") :type/Text)]
@@ -161,14 +161,6 @@
                                     [:< $latitude 35]
                                     [:> $latitude 20]]
                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
-
-(defn- round-binning-decimals [result]
-  (let [round-to-decimal #(u/round-to-decimals 4 %)]
-    (-> result
-        (update :min_value round-to-decimal)
-        (update :max_value round-to-decimal)
-        (update-in [:binning_info :min_value] round-to-decimal)
-        (update-in [:binning_info :max_value] round-to-decimal))))
 
 (deftest binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)

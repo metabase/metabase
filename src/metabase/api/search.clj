@@ -395,7 +395,7 @@
               v))]
     (let [search-query      (full-search-query search-ctx)
           _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          reducible-results (db/reducible-query search-query :max-rows search-config/db-max-results)
+          reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
           xf                (comp
                              (filter check-permissions-for-model)
                              ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed

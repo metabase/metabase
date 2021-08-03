@@ -4,6 +4,7 @@
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
+            [metabase.api.database :as database-api]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.presto-jdbc :as presto-jdbc]
@@ -166,7 +167,7 @@
 (defn- execute-ddl! [ddl-statements]
   (mt/with-driver :presto-jdbc
     (let [jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc (:details (mt/db)))]
-      (with-open [conn (doto (jdbc/get-connection jdbc-spec))]
+      (with-open [conn (jdbc/get-connection jdbc-spec)]
         (doseq [ddl-stmt ddl-statements]
           (with-open [stmt (.prepareStatement conn ddl-stmt)]
             (.executeUpdate stmt)))))))
@@ -190,3 +191,8 @@
                    (map #(select-keys % [:name :schema :db_id]) (db/select Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
                        (format "DROP SCHEMA %s" s)])))))
+
+(deftest test-database-connection-test
+  (mt/test-driver :presto-jdbc
+    (testing "can-test-database-connection works"
+      (is (nil? (database-api/test-database-connection :presto-jdbc (:details (mt/db))))))))

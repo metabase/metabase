@@ -1,8 +1,6 @@
 (ns metabase.test.data.sqlserver
   "Code for creating / destroying a SQLServer database from a `DatabaseDefinition`."
-  (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test.data.interface :as tx]
+  (:require [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]))
 
@@ -46,13 +44,6 @@
   [_ {:keys [database-name]} {:keys [table-name]}]
   (let [db-name database-name]
     (format "IF object_id('%s.dbo.%s') IS NOT NULL DROP TABLE \"%s\".dbo.\"%s\";" db-name table-name db-name table-name)))
-
-(defn- server-spec []
-  (sql-jdbc.conn/connection-details->spec :sqlserver
-    (tx/dbdef->connection-details :sqlserver :server nil)))
-
-(defn- database-exists? [database-name]
-  (seq (jdbc/query (server-spec) (format "SELECT name FROM master.dbo.sysdatabases WHERE name = N'%s'" database-name))))
 
 (defmethod sql.tx/qualified-name-components :sqlserver
   ([_ db-name]                       [db-name])

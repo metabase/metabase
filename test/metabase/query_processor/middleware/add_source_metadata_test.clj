@@ -30,13 +30,6 @@
       (mt/run-mbql-query venues {:fields (for [id field-ids] [:field id nil])
                                  :limit  1})))))
 
-(defn- venues-source-metadata-for-field-literals
-  "Metadata we'd expect to see from a `:field` clause with a string name. The same as normal metadata, but field
-  literals don't include semantic-type info."
-  [& field-names]
-  (for [field (apply venues-source-metadata field-names)]
-    (dissoc field :semantic_type)))
-
 (deftest basic-test
   (testing "Can we automatically add source metadata to the parent level of a query? If the source query has `:fields`"
     (is (= (mt/mbql-query venues
