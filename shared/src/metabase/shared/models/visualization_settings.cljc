@@ -75,9 +75,10 @@
 (s/def ::link-text-template string?)
 
 (s/def ::column-title string?)
-(s/def ::date-style #{"M/D/YYYY" "D/M/YYYY" "YYYY/M/D" "MMMM D, YYYY" "D MMMM, YYYY" "dddd, MMMM D, YYYY"})
+(s/def ::date-style #{"M/D/YYYY" "D/M/YYYY" "YYYY/M/D" "MMMM D, YYYY" "DMMMM, YYYY" "dddd, MMMM D, YYYY"})
 (s/def ::date-abbreviate boolean?)
-(s/def ::time-style #{"HH:mm A" "h:mm" "h A"})
+(s/def ::date-separator #{"/" "-" "."})
+(s/def ::time-style #{"HH:mm" "h:mm A" "h A"})
 (s/def ::time-enabled #{nil "minutes" "seconds" "milliseconds"})
 (s/def ::decimals pos-int?)
 (s/def ::number-separators #(or nil? (and string? (= 2 (count %)))))

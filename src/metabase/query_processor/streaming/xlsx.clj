@@ -134,9 +134,9 @@
               (currency-format-string base-string format-settings)
               base-string)))]
     (str
-     (str "\"" (::mb.viz/prefix format-settings) "\"")
+     (when (::mb.viz/prefix format-settings) (str "\"" (::mb.viz/prefix format-settings) "\""))
      styled-string
-     (str "\"" (::mb.viz/suffix format-settings) "\""))))
+     (when (::mb.viz/suffix format-settings) (str "\"" (::mb.viz/suffix format-settings) "\"")))))
 
 (defn- abbreviate-date-names
   [format-settings format-string]
@@ -171,7 +171,10 @@
                              (str "H" base-time-format)
 
                              "h:mm A"
-                             (str base-time-format " AM/PM")))]
+                             (str base-time-format " AM/PM")
+
+                             "h A"
+                             "H AM/PM"))]
     (if time-format
       (str format-string ", " time-format)
       format-string)))
