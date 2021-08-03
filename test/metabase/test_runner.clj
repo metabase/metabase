@@ -95,7 +95,7 @@
 (defonce ^:private orig-test-var t/test-var)
 
 (defn run-test
-  "Run a single test `varr`. Wraps/replaces [[clojure.test/test-var]]."
+  "Run a single test `test-var`. Wraps/replaces [[clojure.test/test-var]]."
   [test-var]
   (binding [parallel/*parallel?* (parallel/parallel? test-var)]
     (orig-test-var test-var)))
