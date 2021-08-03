@@ -12,7 +12,8 @@
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.util.test :as tt]
+            [metabase.test-runner.init :as test-runner.init])
   (:import clojure.lang.ExceptionInfo
            metabase.models.user.UserInstance))
 

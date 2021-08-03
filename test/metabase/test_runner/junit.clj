@@ -33,10 +33,7 @@
 
 (defmethod handle-event!* :summary
   [_]
-  (let [start-time-ms (System/currentTimeMillis)]
-    (write/wait-for-writes-to-finish)
-    ;; NOCOMMIT
-    (println (format "\nWaited %d ms for JUnit writes to finish." (- (System/currentTimeMillis) start-time-ms)))))
+  (write/wait-for-writes-to-finish))
 
 (defmethod handle-event!* :begin-test-ns
   [{test-ns :ns}]

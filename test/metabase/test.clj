@@ -20,7 +20,8 @@
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.server.middleware.session :as mw.session]
-            metabase.test-runner
+            [metabase.test-runner.init :as test-runner.init]
+            [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.data.env :as tx.env]
@@ -241,7 +242,7 @@
 ;; TODO -- move this stuff into some other namespace and refer to it here
 
 (defn do-with-clock [clock thunk]
-  (metabase.test-runner/assert-test-is-not-parallel "with-clock")
+  (test-runner.parallel/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                   (t/clock? clock)           clock
@@ -334,6 +335,7 @@
           ;; TIMESTAMP columns (which only have second resolution by default)
           (dissoc things-in-both :created_at :updated_at)))))
    (fn [toucan-model]
+     (test-runner.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (db/resolve-model toucan-model))))
 

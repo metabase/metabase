@@ -12,6 +12,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-joins :as joins]
+            [metabase.test-runner.init :as test-runner.init]
             [metabase.test.data :as data]
             [metabase.test.data.env :as tx.env]
             [metabase.test.data.interface :as tx]
@@ -35,6 +36,9 @@
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
+  ;; Can't use `normal-drivers-with-feature` during test initialization, because it means we end up having to load
+  ;; plugins and a bunch of other nonsense.
+  (test-runner.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
   (let [features (set (cons feature more-features))]
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]

@@ -4,72 +4,26 @@
   (:require [clojure.java.classpath :as classpath]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
-            [clojure.string :as str]
-            [clojure.test :as t]
             [clojure.tools.namespace.find :as ns-find]
             eftest.report.pretty
             eftest.report.progress
             eftest.runner
             [environ.core :as env]
+            [metabase.test-runner.init :as init]
             [metabase.test-runner.junit :as junit]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs
+            [metabase.util :as u]
             [pjstadig.humane-test-output :as humane-test-output]))
 
+;; initialize Humane Test Output if it's not already initialized.
 (humane-test-output/activate!)
 
+;; Load redefinitions of stuff like `tt/with-temp` and `with-redefs` that throw an Exception when they are used inside
+;; parallel tests.
 (comment metabase.test.redefs/keep-me)
 
-(defn- parallel? [test-var]
-  (let [metta (meta test-var)]
-    (or (:parallel metta)
-        (:parallel (-> metta :ns meta)))))
-
-(def ^:private synchronized? (complement parallel?))
-
-(alter-var-root #'eftest.runner/synchronized? (constantly synchronized?))
-
-(defonce orig-test-var t/test-var)
-
-(def ^:dynamic *parallel?* nil)
-
-(defn test-var
-  "Run the tests associated with `varr`. Wraps original version in [[clojure.test/test-var]]. Not meant to be used
-  directly; use [[run]] below instead."
-  [varr]
-  (binding [*parallel?* (parallel? varr)]
-    (orig-test-var varr)))
-
-(alter-var-root #'t/test-var (constantly test-var))
-
-(defn assert-test-is-not-parallel
-  "Throw an exception if we are inside a `^:parallel` test."
-  [disallowed-message]
-  (when *parallel?*
-    (let [e (ex-info (format "%s is not allowed inside parallel tests." disallowed-message) {})]
-      (t/is (throw e)))))
-
-;; wrap `with-redefs-fn` (used by `with-redefs`) so it calls `assert-test-is-not-parallel`
-;;
-;; TODO -- shouldn't this go in `metabase.test.redefs` with the other redefs?
-
-(defonce orig-with-redefs-fn with-redefs-fn)
-
-(defn new-with-redefs-fn [& args]
-  (assert-test-is-not-parallel "with-redefs")
-  (apply orig-with-redefs-fn args))
-
-(alter-var-root #'with-redefs-fn (constantly new-with-redefs-fn))
-
-(defn- reporter []
-  (let [stdout-reporter (if (env/env :ci)
-                          eftest.report.pretty/report
-                          eftest.report.progress/report)]
-    ;; called once with the event for every test that's ran, as well as a few other events like
-    ;; `:begin-test-run` or `:summary`
-    (fn [event]
-      (junit/handle-event! event)
-      (stdout-reporter event))))
+;;;; Finding tests
 
 (defmulti find-tests
   "Find test vars in `arg`, which can be a string directory name, symbol naming a specific namespace or test, or a
@@ -87,12 +41,21 @@
   [dir-name]
   (find-tests (io/file dir-name)))
 
+(def ^:private excluded-directories
+  "When searching the classpath for tests (i.e., if no `:only` options were passed), don't look for tests in any
+  directories with these name (as the last path component)."
+  #{"src"
+    "test_config"
+    "resources"
+    "test_resources"
+    "resources-ee"
+    "classes"})
+
 ;; directory
 (defmethod find-tests java.io.File
   [^java.io.File file]
   (when (and (.isDirectory file)
-             (not (str/ends-with? "resources" (.getName file)))
-             (not (str/ends-with? "classes" (.getName file)))
+             (not (some (partial = (.getName file)) excluded-directories))
              (if-let [[_ driver] (re-find #"modules/drivers/([^/]+)/" (str file))]
                (contains? (tx.env/test-drivers) (keyword driver))
                true))
@@ -108,7 +71,7 @@
     ;; a actual test var e.g. `metabase.whatever-test/my-test`
     [symb]
     ;; a namespace e.g. `metabase.whatever-test`
-    (do
+    (binding [init/*test-namespace-being-loaded* symb]
       (require symb)
       (eftest.runner/find-tests symb))))
 
@@ -120,14 +83,21 @@
 (defn tests [{:keys [only]}]
   (when only
     (println "Running tests in" (pr-str only)))
-  (let [tests (find-tests only)
-        ;; disabled for now because loading `metabase.db` makes the test runner start a bit too slow especially when
-        ;; we're not even using the application DB. Maybe we can enable this only in CI or something
-        #_(with-redefs [mdb/setup-db! (fn []
-                                        (throw (ex-info "Shouldn't be setting up the app DB as a side effect of loading test namespaces!" {})))]
-            (find-tests only))]
+  (let [tests (u/profile "Find tests" (find-tests only))]
     (println "Running" (count tests) "tests")
     tests))
+
+;;;; Running tests & reporting the output
+
+(defn- reporter []
+  (let [stdout-reporter (if (env/env :ci)
+                          eftest.report.pretty/report
+                          eftest.report.progress/report)]
+    ;; called once with the event for every test that's ran, as well as a few other events like
+    ;; `:begin-test-run` or `:summary`
+    (fn [event]
+      (junit/handle-event! event)
+      (stdout-reporter event))))
 
 (defn run
   "Run `tests`, a collection of test vars, with options. Options are passed directly to [[eftest.runner/run-tests]]."
@@ -143,6 +113,8 @@
        :multithread?    false #_:vars
        :report          (reporter)}
       options))))
+
+;;;; `clojure -X` entrypoint
 
 (defn run-tests
   "`clojure -X` entrypoint for the test runner. `options` are passed directly to `eftest`; see

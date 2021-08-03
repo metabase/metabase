@@ -1588,7 +1588,7 @@
                  (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
 
 (deftest pivot-card-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/card/pivot/:card-id/query"
         (mt/with-temp Card [card (pivots/pivot-card)]

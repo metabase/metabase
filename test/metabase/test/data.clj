@@ -39,7 +39,8 @@
             [metabase.test.data.impl :as impl]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.test-runner.init :as test-runner.init]))
 
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
 
@@ -191,6 +192,7 @@
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic variable `*get-db*`, which
   can be rebound with `with-db`."
   ([]
+   (test-runner.init/assert-tests-are-not-initializing "(mt/id ...) or (data/id ...)")
    (u/the-id (db)))
 
   ([table-name]
