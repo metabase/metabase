@@ -14,30 +14,34 @@
            [org.apache.poi.ss.usermodel Cell CellType DataFormat DateUtil Sheet Workbook]
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
-(defmethod i/stream-options :xlsx
-  [_]
-  {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-   :write-keepalive-newlines? false
-   :status                    200
-   :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.xlsx\""
-                                                             (u.date/format (t/zoned-date-time)))}})
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Format string generation                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:dynamic *cell-styles*
-  "Holds the CellStyle values used within a spreadsheet so that they can be reused. Excel has a limit
-  of 64,000 cell styles in a single workbook."
-  nil)
-
-;; TODO update comment
-;; Since we can only have a limited number of styles we'll enumerate the possible styles we'll want to use. Then we'll
-;; create a bunch of delays for them that will create them if needed and bind this to `*cell-styles*`; we'll use them
-;; as needed in various `set-cell!` method impls.
-
-(def ^:private ^{:arglists '(^String [style-name])} default-format-strings
-  "Predefined cell format strings. These are used to get the corresponding predefined cell format number using
-  `BuiltinFormats/getBuiltinFormat`. See `(BuiltinFormats/getAll)` for all predefined formats"
+(def ^:private ^{:arglists '(^String [style-name])} default-datetime-format-strings
+  "Default format strings to use for datetime fields if custom viz settings are not provided."
   {:date     "MMMM D, YYYY"
    :datetime "MMMM D, YYYY, H:MM AM/PM"
    :time     "H:MM AM/PM"})
+
+(def ^:private number-setting-keys
+  "If any of these settings are present, we should format the column as a number."
+  #{::mb.viz/number-style
+    ::mb.viz/currency
+    ::mb.viz/currency-style
+    ::mb.viz/currency-in-header
+    ::mb.viz/decimals
+    ::mb.viz/scale
+    ::mb.viz/prefix
+    ::mb.viz/suffix})
+
+(def ^:private datetime-setting-keys
+  "If any of these settings are present, we should format the column as a date and/or time."
+  #{::mb.viz/date-style
+    ::mb.viz/date-separator
+    ::mb.viz/date-abbreviate
+    ::mb.viz/time-enabled
+    ::mb.viz/time-style})
 
 (defn- currency-identifier
   "Given the format settings for a currency column, returns the symbol, code or name for the
@@ -74,25 +78,6 @@
 
       "name"
       (str base-string "\" " currency-identifier "\""))))
-
-(def ^:private number-viz-settings
-  "If any of these settings are present, we should format the column as a number."
-  #{::mb.viz/number-style
-    ::mb.viz/currency
-    ::mb.viz/currency-style
-    ::mb.viz/currency-in-header
-    ::mb.viz/decimals
-    ::mb.viz/scale
-    ::mb.viz/prefix
-    ::mb.viz/suffix})
-
-(def ^:private datetime-viz-settings
-  "If any of these settings are present, we should format the column as a date and/or time."
-  #{::mb.viz/date-style
-    ::mb.viz/date-separator
-    ::mb.viz/date-abbreviate
-    ::mb.viz/time-enabled
-    ::mb.viz/time-style})
 
 (defn- general-number-format?
   "Use General for decimal number types that have no other format settings defined
@@ -163,6 +148,8 @@
                            "milliseconds"
                            "H:MM:SS.000"
 
+                           ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
+                           ;; defaulting to "minutes"
                            nil
                            nil)
         time-format      (when base-time-format
@@ -181,20 +168,38 @@
 
 (defn- datetime-format-string
   [format-settings]
-  (->> (::mb.viz/date-style format-settings (default-format-strings :date))
+  (->> (::mb.viz/date-style format-settings (default-datetime-format-strings :date))
        (abbreviate-date-names format-settings)
        (replace-date-separators format-settings)
        (add-time-format format-settings)))
 
 (defn- format-settings->format-string
-  "Returns a format string corresponding to the given settings."
+  "Returns a format string for a number or datetime column corresponding to the provided format settings."
   [format-settings]
   (cond
-    (some #(contains? datetime-viz-settings %) (keys format-settings))
+    (some #(contains? datetime-setting-keys %) (keys format-settings))
     (datetime-format-string format-settings)
 
-    (some #(contains? number-viz-settings %) (keys format-settings))
+    (some #(contains? number-setting-keys %) (keys format-settings))
     (number-format-string format-settings)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             XLSX export logic                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod i/stream-options :xlsx
+  [_]
+  {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+   :write-keepalive-newlines? false
+   :status                    200
+   :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.xlsx\""
+                                                             (u.date/format (t/zoned-date-time)))}})
+
+(def ^:dynamic *cell-styles*
+  "Holds the CellStyle values used within a spreadsheet so that they can be reused. Excel has a limit
+  of 64,000 cell styles in a single workbook, so we only want to call .createCellStyle once per column,
+  not once per cell."
+  nil)
 
 (defn- filter-extra-currency-keys
   "If a column's semantic type is changed to a currency type, then changed to a non-currency
@@ -219,8 +224,8 @@
      (.setDataFormat (. data-format getFormat ^String format-string)))))
 
 (defn- column-style-delays
-  [^Workbook workbook data-format column-settings]
-  (into {} (for [[field settings] column-settings]
+  [^Workbook workbook data-format col-settings]
+  (into {} (for [[field settings] col-settings]
              (let [id-or-name    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
                    format-string (format-settings->format-string settings)]
                (when format-string
@@ -229,18 +234,23 @@
 (def ^:private cell-style-delays
   "Creates a map of column name or id -> delay, or keyword representing default -> delay. This is bound to
   `*cell-styles*` by `streaming-results-writer`. Dereffing the delay will create the style and add it to
-  the workbook if needed."
+  the workbook if needed.
+
+  Memoized so that it can be called within write-row! without re-running the logic to convert format settings
+  to format strings."
   (memoize
    (fn [^Workbook workbook cols col-settings]
      (let [data-format   (. workbook createDataFormat)
            col-settings' (filter-extra-currency-keys cols col-settings)
            col-styles    (column-style-delays workbook data-format col-settings')]
        (into col-styles
-             (for [[name-keyword format-string] (seq default-format-strings)]
+             (for [[name-keyword format-string] (seq default-datetime-format-strings)]
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
 
 (defn- cell-style
-  "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`."
+  "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`.
+
+  This is based on the equivalent multimethod in Docjure, but adapted to support Metabase viz settings."
   ^org.apache.poi.ss.usermodel.CellStyle [style-name]
   (some-> style-name *cell-styles* deref))
 
@@ -321,7 +331,7 @@
                                (json/parse-string keyword)
                                :v))))
 
-(defmethod set-cell! nil [^Cell cell _value _col]
+(defmethod set-cell! nil [^Cell cell _ _]
   (let [^String null nil]
     (when (= (.getCellType cell) CellType/FORMULA)
       (.setCellType cell CellType/BLANK))
