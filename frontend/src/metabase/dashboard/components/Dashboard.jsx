@@ -7,6 +7,7 @@ import { Box } from "grid-styled";
 import DashboardHeader from "./DashboardHeader";
 import DashboardGrid from "./DashboardGrid";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { ParametersWidgetContainer } from "./Dashboard.styled";
 import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import EmptyState from "metabase/components/EmptyState";
@@ -300,10 +301,7 @@ export default class Dashboard extends Component {
         error={error}
       >
         {() => (
-          <div
-            className="full flex flex-column full-height"
-            style={{ overflowX: "hidden" }}
-          >
+          <div className="full flex flex-column full-height">
             <header className="DashboardHeader relative z2">
               <DashboardHeader
                 {...this.props}
@@ -322,13 +320,13 @@ export default class Dashboard extends Component {
                 "flex-basis-none": isEditing || isSharing,
               })}
             >
-              <div className="flex-auto overflow-x-hidden">
+              <div className="flex-auto">
                 {!isFullscreen && parametersWidget && (
-                  <div className="wrapper flex flex-column align-start mt2 relative z2">
+                  <ParametersWidgetContainer>
                     {parametersWidget}
-                  </div>
+                  </ParametersWidgetContainer>
                 )}
-                <div className="wrapper">
+                <div className="wrapper" style={{ width: "100vw" }}>
                   {dashboard.ordered_cards.length === 0 ? (
                     <Box mt={[2, 4]} color={isNightMode ? "white" : "inherit"}>
                       <EmptyState
