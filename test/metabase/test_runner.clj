@@ -4,13 +4,16 @@
   (:require [clojure.java.classpath :as classpath]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
+            [clojure.test :as t]
             [clojure.tools.namespace.find :as ns-find]
             eftest.report.pretty
             eftest.report.progress
             eftest.runner
             [environ.core :as env]
+            [metabase.config :as config]
             [metabase.test-runner.init :as init]
             [metabase.test-runner.junit :as junit]
+            [metabase.test-runner.parallel :as parallel]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs
             [metabase.util :as u]
@@ -89,23 +92,40 @@
 
 ;;;; Running tests & reporting the output
 
-(defn- reporter []
-  (let [stdout-reporter (if (env/env :ci)
+(defonce ^:private orig-test-var t/test-var)
+
+(defn run-test
+  "Run a single test `varr`. Wraps/replaces [[clojure.test/test-var]]."
+  [test-var]
+  (binding [parallel/*parallel?* (parallel/parallel? test-var)]
+    (orig-test-var test-var)))
+
+(alter-var-root #'t/test-var (constantly run-test))
+
+(defn- reporter
+  "Create a new test reporter/event handler, a function with the signature `(handle-event event)` that gets called once
+  for every [[clojure.test]] event, including stuff like `:begin-test-run`, `:end-test-var`, and `:fail`."
+  []
+  (let [stdout-reporter (if (or (env/env :ci) config/is-dev?)
                           eftest.report.pretty/report
                           eftest.report.progress/report)]
-    ;; called once with the event for every test that's ran, as well as a few other events like
-    ;; `:begin-test-run` or `:summary`
-    (fn [event]
+    (fn handle-event [event]
       (junit/handle-event! event)
       (stdout-reporter event))))
 
 (defn run
-  "Run `tests`, a collection of test vars, with options. Options are passed directly to [[eftest.runner/run-tests]]."
-  [tests options]
+  "Run `test-vars` with `options`, which are passed directly to [[eftest.runner/run-tests]].
+
+    ;; run tests in a single namespace
+    (run (find-tests 'metabase.bad-test) nil)
+
+    ;; run tests in a directory
+    (run (find-tests \"test/metabase/query_processor_test\") nil)"
+  [test-vars options]
   ;; don't randomize test order for now please, thanks anyway
-  (with-redefs [eftest.runner/deterministic-shuffle (fn [_ tests] tests)]
+  (with-redefs [eftest.runner/deterministic-shuffle (fn [_ test-vars] test-vars)]
     (eftest.runner/run-tests
-     tests
+     test-vars
      (merge
       {:capture-output? false
        ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool

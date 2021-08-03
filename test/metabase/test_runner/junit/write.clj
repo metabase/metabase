@@ -131,9 +131,7 @@
      {:classname  (name (ns-name (:ns result)))
       :name       (name (symbol (:var result)))
       :time       (/ (:duration-ms result) 1000.0)
-      :assertions (:assertion-count result)
-      ;; NOCOMMIT
-      :system-out (escape-unprintable-characters "System output (testing)\nWOW")}
+      :assertions (:assertion-count result)}
      (fn []
        (doseq [result (:results result)]
          (write-assertion-result! w result))))

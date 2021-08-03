@@ -3,7 +3,9 @@
   (:require [clojure.test :as t]
             eftest.runner))
 
-(defn- parallel? [test-var]
+(defn parallel?
+  "Whether `test-var` can be ran in parallel with other parallel tests."
+  [test-var]
   (let [metta (meta test-var)]
     (or (:parallel metta)
         (:parallel (-> metta :ns meta)))))
@@ -12,18 +14,9 @@
 
 (alter-var-root #'eftest.runner/synchronized? (constantly synchronized?))
 
-(defonce orig-test-var t/test-var)
-
-(def ^:dynamic *parallel?* nil)
-
-(defn test-var
-  "Run the tests associated with `varr`. Wraps original version in [[clojure.test/test-var]]. Not meant to be used
-  directly; use [[run]] below instead."
-  [varr]
-  (binding [*parallel?* (parallel? varr)]
-    (orig-test-var varr)))
-
-(alter-var-root #'t/test-var (constantly test-var))
+(def ^:dynamic *parallel?*
+  "Whether test currently being ran is being ran in parallel."
+  nil)
 
 (defn assert-test-is-not-parallel
   "Throw an exception if we are inside a `^:parallel` test."
