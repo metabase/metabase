@@ -103,7 +103,7 @@
           ;; change the description in metabase while the source table comment remains the same
           (db/update-where! Table {:id (mt/id "table_with_updated_desc")}, :description "updated table description")
           ;; now sync the DB again, this should NOT overwrite the manually updated description
-          (sync-tables/sync-tables! (mt/db))
+          (sync-tables/sync-tables-and-database! (mt/db))
           (is (= #{{:name (mt/format-name "table_with_updated_desc"), :description "updated table description"}}
                  (db->tables (mt/db)))))))))
 
@@ -114,6 +114,6 @@
         ;; modify the source DB to add the comment and resync
         (driver/notify-database-updated driver/*driver* (mt/db))
         (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" "added comment"))
-        (sync-tables/sync-tables! (mt/db))
+        (sync-tables/sync-tables-and-database! (mt/db))
         (is (= #{{:name (mt/format-name "table_with_comment_after_sync"), :description "added comment"}}
                (db->tables (mt/db))))))))
