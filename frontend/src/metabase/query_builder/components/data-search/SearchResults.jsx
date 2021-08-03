@@ -18,6 +18,8 @@ const propTypes = {
   ),
 };
 
+const SEARCH_LIMIT = 1000;
+
 export function SearchResults({
   searchQuery,
   onSelect,
@@ -27,6 +29,7 @@ export function SearchResults({
   const query = {
     q: searchQuery,
     models: searchModels,
+    limit: SEARCH_LIMIT,
   };
 
   if (databaseId) {

@@ -15,6 +15,8 @@ QuestionList.propTypes = {
   hasCollections: PropTypes.bool,
 };
 
+const SEARCH_LIMIT = 1000;
+
 export function QuestionList({
   searchText,
   collectionId,
@@ -35,6 +37,7 @@ export function QuestionList({
   query = {
     ...query,
     models: "card",
+    limit: SEARCH_LIMIT,
   };
 
   return (
