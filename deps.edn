@@ -182,6 +182,7 @@
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
                  "-Duser.timezone=UTC"
+                 "-Dfile.encoding=UTF-8"
                  "-Duser.language=en"
                  ;; Exceptions that get thrown repeatedly are created without stacktraces as a performance
                  ;; optimization in newer Java versions. This makes debugging pretty hard when working on stuff
@@ -193,7 +194,7 @@
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
   {:extra-paths ["test_config"]
-   :exec-fn     test-runner/run-tests
+   :exec-fn     metabase.test-runner/run-tests
    :jvm-opts    ["-Dmb.run.mode=test"
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
@@ -209,7 +210,8 @@
   ;; clojure -M:run:ee (include EE code)
   :run
   {:main-opts ["-m" "metabase.core"]
-   :jvm-opts  ["-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
+   :jvm-opts  ["-Dmb.run.mode=dev"
+               "-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
                "-Dmb.jetty.port=3000"]}
 
   ;; alias for CI-specific options.
@@ -324,7 +326,7 @@
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage
-  {:exec-fn   cloverage/run-project
+  {:exec-fn   metabase.cloverage-runner/run-project
    :exec-args {:fail-threshold 69
                :codecov?       true
                ;; don't instrument logging forms, since they won't get executed as part of tests anyway
@@ -333,7 +335,7 @@
                [clojure.tools.logging/logf
                 clojure.tools.logging/logp]
 
-               :source-ns-path
+               :src-ns-path
                ["src" "enterprise/backend/src" "shared/src"]
 
                :test-ns-path
@@ -377,6 +379,13 @@
   ;; clojure -M:generate-automagic-dashboards-pot
   :generate-automagic-dashboards-pot
   {:main-opts ["-m" "metabase.automagic-dashboards.rules"]}
+
+  ;; Start a Network REPL (nrepl) that you can connect your editor to.
+  ;;
+  ;; clojure -M:dev:nrepl (etc.)
+  :nrepl
+  {:extra-deps {nrepl/nrepl {:mvn/version "0.8.3"}}
+   :main-opts  ["-m" "nrepl.cmdline"]}
 
   ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
   ;; on them all from a single REPL process.

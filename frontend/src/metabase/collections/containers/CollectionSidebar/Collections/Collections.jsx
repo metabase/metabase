@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import CollectionsList from "metabase/collections/components/CollectionsList";
+import CollectionsList from "./CollectionsList/CollectionsList";
 import { Box } from "grid-styled";
 
 import {
@@ -13,6 +13,7 @@ import { Container } from "./Collections.styled";
 const propTypes = {
   collectionId: PropTypes.number,
   currentUserId: PropTypes.number,
+  handleToggleMobileSidebar: PropTypes.func.isRequired,
   list: PropTypes.array,
   onClose: PropTypes.func.isRequired,
   onOpen: PropTypes.func.isRequired,
@@ -22,6 +23,7 @@ const propTypes = {
 export default function Collections({
   collectionId,
   currentUserId,
+  handleToggleMobileSidebar,
   list,
   onClose,
   onOpen,
@@ -39,6 +41,7 @@ export default function Collections({
   return (
     <Container>
       <CollectionsList
+        handleToggleMobileSidebar={handleToggleMobileSidebar}
         openCollections={openCollections}
         onClose={onClose}
         onOpen={onOpen}
@@ -49,6 +52,7 @@ export default function Collections({
 
       <Box>
         <CollectionsList
+          handleToggleMobileSidebar={handleToggleMobileSidebar}
           openCollections={openCollections}
           onClose={onClose}
           onOpen={onOpen}

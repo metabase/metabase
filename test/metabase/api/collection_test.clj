@@ -4,9 +4,9 @@
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.collection :as api-coll]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard NativeQuerySnippet PermissionsGroup
-                                     PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient
-                                     Revision User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard ModerationReview NativeQuerySnippet
+                                     PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel
+                                     PulseChannelRecipient Revision User]]
             [metabase.models.collection :as collection]
             [metabase.models.collection-test :as collection-test]
             [metabase.models.collection.graph :as graph]
@@ -329,6 +329,8 @@
   (merge {:id true, :collection_position nil}
          (when (= model "collection")
            {:authority_level nil})
+         (when (= model "card")
+           {:moderated_status nil})
          item-map))
 
 (defn- collection-item [collection-name & {:as extra-keypairs}]
@@ -343,18 +345,26 @@
 (deftest collection-items-test
   (testing "GET /api/collection/:id/items"
     (testing "check that cards are returned with the collection/items endpoint"
-      (mt/with-temp* [Collection [collection]
-                      Card       [card        {:collection_id (u/the-id collection)}]]
+      (mt/with-temp* [Collection       [collection]
+                      User             [{user-id :id} {:first_name "x" :last_name "x" :email "zzzz@example.com"}]
+                      Card             [{card-id :id :as card} {:collection_id (u/the-id collection)}]
+                      ModerationReview [_ {:moderated_item_type "card"
+                                           :moderated_item_id   card-id
+                                           :status              "verified"
+                                           :moderator_id        user-id
+                                           :most_recent         true}]]
         (is (= (mt/obj->json->obj
-                [{:id                  (u/the-id card)
+                [{:id                  card-id
                   :name                (:name card)
                   :collection_position nil
                   :display             "table"
                   :description         nil
+                  :moderated_status    "verified"
                   :favorite            false
                   :model               "card"}])
                (mt/obj->json->obj
-                (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
+                (:data (mt/user-http-request :crowberto :get 200
+                                             (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp* [Collection [collection]
                       Card       [card3        {:collection_id (u/the-id collection)}]
@@ -901,6 +911,7 @@
                  :description         nil
                  :collection_position nil
                  :display             "table"
+                 :moderated_status    nil
                  :favorite            false
                  :model               "card"}]
                (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]

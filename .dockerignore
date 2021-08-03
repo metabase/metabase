@@ -10,7 +10,6 @@ target/*
 .lsp
 .shadow-cljs
 .github
-.git
 .vscode
 hooks/*
 test/*
@@ -18,7 +17,6 @@ test_config/*
 test_modules/*
 test_resources/*
 node_modules
-
 **metabase.jar
 
 *.db

@@ -1,6 +1,6 @@
 (ns metabase.driver.impl
-  "Internal implementation functions for `metabase.driver`. These functions live in a separate namespace to reduce the
-  clutter in `metabase.driver` itself."
+  "Internal implementation functions for [[metabase.driver]]. These functions live in a separate namespace to reduce the
+  clutter in [[metabase.driver]] itself."
   (:require [clojure.tools.logging :as log]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -127,7 +127,8 @@
   Parent driver(s) to derive from. Drivers inherit method implementations from their parents similar to the way
   inheritance works in OOP. Specify multiple direct parents by passing a collection of parents.
 
-  You can add additional parents to a driver using `add-parent!` below; this is how test extensions are implemented.
+  You can add additional parents to a driver using [[metabase.driver/add-parent!]]; this is how test extensions are
+  implemented.
 
   ###### `:abstract?` (default = false)
 
@@ -136,7 +137,6 @@
   Note that because concreteness is implemented as part of our keyword hierarchy it is not currently possible to
   create an abstract driver with a concrete driver as its parent, since it would still ultimately derive from
   `::concrete`."
-  {:style/indent 1}
   [driver & {:keys [parent abstract?]}]
   {:pre [(keyword? driver)]}
   ;; no-op during compilation.
@@ -182,7 +182,7 @@
   (atom #{:metabase.driver/driver ::concrete}))
 
 (defn initialized?
-  "Has `driver` been initialized? (See `initialize!` below for a discussion of what exactly this means.)"
+  "Has `driver` been initialized? (See [[metabase.driver/initialize!]] for a discussion of what exactly this means.)"
   [driver]
   (@initialized-drivers driver))
 
@@ -190,7 +190,7 @@
 
 (defn initialize-if-needed!
   "Initialize a driver by calling executing `(init-fn driver)` if it hasn't yet been initialized. Refer to documentation
-  for `metabase.driver/initialize!` for a full explanation of what this means."
+  for [[metabase.driver/initialize!]] for a full explanation of what this means."
   [driver init-fn]
   ;; no-op during compilation
   (when-not *compile-files*

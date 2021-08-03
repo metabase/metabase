@@ -13,6 +13,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
             [metabase.models.revision :as revision]
+            [metabase.moderation :as moderation]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.util :as qputil]
@@ -33,6 +34,8 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
+;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
+(comment moderation/keep-me)
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -199,6 +202,7 @@
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
+  (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (db/delete! 'Revision :model "Card", :model_id id))
 
 (defn- result-metadata-out
