@@ -102,11 +102,25 @@
   database-id->connection-pool
   (atom {}))
 
+(defonce ^:private ^{:doc "A map of DB details hash values, keyed by Database `:id`."}
+  database-id->db-details-hashes
+  (atom {}))
+
+(defn- db-details-hash
+  "Computes a hash value for the given `database`'s `:details` map, for the purpose of determining if details changed
+  and therefore the existing connection pool needs to be invalidated."
+  [database]
+  {:pre [(or nil? (instance? (type Database) database))]}
+  (if (some? database)
+    (hash (:details database))
+    nil))
+
 (defn- set-pool!
-  "Atomically update the current connection pool for Database with `database-id`. Use this function instead of modifying
-  `database-id->connection-pool` directly because it properly closes down old pools in a thread-safe way, ensuring no
-  more than one pool is ever open for a single database."
-  [database-id pool-spec-or-nil]
+  "Atomically update the current connection pool for Database `database` with `database-id`. Use this function instead
+  of modifying database-id->connection-pool` directly because it properly closes down old pools in a thread-safe way,
+  ensuring no more than one pool is ever open for a single database. Also modifies the database-id->db-details-hashes
+  map with the hash value of the given DB's details map."
+  [database-id pool-spec-or-nil database]
   {:pre [(integer? database-id)]}
   (let [[old-id->pool] (if pool-spec-or-nil
                          (swap-vals! database-id->connection-pool assoc database-id pool-spec-or-nil)
@@ -115,12 +129,14 @@
     (when-let [old-pool-spec (get old-id->pool database-id)]
       (when-not (identical? old-pool-spec pool-spec-or-nil)
         (destroy-pool! database-id old-pool-spec))))
+  ;; update the db details hash cache with the new hash value
+  (swap! database-id->db-details-hashes assoc database-id (db-details-hash database))
   nil)
 
 (defn invalidate-pool-for-db!
   "Invalidates the connection pool for the given database by closing it and removing it from the cache."
   [database]
-  (set-pool! (u/the-id database) nil))
+  (set-pool! (u/the-id database) nil nil))
 
 (defn notify-database-updated
   "Default implementation of `driver/notify-database-updated` for JDBC SQL drivers. We are being informed that a
@@ -130,8 +146,14 @@
   (invalidate-pool-for-db! database))
 
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
-    (log/warn (u/format-color 'red (trs "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
-                                        db-id))))
+  (log/warn (u/format-color 'red (trs "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
+                                      db-id)))
+  nil)
+
+(defn- log-db-details-hash-change-msg! [db-id]
+  (log/warn (u/format-color 'yellow (trs "Hash of database {0} details changed; marking pool invalid to reopen it"
+                                          db-id)))
+  nil)
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
@@ -141,19 +163,34 @@
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
-          get-fn      (fn [db-id log-tunnel-check]
+          ;; we need the Database instance no matter what (in order to compare details hash with cached value)
+          db          (or (and (instance? (type Database) db-or-id-or-spec) db-or-id-or-spec) ; passed in
+                        (db/select-one [Database :id :engine :details] :id database-id)       ; look up by ID
+                        (throw (ex-info (tru "Database {0} does not exist." database-id)
+                                 {:status-code 404
+                                  :type        qp.error-type/invalid-query
+                                  :database-id database-id})))
+          get-fn      (fn [db-id log-invalidation?]
                         (when-let [details (get @database-id->connection-pool db-id)]
-                          (cond (nil? (:tunnel-session details))
-                                ;; no tunnel in use; valid
-                                details
-                                (ssh/ssh-tunnel-open? details)
-                                ;; tunnel in use, and open; valid
-                                details
-                                :default
-                                ;; tunnel in use, and not open; invalid
-                                (do (when log-tunnel-check
-                                      (log-ssh-tunnel-reconnect-msg! db-id))
-                                    nil))))]
+                          (cond
+                            ;; details hash changed from what is cached; invalid
+                            (let [curr-hash (get @database-id->db-details-hashes db-id)
+                                  new-hash  (db-details-hash db)]
+                              (and (some? curr-hash) (not= curr-hash new-hash)))
+                            (if log-invalidation?
+                              (log-db-details-hash-change-msg! db-id)
+                              nil)
+
+                            (nil? (:tunnel-session details)) ; no tunnel in use; valid
+                            details
+
+                            (ssh/ssh-tunnel-open? details) ; tunnel in use, and open; valid
+                            details
+
+                            :else ; tunnel in use, and not open; invalid
+                            (if log-invalidation?
+                              (log-ssh-tunnel-reconnect-msg! db-id)
+                              nil))))]
       (or
        ;; we have an existing pool for this database, so use it
        (get-fn database-id true)
@@ -166,13 +203,8 @@
           ;; check if another thread created the pool while we were waiting to acquire the lock
           (get-fn database-id false)
           ;; create a new pool and add it to our cache, then return it
-          (let [db (or (db/select-one [Database :id :engine :details] :id database-id)
-                       (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                       {:status-code 404
-                                        :type        qp.error-type/invalid-query
-                                        :database-id database-id})))]
-            (u/prog1 (create-pool! db)
-              (set-pool! database-id <>)))))))
+          (u/prog1 (create-pool! db)
+            (set-pool! database-id <> db))))))
 
     ;; already a `clojure.java.jdbc` spec map
     (map? db-or-id-or-spec)
