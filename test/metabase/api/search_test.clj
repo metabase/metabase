@@ -34,6 +34,7 @@
    :collection                 {:id false :name nil :authority_level nil}
    :collection_authority_level nil
    :collection_position        nil
+   :moderated_status           nil
    :context                    nil
    :dashboardcard_count        nil
    :favorite                   nil
