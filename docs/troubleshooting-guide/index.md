@@ -24,7 +24,7 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Setting up LDAP][ldap].
 
-- [Setting up Email][email].
+- [Setting up email][email].
 
 - [Using the default H2 application database][appdb].
 
@@ -32,17 +32,13 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Handling timezones][timezones].
 
-- [Manage data sandboxing][sandbox]
+- [Manage data sandboxing][sandbox].
 
 ## Think you found a bug?
 
 Let us know by [filing a bug report][bugs].
 
-## More troubleshooting resources
-
-Here are some other resources to help you solve your problem or find a workaround.
-
-### Metabase server and console logs
+## Metabase server and console logs
 
 Metabase will log errors, both on the server and in the browser console, depending on where the error occurs, which can help you track down an issue. Administrators will have access to the server logs, and everyone with a browser can open the developer tools to see the console logs.
 
@@ -55,19 +51,19 @@ Metabase will log errors, both on the server and in the browser console, dependi
 - [Safari][safari]
 - [Edge][edge]
 
-### Metabase tutorials 
+## Metabase tutorials 
 
 For tutorials that walk you through how to use Metabase features, check out [Learn Metabase][learn].
 
-### Metabase forum
+## Metabase forum
 
 To see if someone else has run into a similar issue, check out [our forum on Discourse][forum].
 
-### Frequently asked questions
+## Frequently asked questions
 
 For quick answers to common questions, check out our [Frequently Asked Questions][faq].
 
-### Upgrading Metabase
+## Upgrading Metabase
 
 Metabase adds new features and squashes bugs with each release. [Upgrading to the latest and greatest][upgrade] may resolve your issue. If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
 
