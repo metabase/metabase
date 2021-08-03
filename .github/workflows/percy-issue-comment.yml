@@ -72,7 +72,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}-${{ hashFiles('**/deps.edn') }}
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/deps.edn') }}
 
       - run: yarn install --frozen-lockfile --prefer-offline
       - run: ./bin/build
