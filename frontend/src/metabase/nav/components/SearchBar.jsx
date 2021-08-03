@@ -52,7 +52,7 @@ const SearchInput = styled.input`
 `;
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
-const SEARCH_LIMIT = 100;
+const SEARCH_LIMIT = 50;
 
 export default class SearchBar extends React.Component {
   state = {
