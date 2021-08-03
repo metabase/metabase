@@ -125,6 +125,13 @@
   (conj default-columns :collection_id :collection_position :dataset_query
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
+        [{:select [:status]
+          :from [:moderation_review]
+          :where [:and
+                  [:= :moderated_item_type "card"]
+                  [:= :moderated_item_id :card.id]
+                  [:= :most_recent true]]}
+         :moderated_status]
         favorite-col dashboardcard-count-col))
 
 (defmethod columns-for-model (class Dashboard)

@@ -84,6 +84,7 @@
    ;; returned for Card only
    :dashboardcard_count :integer
    :dataset_query       :text
+   :moderated_status    :text
    ;; returned for Metric and Segment
    :table_id            :integer
    :database_id         :integer
@@ -328,7 +329,7 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[k v]] (= v :text)))
                                (map first)
-                               (remove #{:collection_authority_level}))
+                               (remove #{:collection_authority_level :moderated_status}))
         case-clauses      (as-> columns-to-search <>
                                 (map (fn [col] [:like (hsql/call :lower col) match]) <>)
                                 (interleave <> (repeat 0))

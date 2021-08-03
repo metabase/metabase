@@ -216,6 +216,18 @@
         (is (= #{nil 0}
                (set (take-last 2 result))))))))
 
+(deftest verified-score-test
+  (let [score #'search/verified-score
+        item  (fn [id status] {:moderated_status status
+                               :id               id
+                               :model            "card"})
+        score (fn [items] (into [] (map :id) (reverse (sort-by score items))))]
+    (testing "verification bumps result"
+      ;; stable sort all with score 0 and then reverse to get descending rather than ascending
+      (is (= [3 2 1] (score [(item 1 nil) (item 2 nil) (item 3 nil)])))
+      ;; verified item is promoted
+      (is (= [1 3 2] (score [(item 1 "verified") (item 2 nil) (item 3 nil)]))))))
+
 (deftest recency-score-test
   (let [score    #'search/recency-score
         now      (t/offset-date-time)
