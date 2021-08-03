@@ -184,13 +184,6 @@
       1
       0)))
 
-(defn- verified-score
-  "A scorer for verified items."
-  [{:keys [moderated_status]}]
-  (if (contains? #{"verified"} moderated_status)
-    1
-    0))
-
 (defn- dashboard-count-score
   [{:keys [model dashboardcard_count]}]
   (when (= model "card")
@@ -244,9 +237,6 @@
   [{:weight 2
     :score  (pinned-score result)
     :name   "pinned"}
-   {:weight 2
-    :score  (verified-score result)
-    :name   "verified"}
    {:weight 3/2
     :score  (recency-score result)
     :name   "recency"}

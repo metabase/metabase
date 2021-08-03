@@ -10,6 +10,13 @@
     1
     0))
 
+(defn- verified-score
+  "A scorer for verified items."
+  [{:keys [moderated_status]}]
+  (if (contains? #{"verified"} moderated_status)
+    1
+    0))
+
 (def scoring-impl
   "Scoring implementation that adds score for items in official collections."
   (reify scoring/ResultScore
@@ -17,7 +24,10 @@
       (conj (scoring/score-result scoring/oss-score-impl result)
             {:weight 2
              :score  (official-collection-score result)
-             :name   "official collection score"}))))
+             :name   "official collection score"}
+            {:weight 2
+             :score  (verified-score result)
+             :name   "verified"}))))
 
 (def ee-scoring
   "Enterprise scoring of results, falling back to the open source version if enterprise is not enabled."
