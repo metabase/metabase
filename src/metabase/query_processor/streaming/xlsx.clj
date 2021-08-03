@@ -11,7 +11,7 @@
             [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [org.apache.poi.ss.usermodel Cell CellType DateUtil Sheet Workbook]
+           [org.apache.poi.ss.usermodel Cell CellType DataFormat DateUtil Sheet Workbook]
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
 (defmethod i/stream-options :xlsx
@@ -24,7 +24,7 @@
 
 (def ^:dynamic *cell-styles*
   "Holds the CellStyle values used within a spreadsheet so that they can be reused. Excel has a limit
-   of 64,000 cell styles in a single workbook."
+  of 64,000 cell styles in a single workbook."
   nil)
 
 ;; TODO update comment
@@ -142,8 +142,8 @@
   [format-settings format-string]
   (if (::mb.viz/date-abbreviate format-settings false)
     (-> format-string
-     (str/replace "MMMM" "MMM")
-     (str/replace "dddd" "ddd"))
+        (str/replace "MMMM" "MMM")
+        (str/replace "dddd" "ddd"))
     format-string))
 
 (defn- replace-date-separators
@@ -200,20 +200,20 @@
   [cols col-settings]
   (into {}
         (for [col cols]
-         (let [settings-key (if (:id col)
-                              {::mb.viz/field-id (:id col)}
-                              {::mb.viz/column-name (:name col)})
-               settings     (get col-settings settings-key)
-               is-currency? (isa? (:semantic_type col) :type/Currency)]
-           (if is-currency?
-             {settings-key settings}
-             {settings-key (dissoc settings ::mb.viz/currency)})))))
+          (let [settings-key (if (:id col)
+                               {::mb.viz/field-id (:id col)}
+                               {::mb.viz/column-name (:name col)})
+                settings     (get col-settings settings-key)
+                is-currency? (isa? (:semantic_type col) :type/Currency)]
+            (if is-currency?
+              {settings-key settings}
+              {settings-key (dissoc settings ::mb.viz/currency)})))))
 
 (defn- format-string-delay
-  [^Workbook workbook data-format format-string]
+  [^Workbook workbook ^DataFormat data-format format-string]
   (delay
    (doto (.createCellStyle workbook)
-     (.setDataFormat (. data-format getFormat format-string)))))
+     (.setDataFormat (. data-format getFormat ^String format-string)))))
 
 (defn- column-style-delays
   [^Workbook workbook data-format column-settings]
@@ -241,7 +241,9 @@
   ^org.apache.poi.ss.usermodel.CellStyle [style-name]
   (some-> style-name *cell-styles* deref))
 
-(defmulti set-cell! (fn [^Cell _cell value _id-or-name] (type value)))
+(defmulti ^:private set-cell!
+  "Sets a cell to the provided value, with an approrpiate style if necessary."
+  (fn [^Cell _cell value _id-or-name] (type value)))
 
 ;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell
 ;; styles applied that dictate how to format them
@@ -322,7 +324,11 @@
       (.setCellType cell CellType/BLANK))
     (.setCellValue cell null)))
 
-(defn add-row! [^Sheet sheet values cols col-settings]
+(defn- add-row!
+  "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
+
+  This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
+  [^Sheet sheet values cols col-settings]
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
@@ -337,8 +343,8 @@
         (set-cell! (.createCell row index) scaled-val id-or-name)))
     row))
 
-;; TODO include currency in header
 (defn- column-titles
+  "Generates the column titles that should be used in the export, taking into account viz settings."
   [ordered-cols col-settings]
   (for [col ordered-cols]
     (let [id-or-name       (or (:id col) (:name col))

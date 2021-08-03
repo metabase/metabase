@@ -91,6 +91,7 @@
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'viz-settings/update-viz-settings
+   #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
    #'large-int-id/convert-id-to-string
@@ -98,7 +99,6 @@
    #'add-default-temporal-unit/add-default-temporal-unit
    #'desugar/desugar
    #'binning/update-binning-strategy
-   #'resolve-joined-fields/resolve-joined-fields
    #'resolve-fields/resolve-fields
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
