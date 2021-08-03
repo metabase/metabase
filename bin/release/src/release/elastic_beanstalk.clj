@@ -26,6 +26,10 @@
   "Source location of the .ebextensions directory"
   (u/assert-file-exists (u/filename c/root-directory "bin" "release" "src" "release" "elastic_beanstalk" ".ebextensions")))
 
+(def ^:private eb-platform-source
+  "Source location of the .ebextensions directory"
+  (u/assert-file-exists (u/filename c/root-directory "bin" "release" "src" "release" "elastic_beanstalk" ".platform")))
+
 (def ^:private archive-temp-dir
   "Path where we'll put the contents of the ZIP file before we create it."
   "/tmp/metabase-aws-eb")
@@ -75,6 +79,8 @@
             (json/generate-string (dockerrun-json-content) {:pretty true})))
     (u/step "Copy .ebextensions"
       (u/copy-file! eb-extensions-source (u/filename archive-temp-dir ".ebextensions")))
+    (u/step "Copy .platform"
+      (u/copy-file! eb-platform-source (u/filename archive-temp-dir ".platform")))
     (u/step "Create metabase-aws-eb.zip"
       (u/delete-file-if-exists! archive-path)
       (u/sh {:dir archive-temp-dir} "zip" "--recurse-paths" archive-path ".")
