@@ -153,7 +153,7 @@
 
 (defn- add-time-format
   [format-settings format-string]
-  (let [base-time-format (condp = (::mb.viz/time-enabled format-settings)
+  (let [base-time-format (condp = (::mb.viz/time-enabled format-settings "minutes")
                            "minutes"
                            "H:MM"
 
@@ -164,19 +164,13 @@
                            "H:MM:SS.000"
 
                            nil
-                           nil
-
-                           ;; Default: minutes
-                           "H:MM")
+                           nil)
         time-format      (when base-time-format
-                           (condp = (::mb.viz/time-style format-settings)
+                           (condp = (::mb.viz/time-style format-settings "h:mm A")
                              "HH:mm"
                              (str "H" base-time-format)
 
                              "h:mm A"
-                             (str base-time-format " AM/PM")
-
-                             ;; Default: AM/PM
                              (str base-time-format " AM/PM")))]
     (if time-format
       (str format-string ", " time-format)
