@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.models.humanization :as humanization]
+            [metabase.models.database :as db-model :refer [Database]]
             [metabase.models.table :as table :refer [Table]]
             [metabase.sync.fetch-metadata :as fetch-metadata]
             [metabase.sync.interface :as i]
@@ -80,6 +81,15 @@
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
+(s/defn ^:private update-database-metadata!
+  "If there is a version in the db-metadata update the DB to have that in the DB model"
+  [database :- i/DatabaseInstance db-metadata :- i/DatabaseMetadata]
+  (log/info (trs "Found new version for DB:")
+            (:version db-metadata))
+  (db/update! Database (u/the-id database)
+              :details
+              (assoc (:details database) :version (:version db-metadata))))
+
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
 (s/defn ^:private create-or-reactivate-tables!
@@ -137,10 +147,10 @@
                         :description description))))
 
 
-(s/defn ^:private db-metadata :- #{i/DatabaseMetadataTable}
-  "Return information about `database` by calling its driver's implementation of `describe-database`."
-  [database :- i/DatabaseInstance]
-  (set (for [table (:tables (fetch-metadata/db-metadata database))
+(s/defn ^:private table-set :- #{i/DatabaseMetadataTable}
+  "Get set of tables from database metadata which aren't metabase metadata tables"
+  [db-metadata :- i/DatabaseMetadata]
+  (set (for [table (:tables db-metadata)
              :when (not (metabase-metadata/is-metabase-metadata-table? table))]
          table)))
 
@@ -152,19 +162,26 @@
               :db_id  (u/the-id database)
               :active true))))
 
-(s/defn sync-tables!
+(s/defn sync-tables-and-database!
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
-  implementation of `describe-database`."
+  implementation of `describe-database`.
+  Also syncs the database metadata taken from describe-database if there is any"
   [database :- i/DatabaseInstance]
   ;; determine what's changed between what info we have and what's in the DB
-  (let [db-metadata             (db-metadata database)
+  (let [db-metadata             (fetch-metadata/db-metadata database)
+        db-tables               (table-set db-metadata)
         our-metadata            (our-metadata database)
         strip-desc              (fn [metadata]
                                   (set (map #(dissoc % :description) metadata)))
         [new-tables old-tables] (data/diff
-                                  (strip-desc db-metadata)
+                                  (strip-desc table-set)
                                   (strip-desc our-metadata))
-        [changed-tables]        (data/diff db-metadata our-metadata)]
+        [changed-tables]        (data/diff table-set our-metadata)]
+    ;; update database metadata from database
+    (when (:version db-metadata)
+      (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+                                             (sync-util/name-for-logging database))
+        (update-database-metadata! database db-metadata))
     ;; create new tables as needed or mark them as active again
     (when (seq new-tables)
       (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
