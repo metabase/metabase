@@ -33,7 +33,7 @@ export default function Donut({ data, colors, accessors }, layout) {
           outerRadius={radius}
           innerRadius={radius - donutThickness}
           cornerRadius={2}
-          padAngle={0.001}
+          padAngle={0.02}
         >
           {pie => {
             return pie.arcs.map((arc, index) => {
