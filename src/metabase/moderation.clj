@@ -26,16 +26,23 @@
   {:batched-hydrate :moderation_reviews}
   [items]
   ;; no need to do work on empty items. Also, can have nil here due to text cards. I think this is a bug in toucan. To
-  ;; get here we are `(hydrate dashboard [:ordered_cards [:card :moderation_reviews] :series] ...)` But ordered_cards dont have to have cards. but the hydration will pass the nil card id into
-  (when-some [items (seq (keep identity items))]
-    (let [all-reviews (group-by (juxt :moderated_item_type :moderated_item_id)
-                                (db/select 'ModerationReview
-                                           :moderated_item_type "card"
-                                           :moderated_item_id [:in (map :id items)]
-                                           {:order-by [[:id :desc]]}))]
+  ;; get here we are `(hydrate dashboard [:ordered_cards [:card :moderation_reviews] :series] ...)` But ordered_cards
+  ;; dont have to have cards. but the hydration will pass the nil card id into here.  NOTE: it is important that each
+  ;; item that comes into this comes out. The nested hydration is positional, not by an id so everything that comes in
+  ;; must go out in the same order
+  (when (seq items)
+    (let [item-ids    (not-empty (keep :id items))
+          all-reviews (when item-ids
+                        (group-by (juxt :moderated_item_type :moderated_item_id)
+                                  (db/select 'ModerationReview
+                                             :moderated_item_type "card"
+                                             :moderated_item_id [:in item-ids]
+                                             {:order-by [[:id :desc]]})))]
       (for [item items]
-        (let [k ((juxt (comp keyword object->type) u/the-id) item)]
-          (assoc item :moderation_reviews (get all-reviews k ())))))))
+        (if (nil? item)
+          nil
+          (let [k ((juxt (comp keyword object->type) u/the-id) item)]
+            (assoc item :moderation_reviews (get all-reviews k ()))))))))
 
 (defn moderated-item
   "The moderated item for a given request or review"
