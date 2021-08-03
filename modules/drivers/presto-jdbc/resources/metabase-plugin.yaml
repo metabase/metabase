@@ -18,8 +18,10 @@ driver:
         - dbname
         - name: catalog
           placeholder: hive
+          display-name: Catalog
           required: false
     - name: schema
+      display-name: Schema (optional)
       required: false
     - user
     - password
