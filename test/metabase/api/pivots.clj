@@ -5,8 +5,9 @@
 ;; run these tests against Redshift (for now?)
 ;;TODO: refactor Redshift testing to support a bulk COPY or something
 ;; other than INSERT INTO statements
-(def applicable-drivers
+(defn applicable-drivers
   "Drivers that these pivot table tests should run on"
+  []
   (disj (mt/normal-drivers-with-feature :expressions :left-join) :redshift))
 
 (defn pivot-query

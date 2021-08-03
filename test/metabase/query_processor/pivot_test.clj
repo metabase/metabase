@@ -106,7 +106,7 @@
                                                             {:pivot-rows :pivot_rows, :pivot-cols :pivot_cols})))))))
 
 (deftest generate-queries-test
-  (mt/test-drivers pivot.test-utils/applicable-drivers
+  (mt/test-drivers (pivot.test-utils/applicable-drivers)
     (mt/dataset sample-dataset
       (let [request {:database   (mt/db)
                      :query      {:source-table (mt/$ids $$orders)
