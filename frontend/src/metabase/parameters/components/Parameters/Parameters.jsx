@@ -30,8 +30,10 @@ export default class Parameters extends Component {
         parameters,
         parameterValues,
       )) {
-        if (parameter.value) {
+        if (parameter.value != null) {
           queryParams[parameter.slug] = parameter.value;
+        } else if (parameter.default != null && parameter.value == null) {
+          queryParams[parameter.slug] = "";
         }
       }
 

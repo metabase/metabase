@@ -715,7 +715,14 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     const parameterValues = {};
     if (result.parameters) {
       for (const parameter of result.parameters) {
-        if (queryParams && queryParams[parameter.slug] != null) {
+        const queryParameterValue = queryParams && queryParams[parameter.slug];
+        if (
+          enableDefaultParameters &&
+          parameter.default != null &&
+          queryParameterValue === ""
+        ) {
+          parameterValues[parameter.id] = undefined;
+        } else if (queryParameterValue != null) {
           parameterValues[parameter.id] = queryParams[parameter.slug];
         } else if (enableDefaultParameters && parameter.default != null) {
           parameterValues[parameter.id] = parameter.default;
