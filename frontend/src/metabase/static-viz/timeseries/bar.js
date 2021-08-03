@@ -69,7 +69,8 @@ export default function TimeseriesBar(
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom
-        hideTicks
+        hideTicks={false}
+        numTicks={5}
         top={layout.yMax}
         tickFormat={d => new Date(d).toLocaleDateString("en")}
         scale={xAxisScale}
