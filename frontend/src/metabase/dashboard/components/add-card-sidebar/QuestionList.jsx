@@ -30,7 +30,6 @@ export function QuestionList({
   const trimmedSearchText = searchText.trim();
   const isSearching = !!trimmedSearchText;
 
-
   let query = isSearching
     ? { q: trimmedSearchText }
     : { collection: collectionId };
