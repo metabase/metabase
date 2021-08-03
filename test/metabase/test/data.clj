@@ -36,11 +36,11 @@
   (:require [clojure.test :as t]
             [colorize.core :as colorize]
             [metabase.query-processor :as qp]
+            [metabase.test-runner.init :as test-runner.init]
             [metabase.test.data.impl :as impl]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-            [metabase.util :as u]
-            [metabase.test-runner.init :as test-runner.init]))
+            [metabase.util :as u]))
 
 ;;; ------------------------------------------ Dataset-Independent Data Fns ------------------------------------------
 

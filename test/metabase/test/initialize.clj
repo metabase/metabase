@@ -52,7 +52,10 @@
 
     (initialize-if-needed! :db :web-server)"
   [& steps]
-  (test-runner.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps)))
+  ;; `:plugins` initialization is ok when loading test namespaces. Nothing else is tho (e.g. starting up the
+  ;; application DB, or starting up the web server).
+  (when-not (= steps [:plugins])
+    (test-runner.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps))))
   (doseq [step steps
           :let [step (keyword step)]]
     (when-not (@initialized step)
