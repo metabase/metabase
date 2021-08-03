@@ -224,7 +224,9 @@
                                   (Integer/parseInt port)
                                   port)))
                 (assoc :SSL ssl?)
-                (dissoc :ssl))]
+                ;; remove Metabase specific properties that are not recognized by the PrestoDB JDBC driver, which is
+                ;; very picky about properties (throwing an error if any are unrecognized)
+                (dissoc :ssl :engine :let-user-control-scheduling))]
     (jdbc-spec props)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -332,10 +334,6 @@
       (catch Throwable e
         (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
     stmt))
-
-(defmethod driver/can-connect? :presto-jdbc
-  [driver details]
-  (sql-jdbc.conn/can-connect? driver (dissoc details :engine)))
 
 (defn- ^PrestoConnection pooled-conn->presto-conn
   "Unwraps the C3P0 `pooled-conn` and returns the underlying `PrestoConnection` it holds."
