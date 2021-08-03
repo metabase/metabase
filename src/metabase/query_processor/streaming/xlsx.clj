@@ -193,6 +193,22 @@
     (some #(contains? number-viz-settings %) (keys format-settings))
     (number-format-string format-settings)))
 
+(defn- filter-extra-currency-keys
+  "If a column's semantic type is changed to a currency type, then changed to a non-currency
+  type, its settings will still include a `currency` field. So we need to remove currency fields
+  from non-currency columns to ensure that format strings are generated correctly."
+  [cols col-settings]
+  (into {}
+        (for [col cols]
+         (let [settings-key (if (:id col)
+                              {::mb.viz/field-id (:id col)}
+                              {::mb.viz/column-name (:name col)})
+               settings     (get col-settings settings-key)
+               is-currency? (isa? (:semantic_type col) :type/Currency)]
+           (if is-currency?
+             {settings-key settings}
+             {settings-key (dissoc settings ::mb.viz/currency)})))))
+
 (defn- format-string-delay
   [^Workbook workbook data-format format-string]
   (delay
@@ -212,10 +228,11 @@
   `*cell-styles*` by `streaming-results-writer`. Dereffing the delay will create the style and add it to
   the workbook if needed."
   (memoize
-   (fn [^Workbook workbook column-settings]
-     (let [data-format (. workbook createDataFormat)
-           column-styles (column-style-delays workbook data-format column-settings)]
-       (into column-styles
+   (fn [^Workbook workbook cols col-settings]
+     (let [data-format   (. workbook createDataFormat)
+           col-settings' (filter-extra-currency-keys cols col-settings)
+           col-styles    (column-style-delays workbook data-format col-settings')]
+       (into col-styles
              (for [[name-keyword format-string] (seq default-format-strings)]
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
 
@@ -347,7 +364,7 @@
                                (for [i output-order] (row-v i)))
                              row)
               col-settings (::mb.viz/column-settings viz-settings)
-              cell-styles  (cell-style-delays workbook col-settings)]
+              cell-styles  (cell-style-delays workbook ordered-cols col-settings)]
           (binding [*cell-styles* cell-styles]
             (add-row! sheet ordered-row ordered-cols col-settings))))
 
