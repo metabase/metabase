@@ -182,6 +182,7 @@
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
                  "-Duser.timezone=UTC"
+                 "-Dfile.encoding=UTF-8"
                  "-Duser.language=en"
                  ;; Exceptions that get thrown repeatedly are created without stacktraces as a performance
                  ;; optimization in newer Java versions. This makes debugging pretty hard when working on stuff
@@ -334,7 +335,7 @@
                [clojure.tools.logging/logf
                 clojure.tools.logging/logp]
 
-               :source-ns-path
+               :src-ns-path
                ["src" "enterprise/backend/src" "shared/src"]
 
                :test-ns-path
