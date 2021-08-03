@@ -187,7 +187,18 @@
   (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display [(hx/literal "card") :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp] [:mr.status :moderated_status]]
+                   [:r.timestamp :last_edit_timestamp]
+                   [{:select [:status]
+                     :from [:moderation_review]
+                     :where [:and
+                             [:= :moderated_item_type "card"]
+                             [:= :moderated_item_id :c.id]
+                             [:= :most_recent true]]
+                     ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                     ;; protecting against potential bugs
+                     :order-by [[:id :desc]]
+                     :limit 1}
+                    :moderated_status]]
        :from      [[Card :c]]
        ;; todo: should there be a flag, or a realized view?
        :left-join [[{:select [:r1.*]
@@ -200,11 +211,7 @@
                              [:= :r2.id nil]
                              [:= :r1.model (hx/literal "Card")]]} :r]
                    [:= :r.model_id :c.id]
-                   [:core_user :u] [:= :u.id :r.user_id]
-                   [:moderation_review :mr] [:and
-                                             [:= :mr.moderated_item_id :c.id]
-                                             [:= :mr.moderated_item_type "card"]
-                                             [:= :mr.most_recent true]]]
+                   [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]]}

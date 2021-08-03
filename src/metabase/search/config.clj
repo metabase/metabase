@@ -125,12 +125,16 @@
   (conj default-columns :collection_id :collection_position :dataset_query
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
-        [{:select [:status]
-          :from [:moderation_review]
-          :where [:and
+        [{:select   [:status]
+          :from     [:moderation_review]
+          :where    [:and
                   [:= :moderated_item_type "card"]
                   [:= :moderated_item_id :card.id]
-                  [:= :most_recent true]]}
+                  [:= :most_recent true]]
+          ;; order by and limit just in case a bug lets the invariant of only one most_recent is violated. we dont'
+          ;; want to error in this query
+          :order-by [[:id :desc]]
+          :limit    1}
          :moderated_status]
         favorite-col dashboardcard-count-col))
 
