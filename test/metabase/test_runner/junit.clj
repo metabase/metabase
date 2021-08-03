@@ -1,33 +1,108 @@
 (ns metabase.test-runner.junit
-  (:require [clojure.test :as t]
-            eftest.report
-            eftest.report.junit))
+  (:require [clojure.pprint :as pprint]
+            [clojure.test :as t]
+            [metabase.test-runner.junit.write :as write]
+            [metabase.util :as u]))
 
-(def ^:dynamic ^:private *reporter-context* nil)
+(defmulti ^:private handle-event!*
+  {:arglists '([event])}
+  :type)
 
-(defn do-with-reporter-context [thunk]
-  (binding [*reporter-context* (atom {})]
-    (thunk)))
+(defn handle-event! [{test-var :var, :as event}]
+  (let [test-var (or test-var
+                     (when (seq t/*testing-vars*)
+                       (last t/*testing-vars*)))
+        event    (merge
+                  {:var test-var}
+                  event
+                  (when test-var
+                    {:ns (:ns (meta test-var))}))]
+    (try
+      (handle-event!* event)
+      (catch Throwable e
+        (throw (ex-info (str "Error handling event: " (ex-message e))
+                        {:event event}
+                        e))))))
 
-(defmacro with-reporter-context
-  "Execute `body` with the context needed by the [[junit-reporter]] created and bound."
-  [& body]
-  `(do-with-reporter-context (fn [] ~@body)))
+(defmethod handle-event!* :begin-test-run
+  [_]
+  ;; TODO clear output directory.
+  )
 
-(defn junit-reporter
-  "Create a new JUnit test reporter function of the form
+(defmethod handle-event!* :summary
+  [_])
 
-    (reporter test-report-map)
+(defmethod handle-event!* :begin-test-ns
+  [{test-ns :ns}]
+  (alter-meta!
+   test-ns assoc ::context
+   {:start-time-ms   (System/currentTimeMillis)
+    :timestamp       (java-time/offset-date-time)
+    :test-count      0
+    :error-count     0
+    :failure-count   0
+    :results         []}))
 
-  To use this reporter you must bind the reporter context with [[with-reporter-context]]; this should be done outside
-  of the top-level test running loop (e.g. [[metabase.test-runner/run]])."
-  []
-  (let [reporter (eftest.report/report-to-file
-                  eftest.report.junit/report
-                  "target/junit/test.xml")]
-    ;; called once with the report map for every test that's ran, as well as a few other events like
-    ;; `:begin-test-run`.
-    (fn junit-reporter-fn [test-report-map]
-      (binding [eftest.report/*context* *reporter-context*
-                t/*report-counters*     nil]
-        (reporter test-report-map)))))
+(defmethod handle-event!* :end-test-ns
+  [{test-ns :ns, :as event}]
+  (let [context (::context (meta test-ns))
+        result  (merge
+                 event
+                 context
+                 {:duration-ms (- (System/currentTimeMillis) (:start-time-ms context))})]
+    (u/profile "Write XML results"
+      (write/write-ns-result! result))))
+
+(defmethod handle-event!* :begin-test-var
+  [{test-var :var}]
+  (alter-meta!
+   test-var assoc ::context
+   {:start-time-ms   (System/currentTimeMillis)
+    :assertion-count 0
+    :results         []}))
+
+(defmethod handle-event!* :end-test-var
+  [{test-ns :ns, test-var :var, :as event}]
+  (let [context (::context (meta test-var))
+        result  (merge
+                 event
+                 context
+                 {:duration-ms (- (System/currentTimeMillis) (:start-time-ms context))})]
+    (alter-meta! test-ns update-in [::context :results] conj result)))
+
+(defn- inc-ns-test-counts! [{test-ns :ns, :as event} & ks]
+  (alter-meta! test-ns update ::context (fn [context]
+                                          (reduce
+                                           (fn [context k]
+                                             (update context k inc))
+                                           context
+                                           ks))))
+
+(defn- record-assertion-result! [{test-var :var, :as event}]
+  (let [event (assoc event :testing-contexts t/*testing-contexts*)]
+    (alter-meta! test-var update ::context
+                 (fn [context]
+                   (-> context
+                       (update :assertion-count inc)
+                       (update :results conj event))))))
+
+(defmethod handle-event!* :pass
+  [event]
+  (inc-ns-test-counts! event :test-count)
+  (record-assertion-result! event))
+
+(defmethod handle-event!* :fail
+  [event]
+  (inc-ns-test-counts! event :test-count :failure-count)
+  (record-assertion-result! event))
+
+(defmethod handle-event!* :error
+  [{test-var :var, :as event}]
+  ;; some `:error` events happen because of errors in fixture initialization and don't have associated vars/namespaces
+  (if-not test-var
+    (do
+      (println "Warning: event does not have an associated test namespace")
+      (pprint/pprint event))
+    (do
+      (inc-ns-test-counts! event :test-count :error-count)
+      (record-assertion-result! event))))

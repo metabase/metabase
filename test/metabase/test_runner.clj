@@ -14,7 +14,10 @@
             [metabase.db :as mdb]
             [metabase.test-runner.junit :as junit]
             [metabase.test.data.env :as tx.env]
-            metabase.test.redefs))
+            metabase.test.redefs
+            [pjstadig.humane-test-output :as humane-test-output]))
+
+(humane-test-output/activate!)
 
 (comment metabase.test.redefs/keep-me)
 
@@ -60,15 +63,14 @@
 (alter-var-root #'with-redefs-fn (constantly new-with-redefs-fn))
 
 (defn- reporter []
-  (let [junit-reporter  (junit/junit-reporter)
-        stdout-reporter (if (env/env :ci)
+  (let [stdout-reporter (if (env/env :ci)
                           eftest.report.pretty/report
                           eftest.report.progress/report)]
-    ;; called once with the report map for every test that's ran, as well as a few other events like
-    ;; `:begin-test-run`.
-    (fn [test-report-map]
-      (junit-reporter test-report-map)
-      (stdout-reporter test-report-map))))
+    ;; called once with the event for every test that's ran, as well as a few other events like
+    ;; `:begin-test-run` or `:summary`
+    (fn [event]
+      (junit/handle-event! event)
+      (stdout-reporter event))))
 
 (defmulti find-tests
   "Find test vars in `arg`, which can be a string directory name, symbol naming a specific namespace or test, or a
@@ -128,18 +130,17 @@
 (defn run
   "Run `tests`, a collection of test vars, with options. Options are passed directly to [[eftest.runner/run-tests]]."
   [tests options]
-  (junit/with-reporter-context
-    ;; don't randomize test order for now please, thanks anyway
-    (with-redefs [eftest.runner/deterministic-shuffle (fn [_ tests] tests)]
-      (eftest.runner/run-tests
-       tests
-       (merge
-        {:capture-output? false
-         ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
-         ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
-         :multithread?    false #_:vars
-         :report          (reporter)}
-        options)))))
+  ;; don't randomize test order for now please, thanks anyway
+  (with-redefs [eftest.runner/deterministic-shuffle (fn [_ tests] tests)]
+    (eftest.runner/run-tests
+     tests
+     (merge
+      {:capture-output? false
+       ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
+       ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
+       :multithread?    false #_:vars
+       :report          (reporter)}
+      options))))
 
 (defn run-tests
   "`clojure -X` entrypoint for the test runner. `options` are passed directly to `eftest`; see
