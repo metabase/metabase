@@ -5,6 +5,7 @@
   --xl-width: 1540px;
 }
 
+// When converting to styled components, use FullWidthContainer
 .wrapper,
 :local(.wrapper) {
   width: 100%;

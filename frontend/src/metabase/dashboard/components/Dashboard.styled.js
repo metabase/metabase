@@ -1,28 +1,11 @@
 import styled from "styled-components";
-import {
-  breakpointMinSmall,
-  breakpointMinMedium,
-} from "metabase/styled-components/theme/media-queries";
 
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme/space";
+import { space } from "metabase/styled-components/theme";
 
-const Wrapper = styled.div`
-  margin: 10px auto 0;
-  width: 100%;
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
-  ${breakpointMinSmall} {
-    padding-left: 2em;
-    padding-right: 2em;
-  }
-
-  ${breakpointMinMedium} {
-    padding-left: 3em;
-    padding-right: 3em;
-  }
-`;
-
-export const ParametersWidgetContainer = styled(Wrapper)`
+export const ParametersWidgetContainer = styled(FullWidthContainer)`
   align-items: flex-start;
   background-color: ${color("bg-light")};
   display: flex;
