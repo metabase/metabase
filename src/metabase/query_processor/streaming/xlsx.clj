@@ -45,7 +45,7 @@
 
 (defn- currency-identifier
   "Given the format settings for a currency column, returns the symbol, code or name for the
-  approrpiate currency."
+  appropriate currency."
   [format-settings]
   (let [currency-code (::mb.viz/currency format-settings "USD")]
     (condp = (::mb.viz/currency-style format-settings "symbol")
@@ -248,14 +248,14 @@
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
 
 (defn- cell-style
-  "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`.
-
-  This is based on the equivalent multimethod in Docjure, but adapted to support Metabase viz settings."
-  ^org.apache.poi.ss.usermodel.CellStyle [style-name]
+  "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`."
+  [^org.apache.poi.ss.usermodel.CellStyle style-name]
   (some-> style-name *cell-styles* deref))
 
 (defmulti ^:private set-cell!
-  "Sets a cell to the provided value, with an approrpiate style if necessary."
+  "Sets a cell to the provided value, with an approrpiate style if necessary.
+
+  This is based on the equivalent multimethod in Docjure, but adapted to support Metabase viz settings."
   (fn [^Cell _cell value _id-or-name] (type value)))
 
 ;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell

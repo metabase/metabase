@@ -75,7 +75,7 @@
 (s/def ::link-text-template string?)
 
 (s/def ::column-title string?)
-(s/def ::date-style #{"M/D/YYYY" "D/M/YYYY" "YYYY/M/D" "MMMM D, YYYY" "DMMMM, YYYY" "dddd, MMMM D, YYYY"})
+(s/def ::date-style #{"M/D/YYYY" "D/M/YYYY" "YYYY/M/D" "MMMM D, YYYY" "D MMMM, YYYY" "dddd, MMMM D, YYYY"})
 (s/def ::date-abbreviate boolean?)
 (s/def ::date-separator #{"/" "-" "."})
 (s/def ::time-style #{"HH:mm" "h:mm A" "h A"})

@@ -2,9 +2,8 @@
   "The list of currencies, and associated metadata, used by Metabase for number formatting.")
 
 (defn supports-symbol?
-  "Currencies for which the Metabase frontend supports formatting with
-  its symbol, rather than just its code or name. This list is referenced
-  during XLSX export to achieve parity in currency formatting."
+  "Currencies for which the Metabase frontend supports formatting with its symbol, rather than just
+  its code or name. This list is referenced during XLSX export to achieve parity in currency formatting."
   [currency-code]
   (contains?
    #{:USD  ;; US dollar

@@ -276,6 +276,14 @@
                                 {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/scale 2}}}
                                 [[1.0]]))))))
 
+(deftest misc-data-types-test
+  (testing "Boolean values are exported correctly"
+    (is (= [[true] [false]]
+           (rest (xlsx-export [{:id 0, :name "Col"}] {} [[true] [false]])))))
+  (testing "nil values are exported correctly"
+    (is (= [nil]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[nil]]))))))
+
 (defrecord ^:private SampleNastyClass [^String v])
 
 (generate/add-encoder
