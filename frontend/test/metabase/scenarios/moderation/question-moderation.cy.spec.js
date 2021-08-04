@@ -6,7 +6,7 @@ describeWithToken("scenarios > saved question moderation", () => {
       restore();
       cy.signInAsAdmin();
 
-      cy.visit("/question/1");
+      cy.visit("/question/2");
     });
 
     it("should be able to verify a saved question", () => {
@@ -16,8 +16,10 @@ describeWithToken("scenarios > saved question moderation", () => {
 
       cy.findByText("You verified this").should("be.visible");
 
-      cy.findByTestId("saved-question-header-button").click();
-      cy.icon("verified").should("be.visible");
+      cy.findByPlaceholderText("Search…").type("orders{enter}");
+      cy.findByText("Orders, Count")
+        .icon("verified")
+        .should("exist");
     });
 
     it("should be able to unverify a verified saved question", () => {
@@ -57,7 +59,7 @@ describeWithToken("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see that a question has been verified", () => {
-      cy.visit(`/question/1`);
+      cy.visit("/question/1");
 
       cy.wait("@cardGet");
 
