@@ -16,7 +16,6 @@
             [metabase.test-runner.parallel :as parallel]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs
-            [metabase.util :as u]
             [pjstadig.humane-test-output :as humane-test-output]))
 
 ;; initialize Humane Test Output if it's not already initialized.
@@ -86,7 +85,7 @@
 (defn tests [{:keys [only]}]
   (when only
     (println "Running tests in" (pr-str only)))
-  (let [tests (u/profile "Find tests" (find-tests only))]
+  (let [tests (find-tests only)]
     (println "Running" (count tests) "tests")
     tests))
 
