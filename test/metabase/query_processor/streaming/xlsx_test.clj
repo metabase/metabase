@@ -170,8 +170,15 @@
 ;;; |                                               XLSX export tests                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- test-xlsx-export
-  [ordered-cols viz-settings rows parse-fn]
+(defn- parse-xlsx-result
+  [^BufferedInputStream is]
+  (let [workbook (spreadsheet/load-workbook-from-stream is)
+        sheet    (spreadsheet/select-sheet "Query result" workbook)]
+    (for [row (spreadsheet/into-seq sheet)]
+      (map spreadsheet/read-cell row))))
+
+(defn- xlsx-export
+  [ordered-cols viz-settings rows]
   (with-open [bos (ByteArrayOutputStream.)
               os  (BufferedOutputStream. bos)]
     (let [results-writer (i/streaming-results-writer :xlsx os)]
@@ -180,107 +187,89 @@
               (fn [i row] (i/write-row! results-writer row i ordered-cols viz-settings))
               rows))
       (i/finish! results-writer {}))
-    (.flush os)
     (let [bytea (.toByteArray bos)]
       (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-        (parse-fn is)))))
-
-(defn- parse-xlsx-result
-  [^BufferedInputStream is]
-  (let [workbook (spreadsheet/load-workbook-from-stream is)
-        sheet    (spreadsheet/select-sheet "Query result" workbook)]
-    (for [row (spreadsheet/into-seq sheet)]
-      (map spreadsheet/read-cell row))))
+        (parse-xlsx-result is)))))
 
 (deftest column-order-test
   (testing "Column titles are ordered correctly in the output"
     (is (= ["Col1" "Col2"]
-           (test-xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}] {}  [] #(first (parse-xlsx-result %)))))
+           (first (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}] {} []))))
     (is (= ["Col2" "Col1"]
-           (test-xlsx-export [{:id 0, :name "Col2"} {:id 1, :name "Col1"}] {}  [] #(first (parse-xlsx-result %))))))
+           (first (xlsx-export [{:id 0, :name "Col2"} {:id 1, :name "Col1"}] {} [])))))
 
   (testing "Data in each row is reordered by output-order prior to export"
     (is (= [["b" "a"] ["d" "c"]]
-           (test-xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
-                             {:output-order [1 0]}
-                             [["a" "b"] ["c" "d"]]
-                             #(rest (parse-xlsx-result %))))))
+           (rest (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
+                              {:output-order [1 0]}
+                              [["a" "b"] ["c" "d"]])))))
 
   (testing "Rows not included by index in output-order are excluded from export"
     (is (= [["b"] ["d"]]
-           (test-xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
-                             {:output-order [1]}
-                             [["a" "b"] ["c" "d"]]
-                             #(rest (parse-xlsx-result %)))))))
+           (rest (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
+                              {:output-order [1]}
+                              [["a" "b"] ["c" "d"]]))))))
+
 (deftest column-title-test
   (testing "::mb.viz/column-title precedence over :display_name, which takes precendence over :name"
     (is (= ["Display name"]
-           (test-xlsx-export [{:id 0, :display_name "Display name", :name "Name"}] {}  [] #(first (parse-xlsx-result %)))))
+           (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}] {} []))))
     (is (= ["Column title"]
-           (test-xlsx-export [{:id 0, :display_name "Display name", :name "Name"}]
-                             {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Column title"}}}
-                             []
-                             #(first (parse-xlsx-result %))))))
+           (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Column title"}}}
+                               [])))))
 
   (testing "Currency is included in column title if necessary"
     ;; Dollar symbol is included by default if semantic type of column derives from :type/Currency
     (is (= ["Col ($)"]
-           (test-xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                             {::mb.viz/column-settings {::mb.viz/field-id 0}}
-                             []
-                             #(first (parse-xlsx-result %)))))
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {::mb.viz/field-id 0}}
+                               []))))
     ;; Currency code is used if requested in viz settings
     (is (= ["Col (USD)"]
-           (test-xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                             {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                        {::mb.viz/currency "USD",
-                                                         ::mb.viz/currency-style "code"}}}
-                             []
-                             #(first (parse-xlsx-result %)))))
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                          {::mb.viz/currency "USD",
+                                                           ::mb.viz/currency-style "code"}}}
+                               []))))
     ;; Currency name is used if requested in viz settings
     (is (= ["Col (US dollars)"]
-           (test-xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                             {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                        {::mb.viz/currency "USD",
-                                                         ::mb.viz/currency-style "name"}}}
-                             []
-                             #(first (parse-xlsx-result %)))))
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                          {::mb.viz/currency "USD",
+                                                           ::mb.viz/currency-style "name"}}}
+                               []))))
     ;; Currency type from viz settings is respected
     (is (= ["Col (€)"]
-           (test-xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                             {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "EUR"}}}
-                             []
-                             #(first (parse-xlsx-result %)))))
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "EUR"}}}
+                               []))))
     ;; Falls back to code if native symbol is not supported
     (is (= ["Col (KGS)"]
-           (test-xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                             {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                        {::mb.viz/currency "KGS", ::mb.viz/currency-style "symbol"}}}
-                             []
-                             #(first (parse-xlsx-result %)))))
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                          {::mb.viz/currency "KGS", ::mb.viz/currency-style "symbol"}}}
+                               []))))
     ;; Currency not included unless semantic type of column derives from :type/Currency
     (is (= ["Col"]
-           (test-xlsx-export [{:id 0, :name "Col"}]
-                             {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "USD"}}}
-                             []
-                             #(first (parse-xlsx-result %)))))
+           (first (xlsx-export [{:id 0, :name "Col"}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "USD"}}}
+                               []))))
     ;; Currency not included if ::mb.viz/currency-in-header is false
     (is (= ["Col"]
-           (test-xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                             {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                        {::mb.viz/currency "USD",
-                                                         ::mb.viz/currency-style "code",
-                                                         ::mb.viz/currency-in-header false}}}
-                             []
-                             #(first (parse-xlsx-result %)))))))
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                          {::mb.viz/currency "USD",
+                                                           ::mb.viz/currency-style "code",
+                                                           ::mb.viz/currency-in-header false}}}
+                               []))))))
 
 (deftest scale-test
   (testing "scale is applied to data prior to export"
     (is (= [2.0]
-           (test-xlsx-export [{:id 0, :name "Col"}]
-                             {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/scale 2}}}
-                             [[1.0]]
-                             #(second (parse-xlsx-result %)))))))
+           (second (xlsx-export [{:id 0, :name "Col"}]
+                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/scale 2}}}
+                                [[1.0]]))))))
 
 (defrecord ^:private SampleNastyClass [^String v])
 
@@ -295,7 +284,6 @@
   (testing (str "Make sure that we're piggybacking off of the JSON encoding logic when encoding strange values in "
                 "XLSX (#5145, #5220, #5459)")
     (is (= ["Hello XLSX World!" "{:v \"No Encoder\"}"]
-           (test-xlsx-export [{:name "val1"} {:name "val2"}]
-                             {}
-                             [[(SampleNastyClass. "Hello XLSX World!") (AnotherNastyClass. "No Encoder")]]
-                             #(second (parse-xlsx-result %)))))))
+           (second (xlsx-export [{:name "val1"} {:name "val2"}]
+                                {}
+                                [[(SampleNastyClass. "Hello XLSX World!") (AnotherNastyClass. "No Encoder")]]))))))
