@@ -398,6 +398,19 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations})
 
+(defmulti database-supports?
+  "Does this driver and specific instance of a database support a certain `feature`?
+  (A feature is a keyword, and can be any of the ones listed above in `driver-features`.)
+
+  (supports? :mongo :set-timezone mongo-db) ; -> true"
+  {:arglists '([driver feature database])}
+  (fn [driver feature database]
+    (when-not (driver-features feature)
+      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
+    [(dispatch-on-initialized-driver driver) feature])
+  :hierarchy #'hierarchy)
+
+
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
   `driver-features`.)
@@ -411,6 +424,7 @@
   :hierarchy #'hierarchy)
 
 (defmethod supports? :default [_ _] false)
+(defmethod database-supports? :default [driver feature _] (supports? driver feature))
 
 (defmethod supports? [::driver :basic-aggregations] [_ _] true)
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
