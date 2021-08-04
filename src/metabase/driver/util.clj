@@ -76,9 +76,9 @@
 
 (defn features
   "Return a set of all features supported by `driver`."
-  [driver]
+  [driver database]
   (set (for [feature driver/driver-features
-             :when (driver/supports? driver feature)]
+             :when (driver/database-supports? driver feature database)]
          feature)))
 
 (defn available-drivers

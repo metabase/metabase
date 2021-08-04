@@ -23,7 +23,7 @@
    (dissoc (mt/object-defaults Database) :details)
    {:engine        "h2"
     :name          "test-data"
-    :features      (mapv u/qualified-name (driver.u/features :h2))
+    :features      (mapv u/qualified-name (driver.u/features :h2 nil))
     :timezone      "UTC"}))
 
 (deftest get-field-test
