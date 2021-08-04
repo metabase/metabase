@@ -69,13 +69,18 @@
 ;; a test namespace or individual test
 (defmethod find-tests clojure.lang.Symbol
   [symb]
-  (if (namespace symb)
-    ;; a actual test var e.g. `metabase.whatever-test/my-test`
-    [symb]
-    ;; a namespace e.g. `metabase.whatever-test`
-    (binding [init/*test-namespace-being-loaded* symb]
-      (require symb)
-      (eftest.runner/find-tests symb))))
+  (letfn [(load-test-namespace [ns-symb]
+            (binding [init/*test-namespace-being-loaded* ns-symb]
+              (require ns-symb)))]
+    (if-let [symbol-namespace (some-> (namespace symb) symbol)]
+      ;; a actual test var e.g. `metabase.whatever-test/my-test`
+      (do
+        (load-test-namespace symbol-namespace)
+        [(resolve symb)])
+      ;; a namespace e.g. `metabase.whatever-test`
+      (do
+        (load-test-namespace symb)
+        (eftest.runner/find-tests symb)))))
 
 ;; default -- look in all dirs on the classpath
 (defmethod find-tests nil
