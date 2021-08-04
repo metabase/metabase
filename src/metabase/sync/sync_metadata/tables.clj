@@ -178,7 +178,7 @@
                                   (strip-desc our-metadata))
         [changed-tables]        (data/diff db-tables our-metadata)]
     ;; update database metadata from database
-    (when (:version db-metadata)
+    (when (some? (:version db-metadata))
       (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
                                              (sync-util/name-for-logging database))
         (update-database-metadata! database db-metadata)))

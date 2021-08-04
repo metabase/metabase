@@ -177,8 +177,7 @@
   (with-mongo-connection [^com.mongodb.DB conn database]
     {:tables  (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))
-     :version (:version (mcore/command conn {:buildInfo 1}))
-     }))
+     :version (get (mg/command conn {:buildInfo 1}) "version")}))
 
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
