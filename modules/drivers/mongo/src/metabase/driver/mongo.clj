@@ -18,7 +18,7 @@
             [monger.collection :as mc]
             [monger.command :as cmd]
             [monger.conversion :as m.conversion]
-            [monger.core :as mcore]
+            [monger.core :as mg]
             [monger.db :as mdb]
             monger.json
             [schema.core :as s]
