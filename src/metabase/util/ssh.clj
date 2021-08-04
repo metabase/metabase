@@ -20,7 +20,7 @@
            org.apache.sshd.common.util.security.SecurityUtils
            org.apache.sshd.server.forward.AcceptAllForwardingFilter))
 
-(def ^:private default-ssh-timeout 30000)
+(def ^:private ^Long default-ssh-timeout 30000)
 
 (def ^:private ^SshClient client
   (doto (SshClient/setUpDefaultClient)
