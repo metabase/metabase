@@ -217,6 +217,11 @@
     (is (= ["Column title"]
            (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Column title"}}}
+                               []))))
+    ;; Columns can be correlated to viz settings by :name if :id is missing (e.g. for native queries)
+    (is (= ["Column title"]
+           (first (xlsx-export [{:display_name "Display name", :name "Name"}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "Name"} {::mb.viz/column-title "Column title"}}}
                                [])))))
 
   (testing "Currency is included in column title if necessary"
