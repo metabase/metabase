@@ -2,7 +2,7 @@
 
  :deps
  {common/common                   {:local/root "../common"}
-  com.github.seancorfield/depstar {:git/tag "v2.1.267", :git/sha "1a45f79"}
+  com.github.seancorfield/depstar {:mvn/version "2.1.278"}
   cheshire/cheshire               {:mvn/version "5.8.1"}
   commons-codec/commons-codec     {:mvn/version "1.14"}
   hiccup/hiccup                   {:mvn/version "1.0.5"}
