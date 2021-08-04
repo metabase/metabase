@@ -354,7 +354,12 @@ export const NUMBER_COLUMN_SETTINGS = {
         ],
       };
     },
-    default: "symbol",
+    getDefault: (column: Column, settings: ColumnSettings) => {
+      const c = settings["currency"] || "USD";
+      return getCurrency(c, "symbol") !== getCurrency(c, "code")
+        ? "symbol"
+        : "code";
+    },
     getHidden: (column: Column, settings: ColumnSettings) =>
       settings["number_style"] !== "currency",
     readDependencies: ["number_style"],
