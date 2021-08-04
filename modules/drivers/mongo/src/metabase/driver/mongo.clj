@@ -217,9 +217,10 @@
                  :native-parameters]]
   (defmethod driver/supports? [:mongo feature] [_ _] true))
 
-(defmethod driver/database-supports? [:mongo :expression] [_ _ db] (= "5" (-> (get-in db [:details :version])
-                                                                              (str/split #"\.")
-                                                                              (first))))
+(defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
+  (= "5" (-> (get-in db [:details :version])
+             (str/split #"\.")
+             (first))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
