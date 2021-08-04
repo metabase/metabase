@@ -116,22 +116,25 @@
   "Run `test-vars` with `options`, which are passed directly to [[eftest.runner/run-tests]].
 
     ;; run tests in a single namespace
-    (run (find-tests 'metabase.bad-test) nil)
+    (run (find-tests 'metabase.bad-test))
 
     ;; run tests in a directory
-    (run (find-tests \"test/metabase/query_processor_test\") nil)"
-  [test-vars options]
-  ;; don't randomize test order for now please, thanks anyway
-  (with-redefs [eftest.runner/deterministic-shuffle (fn [_ test-vars] test-vars)]
-    (eftest.runner/run-tests
-     test-vars
-     (merge
-      {:capture-output? false
-       ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
-       ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
-       :multithread?    false #_:vars
-       :report          (reporter)}
-      options))))
+    (run (find-tests \"test/metabase/query_processor_test\"))"
+  ([test-vars]
+   (run test-vars nil))
+
+  ([test-vars options]
+   ;; don't randomize test order for now please, thanks anyway
+   (with-redefs [eftest.runner/deterministic-shuffle (fn [_ test-vars] test-vars)]
+     (eftest.runner/run-tests
+      test-vars
+      (merge
+       {:capture-output? false
+        ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
+        ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
+        :multithread?    false #_:vars
+        :report          (reporter)}
+       options)))))
 
 ;;;; `clojure -X` entrypoint
 
