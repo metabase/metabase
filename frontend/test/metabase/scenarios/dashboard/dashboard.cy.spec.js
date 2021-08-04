@@ -410,7 +410,7 @@ describe("scenarios > dashboard", () => {
     assertScrollBarExists();
   });
 
-  it.only("should keep filters visible when scrolling", () => {
+  it("should keep filters visible when scrolling", () => {
     cy.createNativeQuestion({
       name: "14473",
       native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },

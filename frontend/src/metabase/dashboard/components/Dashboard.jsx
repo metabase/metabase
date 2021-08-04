@@ -322,7 +322,7 @@ export default class Dashboard extends Component {
             >
               <div className="flex-auto">
                 {!isFullscreen && parametersWidget && (
-                  <ParametersWidgetContainer>
+                  <ParametersWidgetContainer isEditing={isEditing}>
                     {parametersWidget}
                   </ParametersWidgetContainer>
                 )}
