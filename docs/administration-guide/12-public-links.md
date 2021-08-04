@@ -10,7 +10,10 @@ First things first, you'll need to go to the Admin Panel and enable public shari
 ### Enable sharing on your dashboard or saved question
 
 ![Enable sharing](images/public-links/enable-links.png)
-Next, exit the Admin Panel and go to the dashboard or question that you want to share, then click on the `Sharing and Embedding` icon in the top-right of the screen (it looks like a box with an arrow pointing up). Then click on the toggle to enable public sharing for this dashboard or question.
+
+Next, exit the Admin Panel and go to question that you want to share, then click on the `Sharing and Embedding` icon in the bottom-right of the screen (it looks like an arrow pointing up and to the right). Then click on the toggle to enable public sharing for this question.
+
+In the case of a dashboard, the button is located on the top right of the page.
 
 ### Copy, paste, and share!
 
