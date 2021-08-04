@@ -145,7 +145,8 @@
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
   (run-query-for-card-with-public-uuid-async uuid export-format (json/parse-string parameters keyword)
-                                             :constraints nil))
+                                             :constraints nil
+                                             :middleware {:format-rows? false}))
 
 
 
