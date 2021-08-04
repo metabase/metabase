@@ -9,11 +9,14 @@
 (defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
 (defmethod driver/database-supports? [::test-driver :foreign-keys] [_ _ db] (= db "dummy"))
 
+
 (deftest driver-supports?-test
   (is (= true
          (driver/supports? ::test-driver :foreign-keys)))
   (is (= false
-         (driver/supports? ::test-driver :expressions))))
+         (driver/supports? ::test-driver :expressions)))
+  (is (thrown? java.lang.Exception
+               (driver/supports? ::test-driver :some-made-up-thing))))
 
 (deftest database-supports?-test
   (is (= true
@@ -21,7 +24,9 @@
   (is (= false
          (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
   (is (= false
-         (driver/database-supports? ::test-driver :expressions "dummy"))))
+         (driver/database-supports? ::test-driver :expressions "dummy")))
+  (is (thrown? java.lang.Exception
+               (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
