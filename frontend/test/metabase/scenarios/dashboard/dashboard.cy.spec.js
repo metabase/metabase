@@ -410,6 +410,49 @@ describe("scenarios > dashboard", () => {
     assertScrollBarExists();
   });
 
+  it.only("should keep filters visible when scrolling", () => {
+    cy.createNativeQuestion({
+      name: "14473",
+      native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.createDashboard("14473D").then(({ body: { id: DASHBOARD_ID } }) => {
+        cy.log("Add 4 filters to the dashboard");
+
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            { name: "ID", slug: "id", id: "729b6456", type: "id" },
+            { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
+            {
+              name: "Category",
+              slug: "category",
+              id: "89873480",
+              type: "category",
+            },
+            {
+              name: "Category 1",
+              slug: "category_1",
+              id: "cbc045f2",
+              type: "category",
+            },
+          ],
+        });
+
+        cy.log("Add previously created question to the dashboard");
+        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+          cardId: QUESTION_ID,
+          sizeX: 10,
+          sizeY: 32,
+        });
+
+        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+
+        cy.scrollTo(0, 400);
+
+        checkFiltersAreVisible(["ID", "ID 1", "Category", "Category 1"]);
+      });
+    });
+  });
+
   it.skip("should show values of added dashboard card via search immediately (metabase#15959)", () => {
     /**
      * For the reason I don't udnerstand, I could reproduce this issue ONLY if I use these specific functions in this order:
@@ -461,5 +504,11 @@ function assertScrollBarExists() {
     cy.window()
       .its("innerWidth")
       .should("be.gte", bodyWidth);
+  });
+}
+
+function checkFiltersAreVisible(placeholders) {
+  placeholders.forEach(placeholder => {
+    cy.findByPlaceholderText(placeholder).isRenderedWithinViewport();
   });
 }
