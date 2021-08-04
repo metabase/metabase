@@ -359,7 +359,7 @@
   ;; clojure -T:build uberjar :edition :ee
   :build
   {:deps       {io.github.clojure/tools.build   {:git/tag "v0.1.6", :git/sha "5636e61"}
-                com.github.seancorfield/depstar {:tag "v2.1.267", :sha "1a45f79"}
+                com.github.seancorfield/depstar {:mvn/version "2.1.278"}
                 metabase/build.common           {:local/root "bin/common"}
                 metabase/buid-mb                {:local/root "bin/build-mb"}}
    :ns-default build}
