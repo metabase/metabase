@@ -11,13 +11,13 @@
                                                            org.clojure/clojurescript]}
   amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   bigml/histogram                           {:mvn/version "4.1.3"}              ; Histogram data structure
-  buddy/buddy-core                          {:mvn/version "1.5.0"               ; various cryptograhpic functions
+  buddy/buddy-core                          {:mvn/version "1.10.1"              ; various cryptograhpic functions
                                              :exclusions  [commons-codec/commons-codec
                                                            org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  buddy/buddy-sign                          {:mvn/version "3.0.0"}              ; JSON Web Tokens; High-Level message signing library
-  cheshire/cheshire                         {:mvn/version "5.10.0"}             ; fast JSON encoding (used by Ring JSON middleware)
-  clj-http/clj-http                         {:mvn/version "3.10.3"              ; HTTP client
+  buddy/buddy-sign                          {:mvn/version "3.4.1"}              ; JSON Web Tokens; High-Level message signing library
+  cheshire/cheshire                         {:mvn/version "5.10.1"}             ; fast JSON encoding (used by Ring JSON middleware)
+  clj-http/clj-http                         {:mvn/version "3.12.3"              ; HTTP client
                                              :exclusions  [commons-codec/commons-codec
                                                            commons-io/commons-io
                                                            slingshot/slingshot]}
@@ -39,15 +39,15 @@
   com.h2database/h2                         {:mvn/version "1.4.197"}            ; embedded SQL database
   com.taoensso/nippy                        {:mvn/version "2.14.0"}             ; Fast serialization (i.e., GZIP) library for Clojure
   commons-codec/commons-codec               {:mvn/version "1.15"}               ; Apache Commons -- useful codec util fns
-  commons-io/commons-io                     {:mvn/version "2.8.0"}              ; Apache Commons -- useful IO util fns
-  commons-validator/commons-validator       {:mvn/version "1.6"                 ; Apache Commons -- useful validation util fns
+  commons-io/commons-io                     {:mvn/version "2.11.0"}             ; Apache Commons -- useful IO util fns
+  commons-validator/commons-validator       {:mvn/version "1.7"                 ; Apache Commons -- useful validation util fns
                                              :exclusions  [commons-beanutils/commons-beanutils
                                                            commons-digester/commons-digester
                                                            commons-logging/commons-logging]}
-  compojure/compojure                       {:mvn/version "1.6.1"               ; HTTP Routing library built on Ring
+  compojure/compojure                       {:mvn/version "1.6.2"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
-  crypto-random/crypto-random               {:mvn/version "1.2.0"}              ; library for generating cryptographically secure random bytes and strings
   dk.ative/docjure                          {:mvn/version "1.14.0"              ; excel export
+  crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
   environ/environ                           {:mvn/version "1.2.0"}              ; env vars/Java properties abstraction
@@ -75,22 +75,22 @@
                                                            org.slf4j/slf4j-api]}
   net.sf.cssbox/cssbox                      {:mvn/version "4.12"                ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api]}
-  org.apache.commons/commons-compress       {:mvn/version "1.20"}               ; compression utils
-  org.apache.commons/commons-lang3          {:mvn/version "3.10"}               ; helper methods for working with java.lang stuff
-  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.13.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api        {:mvn/version "2.13.3"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core       {:mvn/version "2.13.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.13.3"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-liquibase  {:mvn/version "2.13.3"}             ; liquibase logging via log4j 2
-  org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.13.3"}             ; allows the slf4j API to work with log4j 2
+  org.apache.commons/commons-compress       {:mvn/version "1.21"}               ; compression utils
+  org.apache.commons/commons-lang3          {:mvn/version "3.12.0"}             ; helper methods for working with java.lang stuff
+  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.14.1"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api        {:mvn/version "2.14.1"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core       {:mvn/version "2.14.1"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.14.1"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-liquibase  {:mvn/version "2.14.1"}             ; liquibase logging via log4j 2
+  org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.14.1"}             ; allows the slf4j API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.0.0"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.0.0"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.sshd/sshd-core                 {:mvn/version "2.4.0"}              ; ssh tunneling and test server
-  org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.68"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
-  org.bouncycastle/bcprov-jdk15on           {:mvn/version "1.68"}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.16"}             ; LDAP client
+  org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.69"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+  org.bouncycastle/bcprov-jdk15on           {:mvn/version "1.69"}
   org.clojure/clojure                       {:mvn/version "1.10.3"}
   org.clojure/core.async                    {:mvn/version "0.4.500"
                                              :exclusions  [org.clojure/tools.reader]}
@@ -107,7 +107,7 @@
   org.clojure/tools.namespace               {:mvn/version "1.0.0"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.10"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.32.v20200930"}   ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
+  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.43.v20210629"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.5.9"}              ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "21.0.0.2"}           ; JavaScript engine
   org.graalvm.js/js-scriptengine            {:mvn/version "21.0.0.2"}
@@ -115,7 +115,7 @@
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.6.2"}              ; MySQL/MariaDB driver
   org.postgresql/postgresql                 {:mvn/version "42.2.18"}            ; Postgres driver
-  org.slf4j/slf4j-api                       {:mvn/version "1.7.30"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
+  org.slf4j/slf4j-api                       {:mvn/version "1.7.32"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.5.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
   org.yaml/snakeyaml                        {:mvn/version "1.23"}               ; YAML parser (required by liquibase)
@@ -125,9 +125,9 @@
   prismatic/schema                          {:mvn/version "1.1.12"}             ; Data schema declaration and validation library
   redux/redux                               {:mvn/version "0.1.4"}              ; Utility functions for building and composing transducers
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
-  ring/ring-core                            {:mvn/version "1.8.1"}              ; web server (Jetty wrapper)
-  ring/ring-jetty-adapter                   {:mvn/version "1.8.1"}              ; Ring adapter using Jetty webserver
-  ring/ring-json                            {:mvn/version "0.5.0"}              ; Ring middleware for reading/writing JSON automatically
+  ring/ring-core                            {:mvn/version "1.9.4"}              ; web server (Jetty wrapper)
+  ring/ring-jetty-adapter                   {:mvn/version "1.9.4"}              ; Ring adapter using Jetty webserver
+  ring/ring-json                            {:mvn/version "0.5.1"}              ; Ring middleware for reading/writing JSON automatically
   robdaemon/clojure.java-time               {:mvn/version "0.3.3-SNAPSHOT"}     ; Java 8 java.time wrapper. Fork to address #13102 - see upstream PR: https://github.com/dm3/clojure.java-time/pull/60
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
