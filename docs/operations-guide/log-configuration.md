@@ -23,7 +23,7 @@ You can set different log levels for different areas of the application, e.g.,:
     <Logger name="metabase.query-processor.async" level="DEBUG"/>
     <Logger name="com.mchange" level="ERROR"/>
 
-    <!-- Example: Add trace logging to the Metabase analysis process, which can help debugging troubles with syncing, fingerprinting and scanning -->
+    <!-- Example: Add trace logging to the Metabase analysis process, which can help debugging trouble with syncing, fingerprinting and scanning -->
     <Logger name="metabase.sync" level="TRACE"/>
 
     <Root level="WARN">
@@ -36,28 +36,10 @@ Check out [How to read the logs][read-logs].
 
 ## Using Log4j 2 with Docker
 
-When using containers, logs MUST be written into the /metabase.db directory. It's the only directory the Metabase user can write to (the user here being the one that executes the Metabase JAR inside the container).
-
 Before running the Metabase Docker image, you'll need to pass the custom `log4j.configurationFile` argument. Add a `JAVA_OPTS=-Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml` to the environment variables of the container, like this:
 
 ```
-docker run -p 3000:3000 -v $PWD/logging_config:/metabase.db -e JAVA_OPTS=-Dlog4j.configurationFile=file:///metabase.db/log4j2.xml metabase/metabase`
-```
-
-When using docker-compose:
-
-```
-metabase:
-    image: metabase/metabase:v0.37.4
-    container_name: metabase
-    hostname: metabase
-    volumes: 
-    - /dev/urandom:/dev/random:ro
-    - $PWD/logging_config:/metabase.db
-    ports:
-      - 3000:3000
-    environment: 
-      - "JAVA_OPTS=-Dlog4j.configurationFile=file:///metabase.db/log4j2.xml"
+docker run -p 3000:3000 -v $PWD/my_log4j2.xml:/tmp/my_log4j2.xml -e JAVA_OPTS=-Dlog4j.configurationFile=file:///tmp/my_log4j2.xml metabase/metabase`
 ```
 
 ## Disable emoji or colorized logging

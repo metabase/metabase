@@ -19,10 +19,10 @@ Let's unpack the log:
 - **Response time:** `46.9 ms`. The time Metabase takes to handle the request (from when Metabase receives the request until it's returned results back to the browser).
 - **Database calls:** `(17 DB calls)`. The number of query statements used, which in addition to calls to the queried data source(s), includes calls to the Metabase application database.
 - **Application database connections:** `App DB connections: 1/10`. The number of active connections, and the available pool of connections.
-- **Jetty threads:** `Jetty threads: 3/50 (4 idle, 0 queued)`. List the number of active threads, and the total pool of threads available. The `(4 idle, 0 queued)` are the spare hot threads, and the number of threads queued.
+- **Jetty threads:** `Jetty threads: 3/50 (4 idle, 0 queued)`. List the number of active threads, and the total pool of threads available. The `(4 idle, 0 queued)` are the spare hot threads, and the number of threads queued. If you find you're maxing out the number threads in your pool, check out [Metabase at scale][scale].
 - **Java threads:** `(72 total active threads)`. The total number of threads Metabase is using.
 - **Queries in flight:** `Queries in flight: 0 (0 queued)`. The number of active and queued queries across all database sources connected to Metabase. It is recommended to use the **Database info** below instead.
 - **Database info**:`h2 DB 4 connections: 0/1 (0 threads blocked)`. Shows database type, database ID, connections active/pool (and queue). This info is specific to the database related to the request (in this case a `POST` request), and not to the overall queries in flight.
 
-
 [log-level]: ../operations-guide/log-configuration.html
+[scale]: /learn/administration/metabase-at-scale.html
