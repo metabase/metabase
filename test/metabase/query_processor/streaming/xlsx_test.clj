@@ -1,12 +1,12 @@
 (ns metabase.query-processor.streaming.xlsx-test
-  (:require [clojure.test :refer :all]
-            [cheshire.generate :as generate]
+  (:require [cheshire.generate :as generate]
+            [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.query-processor.streaming.xlsx :as xlsx]
             [metabase.shared.models.visualization-settings :as mb.viz])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream]
-           com.fasterxml.jackson.core.JsonGenerator))
+  (:import com.fasterxml.jackson.core.JsonGenerator
+           [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Format string generation unit tests                                        |
