@@ -218,9 +218,11 @@
   (defmethod driver/supports? [:mongo feature] [_ _] true))
 
 (defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
-  (= "5" (some-> (get-in db [:details :version])
-                 (str/split #"\.")
-                 (first))))
+  (let [version (some-> (get-in db [:details :version])
+                        (str/split #"\.")
+                        first
+                        Integer/parseInt)]
+    (and (some? version) (<= 5 version))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
