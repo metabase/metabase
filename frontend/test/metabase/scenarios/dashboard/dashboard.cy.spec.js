@@ -12,6 +12,27 @@ import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 
+function addFiltersToDashboard(dashboardId) {
+  cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+    parameters: [
+      { name: "ID", slug: "id", id: "729b6456", type: "id" },
+      { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
+      {
+        name: "Category",
+        slug: "category",
+        id: "89873480",
+        type: "category",
+      },
+      {
+        name: "Category 1",
+        slug: "category_1",
+        id: "cbc045f2",
+        type: "category",
+      },
+    ],
+  });
+}
+
 function saveDashboard() {
   cy.findByText("Save").click();
   cy.findByText("You're editing this dashboard.").should("not.exist");
@@ -223,24 +244,7 @@ describe("scenarios > dashboard", () => {
       cy.createDashboard("14473D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add 4 filters to the dashboard");
 
-        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-          parameters: [
-            { name: "ID", slug: "id", id: "729b6456", type: "id" },
-            { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
-            {
-              name: "Category",
-              slug: "category",
-              id: "89873480",
-              type: "category",
-            },
-            {
-              name: "Category 1",
-              slug: "category_1",
-              id: "cbc045f2",
-              type: "category",
-            },
-          ],
-        });
+        addFiltersToDashboard(DASHBOARD_ID);
 
         cy.log("Add previously created question to the dashboard");
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -418,26 +422,10 @@ describe("scenarios > dashboard", () => {
       cy.createDashboard("14473D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add 4 filters to the dashboard");
 
-        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-          parameters: [
-            { name: "ID", slug: "id", id: "729b6456", type: "id" },
-            { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
-            {
-              name: "Category",
-              slug: "category",
-              id: "89873480",
-              type: "category",
-            },
-            {
-              name: "Category 1",
-              slug: "category_1",
-              id: "cbc045f2",
-              type: "category",
-            },
-          ],
-        });
+        addFiltersToDashboard(DASHBOARD_ID);
 
         cy.log("Add previously created question to the dashboard");
+
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
           cardId: QUESTION_ID,
           sizeX: 10,
