@@ -400,7 +400,9 @@
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
-  (A feature is a keyword, and can be any of the ones listed above in `driver-features`.)
+  (A feature is a keyword, and can be any of the ones listed above in `driver-features`.
+  Note that it's the same set of `driver-features` with respect to
+  both database-supports? and supports?)
 
   (supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database])}
