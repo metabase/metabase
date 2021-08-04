@@ -183,6 +183,7 @@
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
                  "-Duser.timezone=UTC"
+                 "-Dfile.encoding=UTF-8"
                  "-Duser.language=en"
                  ;; Exceptions that get thrown repeatedly are created without stacktraces as a performance
                  ;; optimization in newer Java versions. This makes debugging pretty hard when working on stuff
@@ -194,7 +195,7 @@
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
   {:extra-paths ["test_config"]
-   :exec-fn     test-runner/run-tests
+   :exec-fn     metabase.test-runner/run-tests
    :jvm-opts    ["-Dmb.run.mode=test"
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
@@ -210,7 +211,8 @@
   ;; clojure -M:run:ee (include EE code)
   :run
   {:main-opts ["-m" "metabase.core"]
-   :jvm-opts  ["-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
+   :jvm-opts  ["-Dmb.run.mode=dev"
+               "-Djava.awt.headless=true"                   ; prevent Java icon from randomly popping up in macOS dock
                "-Dmb.jetty.port=3000"]}
 
   ;; alias for CI-specific options.
@@ -325,7 +327,7 @@
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage
-  {:exec-fn   cloverage/run-project
+  {:exec-fn   metabase.cloverage-runner/run-project
    :exec-args {:fail-threshold 69
                :codecov?       true
                ;; don't instrument logging forms, since they won't get executed as part of tests anyway
@@ -334,7 +336,7 @@
                [clojure.tools.logging/logf
                 clojure.tools.logging/logp]
 
-               :source-ns-path
+               :src-ns-path
                ["src" "enterprise/backend/src" "shared/src"]
 
                :test-ns-path
@@ -358,7 +360,7 @@
   ;; clojure -T:build uberjar :edition :ee
   :build
   {:deps       {io.github.clojure/tools.build   {:git/tag "v0.1.6", :git/sha "5636e61"}
-                com.github.seancorfield/depstar {:tag "v2.1.267", :sha "1a45f79"}
+                com.github.seancorfield/depstar {:mvn/version "2.1.278"}
                 metabase/build.common           {:local/root "bin/common"}
                 metabase/buid-mb                {:local/root "bin/build-mb"}}
    :ns-default build}

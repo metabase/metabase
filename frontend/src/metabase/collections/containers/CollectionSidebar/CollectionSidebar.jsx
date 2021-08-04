@@ -74,13 +74,18 @@ class CollectionSidebar extends React.Component {
 
         <Collection.Loader id="root">
           {({ collection: root }) => (
-            <RootCollectionLink isRoot={isRoot} root={root} />
+            <RootCollectionLink
+              handleToggleMobileSidebar={handleToggleMobileSidebar}
+              isRoot={isRoot}
+              root={root}
+            />
           )}
         </Collection.Loader>
 
         <Collections
           collectionId={collectionId}
           currentUserId={currentUser.id}
+          handleToggleMobileSidebar={handleToggleMobileSidebar}
           list={list}
           onClose={this.onClose}
           onOpen={this.onOpen}
