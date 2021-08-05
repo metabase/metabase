@@ -113,7 +113,7 @@
   org.graalvm.js/js-scriptengine            {:mvn/version "21.2.0"}
   org.liquibase/liquibase-core              {:mvn/version "3.6.3"               ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
-  org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.3"}              ; MySQL/MariaDB driver
+  org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.6.2"}              ; MySQL/MariaDB driver
   org.postgresql/postgresql                 {:mvn/version "42.2.23"}            ; Postgres driver
   org.slf4j/slf4j-api                       {:mvn/version "1.7.32"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
