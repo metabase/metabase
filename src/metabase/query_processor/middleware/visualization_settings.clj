@@ -29,7 +29,7 @@
         (mb.viz/db->norm (db/select-one-field :visualization_settings Card :id card-id)))))
 
 (def ^:private non-api-export-contexts
-  #{:json-download :csv-download :xlsx-download})
+  #{:json-download :csv-download :xlsx-download :embedded-question})
 
 (defn update-viz-settings
   "Middleware for fetching and processing a table's visualization settings so that they can be incorporated
