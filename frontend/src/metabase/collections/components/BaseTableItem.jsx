@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import moment from "moment";
 
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import { color } from "metabase/lib/colors";
 
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
@@ -17,6 +18,8 @@ import {
   ItemLink,
   TableItemSecondaryField,
 } from "./BaseItemsTable.styled";
+
+const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
 BaseTableItem.propTypes = {
   item: PropTypes.object,
@@ -99,6 +102,7 @@ export function BaseTableItem({
         <td data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} />
+            <ModerationStatusIcon status={item.moderated_status} />
           </ItemLink>
         </td>
         <td data-testid={`${testId}-last-edited-by`}>
