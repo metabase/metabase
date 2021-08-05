@@ -33,27 +33,6 @@ To learn more about these features, please read the articles listed below. If yo
 
 **How to fix this:** Tools like Excel can automatically update formulas when cell values are moved around in a spreadsheet, but databases schemas are much more complicated, so Metabase does not automatically update the names of columns used in questions when the underlying database changes. If the schema has changed, you must update your questions and filters to match.
 
-## My filter does not work when I embed my question
-
-**How to detect this:** A SQL question with a filter works correctly in Metabase itself, but the filter has no effect when the question is embedded via public sharing. For example, the question is `select {% raw %}{{filter}}{% endraw %}`, and filling in a constant value such as `1` works when the question is in Metabase, but is removed when the question is embedded in a web page using an iframe.
-
-**How to fix this:** Signed embedding must be used to pass filter settings to embedded questions.
-
-Depending on the programming language, you must ensure that an empty set of parameters is passed as an object so that they will be deserialized correctly. For example, in R the parameters must be:
-
-```
-params <- list()
-names(params) <- character(0)
-```
-
-while in PHP, they must be:
-
-```
-(object) []
-```
-
-Without this, the parameters are deserialized as an empty array rather than an empty object.
-
 [cross-filter-gloss]: /glossary.html#cross_filtering
 [filter-gloss]: /glossary.html#filter
 [filter-widget-gloss]: /glossary.html#filter_widget

@@ -6,9 +6,9 @@ In order to fix problems associated with linked filters, you need a clear unders
 
 1. A filter isn't part of a specific question. Instead, a filter is added to a dashboard and its value is used to fill in a variable in a question (or in several questions).
 
-2. In order for Metabase to display a dropdown list of possible filter values, it must know that the filter corresponds to a category. If the question is created using the Notebook Editor, this happens automatically, since Metabase analyzes the query as it turns the graphical representation into SQL.
+2. In order for Metabase to display a dropdown list of possible filter values, it must know that the column corresponds to a category. This happens automatically if the question is created from tables via the graphical editor (i.e., is a Simple question or Custom question), since Metabase has knowledge about the table and columns from synchronization.
 
-3. If the question that contains the variable is written in SQL, on the other hand, the author of the question must have selected "Field Filter" to tell Metabase that the variable should be displayed like a category. In addition, someone must have edited the metadata for the database to specify that the column in question is a category.
+3. If the question that contains the variable is written in SQL, on the other hand, the author of the question must have selected "Field Filter". Also, the field referenced must be set as a category in the Data Model in order for Metabase to show a dropdown list of values.
 
 ## My cards are showing "No result" when I apply linked filters
 
@@ -28,7 +28,7 @@ In order to fix problems associated with linked filters, you need a clear unders
 
 ## My linked filter widget does not display a dropdown of filtered values
 
-**How to detect this:** After linking Filter A to Filter B, you expect Filter B to display a dropdown showing only the values constrained by the current setting of Filter A. Instead, the dropdown shows all available values.
+**How to detect this:** After linking Filter B to Filter A, you expect Filter B to display a dropdown showing only the values constrained by the current setting of Filter A. Instead, the dropdown shows all available values.
 
 **How to fix this:** In order for a linked filter widget to display the correct subset of values, an explicit [foreign key][foreign-key-gloss] definition must be set up---linking the filters does not by itself tell Metabase about the relationship. To check this, look at Metabase's data model for your database.
 
