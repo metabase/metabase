@@ -72,7 +72,7 @@
   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
     ;; todo: get rid of this hardcoded 1200. it is passed down from metabase.pulse.render/card-width = 400
-    (let [dimension       (Dimension. 1200 1)
+    (let [dimension       (Dimension. #_width 1200 1)
           doc             (.parse (DefaultDOMSource. doc-source))
           da              (dom-analyzer doc doc-source dimension)
           graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
