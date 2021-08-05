@@ -17,7 +17,6 @@
             [metabase.api.login-history :as login-history]
             [metabase.api.metastore :as metastore]
             [metabase.api.metric :as metric]
-            [metabase.api.moderation-review :as moderation-review]
             [metabase.api.native-query-snippet :as native-query-snippet]
             [metabase.api.notify :as notify]
             [metabase.api.permissions :as permissions]
