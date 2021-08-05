@@ -288,7 +288,10 @@
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
                                :vertica   ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlite    ; foreign-keys is not supported by this driver
-                               :sparksql))  ; foreign-keys is not supported by this driver
+                               :sparksql  ; foreign-keys is not supported by this driver
+                               ;; foreign-keys is not supported by the below driver even though it has joins
+                               :bigquery-cloud-sdk
+                               ))
 
       (let [fingerprint (ts/with-world
                           (qp.store/fetch-and-store-database! db-id)
