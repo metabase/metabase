@@ -269,13 +269,15 @@
                 ;; very picky about properties (throwing an error if any are unrecognized)
                 ;; all valid properties can be found in the JDBC Driver source here:
                 ;; https://github.com/prestodb/presto/blob/master/presto-jdbc/src/main/java/com/facebook/presto/jdbc/ConnectionProperties.java
-                (select-keys [:host :port :catalog :schema :additional-options ; needed for [jdbc-spec]
-                              ;; JDBC driver specific properties
-                              :user :password :socksProxy :httpProxy :applicationNamePrefix :disableCompression :SSL
-                              :SSLKeyStorePath :SSLKeyStorePassword :SSLTrustStorePath :SSLTrustStorePassword
-                              :KerberosRemoteServiceName :KerberosPrincipal :KerberosUseCanonicalHostname
-                              :KerberosConfigPath :KerberosKeytabPath :KerberosCredentialCachePath :accessToken
-                              :extraCredentials :sessionProperties :protocols :queryInterceptors]))]
+                (select-keys (concat
+                              [:host :port :catalog :schema :additional-options ; needed for `jdbc-spec`
+                               ;; JDBC driver specific properties
+                               :kerberos ; we need our boolean property indicating if Kerberos is enabled
+                                         ; but the rest of them come from `kerb-props->url-param-names` (below)
+                               :user :password :socksProxy :httpProxy :applicationNamePrefix :disableCompression :SSL
+                               :SSLKeyStorePath :SSLKeyStorePassword :SSLTrustStorePath :SSLTrustStorePassword
+                               :accessToken :extraCredentials :sessionProperties :protocols :queryInterceptors]
+                              (keys kerb-props->url-param-names))))]
     (jdbc-spec props)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
