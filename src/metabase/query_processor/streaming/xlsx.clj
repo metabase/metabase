@@ -20,9 +20,9 @@
 
 (def ^:private ^{:arglists '(^String [style-name])} default-datetime-format-strings
   "Default format strings to use for datetime fields if custom viz settings are not provided."
-  {:date     "MMMM D, YYYY"
-   :datetime "MMMM D, YYYY, H:MM AM/PM"
-   :time     "H:MM AM/PM"})
+  {:date     "mmmm d, yyyy"
+   :datetime "mmmm d, yyyy, h:mm am/pm"
+   :time     "h:mm am/pm"})
 
 (def ^:private number-setting-keys
   "If any of these settings are present, we should format the column as a number."
@@ -127,7 +127,7 @@
   [format-settings format-string]
   (if (::mb.viz/date-abbreviate format-settings false)
     (-> format-string
-        (str/replace "MMMM" "MMM")
+        (str/replace "mmmm" "mmm")
         (str/replace "dddd" "ddd"))
     format-string))
 
@@ -140,13 +140,13 @@
   [format-settings format-string]
   (let [base-time-format (condp = (::mb.viz/time-enabled format-settings "minutes")
                            "minutes"
-                           "H:MM"
+                           "h:mm"
 
                            "seconds"
-                           "H:MM:SS"
+                           "h:mm:ss"
 
                            "milliseconds"
-                           "H:MM:SS.000"
+                           "h:mm:ss.000"
 
                            ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
                            ;; defaulting to "minutes"
@@ -155,20 +155,20 @@
         time-format      (when base-time-format
                            (condp = (::mb.viz/time-style format-settings "h:mm A")
                              "HH:mm"
-                             (str "H" base-time-format)
+                             (str "h" base-time-format)
 
                              "h:mm A"
-                             (str base-time-format " AM/PM")
+                             (str base-time-format " am/pm")
 
                              "h A"
-                             "H AM/PM"))]
+                             "h am/pm"))]
     (if time-format
       (str format-string ", " time-format)
       format-string)))
 
 (defn- datetime-format-string
   [format-settings]
-  (->> (::mb.viz/date-style format-settings (default-datetime-format-strings :date))
+  (->> (str/lower-case (::mb.viz/date-style format-settings (default-datetime-format-strings :date)))
        (abbreviate-date-names format-settings)
        (replace-date-separators format-settings)
        (add-time-format format-settings)))

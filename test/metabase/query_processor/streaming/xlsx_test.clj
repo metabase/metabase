@@ -124,45 +124,45 @@
 
   (testing "Datetime formatting"
     (testing "date-style"
-      (is (= "M/D/YYYY, H:MM AM/PM"           (format-string {::mb.viz/date-style "M/D/YYYY"})))
-      (is (= "D/M/YYYY, H:MM AM/PM"           (format-string {::mb.viz/date-style "D/M/YYYY"})))
-      (is (= "YYYY/M/D, H:MM AM/PM"           (format-string {::mb.viz/date-style "YYYY/M/D"})))
-      (is (= "MMMM D, YYYY, H:MM AM/PM"       (format-string {::mb.viz/date-style "MMMM D, YYYY"})))
-      (is (= "DMMMM, YYYY, H:MM AM/PM"        (format-string {::mb.viz/date-style "DMMMM, YYYY"})))
-      (is (= "dddd, MMMM D, YYYY, H:MM AM/PM" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY"}))))
+      (is (= "m/d/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "M/D/YYYY"})))
+      (is (= "d/m/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "D/M/YYYY"})))
+      (is (= "yyyy/m/d, h:mm am/pm"           (format-string {::mb.viz/date-style "YYYY/M/D"})))
+      (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-style "MMMM D, YYYY"})))
+      (is (= "dmmmm, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-style "DMMMM, YYYY"})))
+      (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY"}))))
 
     (testing "date-separator"
-      (is (= "M/D/YYYY, H:MM AM/PM" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "/"})))
-      (is (= "M.D.YYYY, H:MM AM/PM" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "."})))
-      (is (= "M-D-YYYY, H:MM AM/PM" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "-"}))))
+      (is (= "m/d/yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "/"})))
+      (is (= "m.d.yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "."})))
+      (is (= "m-d-yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "-"}))))
 
     (testing "date-abbreviate"
-      (is (= "MMM D, YYYY, H:MM AM/PM"        (format-string {::mb.viz/date-abbreviate true})))
-      (is (= "MMMM D, YYYY, H:MM AM/PM"       (format-string {::mb.viz/date-abbreviate false})))
-      (is (= "ddd, MMM D, YYYY, H:MM AM/PM"   (format-string {::mb.viz/date-abbreviate true
+      (is (= "mmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-abbreviate true})))
+      (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-abbreviate false})))
+      (is (= "ddd, mmm d, yyyy, h:mm am/pm"   (format-string {::mb.viz/date-abbreviate true
                                                               ::mb.viz/date-style, "dddd, MMMM D, YYYY"})))
-      (is (= "dddd, MMMM D, YYYY, H:MM AM/PM" (format-string {::mb.viz/date-abbreviate false
+      (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-abbreviate false
                                                               ::mb.viz/date-style, "dddd, MMMM D, YYYY"}))))
 
     (testing "time-style"
-      (is (= "MMMM D, YYYY, HH:MM"      (format-string {::mb.viz/time-style "HH:mm"})))
-      (is (= "MMMM D, YYYY, H:MM AM/PM" (format-string {::mb.viz/time-style "h:mm A"})))
-      (is (= "MMMM D, YYYY, H AM/PM"    (format-string {::mb.viz/time-style "h A"}))))
+      (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "HH:mm"})))
+      (is (= "mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"})))
+      (is (= "mmmm d, yyyy, h am/pm"    (format-string {::mb.viz/time-style "h A"}))))
 
     (testing "time-enabled"
-      (is (= "MMMM D, YYYY"                    (format-string {::mb.viz/time-enabled nil})))
-      (is (= "MMMM D, YYYY, H:MM AM/PM"        (format-string {::mb.viz/time-enabled "minutes"})))
-      (is (= "MMMM D, YYYY, H:MM:SS AM/PM"     (format-string {::mb.viz/time-enabled "seconds"})))
-      (is (= "MMMM D, YYYY, H:MM:SS.000 AM/PM" (format-string {::mb.viz/time-enabled "milliseconds"})))
+      (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-enabled nil})))
+      (is (= "mmmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/time-enabled "minutes"})))
+      (is (= "mmmm d, yyyy, h:mm:ss am/pm"     (format-string {::mb.viz/time-enabled "seconds"})))
+      (is (= "mmmm d, yyyy, h:mm:ss.000 am/pm" (format-string {::mb.viz/time-enabled "milliseconds"})))
       ;; time-enabled overrides time-styled
-      (is (= "MMMM D, YYYY"                    (format-string {::mb.viz/time-style "h:mm A", ::mb.viz/time-enabled nil}))))
+      (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-style "h:mm A", ::mb.viz/time-enabled nil}))))
 
     (testing "misc combinations"
-      (is (= "YYYY.M.D, H:MM:SS AM/PM"          (format-string {::mb.viz/date-style "YYYY/M/D",
+      (is (= "yyyy.m.d, h:mm:ss am/pm"          (format-string {::mb.viz/date-style "YYYY/M/D",
                                                                 ::mb.viz/date-separator ".",
                                                                 ::mb.viz/time-style "h:mm A",
                                                                 ::mb.viz/time-enabled "seconds"})))
-      (is (= "dddd, MMMM D, YYYY, HH:MM:SS.000" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY",
+      (is (= "dddd, mmmm d, yyyy, hh:mm:ss.000" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY",
                                                                 ::mb.viz/time-style "HH:mm",
                                                                 ::mb.viz/time-enabled "milliseconds"}))))))
 
