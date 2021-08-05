@@ -450,8 +450,8 @@
             (autosize-columns! sheet (count row)))))
 
       (finish! [_ {:keys [row_count data]}]
-        (when (<= row_count auto-sizing-threshold)
-          ;; Auto-size columns if we never hit the row threshold
+        (when (or (nil? row_count) (<= row_count auto-sizing-threshold))
+          ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
           (autosize-columns! sheet (count (:cols data))))
         (spreadsheet/save-workbook-into-stream! os workbook)
         (.dispose workbook)
