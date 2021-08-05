@@ -415,17 +415,17 @@
   "Adjusts each column to fit its largest value, plus a constant amount of extra padding."
   [sheet col-count]
   (doseq [i (range col-count)]
-    (.autoSizeColumn sheet i)
-    (.setColumnWidth sheet i (+ (.getColumnWidth sheet i) extra-column-width))
-    (.untrackColumnForAutoSizing sheet i)))
+    (.autoSizeColumn ^Sheet sheet i)
+    (.setColumnWidth ^Sheet sheet i (+ (.getColumnWidth sheet i) extra-column-width))
+    (.untrackColumnForAutoSizing ^Sheet sheet i)))
 
 (defn- setup-header-row!
   "Turns on auto-filter for the header row, which adds a button to each header cell that allows columns to be
   filtered and sorted. Also freezes the header row so that it floats above the data."
   [sheet col-count]
   (when (> col-count 0)
-    (.setAutoFilter sheet (new CellRangeAddress 0 0 0 (dec col-count)))
-    (.createFreezePane sheet 0 1)))
+    (.setAutoFilter ^Sheet sheet (new CellRangeAddress 0 0 0 (dec col-count)))
+    (.createFreezePane ^Sheet sheet 0 1)))
 
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
