@@ -14,7 +14,18 @@
 
 (defn- format-string
   [format-settings]
-  (@#'xlsx/format-settings->format-string format-settings))
+  (let [format-strings (@#'xlsx/format-settings->format-strings format-settings)]
+    ;; If only one format string is returned (for datetimes) or both format strings
+    ;; are equal, just return a single value to make tests more readable.
+    (cond
+      (= (count format-strings) 1)
+      (first format-strings)
+
+      (= (first format-strings) (second format-strings))
+      (first format-strings)
+
+      :else
+      format-strings)))
 
 (deftest format-settings->format-string-test
   (testing "Empty format settings don't produce a format string"
@@ -22,7 +33,7 @@
 
   (testing "General number formatting"
     (testing "number-style (non-currency)"
-      (is (= "General"     (format-string {::mb.viz/number-style "decimal"})))
+      (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-style "decimal"})))
       (is (= "#,##0.00%"   (format-string {::mb.viz/number-style "percent"})))
       (is (= "#,##0.00E+0" (format-string {::mb.viz/number-style "scientific"}))))
 
@@ -49,14 +60,18 @@
 
     (testing "Scale"
       ;; Scale should not affect format string since it is applied to the actual data prior to export
-      (is (= "General"  (format-string {::mb.viz/scale 2})))
-      (is (= "#,##0.00" (format-string {::mb.viz/scale 2, ::mb.viz/decimals 2}))))
+      (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/scale 2})))
+      (is (= "#,##0.00"           (format-string {::mb.viz/scale 2, ::mb.viz/decimals 2}))))
 
     (testing "Prefix and suffix"
       ;; Prefix/suffix on general number format
-      (is (= "\"prefix\"General"                (format-string {::mb.viz/prefix "prefix"})))
-      (is (= "General\"suffix\""                (format-string {::mb.viz/suffix "suffix"})))
-      (is (= "\"prefix\"General\"suffix\""      (format-string {::mb.viz/prefix "prefix", ::mb.viz/suffix "suffix"})))
+      (is (= ["\"prefix\"#,##0"
+              "\"prefix\"#,##0.##"]             (format-string {::mb.viz/prefix "prefix"})))
+      (is (= ["#,##0\"suffix\""
+              "#,##0.##\"suffix\""]             (format-string {::mb.viz/suffix "suffix"})))
+      (is (= ["\"prefix\"#,##0\"suffix\""
+              "\"prefix\"#,##0.##\"suffix\""]   (format-string {::mb.viz/prefix "prefix",
+                                                                ::mb.viz/suffix "suffix"})))
       ;; Prefix/suffix on number format w/fixed decimal count
       (is (= "\"prefix\"#,##0.00"               (format-string {::mb.viz/decimals 2,
                                                                 ::mb.viz/prefix "prefix"})))
@@ -276,13 +291,20 @@
                                 {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/scale 2}}}
                                 [[1.0]]))))))
 
-(deftest misc-data-types-test
+(deftest misc-data-test
   (testing "Boolean values are exported correctly"
     (is (= [[true] [false]]
            (rest (xlsx-export [{:id 0, :name "Col"}] {} [[true] [false]])))))
   (testing "nil values are exported correctly"
     (is (= [nil]
-           (second (xlsx-export [{:id 0, :name "Col"}] {} [[nil]]))))))
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[nil]])))))
+  (testing "numbers that round to ints are exported correctly"
+    (is (= [2.00001]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[2.00001]])))))
+  (testing "numbers that do not round to ints are exported correctly"
+    (is (= [123.123]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[123.123]]))))))
+
 
 (defrecord ^:private SampleNastyClass [^String v])
 

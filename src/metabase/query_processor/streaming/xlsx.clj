@@ -7,6 +7,7 @@
             [metabase.query-processor.streaming.interface :as i]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.util.currency :as currency]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
@@ -18,11 +19,13 @@
 ;;; |                                         Format string generation                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^{:arglists '(^String [style-name])} default-datetime-format-strings
+(def ^:private ^{:arglists '(^String [style-name])} default-format-strings
   "Default format strings to use for datetime fields if custom viz settings are not provided."
   {:date     "mmmm d, yyyy"
    :datetime "mmmm d, yyyy, h:mm am/pm"
-   :time     "h:mm am/pm"})
+   :time     "h:mm am/pm"
+   :integer  "#,##0"
+   :float    "#,##0.##"})
 
 (def ^:private number-setting-keys
   "If any of these settings are present, we should format the column as a number."
@@ -79,8 +82,8 @@
       "name"
       (str base-string "\" " currency-identifier "\""))))
 
-(defn- general-number-format?
-  "Use General for decimal number types that have no other format settings defined
+(defn- default-number-format?
+  "Use default formatting for decimal number types that have no other format settings defined
   aside from prefix, suffix or scale."
   [format-settings]
   (and
@@ -94,34 +97,40 @@
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))
 
-(defn- number-format-string
-  "Returns a format string for a number column corresponding to the given settings."
+(defn- number-format-strings
+  "Returns format strings for a number column corresponding to the given settings.
+  The first value in the returned list should be used for integers, or numbers that round to integers.
+  The second number should be used for all other values."
   [format-settings]
-  (let [styled-string
-        (let [decimals (::mb.viz/decimals format-settings 2)
-              base-string (if (general-number-format? format-settings)
-                            "General"
-                            (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0")))))]
+  (let [format-strings
+        (let [decimals     (::mb.viz/decimals format-settings 2)
+              ;; base-strings: [int-format, float-format]
+              base-strings (if (default-number-format? format-settings)
+                             ["#,##0", "#,##0.##"]
+                             (repeat 2 (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
           (condp = (::mb.viz/number-style format-settings)
             "percent"
-            (str base-string "%")
+            (map #(str % "%") base-strings)
 
             "scientific"
-            (str base-string "E+0")
+            (map #(str % "E+0") base-strings)
 
             "decimal"
-            base-string
+            base-strings
 
             (if (false? (::mb.viz/currency-in-header format-settings))
               ;; Always format values as currency if currency-in-header is included as false.
               ;; Don't check number-style, since it may not be included if the column's semantic
               ;; type is "currency".
-              (currency-format-string base-string format-settings)
-              base-string)))]
-    (str
-     (when (::mb.viz/prefix format-settings) (str "\"" (::mb.viz/prefix format-settings) "\""))
-     styled-string
-     (when (::mb.viz/suffix format-settings) (str "\"" (::mb.viz/suffix format-settings) "\"")))))
+              (map #(currency-format-string % format-settings) base-strings)
+              base-strings)))]
+    (map
+     (fn [format-string]
+      (str
+        (when (::mb.viz/prefix format-settings) (str "\"" (::mb.viz/prefix format-settings) "\""))
+        format-string
+        (when (::mb.viz/suffix format-settings) (str "\"" (::mb.viz/suffix format-settings) "\""))))
+     format-strings)))
 
 (defn- abbreviate-date-names
   [format-settings format-string]
@@ -168,20 +177,22 @@
 
 (defn- datetime-format-string
   [format-settings]
-  (->> (str/lower-case (::mb.viz/date-style format-settings (default-datetime-format-strings :date)))
+  (->> (str/lower-case (::mb.viz/date-style format-settings (default-format-strings :date)))
        (abbreviate-date-names format-settings)
        (replace-date-separators format-settings)
        (add-time-format format-settings)))
 
-(defn- format-settings->format-string
-  "Returns a format string for a number or datetime column corresponding to the provided format settings."
+(defn- format-settings->format-strings
+  "Returns a vector of format strings for a datetime column or number column, corresponding
+  to the provided format settings."
   [format-settings]
-  (cond
-    (some #(contains? datetime-setting-keys %) (keys format-settings))
-    (datetime-format-string format-settings)
+  (u/one-or-many
+   (cond
+     (some #(contains? datetime-setting-keys %) (keys format-settings))
+     (datetime-format-string format-settings)
 
-    (some #(contains? number-setting-keys %) (keys format-settings))
-    (number-format-string format-settings)))
+     (some #(contains? number-setting-keys %) (keys format-settings))
+     (number-format-strings format-settings))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             XLSX export logic                                                  |
@@ -227,9 +238,11 @@
   [^Workbook workbook data-format col-settings]
   (into {} (for [[field settings] col-settings]
              (let [id-or-name    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
-                   format-string (format-settings->format-string settings)]
-               (when format-string
-                 {id-or-name (format-string-delay workbook data-format format-string)})))))
+                   format-strings (format-settings->format-strings settings)]
+               {id-or-name
+                (map
+                 #(format-string-delay workbook data-format %)
+                 format-strings)}))))
 
 (def ^:private cell-style-delays
   "Creates a map of column name or id -> delay, or keyword representing default -> delay. This is bound to
@@ -244,13 +257,16 @@
            col-settings' (filter-extra-currency-keys cols col-settings)
            col-styles    (column-style-delays workbook data-format col-settings')]
        (into col-styles
-             (for [[name-keyword format-string] (seq default-datetime-format-strings)]
+             (for [[name-keyword format-string] (seq default-format-strings)]
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
 
 (defn- cell-style
-  "Get the cell style associated with `style-name` by dereffing the delay in `*cell-styles*`."
-  [^org.apache.poi.ss.usermodel.CellStyle style-name]
-  (some-> style-name *cell-styles* deref))
+  "Get the cell style(s) associated with `id-or-name` by dereffing the delay(s) in `*cell-styles*`."
+  [^org.apache.poi.ss.usermodel.CellStyle id-or-name]
+  (let [cell-style-delays (some->> id-or-name *cell-styles* u/one-or-many (map deref))]
+    (if (= (count cell-style-delays) 1)
+      (first cell-style-delays)
+      cell-style-delays)))
 
 (defmulti ^:private set-cell!
   "Sets a cell to the provided value, with an approrpiate style if necessary.
@@ -309,7 +325,10 @@
   (when (= (.getCellType cell) CellType/FORMULA)
     (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell (double value))
-  (.setCellStyle cell (cell-style id-or-name)))
+  (let [rounds-to-int? (re-matches #"\d+\.00" (format "%.2f" (float value)))]
+    (if rounds-to-int?
+      (.setCellStyle cell (or (first (cell-style id-or-name)) (cell-style :integer)))
+      (.setCellStyle cell (or (second (cell-style id-or-name)) (cell-style :float))))))
 
 (defmethod set-cell! Boolean
   [^Cell cell value _]
