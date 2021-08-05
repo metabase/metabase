@@ -7,7 +7,7 @@ import { Box } from "grid-styled";
 import DashboardHeader from "./DashboardHeader";
 import DashboardGrid from "./DashboardGrid";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { ParametersWidgetContainer } from "./Dashboard.styled";
+import { ParametersWidgetContainer, TilesContainer } from "./Dashboard.styled";
 import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import EmptyState from "metabase/components/EmptyState";
@@ -326,7 +326,9 @@ export default class Dashboard extends Component {
                     {parametersWidget}
                   </ParametersWidgetContainer>
                 )}
-                <div className="wrapper" style={{ width: "100vw" }}>
+                <TilesContainer
+                  isEditingParameter={this.props.isEditingParameter}
+                >
                   {dashboard.ordered_cards.length === 0 ? (
                     <Box mt={[2, 4]} color={isNightMode ? "white" : "inherit"}>
                       <EmptyState
@@ -343,7 +345,7 @@ export default class Dashboard extends Component {
                       onEditingChange={this.setEditing}
                     />
                   )}
-                </div>
+                </TilesContainer>
               </div>
               <DashboardSidebars
                 {...this.props}

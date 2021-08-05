@@ -13,11 +13,16 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
 
-  ${props =>
-    !props.isEditing &&
+  ${({ isEditing }) =>
+    !isEditing &&
     css`
       position: sticky;
       top: 0;
       z-index: 3;
     `}
+`;
+
+export const TilesContainer = styled(FullWidthContainer)`
+  width: ${({ isEditingParameter }) =>
+    isEditingParameter ? "calc(100vw - 390px)" : "100vw"};
 `;
