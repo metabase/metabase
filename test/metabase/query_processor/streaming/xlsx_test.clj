@@ -414,3 +414,11 @@
            (second (xlsx-export [{:name "val1"} {:name "val2"}]
                                 {}
                                 [[(SampleNastyClass. "Hello XLSX World!") (AnotherNastyClass. "No Encoder")]]))))))
+
+(deftest auto-sizing-threshold-test
+  (testing "Export still works when the number of rows is equal to or above the auto-sizing threshold"
+    (with-redefs [xlsx/auto-sizing-threshold 2]
+      (is (= [[1.0] [2.0]]
+             (rest (xlsx-export [{:id 0, :name "Col1"}] {} [[1.0] [2.0]]))))
+      (is (= [[1.0] [2.0] [3.0]]
+             (rest (xlsx-export [{:id 0, :name "Col1"}] {} [[1.0] [2.0] [3.0]])))))))
