@@ -13,9 +13,9 @@
             [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Sheet Workbook]
+           [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook]
            org.apache.poi.ss.util.CellRangeAddress
-           org.apache.poi.xssf.streaming.SXSSFWorkbook))
+           [org.apache.poi.xssf.streaming SXSSFSheet SXSSFWorkbook]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
@@ -367,7 +367,7 @@
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
   This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
-  [^Sheet sheet values cols col-settings]
+  [^SXSSFSheet sheet values cols col-settings]
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
@@ -415,17 +415,17 @@
   "Adjusts each column to fit its largest value, plus a constant amount of extra padding."
   [sheet col-count]
   (doseq [i (range col-count)]
-    (.autoSizeColumn ^Sheet sheet i)
-    (.setColumnWidth ^Sheet sheet i (+ (.getColumnWidth sheet i) extra-column-width))
-    (.untrackColumnForAutoSizing ^Sheet sheet i)))
+    (.autoSizeColumn ^SXSSFSheet sheet i)
+    (.setColumnWidth ^SXSSFSheet sheet i (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width)))
+  (.untrackAllColumnsForAutoSizing ^SXSSFSheet sheet))
 
 (defn- setup-header-row!
   "Turns on auto-filter for the header row, which adds a button to each header cell that allows columns to be
   filtered and sorted. Also freezes the header row so that it floats above the data."
   [sheet col-count]
   (when (> col-count 0)
-    (.setAutoFilter ^Sheet sheet (new CellRangeAddress 0 0 0 (dec col-count)))
-    (.createFreezePane ^Sheet sheet 0 1)))
+    (.setAutoFilter ^SXSSFSheet sheet (new CellRangeAddress 0 0 0 (dec col-count)))
+    (.createFreezePane ^SXSSFSheet sheet 0 1)))
 
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
@@ -433,7 +433,7 @@
         sheet               (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings}]
-        (.trackAllColumnsForAutoSizing sheet)
+        (.trackAllColumnsForAutoSizing ^SXSSFSheet sheet)
         (setup-header-row! sheet (count ordered-cols))
         (spreadsheet/add-row! sheet (column-titles ordered-cols col-settings)))
 
