@@ -15,7 +15,7 @@
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook]
            org.apache.poi.ss.util.CellRangeAddress
-           [org.apache.poi.xssf.streaming SXSSFSheet SXSSFWorkbook]))
+           [org.apache.poi.xssf.streaming SXSSFSheet SXSSFRow SXSSFWorkbook]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
@@ -379,7 +379,7 @@
             scaled-val (if (and value (::mb.viz/scale settings))
                          (* value (::mb.viz/scale settings))
                          value)]
-        (set-cell! (.createCell row index) scaled-val id-or-name)))
+        (set-cell! (.createCell ^SXSSFRow row ^Integer index) scaled-val id-or-name)))
     row))
 
 (defn- column-titles
