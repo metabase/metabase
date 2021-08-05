@@ -14,7 +14,9 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
+           java.awt.Graphics2D
            java.awt.image.BufferedImage
+           java.awt.RenderingHints
            [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            javax.imageio.ImageIO
@@ -73,7 +75,17 @@
     (let [dimension       (Dimension. 1200 1)
           doc             (.parse (DefaultDOMSource. doc-source))
           da              (dom-analyzer doc doc-source dimension)
-          graphics-engine (GraphicsEngine. (.getRoot da) da (.getURL doc-source))]
+          graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
+                            (setupGraphics [^Graphics2D g]
+                              (doto g
+                                (.setRenderingHint RenderingHints/KEY_RENDERING
+                                                   RenderingHints/VALUE_RENDER_QUALITY)
+                                (.setRenderingHint RenderingHints/KEY_ALPHA_INTERPOLATION
+                                                   RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
+                                (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING
+                                                   RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
+                                (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
+                                                   RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
       (.createLayout graphics-engine dimension)
       (write-image! (.getImage graphics-engine) "png" os))))
 

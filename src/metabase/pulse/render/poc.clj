@@ -94,30 +94,7 @@ function categorical_donut (rows, colors) {
       (.createDocument factory "file:///fake.svg" is))))
 
 (defn- high-quality-png-transcoder ^PNGTranscoder []
-  (PNGTranscoder.)
-  ;; the following generates a reflective call for the `proxy-super`. The problem is that `createRenderer` is
-  ;; protected and the reflector cannot find non-public methods. See
-  ;; https://gist.github.com/dpsutton/3f1c5c80a434cf2940e0973d4e01a80c
-  #_(proxy [PNGTranscoder] []
-    (createRenderer []
-      (let [add-hint                (fn [^RenderingHints hints k v] (.add hints (RenderingHints. k v)))
-            ^PNGTranscoder this     this
-            ^ImageRenderer renderer (proxy-super createRenderer)
-            hints                   (RenderingHints.
-                                     RenderingHints/KEY_ALPHA_INTERPOLATION
-                                     RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)]
-        (doto hints
-          (add-hint RenderingHints/KEY_ALPHA_INTERPOLATION RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
-          (add-hint RenderingHints/KEY_INTERPOLATION       RenderingHints/VALUE_INTERPOLATION_BICUBIC)
-          (add-hint RenderingHints/KEY_ANTIALIASING        RenderingHints/VALUE_ANTIALIAS_ON)
-          (add-hint RenderingHints/KEY_COLOR_RENDERING     RenderingHints/VALUE_COLOR_RENDER_QUALITY)
-          (add-hint RenderingHints/KEY_DITHERING           RenderingHints/VALUE_DITHER_DISABLE)
-          (add-hint RenderingHints/KEY_RENDERING           RenderingHints/VALUE_RENDER_QUALITY)
-          (add-hint RenderingHints/KEY_STROKE_CONTROL      RenderingHints/VALUE_STROKE_PURE)
-          (add-hint RenderingHints/KEY_FRACTIONALMETRICS   RenderingHints/VALUE_FRACTIONALMETRICS_ON)
-          (add-hint RenderingHints/KEY_TEXT_ANTIALIASING   RenderingHints/VALUE_TEXT_ANTIALIAS_OFF))
-        (.setRenderingHints renderer hints)
-        renderer))))
+  (PNGTranscoder.))
 
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
