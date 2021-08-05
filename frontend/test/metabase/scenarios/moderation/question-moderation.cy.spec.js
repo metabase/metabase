@@ -20,6 +20,12 @@ describeWithToken("scenarios > saved question moderation", () => {
       cy.findByText("Orders, Count")
         .icon("verified")
         .should("exist");
+
+      cy.visit("/collection/root");
+
+      cy.findByText("Orders, Count")
+        .icon("verified")
+        .should("exist");
     });
 
     it("should be able to unverify a verified saved question", () => {
@@ -32,41 +38,72 @@ describeWithToken("scenarios > saved question moderation", () => {
       cy.findByTestId("saved-question-header-button").click();
 
       cy.icon("verified").should("not.exist");
+
+      cy.findByPlaceholderText("Search…").type("orders{enter}");
+      cy.findByText("Orders, Count")
+        .find(".Icon-verified")
+        .should("not.exist");
+
+      cy.visit("/collection/root");
+
+      cy.findByText("Orders, Count")
+        .find(".Icon-verified")
+        .should("not.exist");
     });
   });
 
   describe("as a non-admin user", () => {
     beforeEach(() => {
       restore();
-      cy.signInAsNormalUser();
+      cy.signInAsAdmin();
 
-      cy.intercept("GET", "/api/card/1", req => {
-        req.reply(res => {
-          res.body.moderation_reviews = [
-            {
-              status: "verified",
-              most_recent: true,
-              moderator_id: 999,
-              id: 1,
-              moderated_item_type: "card",
-              moderated_item_id: 4,
-              updated_at: "2021-07-23T09:56:46.276-07:00",
-              created_at: "2021-07-23T09:56:46.276-07:00",
-            },
-          ];
-        });
-      }).as("cardGet");
+      cy.createModerationReview({
+        status: "verified",
+        moderated_item_type: "card",
+        moderated_item_id: 2,
+      });
+
+      cy.signInAsNormalUser();
+    });
+
+    it("should be able to see that a question has not been verified", () => {
+      cy.visit("/question/3");
+
+      cy.icon("verified").should("not.exist");
+
+      cy.findByTestId("saved-question-header-button").click();
+      cy.findByText("A moderator verified this").should("not.exist");
+
+      cy.findByPlaceholderText("Search…").type("orders{enter}");
+      cy.findByText("Orders, Count, Grouped by Created At (year)")
+        .find(".Icon-verified")
+        .should("not.exist");
+
+      cy.visit("/collection/root");
+
+      cy.findByText("Orders, Count, Grouped by Created At (year)")
+        .find(".Icon-verified")
+        .should("not.exist");
     });
 
     it("should be able to see that a question has been verified", () => {
-      cy.visit("/question/1");
-
-      cy.wait("@cardGet");
+      cy.visit("/question/2");
 
       cy.icon("verified").should("exist");
 
       cy.findByTestId("saved-question-header-button").click();
       cy.findByText("A moderator verified this").should("exist");
+
+      cy.findByPlaceholderText("Search…").type("orders{enter}");
+      cy.findByText("Orders, Count")
+        .icon("verified")
+        .should("exist");
+
+      cy.visit("/collection/root");
+
+      cy.findByText("Orders, Count")
+        .icon("verified")
+        .should("exist");
     });
   });
 });
