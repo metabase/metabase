@@ -1,5 +1,11 @@
 # Timezone problems
 
+<div class='doc-toc' markdown=1>
+- [SQL queries are not respecting the Reporting Time Zone setting](#not-respect-time-zone-setting)
+- [Dates without an explicit time zone are being converted to another day](#dates-without-explicit-tz-converted)
+- [Mixing explicit and implicit time zones](#mixing-explicit-implicit)
+</div>
+
 "Wrong" numbers in charts or reports are often a result of an underlying issue with time zones. Problems of this type are extremely common with many analytics tools, and the best way to avoid them in Metabase is by selecting the "Report Time Zone" setting in the "General" tab of the Admin Panel. Doing this ensures that the time zone of query results matches the time zone used by the database for its date calculations.
 
 "Report Time Zone" is currently supported on:
@@ -12,8 +18,6 @@
 - Vertica
 
 If you're using a database that doesn't support a Report Time Zone, the next option is to ensure that the Metabase instance's time zone matches that of the database. The Metabase instance's time zone is the Java Virtual Machine's time zone, typically set via a `-Duser.timezone<..>` parameter or the `JAVA_TIMEZONE` environment variable; exactly how it is set will depend on how you launch Metabase. Note that the Metabase instance's time zone doesn't impact any databases that use a Report Time Zone.
-
-## Troubleshooting Process
 
 If you suspect that you have a time zone issue, these questions may help you resolve it:
 
@@ -42,9 +46,7 @@ Now that you have the time zone adjustment, go back to the earlier list of time 
 
 A few specific problems are described below. If none of them apply, please [open a bug report][metabase-file-bug] with the above information (time zones and the results of the second troubleshooting process) as well as your Metabase, OS, and web browser versions.
 
-## Specific Problems
-
-### SQL queries are not respecting the Reporting Time Zone setting
+<h2 id="not-respect-time-zone-setting">SQL queries are not respecting the Reporting Time Zone setting</h2>
 
 **How to detect this:**
 You are not able to click on a cell in a result table or a chart.
@@ -52,7 +54,7 @@ You are not able to click on a cell in a result table or a chart.
 **How to fix this:**
 We do not currently apply a reporting time zone to the results of SQL queries, so you should set one manually.
 
-### Dates without an explicit time zone are being converted to another day
+<h2 id="dates-without-explicit-tz-converted">Dates without an explicit time zone are being converted to another day</h2>
 
 **How to detect this:**
 This occurs when you are grouping by a date (rather than by a time) that does not have a time zone attached to it. Look at every time field your question uses in the Data Model Reference, and see if any of them are simply a "Date" field.
@@ -60,7 +62,7 @@ This occurs when you are grouping by a date (rather than by a time) that does no
 **How to fix this:**
 Make sure the server time zone reflects the reporting time zone, because when a query is run on Metabase, the server applies the configured time zone to that date.
 
-### Mixing explicit and implicit time zones
+<h2 id="mixing-explicit-implicit">Mixing explicit and implicit time zones</h2>
 
 **How to detect this:**
 This often happens if you compare or perform arithmetic on two dates where one has an explicit time zone and one does not. This typically involves a question that uses multiple fields (e.g., when you filter on one timestamp and group by another). Check the time zones of each of the dates or times you are using in your question.
