@@ -13,11 +13,12 @@
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
 (defmethod i/stream-options :xlsx
-  [_]
+  [_ filename-prefix]
   {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
    :write-keepalive-newlines? false
    :status                    200
-   :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.xlsx\""
+   :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.xlsx\""
+                                                             (or filename-prefix "query_result")
                                                              (u.date/format (t/zoned-date-time)))}})
 
 (def ^:dynamic *cell-styles*
