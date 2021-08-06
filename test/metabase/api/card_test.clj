@@ -25,7 +25,8 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.test.data.users :as test-users])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
@@ -1299,6 +1300,37 @@
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
 
+(defn- test-download-response-headers
+  [url]
+  (-> (http/client-full-response (test-users/username->token :rasta)
+                                 :post 200 url
+                                 :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+      :headers
+      (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
+      (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
+                                                            "my_awesome_card_<timestamp>$1")))))
+
+(deftest download-response-headers-test
+  (testing "Make sure CSV/etc. download requests come back with the correct headers"
+    (mt/with-temp Card [card {:name "My Awesome Card"}]
+      (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+              "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.csv\""
+              "Content-Type"        "text/csv"
+              "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+              "X-Accel-Buffering"   "no"}
+             (test-download-response-headers (format "card/%d/query/csv" (u/the-id card)))))
+      (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+              "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.json\""
+              "Content-Type"        "application/json;charset=utf-8"
+              "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+              "X-Accel-Buffering"   "no"}
+             (test-download-response-headers (format "card/%d/query/json" (u/the-id card)))))
+      (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+              "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.xlsx\""
+              "Content-Type"        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+              "X-Accel-Buffering"   "no"}
+             (test-download-response-headers (format "card/%d/query/xlsx" (u/the-id card))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  COLLECTIONS                                                   |
