@@ -3,14 +3,14 @@
             [clojure.string :as str]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.streaming.common :as common]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.util.currency :as currency]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.public-settings :as public-settings])
+            [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [org.apache.poi.ss.usermodel Cell CellType DataFormat DateUtil Sheet Workbook]

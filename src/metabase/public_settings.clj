@@ -8,7 +8,6 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util :as u]
-            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as password]
             [toucan.db :as db])
