@@ -77,21 +77,25 @@ export default class Dashboard extends Component {
   }
 
   async loadDashboard(dashboardId) {
-    this.props.initialize();
-
-    this.props.loadDashboardParams();
-
     const {
       addCardOnLoad,
-      fetchDashboard,
       addCardToDashboard,
-      setErrorPage,
+      fetchDashboard,
+      initialize,
+      loadDashboardParams,
       location,
+      setErrorPage,
     } = this.props;
+
+    initialize();
+
+    loadDashboardParams();
 
     try {
       await fetchDashboard(dashboardId, location.query);
       if (addCardOnLoad != null) {
+        // if we destructure this.props.dashboard, for some reason
+        // if will render dashboards as empty
         this.setEditing(this.props.dashboard);
         addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
       }
