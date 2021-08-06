@@ -239,10 +239,11 @@
   (into {} (for [[field settings] col-settings]
              (let [id-or-name    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
                    format-strings (format-settings->format-strings settings)]
-               {id-or-name
-                (map
-                 #(format-string-delay workbook data-format %)
-                 format-strings)}))))
+               (when (seq format-strings)
+                 {id-or-name
+                  (map
+                   #(format-string-delay workbook data-format %)
+                   format-strings)})))))
 
 (def ^:private cell-style-delays
   "Creates a map of column name or id -> delay, or keyword representing default -> delay. This is bound to
