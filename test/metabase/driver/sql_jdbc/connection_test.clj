@@ -9,7 +9,10 @@
             [metabase.models.database :refer [Database]]
             [metabase.test :as mt]
             [metabase.test.data :as data]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest can-connect-with-details?-test
   (is (= true
@@ -53,7 +56,7 @@
                   (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool
                                  (u/id database)))))
               (testing "and is no longer in our connection map after cleanup"
-                (#'sql-jdbc.conn/set-pool! (u/id database) nil)
+                (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)
                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
                                     (u/id database)))))
               (testing "the pool has been destroyed"
@@ -67,3 +70,44 @@
             expected (format "db-%d-%s-%s" (u/the-id db) (name driver/*driver*) (-> db :details :db))]
         (is (= expected
                (get props "dataSourceName")))))))
+
+(deftest connection-pool-invalidated-on-details-change
+  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+    (testing "db->pooled-connection-spec marks a connection pool invalid if the db details map changes"
+      (let [db                 (mt/db)
+            hash-change-called (atom false)
+            hash-change-fn     (fn [db-id]
+                                 (is (= (u/the-id db) db-id))
+                                 (reset! hash-change-called true)
+                                 nil)
+            perturb-db-details (fn [db]
+                                 (update db :details (fn [details]
+                                                       (cond-> details
+                                                         ;; swap localhost and 127.0.0.1
+                                                         (= "localhost" (:host details))
+                                                         (assoc :host "127.0.0.1")
+
+                                                         (= "127.0.0.1" (:host details))
+                                                         (assoc :host "localhost")
+
+                                                         :else
+                                                         (assoc :new-config "something")))))]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
+        (with-redefs [sql-jdbc.conn/log-db-details-hash-change-msg! hash-change-fn]
+          (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
+                db-hash-1   (get @@#'sql-jdbc.conn/database-id->db-details-hashes (u/the-id db))]
+            (testing "hash value calculated correctly for new pooled conn"
+              (is (some? pool-spec-1))
+              (is (integer? db-hash-1))
+              (is (not= db-hash-1 0)))
+            (testing "changing DB details results in hash value changing and connection being invalidated"
+              (let [db-perturbed (perturb-db-details db)
+                    pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
+                    db-hash-2    (get @@#'sql-jdbc.conn/database-id->db-details-hashes (u/the-id db))]
+                (is (some? pool-spec-2))
+                (is (true? @hash-change-called))
+                (is (integer? db-hash-2))
+                (is (not= db-hash-2 0))
+                (is (not= db-hash-1 db-hash-2))))))))))
+
