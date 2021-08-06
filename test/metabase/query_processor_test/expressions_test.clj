@@ -23,7 +23,7 @@
               [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2 4.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
                (mt/run-mbql-query venues
-                 {:expressions {:my-cool-new-field [:+ $price 2]}
+                 {:expressions {:my_cool_new_field [:+ $price 2]}
                   :limit       5
                   :order-by    [[:asc $id]]})))))))
 
@@ -35,7 +35,7 @@
               [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
                (mt/run-mbql-query venues
-                 {:expressions {:my-cool-new-field [:/ $price 2]}
+                 {:expressions {:my_cool_new_field [:/ $price 2]}
                   :limit       3
                   :order-by    [[:asc $id]]})))))
 
@@ -45,9 +45,9 @@
               [0.5]]
              (mt/formatted-rows [1.0]
                (mt/run-mbql-query venues
-                 {:expressions {:big-price         [:+ $price 2]
-                                :my-cool-new-field [:/ $price [:expression "big-price"]]}
-                  :fields      [[:expression "my-cool-new-field"]]
+                 {:expressions {:big_price         [:+ $price 2]
+                                :my_cool_new_field [:/ $price [:expression "big_price"]]}
+                  :fields      [[:expression "my_cool_new_field"]]
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
@@ -170,16 +170,16 @@
 (defn- calculate-bird-scarcity* [formula filter-clause]
   (mt/formatted-rows [2.0]
     (mt/dataset daily-bird-counts
-      (mt/run-mbql-query bird-count
-        {:expressions {"bird-scarcity" formula}
-         :fields      [[:expression "bird-scarcity"]]
+      (mt/run-mbql-query bird_count
+        {:expressions {"bird_scarcity" formula}
+         :fields      [[:expression "bird_scarcity"]]
          :filter      filter-clause
          :order-by    [[:asc $date]]
          :limit       10}))))
 
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
-     (mt/$ids ~'bird-count
+     (mt/$ids ~'bird_count
        (calculate-bird-scarcity* ~formula ~filter-clause))))
 
 (deftest nulls-and-zeroes-test
@@ -335,7 +335,7 @@
                      (mt/normal-drivers-with-feature :expressions)
                      ;; Slashes documented as not allowed in BQ
                      ;; https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
-                     :bigquery-cloud-sdk
+                     :bigquery-cloud-sdk)
     (testing "Make sure an expression with a / in its name works (#12305)"
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4.0]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3.0]
@@ -359,7 +359,7 @@
                                                 [:max (mt/id :venues :price)]]
                                  :breakout     [[:field (mt/id :venues :name) nil]]
                                  :limit        3}
-                  :expressions  {:price-range [:-
+                  :expressions  {:price_range [:-
                                                [:field "max" {:base-type :type/Number}]
                                                [:field "min" {:base-type :type/Number}]]}})))))))
 
