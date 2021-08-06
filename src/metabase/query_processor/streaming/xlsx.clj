@@ -20,14 +20,6 @@
 ;;; |                                         Format string generation                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^{:arglists '(^String [style-name])} default-format-strings
-  "Default format strings to use for datetime fields if custom viz settings are not provided."
-  {:date     "mmmm d, yyyy"
-   :datetime "mmmm d, yyyy, h:mm am/pm"
-   :time     "h:mm am/pm"
-   :integer  "#,##0"
-   :float    "#,##0.##"})
-
 (def ^:private number-setting-keys
   "If any of these settings are present, we should format the column as a number."
   #{::mb.viz/number-style
@@ -189,7 +181,7 @@
 (defn- datetime-format-string
   [format-settings]
   (let [merged-settings (merge-global-settings format-settings :type/Temporal)
-        date-style      (::mb.viz/date-style merged-settings (:date default-format-strings))]
+        date-style      (::mb.viz/date-style merged-settings "mmmm d, yyyy")]
     (->> date-style
          str/lower-case
          (abbreviate-date-names merged-settings)
@@ -213,6 +205,16 @@
      (or (some #(contains? number-setting-keys %) (keys format-settings))
          (isa? semantic-type :type/Currency))
      (number-format-strings format-settings semantic-type))))
+
+(defn- default-format-strings
+  "Default strings to use for datetime and number fields if custom format settings are not set."
+  []
+  {:datetime (datetime-format-string (merge-global-settings {} :type/Temporal))
+   :date     (datetime-format-string (merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
+   ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
+   :time     "h:mm am/pm"
+   :integer  "#,##0"
+   :float    "#,##0.##"})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             XLSX export logic                                                  |
@@ -266,7 +268,7 @@
      (let [data-format   (. workbook createDataFormat)
            col-styles    (column-style-delays workbook data-format col-settings cols)]
        (into col-styles
-             (for [[name-keyword format-string] (seq default-format-strings)]
+             (for [[name-keyword format-string] (seq (default-format-strings))]
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
 
 (defn- cell-style
