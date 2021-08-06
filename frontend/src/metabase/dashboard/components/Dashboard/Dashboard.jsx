@@ -2,8 +2,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
-import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -12,7 +10,6 @@ import DashboardGrid from "../DashboardGrid";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
-import EmptyState from "metabase/components/EmptyState";
 import { DashboardSidebars } from "../DashboardSidebars";
 
 import DashboardControls from "../../hoc/DashboardControls";

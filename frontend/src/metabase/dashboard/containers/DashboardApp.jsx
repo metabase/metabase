@@ -6,7 +6,7 @@ import fitViewport from "metabase/hoc/FitViewPort";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
-import Dashboard from "metabase/dashboard/components/Dashboard";
+import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
