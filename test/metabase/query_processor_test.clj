@@ -13,6 +13,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.add-implicit-joins :as joins]
             [metabase.test-runner.init :as test-runner.init]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.env :as tx.env]
             [metabase.test.data.interface :as tx]
@@ -42,7 +43,7 @@
   (let [features (set (cons feature more-features))]
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]
-               :when  (set/subset? features (driver.u/features driver nil))]
+               :when  (set/subset? features (driver.u/features driver (mt/db)))]
            driver))))
 
 (alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))

@@ -400,11 +400,11 @@
 
 (defmulti ^:deprecated supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
-  `driver-features`.)
+  [[driver-features]].)
 
     (supports? :postgres :set-timezone) ; -> true
 
-  deprecated — `database-supports?` is intended to replace this method, implement it instead.
+  deprecated — [[database-supports?]] is intended to replace this method, implement it instead.
   this method will be removed in a future release."
   {:arglists '([driver feature])}
   (fn [driver feature]
@@ -422,7 +422,7 @@
   "Does this driver and specific instance of a database support a certain `feature`?
   (A feature is a keyword, and can be any of the ones listed above in `driver-features`.
   Note that it's the same set of `driver-features` with respect to
-  both database-supports? and supports?)
+  both database-supports? and [[supports?]])
 
   Database is guaranteed to be a Database instance.
 

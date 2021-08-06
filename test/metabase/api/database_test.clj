@@ -51,7 +51,7 @@
     (mt/object-defaults Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name])
     {:engine   (u/qualified-name (:engine db))
-     :features (map u/qualified-name (driver.u/features driver nil))})))
+     :features (map u/qualified-name (driver.u/features driver db))})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults Table))
@@ -148,7 +148,7 @@
                      :details    (s/eq {:db "my_db"})
                      :updated_at java.time.temporal.Temporal
                      :name       su/NonBlankString
-                     :features   (s/eq (driver.u/features ::test-driver nil))})
+                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))})
                    (create-db-via-api!))))
 
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
@@ -197,12 +197,14 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (is (= {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
+              (let [curr-db (db/select-one [Database :name :engine :details :is_full_sync], :id db-id)]
+                (is (=
+                     {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
-                      :features     (driver.u/features :h2 nil)}
-                     (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id)))))))))
+                      :features     (driver.u/features :h2 curr-db)}
+                     (into {} curr-db)))))))))
 
     (mt/with-log-level :info
                            (testing "should be able to set `auto_run_queries`"
@@ -222,7 +224,7 @@
                   (select-keys (mt/db) [:created_at :id :updated_at :timezone])
                   {:engine        "h2"
                    :name          "test-data"
-                   :features      (map u/qualified-name (driver.u/features :h2 nil))
+                   :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
                                     (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
