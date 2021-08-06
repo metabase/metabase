@@ -101,13 +101,15 @@
   "Returns format strings for a number column corresponding to the given settings.
   The first value in the returned list should be used for integers, or numbers that round to integers.
   The second number should be used for all other values."
-  [format-settings]
+  [format-settings semantic-type]
   (let [format-strings
         (let [decimals     (::mb.viz/decimals format-settings 2)
               ;; base-strings: [int-format, float-format]
               base-strings (if (default-number-format? format-settings)
                              ["#,##0", "#,##0.##"]
-                             (repeat 2 (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
+                             (repeat 2 (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0"))))))
+              is-currency? (or (isa? semantic-type :type/Currency)
+                               (= (::mb.viz/number-style format-settings) "currency"))]
           (condp = (::mb.viz/number-style format-settings)
             "percent"
             (map #(str % "%") base-strings)
@@ -118,10 +120,7 @@
             "decimal"
             base-strings
 
-            (if (false? (::mb.viz/currency-in-header format-settings))
-              ;; Always format values as currency if currency-in-header is included as false.
-              ;; Don't check number-style, since it may not be included if the column's semantic
-              ;; type is "currency".
+            (if (and is-currency?  (false? (::mb.viz/currency-in-header format-settings)))
               (map #(currency-format-string % format-settings) base-strings)
               base-strings)))]
     (map
@@ -185,14 +184,18 @@
 (defn- format-settings->format-strings
   "Returns a vector of format strings for a datetime column or number column, corresponding
   to the provided format settings."
-  [format-settings]
+  [format-settings semantic-type]
   (u/one-or-many
    (cond
+     ;; Primary key or foreign key
+     (isa? semantic-type :Relation/*)
+     "0"
+
      (some #(contains? datetime-setting-keys %) (keys format-settings))
      (datetime-format-string format-settings)
 
      (some #(contains? number-setting-keys %) (keys format-settings))
-     (number-format-strings format-settings))))
+     (number-format-strings format-settings semantic-type))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             XLSX export logic                                                  |
@@ -212,22 +215,6 @@
   not once per cell."
   nil)
 
-(defn- filter-extra-currency-keys
-  "If a column's semantic type is changed to a currency type, then changed to a non-currency
-  type, its settings will still include a `currency` field. So we need to remove currency fields
-  from non-currency columns to ensure that format strings are generated correctly."
-  [cols col-settings]
-  (into {}
-        (for [col cols]
-          (let [settings-key (if (:id col)
-                               {::mb.viz/field-id (:id col)}
-                               {::mb.viz/column-name (:name col)})
-                settings     (get col-settings settings-key)
-                is-currency? (isa? (:semantic_type col) :type/Currency)]
-            (if is-currency?
-              {settings-key settings}
-              {settings-key (dissoc settings ::mb.viz/currency)})))))
-
 (defn- format-string-delay
   [^Workbook workbook ^DataFormat data-format format-string]
   (delay
@@ -235,10 +222,15 @@
      (.setDataFormat (. data-format getFormat ^String format-string)))))
 
 (defn- column-style-delays
-  [^Workbook workbook data-format col-settings]
-  (into {} (for [[field settings] col-settings]
-             (let [id-or-name    (or (::mb.viz/field-id field) (::mb.viz/column-name field))
-                   format-strings (format-settings->format-strings settings)]
+  [^Workbook workbook data-format col-settings cols]
+  (into {} (for [col cols]
+             (let [settings-key  (if (:id col)
+                                   {::mb.viz/field-id (:id col)}
+                                   {::mb.viz/column-name (:name col)})
+                   id-or-name    (first (vals settings-key))
+                   settings      (get col-settings settings-key)
+                   semantic-type (:semantic_type col)
+                   format-strings (format-settings->format-strings settings semantic-type)]
                (when (seq format-strings)
                  {id-or-name
                   (map
@@ -255,8 +247,7 @@
   (memoize
    (fn [^Workbook workbook cols col-settings]
      (let [data-format   (. workbook createDataFormat)
-           col-settings' (filter-extra-currency-keys cols col-settings)
-           col-styles    (column-style-delays workbook data-format col-settings')]
+           col-styles    (column-style-delays workbook data-format col-settings cols)]
        (into col-styles
              (for [[name-keyword format-string] (seq default-format-strings)]
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
@@ -326,10 +317,11 @@
   (when (= (.getCellType cell) CellType/FORMULA)
     (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell (double value))
-  (let [rounds-to-int? (re-matches #"\d+\.00" (format "%.2f" (float value)))]
+  (let [rounds-to-int? (re-matches #"\d+\.00" (format "%.2f" (float value)))
+        styles         (u/one-or-many (cell-style id-or-name))]
     (if rounds-to-int?
-      (.setCellStyle cell (or (first (cell-style id-or-name)) (cell-style :integer)))
-      (.setCellStyle cell (or (second (cell-style id-or-name)) (cell-style :float))))))
+      (.setCellStyle cell (or (first styles) (cell-style :integer)))
+      (.setCellStyle cell (or (second styles) (cell-style :float))))))
 
 (defmethod set-cell! Boolean
   [^Cell cell value _]

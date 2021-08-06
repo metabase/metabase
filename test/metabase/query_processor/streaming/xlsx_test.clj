@@ -13,19 +13,22 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- format-string
-  [format-settings]
-  (let [format-strings (@#'xlsx/format-settings->format-strings format-settings)]
-    ;; If only one format string is returned (for datetimes) or both format strings
-    ;; are equal, just return a single value to make tests more readable.
-    (cond
-      (= (count format-strings) 1)
-      (first format-strings)
+  ([format-settings]
+   (format-string format-settings nil))
 
-      (= (first format-strings) (second format-strings))
-      (first format-strings)
+  ([format-settings semantic-type]
+   (let [format-strings (@#'xlsx/format-settings->format-strings format-settings semantic-type)]
+     ;; If only one format string is returned (for datetimes) or both format strings
+     ;; are equal, just return a single value to make tests more readable.
+     (cond
+       (= (count format-strings) 1)
+       (first format-strings)
 
-      :else
-      format-strings)))
+       (= (first format-strings) (second format-strings))
+       (first format-strings)
+
+       :else
+       format-strings))))
 
 (deftest format-settings->format-string-test
   (testing "Empty format settings don't produce a format string"
@@ -96,46 +99,58 @@
 
   (testing "Currency formatting"
     (testing "Default currency formatting is dollar sign"
-      (is (= "[$$]#,##0.00" (format-string {::mb.viz/currency-in-header false}))))
+      (is (= "[$$]#,##0.00" (format-string {::mb.viz/currency-in-header false} :type/Price))))
 
     (testing "Uses native currency symbol if supported"
-      (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "USD"})))
-      (is (= "[$CA$]#,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "CAD"})))
-      (is (= "[$€]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "EUR"})))
-      (is (= "[$¥]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "JPY"}))))
+      (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "USD"} :type/Price)))
+      (is (= "[$CA$]#,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "CAD"} :type/Price)))
+      (is (= "[$€]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "EUR"} :type/Price)))
+      (is (= "[$¥]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "JPY"} :type/Price))))
 
     (testing "Falls back to code if native symbol not supported"
-      (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false,
-                                               ::mb.viz/currency "KGS"})))
+      (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "KGS"} :type/Price)))
       (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false,
                                                ::mb.viz/currency "KGS",
-                                               ::mb.viz/currency-style "symbol"}))))
+                                               ::mb.viz/currency-style "symbol"}
+                                              :type/Price))))
 
     (testing "Respects currency-style option"
-      (is (= "[$$]#,##0.00"            (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency-style "symbol"})))
-      (is (= "[$USD] #,##0.00"         (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency-style "code"})))
-      (is (= "#,##0.00\" US dollars\"" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency-style "name"})))
+      (is (= "[$$]#,##0.00"            (format-string {::mb.viz/currency-in-header false,
+                                                       ::mb.viz/currency-style "symbol"}
+                                                      :type/Price)))
+      (is (= "[$USD] #,##0.00"         (format-string {::mb.viz/currency-in-header false,
+                                                       ::mb.viz/currency-style "code"}
+                                                      :type/Price)))
+      (is (= "#,##0.00\" US dollars\"" (format-string {::mb.viz/currency-in-header false,
+                                                       ::mb.viz/currency-style "name"}
+                                                      :type/Price)))
       (is (= "[$€]#,##0.00"            (format-string {::mb.viz/currency-in-header false,
                                                        ::mb.viz/currency "EUR",
-                                                       ::mb.viz/currency-style "symbol"})))
+                                                       ::mb.viz/currency-style "symbol"}
+                                                      :type/Price)))
       (is (= "[$EUR] #,##0.00"         (format-string {::mb.viz/currency-in-header false,
                                                        ::mb.viz/currency "EUR",
-                                                       ::mb.viz/currency-style "code"})))
+                                                       ::mb.viz/currency-style "code"}
+                                                      :type/Price)))
       (is (= "#,##0.00\" euros\""      (format-string {::mb.viz/currency-in-header false,
                                                        ::mb.viz/currency "EUR",
-                                                       ::mb.viz/currency-style "name"}))))
+                                                       ::mb.viz/currency-style "name"}
+                                                      :type/Price))))
+
+    (testing "Currency not included for non-currency semantic types"
+      (is (= "#,##0.00" (format-string {::mb.viz/currency-in-header false} :type/Quantity))))
 
     (testing "Formatting options are ignored if currency-in-header is true or absent (defaults to true)"
-      (is (= "#,##0.00" (format-string {::mb.viz/currency-style "symbol"})))
-      (is (= "#,##0.00" (format-string {::mb.viz/currency-style "name"})))
-      (is (= "#,##0.00" (format-string {::mb.viz/currency-style "code"})))
-      (is (= "#,##0.00" (format-string {::mb.viz/currency "USD"})))
-      (is (= "#,##0.00" (format-string {::mb.viz/currency "EUR"})))
-      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "symbol"})))
-      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "name"})))
-      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "code"})))
-      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "USD"})))
-      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "EUR"})))))
+      (is (= "#,##0.00" (format-string {::mb.viz/currency-style "symbol"} :type/Price)))
+      (is (= "#,##0.00" (format-string {::mb.viz/currency-style "name"} :type/Price)))
+      (is (= "#,##0.00" (format-string {::mb.viz/currency-style "code"} :type/Price)))
+      (is (= "#,##0.00" (format-string {::mb.viz/currency "USD"} :type/Price)))
+      (is (= "#,##0.00" (format-string {::mb.viz/currency "EUR"} :type/Price)))
+      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "symbol"} :type/Price)))
+      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "name"} :type/Price)))
+      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "code"} :type/Price)))
+      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "USD"} :type/Price)))
+      (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "EUR"} :type/Price)))))
 
   (testing "Datetime formatting"
     (testing "date-style"
@@ -179,7 +194,11 @@
                                                                 ::mb.viz/time-enabled "seconds"})))
       (is (= "dddd, mmmm d, yyyy, hh:mm:ss.000" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY",
                                                                 ::mb.viz/time-style "HH:mm",
-                                                                ::mb.viz/time-enabled "milliseconds"}))))))
+                                                                ::mb.viz/time-enabled "milliseconds"})))))
+
+  (testing "primary key and foreign key formatting"
+    (is (= "0" (format-string {} :type/PK)))
+    (is (= "0" (format-string {} :type/FK)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               XLSX export tests                                                |
