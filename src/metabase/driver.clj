@@ -404,7 +404,7 @@
   Note that it's the same set of `driver-features` with respect to
   both database-supports? and supports?)
 
-  (supports? :mongo :set-timezone mongo-db) ; -> true"
+    (supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database])}
   (fn [driver feature database]
     (when-not (driver-features feature)
@@ -412,8 +412,9 @@
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
+(defmethod database-supports? :default [driver feature _] (supports? driver feature))
 
-(defmulti supports?
+(defmulti ^:deprecated supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
   `driver-features`.)
 
@@ -426,7 +427,6 @@
   :hierarchy #'hierarchy)
 
 (defmethod supports? :default [_ _] false)
-(defmethod database-supports? :default [driver feature _] (supports? driver feature))
 
 (defmethod supports? [::driver :basic-aggregations] [_ _] true)
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
