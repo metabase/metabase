@@ -77,26 +77,22 @@ export default class Dashboard extends Component {
   }
 
   async loadDashboard(dashboardId) {
+    this.props.initialize();
+
+    this.props.loadDashboardParams();
+
     const {
       addCardOnLoad,
-      addCardToDashboard,
-      dashboard,
       fetchDashboard,
-      initialize,
-      loadDashboardParams,
-      location,
+      addCardToDashboard,
       setErrorPage,
+      location,
     } = this.props;
-
-    initialize();
-
-    loadDashboardParams();
 
     try {
       await fetchDashboard(dashboardId, location.query);
-
       if (addCardOnLoad != null) {
-        this.setEditing(dashboard);
+        this.setEditing(this.props.dashboard);
         addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
       }
     } catch (error) {
@@ -143,7 +139,6 @@ export default class Dashboard extends Component {
 
   render() {
     const {
-      addParameter,
       dashboard,
       editingParameter,
       hideParameters,
@@ -165,8 +160,9 @@ export default class Dashboard extends Component {
     const { error, showAddQuestionSidebar } = this.state;
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
-    const parametersWidget =
-      parameters && parameters.length > 0 ? (
+    let parametersWidget;
+    if (parameters && parameters.length > 0) {
+      parametersWidget = (
         <Parameters
           syncQueryString
           dashboard={dashboard}
@@ -187,7 +183,8 @@ export default class Dashboard extends Component {
           removeParameter={removeParameter}
           setParameterValue={setParameterValue}
         />
-      ) : null;
+      );
+    }
 
     return (
       <LoadingAndErrorWrapper
@@ -210,7 +207,7 @@ export default class Dashboard extends Component {
                 {...this.props}
                 onEditingChange={this.setEditing}
                 setDashboardAttribute={this.setDashboardAttribute}
-                addParameter={addParameter}
+                addParameter={this.props.addParameter}
                 parametersWidget={parametersWidget}
                 onSharingClick={this.onSharingClick}
                 onEmbeddingClick={this.onEmbeddingClick}
