@@ -383,7 +383,8 @@
     (let [id-or-name       (or (:id col) (:name col))
           col-viz-settings (or (get col-settings {::mb.viz/field-id id-or-name})
                                (get col-settings {::mb.viz/column-name id-or-name}))
-          is-currency?     (isa? (:semantic_type col) :type/Currency)
+          is-currency?     (or (isa? (:semantic_type col) :type/Currency)
+                               (= (::mb.viz/number-style col-viz-settings) "currency"))
           column-title     (or (::mb.viz/column-title col-viz-settings)
                                (:display_name col)
                                (:name col))]
