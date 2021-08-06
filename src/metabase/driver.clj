@@ -404,8 +404,7 @@
 
     (supports? :postgres :set-timezone) ; -> true
 
-  deprecated — [[database-supports?]] is intended to replace this method, implement it instead.
-  this method will be removed in a future release."
+  deprecated — [[database-supports?]] is intended to replace this method. However, it driver authors should continue _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
   {:arglists '([driver feature])}
   (fn [driver feature]
     (when-not (driver-features feature)
@@ -426,7 +425,7 @@
 
   Database is guaranteed to be a Database instance.
 
-    (supports? :mongo :set-timezone mongo-db) ; -> true"
+    (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database])}
   (fn [driver feature database]
     (when-not (driver-features feature)
