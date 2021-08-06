@@ -25,6 +25,7 @@ export default class Dashboard extends Component {
   state = {
     error: null,
     showAddQuestionSidebar: false,
+    isParametersWidgetSticky: false,
   };
 
   static propTypes = {
@@ -57,14 +58,6 @@ export default class Dashboard extends Component {
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
     setErrorPage: PropTypes.func,
-    parameters: PropTypes.array,
-
-    addCardToDashboard: PropTypes.func.isRequired,
-    archiveDashboard: PropTypes.func.isRequired,
-    fetchDashboard: PropTypes.func.isRequired,
-    saveDashboardAndCards: PropTypes.func.isRequired,
-    setDashboardAttributes: PropTypes.func.isRequired,
-    setEditingDashboard: PropTypes.func.isRequired,
     setSharing: PropTypes.func.isRequired,
 
     onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
@@ -82,9 +75,22 @@ export default class Dashboard extends Component {
     isSharing: false,
   };
 
+  constructor(props) {
+    super(props);
+    this.parametersWidgetRef = React.createRef();
+    this.parametersAndCardsContainerRef = React.createRef();
+  }
+
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
+
+    window.addEventListener("scroll", this.updateParametersWidgetStickiness, {
+      passive: true,
+    });
+    window.addEventListener("resize", this.updateParametersWidgetStickiness, {
+      passive: true,
+    });
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
@@ -100,7 +106,34 @@ export default class Dashboard extends Component {
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
+
+    window.removeEventListener("scroll", this.updateParametersWidgetStickiness);
+    window.addEventListener("resize", this.updateParametersWidgetStickiness);
   }
+
+  updateParametersWidgetStickiness = () => {
+    const { offsetHeight } = this.parametersWidgetRef;
+
+    if (!this.state.parametersWidgetOffsetTop) {
+      this.setState({
+        parametersWidgetOffsetTop: this.parametersWidgetRef.offsetTop,
+      });
+    }
+
+    const offsetTop =
+      this.state.parametersWidgetOffsetTop ||
+      this.parametersWidgetRef.offsetTop;
+
+    const isParametersWidgetSticky = window.scrollY >= offsetTop;
+
+    const parametersAndCardsContainerPaddingTop = isParametersWidgetSticky
+      ? offsetHeight + "px"
+      : "0";
+
+    this.setState({ isParametersWidgetSticky });
+
+    this.parametersAndCardsContainerRef.style.paddingTop = parametersAndCardsContainerPaddingTop;
+  };
 
   async loadDashboard(dashboardId) {
     const {
@@ -169,22 +202,19 @@ export default class Dashboard extends Component {
 
   render() {
     const {
-<<<<<<< HEAD
       addParameter,
       dashboard,
-=======
-      dashboard,
-      editingParameter,
-      hideParameters,
->>>>>>> cb89393c9 (Create unit test file for Dashboard)
       isEditing,
       isFullscreen,
       isNightMode,
       isSharing,
-<<<<<<< HEAD
     } = this.props;
 
-    const { error, showAddQuestionSidebar } = this.state;
+    const {
+      error,
+      isParametersWidgetSticky,
+      showAddQuestionSidebar,
+    } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
@@ -201,135 +231,49 @@ export default class Dashboard extends Component {
         isFullHeight={isEditing || isSharing}
         isFullscreen={isFullscreen}
         isNightMode={shouldRenderAsNightMode}
-=======
-      location,
-      parameterValues,
-      parameters,
-      removeParameter,
-      setEditingParameter,
-      setParameterDefaultValue,
-      setParameterIndex,
-      setParameterName,
-      setParameterValue,
-    } = this.props;
-
-    const { error, showAddQuestionSidebar } = this.state;
-    const shouldRenderAsNightMode = isNightMode && isFullscreen;
-
-    let parametersWidget;
-    if (parameters && parameters.length > 0) {
-      parametersWidget = (
-        <Parameters
-          syncQueryString
-          dashboard={dashboard}
-          isEditing={isEditing}
-          isFullscreen={isFullscreen}
-          isNightMode={shouldRenderAsNightMode}
-          hideParameters={hideParameters}
-          parameters={parameters.map(p => ({
-            ...p,
-            value: parameterValues[p.id],
-          }))}
-          query={location.query}
-          editingParameter={editingParameter}
-          setEditingParameter={setEditingParameter}
-          setParameterName={setParameterName}
-          setParameterIndex={setParameterIndex}
-          setParameterDefaultValue={setParameterDefaultValue}
-          removeParameter={removeParameter}
-          setParameterValue={setParameterValue}
-        />
-      );
-    }
-
-    return (
-      <LoadingAndErrorWrapper
-        className={cx("Dashboard flex-full", {
-          "Dashboard--fullscreen": isFullscreen,
-          "Dashboard--night": shouldRenderAsNightMode,
-          // prevents header from scrolling so we can have a fixed sidebar
-          "full-height": isEditing || isSharing,
-        })}
->>>>>>> cb89393c9 (Create unit test file for Dashboard)
         loading={!dashboard}
         error={error}
       >
         {() => (
-<<<<<<< HEAD
           <DashboardStyled>
             <HeaderContainer
               isFullscreen={isFullscreen}
               isNightMode={shouldRenderAsNightMode}
             >
-=======
-          <div
-            className="full flex flex-column full-height"
-            style={{ overflowX: "hidden" }}
-          >
-            <header className="DashboardHeader relative z2">
->>>>>>> cb89393c9 (Create unit test file for Dashboard)
               <DashboardHeader
                 {...this.props}
                 onEditingChange={this.setEditing}
                 setDashboardAttribute={this.setDashboardAttribute}
-<<<<<<< HEAD
                 addParameter={addParameter}
-=======
-                addParameter={this.props.addParameter}
->>>>>>> cb89393c9 (Create unit test file for Dashboard)
                 parametersWidget={parametersWidget}
                 onSharingClick={this.onSharingClick}
                 onEmbeddingClick={this.onEmbeddingClick}
                 onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
-<<<<<<< HEAD
             </HeaderContainer>
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
-              <ParametersAndCardsContainer>
+              <ParametersAndCardsContainer
+                innerRef={element =>
+                  (this.parametersAndCardsContainerRef = element)
+                }
+              >
                 {!isFullscreen && parametersWidget && (
-                  <ParametersWidgetContainer>
+                  <ParametersWidgetContainer
+                    innerRef={element => (this.parametersWidgetRef = element)}
+                    isSticky={isParametersWidgetSticky}
+                  >
                     {parametersWidget}
                   </ParametersWidgetContainer>
                 )}
 
                 <FullWidthContainer>
                   {dashboardHasCards(dashboard) ? (
-=======
-            </header>
-            <div
-              className={cx("flex shrink-below-content-size flex-full", {
-                "flex-basis-none": isEditing || isSharing,
-              })}
-            >
-              <div className="flex-auto overflow-x-hidden">
-                {!isFullscreen && parametersWidget && (
-                  <div className="wrapper flex flex-column align-start mt2 relative z2">
-                    {parametersWidget}
-                  </div>
-                )}
-                <div className="wrapper">
-                  {dashboard.ordered_cards.length === 0 ? (
-                    <Box
-                      mt={[2, 4]}
-                      color={shouldRenderAsNightMode ? "white" : "inherit"}
-                    >
-                      <EmptyState
-                        illustrationElement={
-                          <span className="QuestionCircle">?</span>
-                        }
-                        title={t`This dashboard is looking empty.`}
-                        message={t`Add a question to start making it useful!`}
-                      />
-                    </Box>
-                  ) : (
->>>>>>> cb89393c9 (Create unit test file for Dashboard)
                     <DashboardGrid
                       {...this.props}
                       onEditingChange={this.setEditing}
                     />
-<<<<<<< HEAD
                   ) : (
                     <DashboardEmptyState
                       isNightMode={shouldRenderAsNightMode}
@@ -338,27 +282,15 @@ export default class Dashboard extends Component {
                 </FullWidthContainer>
               </ParametersAndCardsContainer>
 
-=======
-                  )}
-                </div>
-              </div>
->>>>>>> cb89393c9 (Create unit test file for Dashboard)
               <DashboardSidebars
                 {...this.props}
                 onCancel={this.onCancel}
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
-<<<<<<< HEAD
             </DashboardBody>
           </DashboardStyled>
         )}
       </DashboardLoadingAndErrorWrapper>
-=======
-            </div>
-          </div>
-        )}
-      </LoadingAndErrorWrapper>
->>>>>>> cb89393c9 (Create unit test file for Dashboard)
     );
   }
 }
