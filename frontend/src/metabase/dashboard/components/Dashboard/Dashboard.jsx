@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 
+import { Container } from "./Dashboard.styled";
 import DashboardHeader from "../DashboardHeader";
 import DashboardGrid from "../DashboardGrid";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -203,10 +204,7 @@ export default class Dashboard extends Component {
         error={error}
       >
         {() => (
-          <div
-            className="full flex flex-column full-height"
-            style={{ overflowX: "hidden" }}
-          >
+          <Container>
             <header className="DashboardHeader relative z2">
               <DashboardHeader
                 {...this.props}
@@ -250,7 +248,7 @@ export default class Dashboard extends Component {
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
             </div>
-          </div>
+          </Container>
         )}
       </LoadingAndErrorWrapper>
     );
