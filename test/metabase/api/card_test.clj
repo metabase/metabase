@@ -596,7 +596,7 @@
                        mt/boolean-ids-and-timestamps
                        :last-edit-info)))))
         (testing "Card should include moderation reviews"
-          (letfn [(clean [mr] (select-keys [mr] [:status :text])) ]
+          (letfn [(clean [mr] (select-keys [mr] [:status :text]))]
             (mt/with-temp* [ModerationReview [review {:moderated_item_id (:id card)
                                                       :moderated_item_type "card"
                                                       :moderator_id (mt/user->id :rasta)
