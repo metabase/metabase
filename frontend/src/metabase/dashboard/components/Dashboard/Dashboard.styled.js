@@ -79,4 +79,13 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   flex-direction: column;
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
+  z-index: 30;
+
+  ${({ isSticky }) =>
+    isSticky &&
+    css`
+      position: fixed;
+      top: 0;
+      left: 0;
+    `}
 `;
