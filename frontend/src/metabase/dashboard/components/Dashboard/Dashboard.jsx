@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 
-import { Container } from "./Dashboard.styled";
+import { Container, HeaderContainer } from "./Dashboard.styled";
 import DashboardHeader from "../DashboardHeader";
 import DashboardGrid from "../DashboardGrid";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -205,7 +205,10 @@ export default class Dashboard extends Component {
       >
         {() => (
           <Container>
-            <header className="DashboardHeader relative z2">
+            <HeaderContainer
+              isFullscreen={isFullscreen}
+              isNightMode={shouldRenderAsNightMode}
+            >
               <DashboardHeader
                 {...this.props}
                 onEditingChange={this.setEditing}
@@ -217,7 +220,8 @@ export default class Dashboard extends Component {
                 onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
-            </header>
+            </HeaderContainer>
+
             <div
               className={cx("flex shrink-below-content-size flex-full", {
                 "flex-basis-none": isEditing || isSharing,
