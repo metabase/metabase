@@ -10,8 +10,20 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview
-                                     Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
+            [metabase.models
+             :refer
+             [Card
+              CardFavorite
+              Collection
+              Dashboard
+              Database
+              ModerationReview
+              Pulse
+              PulseCard
+              PulseChannel
+              PulseChannelRecipient
+              Table
+              ViewLog]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
@@ -22,11 +34,11 @@
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
+            [metabase.test.data.users :as test-users]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.test.data.users :as test-users])
+            [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
