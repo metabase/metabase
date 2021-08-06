@@ -11,21 +11,16 @@
 
 
 (deftest driver-supports?-test
-  (is (= true
-         (driver/supports? ::test-driver :foreign-keys)))
-  (is (= false
-         (driver/supports? ::test-driver :expressions)))
-  (is (thrown? java.lang.Exception
+  (is (driver/supports? ::test-driver :foreign-keys))
+  (is (not (driver/supports? ::test-driver :expressions)))
+  (is (thrown-with-msg? java.lang.Exception #"Invalid driver feature: .*"
                (driver/supports? ::test-driver :some-made-up-thing))))
 
 (deftest database-supports?-test
-  (is (= true
-         (driver/database-supports? ::test-driver :foreign-keys "dummy")))
-  (is (= false
-         (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
-  (is (= false
-         (driver/database-supports? ::test-driver :expressions "dummy")))
-  (is (thrown? java.lang.Exception
+  (is (driver/database-supports? ::test-driver :foreign-keys "dummy"))
+  (is (not (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
+  (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
+  (is (thrown-with-msg? java.lang.Exception #"Invalid driver feature: .*"
                (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
@@ -38,8 +33,6 @@
 
 (deftest available?-test
   (with-redefs [impl/concrete? (constantly true)]
-    (is (= true
-           (driver/available? ::test-driver)))
-    (is (= true
-           (driver/available? "metabase.driver-test/test-driver"))
+    (is (driver/available? ::test-driver))
+    (is (driver/available? "metabase.driver-test/test-driver")
         "`driver/available?` should work for if `driver` is a string -- see #10135")))
