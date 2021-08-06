@@ -87,14 +87,20 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
+;; some DB's (bigquery) don't let you have interesting field names
+(def ^:private limited-char-drivers #{:bigquery-cloud-sdk})
+
 (deftest dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (let [query (mt/mbql-query venues
-                  {:expressions {"Price + 1" [:+ $price 1]
-                                 "1 + 1"     [:+ 1 1]}
-                   :fields      [$price [:expression "1 + 1"]]
-                   :order-by    [[:asc $id]]
-                   :limit       3})]
+    (let [priceplusone (if (contains? limited-char-drivers driver/*driver*) "price_plus_1" "Price + 1")
+          oneplusone   (if (contains? limited-char-drivers driver/*driver*) "one_plus_one" "Price + 1")
+          query        (mt/mbql-query venues
+                         {:expressions {priceplusone [:+ $price 1]
+                                        oneplusone   [:+ 1 1]}
+                          :fields      [$price [:expression oneplusone]]
+                          :order-by    [[:asc $id]]
+                          :limit       3})
+          ]
       (testing "If an explicit `:fields` clause is present, expressions *not* in that clause should not come back"
         (is (= [[3 2] [2 2] [2 2]]
                (mt/formatted-rows [int int]
@@ -111,11 +117,11 @@
         (is (= [[2 22] [3 59] [4 13]]
                (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
-                   {:expressions {"Price + 1" [:+ $price 1]
-                                  "1 + 1"     [:+ 1 1]}
+                   {:expressions {priceplusone [:+ $price 1]
+                                  oneplusone   [:+ 1 1]}
                     :aggregation [:count]
-                    :breakout    [[:expression "Price + 1"]]
-                    :order-by    [[:asc [:expression "Price + 1"]]]
+                    :breakout    [[:expression priceplusone]]
+                    :order-by    [[:asc [:expression priceplusone]]]
                     :limit       3}))))))))
 
 (deftest expressions-in-order-by-test
