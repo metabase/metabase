@@ -324,6 +324,40 @@
                                  ;; too many false positives for now
                                  :unused-ret-vals]}}
 
+  ;; clojure -T:whitespace-linter
+  :whitespace-linter
+  {:deps       {com.github.camsaul/whitespace-linter {:sha "5e88d5c3755e5c47747f6cd9cce2f3e5d895e831"}}
+   :ns-default whitespace-linter
+   :exec-args  {:paths            ["./.dir-locals.el"
+                                   "./deps.edn"
+                                   "./package.json"
+                                   "./shadow-cljs.edn"
+                                   ".circleci"
+                                   ".github"
+                                   "bin"
+                                   "enterprise"
+                                   "frontend"
+                                   "resources"
+                                   "shared"
+                                   "src"
+                                   "test"]
+                :include-patterns ["\\.clj.?$"
+                                   "\\.edn$"
+                                   "\\.el$"
+                                   "\\.html$"
+                                   "\\.json$"
+                                   "\\.jsx?$"
+                                   "\\.sh$"
+                                   "\\.yaml$"
+                                   "\\.yml$"]
+                :exclude-patterns ["resources/i18n/.*\\.edn$"
+                                   "resources/frontend_client"
+                                   "resources/frontend_shared"
+                                   "frontend/src/cljs"
+                                   "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
+                                   "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
+                                   "shared/src/metabase/shared/util/currency\\.cljc$"]}}
+
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage
   {:exec-fn   metabase.cloverage-runner/run-project
