@@ -61,12 +61,10 @@
                                                 :expected true}
                                                {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
                                                 :expected false}]]
-      (testing (str "connect with " details)
-
-
-        (is (= expected
-               (let [db (db/insert! Database {:name database-name, :engine "mongo", :details details})]
-                 (driver/database-supports? :mongo :expression db))))))))
+     (testing (str "connect with " details)
+       (is (= expected
+              (driver.u/can-connect-with-details? :mongo details))
+           (str message))))))
 
 (deftest database-supports?-test
 (mt/test-driver
@@ -85,10 +83,10 @@
                                                    :dbname  "metabase-test"
                                                    :version "2222.2134234.lol"}
                                         :expected false}]]
-      (testing (str "connect with " details)
-        (is (= expected
-               (driver.u/can-connect-with-details? :mongo details))
-            (str message))))))
+     (testing (str "connect with " details)
+       (is (= expected
+              (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details details})]
+                (driver/database-supports? :mongo :expression db))))))))
 
 
 (def ^:private native-query
