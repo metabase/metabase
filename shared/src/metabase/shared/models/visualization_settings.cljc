@@ -528,12 +528,16 @@
     :click_behavior (assoc m ::click-behavior (db->norm-click-behavior v))
     (assoc m (db->norm-column-settings-keys k) v)))
 
+(defn db->norm-column-settings-entries
+  [entries]
+  (reduce-kv db->norm-column-settings-entry {} entries))
+
 (defn db->norm-column-settings
   "Converts a :column_settings DB form to its normalized form."
   [settings]
   (m/map-kv (fn [k v]
               (let [k1 (parse-db-column-ref k)
-                    v1 (reduce-kv db->norm-column-settings-entry {} v)]
+                    v1 (db->norm-column-settings-entries v)]
                 [k1 v1]))
             settings))
 

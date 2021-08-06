@@ -9,7 +9,8 @@
             [metabase.shared.util.currency :as currency]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]])
+            [metabase.util.i18n :refer [tru]]
+            [metabase.public-settings :as public-settings])
   (:import java.io.OutputStream
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [org.apache.poi.ss.usermodel Cell CellType DataFormat DateUtil Sheet Workbook]
@@ -45,6 +46,14 @@
     ::mb.viz/date-abbreviate
     ::mb.viz/time-enabled
     ::mb.viz/time-style})
+
+(defn- merge-global-settings
+  "Merge format settings defined in the localization preferences into the format settings
+  for a single column."
+  [format-settings global-settings-key]
+  (let [global-settings (global-settings-key (public-settings/custom-formatting))
+        normalized      (mb.viz/db->norm-column-settings-entries global-settings)]
+    (merge normalized format-settings)))
 
 (defn- currency-identifier
   "Given the format settings for a currency column, returns the symbol, code or name for the
@@ -103,14 +112,17 @@
   The second number should be used for all other values."
   [format-settings semantic-type]
   (let [format-strings
-        (let [decimals     (::mb.viz/decimals format-settings 2)
-              ;; base-strings: [int-format, float-format]
-              base-strings (if (default-number-format? format-settings)
-                             ["#,##0", "#,##0.##"]
-                             (repeat 2 (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0"))))))
-              is-currency? (or (isa? semantic-type :type/Currency)
-                               (= (::mb.viz/number-style format-settings) "currency"))]
-          (condp = (::mb.viz/number-style format-settings)
+        (let [decimals        (::mb.viz/decimals format-settings 2)
+              is-currency?    (or (isa? semantic-type :type/Currency)
+                                  (= (::mb.viz/number-style format-settings) "currency"))
+              merged-settings (if is-currency?
+                                (merge-global-settings format-settings :type/Currency)
+                                format-settings)
+              base-strings    (if (default-number-format? merged-settings)
+                                ;; [int-format, float-format]
+                                ["#,##0", "#,##0.##"]
+                                (repeat 2 (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
+          (condp = (::mb.viz/number-style merged-settings)
             "percent"
             (map #(str % "%") base-strings)
 
@@ -120,8 +132,8 @@
             "decimal"
             base-strings
 
-            (if (and is-currency?  (false? (::mb.viz/currency-in-header format-settings)))
-              (map #(currency-format-string % format-settings) base-strings)
+            (if (and is-currency? (false? (::mb.viz/currency-in-header merged-settings)))
+              (map #(currency-format-string % merged-settings) base-strings)
               base-strings)))]
     (map
      (fn [format-string]
@@ -176,10 +188,13 @@
 
 (defn- datetime-format-string
   [format-settings]
-  (->> (str/lower-case (::mb.viz/date-style format-settings (default-format-strings :date)))
-       (abbreviate-date-names format-settings)
-       (replace-date-separators format-settings)
-       (add-time-format format-settings)))
+  (let [merged-settings (merge-global-settings format-settings :type/Temporal)
+        date-style      (::mb.viz/date-style merged-settings (:date default-format-strings))]
+    (->> date-style
+         str/lower-case
+         (abbreviate-date-names merged-settings)
+         (replace-date-separators merged-settings)
+         (add-time-format merged-settings))))
 
 (defn- format-settings->format-strings
   "Returns a vector of format strings for a datetime column or number column, corresponding
@@ -191,10 +206,12 @@
      (isa? semantic-type :Relation/*)
      "0"
 
-     (some #(contains? datetime-setting-keys %) (keys format-settings))
+     (or (some #(contains? datetime-setting-keys %) (keys format-settings))
+         (isa? semantic-type :type/Temporal))
      (datetime-format-string format-settings)
 
-     (some #(contains? number-setting-keys %) (keys format-settings))
+     (or (some #(contains? number-setting-keys %) (keys format-settings))
+         (isa? semantic-type :type/Currency))
      (number-format-strings format-settings semantic-type))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -373,15 +390,18 @@
   [ordered-cols col-settings]
   (for [col ordered-cols]
     (let [id-or-name       (or (:id col) (:name col))
-          col-viz-settings (or (get col-settings {::mb.viz/field-id id-or-name})
+          format-settings  (or (get col-settings {::mb.viz/field-id id-or-name})
                                (get col-settings {::mb.viz/column-name id-or-name}))
           is-currency?     (or (isa? (:semantic_type col) :type/Currency)
-                               (= (::mb.viz/number-style col-viz-settings) "currency"))
-          column-title     (or (::mb.viz/column-title col-viz-settings)
+                               (= (::mb.viz/number-style format-settings) "currency"))
+          merged-settings  (if is-currency?
+                             (merge-global-settings format-settings :type/Currency)
+                             format-settings)
+          column-title     (or (::mb.viz/column-title merged-settings)
                                (:display_name col)
                                (:name col))]
-      (if (and is-currency? (::mb.viz/currency-in-header col-viz-settings true))
-        (str column-title " (" (currency-identifier col-viz-settings) ")")
+      (if (and is-currency? (::mb.viz/currency-in-header merged-settings true))
+        (str column-title " (" (currency-identifier merged-settings) ")")
         column-title))))
 
 (defmethod i/streaming-results-writer :xlsx
