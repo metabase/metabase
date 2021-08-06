@@ -81,12 +81,12 @@
                                        {:details  {:host    "localhost"
                                                    :port    27017
                                                    :dbname  "metabase-test"
-                                                   :version "2222.2134234.lol"}
+                                                   :version "2.2134234.lol"}
                                         :expected false}]]
      (testing (str "connect with " details)
        (is (= expected
               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details details})]
-                (driver/database-supports? :mongo :expression db))))))))
+                (driver/database-supports? :mongo :expressions db))))))))
 
 
 (def ^:private native-query
@@ -119,12 +119,11 @@
 
 (deftest describe-database-test
   (mt/test-driver :mongo
-    (is (= {:tables  #{{:schema nil, :name "checkins"}
-                       {:schema nil, :name "categories"}
-                       {:schema nil, :name "users"}
-                       {:schema nil, :name "venues"}}
-            :version nil}
-           (driver/describe-database :mongo (mt/db))))))
+    (is (= #{{:schema nil, :name "checkins"}
+            {:schema nil, :name "categories"}
+            {:schema nil, :name "users"}
+            {:schema nil, :name "venues"}}
+            (:tables (driver/describe-database :mongo (mt/db)))))))
 
 (deftest describe-table-test
   (mt/test-driver :mongo
