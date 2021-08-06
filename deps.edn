@@ -325,7 +325,6 @@
                                  :unused-ret-vals]}}
 
   ;; clojure -T:whitespace-linter
-  ;; this line is here to INTENTIONALLY BREAK STUFF !!! ⅿ
   :whitespace-linter
   {:deps       {com.github.camsaul/whitespace-linter {:sha "5e88d5c3755e5c47747f6cd9cce2f3e5d895e831"}}
    :ns-default whitespace-linter
