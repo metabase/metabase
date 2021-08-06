@@ -1281,7 +1281,7 @@
       (let [orig card-api/run-query-for-card-async]
         (with-redefs [card-api/run-query-for-card-async (fn [card-id export-format & options]
                                                           (apply orig card-id export-format
-                                                                 :run (fn [{:keys [constraints]} _]
+                                                                 :run (fn [{:keys [constraints]} _ _]
                                                                         {:constraints constraints})
                                                                  options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"

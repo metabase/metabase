@@ -84,8 +84,8 @@
                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                     :export-format :api
                     :parameters    params
-                    :run (fn [query & args]
-                           (apply qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) args))))]
+                    :run (fn [query info _]
+                           (apply qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
       {:card card
        :result result})
     (catch Throwable e
