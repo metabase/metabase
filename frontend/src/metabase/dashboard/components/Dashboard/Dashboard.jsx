@@ -11,6 +11,7 @@ import DashboardHeader from "../DashboardHeader";
 import DashboardGrid from "../DashboardGrid";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import EmptyState from "metabase/components/EmptyState";
 import { DashboardSidebars } from "../DashboardSidebars";
 
@@ -232,18 +233,9 @@ export default class Dashboard extends Component {
                 )}
                 <div className="wrapper">
                   {dashboard.ordered_cards.length === 0 ? (
-                    <Box
-                      mt={[2, 4]}
-                      color={shouldRenderAsNightMode ? "white" : "inherit"}
-                    >
-                      <EmptyState
-                        illustrationElement={
-                          <span className="QuestionCircle">?</span>
-                        }
-                        title={t`This dashboard is looking empty.`}
-                        message={t`Add a question to start making it useful!`}
-                      />
-                    </Box>
+                    <DashboardEmptyState
+                      isNightMode={shouldRenderAsNightMode}
+                    />
                   ) : (
                     <DashboardGrid
                       {...this.props}
