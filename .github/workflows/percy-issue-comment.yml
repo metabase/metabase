@@ -61,7 +61,6 @@ jobs:
           echo "Node.js `node --version`"
           echo "yarn `yarn --version`"
           java -version
-          echo "Clojure `clojure -e "(println (clojure-version))"`"
 
       - name: Get yarn cache
         uses: actions/cache@v2
@@ -120,7 +119,6 @@ jobs:
           echo "Node.js `node --version`"
           echo "yarn `yarn --version`"
           java -version
-          echo "Clojure `clojure -e "(println (clojure-version))"`"
       - name: Get yarn cache
         uses: actions/cache@v2
         with:

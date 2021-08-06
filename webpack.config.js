@@ -174,6 +174,7 @@ const config = (module.exports = {
 });
 
 if (NODE_ENV === "hot") {
+  config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js?[contenthash]";
 

@@ -209,7 +209,7 @@ export default class NotebookStep extends React.Component {
 
 const ColorButton = styled(Button)`
   border: none;
-  color: ${({ color }) => (color ? color : c("text-medium"))}
+  color: ${({ color }) => (color ? color : c("text-medium"))};
   background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};
   &:hover {
     color: ${({ color }) => (color ? darken(color, 0.115) : color("brand"))};

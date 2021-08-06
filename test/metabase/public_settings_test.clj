@@ -129,16 +129,18 @@
       (testing "invalid format"
         (testing "blank string"
           (mt/with-temporary-setting-values [site-locale "en_US"]
-            (is (thrown?
+            (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
+                 #"Invalid locale \"\""
                  (public-settings/site-locale "")))
             (is (= "en_US"
                    (public-settings/site-locale)))))
 
         (testing "non-existant locale"
           (mt/with-temporary-setting-values [site-locale "en_US"]
-            (is (thrown?
+            (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
+                 #"Invalid locale \"en_EN\""
                  (public-settings/site-locale "en_EN")))
             (is (= "en_US"
                    (public-settings/site-locale)))))))
