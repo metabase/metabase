@@ -364,6 +364,13 @@
                 metabase/buid-mb                {:local/root "bin/build-mb"}}
    :ns-default build}
 
+  ;; convenience that preps (including aliases) everything in one step. Easier than running `clojure -X:deps prep` twice.
+  ;; clojure -T:prep prep
+  :prep
+  {:deps       {org.clojure/tools.deps.alpha {:mvn/version "0.12.1003"}}
+   :ns-default prep
+   :exec-args  {:aliases #{:drivers}}}
+
 ;;; Other misc convenience aliases
 
   ;; Profile Metabase start time with clojure -M:profile

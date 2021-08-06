@@ -602,11 +602,8 @@ jobs:
           steps:
             - restore-be-deps-cache
             - run:
-                name: Compile Java source file(s)
-                command: clojure -X:deps prep
-            - run:
-                name: Compile driver AOT namespaces
-                command: cd modules/drivers && clojure -X:deps prep
+                name: Compile Java source file(s) and driver AOT namespaces
+                command: clojure -T:prep prep
             - run:
                 name: Fetch dependencies
                 command: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
