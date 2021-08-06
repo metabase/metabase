@@ -132,6 +132,21 @@ describe("scenarios > collection_defaults", () => {
         //
       });
 
+      it.skip("should expand/collapse collection tree by clicking on parent collection name (metabse#17339)", () => {
+        cy.visit("/collection/root");
+
+        sidebar().within(() => {
+          cy.findByText("First collection").click();
+          cy.findByText("Second collection");
+          cy.findByText("Third collection");
+
+          // Warning: There have been some race conditions with the re-rendering in the collection sidebar observed previously.
+          //          Double check that this test works as expected when the underlying issue is fixed. Update as needed.
+          cy.findByText("First collection").click();
+          cy.findByText("Second collection").should("not.exist");
+        });
+      });
+
       describe("deeply nested collection navigation", () => {
         it("should correctly display deep nested collections", () => {
           cy.request("GET", "/api/collection").then(xhr => {
