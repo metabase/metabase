@@ -151,7 +151,7 @@
   Clojure vector, which itself can contain a fully qualified name for serialization"
   {:added "0.40.0"}
   [kw]
-  (str (if-let [kw-ns (namespace kw)] (str kw-ns "/")) (name kw)))
+  (str (when-let [kw-ns (namespace kw)] (str kw-ns "/")) (name kw)))
 
 (s/fdef keyname
   :args (s/cat :kw keyword?)
@@ -529,6 +529,7 @@
     (assoc m (db->norm-column-settings-keys k) v)))
 
 (defn db->norm-column-settings-entries
+  "Converts the DB form of a map of :column_settings entries to its normalized form."
   [entries]
   (reduce-kv db->norm-column-settings-entry {} entries))
 
