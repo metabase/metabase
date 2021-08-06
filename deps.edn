@@ -326,7 +326,7 @@
 
   ;; clojure -T:whitespace-linter
   :whitespace-linter
-  {:deps       {com.github.camsaul/whitespace-linter {:sha "5e88d5c3755e5c47747f6cd9cce2f3e5d895e831"}}
+  {:deps       {com.github.camsaul/whitespace-linter {:sha "b25716745f5875194bc38364e498d0ddda51f4b0"}}
    :ns-default whitespace-linter
    :exec-args  {:paths            ["./.dir-locals.el"
                                    "./deps.edn"
