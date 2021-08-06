@@ -10,12 +10,14 @@
            java.nio.charset.StandardCharsets))
 
 (defmethod i/stream-options :json
-  [_ filename-prefix]
-  {:content-type "application/json; charset=utf-8"
-   :status       200
-   :headers      {"Content-Disposition" (format "attachment; filename=\"%s_%s.json\""
-                                                (or filename-prefix "query_result")
-                                                (u.date/format (t/zoned-date-time)))}})
+  ([_]
+   (i/stream-options :json "query_result"))
+  ([_ filename-prefix]
+   {:content-type "application/json; charset=utf-8"
+    :status       200
+    :headers      {"Content-Disposition" (format "attachment; filename=\"%s_%s.json\""
+                                                 (or filename-prefix "query_result")
+                                                 (u.date/format (t/zoned-date-time)))}}))
 
 (defmethod i/streaming-results-writer :json
   [_ ^OutputStream os]
@@ -46,8 +48,8 @@
         (.close writer)))))
 
 (defmethod i/stream-options :api
-  [_ _]
-  {:content-type "application/json; charset=utf-8"})
+  ([_]   (i/stream-options :api nil))
+  ([_ _] {:content-type "application/json; charset=utf-8"}))
 
 (defn- map->serialized-json-kvs
   "{:a 100, :b 200} ; -> \"a\":100,\"b\":200"

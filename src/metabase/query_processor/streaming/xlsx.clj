@@ -13,13 +13,15 @@
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
 (defmethod i/stream-options :xlsx
-  [_ filename-prefix]
-  {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-   :write-keepalive-newlines? false
-   :status                    200
-   :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.xlsx\""
-                                                             (or filename-prefix "query_result")
-                                                             (u.date/format (t/zoned-date-time)))}})
+  ([_]
+   (i/stream-options :xlsx "query_result"))
+  ([_ filename-prefix]
+   {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    :write-keepalive-newlines? false
+    :status                    200
+    :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.xlsx\""
+                                                              (or filename-prefix "query_result")
+                                                              (u.date/format (t/zoned-date-time)))}}))
 
 (def ^:dynamic *cell-styles*
   "Holds the CellStyle values used within a spreadsheet so that they can be reused. Excel has a limit
