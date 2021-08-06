@@ -141,6 +141,7 @@ export default class Dashboard extends Component {
 
   render() {
     const {
+      addParameter,
       dashboard,
       editingParameter,
       hideParameters,
@@ -160,7 +161,9 @@ export default class Dashboard extends Component {
     } = this.props;
 
     const { error, showAddQuestionSidebar } = this.state;
+
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
+    const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
 
     let parametersWidget;
     if (parameters && parameters.length > 0) {
@@ -209,7 +212,7 @@ export default class Dashboard extends Component {
                 {...this.props}
                 onEditingChange={this.setEditing}
                 setDashboardAttribute={this.setDashboardAttribute}
-                addParameter={this.props.addParameter}
+                addParameter={addParameter}
                 parametersWidget={parametersWidget}
                 onSharingClick={this.onSharingClick}
                 onEmbeddingClick={this.onEmbeddingClick}
@@ -229,14 +232,14 @@ export default class Dashboard extends Component {
                   </div>
                 )}
                 <div className="wrapper">
-                  {dashboard.ordered_cards.length === 0 ? (
-                    <DashboardEmptyState
-                      isNightMode={shouldRenderAsNightMode}
-                    />
-                  ) : (
+                  {dashboardHasCards(dashboard) ? (
                     <DashboardGrid
                       {...this.props}
                       onEditingChange={this.setEditing}
+                    />
+                  ) : (
+                    <DashboardEmptyState
+                      isNightMode={shouldRenderAsNightMode}
                     />
                   )}
                 </div>
