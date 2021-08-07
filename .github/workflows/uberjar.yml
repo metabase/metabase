@@ -92,9 +92,9 @@ jobs:
         name: metabase-${{ matrix.edition }}-uberjar
 
     - name: Launch uberjar
-      run: |
-        java -jar ./target/uberjar/metabase.jar &
-        sleep 180
+      run: java -jar ./target/uberjar/metabase.jar &
+    - name: Wait for Metabase to start
+      run: while ! curl -s localhost:3000/api/health; do sleep 1; done
       timeout-minutes: 5
 
     - name: Check API health
