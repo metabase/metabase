@@ -1,5 +1,6 @@
 (ns metabase.plugins
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.classpath :as classpath]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :as env]
@@ -9,7 +10,8 @@
             [metabase.util.files :as files]
             [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
-  (:import [java.nio.file Files Path]))
+  (:import java.io.File
+           [java.nio.file Files Path]))
 
 (defn- plugins-dir-filename ^String []
   (or (env/env :mb-plugins-dir)
@@ -112,12 +114,16 @@
   same plugins from the uberjar. This is needed because some plugin manifests define driver methods and the like that
   aren't defined elsewhere."
     []
-    ;; TODO - this should probably do an actual search in case we ever add any additional directories
-    (doseq [path  (files/files-seq (files/get-path "modules/drivers/"))
-            :let  [manifest-path (files/get-path (str path) "/resources/metabase-plugin.yaml")]
-            :when (files/exists? manifest-path)]
-      (log/info (trs "Loading local plugin manifest at {0}" (str manifest-path)))
-      (load-local-plugin-manifest! manifest-path))))
+    (doseq [^File file (classpath/system-classpath)
+            :when      (and (.isDirectory file)
+                            (not (.isHidden file))
+                            (str/includes? (str file) "modules/drivers")
+                            (str/ends-with? (str file) "resources"))
+            :let       [manifest-file (io/file file "metabase-plugin.yaml")]
+            :when      (.exists manifest-file)
+            :let       [info (yaml/parse-string (slurp manifest-file))]]
+      (log/info (trs "Loading local plugin manifest at {0}" (str manifest-file)))
+      (load-local-plugin-manifest! manifest-file))))
 
 (defn- has-manifest? ^Boolean [^Path path]
   (boolean (files/file-exists-in-archive? path "metabase-plugin.yaml")))
