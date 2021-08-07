@@ -87,13 +87,13 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-;; some DB's (bigquery) don't let you have interesting field, table, etc names
 (def ^:private limited-char-drivers #{:bigquery-cloud-sdk})
 
 (deftest dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (let [priceplusone (if (contains? limited-char-drivers driver/*driver*) "price_plus_1" "Price + 1")
-          oneplusone   (if (contains? limited-char-drivers driver/*driver*) "one_plus_one" "1 + 1")
+    ;; bigquery doesn't let you have hypthens in field, table, etc names
+    (let [priceplusone (if (= driver/*driver* :bigquery-cloud-sdk) "price_plus_1" "Price + 1")
+          oneplusone   (if (= driver/*driver* :bigquery-cloud-sdk) "one_plus_one" "1 + 1")
           query        (mt/mbql-query venues
                          {:expressions {priceplusone [:+ $price 1]
                                         oneplusone   [:+ 1 1]}
@@ -175,22 +175,24 @@
 ;; e.g. scarcity = 100.0 / num-birds
 (defn- calculate-bird-scarcity* [formula filter-clause]
   (mt/formatted-rows [2.0]
-    (let [exprname (if (contains? limited-char-drivers driver/*driver*) "bird_scarcity" "bird-scarcity")]
-      (mt/dataset daily-bird-counts
-        (mt/run-mbql-query bird-count
-          {:expressions {exprname formula}
-           :fields      [[:expression exprname]]
-           :filter      filter-clause
-           :order-by    [[:asc $date]]
-           :limit       10}))))
+    (mt/dataset daily-bird-counts
+      (mt/run-mbql-query bird-count
+        {:expressions {"bird-scarcity" formula}
+         :fields      [[:expression "bird-scarcity"]]
+         :filter      filter-clause
+         :order-by    [[:asc $date]]
+         :limit       10}))))
 
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
-     (mt/$ids ~'bird_count
+     (mt/$ids ~'bird-count
        (calculate-bird-scarcity* ~formula ~filter-clause))))
 
 (deftest nulls-and-zeroes-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
+                         ;; bigquery doesn't let you have hypthens in field, table, etc names
+                         ;; therefore a different macro is tested in bigquery driver tests
+                         :bigquery-cloud-sdk)
     (testing (str "hey... expressions should work if they are just a Field! (Also, this lets us take a peek at the "
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
