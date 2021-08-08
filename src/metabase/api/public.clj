@@ -144,9 +144,14 @@
   [uuid export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
-  (run-query-for-card-with-public-uuid-async uuid export-format (json/parse-string parameters keyword)
-                                             :constraints nil))
-
+  (run-query-for-card-with-public-uuid-async
+   uuid
+   export-format
+   (json/parse-string parameters keyword)
+   :constraints nil
+   :middleware {:process-viz-settings? true
+                :js-int-to-string?     false
+                :format-rows?          false}))
 
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------

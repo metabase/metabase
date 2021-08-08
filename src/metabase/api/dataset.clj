@@ -108,7 +108,8 @@
                          (dissoc :constraints)
                          (update :middleware #(-> %
                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
-                                                  (assoc :skip-results-metadata? true
+                                                  (assoc :process-viz-settings? true
+                                                         :skip-results-metadata? true
                                                          :format-rows? false))))]
     (run-query-async
      query
