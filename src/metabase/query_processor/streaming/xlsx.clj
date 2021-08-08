@@ -279,6 +279,12 @@
       (first cell-style-delays)
       cell-style-delays)))
 
+(defn- rounds-to-int?
+  "Returns whether a number should be formatted as an integer after being rounded to 2 decimal places."
+  [value]
+  (let [rounded (.setScale (bigdec value) 2 java.math.RoundingMode/HALF_UP)]
+    (== (int rounded) rounded)))
+
 (defmulti ^:private set-cell!
   "Sets a cell to the provided value, with an approrpiate style if necessary.
 
@@ -336,9 +342,8 @@
   (when (= (.getCellType cell) CellType/FORMULA)
     (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell (double value))
-  (let [rounds-to-int? (re-matches #"\d+\.00" (format "%.2f" (float value)))
-        styles         (u/one-or-many (cell-style id-or-name))]
-    (if rounds-to-int?
+  (let [styles         (u/one-or-many (cell-style id-or-name))]
+    (if (rounds-to-int? value)
       (.setCellStyle cell (or (first styles) (cell-style :integer)))
       (.setCellStyle cell (or (second styles) (cell-style :float))))))
 
