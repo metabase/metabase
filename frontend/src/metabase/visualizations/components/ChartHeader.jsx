@@ -38,7 +38,6 @@ const ChartHeader = ({
 
   return (
     <ChartHeaderRoot
-      className="mx1 flex-no-shrink"
       title={title}
       description={description}
       icon={icon}
