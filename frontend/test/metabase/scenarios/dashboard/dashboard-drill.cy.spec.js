@@ -971,7 +971,7 @@ function setParamValue(paramName, text) {
 }
 
 function drillThroughCardTitle(title) {
-  cy.findByTestId("legend-header")
+  cy.findByTestId("legend-caption")
     .contains(title)
     .click();
   cy.contains(`Started from ${title}`);

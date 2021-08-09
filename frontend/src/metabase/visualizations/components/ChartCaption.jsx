@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { iconPropTypes } from "metabase/components/Icon";
-import { ChartHeaderRoot } from "./ChartHeader.styled";
+import { ChartHeaderRoot } from "./ChartCaption.styled";
 
 const propTypes = {
   series: PropTypes.array.isRequired,
@@ -11,7 +11,7 @@ const propTypes = {
   onChangeCardAndRun: PropTypes.func,
 };
 
-const ChartHeader = ({
+const ChartCaption = ({
   series,
   settings,
   icon,
@@ -47,6 +47,6 @@ const ChartHeader = ({
   );
 };
 
-ChartHeader.propTypes = propTypes;
+ChartCaption.propTypes = propTypes;
 
-export default ChartHeader;
+export default ChartCaption;

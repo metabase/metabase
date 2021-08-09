@@ -8,8 +8,8 @@ import {
   LegendLabelIcon,
   LegendDescriptionIcon,
   LegendLabel,
-  LegendHeaderRoot,
-} from "./LegendHeader.styled";
+  LegendCaptionRoot,
+} from "./LegendCaption.styled";
 
 const propTypes = {
   className: PropTypes.string,
@@ -20,7 +20,7 @@ const propTypes = {
   onTitleClick: PropTypes.func,
 };
 
-const LegendHeader = ({
+const LegendCaption = ({
   className,
   title,
   description,
@@ -29,7 +29,7 @@ const LegendHeader = ({
   onTitleClick,
 }) => {
   return (
-    <LegendHeaderRoot className={className} data-testid="legend-header">
+    <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
       <LegendLabel onClick={onTitleClick}>
         <Ellipsified>{title}</Ellipsified>
@@ -40,10 +40,10 @@ const LegendHeader = ({
         </Tooltip>
       )}
       {actionButtons && <LegendButtonGroup>{actionButtons}</LegendButtonGroup>}
-    </LegendHeaderRoot>
+    </LegendCaptionRoot>
   );
 };
 
-LegendHeader.propTypes = propTypes;
+LegendCaption.propTypes = propTypes;
 
-export default LegendHeader;
+export default LegendCaption;

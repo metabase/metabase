@@ -3,7 +3,7 @@ import colors from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { space } from "metabase/styled-components/theme";
 
-export const LegendHeaderRoot = styled.div`
+export const LegendCaptionRoot = styled.div`
   display: flex;
   align-items: center;
   min-width: 0;

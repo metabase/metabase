@@ -7,7 +7,7 @@ import { iconPropTypes } from "metabase/components/Icon";
 
 import CardRenderer from "./CardRenderer";
 import LegendHeader from "./LegendHeader";
-import ChartHeader from "./ChartHeader";
+import ChartCaption from "./ChartCaption";
 
 import "./LineAreaBarChart.css";
 
@@ -302,7 +302,7 @@ export default class LineAreaBarChart extends Component {
         )}
       >
         {hasTitle && (
-          <ChartHeader
+          <ChartCaption
             series={series}
             settings={settings}
             icon={headerIcon}

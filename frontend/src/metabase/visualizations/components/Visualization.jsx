@@ -1,7 +1,7 @@
 import React from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import ChartHeader from "metabase/visualizations/components/ChartHeader";
+import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -521,7 +521,7 @@ export default class Visualization extends React.PureComponent {
       >
         {!!hasHeader && (
           <div className="p1 flex-no-shrink">
-            <ChartHeader
+            <ChartCaption
               series={series}
               settings={settings}
               icon={headerIcon}

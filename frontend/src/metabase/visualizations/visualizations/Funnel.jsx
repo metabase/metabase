@@ -25,7 +25,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import ChartHeader from "metabase/visualizations/components/ChartHeader";
+import ChartCaption from "metabase/visualizations/components/ChartCaption";
 
 const propTypes = {
   headerIcon: PropTypes.shape(iconPropTypes),
@@ -195,7 +195,7 @@ export default class Funnel extends Component {
       return (
         <div className={cx(className, "flex flex-column p1")}>
           {hasTitle && (
-            <ChartHeader
+            <ChartCaption
               series={series}
               settings={settings}
               icon={headerIcon}
