@@ -4,12 +4,12 @@ import { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 import {
-  LegendTitleButtonGroup,
-  LegendTitleIcon,
-  LegendTitleInfo,
-  LegendTitleLabel,
-  LegendTitleRoot,
-} from "./LegendTitle.styled";
+  LegendHeaderButtonGroup,
+  LegendHeaderIcon,
+  LegendHeaderInfo,
+  LegendHeaderLabel,
+  LegendHeaderRoot,
+} from "./LegendHeader.styled";
 
 const propTypes = {
   className: PropTypes.string,
@@ -17,35 +17,35 @@ const propTypes = {
   description: PropTypes.string,
   icon: PropTypes.shape(iconPropTypes),
   actionButtons: PropTypes.node,
-  onSelectTitle: PropTypes.func,
+  onTitleClick: PropTypes.func,
 };
 
-const LegendTitle = ({
+const LegendHeader = ({
   className,
   title,
   description,
   icon,
   actionButtons,
-  onSelectTitle,
+  onTitleClick,
 }) => {
   return (
-    <LegendTitleRoot className={className}>
-      {icon && <LegendTitleIcon {...icon} />}
-      <LegendTitleLabel onClick={onSelectTitle}>
+    <LegendHeaderRoot className={className}>
+      {icon && <LegendHeaderIcon {...icon} />}
+      <LegendHeaderLabel onClick={onTitleClick}>
         <Ellipsified>{title}</Ellipsified>
-      </LegendTitleLabel>
+      </LegendHeaderLabel>
       {description && (
         <Tooltip tooltip={description} maxWidth="22em">
-          <LegendTitleInfo />
+          <LegendHeaderInfo />
         </Tooltip>
       )}
       {actionButtons && (
-        <LegendTitleButtonGroup>{actionButtons}</LegendTitleButtonGroup>
+        <LegendHeaderButtonGroup>{actionButtons}</LegendHeaderButtonGroup>
       )}
-    </LegendTitleRoot>
+    </LegendHeaderRoot>
   );
 };
 
-LegendTitle.propTypes = propTypes;
+LegendHeader.propTypes = propTypes;
 
-export default LegendTitle;
+export default LegendHeader;

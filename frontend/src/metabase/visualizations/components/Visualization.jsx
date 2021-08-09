@@ -1,7 +1,7 @@
 import React from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import TitleLegendHeader from "metabase/visualizations/components/TitleLegendHeader";
+import ChartHeader from "metabase/visualizations/components/ChartHeader";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -508,7 +508,7 @@ export default class Visualization extends React.PureComponent {
     const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
 
-    const hasLegendHeader =
+    const hasHeader =
       (showTitle &&
         hasHeaderContent &&
         (loading || error || noResults || isHeaderEnabled)) ||
@@ -519,15 +519,13 @@ export default class Visualization extends React.PureComponent {
         className={cx(className, "flex flex-column full-height")}
         style={style}
       >
-        {!!hasLegendHeader && (
+        {!!hasHeader && (
           <div className="p1 flex-no-shrink">
-            <TitleLegendHeader
-              classNameWidgets={classNameWidgets}
+            <ChartHeader
               series={series}
-              actionButtons={extra}
-              description={settings["card.description"]}
               settings={settings}
               icon={headerIcon}
+              actionButtons={extra}
               onChangeCardAndRun={
                 this.props.onChangeCardAndRun && !replacementContent
                   ? this.handleOnChangeCardAndRun
@@ -598,7 +596,7 @@ export default class Visualization extends React.PureComponent {
             card={series[0].card} // convenience for single-series visualizations
             data={series[0].data} // convenience for single-series visualizations
             hovered={hovered}
-            headerIcon={hasLegendHeader ? null : headerIcon}
+            headerIcon={hasHeader ? null : headerIcon}
             onHoverChange={this.handleHoverChange}
             onVisualizationClick={this.handleVisualizationClick}
             visualizationIsClickable={this.visualizationIsClickable}
