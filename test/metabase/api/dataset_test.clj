@@ -157,6 +157,16 @@
                         s/Keyword     s/Any}
                        (most-recent-query-execution-for-query query))))))))
 
+(defn- test-download-response-headers
+  [url]
+  (-> (http-client/client-full-response (test-users/username->token :rasta)
+                                        :post 200 url
+                                        :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+      :headers
+      (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
+      (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
+                                                            "query_result_<timestamp>$1")))))
+
 (deftest download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
     (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
@@ -164,13 +174,19 @@
             "Content-Type"        "text/csv"
             "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
             "X-Accel-Buffering"   "no"}
-           (-> (http-client/client-full-response (test-users/username->token :rasta)
-                                                 :post 200 "dataset/csv"
-                                                 :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
-               :headers
-               (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
-               (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
-                                                                                   "query_result_<timestamp>$1"))))))))
+           (test-download-response-headers "dataset/csv")))
+    (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+            "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.json\""
+            "Content-Type"        "application/json;charset=utf-8"
+            "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+            "X-Accel-Buffering"   "no"}
+           (test-download-response-headers "dataset/json")))
+    (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+            "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.xlsx\""
+            "Content-Type"        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+            "X-Accel-Buffering"   "no"}
+           (test-download-response-headers "dataset/xlsx")))))
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
@@ -286,7 +302,7 @@
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
 (deftest pivot-dataset-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
@@ -335,7 +351,7 @@
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
 (deftest pivot-filter-dataset-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
@@ -352,7 +368,7 @@
             (is (= [nil nil 3 7562] (last rows)))))))))
 
 (deftest pivot-parameter-dataset-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"

@@ -3,7 +3,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import pure from "recompose/pure";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -59,4 +58,4 @@ FieldSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default pure(FieldSidebar);
+export default React.memo(FieldSidebar);

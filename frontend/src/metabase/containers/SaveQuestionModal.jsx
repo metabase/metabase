@@ -129,6 +129,7 @@ export default class SaveQuestionModal extends Component {
                 {values.saveType === "create" && (
                   <div className="saveQuestionModalFields">
                     <FormField
+                      autoFocus
                       name="name"
                       title={t`Name`}
                       placeholder={t`What is the name of your card?`}

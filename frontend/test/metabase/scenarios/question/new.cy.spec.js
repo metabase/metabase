@@ -156,6 +156,89 @@ describe("scenarios > question > new", () => {
     });
   });
 
+  describe("saved question picker", () => {
+    beforeEach(() => {
+      cy.visit("/");
+      cy.findByText("Ask a question").click();
+    });
+
+    describe("on a (simple) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Simple question").click();
+        cy.findByText("Saved Questions").click();
+      });
+
+      it("should display the collection tree on the left side", () => {
+        cy.findByText("Our analytics");
+      });
+
+      it("should display the saved questions list on the right side", () => {
+        cy.findByText("Orders, Count, Grouped by Created At (year)");
+        cy.findByText("Orders");
+        cy.findByText("Orders, Count").click();
+        cy.findByText("18,760");
+      });
+
+      it("should perform a search scoped to saved questions", () => {
+        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        cy.findByText("1,994");
+      });
+    });
+
+    describe("on a (custom) question page", () => {
+      beforeEach(() => {
+        cy.findByText("Custom question").click();
+        cy.findByText("Saved Questions").click();
+      });
+
+      it("should display the collection tree on the left side", () => {
+        cy.findByText("Our analytics");
+      });
+
+      it("should display the saved questions list on the right side", () => {
+        cy.findByText("Orders, Count, Grouped by Created At (year)");
+        cy.findByText("Orders");
+        cy.findByText("Orders, Count").click();
+        cy.button("Visualize").click();
+        cy.findByText("18,760");
+      });
+
+      it("should redisplay the saved question picker when changing a question", () => {
+        cy.findByText("Orders, Count").click();
+
+        // Try to choose a different saved question
+        cy.get("[icon=table2]").click();
+
+        cy.findByText("Our analytics");
+        cy.findByText("Orders");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+
+        cy.button("Visualize").click();
+        cy.findByText("2016");
+        cy.findByText("5,834");
+      });
+
+      it("should perform a search scoped to saved questions", () => {
+        cy.findByPlaceholderText("Search for a question").type("Grouped");
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        cy.button("Visualize").click();
+        cy.findByText("2018");
+      });
+
+      it("should reopen saved question picker after returning back to editor mode", () => {
+        cy.findByText("Orders, Count, Grouped by Created At (year)").click();
+        cy.button("Visualize").click();
+        cy.icon("notebook").click();
+        cy.findByTestId("data-step-cell").click();
+
+        cy.findByTestId("select-list").within(() => {
+          cy.findByText("Orders, Count, Grouped by Created At (year)");
+        });
+      });
+    });
+  });
+
   describe("ask a (simple) question", () => {
     it("should load orders table", () => {
       cy.visit("/");

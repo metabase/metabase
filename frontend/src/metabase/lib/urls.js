@@ -165,6 +165,10 @@ export function collection(collection) {
   return appendSlug(`/collection/${collection.id}`, slug);
 }
 
+export function isCollectionPath(path) {
+  return /collection\/.*/.test(path);
+}
+
 export function label(label) {
   return `/questions/search?label=${encodeURIComponent(label.slug)}`;
 }

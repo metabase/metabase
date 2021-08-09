@@ -25,17 +25,18 @@
     (thunk)))
 
 (def ^:private user-defaults
-  (merge
-   (mt/object-defaults User)
-   {:date_joined      true
-    :google_auth      false
-    :id               true
-    :is_active        true
-    :last_login       false
-    :ldap_auth        false
-    :login_attributes nil
-    :updated_at       true
-    :locale           nil}))
+  (delay
+    (merge
+     (mt/object-defaults User)
+     {:date_joined      true
+      :google_auth      false
+      :id               true
+      :is_active        true
+      :last_login       false
+      :ldap_auth        false
+      :login_attributes nil
+      :updated_at       true
+      :locale           nil})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -112,7 +113,7 @@
                     :group_ids              #{(u/the-id (group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
-                  (map (partial merge user-defaults))
+                  (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
                   (filter mt/test-user?)
@@ -128,7 +129,7 @@
                                               (u/the-id (group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}]
-                  (map (partial merge user-defaults))
+                  (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (group/admin))) :data)
                   (filter mt/test-user?)
@@ -175,7 +176,7 @@
                     :group_ids              #{(u/the-id (group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
-                  (map (partial merge user-defaults))
+                  (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated true) :data)
                   (filter mt/test-user?)
@@ -209,7 +210,7 @@
                     :group_ids              #{(u/the-id (group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
-                  (map (partial merge user-defaults))
+                  (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user", :status "all") :data)
                   (filter mt/test-user?)
@@ -238,7 +239,7 @@
   (testing "GET /api/user/current"
     (testing "check that fetching current user will return extra fields like `is_active`"
       (is (= (-> (merge
-                  user-defaults
+                  @user-defaults
                   {:email                  "rasta@metabase.com"
                    :first_name             "Rasta"
                    :last_name              "Toucan"
@@ -254,7 +255,7 @@
   (testing "GET /api/user/:id"
     (testing "should return a smaller set of fields"
       (is (= (-> (merge
-                  user-defaults
+                  @user-defaults
                   {:email       "rasta@metabase.com"
                    :first_name  "Rasta"
                    :last_name   "Toucan"
@@ -271,7 +272,7 @@
 
     (testing "A superuser should be allowed to fetch another users data"
       (is (= (-> (merge
-                  user-defaults
+                  @user-defaults
                   {:email       "rasta@metabase.com"
                    :first_name  "Rasta"
                    :last_name   "Toucan"
@@ -298,9 +299,9 @@
             email     (mt/random-email)]
         (mt/with-model-cleanup [User]
           (mt/with-fake-inbox
-            (is (= (merge user-defaults
+            (is (= (merge @user-defaults
                           (merge
-                           user-defaults
+                           @user-defaults
                            {:email            email
                             :first_name       user-name
                             :last_name        user-name
@@ -446,7 +447,7 @@
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- include-personal-collection-name
+(defn include-personal-collection-name
   {:hydrate :personal_collection_name}
   [user]
   (db/select-one-field :name Collection :id (:personal_collection_id user)))
@@ -471,7 +472,7 @@
                    (user))))
           (testing "response"
             (is (= (merge
-                    user-defaults
+                    @user-defaults
                     {:common_name  "Cam Eron"
                      :email        "cam.eron@metabase.com"
                      :first_name   "Cam"
@@ -500,7 +501,7 @@
                                          :email        "testuser@metabase.com"
                                          :is_superuser true}]
         (is (= (merge
-                user-defaults
+                @user-defaults
                 {:is_superuser     true
                  :email            "testuser@metabase.com"
                  :first_name       "Test"
@@ -579,8 +580,8 @@
                               {:email "adifferentemail@metabase.com"}))))))))
 
 (defn- do-with-preserved-rasta-personal-collection-name [thunk]
-  (let [{collection-name :name, collection-id :id} (collection/user->personal-collection (mt/user->id :rasta))]
-    (mt/with-temp-vals-in-db Collection collection-id {:name collection-name}
+  (let [{collection-name :name, :keys [slug id]} (collection/user->personal-collection (mt/user->id :rasta))]
+    (mt/with-temp-vals-in-db Collection id {:name collection-name, :slug slug}
       (thunk))))
 
 (defmacro ^:private with-preserved-rasta-personal-collection-name
@@ -669,7 +670,14 @@
                               {:group_ids [(u/the-id (group/all-users))
                                            (u/the-id (group/admin))]})
         (is (= {:is-superuser? true, :pgm-exists? true}
-               (superuser-and-admin-pgm-info email)))))))
+               (superuser-and-admin-pgm-info email))))))
+
+  (testing "Double-check that the test cleaned up after itself"
+    (is (= "Rasta"
+           (db/select-one-field :first_name User :id (mt/user->id :rasta))))
+    (is (= {:name "Rasta Toucan's Personal Collection"
+            :slug "rasta_toucan_s_personal_collection"}
+           (mt/derecordize (db/select-one [Collection :name :slug] :personal_owner_id (mt/user->id :rasta)))))))
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"

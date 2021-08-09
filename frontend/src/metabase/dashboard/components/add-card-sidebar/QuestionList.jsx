@@ -4,8 +4,7 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
-
-import { QuestionPickerItem } from "./QuestionPickerItem";
+import { SelectList } from "metabase/components/select-list";
 
 import { EmptyStateContainer } from "./QuestionList.styled";
 
@@ -15,6 +14,8 @@ QuestionList.propTypes = {
   onSelect: PropTypes.func.isRequired,
   hasCollections: PropTypes.bool,
 };
+
+const SEARCH_LIMIT = 1000;
 
 export function QuestionList({
   searchText,
@@ -36,6 +37,7 @@ export function QuestionList({
   query = {
     ...query,
     models: "card",
+    limit: SEARCH_LIMIT,
   };
 
   return (
@@ -52,17 +54,18 @@ export function QuestionList({
         }
 
         return (
-          <ul role="menu">
+          <SelectList>
             {list.map(item => (
-              <QuestionPickerItem
+              <SelectList.Item
+                isHighlighted
                 key={item.id}
                 id={item.id}
                 name={item.getName()}
-                icon={item.getIcon()}
+                icon={item.getIcon().name}
                 onSelect={onSelect}
               />
             ))}
-          </ul>
+          </SelectList>
         );
       }}
     </Search.ListLoader>

@@ -13,12 +13,15 @@
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
 (defmethod i/stream-options :xlsx
-  [_]
-  {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-   :write-keepalive-newlines? false
-   :status                    200
-   :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.xlsx\""
-                                                             (u.date/format (t/zoned-date-time)))}})
+  ([_]
+   (i/stream-options :xlsx "query_result"))
+  ([_ filename-prefix]
+   {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    :write-keepalive-newlines? false
+    :status                    200
+    :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.xlsx\""
+                                                              (or filename-prefix "query_result")
+                                                              (u.date/format (t/zoned-date-time)))}}))
 
 (def ^:dynamic *cell-styles*
   "Holds the CellStyle values used within a spreadsheet so that they can be reused. Excel has a limit
@@ -120,12 +123,16 @@
         cell-styles (cell-style-delays workbook)
         sheet       (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [cols]} :data}]
-        (spreadsheet/add-row! sheet (map (some-fn :display_name :name) cols)))
+      (begin! [_ {{:keys [ordered-cols]} :data} _]
+        (spreadsheet/add-row! sheet (map (some-fn :display_name :name) ordered-cols)))
 
-      (write-row! [_ row _]
+      (write-row! [_ row _ _ {:keys [output-order]}]
         (binding [*cell-styles* cell-styles]
-          (spreadsheet/add-row! sheet row)))
+          (let [ordered-row (if output-order
+                              (let [row-v (into [] row)]
+                                (for [i output-order] (row-v i)))
+                              row)]
+            (spreadsheet/add-row! sheet ordered-row))))
 
       (finish! [_ _]
         (spreadsheet/save-workbook-into-stream! os workbook)

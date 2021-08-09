@@ -1,4 +1,6 @@
 import _ from "underscore";
+import { isCypressActive } from "metabase/env";
+
 // IE doesn't support scrollX/scrollY:
 export const getScrollX = () =>
   typeof window.scrollX === "undefined" ? window.pageXOffset : window.scrollX;
@@ -9,7 +11,7 @@ export const getScrollY = () =>
 // Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
 export const IFRAMED = (function() {
   try {
-    return !window.Cypress && window.self !== window.top;
+    return !isCypressActive && window.self !== window.top;
   } catch (e) {
     return true;
   }
@@ -394,7 +396,7 @@ export function initializeIframeResizer(readyCallback = () => {}) {
   } else {
     window.iFrameResizer = {
       autoResize: true,
-      heightCalculationMethod: "bodyScroll",
+      heightCalculationMethod: "max",
       readyCallback: readyCallback,
     };
 

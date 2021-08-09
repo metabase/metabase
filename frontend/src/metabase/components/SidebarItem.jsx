@@ -6,8 +6,6 @@ import S from "./Sidebar.css";
 
 import LabelIcon from "./LabelIcon";
 
-import pure from "recompose/pure";
-
 const SidebarItem = ({ name, sidebar, icon, href }) => (
   <li>
     <Link to={href} className={S.item} activeClassName={S.selected}>
@@ -24,4 +22,4 @@ SidebarItem.propTypes = {
   href: PropTypes.string.isRequired,
 };
 
-export default pure(SidebarItem);
+export default React.memo(SidebarItem);

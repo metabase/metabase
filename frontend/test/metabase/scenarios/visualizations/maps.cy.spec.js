@@ -1,4 +1,9 @@
-import { restore, popover, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  visitQuestionAdhoc,
+  openNativeEditor,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
@@ -12,9 +17,7 @@ describe("scenarios > visualizations > maps", () => {
   it("should display a pin map for a native query", () => {
     cy.signInAsNormalUser();
     // create a native query with lng/lat fields
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type(
+    openNativeEditor().type(
       "select -80 as lng, 40 as lat union all select -120 as lng, 40 as lat",
     );
     cy.get(".NativeQueryEditor .Icon-play").click();

@@ -13,6 +13,7 @@ const formFields = [
     className:
       "Form-input full text-monospace text-normal text-small bg-light text-spaced",
     rows: 4,
+    autoFocus: true,
     validate: validate.required().maxLength(10000),
   },
   {

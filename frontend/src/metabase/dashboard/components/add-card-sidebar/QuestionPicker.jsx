@@ -11,11 +11,15 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
-import { QuestionPickerItem } from "./QuestionPickerItem";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+
 import { QuestionList } from "./QuestionList";
 
 import { BreadcrumbsWrapper, SearchInput } from "./QuestionPicker.styled";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { SelectList } from "metabase/components/select-list";
+
+const { isRegularCollection } = PLUGIN_COLLECTIONS;
 
 QuestionPicker.propTypes = {
   onSelect: PropTypes.func.isRequired,
@@ -63,6 +67,7 @@ function QuestionPicker({
   return (
     <Box p={2}>
       <SearchInput
+        autoFocus
         hasClearButton
         placeholder={t`Search…`}
         value={searchText}
@@ -76,18 +81,25 @@ function QuestionPicker({
             <Breadcrumbs crumbs={crumbs} />
           </BreadcrumbsWrapper>
 
-          <ul role="menu">
-            {collections.map(collection => (
-              <QuestionPickerItem
-                isCollection
-                key={collection.id}
-                id={collection.id}
-                name={collection.name}
-                icon={getCollectionIcon(collection)}
-                onSelect={collectionId => setCurrentCollectionId(collectionId)}
-              />
-            ))}
-          </ul>
+          <SelectList>
+            {collections.map(collection => {
+              const icon = getCollectionIcon(collection);
+              return (
+                <SelectList.Item
+                  hasRightArrow
+                  key={collection.id}
+                  id={collection.id}
+                  name={collection.name}
+                  icon={icon.name}
+                  iconColor={icon.color}
+                  isHighlighted={!isRegularCollection(collection)}
+                  onSelect={collectionId =>
+                    setCurrentCollectionId(collectionId)
+                  }
+                />
+              );
+            })}
+          </SelectList>
         </React.Fragment>
       )}
 

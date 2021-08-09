@@ -4,9 +4,8 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { t } from "ttag";
 
-import ButtonGroup from "metabase/components/ButtonGroup";
+import { SegmentedControl } from "metabase/components/SegmentedControl";
 import CheckBox from "metabase/components/CheckBox";
-import Text from "metabase/components/type/Text";
 import Label from "metabase/components/type/Label";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 import Toggle from "metabase/components/Toggle";
@@ -180,43 +179,42 @@ export default class EmailAttachmentPicker extends Component {
           <div>
             <div className="my1 flex justify-between">
               <Label className="pt1">{t`File format`}</Label>
-              <ButtonGroup
+              <SegmentedControl
                 options={[
                   { name: ".csv", value: "csv" },
                   { name: ".xlsx", value: "xls" },
                 ]}
                 onChange={this.setAttachmentType}
                 value={selectedAttachmentType}
+                fullWidth
               />
             </div>
             <div className="text-bold pt1 pb2 flex justify-between align-center">
-              <ul>
-                <li
-                  className="mb2 flex align-center cursor-pointer border-bottom"
-                  onClick={this.onToggleAll}
-                >
+              <ul className="full">
+                <li className="mb2 pb1 flex align-center cursor-pointer border-bottom">
                   <StackedCheckBox
+                    label={t`Questions to attach`}
                     checked={this.areAllSelected(cards, selectedCardIds)}
                     indeterminate={this.areOnlySomeSelected(
                       cards,
                       selectedCardIds,
                     )}
+                    onChange={this.onToggleAll}
                   />
-                  <Text ml={1}>{t`Questions to attach`}</Text>
                 </li>
                 {cards.map(card => (
                   <li
                     key={card.id}
                     className="pb2 flex align-center cursor-pointer"
-                    onClick={() => {
-                      this.onToggleCard(card);
-                    }}
                   >
                     <CheckBox
                       checked={selectedCardIds.has(card.id)}
+                      label={card.name}
+                      onChange={() => {
+                        this.onToggleCard(card);
+                      }}
                       className="mr1"
                     />
-                    {card.name}
                   </li>
                 ))}
               </ul>

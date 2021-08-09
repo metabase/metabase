@@ -25,9 +25,9 @@ const syncForInternalQuestion = props => {
 };
 
 const syncForPublicQuestion = props => {
-  const { parameters, setParameterValue, query, metadata } = props;
+  const { parameters, setMultipleParameterValues, query, metadata } = props;
 
-  if (!setParameterValue) {
+  if (!setMultipleParameterValues) {
     return;
   }
 
@@ -41,7 +41,7 @@ const syncForPublicQuestion = props => {
     return acc;
   }, {});
 
-  setParameterValue(parameterValues);
+  setMultipleParameterValues(parameterValues);
 };
 
 const parseQueryParams = (queryParam, parameter, metadata) => {

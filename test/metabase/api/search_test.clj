@@ -1,11 +1,24 @@
 (ns metabase.api.search-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard DashboardCard DashboardFavorite Database
-                                     Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard Segment Table]]
+            [metabase.models
+             :refer
+             [Card
+              CardFavorite
+              Collection
+              Dashboard
+              DashboardCard
+              DashboardFavorite
+              Database
+              Metric
+              PermissionsGroup
+              PermissionsGroupMembership
+              Pulse
+              PulseCard
+              Segment
+              Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.search.config :as search-config]
@@ -73,8 +86,6 @@
 
 (defn- default-metric-segment-results []
   (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
-
-(defn- subset-model [model res] (filter #(= (:model %) (name model)) res))
 
 (defn- default-archived-results []
   (for [result (default-search-results)
@@ -202,7 +213,7 @@
                (search-request-data :crowberto :q "test"))))))
   (testing "It prioritizes exact matches"
     (with-search-items-in-root-collection "test"
-      (with-redefs [search-config/db-max-results 1]
+      (with-redefs [search-config/*db-max-results* 1]
         (is (= [test-collection]
                (search-request-data :crowberto :q "test collection"))))))
   (testing "It limits matches properly"
@@ -210,7 +221,13 @@
       (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2" :offset "0"))))))
   (testing "It offsets matches properly"
     (with-search-items-in-root-collection "test"
-      (is (= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
+      (is (<= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
+  (testing "It offsets without limit properly"
+    (with-search-items-in-root-collection "test"
+      (is (= 4 (count (search-request-data :crowberto :q "test" :offset "2"))))))
+  (testing "It limits without offset properly"
+    (with-search-items-in-root-collection "test"
+      (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2"))))))
   (testing "It subsets matches for model"
     (with-search-items-in-root-collection "test"
       (is (= 0 (count (search-request-data :crowberto :q "test" :models "database"))))
@@ -502,6 +519,16 @@
         (is (= [(default-table-search-row "Round Table")]
                (binding [*search-request-results-database-id* db-id]
                  (search-request-data user :q "Round Table"))))))))
+
+(deftest all-users-no-data-perms-table-test
+  (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
+    (mt/with-temp* [Database                   [{db-id :id}]
+                    Table                      [table {:name "Round Table", :db_id db-id}]]
+      (perms/revoke-permissions! (group/all-users) db-id (:schema table) (:id table))
+      (is (= []
+             (filter #(= (:name %) "Round Table")
+                     (binding [*search-request-results-database-id* db-id]
+                       (search-request-data :rasta :q "Round Table"))))))))
 
 (deftest collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"

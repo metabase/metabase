@@ -165,7 +165,7 @@
   "Get `Card` with ID."
   [id]
   (u/prog1 (-> (Card id)
-               (hydrate :creator :dashboard_count :can_write :collection)
+               (hydrate :creator :dashboard_count :can_write :collection :moderation_reviews)
                api/read-check
                (last-edit/with-last-edit-info :card))
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
@@ -228,7 +228,7 @@
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
       ;; currently has with returned one -- See #4283
       (-> card
-          (hydrate :creator :dashboard_count :can_write :collection)
+          (hydrate :creator :dashboard_count :can_write :collection :moderation_reviews)
           (assoc :last-edit-info (last-edit/edit-information-for-user user))))))
 
 (defn- create-card-async!
@@ -426,7 +426,7 @@
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
       ;; has with returned one -- See #4142
       (-> card
-          (hydrate :creator :dashboard_count :can_write :collection)
+          (hydrate :creator :dashboard_count :can_write :collection :moderation_reviews)
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
@@ -619,22 +619,23 @@
              context     :question
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(u/maybe? sequential? parameters)]}
-  (let [run   (or run
-                  ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                  ;; customize the `context` passed to the QP
-                  (^:once fn* [query info]
-                   (qp.streaming/streaming-response [context export-format]
-                     (binding [qp.perms/*card-id* card-id]
-                       (qp-runner query info context)))))
-        card  (api/read-check (Card card-id))
-        query (-> (assoc (query-for-card card parameters constraints middleware)
-                         :async? true)
-                  (update :middleware merge {:js-int-to-string?      true
-                                             :ignore-cached-results? ignore_cache}))
-        info  {:executed-by  api/*current-user-id*
-               :context      context
-               :card-id      card-id
-               :dashboard-id dashboard-id}]
+  (let [run       (or run
+                      ;; param `run` can be used to control how the query is ran, e.g. if you need to
+                      ;; customize the `context` passed to the QP
+                      (^:once fn* [query info]
+                       (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
+                         (binding [qp.perms/*card-id* card-id]
+                           (qp-runner query info context)))))
+        card      (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
+        query     (-> (assoc (query-for-card card parameters constraints middleware)
+                             :async? true)
+                      (update :middleware merge {:js-int-to-string?      true
+                                                 :ignore-cached-results? ignore_cache}))
+        info      {:executed-by  api/*current-user-id*
+                   :context      context
+                   :card-id      card-id
+                   :card-name    (:name card)
+                   :dashboard-id dashboard-id}]
     (api/check-not-archived card)
     (run query info)))
 

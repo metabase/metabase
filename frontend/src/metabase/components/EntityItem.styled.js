@@ -24,6 +24,7 @@ function getForeground(model) {
 }
 
 export const EntityIconWrapper = styled(IconButtonWrapper)`
+  background-color: ${color("bg-medium")};
   padding: 12px;
 
   color: ${props =>
@@ -37,7 +38,7 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
       : getBackground(props.model)};
 `;
 
-export const EntityItemWrapper = Flex.extend`
+export const EntityItemWrapper = styled(Flex)`
   border-bottom: 1px solid ${color("bg-medium")};
   align-items: center;
   &:hover {

@@ -100,7 +100,15 @@ CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
 
-export const parseSchemaId = id => String(id || "").split(":");
+export const getSchemaName = id => parseSchemaId(id)[1];
+export const parseSchemaId = id => {
+  const schemaId = String(id || "");
+  const firstColonIndex = schemaId.indexOf(":");
+  const dbId = schemaId.substring(0, firstColonIndex);
+  const schemaName = schemaId.substring(firstColonIndex + 1);
+
+  return [dbId, schemaName];
+};
 export const generateSchemaId = (dbId, schemaName) =>
   `${dbId}:${schemaName || ""}`;
 

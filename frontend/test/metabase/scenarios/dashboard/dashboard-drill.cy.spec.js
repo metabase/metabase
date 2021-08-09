@@ -2,6 +2,7 @@ import {
   restore,
   modal,
   popover,
+  filterWidget,
   createNativeQuestion,
   showDashboardCardActions,
 } from "__support__/e2e/cypress";
@@ -868,7 +869,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     function setFilterValue(filterName) {
-      cy.get("fieldset")
+      filterWidget()
         .contains(filterName)
         .click();
       cy.findByPlaceholderText("Enter an ID").type("1,2,");

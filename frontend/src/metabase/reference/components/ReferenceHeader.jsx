@@ -2,7 +2,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
-import pure from "recompose/pure";
 
 import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
@@ -61,4 +60,4 @@ ReferenceHeader.propTypes = {
   headerLink: PropTypes.string,
 };
 
-export default pure(ReferenceHeader);
+export default React.memo(ReferenceHeader);

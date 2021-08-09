@@ -1,0 +1,4 @@
+/* HACK: DataPopover should be below the search box */
+.DataPopoverContainer {
+  z-index: 2;
+}

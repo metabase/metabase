@@ -467,23 +467,15 @@
     converts it to the corresponding offset/zoned type; for offset/zoned types, this applies an appropriate timezone
     shift."))
 
-;; We don't know what zone offset to shift this to, since the offset for a zone-id can vary depending on the date
-;; part of a temporal value (e.g. DST vs non-DST). So just adjust to the non-DST "standard" offset for the zone in
-;; question.
-(defn- standard-offset
-  "Standard (non-DST) offset for a time zone, for cases when we don't have date information."
-  ^java.time.ZoneOffset [^java.time.ZoneId zone-id]
-  (.. zone-id getRules (getStandardOffset (t/instant 0))))
-
 (extend-protocol WithTimeZoneSameInstant
   ;; convert to a OffsetTime with no offset (UTC); the OffsetTime method impl will apply the zone shift.
   LocalTime
   (with-time-zone-same-instant [t zone-id]
-    (t/offset-time t (standard-offset zone-id)))
+    (t/offset-time t (common/standard-offset zone-id)))
 
   OffsetTime
   (with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
-    (t/with-offset-same-instant t (standard-offset zone-id)))
+    (t/with-offset-same-instant t (common/standard-offset zone-id)))
 
   LocalDate
   (with-time-zone-same-instant [t zone-id]

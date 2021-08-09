@@ -163,5 +163,7 @@
         cursor (aggregate *mongo-connection* collection query (context/timeout context))]
     (a/go
       (when (a/<! (context/canceled-chan context))
-        (.close cursor)))
+        ;; Eastwood seems to get confused here and not realize there's already a tag on `cursor` (returned by
+        ;; `aggregate`)
+        (.close ^Cursor cursor)))
     (reduce-results native-query context cursor respond)))

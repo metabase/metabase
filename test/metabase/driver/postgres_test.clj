@@ -116,7 +116,7 @@
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
-(mt/defdataset ^:private dots-in-names
+(mt/defdataset dots-in-names
   [["objects.stuff"
     [{:field-name "dotted.name", :base-type :type/Text}]
     [["toucan_cage"]
@@ -151,7 +151,7 @@
                                :type     :query
                                :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}}))))))))))
 
-(mt/defdataset ^:private duplicate-names
+(mt/defdataset duplicate-names
   [["birds"
     [{:field-name "name", :base-type :type/Text}]
     [["Rasta"]
@@ -289,7 +289,7 @@
         (is (= :type/SerializedJSON
                (db/select-one-field :semantic_type Field, :id (mt/id :venues :address))))))))
 
-(mt/defdataset ^:private with-uuid
+(mt/defdataset with-uuid
   [["users"
     [{:field-name "user_id", :base-type :type/UUID}]
     [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
@@ -348,7 +348,7 @@
                                   "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}]))))))))))
 
 
-(mt/defdataset ^:private ip-addresses
+(mt/defdataset ip-addresses
   [["addresses"
     [{:field-name "ip", :base-type {:native "inet"}, :effective-type :type/IPAddress}]
     [[(hsql/raw "'192.168.1.1'::inet")]
@@ -439,7 +439,7 @@
   (mt/with-temp Database [database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)
-    (#'sql-jdbc.conn/set-pool! (u/id database) nil)))
+    (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)))
 
 (deftest enums-test
   (mt/test-driver :postgres

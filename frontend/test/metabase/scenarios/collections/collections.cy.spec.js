@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   restore,
   setupLocalHostEmail,
@@ -6,6 +7,7 @@ import {
   openOrdersTable,
   sidebar,
 } from "__support__/e2e/cypress";
+import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { nocollection } = USERS;
@@ -121,13 +123,28 @@ describe("scenarios > collection_defaults", () => {
       it("should allow a user to expand a collection without navigating to it", () => {
         cy.visit("/collection/root");
         // 1. click on the chevron to expand the sub collection
-        openDropdownFor("First collection");
+        displaySidebarChildOf("First collection");
         // 2. I should see the nested collection name
         cy.findByText("First collection");
         cy.findByText("Second collection");
         // 3. The url should still be /collection/root to test that we haven't navigated away
         cy.location("pathname").should("eq", "/collection/root");
         //
+      });
+
+      it.skip("should expand/collapse collection tree by clicking on parent collection name (metabse#17339)", () => {
+        cy.visit("/collection/root");
+
+        sidebar().within(() => {
+          cy.findByText("First collection").click();
+          cy.findByText("Second collection");
+          cy.findByText("Third collection");
+
+          // Warning: There have been some race conditions with the re-rendering in the collection sidebar observed previously.
+          //          Double check that this test works as expected when the underlying issue is fixed. Update as needed.
+          cy.findByText("First collection").click();
+          cy.findByText("Second collection").should("not.exist");
+        });
       });
 
       describe("deeply nested collection navigation", () => {
@@ -152,10 +169,10 @@ describe("scenarios > collection_defaults", () => {
           });
           cy.visit("/collection/root");
           // 1. Expand out via the chevrons so that all collections are showing
-          openDropdownFor("First collection");
-          openDropdownFor("Second collection");
-          openDropdownFor("Third collection");
-          openDropdownFor("Fourth collection");
+          displaySidebarChildOf("First collection");
+          displaySidebarChildOf("Second collection");
+          displaySidebarChildOf("Third collection");
+          displaySidebarChildOf("Fourth collection");
           // 2. Ensure we can see the entire "Fifth level with a long name" collection text
           cy.findByText("Fifth collection with a very long name");
         });
@@ -323,7 +340,7 @@ describe("scenarios > collection_defaults", () => {
       cy.visit("/collection/root");
       cy.get("[class*=CollectionSidebar]").as("sidebar");
 
-      openDropdownFor("Your personal collection");
+      displaySidebarChildOf("Your personal collection");
       cy.findByText(COLLECTION);
       cy.get("@sidebar")
         .contains("Our analytics")
@@ -395,7 +412,7 @@ describe("scenarios > collection_defaults", () => {
     it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
       cy.visit("/collection/root");
       cy.log("Move 'Second collection' to the root");
-      openDropdownFor("First collection");
+      displaySidebarChildOf("First collection");
       cy.findByText("Second collection").click();
       cy.icon("pencil").click();
       cy.findByText("Edit this collection").click();
@@ -428,7 +445,7 @@ describe("scenarios > collection_defaults", () => {
         });
     });
 
-    it.skip("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
+    it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
       cy.request("POST", "/api/collection", {
         name: "foo:bar",
         color: "#509EE3",
@@ -453,6 +470,7 @@ describe("scenarios > collection_defaults", () => {
 
     it("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
       cy.visit("/collection/root");
+
       sidebar()
         .findByText("Your personal collection")
         .parent()
@@ -460,9 +478,8 @@ describe("scenarios > collection_defaults", () => {
         .should("not.exist");
 
       // Ensure if sub-collection is archived, the chevron is not displayed
+      displaySidebarChildOf("First collection");
       sidebar()
-        .findByText("First collection")
-        .click()
         .findByText("Second collection")
         .click();
       cy.icon("pencil").click();
@@ -525,14 +542,15 @@ describe("scenarios > collection_defaults", () => {
           selectItemUsingCheckbox("Orders");
           cy.findByText("1 item selected").should("be.visible");
 
-          // Select all
-          cy.icon("dash").click();
-          cy.icon("dash").should("not.exist");
-          cy.findByText("4 items selected");
-
-          // Deselect all
           cy.findByTestId("bulk-action-bar").within(() => {
-            cy.icon("check").click();
+            // Select all
+            cy.findByTestId("checkbox-root").should("be.visible");
+            cy.icon("dash").click({ force: true });
+            cy.icon("dash").should("not.exist");
+            cy.findByText("4 items selected");
+
+            // Deselect all
+            cy.icon("check").click({ force: true });
           });
           cy.icon("check").should("not.exist");
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
@@ -578,6 +596,16 @@ describe("scenarios > collection_defaults", () => {
         });
       });
     });
+
+    it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
+      // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
+      // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
+      _.times(50, i => cy.createDashboard(`Dashboard ${i}`));
+
+      cy.visit("/");
+      // There is already a collection named "First collection" in the default snapshot
+      cy.findByText("First collection");
+    });
   });
 });
 
@@ -599,14 +627,6 @@ function createPulse() {
   cy.findByText("Create pulse").click();
 }
 
-function openDropdownFor(collectionName) {
-  cy.findByText(collectionName)
-    .parent()
-    .find(".Icon-chevronright")
-    .eq(0) // there may be more nested icons, but we need the top level one
-    .click();
-}
-
 function openEllipsisMenuFor(item) {
   cy.findByText(item)
     .closest("tr")
@@ -619,8 +639,9 @@ function selectItemUsingCheckbox(item, icon = "table") {
     .closest("tr")
     .within(() => {
       cy.icon(icon).trigger("mouseover");
-      cy.findByRole("checkbox")
+      cy.findByTestId("checkbox-root")
         .should("be.visible")
+        .findByRole("checkbox")
         .click();
     });
 }

@@ -1,6 +1,7 @@
 (ns metabase.test.util.log
   "Utils for controlling the logging that goes on when running tests."
-  (:require [clojure.tools.logging :as log])
+  (:require [clojure.tools.logging :as log]
+            [metabase.test-runner.parallel :as test-runner.parallel])
   (:import java.io.PrintStream
            [org.apache.commons.io.output NullOutputStream NullWriter]
            [org.apache.logging.log4j Level LogManager]
@@ -77,6 +78,7 @@
    :trace Level/TRACE})
 
 (defn do-with-log-messages-for-level [x thunk]
+  (test-runner.parallel/assert-test-is-not-parallel "with-log-level")
   (let [[namespace-symb level] (if (sequential? x)
                                  x
                                  ['metabase x])

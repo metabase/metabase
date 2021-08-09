@@ -1,15 +1,4 @@
-import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
-
-const { PEOPLE_ID } = SAMPLE_DATASET;
-
-const testQuery = {
-  database: 1,
-  query: {
-    "source-table": PEOPLE_ID,
-  },
-  type: "query",
-};
+import { restore, openPeopleTable, popover } from "__support__/e2e/cypress";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -19,10 +8,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
-    visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "table",
-    });
+    openPeopleTable();
     cy.wait("@dataset");
 
     cy.findByText("City").click();
@@ -56,5 +42,26 @@ describe("scenarios > visualizations > table", () => {
       "href",
       "http://metabase.com/people/1",
     );
+  });
+
+  it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
+    openPeopleTable();
+    cy.wait("@dataset");
+
+    cy.findByText("City").click();
+    popover().within(() => {
+      cy.icon("arrow_up");
+      cy.icon("arrow_down");
+      cy.icon("gear");
+      cy.findByText("Filter by this column");
+      cy.findByText("Distribution");
+      cy.findByText("Distincts");
+    });
+
+    cy.findByText("City").click();
+    // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
+    // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.
+    cy.wait(100);
+    popover().should("not.exist");
   });
 });

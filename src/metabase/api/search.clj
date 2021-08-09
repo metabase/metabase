@@ -225,7 +225,9 @@
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
   [query :- su/Map, id :- (s/maybe s/Int)]
-  (if (some? id) (h/merge-where query [:= id :db_id]) query))
+  (if (some? id)
+    (h/merge-where query [:= id :db_id])
+    query))
 
 (s/defn ^:private add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
@@ -296,27 +298,28 @@
   (when (seq current-user-perms)
     (let [base-query (base-query-for-model Table search-ctx)]
       (add-table-db-id-clause
-        (if (contains? current-user-perms "/")
-          base-query
-          (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
-            (when (seq data-perms)
-              {:select (:select base-query)
-               :from   [[(merge
-                           base-query
-                           {:select [:id :schema :db_id :name :description :display_name :updated_at
-                                     [(hx/concat (hx/literal "/db/")
-                                                 :db_id
-                                                 (hx/literal "/schema/")
-                                                 (hsql/call :case
-                                                            [:not= :schema nil] :schema
-                                                            :else               (hx/literal ""))
-                                                 (hx/literal "/table/") :id
-                                                 (hx/literal "/read/"))
-                                      :path]]})
-                         :table]]
-               :where  (into [:or] (for [path data-perms]
-                                     [:like :path (str path "%")]))})))
-        table-db-id))))
+       (if (contains? current-user-perms "/")
+         base-query
+         (let [data-perms (filter #(re-find #"^/db/*" %) current-user-perms)]
+           {:select (:select base-query)
+            :from   [[(merge
+                       base-query
+                       {:select [:id :schema :db_id :name :description :display_name :updated_at
+                                 [(hx/concat (hx/literal "/db/")
+                                             :db_id
+                                             (hx/literal "/schema/")
+                                             (hsql/call :case
+                                               [:not= :schema nil] :schema
+                                               :else               (hx/literal ""))
+                                             (hx/literal "/table/") :id
+                                             (hx/literal "/read/"))
+                                  :path]]})
+                      :table]]
+            :where  (if (seq data-perms)
+                      (into [:or] (for [path data-perms]
+                                    [:like :path (str path "%")]))
+                      [:= 0 1])}))
+       table-db-id))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -392,7 +395,7 @@
               v))]
     (let [search-query      (full-search-query search-ctx)
           _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          reducible-results (db/reducible-query search-query :max-rows search-config/db-max-results)
+          reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
           xf                (comp
                              (filter check-permissions-for-model)
                              ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed

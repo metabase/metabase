@@ -32,7 +32,7 @@ export default class DataModelApp extends React.Component {
       <div>
         <div className="px3 border-bottom">
           <Radio
-            underlined
+            variant="underlined"
             value={value}
             options={[
               { name: t`Data`, value: "database" },

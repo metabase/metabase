@@ -10,8 +10,8 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel
-                                     PulseChannelRecipient Table ViewLog]]
+            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview
+                                     Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
@@ -22,6 +22,7 @@
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
+            [metabase.test.data.users :as test-users]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -48,6 +49,7 @@
    :enable_embedding    false
    :embedding_params    nil
    :made_public_by_id   nil
+   :moderation_reviews  ()
    :public_uuid         nil
    :query_type          nil
    :cache_ttl           nil
@@ -421,9 +423,9 @@
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/BigInteger
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"
+      (let [metadata  [{:base_type     :type/BigInteger
+                        :display_name  "Count Chocula"
+                        :name          "count_chocula"
                         :semantic_type :type/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
@@ -436,27 +438,20 @@
                                          ;; bad checksum
                                          :metadata_checksum  "ABCDEF"))
             (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (= [{:base_type    :type/BigInteger
-                       :display_name "Count"
-                       :name         "count"
+              (is (= [{:base_type     :type/BigInteger
+                       :display_name  "Count"
+                       :name          "count"
                        :semantic_type :type/Quantity
-                       :fingerprint  {:global {:distinct-count 1
-                                               :nil%           0.0},
-                                      :type   {:type/Number {:min 100.0
-                                                             :max 100.0
-                                                             :avg 100.0
-                                                             :q1  100.0
-                                                             :q3  100.0
-                                                             :sd  nil}}}
-                       :field_ref    [:aggregation 0]}]
+                       :source        :aggregation
+                       :field_ref     [:aggregation 0]}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/Integer
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"
+      (let [metadata  [{:base_type     :type/Integer
+                        :display_name  "Count Chocula"
+                        :name          "count_chocula"
                         :semantic_type :type/Quantity}]
             card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
@@ -470,20 +465,22 @@
                               (reset! sql-result sql)
                               (orig driver stmt sql))]
                 ;; create a card with the metadata
-                (mt/user-http-request :rasta :post 202 "card"
-                                      (assoc (card-with-name-and-query card-name)
-                                             :collection_id      (u/the-id collection)
-                                             :result_metadata    metadata
-                                             :metadata_checksum  "ABCDEF"))) ; bad checksum
+                (mt/user-http-request
+                 :rasta :post 202 "card"
+                 (assoc (card-with-name-and-query card-name)
+                        :dataset_query      (mt/native-query {:query "SELECT count(*) AS \"count\" FROM VENUES"})
+                        :collection_id      (u/the-id collection)
+                        :result_metadata    metadata
+                        :metadata_checksum  "ABCDEF"))) ; bad checksum
               (testing "check the correct metadata was fetched and was saved in the DB"
-                (is (= [{:base_type    (count-base-type)
-                         :display_name "Count"
-                         :name         "count"
+                (is (= [{:base_type     (count-base-type)
+                         :display_name  "count"
+                         :name          "count"
                          :semantic_type :type/Quantity
-                         :fingerprint  {:global {:distinct-count 1
-                                                 :nil%           0.0},
-                                        :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
-                         :field_ref    [:aggregation 0]}]
+                         :fingerprint   {:global {:distinct-count 1
+                                                  :nil%           0.0},
+                                         :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
+                         :field_ref     [:field "count" {:base-type (count-base-type)}]}]
                        (db/select-one-field :result_metadata Card :name card-name))))
               (testing "Was the user id found in the generated SQL?"
                 (is (= true
@@ -598,7 +595,20 @@
             (is (= {:id true :email "user@test.com" :first_name "Test" :last_name "User" :timestamp true}
                    (-> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                        mt/boolean-ids-and-timestamps
-                       :last-edit-info)))))))))
+                       :last-edit-info)))))
+        (testing "Card should include moderation reviews"
+          (letfn [(clean [mr] (select-keys [mr] [:status :text]))]
+            (mt/with-temp* [ModerationReview [review {:moderated_item_id (:id card)
+                                                      :moderated_item_type "card"
+                                                      :moderator_id (mt/user->id :rasta)
+                                                      :most_recent true
+                                                      :status "verified"
+                                                      :text "lookin good"}]]
+              (is (= [(clean review)]
+                     (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
+                          mt/boolean-ids-and-timestamps
+                          :moderation_reviews
+                          (map clean)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                UPDATING A CARD                                                 |
@@ -704,9 +714,9 @@
                (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
 
 (deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
-  (let [metadata [{:base_type    :type/BigInteger
-                   :display_name "Count Chocula"
-                   :name         "count_chocula"
+  (let [metadata [{:base_type     :type/BigInteger
+                   :display_name  "Count Chocula"
+                   :name          "count_chocula"
                    :semantic_type :type/Quantity}]]
     (mt/with-temp Card [card]
       (with-cards-in-writeable-collection card
@@ -716,14 +726,12 @@
                                :result_metadata   metadata
                                :metadata_checksum "ABC123"}) ; invalid checksum
         ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type    :type/BigInteger
-                 :display_name "Count"
-                 :name         "count"
+        (is (= [{:base_type     :type/BigInteger
+                 :display_name  "Count"
+                 :name          "count"
                  :semantic_type :type/Quantity
-                 :fingerprint  {:global {:distinct-count 1
-                                         :nil%           0.0},
-                                :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
-                 :field_ref    [:aggregation 0]}]
+                 :source        :aggregation
+                 :field_ref     [:aggregation 0]}]
                (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-
@@ -1292,6 +1300,37 @@
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
 
+(defn- test-download-response-headers
+  [url]
+  (-> (http/client-full-response (test-users/username->token :rasta)
+                                 :post 200 url
+                                 :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+      :headers
+      (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
+      (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
+                                                            "my_awesome_card_<timestamp>$1")))))
+
+(deftest download-response-headers-test
+  (testing "Make sure CSV/etc. download requests come back with the correct headers"
+    (mt/with-temp Card [card {:name "My Awesome Card"}]
+      (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+              "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.csv\""
+              "Content-Type"        "text/csv"
+              "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+              "X-Accel-Buffering"   "no"}
+             (test-download-response-headers (format "card/%d/query/csv" (u/the-id card)))))
+      (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+              "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.json\""
+              "Content-Type"        "application/json;charset=utf-8"
+              "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+              "X-Accel-Buffering"   "no"}
+             (test-download-response-headers (format "card/%d/query/json" (u/the-id card)))))
+      (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+              "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.xlsx\""
+              "Content-Type"        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+              "X-Accel-Buffering"   "no"}
+             (test-download-response-headers (format "card/%d/query/xlsx" (u/the-id card))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  COLLECTIONS                                                   |
@@ -1595,7 +1634,7 @@
                  (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
 
 (deftest pivot-card-test
-  (mt/test-drivers pivots/applicable-drivers
+  (mt/test-drivers (pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/card/pivot/:card-id/query"
         (mt/with-temp Card [card (pivots/pivot-card)]

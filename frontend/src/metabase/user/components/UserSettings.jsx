@@ -58,7 +58,7 @@ export default class UserSettings extends Component {
           </Flex>
           <Radio
             value={tab}
-            underlined={true}
+            variant="underlined"
             options={[
               { name: t`Profile`, value: "details" },
               ...(showChangePassword

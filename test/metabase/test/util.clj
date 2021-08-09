@@ -21,6 +21,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
+            [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.initialize :as initialize]
@@ -264,10 +265,6 @@
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
 
-(defn- namespace-or-symbol? [x]
-  (or (symbol? x)
-      (instance? clojure.lang.Namespace x)))
-
 (defn obj->json->obj
   "Convert an object to JSON and back again. This can be done to ensure something will match its serialized +
   deserialized form, e.g. keywords that aren't map keys, record types vs. plain map types, or timestamps vs ISO-8601
@@ -287,6 +284,7 @@
 (defn do-with-temp-env-var-value
   "Impl for `with-temp-env-var-value` macro."
   [env-var-keyword value thunk]
+  (test-runner.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
   (let [value (str value)]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try
@@ -363,18 +361,19 @@
 
   Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
-  [setting-k value f]
+  [setting-k value thunk]
+  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-values")
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting                    (#'setting/resolve-setting setting-k)
         env-var-value              (#'setting/env-var-value setting)
         original-db-or-cache-value (#'setting/db-or-cache-value setting)]
     (if env-var-value
-      (do-with-temp-env-var-value setting env-var-value f)
+      (do-with-temp-env-var-value setting env-var-value thunk)
       (try
         (setting/set! setting-k value)
         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-            (f))
+          (thunk))
         (finally
           (setting/set! setting-k original-db-or-cache-value))))))
 
@@ -419,6 +418,7 @@
 (defn do-with-temp-vals-in-db
   "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
+  (test-runner.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
   (let [model                    (db/resolve-model model)
@@ -426,10 +426,10 @@
                                             :from   [model]
                                             :where  [:= :id (u/the-id object-or-id)]})]
     (assert original-column->value
-      (format "%s %d not found." (name model) (u/the-id object-or-id)))
+            (format "%s %d not found." (name model) (u/the-id object-or-id)))
     (try
       (db/update! model (u/the-id object-or-id)
-                  column->temp-value)
+        column->temp-value)
       (f)
       (finally
         (db/execute!
@@ -602,8 +602,27 @@
            .getZone
            .getID)))))
 
+(defmulti with-model-cleanup-additional-conditions
+  "Additional conditions that should be used to restrict which instances automatically get deleted by
+  `with-model-cleanup`. Conditions should be a HoneySQL `:where` clause."
+  {:arglists '([model])}
+  type)
+
+(defmethod with-model-cleanup-additional-conditions :default
+  [_]
+  nil)
+
+(defmethod with-model-cleanup-additional-conditions (type Collection)
+  [_]
+  ;; NEVER delete personal collections for the test users.
+  [:or
+   [:= :personal_owner_id nil]
+   [:not-in :personal_owner_id (set (map (requiring-resolve 'metabase.test.data.users/user->id)
+                                         @(requiring-resolve 'metabase.test.data.users/usernames)))]])
+
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? t.models/model? models)]}
+  (test-runner.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
                                      [model (:max-id (db/select-one [model [:%max.id :max-id]]))]))]
@@ -613,9 +632,15 @@
       (finally
         (doseq [model models
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
-                :let  [old-max-id (or (get model->old-max-id model)
-                                      0)]]
-          (db/simple-delete! model :id [:> old-max-id]))))))
+                :let  [old-max-id            (or (get model->old-max-id model)
+                                                 0)
+                       max-id-condition      [:> :id old-max-id]
+                       additional-conditions (with-model-cleanup-additional-conditions model)]]
+          (db/execute!
+           {:delete-from model
+            :where       (if (seq additional-conditions)
+                           [:and max-id-condition additional-conditions]
+                           max-id-condition)}))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
@@ -706,6 +731,7 @@
         readwrite-path              (perms/collection-readwrite-path collection-or-id)
         groups-with-read-perms      (db/select-field :group_id Permissions :object read-path)
         groups-with-readwrite-perms (db/select-field :group_id Permissions :object readwrite-path)]
+    (test-runner.parallel/assert-test-is-not-parallel "with-discarded-collections-perms-changes")
     (try
       (f)
       (finally
@@ -721,6 +747,7 @@
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
+  (test-runner.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
   (try
     (do-with-discarded-collections-perms-changes
      collection
@@ -787,6 +814,7 @@
 (defn call-with-locale
   "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"
   [locale-tag f]
+  (test-runner.parallel/assert-test-is-not-parallel "with-locale")
   (let [current-locale (Locale/getDefault)]
     (try
       (Locale/setDefault (Locale/forLanguageTag locale-tag))

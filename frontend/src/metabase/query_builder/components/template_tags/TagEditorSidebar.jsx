@@ -161,7 +161,7 @@ const SettingsPane = ({
 );
 
 SettingsPane.propTypes = {
-  tags: PropTypes.object.isRequired,
+  tags: PropTypes.array.isRequired,
   onUpdate: PropTypes.func.isRequired,
   setDatasetQuery: PropTypes.func.isRequired,
   query: NativeQuery,

@@ -1,4 +1,4 @@
-import { restore, modal } from "__support__/e2e/cypress";
+import { restore, modal, openNativeEditor } from "__support__/e2e/cypress";
 
 // HACK which lets us type (even very long words) without losing focus
 // this is needed for fields where autocomplete suggestions are enabled
@@ -24,12 +24,8 @@ describe("scenarios > question > snippets", () => {
   });
 
   it("should let you create and use a snippet", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
-    // Type a query and highlight some of the text
-    cy.get(".ace_content").as("editor");
-    cy.get("@editor").type(
+    openNativeEditor().type(
+      // Type a query and highlight some of the text
       "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
     );
 
@@ -57,13 +53,9 @@ describe("scenarios > question > snippets", () => {
       content: "stuff",
     });
 
-    cy.visit("/question/new");
-    cy.findByText("Native query").click();
-
     // Populate the native editor first
     // 1. select
-    cy.get(".ace_content").as("editor");
-    cy.get("@editor").type("select ");
+    openNativeEditor().type("select ");
     // 2. snippet
     cy.icon("snippet").click();
     cy.findByText("stuff-snippet").click();

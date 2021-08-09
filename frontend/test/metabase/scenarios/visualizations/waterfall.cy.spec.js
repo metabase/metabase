@@ -2,6 +2,7 @@ import {
   openOrdersTable,
   restore,
   visitQuestionAdhoc,
+  openNativeEditor,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -39,9 +40,7 @@ describe("scenarios > visualizations > waterfall", () => {
   }
 
   it("should work with ordinal series", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type(
+    openNativeEditor().type(
       "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
@@ -51,11 +50,38 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("PRODUCT", "PROFIT");
   });
 
+  it("should work with ordinal series and numeric X-axis (metabase#15550)", () => {
+    openNativeEditor().type(
+      "select 1 as X, 20 as Y union select 2 as X, -10 as Y",
+    );
+
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.contains("Visualization").click();
+    cy.icon("waterfall").click();
+
+    cy.contains("Select a field").click();
+    cy.get(".List-item")
+      .contains("X")
+      .click();
+
+    cy.contains("Select a field").click();
+    cy.get(".List-item")
+      .contains("Y")
+      .click();
+
+    cy.contains("Axes").click();
+
+    cy.contains("Linear").click();
+    cy.get(".List-item")
+      .contains("Ordinal")
+      .click();
+
+    verifyWaterfallRendering("X", "Y");
+  });
+
   it("should work with quantitative series", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.get(".ace_content").type(
-      "select 1 as xx, 10 as yy union select 2 as xx, -2 as yy",
+    openNativeEditor().type(
+      "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("Visualization").click();
@@ -63,14 +89,14 @@ describe("scenarios > visualizations > waterfall", () => {
 
     cy.contains("Select a field").click();
     cy.get(".List-item")
-      .first()
-      .click(); // X
+      .contains("X")
+      .click();
     cy.contains("Select a field").click();
     cy.get(".List-item")
-      .last()
-      .click(); // Y
+      .contains("Y")
+      .click();
 
-    verifyWaterfallRendering("XX", "YY");
+    verifyWaterfallRendering("X", "Y");
   });
 
   it("should work with time-series data", () => {
@@ -214,9 +240,8 @@ describe("scenarios > visualizations > waterfall", () => {
     beforeEach(() => {
       restore();
       cy.signInAsNormalUser();
-      cy.visit("/question/new");
-      cy.contains("Native query").click();
-      cy.get(".ace_content").type("select 'A' as X, -4.56 as Y");
+
+      openNativeEditor().type("select 'A' as X, -4.56 as Y");
       cy.get(".NativeQueryEditor .Icon-play").click();
       cy.contains("Visualization").click();
       cy.icon("waterfall").click();

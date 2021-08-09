@@ -6,6 +6,7 @@ import {
   extractQueryParams,
   extractEntityId,
   extractCollectionId,
+  isCollectionPath,
 } from "metabase/lib/urls";
 
 describe("urls", () => {
@@ -155,6 +156,35 @@ describe("urls", () => {
     testCases.forEach(({ slug, id }) => {
       it(`should return "${id}" id if slug is "${slug}"`, () => {
         expect(extractCollectionId(slug)).toBe(id);
+      });
+    });
+  });
+
+  describe("isCollectionPath", () => {
+    const testCases = [
+      { path: "collection/1", expected: true },
+      { path: "collection/123", expected: true },
+      { path: "/collection/1", expected: true },
+      { path: "/collection/123", expected: true },
+      { path: "/collection/1-stats", expected: true },
+      { path: "/collection/123-stats-stats", expected: true },
+      { path: "/collection/1-stats/new", expected: true },
+      { path: "/collection/1-stats/nested/url", expected: true },
+      { path: "/collection/1-stats/new_collection", expected: true },
+      { path: "/collection/root", expected: true },
+      { path: "/collection/users", expected: true },
+
+      { path: "dashboard/1", expected: false },
+      { path: "/dashboard/1", expected: false },
+      { path: "/dashboard/12-orders", expected: false },
+      { path: "/browse/1", expected: false },
+      { path: "/browse/12-shop", expected: false },
+      { path: "/question/1-orders", expected: false },
+    ];
+
+    testCases.forEach(({ path, expected }) => {
+      it(`returns ${expected} for ${path}`, () => {
+        expect(isCollectionPath(path)).toBe(expected);
       });
     });
   });

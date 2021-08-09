@@ -13,7 +13,7 @@ import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
 import _ from "underscore";
-import { shallowEqual } from "recompose";
+import shallowEqual from "./shallowEqual";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
 import { getIn } from "icepick";
@@ -68,6 +68,13 @@ export const getShallowFields = getNormalizedFields;
 export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
+export const instantiateDatabase = obj => new Database(obj);
+export const instantiateSchema = obj => new Schema(obj);
+export const instantiateTable = obj => new Table(obj);
+export const instantiateField = obj => new Field(obj);
+export const instantiateSegment = obj => new Segment(obj);
+export const instantiateMetric = obj => new Metric(obj);
+
 // fully connected graph of all databases, tables, fields, segments, and metrics
 // TODO: do this lazily using ES6 Proxies
 export const getMetadata = createSelector(
@@ -81,12 +88,12 @@ export const getMetadata = createSelector(
   ],
   (databases, schemas, tables, fields, segments, metrics): Metadata => {
     const meta = new Metadata();
-    meta.databases = copyObjects(meta, databases, Database);
-    meta.schemas = copyObjects(meta, schemas, Schema);
-    meta.tables = copyObjects(meta, tables, Table);
-    meta.fields = copyObjects(meta, fields, Field);
-    meta.segments = copyObjects(meta, segments, Segment);
-    meta.metrics = copyObjects(meta, metrics, Metric);
+    meta.databases = copyObjects(meta, databases, instantiateDatabase);
+    meta.schemas = copyObjects(meta, schemas, instantiateSchema);
+    meta.tables = copyObjects(meta, tables, instantiateTable);
+    meta.fields = copyObjects(meta, fields, instantiateField);
+    meta.segments = copyObjects(meta, segments, instantiateSegment);
+    meta.metrics = copyObjects(meta, metrics, instantiateMetric);
 
     // database
     hydrateList(meta.databases, "tables", meta.tables);
@@ -260,11 +267,11 @@ export const makeGetMergedParameterFieldValues = () => {
 // UTILS:
 
 // clone each object in the provided mapping of objects
-export function copyObjects(metadata, objects, Klass) {
+export function copyObjects(metadata, objects, instantiate) {
   const copies = {};
   for (const object of Object.values(objects)) {
     if (object && object.id != null) {
-      copies[object.id] = new Klass(object);
+      copies[object.id] = instantiate(object);
       copies[object.id].metadata = metadata;
     } else {
       console.warn("Missing id:", object);

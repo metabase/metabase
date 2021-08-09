@@ -1,9 +1,5 @@
-import {
-  restore,
-  popover,
-  setupDummySMTP,
-  generateUsers,
-} from "__support__/e2e/cypress";
+import _ from "underscore";
+import { restore, popover, setupDummySMTP } from "__support__/e2e/cypress";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { normal, admin } = USERS;
@@ -207,6 +203,14 @@ describe("scenarios > admin > people", () => {
       assertTableRowsCount(TOTAL_USERS);
     });
 
+    it("should display more than 50 groups (metabase#17200)", () => {
+      generateGroups(51);
+
+      cy.visit("/admin/people/groups");
+      cy.scrollTo("bottom");
+      cy.findByText("readonly");
+    });
+
     describe("pagination", () => {
       const NEW_USERS = 18;
       const NEW_TOTAL_USERS = TOTAL_USERS + NEW_USERS;
@@ -287,4 +291,24 @@ function clickButton(button_name) {
 
 function assertTableRowsCount(length) {
   cy.get(".ContentTable tbody tr").should("have.length", length);
+}
+
+function generateUsers(count, groupIds) {
+  const users = _.range(count).map(index => ({
+    first_name: `FirstName ${index}`,
+    last_name: `LastName ${index}`,
+    email: `user_${index}@metabase.com`,
+    password: `secure password ${index}`,
+    groupIds,
+  }));
+
+  users.forEach(u => cy.createUserFromRawData(u));
+
+  return users;
+}
+
+function generateGroups(count) {
+  _.range(count).map(index => {
+    cy.request("POST", "api/permissions/group", { name: "Group" + index });
+  });
 }

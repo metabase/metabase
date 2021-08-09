@@ -5,6 +5,7 @@ import {
   openReviewsTable,
   openPeopleTable,
   popover,
+  filterWidget,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
 
@@ -106,7 +107,7 @@ describe("scenarios > question > filter", () => {
         });
       });
 
-      cy.get("fieldset")
+      filterWidget()
         .last()
         .within(() => {
           cy.findByText("Category").click();
@@ -411,7 +412,7 @@ describe("scenarios > question > filter", () => {
         cy.url().should("not.include", "?category=Doohickey");
 
         // Set filter value to the `ID`
-        cy.get("fieldset")
+        filterWidget()
           .contains(/ID/i)
           .click();
         cy.findByPlaceholderText("Enter an ID").type("1");
@@ -429,68 +430,6 @@ describe("scenarios > question > filter", () => {
         // TODO: depending on how this issue will be fixed, the next assertion might need to be updated
         cy.location("search").should("eq", "?id=1");
       });
-    });
-  });
-
-  it.skip("should clear default filter value in native questions (metabase#13961)", () => {
-    const QUESTION_NAME = "13961";
-    const [CATEGORY_FILTER, ID_FILTER] = [
-      { name: "category", display_name: "Category", type: "dimension" },
-      { name: "prodid", display_name: "ProdId", type: "number" },
-    ];
-
-    cy.createNativeQuestion({
-      name: QUESTION_NAME,
-      native: {
-        query:
-          "SELECT * FROM PRODUCTS WHERE 1=1 AND {{category}} [[AND ID={{prodid}}]]",
-        "template-tags": {
-          [CATEGORY_FILTER.name]: {
-            id: "00315d5e-4a41-99da-1a41-e5254dacff9d",
-            name: CATEGORY_FILTER.name,
-            "display-name": CATEGORY_FILTER.display_name,
-            type: CATEGORY_FILTER.type,
-            default: "Doohickey",
-            dimension: ["field", PRODUCTS.CATEGORY, null],
-            "widget-type": "category",
-          },
-          [ID_FILTER.name]: {
-            id: "4775bccc-e82a-4069-fc6b-2acc90aadb8b",
-            name: ID_FILTER.name,
-            "display-name": ID_FILTER.display_name,
-            type: ID_FILTER.type,
-            default: null,
-          },
-        },
-      },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-
-      cy.findByText(QUESTION_NAME);
-      cy.findAllByText("Small Marble Shoes"); // Product ID 2, Doohickey
-
-      cy.location("search").should("eq", "?category=Doohickey");
-
-      // Remove default filter (category)
-      cy.get("fieldset .Icon-close").click();
-
-      cy.icon("play")
-        .first()
-        .should("be.visible")
-        .as("rerunQuestion");
-
-      cy.get("@rerunQuestion").click();
-      cy.url().should("not.include", "?category=Doohickey");
-
-      // Add value `1` to the ID filter
-      cy.findByPlaceholderText(ID_FILTER.display_name).type("1");
-
-      cy.get("@rerunQuestion").click();
-
-      cy.log("Reported tested and failing on v0.34.3 through v0.37.3");
-      cy.log("URL is correct at this point, but there are no results");
-      cy.location("search").should("eq", `?${ID_FILTER.name}=1`);
-      cy.findByText("Rustic Paper Wallet"); // Product ID 1, Gizmo
     });
   });
 

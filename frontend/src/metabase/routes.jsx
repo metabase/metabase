@@ -83,7 +83,7 @@ import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
-import CollectionLanding from "metabase/components/CollectionLanding";
+import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
 import Overworld from "metabase/containers/Overworld";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";

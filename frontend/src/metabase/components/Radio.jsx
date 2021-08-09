@@ -1,83 +1,107 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
-
-import styled from "styled-components";
-import { space } from "styled-system";
+import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
-import { color, lighten } from "metabase/lib/colors";
+import {
+  RadioInput,
+  RadioButton,
+  BubbleList,
+  BubbleItem,
+  NormalList,
+  NormalItem,
+  UnderlinedList,
+  UnderlinedItem,
+} from "./Radio.styled";
 
-import _ from "underscore";
-import cx from "classnames";
+const optionShape = PropTypes.shape({
+  name: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.element,
+    PropTypes.node,
+  ]).isRequired,
+  value: PropTypes.any.isRequired,
+  icon: PropTypes.string,
+});
 
-export default class Radio extends Component {
-  static propTypes = {
-    value: PropTypes.any,
-    options: PropTypes.array.isRequired,
-    onChange: PropTypes.func,
-    optionNameFn: PropTypes.func,
-    optionValueFn: PropTypes.func,
-    optionKeyFn: PropTypes.func,
-    vertical: PropTypes.bool,
-    underlined: PropTypes.bool,
-    showButtons: PropTypes.bool,
-    py: PropTypes.number,
-  };
+const propTypes = {
+  name: PropTypes.string,
+  value: PropTypes.any,
+  options: PropTypes.oneOfType([
+    PropTypes.arrayOf(PropTypes.string),
+    PropTypes.arrayOf(optionShape),
+  ]).isRequired,
+  onChange: PropTypes.func,
+  onOptionClick: PropTypes.func,
+  optionNameFn: PropTypes.func,
+  optionValueFn: PropTypes.func,
+  optionKeyFn: PropTypes.func,
+  showButtons: PropTypes.bool,
+  xspace: PropTypes.number,
+  yspace: PropTypes.number,
+  py: PropTypes.number,
 
-  static defaultProps = {
-    optionNameFn: option => option.name,
-    optionValueFn: option => option.value,
-    optionKeyFn: option => option.value,
-    vertical: false,
-    underlined: false,
-    bubble: false,
-  };
+  // Modes
+  variant: PropTypes.oneOf(["bubble", "normal", "underlined"]),
+  vertical: PropTypes.bool,
+};
 
-  constructor(props, context) {
-    super(props, context);
-    this._id = _.uniqueId("radio-");
+const defaultNameGetter = option => option.name;
+const defaultValueGetter = option => option.value;
+
+const VARIANTS = {
+  normal: [NormalList, NormalItem],
+  bubble: [BubbleList, BubbleItem],
+  underlined: [UnderlinedList, UnderlinedItem],
+};
+
+function Radio({
+  name: nameFromProps,
+  value: currentValue,
+  options,
+
+  // onChange won't fire when you click an already checked item
+  // onOptionClick will fire in any case
+  // onOptionClick can be used for e.g. tab navigation like on the admin Permissions page)
+  onOptionClick,
+  onChange,
+
+  optionNameFn = defaultNameGetter,
+  optionValueFn = defaultValueGetter,
+  optionKeyFn = defaultValueGetter,
+  variant = "normal",
+  vertical = false,
+  xspace,
+  yspace,
+  py,
+  showButtons = vertical && variant !== "bubble",
+  ...props
+}) {
+  const id = useMemo(() => _.uniqueId("radio-"), []);
+  const name = nameFromProps || id;
+
+  const [List, Item] = VARIANTS[variant] || VARIANTS.normal;
+
+  if (variant === "underlined" && currentValue === undefined) {
+    console.warn(
+      "Radio can't underline selected option when no value is given.",
+    );
   }
 
-  render() {
-    const {
-      name = this._id,
-      value,
-      options,
-      onChange,
-      optionNameFn,
-      optionValueFn,
-      optionKeyFn,
-      vertical,
-      underlined,
-      bubble,
-      xspace,
-      yspace,
-      py,
-      showButtons = vertical && !bubble, // show buttons for vertical only by default
-      ...props
-    } = this.props;
-
-    const [List, Item] = bubble
-      ? [BubbleList, BubbleItem]
-      : underlined
-      ? [UnderlinedList, UnderlinedItem]
-      : [NormalList, NormalItem];
-
-    if (underlined && value === undefined) {
-      console.warn(
-        "Radio can't underline selected option when no value is given.",
-      );
-    }
-
-    return (
-      <List {...props} vertical={vertical} showButtons={showButtons}>
-        {options.map((option, index) => {
-          const selected = value === optionValueFn(option);
-          const last = index === options.length - 1;
-          return (
+  return (
+    <List {...props} vertical={vertical} showButtons={showButtons}>
+      {options.map((option, index) => {
+        const value = optionValueFn(option);
+        const selected = currentValue === value;
+        const last = index === options.length - 1;
+        const key = optionKeyFn(option);
+        const id = `${name}-${key}`;
+        const labelId = `${id}-label`;
+        return (
+          <li key={key}>
             <Item
-              key={optionKeyFn(option)}
+              id={labelId}
+              htmlFor={id}
               selected={selected}
               last={last}
               vertical={vertical}
@@ -85,86 +109,36 @@ export default class Radio extends Component {
               py={py}
               xspace={xspace}
               yspace={yspace}
-              onClick={e => onChange(optionValueFn(option))}
+              onClick={() => {
+                if (typeof onOptionClick === "function") {
+                  onOptionClick(value);
+                }
+              }}
             >
               {option.icon && <Icon name={option.icon} mr={1} />}
-              <input
-                className="Form-radio"
-                type="radio"
+              <RadioInput
+                id={id}
                 name={name}
-                value={optionValueFn(option)}
+                value={value}
                 checked={selected}
-                id={name + "-" + optionKeyFn(option)}
+                onChange={() => {
+                  if (typeof onChange === "function") {
+                    onChange(value);
+                  }
+                }}
+                // Workaround for https://github.com/testing-library/dom-testing-library/issues/877
+                aria-labelledby={labelId}
               />
-              {showButtons && (
-                <label htmlFor={name + "-" + optionKeyFn(option)} />
-              )}
-              <span>{optionNameFn(option)}</span>
+              {showButtons && <RadioButton checked={selected} />}
+              {optionNameFn(option)}
             </Item>
-          );
-        })}
-      </List>
-    );
-  }
+          </li>
+        );
+      })}
+    </List>
+  );
 }
 
-// BASE components all variants inherit from
-const BaseList = styled.ul`
-  display: flex;
-  flex-direction: ${props => (props.vertical ? "column" : "row")};
-`;
-const BaseItem = styled.li.attrs({
-  mr: props => (!props.vertical && !props.last ? props.xspace : null),
-  mb: props => (props.vertical && !props.last ? props.yspace : null),
-  "aria-selected": props => props.selected,
-})`
-  ${space}
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  :hover {
-    color: ${props =>
-      !props.showButtons && !props.selected ? color("brand") : null};
-  }
-`;
-BaseItem.defaultProps = {
-  xspace: 3,
-  yspace: 1,
-};
+Radio.propTypes = propTypes;
 
-// NORMAL
-const NormalList = styled(BaseList).attrs({
-  className: props => cx(props.className, { "text-bold": !props.showButtons }), // TODO: better way to merge classname?
-})``;
-const NormalItem = styled(BaseItem)`
-  color: ${props => (props.selected ? color("brand") : null)};
-`;
-
-// UNDERLINE
-const UnderlinedList = styled(NormalList)``;
-const UnderlinedItem = styled(NormalItem)`
-  border-bottom: 3px solid transparent;
-  border-color: ${props => (props.selected ? color("brand") : null)};
-`;
-UnderlinedItem.defaultProps = {
-  py: 2,
-};
-
-// BUBBLE
-const BubbleList = styled(BaseList)``;
-const BubbleItem = styled(BaseItem)`
-  font-weight: 700;
-  border-radius: 99px;
-  color: ${props => (props.selected ? color("white") : color("brand"))};
-  background-color: ${props =>
-    props.selected ? color("brand") : lighten("brand")};
-  :hover {
-    background-color: ${props => !props.selected && lighten("brand", 0.38)};
-    transition: background 300ms linear;
-  }
-`;
-BubbleItem.defaultProps = {
-  xspace: 1,
-  py: 1,
-  px: 2,
-};
+export default Radio;

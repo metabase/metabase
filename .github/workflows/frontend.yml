@@ -4,12 +4,6 @@ on:
   pull_request:
   push:
     branches:
-      - master
-      - 'release**'
-      - 'feature**'
-      - 'fix**'
-      - 'ci**'
-    tags:
       - '**'
     paths:
     - 'frontend/**'
@@ -49,6 +43,11 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 14.x
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
     - name: Get yarn cache
       uses: actions/cache@v2
       with:
@@ -85,6 +84,11 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 14.x
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
     - name: Get yarn cache
       uses: actions/cache@v2
       with:
@@ -103,6 +107,11 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 14.x
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
     - name: Get yarn cache
       uses: actions/cache@v2
       with:

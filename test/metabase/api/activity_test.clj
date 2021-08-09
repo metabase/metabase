@@ -6,6 +6,7 @@
             [metabase.models.activity :refer [Activity]]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.interface :as models]
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -167,7 +168,6 @@
           "user"      #{90}}
          (#'activity-api/activities->referenced-objects fake-activities))))
 
-
 (deftest referenced-objects->existing-objects-test
   (mt/with-temp Dashboard [{dashboard-id :id}]
     (is (= {"dashboard" #{dashboard-id}, "card" nil}
@@ -192,21 +192,25 @@
                                                    :details  {:dashcards [{:card_id card-id}
                                                                           {:card_id 0}]}}])))))
 
-(defn- user-can-see-user-joined-activity? [user]
-  ;; clear out all existing Activity entries
-  (db/delete! Activity)
-  (-> (mt/with-temp Activity [activity {:topic     "user-joined"
-                                        :details   {}
-                                        :timestamp #t "2019-02-15T11:55:00.000Z"}]
-        (mt/user-http-request user :get 200 "activity"))
-      seq
-      boolean))
-
 (deftest activity-visibility-test
-  (testing "Only admins should get to see user-joined activities"
-    (testing "admin should see `:user-joined` activities"
-      (is (= true
-             (user-can-see-user-joined-activity? :crowberto))))
-    (testing "non-admin should *not* see `:user-joined` activities"
-      (is (= false
-             (user-can-see-user-joined-activity? :rasta))))))
+  ;; clear out all existing Activity entries
+  ;;
+  ;; TODO -- this is a bad pattern -- test shouldn't wipe out a bunch of other stuff like this. Just fetch all the
+  ;; activities and look for the presence of this specific one.
+  (db/delete! Activity)
+  (mt/with-temp Activity [activity {:topic     "user-joined"
+                                    :details   {}
+                                    :timestamp #t "2019-02-15T11:55:00.000Z"}]
+    (letfn [(user-can-see-user-joined-activity? [user]
+              (seq (mt/user-http-request user :get 200 "activity")))]
+      (testing "Only admins should get to see user-joined activities"
+        (testing "admin should see `:user-joined` activities"
+          (testing "Sanity check: admin should be able to read the activity"
+            (mt/with-test-user :crowberto
+              (is (models/can-read? activity))))
+          (is (user-can-see-user-joined-activity? :crowberto)))
+        (testing "non-admin should *not* see `:user-joined` activities"
+          (testing "Sanity check: non-admin should *not* be able to read the activity"
+            (mt/with-test-user :rasta
+              (is (not (models/can-read? activity)))))
+          (is (not (user-can-see-user-joined-activity? :rasta))))))))
