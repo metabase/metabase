@@ -143,6 +143,10 @@ yarn test-unit # Run all tests at once
 yarn test-unit-watch # Watch for file changes
 ```
 
+### Visual regression tests
+
+Please see [visual regression test docs](visual-regression-tests-guide.md)
+
 ## Backend development
 
 Leiningen and your REPL are the main development tools for the backend. There are some directions below on how to setup your REPL for easier development.
