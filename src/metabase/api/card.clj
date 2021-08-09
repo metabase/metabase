@@ -623,7 +623,7 @@
                   ;; param `run` can be used to control how the query is ran, e.g. if you need to
                   ;; customize the `context` passed to the QP
                   (^:once fn* [query info]
-                   (qp.streaming/streaming-response [context export-format (u/slufigy (:card-name info))]
+                   (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                      (binding [qp.perms/*card-id* card-id]
                        (qp-runner query info context)))))
         card  (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
