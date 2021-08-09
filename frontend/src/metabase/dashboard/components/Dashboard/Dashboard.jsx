@@ -5,7 +5,11 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 
-import { Container, HeaderContainer } from "./Dashboard.styled";
+import {
+  Container,
+  HeaderContainer,
+  ParametersAndCardsContainer,
+} from "./Dashboard.styled";
 import DashboardHeader from "../DashboardHeader";
 import DashboardGrid from "../DashboardGrid";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -227,7 +231,7 @@ export default class Dashboard extends Component {
                 "flex-basis-none": isEditing || isSharing,
               })}
             >
-              <div className="flex-auto overflow-x-hidden">
+              <ParametersAndCardsContainer>
                 {!isFullscreen && parametersWidget && (
                   <div className="wrapper flex flex-column align-start mt2 relative z2">
                     {parametersWidget}
@@ -245,7 +249,7 @@ export default class Dashboard extends Component {
                     />
                   )}
                 </div>
-              </div>
+              </ParametersAndCardsContainer>
               <DashboardSidebars
                 {...this.props}
                 onCancel={this.onCancel}

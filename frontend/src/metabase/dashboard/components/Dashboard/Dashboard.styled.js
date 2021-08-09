@@ -29,3 +29,8 @@ export const HeaderContainer = styled.header`
       color: ${color("text-white")};
     `}
 `;
+
+export const ParametersAndCardsContainer = styled.div`
+  flex: auto;
+  overflow-x: hidden;
+`;
