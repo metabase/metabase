@@ -36,31 +36,40 @@
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
 
   The resulting list of indices determines the order of column names and data in exports."
-  [cols {table-columns ::mb.viz/table-columns}]
-  (if table-columns
-    (let [enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns)
-          cols-vector        (into [] cols)
-          ;; `cols-index` maps column names and ids to indices in `cols`
-          cols-index         (reduce-kv (fn [m i col]
-                                          (let [m' (assoc m (:name col) i)]
-                                            (if (:id col) (assoc m' (:id col) i) m')))
-                                        {}
-                                        cols-vector)]
-      (map
-       (fn [{[_ name-or-id _] ::mb.viz/table-column-field-ref}]
-         (let [index         (get cols-index name-or-id)
-               col           (get cols-vector index)
-               remapped-name (:remapped_to col)]
-           (if remapped-name
-             (get cols-index remapped-name)
-             index)))
-       enabled-table-cols))
-    (range (count cols))))
+  [cols table-columns]
+  (let [table-columns'     (or table-columns
+                               ;; If table-columns is not provided (e.g. for saved cards), we can construct
+                               ;; it using the original order in `cols`
+                               (for [{id :id} cols]
+                                 {::mb.viz/table-column-field-ref ["field" id nil]
+                                  ::mb.viz/table-column-enabled true}))
+        enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
+        cols-vector        (into [] cols)
+        ;; `cols-index` maps column names and ids to indices in `cols`
+        cols-index         (reduce-kv (fn [m i col]
+                                        (let [m' (assoc m (:name col) i)]
+                                          (if (:id col) (assoc m' (:id col) i) m')))
+                                      {}
+                                      cols-vector)]
+    (->> (map
+          (fn [{[_ name-or-id _] ::mb.viz/table-column-field-ref}]
+            (let [index         (get cols-index name-or-id)
+                  col           (get cols-vector index)
+                  remapped-to   (:remapped_to col)
+                  remapped-from (:remapped_from col)]
+              (cond
+                remapped-to
+                (get cols-index remapped-to)
+
+                (not remapped-from)
+                index)))
+          enabled-table-cols)
+         (remove nil?))))
 
 (defn- streaming-rff [results-writer]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [deduped-cols  (deduplicate-col-names cols)
-          output-order  (export-column-order deduped-cols viz-settings)
+          output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings))
           ordered-cols  (if output-order
                           (let [v (into [] deduped-cols)]
                             (for [i output-order] (v i)))
