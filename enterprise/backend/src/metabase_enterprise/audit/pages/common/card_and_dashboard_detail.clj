@@ -108,19 +108,3 @@
                :order-by  [[:vl.timestamp :desc]
                            [:%lower.u.last_name :asc]
                            [:%lower.u.first_name :asc]]})})
-
-(s/defn bad-question
-  "Get details about a bad Card"
-  [card-id :- su/IntGreaterThanZero]
-  {:metadata [[some shit]]
-   ;; - The value of each cell in the row, with some distinctions:
-   ;;  - Instead of the number of dashboards the question is found in, let's list the names of the dashboards themselves.
-   ;;  - We should add an additional list of other tables/data this question uses. This only applies for GUI questions, but it means any tables or saved questions that are referenced via implicit or explicit join.
-   ;; - A button to re-run the query
-   ;; - Right and left arrows to go to the next/previous row in the table
-   :results (common/reducible-query
-              {:select [[card id]
-                        [all the shit in the individual bad question]
-                        [fuckin left join on the dashboard fuck]
-                        [fucking what the fuck additional list of what]]
-                        })})

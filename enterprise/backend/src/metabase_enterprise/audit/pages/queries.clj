@@ -60,6 +60,10 @@
                [:collection_name {:display_name "Collection",      :base_type :type/Text,    :remapped_from :collection_id}]
                [:database_id     {:display_name "Database ID",     :base_type :type/Integer, :remapped_to   :database_name}]
                [:database_name   {:display_name "Database",        :base_type :type/Text,    :remapped_from :database_id}]
+               ;;;;; need some futzing with dashboards here too
+               ;;;;; need last run at
+               ;;;;; need total runs
+               ;;;;; need last edit runs
                [:table_id        {:display_name "Table ID",        :base_type :type/Integer, :remapped_to   :table_name}]
                [:table_name      {:display_name "Table",           :base_type :type/Text,    :remapped_from :table_id}]
                [:user_id         {:display_name "Created By ID",   :base_type :type/Integer, :remapped_to   :user_name}]
@@ -73,6 +77,7 @@
                               :card.database_id
                               [:db.name :database_name]
                               :card.table_id
+                              ;; need num dashboards its in somehow
                               [:t.name :table_name]
                               [:card.creator_id :user_id]
                               [(common/user-full-name :u) :user_name]
