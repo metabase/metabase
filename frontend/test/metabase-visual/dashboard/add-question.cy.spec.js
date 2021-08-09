@@ -16,7 +16,7 @@ describe("visual tests > dashboard", () => {
     cy.signInAsAdmin();
   });
 
-  it("shows basic dashboard", () => {
+  it("shows sidebar for adding question", () => {
     cy.createNativeQuestion(questionParams).then(
       ({ body: { id: questionId } }) => {
         cy.createDashboard("14473D").then(({ body: { id: dashboardId } }) => {
