@@ -1,11 +1,10 @@
 (ns metabase.query-processor.streaming.interface
   (:require [potemkin.types :as p.types]))
-
 (defmulti stream-options
   "Options for the streaming response for this specific stream type. See `metabase.async.streaming-response` for all
   available options."
-  {:arglists '([export-format])}
-  keyword)
+  {:arglists '([export-format] [export-format filename-prefix])}
+  (fn ([export-format & _] (keyword export-format))))
 
 (p.types/defprotocol+ StreamingResultsWriter
   "Protocol for the methods needed to write streaming QP results. This protocol is a higher-level interface to intended

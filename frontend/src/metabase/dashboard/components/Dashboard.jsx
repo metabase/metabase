@@ -4,6 +4,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
 
 import DashboardHeader from "./DashboardHeader";
 import DashboardGrid from "./DashboardGrid";
@@ -13,9 +15,6 @@ import EmptyState from "metabase/components/EmptyState";
 import { DashboardSidebars } from "./DashboardSidebars";
 
 import DashboardControls from "../hoc/DashboardControls";
-
-import _ from "underscore";
-import cx from "classnames";
 
 // NOTE: move DashboardControls HoC to container
 @DashboardControls
@@ -78,21 +77,25 @@ export default class Dashboard extends Component {
   }
 
   async loadDashboard(dashboardId) {
-    this.props.initialize();
-
-    this.props.loadDashboardParams();
-
     const {
       addCardOnLoad,
-      fetchDashboard,
       addCardToDashboard,
-      setErrorPage,
+      fetchDashboard,
+      initialize,
+      loadDashboardParams,
       location,
+      setErrorPage,
     } = this.props;
+
+    initialize();
+
+    loadDashboardParams();
 
     try {
       await fetchDashboard(dashboardId, location.query);
       if (addCardOnLoad != null) {
+        // if we destructure this.props.dashboard, for some reason
+        // if will render dashboards as empty
         this.setEditing(this.props.dashboard);
         addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
       }
@@ -139,21 +142,27 @@ export default class Dashboard extends Component {
   onEmbeddingClick = () => {};
 
   render() {
-    let {
+    const {
       dashboard,
-      isEditing,
       editingParameter,
-      parameters,
-      parameterValues,
-      location,
+      hideParameters,
+      isEditing,
       isFullscreen,
       isNightMode,
       isSharing,
-      hideParameters,
+      location,
+      parameterValues,
+      parameters,
+      removeParameter,
+      setEditingParameter,
+      setParameterDefaultValue,
+      setParameterIndex,
+      setParameterName,
+      setParameterValue,
     } = this.props;
 
     const { error, showAddQuestionSidebar } = this.state;
-    isNightMode = isNightMode && isFullscreen;
+    const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
     let parametersWidget;
     if (parameters && parameters.length > 0) {
@@ -163,7 +172,7 @@ export default class Dashboard extends Component {
           dashboard={dashboard}
           isEditing={isEditing}
           isFullscreen={isFullscreen}
-          isNightMode={isNightMode}
+          isNightMode={shouldRenderAsNightMode}
           hideParameters={hideParameters}
           parameters={parameters.map(p => ({
             ...p,
@@ -171,12 +180,12 @@ export default class Dashboard extends Component {
           }))}
           query={location.query}
           editingParameter={editingParameter}
-          setEditingParameter={this.props.setEditingParameter}
-          setParameterName={this.props.setParameterName}
-          setParameterIndex={this.props.setParameterIndex}
-          setParameterDefaultValue={this.props.setParameterDefaultValue}
-          removeParameter={this.props.removeParameter}
-          setParameterValue={this.props.setParameterValue}
+          setEditingParameter={setEditingParameter}
+          setParameterName={setParameterName}
+          setParameterIndex={setParameterIndex}
+          setParameterDefaultValue={setParameterDefaultValue}
+          removeParameter={removeParameter}
+          setParameterValue={setParameterValue}
         />
       );
     }
@@ -185,7 +194,7 @@ export default class Dashboard extends Component {
       <LoadingAndErrorWrapper
         className={cx("Dashboard flex-full", {
           "Dashboard--fullscreen": isFullscreen,
-          "Dashboard--night": isNightMode,
+          "Dashboard--night": shouldRenderAsNightMode,
           // prevents header from scrolling so we can have a fixed sidebar
           "full-height": isEditing || isSharing,
         })}
@@ -223,7 +232,10 @@ export default class Dashboard extends Component {
                 )}
                 <div className="wrapper">
                   {dashboard.ordered_cards.length === 0 ? (
-                    <Box mt={[2, 4]} color={isNightMode ? "white" : "inherit"}>
+                    <Box
+                      mt={[2, 4]}
+                      color={shouldRenderAsNightMode ? "white" : "inherit"}
+                    >
                       <EmptyState
                         illustrationElement={
                           <span className="QuestionCircle">?</span>

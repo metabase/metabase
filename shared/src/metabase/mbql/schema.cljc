@@ -1160,6 +1160,7 @@
    (s/optional-key :context)      (s/maybe Context)
    (s/optional-key :executed-by)  (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :card-id)      (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :card-name)    (s/maybe helpers/NonBlankString)
    (s/optional-key :dashboard-id) (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :pulse-id)     (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :nested?)      (s/maybe s/Bool)

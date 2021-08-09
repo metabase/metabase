@@ -115,8 +115,8 @@
 
 (defn streaming-response*
   "Impl for `streaming-response`."
-  ^StreamingResponse [export-format f]
-  (streaming-response/streaming-response (i/stream-options export-format) [os canceled-chan]
+  ^StreamingResponse [export-format filename-prefix f]
+  (streaming-response/streaming-response (i/stream-options export-format filename-prefix) [os canceled-chan]
     (let [result (try
                    (f (streaming-context export-format os canceled-chan))
                    (catch Throwable e
@@ -142,8 +142,8 @@
   Handles either async or sync QP results, but you should prefer returning sync results so we can handle query
   cancelations properly."
   {:style/indent 1}
-  [[context-binding export-format] & body]
-  `(streaming-response* ~export-format (fn [~context-binding] ~@body)))
+  [[context-binding export-format filename-prefix] & body]
+  `(streaming-response* ~export-format ~filename-prefix (fn [~context-binding] ~@body)))
 
 (defn export-formats
   "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results
