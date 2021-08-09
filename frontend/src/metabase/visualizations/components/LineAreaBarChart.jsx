@@ -300,7 +300,6 @@ export default class LineAreaBarChart extends Component {
     const {
       series,
       hovered,
-      showTitle,
       headerIcon,
       actionButtons,
       onChangeCardAndRun,
