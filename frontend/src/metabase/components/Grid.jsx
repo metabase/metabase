@@ -3,7 +3,7 @@ import React from "react";
 import { Box, Flex } from "grid-styled";
 
 export const GridItem = ({ children, w, px, py, ...props }) => (
-  <Box px={px} py={py} {...props} style={{ width: w }}>
+  <Box px={px} py={py} {...props} width={w}>
     {children}
   </Box>
 );
