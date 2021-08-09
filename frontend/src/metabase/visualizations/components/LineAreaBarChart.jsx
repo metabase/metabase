@@ -7,7 +7,7 @@ import { iconPropTypes } from "metabase/components/Icon";
 
 import CardRenderer from "./CardRenderer";
 import LegendHeader from "./LegendHeader";
-import ChartCaption from "./ChartCaption";
+import LegendCaption from "./legend/LegendCaption";
 
 import "./LineAreaBarChart.css";
 
@@ -192,7 +192,9 @@ export default class LineAreaBarChart extends Component {
   }
 
   static propTypes = {
+    card: PropTypes.object.isRequired,
     series: PropTypes.array.isRequired,
+    settings: PropTypes.object.isRequired,
     actionButtons: PropTypes.node,
     showTitle: PropTypes.bool,
     isDashboard: PropTypes.bool,
@@ -259,6 +261,41 @@ export default class LineAreaBarChart extends Component {
     return settings;
   }
 
+  getLegendSettings() {
+    const {
+      card,
+      series,
+      settings,
+      showTitle,
+      onChangeCardAndRun,
+    } = this.props;
+
+    const title = settings["card.title"] || card.name;
+    const description = series["card.description"];
+    const data = series._raw || series;
+    const cardIds = new Set(data.map(s => s.card.id));
+    const hasTitle = showTitle && settings["card.title"];
+    const canClickTitle = cardIds.size === 1 && onChangeCardAndRun;
+
+    return {
+      title,
+      description,
+      hasTitle,
+      canClickTitle,
+    };
+  }
+
+  onTitleClick = () => {
+    const { card, onChangeCardAndRun } = this.props;
+
+    if (onChangeCardAndRun) {
+      onChangeCardAndRun({
+        nextCard: card,
+        seriesIndex: 0,
+      });
+    }
+  };
+
   render() {
     const {
       series,
@@ -274,6 +311,13 @@ export default class LineAreaBarChart extends Component {
       onRemoveSeries,
     } = this.props;
 
+    const {
+      title,
+      description,
+      hasTitle,
+      canClickTitle,
+    } = this.getLegendSettings();
+
     const settings = this.getSettings();
 
     const hasMultiSeriesHeaderSeries = !!(
@@ -282,8 +326,6 @@ export default class LineAreaBarChart extends Component {
       onEditSeries ||
       onRemoveSeries
     );
-
-    const hasTitle = showTitle && settings["card.title"];
 
     const defaultSeries = [
       {
@@ -302,12 +344,13 @@ export default class LineAreaBarChart extends Component {
         )}
       >
         {hasTitle && (
-          <ChartCaption
-            series={series}
-            settings={settings}
+          <LegendCaption
+            className="mx1 flex-no-shrink"
+            title={title}
+            description={description}
             icon={headerIcon}
             actionButtons={actionButtons}
-            onChangeCardAndRun={onChangeCardAndRun}
+            onTitleClick={canClickTitle ? this.onTitleClick : undefined}
           />
         )}
         {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
