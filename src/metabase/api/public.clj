@@ -113,9 +113,9 @@
     (m/mapply card-api/run-query-for-card-async card-id export-format
               :parameters parameters
               :context    :public-question
-              :run        (fn [query info card-name]
+              :run        (fn [query info]
                             (qp.streaming/streaming-response
-                             [{:keys [reducedf], :as context} export-format (u/slugify card-name)]
+                             [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
                              (let [context  (assoc context :reducedf (public-reducedf reducedf))
                                    in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
                                               (qp-runner query info context))

@@ -622,12 +622,11 @@
   (let [run       (or run
                       ;; param `run` can be used to control how the query is ran, e.g. if you need to
                       ;; customize the `context` passed to the QP
-                      (^:once fn* [query info card-name]
-                       (qp.streaming/streaming-response [context export-format (u/slugify card-name)]
+                      (^:once fn* [query info]
+                       (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                          (binding [qp.perms/*card-id* card-id]
                            (qp-runner query info context)))))
         card      (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
-        card-name (:name card)
         query     (-> (assoc (query-for-card card parameters constraints middleware)
                              :async? true)
                       (update :middleware merge {:js-int-to-string?      true
@@ -635,9 +634,10 @@
         info      {:executed-by  api/*current-user-id*
                    :context      context
                    :card-id      card-id
+                   :card-name    (:name card)
                    :dashboard-id dashboard-id}]
     (api/check-not-archived card)
-    (run query info card-name)))
+    (run query info)))
 
 (api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."

@@ -10,20 +10,8 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models
-             :refer
-             [Card
-              CardFavorite
-              Collection
-              Dashboard
-              Database
-              ModerationReview
-              Pulse
-              PulseCard
-              PulseChannel
-              PulseChannelRecipient
-              Table
-              ViewLog]]
+            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview
+                                     Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
@@ -1294,7 +1282,7 @@
       (let [orig card-api/run-query-for-card-async]
         (with-redefs [card-api/run-query-for-card-async (fn [card-id export-format & options]
                                                           (apply orig card-id export-format
-                                                                 :run (fn [{:keys [constraints]} _ _]
+                                                                 :run (fn [{:keys [constraints]} _]
                                                                         {:constraints constraints})
                                                                  options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
