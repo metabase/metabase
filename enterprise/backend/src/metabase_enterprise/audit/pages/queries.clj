@@ -54,21 +54,22 @@
 (s/defn ^:internal-query-fn bad-table
   "List of all failing questions"
   []
-   {:metadata [[:card_id         {:display_name "Card ID",         :base_type :type/Integer, :remapped_to   :card_name}]
-               [:card_name       {:display_name "Name",            :base_type :type/Name,    :remapped_from :card_id}]
-               [:collection_id   {:display_name "Collection ID",   :base_type :type/Integer, :remapped_to   :collection_name}]
-               [:collection_name {:display_name "Collection",      :base_type :type/Text,    :remapped_from :collection_id}]
-               [:database_id     {:display_name "Database ID",     :base_type :type/Integer, :remapped_to   :database_name}]
-               [:database_name   {:display_name "Database",        :base_type :type/Text,    :remapped_from :database_id}]
-               ;;;;; need some futzing with dashboards here too
-               ;;;;; need last run at
-               ;;;;; need total runs
-               ;;;;; need last edit runs
-               [:table_id        {:display_name "Table ID",        :base_type :type/Integer, :remapped_to   :table_name}]
-               [:table_name      {:display_name "Table",           :base_type :type/Text,    :remapped_from :table_id}]
-               [:user_id         {:display_name "Created By ID",   :base_type :type/Integer, :remapped_to   :user_name}]
-               [:user_name       {:display_name "Created By",      :base_type :type/Text,    :remapped_from :user_id}]
-               [:last_error      {:display_name "Error",           :base_type :type/Text,    :remapped_from :error}]]
+   {:metadata [[:card_id         {:display_name "Card ID",              :base_type :type/Integer}]
+               [:card_name       {:display_name "Name",                 :base_type :type/Name}]
+               [:collection_id   {:display_name "Collection ID",        :base_type :type/Integer}]
+               [:collection_name {:display_name "Collection",           :base_type :type/Text}]
+               [:database_id     {:display_name "Database ID",          :base_type :type/Integer}]
+               [:database_name   {:display_name "Database",             :base_type :type/Text}]
+               [:num_dashboards  {:display_name "Number of Dashboards", :base_type :type/Text}]
+               [:table_id        {:display_name "Table ID",             :base_type :type/Integer}]
+               [:table_name      {:display_name "Table",                :base_type :type/Text}]
+               [:user_id         {:display_name "Created By ID",        :base_type :type/Integer}]
+               [:user_name       {:display_name "Created By",           :base_type :type/Text}]
+               [:total_runs      {:display_name "Total Runs",           :base_type :type/Integer}]
+               [:last_run_at     {:display_name "Last Run At",          :base_type :type/DateTime}]
+               [:last_edited     {:display_name "Last Edited By",       :base_type :type/Text}]
+               [:last_edited_at  {:display_name "Last Edited At",       :base_type :type/DateTime}]
+               [:last_error      {:display_name "Error",                :base_type :type/Text}]]
     :results (common/reducible-query
                { :select    [[:card.id :card_id]
                               [:card.name :card_name]
@@ -81,6 +82,7 @@
                               [:t.name :table_name]
                               [:card.creator_id :user_id]
                               [(common/user-full-name :u) :user_name]
+                              [:*.count some shit :num_dashboards]
                               [:qe.error :error]]
                   :from      [[:report_card :card]]
                   :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
