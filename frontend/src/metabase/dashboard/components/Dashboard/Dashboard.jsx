@@ -167,7 +167,7 @@ export default class Dashboard extends Component {
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
 
     let parametersWidget;
-    if (parameters && parameters.length > 0) {
+    if (parameters?.length > 0) {
       parametersWidget = (
         <Parameters
           syncQueryString
