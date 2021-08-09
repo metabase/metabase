@@ -14,9 +14,8 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import cz.vutbr.web.css.MediaSpec
-           java.awt.Graphics2D
+           [java.awt Graphics2D RenderingHints]
            java.awt.image.BufferedImage
-           java.awt.RenderingHints
            [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            javax.imageio.ImageIO
