@@ -108,3 +108,8 @@
                :order-by  [[:vl.timestamp :desc]
                            [:%lower.u.last_name :asc]
                            [:%lower.u.first_name :asc]]})})
+
+(s/defn bad-question
+  "Get details about a bad Card"
+  [card-id :- su/IntGreaterThanZero]
+  )

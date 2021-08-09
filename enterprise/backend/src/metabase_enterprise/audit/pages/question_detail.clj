@@ -30,3 +30,8 @@
   "Average execution time broken out by period"
   [card-id :- su/IntGreaterThanZero, datetime-unit :- common/DateTimeUnitStr]
   (card-and-dash-detail/avg-execution-time-by-time card-id datetime-unit))
+
+(s/defn ^:internal-query-fn avg-execution-time-by-time
+  "For the modal view drilling down into a bad question"
+  [card-id :- su/IntGreaterThanZero]
+  (card-and-dash-detail/bad-question card-id))
