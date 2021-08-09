@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { iconPropTypes } from "metabase/components/Icon";
-import LegendHeader from "./legend/LegendHeader";
+import { ChartHeaderRoot } from "./ChartHeader.styled";
 
 const propTypes = {
   series: PropTypes.array.isRequired,
@@ -37,7 +37,7 @@ const ChartHeader = ({
   }
 
   return (
-    <LegendHeader
+    <ChartHeaderRoot
       className="mx1 flex-no-shrink"
       title={title}
       description={description}
