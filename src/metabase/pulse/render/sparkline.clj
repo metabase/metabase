@@ -1,4 +1,5 @@
-(ns metabase.pulse.render.sparkline
+(ns ^{:deprecated "0.41.0"} metabase.pulse.render.sparkline
+  "Deprecated sparkline library. We are now using a bespoke javascript bundle that makes proper charts."
   (:require [java-time :as t]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.image-bundle :as image-bundle]
