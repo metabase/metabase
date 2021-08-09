@@ -1,7 +1,6 @@
 (ns metabase-enterprise.audit.pages.common-test
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [java-time :as t]
             [metabase-enterprise.audit.pages.common :as pages.common]
             [metabase.db :as mdb]
             [metabase.public-settings.metastore-test :as metastore-test]
