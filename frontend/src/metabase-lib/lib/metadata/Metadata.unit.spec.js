@@ -9,7 +9,7 @@ import Segment from "./Segment";
 import Metric from "./Metric";
 import Question from "../Question";
 
-describe("Metdata", () => {
+describe("Metadata", () => {
   describe("instantiation", () => {
     it("should create an instance of Metadata", () => {
       expect(new Metadata()).toBeInstanceOf(Metadata);
