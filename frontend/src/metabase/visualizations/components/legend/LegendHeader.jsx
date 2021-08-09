@@ -4,10 +4,10 @@ import { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import Ellipsified from "metabase/components/Ellipsified";
 import {
-  LegendHeaderButtonGroup,
-  LegendHeaderIcon,
-  LegendHeaderInfo,
-  LegendHeaderLabel,
+  LegendButtonGroup,
+  LegendLabelIcon,
+  LegendDescriptionIcon,
+  LegendLabel,
   LegendHeaderRoot,
 } from "./LegendHeader.styled";
 
@@ -30,18 +30,16 @@ const LegendHeader = ({
 }) => {
   return (
     <LegendHeaderRoot className={className}>
-      {icon && <LegendHeaderIcon {...icon} />}
-      <LegendHeaderLabel onClick={onTitleClick}>
+      {icon && <LegendLabelIcon {...icon} />}
+      <LegendLabel onClick={onTitleClick}>
         <Ellipsified>{title}</Ellipsified>
-      </LegendHeaderLabel>
+      </LegendLabel>
       {description && (
         <Tooltip tooltip={description} maxWidth="22em">
-          <LegendHeaderInfo />
+          <LegendDescriptionIcon />
         </Tooltip>
       )}
-      {actionButtons && (
-        <LegendHeaderButtonGroup>{actionButtons}</LegendHeaderButtonGroup>
-      )}
+      {actionButtons && <LegendButtonGroup>{actionButtons}</LegendButtonGroup>}
     </LegendHeaderRoot>
   );
 };

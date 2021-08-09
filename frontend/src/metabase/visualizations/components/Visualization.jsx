@@ -477,7 +477,7 @@ export default class Visualization extends React.PureComponent {
       </span>
     );
 
-    let { gridSize, gridUnit, classNameWidgets } = this.props;
+    let { gridSize, gridUnit } = this.props;
     if (
       !gridSize &&
       gridUnit &&

@@ -7,7 +7,7 @@ import { iconPropTypes } from "metabase/components/Icon";
 
 import CardRenderer from "./CardRenderer";
 import LegendHeader from "./LegendHeader";
-import TitleLegendHeader from "./TitleLegendHeader";
+import ChartHeader from "./ChartHeader";
 
 import "./LineAreaBarChart.css";
 
@@ -302,12 +302,12 @@ export default class LineAreaBarChart extends Component {
         )}
       >
         {hasTitle && (
-          <TitleLegendHeader
+          <ChartHeader
             series={series}
             settings={settings}
-            onChangeCardAndRun={onChangeCardAndRun}
-            actionButtons={actionButtons}
             icon={headerIcon}
+            actionButtons={actionButtons}
+            onChangeCardAndRun={onChangeCardAndRun}
           />
         )}
         {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
