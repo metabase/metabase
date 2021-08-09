@@ -224,26 +224,57 @@
 ;;; |                                               XLSX export tests                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- parse-xlsx-result
-  [^BufferedInputStream is]
-  (let [workbook (spreadsheet/load-workbook-from-stream is)
-        sheet    (spreadsheet/select-sheet "Query result" workbook)]
-    (for [row (spreadsheet/into-seq sheet)]
-      (map spreadsheet/read-cell row))))
-
 (defn- xlsx-export
-  [ordered-cols viz-settings rows]
-  (with-open [bos (ByteArrayOutputStream.)
-              os  (BufferedOutputStream. bos)]
-    (let [results-writer (i/streaming-results-writer :xlsx os)]
-      (i/begin! results-writer {:data {:ordered-cols ordered-cols}} viz-settings)
-      (doall (map-indexed
-              (fn [i row] (i/write-row! results-writer row i ordered-cols viz-settings))
-              rows))
-      (i/finish! results-writer {}))
-    (let [bytea (.toByteArray bos)]
-      (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-        (parse-xlsx-result is)))))
+  ([ordered-cols viz-settings rows]
+   (xlsx-export ordered-cols viz-settings rows spreadsheet/read-cell))
+
+  ([ordered-cols viz-settings rows parse-fn]
+   (with-open [bos (ByteArrayOutputStream.)
+               os  (BufferedOutputStream. bos)]
+     (let [results-writer (i/streaming-results-writer :xlsx os)]
+       (i/begin! results-writer {:data {:ordered-cols ordered-cols}} viz-settings)
+       (doall (map-indexed
+               (fn [i row] (i/write-row! results-writer row i ordered-cols viz-settings))
+               rows))
+       (i/finish! results-writer {}))
+     (let [bytea (.toByteArray bos)]
+       (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+        (let [workbook (spreadsheet/load-workbook-from-stream is)
+              sheet    (spreadsheet/select-sheet "Query result" workbook)]
+          (for [row (spreadsheet/into-seq sheet)]
+            (map parse-fn row))))))))
+
+(defn- parse-format-strings
+  [row]
+  (-> row
+      .getCellStyle
+      .getDataFormatString))
+
+(deftest export-format-test
+  (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
+    (is (= [["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"]]
+           (rest (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+                              {}
+                              [[1] [1.23] [1.004] [1.005]]
+                              parse-format-strings)))))
+
+  (testing "Misc format strings are included correctly in exports"
+    (is (= ["[$€]#,##0.00"]
+           (second (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+                                {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                           {::mb.viz/currency "EUR"
+                                                            ::mb.viz/currency-in-header false}}}
+                                [[1.23]]
+                                parse-format-strings))))
+    (is (= ["yyyy.m.d, h:mm:ss am/pm"]
+           (second (xlsx-export [{:id 0, :name "Col"}]
+                                {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                           {::mb.viz/date-style "YYYY/M/D",
+                                                            ::mb.viz/date-separator ".",
+                                                            ::mb.viz/time-style "h:mm A",
+                                                            ::mb.viz/time-enabled "seconds"}}}
+                                [[#t "2020-03-28T10:12:06.681"]]
+                                parse-format-strings))))))
 
 (deftest column-order-test
   (testing "Column titles are ordered correctly in the output"
