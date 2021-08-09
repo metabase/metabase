@@ -27,8 +27,7 @@
                   [medley.core :as m]
                   [metabase.mbql.normalize :as mbql.normalize])]
        :cljs
-       [(:require [cljs.js :as js]
-                  [clojure.set :as set]
+       [(:require [clojure.set :as set]
                   [clojure.spec.alpha :as s]
                   [medley.core :as m]
                   [metabase.mbql.normalize :as mbql.normalize])]))
