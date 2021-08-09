@@ -32,19 +32,29 @@
        (mbql.u/uniquify-names (map :name cols))))
 
 (defn- export-column-order
-  "Correlates the :name or :id fields on cols with the field refs in the :table.columns key
-  of viz-settings to determine the order of columns that should included in the export."
+  "For each entry in `table-columns` that is enabled, finds the index of the corresponding
+  entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
+
+  The resulting list of indices determines the order of column names and data in exports."
   [cols {table-columns ::mb.viz/table-columns}]
   (if table-columns
-    (let [enabled-table-columns   (filter ::mb.viz/table-column-enabled table-columns)
-          col-index-by-name-or-id (reduce-kv (fn [m i col]
-                                               (let [name-or-id (or (:id col) (:name col))]
-                                                 (assoc m name-or-id i)))
-                                             {}
-                                             (into [] cols))]
+    (let [enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns)
+          cols-vector        (into [] cols)
+          ;; `cols-index` maps column names and ids to indices in `cols`
+          cols-index         (reduce-kv (fn [m i col]
+                                          (let [m' (assoc m (:name col) i)]
+                                            (if (:id col) (assoc m' (:id col) i) m')))
+                                        {}
+                                        cols-vector)]
       (map
-       (fn [{[_ name-or-id _] ::mb.viz/table-column-field-ref}] (get col-index-by-name-or-id name-or-id))
-       enabled-table-columns))
+       (fn [{[_ name-or-id _] ::mb.viz/table-column-field-ref}]
+         (let [index         (get cols-index name-or-id)
+               col           (get cols-vector index)
+               remapped-name (:remapped_to col)]
+           (if remapped-name
+             (get cols-index remapped-name)
+             index)))
+       enabled-table-cols))
     (range (count cols))))
 
 (defn- streaming-rff [results-writer]
