@@ -322,10 +322,17 @@
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
+            nil)))
+    (is (= [0 1]
+           (@#'qp.streaming/export-column-order
+            [{:name "Col1"}, {:name "Col2"}]
             nil))))
 
-  (testing "remapped columns use the index of the new column"
+  (testing "if table-columns is nil, remapped columns are still respected"
     (is (= [1]
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :remapped_to "Col2"}, {:id 1, :name "Col2" :remapped_from "Col1"}]
+            nil)
+           (@#'qp.streaming/export-column-order
+            [{:name "Col1" :remapped_to "Col2"}, {:name "Col2" :remapped_from "Col1"}]
             nil)))))

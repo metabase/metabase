@@ -40,9 +40,10 @@
   (let [table-columns'     (or table-columns
                                ;; If table-columns is not provided (e.g. for saved cards), we can construct
                                ;; it using the original order in `cols`
-                               (for [{id :id} cols]
-                                 {::mb.viz/table-column-field-ref ["field" id nil]
-                                  ::mb.viz/table-column-enabled true}))
+                               (for [col cols]
+                                 (let [id-or-name (or (:id col) (:name col))]
+                                   {::mb.viz/table-column-field-ref ["field" id-or-name nil]
+                                    ::mb.viz/table-column-enabled true})))
         enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
         cols-vector        (into [] cols)
         ;; `cols-index` maps column names and ids to indices in `cols`
@@ -52,8 +53,8 @@
                                       {}
                                       cols-vector)]
     (->> (map
-          (fn [{[_ name-or-id _] ::mb.viz/table-column-field-ref}]
-            (let [index         (get cols-index name-or-id)
+          (fn [{[_ id-or-name _] ::mb.viz/table-column-field-ref}]
+            (let [index         (get cols-index id-or-name)
                   col           (get cols-vector index)
                   remapped-to   (:remapped_to col)
                   remapped-from (:remapped_from col)]
