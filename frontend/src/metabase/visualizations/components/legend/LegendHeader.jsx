@@ -29,7 +29,7 @@ const LegendHeader = ({
   onTitleClick,
 }) => {
   return (
-    <LegendHeaderRoot className={className}>
+    <LegendHeaderRoot className={className} data-testid="legend-header">
       {icon && <LegendLabelIcon {...icon} />}
       <LegendLabel onClick={onTitleClick}>
         <Ellipsified>{title}</Ellipsified>
