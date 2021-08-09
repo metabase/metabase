@@ -38,7 +38,7 @@ const ChartHeader = ({
 
   return (
     <LegendHeader
-      className="flex-no-shrink"
+      className="mx1 flex-no-shrink"
       title={title}
       description={description}
       icon={icon}
