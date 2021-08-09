@@ -51,7 +51,7 @@ The ID filter provides a simple input box where you can type the ID of a user, o
 
 The Other Categories filter is a flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards.
 
-**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](13-sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/blog/dashboard-filters/index.html).
+**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](13-sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters.html).
 
 ### Example filter
 
