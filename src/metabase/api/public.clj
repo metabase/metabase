@@ -114,13 +114,14 @@
               :parameters parameters
               :context    :public-question
               :run        (fn [query info]
-                            (qp.streaming/streaming-response [{:keys [reducedf], :as context} export-format]
-                              (let [context  (assoc context :reducedf (public-reducedf reducedf))
-                                    in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                                               (qp-runner query info context))
-                                    out-chan (a/promise-chan (map transform-results))]
-                                (async.u/promise-pipe in-chan out-chan)
-                                out-chan)))
+                            (qp.streaming/streaming-response
+                             [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
+                             (let [context  (assoc context :reducedf (public-reducedf reducedf))
+                                   in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                                              (qp-runner query info context))
+                                   out-chan (a/promise-chan (map transform-results))]
+                               (async.u/promise-pipe in-chan out-chan)
+                               out-chan)))
               options)))
 
 (s/defn ^:private run-query-for-card-with-public-uuid-async
