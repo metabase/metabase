@@ -627,7 +627,7 @@
                          (binding [qp.perms/*card-id* card-id]
                            (qp-runner query info context)))))
         card      (api/read-check (db/select-one [Card :name :dataset_query :cache_ttl :collection_id] :id card-id))
-        card-name (:name (db/select-one [Card :name] :id card-id))
+        card-name (:name card)
         query     (-> (assoc (query-for-card card parameters constraints middleware)
                              :async? true)
                       (update :middleware merge {:js-int-to-string?      true
