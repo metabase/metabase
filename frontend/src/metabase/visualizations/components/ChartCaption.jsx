@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { iconPropTypes } from "metabase/components/Icon";
-import { ChartHeaderRoot } from "./ChartCaption.styled";
+import { ChartCaptionRoot } from "./ChartCaption.styled";
 
 const propTypes = {
   series: PropTypes.array.isRequired,
@@ -37,7 +37,7 @@ const ChartCaption = ({
   }
 
   return (
-    <ChartHeaderRoot
+    <ChartCaptionRoot
       title={title}
       description={description}
       icon={icon}
