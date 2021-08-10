@@ -262,7 +262,7 @@
   [entity _]
   entity)
 
-(deftest dump-load-entities-testw
+(deftest dump-load-entities-test
   (try
     ;; in case it already exists
     (u/ignore-exceptions
