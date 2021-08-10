@@ -104,13 +104,15 @@
                                                                    [:= :personal_owner_id
                                                                        (some-> users first u/the-id)]]
                                                               state-filter]})]
-     (-> (db/select Collection
-                           {:where [:and
-                                    (reduce (fn [acc coll]
-                                              (conj acc [:like :location (format "/%d/%%" (:id coll))]))
-                                            [:or] base-collections)
-                                    state-filter]})
-         (into base-collections)))))
+     (if (empty? base-collections)
+       []
+       (-> (db/select Collection
+                             {:where [:and
+                                      (reduce (fn [acc coll]
+                                                (conj acc [:like :location (format "/%d/%%" (:id coll))]))
+                                              [:or] base-collections)
+                                      state-filter]})
+           (into base-collections))))))
 
 
 (defn dump
