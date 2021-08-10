@@ -54,6 +54,7 @@
 
 (s/defn ^:internal-query-fn bad-table
   "List of all failing questions"
+  ;;;;; this one's gonna need filters and sorting and shit
   []
   {:metadata [[:card_id         {:display_name "Card ID",              :base_type :type/Integer}]
               [:card_name       {:display_name "Name",                 :base_type :type/Name}]
