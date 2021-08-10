@@ -110,4 +110,3 @@
                 (is (integer? db-hash-2))
                 (is (not= db-hash-2 0))
                 (is (not= db-hash-1 db-hash-2))))))))))
-

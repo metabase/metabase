@@ -1,4 +1,4 @@
-(ns metabase.api.moderation-review-test
+(ns metabase-enterprise.moderation.api.review-test
   (:require [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
             [metabase.models.moderation-review :as mod-review :refer [ModerationReview]]

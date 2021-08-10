@@ -108,7 +108,6 @@
     "@cypress/webpack-preprocessor": "^5.9.1",
     "@percy/cli": "^1.0.0-beta.48",
     "@percy/cypress": "^2.3.4",
-    "@slack/client": "^3.5.4",
     "@testing-library/cypress": "^5.0.2",
     "@testing-library/dom": "^7.29.0",
     "@testing-library/jest-dom": "^4.0.0",
