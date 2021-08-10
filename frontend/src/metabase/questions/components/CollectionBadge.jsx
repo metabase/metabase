@@ -24,6 +24,7 @@ function CollectionBadge({ collection, analyticsContext, className }) {
     <Badge
       to={collection.getUrl()}
       icon={iconProps}
+      activeColor={icon.color}
       className={className}
       data-metabase-event={`${analyticsContext};Collection Badge Click`}
     >
