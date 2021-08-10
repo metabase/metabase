@@ -1,13 +1,7 @@
 import { restore } from "__support__/e2e/cypress";
 
-import {
-  addFiltersToDashboard,
-  saveCard,
-} from "../../metabase/scenarios/dashboard/helpers/e2e-filter-helpers";
-
-const questionParams = {
-  name: "14473",
-  native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
+const questionDetails = {
+  query: { "source-table": 2 },
 };
 
 describe("visual tests > dashboard", () => {
@@ -19,27 +13,15 @@ describe("visual tests > dashboard", () => {
   describe("edit", () => {
     describe("filter", () => {
       it("shows filter sidebar", () => {
-        cy.createNativeQuestion(questionParams).then(
-          ({ body: { id: questionId } }) => {
-            cy.createDashboard("14473D").then(
-              ({ body: { id: dashboardId } }) => {
-                cy.log("Add 4 filters to the dashboard");
+        cy.createQuestionAndDashboard({ questionDetails }).then(
+          ({ body: { card_id, dashboard_id } }) => {
+            cy.visit(`/dashboard/${dashboard_id}`);
 
-                addFiltersToDashboard(dashboardId);
+            openFilterSidebar();
 
-                saveCard(dashboardId, questionId);
+            cy.findByText("Label");
 
-                cy.visit(`/dashboard/${dashboardId}`);
-
-                openFilterSidebar();
-
-                cy.findByText("Label");
-
-                cy.percySnapshot(
-                  "Shows dashboard filter sidebar " + Date.now(),
-                );
-              },
-            );
+            cy.percySnapshot("Shows dashboard filter sidebar " + Date.now());
           },
         );
       });
