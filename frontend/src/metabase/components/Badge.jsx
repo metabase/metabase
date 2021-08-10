@@ -25,4 +25,6 @@ function Badge({ name, icon, iconColor, children, ...props }) {
 
 Badge.propTypes = propTypes;
 
+export { MaybeLink };
+
 export default Badge;
