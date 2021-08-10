@@ -1,9 +1,14 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 
 import Badge from "metabase/components/Badge";
 
 import Collection from "metabase/entities/collections";
+
+const propTypes = {
+  collection: PropTypes.object,
+  analyticsContext: PropTypes.string.isRequired,
+};
 
 @Collection.load({
   id: (state, props) => props.collectionId || "root",
@@ -31,5 +36,7 @@ class CollectionBadge extends React.Component {
     );
   }
 }
+
+CollectionBadge.propTypes = propTypes;
 
 export default CollectionBadge;
