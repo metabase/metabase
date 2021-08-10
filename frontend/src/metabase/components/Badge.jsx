@@ -1,9 +1,19 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import cx from "classnames";
 
 import Link from "metabase/components/Link";
 import Icon from "metabase/components/Icon";
+
+const badgePropTypes = {
+  name: PropTypes.string.isRequired,
+  to: PropTypes.string,
+  icon: PropTypes.string,
+  iconColor: PropTypes.string,
+  onClick: PropTypes.func,
+  className: PropTypes.string,
+  children: PropTypes.node,
+};
 
 export default function Badge({
   icon,
@@ -11,6 +21,8 @@ export default function Badge({
   name,
   className,
   children,
+  to,
+  onClick,
   ...props
 }) {
   return (
@@ -19,7 +31,7 @@ export default function Badge({
         className,
         "flex align-center text-small text-bold text-medium",
         {
-          "cursor-pointer text-brand-hover": props.to || props.onClick,
+          "cursor-pointer text-brand-hover": to || onClick,
         },
       )}
       {...props}
@@ -37,5 +49,13 @@ export default function Badge({
   );
 }
 
+Badge.propTypes = badgePropTypes;
+
+const maybeLinkPropTypes = {
+  to: PropTypes.string,
+};
+
 export const MaybeLink = ({ to, ...props }) =>
   to ? <Link to={to} {...props} /> : <span {...props} />;
+
+MaybeLink.propTypes = maybeLinkPropTypes;
