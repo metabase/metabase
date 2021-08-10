@@ -27,8 +27,8 @@
               [:collection_name {:display_name "Collection",      :base_type :type/Text}]
               [:database_id     {:display_name "Database ID",     :base_type :type/Integer}]
               [:database_name   {:display_name "Database",        :base_type :type/Text}]
-               ;;;;; need some futzing with dashboards here too -- names of all dashboards...
-               ;;;;; additional list of other tables and shit
+              [:dashboard_cards {:display_name "Dashboard Cards", :base_type :type/*}]
+              [:card_query      {:display_name "Query",           :base_type :type/*}]
               [:table_id        {:display_name "Table ID",        :base_type :type/Integer}] 
               [:table_name      {:display_name "Table",           :base_type :type/Text}]
               [:user_id         {:display_name "Created By ID",   :base_type :type/Integer}]
