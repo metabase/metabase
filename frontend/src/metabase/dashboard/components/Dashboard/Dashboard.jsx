@@ -5,8 +5,8 @@ import _ from "underscore";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
-  Container,
   DashboardStyled,
+  DashboardLoadingAndErrorWrapper,
   DashboardBody,
   HeaderContainer,
   ParametersAndCardsContainer,
@@ -183,7 +183,7 @@ export default class Dashboard extends Component {
     );
 
     return (
-      <DashboardStyled
+      <DashboardLoadingAndErrorWrapper
         isFullHeight={isEditing || isSharing}
         isFullscreen={isFullscreen}
         isNightMode={shouldRenderAsNightMode}
@@ -191,7 +191,7 @@ export default class Dashboard extends Component {
         error={error}
       >
         {() => (
-          <Container>
+          <DashboardStyled>
             <HeaderContainer
               isFullscreen={isFullscreen}
               isNightMode={shouldRenderAsNightMode}
@@ -237,9 +237,9 @@ export default class Dashboard extends Component {
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
             </DashboardBody>
-          </Container>
+          </DashboardStyled>
         )}
-      </DashboardStyled>
+      </DashboardLoadingAndErrorWrapper>
     );
   }
 }

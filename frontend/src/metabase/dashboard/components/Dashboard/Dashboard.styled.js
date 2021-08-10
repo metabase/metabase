@@ -9,7 +9,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 // Class names are added here because we still use traditional css,
 // see dashboard.css
-export const DashboardStyled = styled(LoadingAndErrorWrapper).attrs({
+export const DashboardLoadingAndErrorWrapper = styled(
+  LoadingAndErrorWrapper,
+).attrs({
   className: ({ isFullscreen, isNightMode }) =>
     `Dashboard ${isFullscreen && "Dashboard--fullscreen"} ${isNightMode &&
       "Dashboard--night"}`,
@@ -24,7 +26,7 @@ export const DashboardStyled = styled(LoadingAndErrorWrapper).attrs({
     `}
 `;
 
-export const Container = styled.div`
+export const DashboardStyled = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
