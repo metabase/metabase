@@ -61,7 +61,8 @@
                   (reload-fn))))
           (log/info (trs "END LOAD from {0} with context {1}" path context))))
       (catch Throwable e
-        (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))))))
+        (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
+        (throw e)))))
 
 (defn- select-entities-in-collections
   ([model collections]

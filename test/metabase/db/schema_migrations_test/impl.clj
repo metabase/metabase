@@ -12,6 +12,7 @@
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [metabase.db :as mdb]
+            [metabase.db.connection :as mdb.conn]
             [metabase.db.liquibase :as liquibase]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -65,7 +66,9 @@
    (fn [jdbc-spec]
      (with-open [conn (jdbc/get-connection jdbc-spec)]
        (binding [toucan.db/*db-connection* {:connection conn}
-                 toucan.db/*quoting-style* (mdb/quoting-style driver)]
+                 toucan.db/*quoting-style* (mdb/quoting-style driver)
+                 mdb.conn/*db-type*        driver
+                 mdb.conn/*jdbc-spec*      jdbc-spec]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db
