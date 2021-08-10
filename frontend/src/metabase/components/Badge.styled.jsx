@@ -32,6 +32,6 @@ export const MaybeLink = styled(RawMaybeLink)`
   }
 `;
 
-export const BadgeIcon = styled(Icon).attrs({ size: 12 })`
+export const BadgeIcon = styled(Icon)`
   margin-right: ${props => (props.hasMargin ? "5px" : 0)};
 `;

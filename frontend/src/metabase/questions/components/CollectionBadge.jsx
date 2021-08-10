@@ -16,11 +16,14 @@ function CollectionBadge({ collection, analyticsContext, className }) {
     return null;
   }
   const icon = collection.getIcon();
+  const iconProps = {
+    name: icon.name,
+    color: icon.color,
+  };
   return (
     <Badge
       to={collection.getUrl()}
-      icon={icon.name}
-      iconColor={icon.color}
+      icon={iconProps}
       className={className}
       data-metabase-event={`${analyticsContext};Collection Badge Click`}
     >

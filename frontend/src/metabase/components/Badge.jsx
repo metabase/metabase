@@ -6,17 +6,28 @@ import { BadgeIcon, MaybeLink } from "./Badge.styled";
 const propTypes = {
   name: PropTypes.string.isRequired,
   to: PropTypes.string,
-  icon: PropTypes.string,
-  iconColor: PropTypes.string,
+  icon: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    color: PropTypes.string,
+    width: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    height: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    size: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  }),
   onClick: PropTypes.func,
   children: PropTypes.node,
 };
 
-function Badge({ name, icon, iconColor, children, ...props }) {
+const DEFAULT_ICON_SIZE = 12;
+
+function Badge({ name, icon, children, ...props }) {
+  const extraIconProps = {};
+  if (icon && !icon.size && !icon.width && !icon.height) {
+    extraIconProps.size = DEFAULT_ICON_SIZE;
+  }
   return (
     <MaybeLink {...props}>
       {icon && (
-        <BadgeIcon name={icon} color={iconColor} hasMargin={!!children} />
+        <BadgeIcon {...icon} {...extraIconProps} hasMargin={!!children} />
       )}
       {children && <span className="text-wrap">{children}</span>}
     </MaybeLink>
