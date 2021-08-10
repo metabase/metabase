@@ -77,19 +77,23 @@
                               [:coll.name :collection_name]
                               :card.database_id
                               [:db.name :database_name]
+                              [[:*.count :dash_card] :num_dashboards]
                               :card.table_id
-                              ;; need num dashboards its in somehow
                               [:t.name :table_name]
                               [:card.creator_id :user_id]
                               [(common/user-full-name :u) :user_name]
-                              [:*.count some shit :num_dashboards]
+                              [[:*.count :qe] :total_runs]
+                              ;;; last run
+                              ;;; last edit by
+                              ;;; last edit at
                               [:qe.error :error]]
                   :from      [[:report_card :card]]
-                  :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
-                              [:metabase_database :db] [:= :card.database_id :db.id]
-                              [:metabase_table :t]     [:= :card.table_id :t.id]
-                              [:core_user :u]          [:= :card.creator_id :u.id]
-                              [:query_execution :qe]   [:= :card.id :qe.id]]
+                  :left-join [[:collection :coll]          [:= :card.collection_id :coll.id]
+                              [:metabase_database :db]     [:= :card.database_id :db.id]
+                              [:dashboard_card :dash_card] [:= :card.id :dash_card.card_id]
+                              [:metabase_table :t]         [:= :card.table_id :t.id]
+                              [:core_user :u]              [:= :card.creator_id :u.id]
+                              [:query_execution :qe]       [:= :card.id :qe.id]]
                   :where     [:and
                               [:= :card.archived false]
                               [:not= :qe.error nil]]})})
