@@ -66,9 +66,7 @@
                [:user_id         {:display_name "Created By ID",        :base_type :type/Integer}]
                [:user_name       {:display_name "Created By",           :base_type :type/Text}]
                [:total_runs      {:display_name "Total Runs",           :base_type :type/Integer}]
-               [:last_run_at     {:display_name "Last Run At",          :base_type :type/DateTime}]
-               [:last_edited     {:display_name "Last Edited By",       :base_type :type/Text}]
-               [:last_edited_at  {:display_name "Last Edited At",       :base_type :type/DateTime}]
+               [:updated_at      {:display_name "Updated At",           :base_type :type/DateTime}]
                [:last_error      {:display_name "Error",                :base_type :type/Text}]]
     :results (common/reducible-query
                { :select    [[:card.id :card_id]
@@ -83,9 +81,8 @@
                               [:card.creator_id :user_id]
                               [(common/user-full-name :u) :user_name]
                               [[:*.count :qe] :total_runs]
-                              ;;; last run
-                              ;;; last edit by
-                              ;;; last edit at
+                              [[] :last_run_at]
+                              :card.updated_at
                               [:qe.error :error]]
                   :from      [[:report_card :card]]
                   :left-join [[:collection :coll]          [:= :card.collection_id :coll.id]
