@@ -60,7 +60,9 @@ export function ModerationReviewBanner({
   const relativeCreationTime = getRelativeTimeAbbreviated(
     moderationReview.created_at,
   );
-  const { icon, iconColor } = getIconForReview(moderationReview);
+  const { name: iconName, color: iconColor } = getIconForReview(
+    moderationReview,
+  );
   const showClose = isHovering || isActive;
 
   return (
@@ -78,14 +80,14 @@ export function ModerationReviewBanner({
             data-testid="moderation-remove-review-action"
             onFocus={() => setIsActive(true)}
             onBlur={() => setIsActive(false)}
-            icon={showClose ? "close" : icon}
+            icon={showClose ? "close" : iconName}
             color={color(showClose ? "text-medium" : iconColor)}
             onClick={onRemove}
             iconSize={ICON_BUTTON_SIZE}
           />
         ) : (
           <StatusIcon
-            name={icon}
+            name={iconName}
             color={color(iconColor)}
             size={ICON_BUTTON_SIZE}
           />

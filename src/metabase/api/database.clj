@@ -32,7 +32,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.models :as models])
   (:import metabase.models.database.DatabaseInstance))
 
 (def DBEngineString
@@ -124,18 +125,30 @@
   [& {:keys [additional-constraints xform], :or {xform identity}}]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
-     (comp (filter card-can-be-used-as-source-query?) xform)
+     (comp (map (partial models/do-post-select Card))
+           (filter card-can-be-used-as-source-query?)
+           xform)
      (completing conj #(hydrate % :collection))
      []
-     (db/select-reducible [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
-       {:where    (into [:and
-                         [:not= :result_metadata nil]
-                         [:= :archived false]
-                         [:in :database_id ids-of-dbs-that-support-source-queries]
-                         (collection/visible-collection-ids->honeysql-filter-clause
-                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                        additional-constraints)
-       :order-by [[:%lower.name :asc]]}))))
+     (db/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
+                                     [{:select   [:status]
+                                       :from     [:moderation_review]
+                                       :where    [:and
+                                                  [:= :moderated_item_type "card"]
+                                                  [:= :moderated_item_id :report_card.id]
+                                                  [:= :most_recent true]]
+                                       :order-by [[:id :desc]]
+                                       :limit    1}
+                                      :moderated_status]]
+                          :from     [:report_card]
+                          :where    (into [:and
+                                           [:not= :result_metadata nil]
+                                           [:= :archived false]
+                                           [:in :database_id ids-of-dbs-that-support-source-queries]
+                                           (collection/visible-collection-ids->honeysql-filter-clause
+                                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                                          additional-constraints)
+                          :order-by [[:%lower.name :asc]]}))))
 
 (defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
