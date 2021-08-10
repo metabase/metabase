@@ -1,0 +1,32 @@
+import React from "react";
+import PropTypes from "prop-types";
+import styled, { css } from "styled-components";
+import { color } from "metabase/lib/colors";
+import Link from "metabase/components/Link";
+
+const propTypes = {
+  to: PropTypes.string,
+};
+
+function RawMaybeLink({ to, ...props }) {
+  return to ? <Link to={to} {...props} /> : <span {...props} />;
+}
+
+RawMaybeLink.propTypes = propTypes;
+
+const hoverStyle = css`
+  cursor: pointer;
+  color: ${color("brand")};
+`;
+
+export const MaybeLink = styled(RawMaybeLink)`
+  display: flex;
+  align-items: center;
+  font-size: 0.875em;
+  font-weight: bold;
+  color: ${color("text-medium")};
+
+  :hover {
+    ${props => (props.to || props.onClick) && hoverStyle}
+  }
+`;
