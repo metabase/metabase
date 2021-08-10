@@ -8,14 +8,15 @@
 
   This would not have had the random namespace that requires these helpers and the run fails.
   "
-  (:require [clojure.test :as t]))
+  (:require [clojure.test :as t]
+            [schema.core :as s]))
 
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
          actual#   ~actual
          matches?# (some->> actual# (re-matches pattern#))]
      (assert (instance? java.util.regex.Pattern pattern#))
-     (do-report
+     (t/do-report
       {:type     (if matches?# :pass :fail)
        :message  ~msg
        :expected pattern#
@@ -28,7 +29,7 @@
   `(let [schema# ~schema
          actual# ~actual
          pass?#  (nil? (s/check schema# actual#))]
-     (do-report
+     (t/do-report
       {:type     (if pass?# :pass :fail)
        :message  ~message
        :expected (s/explain schema#)
