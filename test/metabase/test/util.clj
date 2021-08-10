@@ -21,6 +21,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
+            [metabase.test-runner.effects :as effects]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
@@ -29,7 +30,6 @@
             [metabase.util :as u]
             [metabase.util.files :as u.files]
             [potemkin :as p]
-            [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
@@ -38,7 +38,8 @@
            java.util.Locale
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
-(comment tu.log/keep-me)
+(comment tu.log/keep-me
+         effects/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
