@@ -17,7 +17,7 @@ const propTypes = {
   description: PropTypes.string,
   icon: PropTypes.shape(iconPropTypes),
   actionButtons: PropTypes.node,
-  onTitleClick: PropTypes.func,
+  onSelectTitle: PropTypes.func,
 };
 
 const LegendCaption = ({
@@ -26,12 +26,12 @@ const LegendCaption = ({
   description,
   icon,
   actionButtons,
-  onTitleClick,
+  onSelectTitle,
 }) => {
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
       {icon && <LegendLabelIcon {...icon} />}
-      <LegendLabel onClick={onTitleClick}>
+      <LegendLabel onClick={onSelectTitle}>
         <Ellipsified>{title}</Ellipsified>
       </LegendLabel>
       {description && (

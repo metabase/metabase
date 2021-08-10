@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { iconPropTypes } from "metabase/components/Icon";
-import { ChartHeaderRoot } from "./ChartCaption.styled";
+import { ChartCaptionRoot } from "./ChartCaption.styled";
 
 const propTypes = {
   series: PropTypes.array.isRequired,
@@ -18,14 +18,14 @@ const ChartCaption = ({
   actionButtons,
   onChangeCardAndRun,
 }) => {
-  const title = settings["card.title"] || series[0].card.name;
-  const description = series["card.description"];
+  const title = settings["card.title"] || series[0]?.card?.name;
+  const description = settings["card.description"];
   const data = series._raw || series;
   const card = data[0].card;
   const cardIds = new Set(data.map(s => s.card.id));
-  const canClickTitle = cardIds.size === 1 && onChangeCardAndRun;
+  const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
 
-  const handleTitleClick = useCallback(() => {
+  const handleSelectTitle = useCallback(() => {
     onChangeCardAndRun({
       nextCard: card,
       seriesIndex: 0,
@@ -37,12 +37,12 @@ const ChartCaption = ({
   }
 
   return (
-    <ChartHeaderRoot
+    <ChartCaptionRoot
       title={title}
       description={description}
       icon={icon}
       actionButtons={actionButtons}
-      onTitleClick={canClickTitle ? handleTitleClick : undefined}
+      onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
     />
   );
 };
