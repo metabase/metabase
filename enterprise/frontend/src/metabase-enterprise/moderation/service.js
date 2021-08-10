@@ -21,19 +21,17 @@ export function removeReview({ itemId, itemType }) {
   });
 }
 
+export function getStatusIcon(status) {
+  const { icon, color } = ACTIONS[status] || {};
+  return { name: icon, color };
+}
+
 export function getVerifiedIcon() {
-  const { icon, color } = ACTIONS["verified"];
-  return { icon, iconColor: color };
+  return getStatusIcon("verified");
 }
 
 export function getIconForReview(review) {
-  if (review && review.status !== null) {
-    const { status } = review;
-    const { icon, color } = ACTIONS[status] || {};
-    return { icon, iconColor: color };
-  }
-
-  return {};
+  return getStatusIcon(review?.status);
 }
 
 export function getTextForReviewBanner(
@@ -81,7 +79,8 @@ export function getLatestModerationReview(reviews) {
   }
 }
 
-export function getStatusIconForReviews(reviews) {
+export function getStatusIconForQuestion(question) {
+  const reviews = question.getModerationReviews();
   const review = getLatestModerationReview(reviews);
   return getIconForReview(review);
 }

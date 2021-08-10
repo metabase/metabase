@@ -81,5 +81,6 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 
 export const PLUGIN_MODERATION = {
   QuestionModerationSection: PluginPlaceholder,
-  getStatusIconForReviews: object,
+  ModerationStatusIcon: PluginPlaceholder,
+  getStatusIconForQuestion: object,
 };
