@@ -29,20 +29,35 @@ export default class Dashboard extends Component {
   };
 
   static propTypes = {
+    loadDashboardParams: PropTypes.func,
+    location: PropTypes.object,
+
+    isFullscreen: PropTypes.bool,
+    isNightMode: PropTypes.bool,
+    isSharing: PropTypes.bool,
     isEditable: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
 
     dashboard: PropTypes.object,
+    dashboardId: PropTypes.number,
     parameters: PropTypes.array,
+    parameterValues: PropTypes.object,
 
+    addCardOnLoad: PropTypes.func,
     addCardToDashboard: PropTypes.func.isRequired,
+    addParameter: PropTypes.func,
     archiveDashboard: PropTypes.func.isRequired,
+    cancelFetchDashboardCardData: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
+    fetchDashboardCardData: PropTypes.func.isRequired,
+    initialize: PropTypes.func.isRequired,
+    onRefreshPeriodChange: PropTypes.func,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
+    setErrorPage: PropTypes.func,
     setSharing: PropTypes.func.isRequired,
 
     onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
@@ -51,8 +66,8 @@ export default class Dashboard extends Component {
 
     onChangeLocation: PropTypes.func.isRequired,
 
-    onSharingClick: PropTypes.func.isRequired,
-    onEmbeddingClick: PropTypes.func.isRequired,
+    onSharingClick: PropTypes.func,
+    onEmbeddingClick: PropTypes.any,
   };
 
   static defaultProps = {
