@@ -1,27 +1,29 @@
 import { restore } from "__support__/e2e/cypress";
 
+const { ORDERS_ID } = SAMPLE_DATASET;
+
 const questionDetails = {
-  query: { "source-table": 2 },
+  query: { "source-table": ORDERS_ID },
 };
 
 describe("visual tests > dashboard > filter sidebar", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
 
-  it("renders correctly", () => {
     cy.createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
         cy.visit(`/dashboard/${dashboard_id}`);
-
-        openFilterSidebar();
-
-        cy.findByText("Label");
-
-        cy.percySnapshot("Shows dashboard filter sidebar " + Date.now());
       },
     );
+  });
+
+  it("renders correctly", () => {
+    openFilterSidebar();
+
+    cy.findByText("Label");
+
+    cy.percySnapshot("Shows dashboard filter sidebar " + Date.now());
   });
 });
 
