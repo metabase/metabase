@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import cx from "classnames";
 
 import Link from "metabase/components/Link";
 import Icon from "metabase/components/Icon";
-
-import cx from "classnames";
 
 export default function Badge({
   icon,
