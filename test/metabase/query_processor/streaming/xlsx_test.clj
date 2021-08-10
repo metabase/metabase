@@ -224,9 +224,14 @@
 ;;; |                                               XLSX export tests                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- parse-cell-content
+  [sheet]
+  (for [row (spreadsheet/into-seq sheet)]
+    (map spreadsheet/read-cell row)))
+
 (defn- xlsx-export
   ([ordered-cols viz-settings rows]
-   (xlsx-export ordered-cols viz-settings rows spreadsheet/read-cell))
+   (xlsx-export ordered-cols viz-settings rows parse-cell-content))
 
   ([ordered-cols viz-settings rows parse-fn]
    (with-open [bos (ByteArrayOutputStream.)
@@ -236,19 +241,17 @@
        (doall (map-indexed
                (fn [i row] (i/write-row! results-writer row i ordered-cols viz-settings))
                rows))
-       (i/finish! results-writer {}))
+       (i/finish! results-writer {:row_count (count rows)}))
      (let [bytea (.toByteArray bos)]
        (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-        (let [workbook (spreadsheet/load-workbook-from-stream is)
-              sheet    (spreadsheet/select-sheet "Query result" workbook)]
-          (for [row (spreadsheet/into-seq sheet)]
-            (map parse-fn row))))))))
+         (let [workbook (spreadsheet/load-workbook-from-stream is)
+               sheet    (spreadsheet/select-sheet "Query result" workbook)]
+           (parse-fn sheet)))))))
 
 (defn- parse-format-strings
-  [row]
-  (-> row
-      .getCellStyle
-      .getDataFormatString))
+  [sheet]
+  (for [row (spreadsheet/into-seq sheet)]
+    (map #(-> % .getCellStyle .getDataFormatString) row)))
 
 (deftest export-format-test
   (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
@@ -415,10 +418,28 @@
                                 {}
                                 [[(SampleNastyClass. "Hello XLSX World!") (AnotherNastyClass. "No Encoder")]]))))))
 
-(deftest auto-sizing-threshold-test
-  (testing "Export still works when the number of rows is equal to or above the auto-sizing threshold"
-    (with-redefs [xlsx/auto-sizing-threshold 2]
-      (is (= [[1.0] [2.0]]
-             (rest (xlsx-export [{:id 0, :name "Col1"}] {} [[1.0] [2.0]]))))
-      (is (= [[1.0] [2.0] [3.0]]
-             (rest (xlsx-export [{:id 0, :name "Col1"}] {} [[1.0] [2.0] [3.0]])))))))
+(defn- parse-column-width
+  [sheet]
+  (for [row (spreadsheet/into-seq sheet)]
+    (for [i (range (.getLastCellNum row))]
+      (.getColumnWidth sheet i))))
+
+(deftest auto-sizing-test
+  (testing "Columns in export are autosized to fit their content"
+    (is (= [2336 8001]
+           (second (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
+                                {}
+                                [["a" "abcdefghijklmnopqrstuvwxyz"]]
+                                parse-column-width)))))
+  (testing "Auto-sizing works when the number of rows is at or above the auto-sizing threshold"
+    (binding [xlsx/*auto-sizing-threshold* 2]
+      (is (= [2815]
+             (second (xlsx-export [{:id 0, :name "Col1"}]
+                                  {}
+                                  [["abcdef"] ["abcedf"]]
+                                  parse-column-width))))
+      (is (= [2815]
+             (second (xlsx-export [{:id 0, :name "Col1"}]
+                                  {}
+                                  [["abcdef"] ["abcdef"] ["abcdef"]]
+                                  parse-column-width)))))))

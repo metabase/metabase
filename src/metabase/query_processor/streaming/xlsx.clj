@@ -401,10 +401,10 @@
         (str column-title " (" (currency-identifier merged-settings) ")")
         column-title))))
 
-(def ^:private auto-sizing-threshold
-  "The number of rows used for auto-sizing columns. If this number is too large, exports of large datasets
-  will be prohibitively slow."
-  1000)
+(def ^:dynamic *auto-sizing-threshold*
+  "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
+  of large datasets will be prohibitively slow."
+  100)
 
 (def ^:private extra-column-width
   "The extra width applied to columns after they have been auto-sized, in units of 1/256 of a character width.
@@ -413,11 +413,11 @@
 
 (defn- autosize-columns!
   "Adjusts each column to fit its largest value, plus a constant amount of extra padding."
-  [sheet col-count]
-  (doseq [i (range col-count)]
+  [sheet]
+  (doseq [i (.getTrackedColumnsForAutoSizing sheet)]
     (.autoSizeColumn ^SXSSFSheet sheet i)
-    (.setColumnWidth ^SXSSFSheet sheet i (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width)))
-  (.untrackAllColumnsForAutoSizing ^SXSSFSheet sheet))
+    (.setColumnWidth ^SXSSFSheet sheet i (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width))
+    (.untrackColumnForAutoSizing sheet i)))
 
 (defn- setup-header-row!
   "Turns on auto-filter for the header row, which adds a button to each header cell that allows columns to be
@@ -433,11 +433,12 @@
         sheet               (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings}]
-        (.trackAllColumnsForAutoSizing ^SXSSFSheet sheet)
+        (doseq [i (range (count ordered-cols))]
+          (.trackColumnForAutoSizing sheet i))
         (setup-header-row! sheet (count ordered-cols))
         (spreadsheet/add-row! sheet (column-titles ordered-cols col-settings)))
 
-      (write-row! [_ row row-count ordered-cols {:keys [output-order] :as viz-settings}]
+      (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row  (if output-order
                              (let [row-v (into [] row)]
                                (for [i output-order] (row-v i)))
@@ -446,13 +447,13 @@
               cell-styles  (cell-style-delays workbook ordered-cols col-settings)]
           (binding [*cell-styles* cell-styles]
             (add-row! sheet ordered-row ordered-cols col-settings))
-          (when (= row-count auto-sizing-threshold)
-            (autosize-columns! sheet (count row)))))
+          (when (= (inc row-num) *auto-sizing-threshold*)
+            (autosize-columns! sheet))))
 
-      (finish! [_ {:keys [row_count data]}]
-        (when (or (nil? row_count) (<= row_count auto-sizing-threshold))
+      (finish! [_ {:keys [row_count]}]
+        (when (or (nil? row_count) (< row_count auto-sizing-threshold))
           ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
-          (autosize-columns! sheet (count (:cols data))))
+          (autosize-columns! sheet))
         (spreadsheet/save-workbook-into-stream! os workbook)
         (.dispose workbook)
         (.close os)))))
