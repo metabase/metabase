@@ -29,6 +29,22 @@
                                  [:td _ "November 2015"])))))
 
 (deftest detect-pulse-chart-type-test
+  (is (= :scalar
+         (render/detect-pulse-chart-type {:display :anything}
+                                         {:cols [{:base_type :type/Number}]
+                                          :rows [[6]]})))
+  (is (= :smartscalar
+         (render/detect-pulse-chart-type {:display :smartscalar}
+                                         {:cols     [{:base_type :type/Temporal
+                                                      :name      "month"}
+                                                     {:base_type :type/Number
+                                                      :name      "apples"}]
+                                          :rows     [[#t "2020" 2]
+                                                     [#t "2021" 3]]
+                                          :insights [{:name           "apples"
+                                                      :last-value     3
+                                                      :previous-value 2
+                                                      :last-change    50.0}]})))
   (is (= :bar
          (render/detect-pulse-chart-type {:display :bar}
                                          {:cols [{:base_type :type/Text}
