@@ -17,7 +17,7 @@ RawMaybeLink.propTypes = propTypes;
 
 const hoverStyle = css`
   cursor: pointer;
-  color: ${color("brand")};
+  color: ${props => color(props.activeColor)};
 `;
 
 export const MaybeLink = styled(RawMaybeLink)`

@@ -13,19 +13,20 @@ const propTypes = {
     height: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     size: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }),
+  activeColor: PropTypes.string,
   onClick: PropTypes.func,
   children: PropTypes.node,
 };
 
 const DEFAULT_ICON_SIZE = 12;
 
-function Badge({ name, icon, children, ...props }) {
+function Badge({ name, icon, activeColor = "brand", children, ...props }) {
   const extraIconProps = {};
   if (icon && !icon.size && !icon.width && !icon.height) {
     extraIconProps.size = DEFAULT_ICON_SIZE;
   }
   return (
-    <MaybeLink {...props}>
+    <MaybeLink activeColor={activeColor} {...props}>
       {icon && (
         <BadgeIcon {...icon} {...extraIconProps} hasMargin={!!children} />
       )}
