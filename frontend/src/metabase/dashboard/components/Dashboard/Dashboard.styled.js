@@ -32,6 +32,19 @@ export const Container = styled.div`
   width: 100%;
 `;
 
+export const DashboardBody = styled.div`
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  min-height: 0;
+
+  ${({ isEditingOrSharing }) =>
+    isEditingOrSharing &&
+    css`
+      flex-basis: 0;
+    `}
+`;
+
 export const HeaderContainer = styled.header`
   background-color: white;
   border-bottom: 1px solid ${color("border")};

@@ -9,6 +9,7 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import {
   Container,
   DashboardStyled,
+  DashboardBody,
   HeaderContainer,
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
@@ -225,11 +226,7 @@ export default class Dashboard extends Component {
               />
             </HeaderContainer>
 
-            <div
-              className={cx("flex shrink-below-content-size flex-full", {
-                "flex-basis-none": isEditing || isSharing,
-              })}
-            >
+            <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer>
                 {!isFullscreen && parametersWidget && (
                   <ParametersWidgetContainer>
@@ -256,7 +253,7 @@ export default class Dashboard extends Component {
                 onCancel={this.onCancel}
                 showAddQuestionSidebar={showAddQuestionSidebar}
               />
-            </div>
+            </DashboardBody>
           </Container>
         )}
       </DashboardStyled>
