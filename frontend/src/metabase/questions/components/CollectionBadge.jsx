@@ -10,33 +10,29 @@ const propTypes = {
   analyticsContext: PropTypes.string.isRequired,
 };
 
-@Collection.load({
-  id: (state, props) => props.collectionId || "root",
-  wrapped: true,
-  loadingAndErrorWrapper: false,
-  properties: ["name"],
-})
-class CollectionBadge extends React.Component {
-  render() {
-    const { collection, analyticsContext, ...props } = this.props;
-    if (!collection) {
-      return null;
-    }
-    const icon = collection.getIcon();
-    return (
-      <Badge
-        to={collection.getUrl()}
-        icon={icon.name}
-        iconColor={icon.color}
-        data-metabase-event={`${analyticsContext};Collection Badge Click`}
-        {...props}
-      >
-        {collection.getName()}
-      </Badge>
-    );
+function CollectionBadge({ collection, analyticsContext, ...props }) {
+  if (!collection) {
+    return null;
   }
+  const icon = collection.getIcon();
+  return (
+    <Badge
+      to={collection.getUrl()}
+      icon={icon.name}
+      iconColor={icon.color}
+      data-metabase-event={`${analyticsContext};Collection Badge Click`}
+      {...props}
+    >
+      {collection.getName()}
+    </Badge>
+  );
 }
 
 CollectionBadge.propTypes = propTypes;
 
-export default CollectionBadge;
+export default Collection.load({
+  id: (state, props) => props.collectionId || "root",
+  wrapped: true,
+  loadingAndErrorWrapper: false,
+  properties: ["name"],
+})(CollectionBadge);
