@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { LegendButton, LegendButtonGroup, LegendRoot } from "./Legend.styled";
+import { LegendButtonGroup, LegendRoot } from "./Legend.styled";
 import LegendItem from "./LegendItem";
 
 const propTypes = {
@@ -10,9 +10,7 @@ const propTypes = {
   hovered: PropTypes.object,
   actionButtons: PropTypes.node,
   isVertical: PropTypes.bool,
-  overflowCount: PropTypes.number,
   onHoverChange: PropTypes.func,
-  onShowSeries: PropTypes.func,
   onAddSeries: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
@@ -25,9 +23,7 @@ const Legend = ({
   hovered,
   actionButtons,
   isVertical,
-  overflowCount,
   onHoverChange,
-  onShowSeries,
   onSelectSeries,
   onRemoveSeries,
 }) => {
@@ -46,11 +42,6 @@ const Legend = ({
           onRemoveSeries={onRemoveSeries}
         />
       ))}
-      {overflowCount > 0 && (
-        <LegendButton onClick={onShowSeries}>
-          And {overflowCount} more
-        </LegendButton>
-      )}
       {actionButtons && (
         <LegendButtonGroup isVertical={isVertical}>
           {actionButtons}
