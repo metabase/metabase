@@ -13,7 +13,7 @@
             [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [org.apache.poi.ss.usermodel Cell CellType DataFormat DateUtil Sheet Workbook]
+           [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Sheet Workbook]
            org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -300,13 +300,11 @@
 (defmethod set-cell! LocalDate
   [^Cell cell ^LocalDate t id-or-name]
   (.setCellValue cell t)
-  (.setCellType cell CellType/NUMERIC)
   (.setCellStyle cell (or (cell-style id-or-name) (cell-style :date))))
 
 (defmethod set-cell! LocalDateTime
   [^Cell cell ^LocalDateTime t id-or-name]
   (.setCellValue cell t)
-  (.setCellType cell CellType/NUMERIC)
   (.setCellStyle cell (or (cell-style id-or-name) (cell-style :datetime))))
 
 (defmethod set-cell! LocalTime
@@ -319,7 +317,6 @@
   ;;
   ;; See https://poi.apache.org/apidocs/4.1/org/apache/poi/ss/usermodel/DateUtil.html#convertTime-java.lang.String-
   (.setCellValue cell (DateUtil/convertTime (u.date/format "HH:mm:ss" t)))
-  (.setCellType cell CellType/NUMERIC)
   (.setCellStyle cell (or (cell-style id-or-name) (cell-style :time))))
 
 (defmethod set-cell! OffsetTime
@@ -336,14 +333,10 @@
 
 (defmethod set-cell! String
   [^Cell cell value _]
-  (when (= (.getCellType cell) CellType/FORMULA)
-    (.setCellType cell CellType/STRING))
   (.setCellValue cell ^String value))
 
 (defmethod set-cell! Number
   [^Cell cell value id-or-name]
-  (when (= (.getCellType cell) CellType/FORMULA)
-    (.setCellType cell CellType/NUMERIC))
   (.setCellValue cell (double value))
   (let [styles         (u/one-or-many (cell-style id-or-name))]
     (if (rounds-to-int? value)
@@ -352,8 +345,6 @@
 
 (defmethod set-cell! Boolean
   [^Cell cell value _]
-  (when (= (.getCellType cell) CellType/FORMULA)
-    (.setCellType cell CellType/BOOLEAN))
   (.setCellValue cell ^Boolean value))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
@@ -361,8 +352,6 @@
 ;; `metabase.server.middleware`.
 (defmethod set-cell! Object
   [^Cell cell value _]
-  (when (= (.getCellType cell) CellType/FORMULA)
-    (.setCellType cell CellType/STRING))
   ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
   ;; use the resulting value as the cell's new String value.  There might be some more efficient way of doing this but
   ;; I'm not sure what it is.
@@ -371,10 +360,7 @@
                                :v))))
 
 (defmethod set-cell! nil [^Cell cell _ _]
-  (let [^String null nil]
-    (when (= (.getCellType cell) CellType/FORMULA)
-      (.setCellType cell CellType/BLANK))
-    (.setCellValue cell null)))
+  (.setBlank cell))
 
 (defn- add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.

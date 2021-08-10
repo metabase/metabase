@@ -362,19 +362,41 @@
                                 [[1.0]]))))))
 
 (deftest misc-data-test
-  (testing "Boolean values are exported correctly"
-    (is (= [[true] [false]]
-           (rest (xlsx-export [{:id 0, :name "Col"}] {} [[true] [false]])))))
-  (testing "nil values are exported correctly"
+  (testing "nil values"
     (is (= [nil]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[nil]])))))
-  (testing "numbers that round to ints are exported correctly"
+  (testing "Boolean values"
+    (is (= [[true] [false]]
+           (rest (xlsx-export [{:id 0, :name "Col"}] {} [[true] [false]])))))
+  (testing "ints"
+    (is (= [1.0]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[1]])))))
+  (testing "numbers that round to ints"
     (is (= [2.00001]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[2.00001]])))))
-  (testing "numbers that do not round to ints are exported correctly"
+  (testing "numbers that do not round to ints"
     (is (= [123.123]
-           (second (xlsx-export [{:id 0, :name "Col"}] {} [[123.123]]))))))
-
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[123.123]])))))
+  (testing "LocalDate"
+    (is (= [#inst "2020-03-28T00:00:00.000-00:00"]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28"]])))))
+  (testing "LocalDateTime"
+    (is (= [#inst "2020-03-28T10:12:06.681-00:00"]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06.681"]])))))
+  (testing "LocalTime"
+    (is (= [#inst "1899-12-31T10:12:06.000-00:00"]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "10:12:06.681"]])))))
+  (mt/with-everything-store
+    (binding [metabase.driver/*driver* :h2]
+      (testing "OffsetDateTime"
+        (is (= [#inst "2020-03-28T13:33:06.000-00:00"]
+               (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z-03:21"]])))))
+      (testing "OffsetTime"
+        (is (= [#inst "1899-12-31T10:12:06.000-00:00"]
+               (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "10:12:06Z-03:21"]])))))
+      (testing "ZonedDateTime"
+        (is (= [#inst "2020-03-28T10:12:06.000-00:00"]
+               (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]]))))))))
 
 (defrecord ^:private SampleNastyClass [^String v])
 
