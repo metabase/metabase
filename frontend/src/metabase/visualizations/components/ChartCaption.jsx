@@ -18,8 +18,8 @@ const ChartCaption = ({
   actionButtons,
   onChangeCardAndRun,
 }) => {
-  const title = settings["card.title"] || series[0].card.name;
-  const description = series["card.description"];
+  const title = settings["card.title"] || series[0]?.card?.name;
+  const description = settings["card.description"];
   const data = series._raw || series;
   const card = data[0].card;
   const cardIds = new Set(data.map(s => s.card.id));
