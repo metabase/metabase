@@ -108,8 +108,11 @@ const chartSettingNestedSettings = ({
 
     render() {
       const { series, objects, extra } = this.props;
-      const editingObjectKey = this.props.initialKey ||
-        (this.props.objects.length === 1 ? getObjectKey(this.props.objects[0]) : null)
+      const editingObjectKey =
+        this.props.initialKey ||
+        (this.props.objects.length === 1
+          ? getObjectKey(this.props.objects[0])
+          : null);
       if (editingObjectKey) {
         const editingObject = _.find(
           objects,
