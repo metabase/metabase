@@ -1,4 +1,8 @@
 (ns metabase.pulse.render.js-svg
+  "Functions to render charts as svg strings by using graal's js engine. A bundle is built by `yarn build-static-viz`
+  which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
+  strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
+  `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require [clojure.java.io :as io]
             [clojure.string :as str])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
@@ -9,7 +13,6 @@
            [org.graalvm.polyglot Context HostAccess Source Value]))
 
 (def ^:private bundle-path
-  ;; todo: this will move to app/dist when the bundle is in the tree
   "frontend_client/app/dist/lib-static-viz.bundle.js")
 
 (def ^:private src-api
@@ -76,13 +79,13 @@ function categorical_donut (rows, colors) {
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
   (delay
     (let [^Context context (.. (Context/newBuilder (into-array String ["js"]))
-                      (allowHostAccess HostAccess/ALL)
-                      (allowHostClassLookup (reify java.util.function.Predicate
-                                              (test [_ _] true)))
-                      (out System/out)
-                      (err System/err)
-                      (allowIO true)
-                      (build))]
+                               (allowHostAccess HostAccess/ALL)
+                               (allowHostClassLookup (reify java.util.function.Predicate
+                                                       (test [_ _] true)))
+                               (out System/out)
+                               (err System/err)
+                               (allowIO true)
+                               (build))]
       (doto context
         (.eval (.build (Source/newBuilder "js" (io/resource bundle-path))))
         (.eval (.build (Source/newBuilder "js" ^String src-api "src call")))))))
@@ -93,15 +96,12 @@ function categorical_donut (rows, colors) {
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
-(defn- high-quality-png-transcoder ^PNGTranscoder []
-  (PNGTranscoder.))
-
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (with-open [os (ByteArrayOutputStream.)]
     (let [in         (TranscoderInput. svg-document)
           out        (TranscoderOutput. os)
-          transcoder (high-quality-png-transcoder)]
+          transcoder (PNGTranscoder.)]
       (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH (float 1200))
       (.transcode transcoder in out))
     (.toByteArray os)))
