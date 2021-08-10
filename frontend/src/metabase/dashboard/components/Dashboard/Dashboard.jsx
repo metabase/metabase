@@ -1,9 +1,7 @@
 // TODO: merge with metabase/dashboard/containers/Dashboard.jsx
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import cx from "classnames";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
@@ -16,7 +14,7 @@ import {
 } from "./Dashboard.styled";
 import DashboardHeader from "../DashboardHeader";
 import DashboardGrid from "../DashboardGrid";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import ParametersWidget from "./ParametersWidget/ParametersWidget";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { DashboardSidebars } from "../DashboardSidebars";
 
@@ -151,21 +149,10 @@ export default class Dashboard extends Component {
     const {
       addParameter,
       dashboard,
-      editingParameter,
-      hideParameters,
       isEditing,
       isFullscreen,
       isNightMode,
       isSharing,
-      location,
-      parameterValues,
-      parameters,
-      removeParameter,
-      setEditingParameter,
-      setParameterDefaultValue,
-      setParameterIndex,
-      setParameterName,
-      setParameterValue,
     } = this.props;
 
     const { error, showAddQuestionSidebar } = this.state;
@@ -173,31 +160,12 @@ export default class Dashboard extends Component {
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
 
-    let parametersWidget;
-    if (parameters?.length > 0) {
-      parametersWidget = (
-        <Parameters
-          syncQueryString
-          dashboard={dashboard}
-          isEditing={isEditing}
-          isFullscreen={isFullscreen}
-          isNightMode={shouldRenderAsNightMode}
-          hideParameters={hideParameters}
-          parameters={parameters.map(p => ({
-            ...p,
-            value: parameterValues[p.id],
-          }))}
-          query={location.query}
-          editingParameter={editingParameter}
-          setEditingParameter={setEditingParameter}
-          setParameterName={setParameterName}
-          setParameterIndex={setParameterIndex}
-          setParameterDefaultValue={setParameterDefaultValue}
-          removeParameter={removeParameter}
-          setParameterValue={setParameterValue}
-        />
-      );
-    }
+    const parametersWidget = (
+      <ParametersWidget
+        shouldRenderAsNightMode={shouldRenderAsNightMode}
+        {...this.props}
+      />
+    );
 
     return (
       <DashboardStyled
