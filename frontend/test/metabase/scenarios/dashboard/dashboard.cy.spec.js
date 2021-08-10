@@ -10,8 +10,6 @@ import {
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-import { addFiltersToDashboard } from "./helpers/e2e-filter-helpers";
-
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 
 function saveDashboard() {
@@ -225,7 +223,24 @@ describe("scenarios > dashboard", () => {
       cy.createDashboard("14473D").then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add 4 filters to the dashboard");
 
-        addFiltersToDashboard(DASHBOARD_ID);
+        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+          parameters: [
+            { name: "ID", slug: "id", id: "729b6456", type: "id" },
+            { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
+            {
+              name: "Category",
+              slug: "category",
+              id: "89873480",
+              type: "category",
+            },
+            {
+              name: "Category 1",
+              slug: "category_1",
+              id: "cbc045f2",
+              type: "category",
+            },
+          ],
+        });
 
         cy.log("Add previously created question to the dashboard");
         cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
