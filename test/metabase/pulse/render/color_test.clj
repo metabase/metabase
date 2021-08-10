@@ -24,8 +24,8 @@
   "Setup a javascript engine with a stubbed script useful making sure `get-background-color` works independently from
   the real color picking script"
   [script & body]
-  `(with-redefs [color/js-engine (let [delay# (delay (doto (js/engine)
-                                                       (js/eval test-script)))]
+  `(with-redefs [color/js-engine (let [delay# (delay (doto (js/make-context)
+                                                       (js/load-js-string ~script ~(name (gensym "color-src")))))]
                                    (fn [] @delay#))]
      ~@body))
 

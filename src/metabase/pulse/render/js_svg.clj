@@ -4,7 +4,8 @@
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require [clojure.java.io :as io]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [metabase.pulse.render.js-engine :as js])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
@@ -73,26 +74,16 @@ function categorical_donut (rows, colors) {
 
 ")
 
-(defn- make-context
-  []
-  (let [^Context context (.. (Context/newBuilder (into-array String ["js"]))
-                             (allowHostAccess HostAccess/ALL)
-                             (allowHostClassLookup (reify java.util.function.Predicate
-                                                     (test [_ _] true)))
-                             (out System/out)
-                             (err System/err)
-                             (allowIO true)
-                             (build))]
-    (doto context
-      (.eval (.build (Source/newBuilder "js" (io/resource bundle-path))))
-      (.eval (.build (Source/newBuilder "js" ^String src-api "src call"))))))
+(defn- load-viz-bundle [^Context context]
+  (doto context
+    (js/load-resource bundle-path)
+    (js/load-js-string src-api "src call")))
 
 (def ^:private ^Context context
   "Javascript context suitable for evaluating the charts. It has the chart bundle and the above `src-api` in its
   environment suitable for creating charts."
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
-  (delay (make-context)))
-
+  (delay (load-viz-bundle (js/make-context))))
 
 (defn- parse-svg-string [^String s]
   (let [s       (-> s
@@ -115,30 +106,23 @@ function categorical_donut (rows, colors) {
 (defn- svg-string->bytes [s]
   (-> s parse-svg-string render-svg))
 
-(defn- execute-fn
-  [^Context context js-fn-name & args]
-  (let [fn-ref (.eval context "js" js-fn-name)
-        args   (into-array Object args)]
-    (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
-    (.execute fn-ref args)))
-
 (defn timelineseries-line
   "Clojure entrypoint to render a timeseries line char. Rows should be tuples of [datetime numeric-value]. Returns a
   byte array of a png file."
   [rows]
-  (let [svg-string (.asString ^Value (execute-fn @context "timeseries_line" rows))]
+  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows))]
     (svg-string->bytes svg-string)))
 
 (defn timelineseries-bar
   "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Returns a byte
   array of a png file"
   [rows]
-  (let [svg-string (.asString ^Value (execute-fn @context "timeseries_bar" rows))]
+  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
   [rows colors]
-  (let [svg-string (.asString ^Value (execute-fn @context "categorical_donut" rows (seq colors)))]
+  (let [svg-string (.asString (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
     (svg-string->bytes svg-string)))

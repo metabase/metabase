@@ -7,15 +7,15 @@
   resulting svg."
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
+            [metabase.pulse.render.js-engine :as js]
             [metabase.pulse.render.js-svg :as js-svg])
   (:import org.apache.batik.anim.dom.SVGOMDocument
            [org.graalvm.polyglot Context Value]
            [org.w3c.dom Element Node]))
 
 (def parse-svg #'js-svg/parse-svg-string)
-(def execute-fn #'js-svg/execute-fn)
 
-(def ^Context context (delay (#'js-svg/make-context)))
+(def ^Context context (delay (#'js-svg/load-viz-bundle (js/make-context))))
 
 (defn document-tag-seq [^SVGOMDocument document]
   (map #(.getNodeName ^Node %)
@@ -49,7 +49,7 @@
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/timelineseries-line rows)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (execute-fn @context "timeseries_line" rows))]
+    (let [svg-string (.asString ^Value (js/execute-fn-name @context "timeseries_line" rows))]
       (validate-svg-string :timelineseries-line svg-string))))
 
 (deftest timelineseries-bar-test
@@ -58,7 +58,7 @@
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/timelineseries-bar rows)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (execute-fn @context "timeseries_bar" rows))]
+    (let [svg-string (.asString ^Value (js/execute-fn-name @context "timeseries_bar" rows))]
       (validate-svg-string :timelineseries-bar svg-string))))
 
 (deftest categorical-donut-test
@@ -68,5 +68,5 @@
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/categorical-donut rows colors)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (execute-fn @context "categorical_donut" rows (seq colors)))]
+    (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
       (validate-svg-string :categorical/donut svg-string))))
