@@ -51,32 +51,6 @@
   with-log-messages
   with-log-messages-for-level])
 
-(defmethod assert-expr 're= [msg [_ pattern actual]]
-  `(let [pattern#  ~pattern
-         actual#   ~actual
-         matches?# (some->> actual# (re-matches pattern#))]
-     (assert (instance? java.util.regex.Pattern pattern#))
-     (do-report
-      {:type     (if matches?# :pass :fail)
-       :message  ~msg
-       :expected pattern#
-       :actual   actual#
-       :diffs    (when-not matches?#
-                   [[actual# [pattern# nil]]])})))
-
-(defmethod assert-expr 'schema=
-  [message [_ schema actual]]
-  `(let [schema# ~schema
-         actual# ~actual
-         pass?#  (nil? (s/check schema# actual#))]
-     (do-report
-      {:type     (if pass?# :pass :fail)
-       :message  ~message
-       :expected (s/explain schema#)
-       :actual   actual#
-       :diffs    (when-not pass?#
-                   [[actual# [(s/check schema# actual#) nil]]])})))
-
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
 
