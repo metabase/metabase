@@ -17,7 +17,7 @@
     (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
     (let [dlay (delay
                  (doto (js/make-context)
-                   (js/load-resource file-url)))]
+                   (js/load-resource js-file-path)))]
       (fn []
         @dlay))))
 
