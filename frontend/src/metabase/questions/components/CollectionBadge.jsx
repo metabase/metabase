@@ -8,9 +8,10 @@ import Collection from "metabase/entities/collections";
 const propTypes = {
   collection: PropTypes.object,
   analyticsContext: PropTypes.string.isRequired,
+  className: PropTypes.string,
 };
 
-function CollectionBadge({ collection, analyticsContext, ...props }) {
+function CollectionBadge({ collection, analyticsContext, className }) {
   if (!collection) {
     return null;
   }
@@ -20,8 +21,8 @@ function CollectionBadge({ collection, analyticsContext, ...props }) {
       to={collection.getUrl()}
       icon={icon.name}
       iconColor={icon.color}
+      className={className}
       data-metabase-event={`${analyticsContext};Collection Badge Click`}
-      {...props}
     >
       {collection.getName()}
     </Badge>
