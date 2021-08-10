@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import styled, { css } from "styled-components";
 import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
 const propTypes = {
@@ -29,4 +30,8 @@ export const MaybeLink = styled(RawMaybeLink)`
   :hover {
     ${props => (props.to || props.onClick) && hoverStyle}
   }
+`;
+
+export const BadgeIcon = styled(Icon).attrs({ size: 12 })`
+  margin-right: ${props => (props.hasMargin ? "5px" : 0)};
 `;

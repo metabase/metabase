@@ -1,9 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon";
-
-import { MaybeLink } from "./Badge.styled";
+import { BadgeIcon, MaybeLink } from "./Badge.styled";
 
 const propTypes = {
   name: PropTypes.string.isRequired,
@@ -18,12 +16,7 @@ function Badge({ name, icon, iconColor, children, ...props }) {
   return (
     <MaybeLink {...props}>
       {icon && (
-        <Icon
-          name={icon}
-          mr={children ? "5px" : null}
-          color={iconColor}
-          size={12}
-        />
+        <BadgeIcon name={icon} color={iconColor} hasMargin={!!children} />
       )}
       {children && <span className="text-wrap">{children}</span>}
     </MaybeLink>
