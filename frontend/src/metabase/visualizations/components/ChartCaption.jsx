@@ -23,9 +23,9 @@ const ChartCaption = ({
   const data = series._raw || series;
   const card = data[0].card;
   const cardIds = new Set(data.map(s => s.card.id));
-  const canClickTitle = cardIds.size === 1 && onChangeCardAndRun;
+  const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
 
-  const handleTitleClick = useCallback(() => {
+  const handleSelectTitle = useCallback(() => {
     onChangeCardAndRun({
       nextCard: card,
       seriesIndex: 0,
@@ -42,7 +42,7 @@ const ChartCaption = ({
       description={description}
       icon={icon}
       actionButtons={actionButtons}
-      onTitleClick={canClickTitle ? handleTitleClick : undefined}
+      onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
     />
   );
 };
