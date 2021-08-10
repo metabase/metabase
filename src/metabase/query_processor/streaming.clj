@@ -76,7 +76,7 @@
                             (for [i output-order] (v i)))
                           deduped-cols)
           viz-settings' (assoc viz-settings :output-order output-order)
-          row-count       (volatile! 0)]
+          row-count     (volatile! 0)]
       (fn
         ([]
          (i/begin! results-writer
