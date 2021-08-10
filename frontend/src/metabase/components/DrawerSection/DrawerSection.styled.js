@@ -2,7 +2,7 @@ import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
 
-const HEADER_HEIGHT = "56px";
+const HEADER_HEIGHT = "49px";
 
 export const Container = styled.div`
   min-height: ${HEADER_HEIGHT};
