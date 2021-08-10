@@ -8,13 +8,13 @@ import cx from "classnames";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   Container,
+  DashboardStyled,
   HeaderContainer,
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import DashboardHeader from "../DashboardHeader";
 import DashboardGrid from "../DashboardGrid";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { DashboardSidebars } from "../DashboardSidebars";
@@ -199,13 +199,10 @@ export default class Dashboard extends Component {
     }
 
     return (
-      <LoadingAndErrorWrapper
-        className={cx("Dashboard flex-full", {
-          "Dashboard--fullscreen": isFullscreen,
-          "Dashboard--night": shouldRenderAsNightMode,
-          // prevents header from scrolling so we can have a fixed sidebar
-          "full-height": isEditing || isSharing,
-        })}
+      <DashboardStyled
+        isFullHeight={isEditing || isSharing}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
         loading={!dashboard}
         error={error}
       >
@@ -239,6 +236,7 @@ export default class Dashboard extends Component {
                     {parametersWidget}
                   </ParametersWidgetContainer>
                 )}
+
                 <FullWidthContainer>
                   {dashboardHasCards(dashboard) ? (
                     <DashboardGrid
@@ -252,6 +250,7 @@ export default class Dashboard extends Component {
                   )}
                 </FullWidthContainer>
               </ParametersAndCardsContainer>
+
               <DashboardSidebars
                 {...this.props}
                 onCancel={this.onCancel}
@@ -260,7 +259,7 @@ export default class Dashboard extends Component {
             </div>
           </Container>
         )}
-      </LoadingAndErrorWrapper>
+      </DashboardStyled>
     );
   }
 }

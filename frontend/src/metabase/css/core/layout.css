@@ -4,7 +4,6 @@
   --lg-width: 1140px;
   --xl-width: 1540px;
 }
-
 /* When converting to styled components, use FullWidthContainer */
 .wrapper,
 :local(.wrapper) {

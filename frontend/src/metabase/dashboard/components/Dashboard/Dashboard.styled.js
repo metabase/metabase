@@ -5,6 +5,25 @@ import { space } from "metabase/styled-components/theme";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+// Class names are added here because we still use traditional css,
+// see dashboard.css
+export const DashboardStyled = styled(LoadingAndErrorWrapper).attrs({
+  className: ({ isFullscreen, isNightMode }) =>
+    `Dashboard ${isFullscreen && "Dashboard--fullscreen"} ${isNightMode &&
+      "Dashboard--night"}`,
+})`
+  flex: 1 0 auto;
+
+  // prevents header from scrolling so we can have a fixed sidebar
+  ${({ isFullHeight }) =>
+    isFullHeight &&
+    css`
+      height: 100%;
+    `}
+`;
+
 export const Container = styled.div`
   display: flex;
   flex-direction: column;
