@@ -19,6 +19,7 @@ const propTypes = {
   colors: PropTypes.array.isRequired,
   hovered: PropTypes.object,
   hasTitle: PropTypes.bool,
+  hasLegend: PropTypes.bool,
   icon: PropTypes.shape(iconPropTypes),
   actionButtons: PropTypes.node,
   children: PropTypes.node,
