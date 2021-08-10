@@ -36,7 +36,7 @@
                                                            org.slf4j/slf4j-api]}
   com.draines/postal                        {:mvn/version "2.0.4"}              ; SMTP library
   com.google.guava/guava                    {:mvn/version "30.1.1-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
-  com.h2database/h2                         {:mvn/version "1.4.197"}            ; embedded SQL database
+  com.h2database/h2                         {:mvn/version "1.4.200"}            ; embedded SQL database
   com.taoensso/nippy                        {:mvn/version "3.1.1"}              ; Fast serialization (i.e., GZIP) library for Clojure
   commons-codec/commons-codec               {:mvn/version "1.15"}               ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.11.0"}             ; Apache Commons -- useful IO util fns
