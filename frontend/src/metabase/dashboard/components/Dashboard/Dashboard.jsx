@@ -5,10 +5,12 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   Container,
   HeaderContainer,
   ParametersAndCardsContainer,
+  ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import DashboardHeader from "../DashboardHeader";
 import DashboardGrid from "../DashboardGrid";
@@ -233,11 +235,11 @@ export default class Dashboard extends Component {
             >
               <ParametersAndCardsContainer>
                 {!isFullscreen && parametersWidget && (
-                  <div className="wrapper flex flex-column align-start mt2 relative z2">
+                  <ParametersWidgetContainer>
                     {parametersWidget}
-                  </div>
+                  </ParametersWidgetContainer>
                 )}
-                <div className="wrapper">
+                <FullWidthContainer>
                   {dashboardHasCards(dashboard) ? (
                     <DashboardGrid
                       {...this.props}
@@ -248,7 +250,7 @@ export default class Dashboard extends Component {
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}
-                </div>
+                </FullWidthContainer>
               </ParametersAndCardsContainer>
               <DashboardSidebars
                 {...this.props}
