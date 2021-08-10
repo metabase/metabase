@@ -73,26 +73,32 @@ function categorical_donut (rows, colors) {
 
 ")
 
+(defn- make-context
+  []
+  (let [^Context context (.. (Context/newBuilder (into-array String ["js"]))
+                             (allowHostAccess HostAccess/ALL)
+                             (allowHostClassLookup (reify java.util.function.Predicate
+                                                     (test [_ _] true)))
+                             (out System/out)
+                             (err System/err)
+                             (allowIO true)
+                             (build))]
+    (doto context
+      (.eval (.build (Source/newBuilder "js" (io/resource bundle-path))))
+      (.eval (.build (Source/newBuilder "js" ^String src-api "src call"))))))
+
 (def ^:private ^Context context
   "Javascript context suitable for evaluating the charts. It has the chart bundle and the above `src-api` in its
   environment suitable for creating charts."
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
-  (delay
-    (let [^Context context (.. (Context/newBuilder (into-array String ["js"]))
-                               (allowHostAccess HostAccess/ALL)
-                               (allowHostClassLookup (reify java.util.function.Predicate
-                                                       (test [_ _] true)))
-                               (out System/out)
-                               (err System/err)
-                               (allowIO true)
-                               (build))]
-      (doto context
-        (.eval (.build (Source/newBuilder "js" (io/resource bundle-path))))
-        (.eval (.build (Source/newBuilder "js" ^String src-api "src call")))))))
+  (delay (make-context)))
 
 
 (defn- parse-svg-string [^String s]
-  (let [factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
+  (let [s       (-> s
+                    (str/replace  #"<svg " "<svg xmlns=\"http://www.w3.org/2000/svg\" ")
+                    (str/replace #"fill=\"transparent\"" "fill-opacity=\"0.0\""))
+        factory (SAXSVGDocumentFactory. "org.apache.xerces.parsers.SAXParser")]
     (with-open [is (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8))]
       (.createDocument factory "file:///fake.svg" is))))
 
@@ -107,10 +113,7 @@ function categorical_donut (rows, colors) {
     (.toByteArray os)))
 
 (defn- svg-string->bytes [s]
-  (let [s (-> s
-              (str/replace  #"<svg " "<svg xmlns=\"http://www.w3.org/2000/svg\" ")
-              (str/replace #"fill=\"transparent\"" "fill-opacity=\"0.0\""))]
-    (-> s parse-svg-string render-svg)))
+  (-> s parse-svg-string render-svg))
 
 (defn- execute-fn
   [^Context context js-fn-name & args]
