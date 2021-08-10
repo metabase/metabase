@@ -24,7 +24,7 @@ describe("visual tests > dashboard > filter sidebar", () => {
 
     cy.findByText("Label");
 
-    cy.percySnapshot("Shows dashboard filter sidebar " + Date.now());
+    cy.percySnapshot();
   });
 });
 

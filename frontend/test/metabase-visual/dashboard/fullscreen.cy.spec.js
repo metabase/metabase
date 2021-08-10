@@ -55,12 +55,12 @@ describe("visual tests > dashboard > fullscreen", () => {
 
     cy.icon("moon");
 
-    cy.percySnapshot("Shows dashboard in fullscreen day mode" + Date.now());
+    cy.percySnapshot();
 
     cy.icon("moon").click();
 
     cy.icon("sun");
 
-    cy.percySnapshot("Shows dashboard in fullscreen night mode" + Date.now());
+    cy.percySnapshot();
   });
 });
