@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.poc
+(ns metabase.pulse.render.js-svg
   (:require [clojure.java.io :as io]
             [clojure.string :as str])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]

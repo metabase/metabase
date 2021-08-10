@@ -7,7 +7,7 @@
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.datetime :as datetime]
             [metabase.pulse.render.image-bundle :as image-bundle]
-            [metabase.pulse.render.poc :as svg-poc]
+            [metabase.pulse.render.js-svg :as js-svg]
             [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
@@ -220,7 +220,7 @@
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
         image-bundle (image-bundle/make-image-bundle
                       render-type
-                      (svg-poc/timelineseries-bar
+                      (js-svg/timelineseries-bar
                        (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
     {:attachments
      (when image-bundle
@@ -244,7 +244,7 @@
         legend-colors (zipmap (map (comp str x-axis-rowfn) rows) (cycle colors))
         image-bundle (image-bundle/make-image-bundle
                       render-type
-                      (svg-poc/categorical-donut
+                      (js-svg/categorical-donut
                        (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
                        legend-colors))]
     {:attachments
@@ -321,7 +321,7 @@
         labels         (datetime/format-temporal-string-pair timezone-id (map x-axis-rowfn last-rows) (x-axis-rowfn cols))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
-                        (svg-poc/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
+                        (js-svg/timelineseries-line (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

@@ -9,7 +9,7 @@
             [metabase.pulse :as pulse]
             [metabase.pulse.render :as pulse-render]
             [metabase.pulse.render.png :as png]
-            [metabase.pulse.render.poc :as poc]
+            [metabase.pulse.render.js-svg :as poc]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [toucan.db :as tdb])
