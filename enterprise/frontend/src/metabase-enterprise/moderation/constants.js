@@ -6,4 +6,9 @@ export const ACTIONS = {
       color: "brand",
     },
   },
+  null: {
+    type: "null",
+    icon: "close",
+    color: "text-light",
+  },
 };

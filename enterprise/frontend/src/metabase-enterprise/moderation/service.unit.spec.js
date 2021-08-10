@@ -7,6 +7,8 @@ import {
   isItemVerified,
   getLatestModerationReview,
   getStatusIconForQuestion,
+  getModerationTimelineEvents,
+  getStatusIcon,
 } from "./service";
 
 jest.mock("metabase/services", () => ({
@@ -73,10 +75,6 @@ describe("moderation/service", () => {
         getVerifiedIcon(),
       );
     });
-
-    it("should be an empty object for a null review", () => {
-      expect(getIconForReview({ status: null })).toEqual({});
-    });
   });
 
   describe("getTextForReviewBanner", () => {
@@ -92,7 +90,7 @@ describe("moderation/service", () => {
         getTextForReviewBanner(
           { status: "verified" },
           {
-            display_name: "Foo",
+            common_name: "Foo",
             id: 1,
           },
           { id: 2 },
@@ -108,7 +106,7 @@ describe("moderation/service", () => {
         getTextForReviewBanner(
           { status: "verified" },
           {
-            display_name: "Foo",
+            common_name: "Foo",
             id: 1,
           },
           { id: 1 },
@@ -170,48 +168,86 @@ describe("moderation/service", () => {
       expect(getLatestModerationReview(reviews)).toEqual(undefined);
     });
   });
-});
 
-describe("getStatusIconForQuestion", () => {
-  it('should return the status icon for the most recent "real" review', () => {
-    const questionWithReviews = {
-      getModerationReviews: () => [
-        { id: 1, status: "verified" },
-        { id: 2, status: "verified", most_recent: true },
-        { id: 3, status: null },
-      ],
-    };
+  describe("getStatusIconForQuestion", () => {
+    it('should return the status icon for the most recent "real" review', () => {
+      const questionWithReviews = {
+        getModerationReviews: () => [
+          { id: 1, status: "verified" },
+          { id: 2, status: "verified", most_recent: true },
+          { id: 3, status: null },
+        ],
+      };
 
-    expect(getStatusIconForQuestion(questionWithReviews)).toEqual(
-      getVerifiedIcon(),
-    );
+      expect(getStatusIconForQuestion(questionWithReviews)).toEqual(
+        getVerifiedIcon(),
+      );
+    });
+
+    it("should return undefined vals for no review", () => {
+      const questionWithNoMostRecentReview = {
+        getModerationReviews: () => [
+          { id: 1, status: "verified" },
+          { id: 2, status: "verified" },
+          { id: 3, status: null, most_recent: true },
+        ],
+      };
+
+      const questionWithNoReviews = {
+        getModerationReviews: () => [],
+      };
+
+      const questionWithUndefinedReviews = {
+        getModerationReviews: () => undefined,
+      };
+
+      const noIcon = { name: undefined, color: undefined };
+
+      expect(getStatusIconForQuestion(questionWithNoMostRecentReview)).toEqual(
+        noIcon,
+      );
+      expect(getStatusIconForQuestion(questionWithNoReviews)).toEqual(noIcon);
+      expect(getStatusIconForQuestion(questionWithUndefinedReviews)).toEqual(
+        noIcon,
+      );
+    });
   });
 
-  it("should return undefined vals for no review", () => {
-    const questionWithNoMostRecentReview = {
-      getModerationReviews: () => [
-        { id: 1, status: "verified" },
-        { id: 2, status: "verified" },
-        { id: 3, status: null, most_recent: true },
-      ],
-    };
+  describe("getModerationTimelineEvents", () => {
+    it("should return the moderation timeline events", () => {
+      const reviews = [
+        {
+          id: 1,
+          status: "verified",
+          created_at: "2018-01-01T00:00:00.000Z",
+          moderator_id: 1,
+        },
+        {
+          id: 2,
+          status: null,
+          created_at: "2018-01-02T00:00:00.000Z",
+          moderator_id: 123,
+        },
+      ];
+      const usersById = {
+        1: {
+          id: 1,
+          common_name: "Foo",
+        },
+      };
 
-    const questionWithNoReviews = {
-      getModerationReviews: () => [],
-    };
-
-    const questionWithUndefinedReviews = {
-      getModerationReviews: () => undefined,
-    };
-
-    const noIcon = { name: undefined, color: undefined };
-
-    expect(getStatusIconForQuestion(questionWithNoMostRecentReview)).toEqual(
-      noIcon,
-    );
-    expect(getStatusIconForQuestion(questionWithNoReviews)).toEqual(noIcon);
-    expect(getStatusIconForQuestion(questionWithUndefinedReviews)).toEqual(
-      noIcon,
-    );
+      expect(getModerationTimelineEvents(reviews, usersById)).toEqual([
+        {
+          timestamp: expect.any(Number),
+          icon: getStatusIcon("verified"),
+          title: "Foo verified this",
+        },
+        {
+          timestamp: expect.any(Number),
+          icon: getStatusIcon(null),
+          title: "A moderator removed verification",
+        },
+      ]);
+    });
   });
 });

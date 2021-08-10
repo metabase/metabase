@@ -53,13 +53,13 @@ export function getTextForReviewBanner(
 }
 
 function getModeratorDisplayName(user, currentUser) {
-  const { id: userId, display_name } = user || {};
+  const { id: userId, common_name } = user || {};
   const { id: currentUserId } = currentUser || {};
 
   if (currentUserId != null && userId === currentUserId) {
     return t`You`;
   } else if (userId != null) {
-    return display_name;
+    return common_name;
   } else {
     return t`A moderator`;
   }
@@ -84,4 +84,33 @@ export function getStatusIconForQuestion(question) {
   const reviews = question.getModerationReviews();
   const review = getLatestModerationReview(reviews);
   return getIconForReview(review);
+}
+
+function getModerationReviewEventText(review, moderatorDisplayName) {
+  switch (review.status) {
+    case "verified":
+      return t`${moderatorDisplayName} verified this`;
+    case null:
+      return t`${moderatorDisplayName} removed verification`;
+    default:
+      return t`${moderatorDisplayName} changed status to ${review.status}`;
+  }
+}
+
+export function getModerationTimelineEvents(reviews, usersById, currentUser) {
+  return reviews.map((review, index) => {
+    const moderator = usersById[review.moderator_id];
+    const moderatorDisplayName = getModeratorDisplayName(
+      moderator,
+      currentUser,
+    );
+    const text = getModerationReviewEventText(review, moderatorDisplayName);
+    const icon = getIconForReview(review);
+
+    return {
+      timestamp: new Date(review.created_at).valueOf(),
+      icon,
+      title: text,
+    };
+  });
 }
