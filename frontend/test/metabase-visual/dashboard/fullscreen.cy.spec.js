@@ -55,12 +55,12 @@ describe("visual tests > dashboard > fullscreen", () => {
 
     cy.icon("moon");
 
-    cy.percySnapshot();
+    cy.percySnapshot("day");
 
     cy.icon("moon").click();
 
     cy.icon("sun");
 
-    cy.percySnapshot();
+    cy.percySnapshot("night");
   });
 });
