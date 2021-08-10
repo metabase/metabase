@@ -315,11 +315,12 @@
 
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge
-   {:id           (format "card__%d" (u/the-id card))
-    :db_id        (:database_id card)
-    :display_name (:name card)
-    :schema       "Everything else"
-    :description  nil}
+   {:id               (format "card__%d" (u/the-id card))
+    :db_id            (:database_id card)
+    :display_name     (:name card)
+    :schema           "Everything else"
+    :moderated_status nil
+    :description      nil}
    kvs))
 
 (driver/register! ::no-nested-query-support
@@ -398,11 +399,12 @@
    :id                 (s/eq -1337)
    :features           (s/eq ["basic-aggregations"])
    :is_saved_questions (s/eq true)
-   :tables             [{:id           #"^card__\d+$"
-                         :db_id        s/Int
-                         :display_name s/Str
-                         :schema       s/Str ; collection name
-                         :description  (s/maybe s/Str)}]})
+   :tables             [{:id               #"^card__\d+$"
+                         :db_id            s/Int
+                         :display_name     s/Str
+                         :moderated_status (s/enum nil "verified")
+                         :schema           s/Str ; collection name
+                         :description      (s/maybe s/Str)}]})
 
 (defn- check-tables-included [response & tables]
   (let [response-tables (set (:tables response))]
@@ -521,12 +523,13 @@
                       :id                 (s/eq -1337)
                       :is_saved_questions (s/eq true)
                       :features           (s/eq ["basic-aggregations"])
-                      :tables             [{:id           #"^card__\d+$"
-                                            :db_id        s/Int
-                                            :display_name s/Str
-                                            :schema       s/Str ; collection name
-                                            :description  (s/maybe s/Str)
-                                            :fields       [su/Map]}]}
+                      :tables             [{:id               #"^card__\d+$"
+                                            :db_id            s/Int
+                                            :display_name     s/Str
+                                            :moderated_status (s/enum nil "verified")
+                                            :schema           s/Str ; collection name
+                                            :description      (s/maybe s/Str)
+                                            :fields           [su/Map]}]}
                      response))
         (check-tables-included
          response
@@ -914,29 +917,32 @@
         (doseq [card [card-1 card-2]]
           ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/the-id card))))
         (testing "Should be able to get saved questions in a specific collection"
-          (is (= [{:id           (format "card__%d" (:id card-1))
-                   :db_id        (mt/id)
-                   :display_name "Card 1"
-                   :schema       "My Collection"
-                   :description  nil}]
+          (is (= [{:id               (format "card__%d" (:id card-1))
+                   :db_id            (mt/id)
+                   :moderated_status nil
+                   :display_name     "Card 1"
+                   :schema           "My Collection"
+                   :description      nil}]
                  ((mt/user->client :lucky) :get 200
                   (format "database/%d/schema/My Collection" mbql.s/saved-questions-virtual-database-id)))))
 
         (testing "Should be able to get saved questions in the root collection"
           (let [response ((mt/user->client :lucky) :get 200
                           (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name)))]
-            (is (schema= [{:id           #"^card__\d+$"
-                           :db_id        s/Int
-                           :display_name s/Str
-                           :schema       (s/eq (table-api/root-collection-schema-name))
-                           :description  (s/maybe s/Str)}]
+            (is (schema= [{:id               #"^card__\d+$"
+                           :db_id            s/Int
+                           :display_name     s/Str
+                           :moderated_status (s/enum nil "verified")
+                           :schema           (s/eq (table-api/root-collection-schema-name))
+                           :description      (s/maybe s/Str)}]
                          response))
             (is (contains? (set response)
-                           {:id           (format "card__%d" (:id card-2))
-                            :db_id        (mt/id)
-                            :display_name "Card 2"
-                            :schema       (table-api/root-collection-schema-name)
-                            :description  nil}))))
+                           {:id               (format "card__%d" (:id card-2))
+                            :db_id            (mt/id)
+                            :display_name     "Card 2"
+                            :moderated_status nil
+                            :schema           (table-api/root-collection-schema-name)
+                            :description      nil}))))
 
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
