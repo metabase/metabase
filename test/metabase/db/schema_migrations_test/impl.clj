@@ -23,10 +23,10 @@
   (:import [liquibase Contexts Liquibase]
            [liquibase.changelog ChangeSet DatabaseChangeLog]))
 
-(defmulti ^:private do-with-temp-empty-app-db*
+(defmulti do-with-temp-empty-app-db*
   "Create a new completely empty app DB for `driver`, then call `(f jdbc-spec)` with a spec for that DB. Should clean up
   before and after running `f` as needed."
-  {:arglists '([driver f])}
+  {:added "0.41.0", :arglists '([driver f])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -55,7 +55,11 @@
   (let [jdbc-spec {:subprotocol "h2", :subname "mem:schema-migrations-test-db", :classname "org.h2.Driver"}]
     (f jdbc-spec)))
 
-(defn- do-with-temp-empty-app-db [driver f]
+(defn do-with-temp-empty-app-db
+  "The function invoked by `with-temp-empty-app-db` to execute a thunk `f` in a temporary, empty app DB. Use the macro
+  instead: `with-temp-empty-app-db`."
+  {:added "0.41.0"}
+  [driver f]
   (do-with-temp-empty-app-db*
    driver
    (fn [jdbc-spec]
@@ -64,16 +68,19 @@
                  toucan.db/*quoting-style* (mdb/quoting-style driver)]
          (f conn))))))
 
-(defmacro ^:private with-temp-empty-app-db
+(defmacro with-temp-empty-app-db
   "Create a new temporary application DB of `db-type` and execute `body` with `conn-binding` bound to a
   `java.sql.Connection` to the database. Toucan `*db-connection*` is also bound, which means Toucan functions like
-  `select` or `update!` will operate against this database."
+  `select` or `update!` will operate against this database.
+
+  Made public as of x.41."
   [[conn-binding db-type] & body]
   `(do-with-temp-empty-app-db ~db-type (fn [~(vary-meta conn-binding assoc :tag 'java.sql.Connection)] ~@body)))
 
-(defn- run-migrations-in-range!
+(defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
   DB with `jdbc-spec`."
+  {:added "0.41.0"}
   [^java.sql.Connection conn [start-id end-id]]
   (liquibase/with-liquibase [liquibase conn]
     (let [change-log        (.getDatabaseChangeLog liquibase)
