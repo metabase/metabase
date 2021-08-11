@@ -14,6 +14,8 @@ const filter = {
   type: "category",
 };
 
+const filters = new Array(12).fill(filter);
+
 describe("visual tests > dashboard > parameters widget", () => {
   beforeEach(() => {
     restore();
@@ -21,9 +23,9 @@ describe("visual tests > dashboard > parameters widget", () => {
 
     cy.createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        for (let i = 0; i < 12; i++) {
-          cy.addFilterToDashboard({ filter, dashboard_id });
-        }
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: filters,
+        });
 
         // Connect filter to the card
         cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
@@ -53,7 +55,7 @@ describe("visual tests > dashboard > parameters widget", () => {
   });
 
   it("is sticky in view mode", () => {
-    cy.scrollTo(0, 400);
+    cy.scrollTo(0, 164);
 
     cy.percySnapshot();
   });
