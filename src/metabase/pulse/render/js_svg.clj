@@ -3,15 +3,14 @@
   which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [metabase.pulse.render.js-engine :as js])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
            [org.apache.batik.transcoder TranscoderInput TranscoderOutput]
            org.apache.batik.transcoder.image.PNGTranscoder
-           [org.graalvm.polyglot Context HostAccess Source Value]))
+           org.graalvm.polyglot.Context))
 
 (def ^:private bundle-path
   "frontend_client/app/dist/lib-static-viz.bundle.js")
