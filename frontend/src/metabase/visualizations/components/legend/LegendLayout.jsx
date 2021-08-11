@@ -1,6 +1,8 @@
 import React from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
 import { iconPropTypes } from "metabase/components/Icon";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import Legend from "./Legend";
 import LegendCaption from "./LegendCaption";
 import {
@@ -11,6 +13,8 @@ import {
   MainContainer,
 } from "./LegendLayout.styled";
 
+const MIN_ITEM_WIDTH = 100;
+
 const propTypes = {
   className: PropTypes.string,
   title: PropTypes.string,
@@ -18,6 +22,7 @@ const propTypes = {
   labels: PropTypes.array.isRequired,
   colors: PropTypes.array.isRequired,
   hovered: PropTypes.object,
+  width: PropTypes.number,
   hasTitle: PropTypes.bool,
   hasLegend: PropTypes.bool,
   icon: PropTypes.shape(iconPropTypes),
@@ -37,6 +42,7 @@ const LegendLayout = ({
   labels,
   colors,
   hovered,
+  width,
   hasTitle,
   hasLegend,
   icon,
@@ -48,6 +54,8 @@ const LegendLayout = ({
   onSelectSeries,
   onRemoveSeries,
 }) => {
+  const isNarrow = labels.length * MIN_ITEM_WIDTH > width;
+
   return (
     <LegendLayoutRoot className={className}>
       {hasTitle && (
@@ -69,6 +77,7 @@ const LegendLayout = ({
               colors={colors}
               hovered={hovered}
               actionButtons={!hasTitle && actionButtons}
+              isNarrow={isNarrow}
               onHoverChange={onHoverChange}
               onAddSeries={onAddSeries}
               onSelectSeries={onSelectSeries}
@@ -84,4 +93,4 @@ const LegendLayout = ({
 
 LegendLayout.propTypes = propTypes;
 
-export default LegendLayout;
+export default _.compose(ExplicitSize())(LegendLayout);

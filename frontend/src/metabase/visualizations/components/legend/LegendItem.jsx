@@ -15,6 +15,7 @@ const propTypes = {
   index: PropTypes.number,
   color: PropTypes.string,
   isMuted: PropTypes.bool,
+  isNarrow: PropTypes.bool,
   isVertical: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
@@ -25,8 +26,9 @@ const LegendItem = ({
   label,
   index,
   color,
-  isMuted = false,
-  isVertical = false,
+  isMuted,
+  isNarrow,
+  isVertical,
   onHoverChange,
   onSelectSeries,
   onRemoveSeries,
@@ -66,9 +68,11 @@ const LegendItem = ({
           onMouseLeave={onHoverChange && handleItemMouseLeave}
         >
           <LegendItemDot color={color} />
-          <LegendItemTitle>
-            <Ellipsified>{label}</Ellipsified>
-          </LegendItemTitle>
+          {!isNarrow && (
+            <LegendItemTitle>
+              <Ellipsified>{label}</Ellipsified>
+            </LegendItemTitle>
+          )}
         </LegendItemLabel>
       </Tooltip>
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}

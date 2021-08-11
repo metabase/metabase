@@ -9,6 +9,7 @@ const propTypes = {
   colors: PropTypes.array.isRequired,
   hovered: PropTypes.object,
   actionButtons: PropTypes.node,
+  isNarrow: PropTypes.bool,
   isVertical: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onAddSeries: PropTypes.func,
@@ -22,6 +23,7 @@ const Legend = ({
   colors,
   hovered,
   actionButtons,
+  isNarrow,
   isVertical,
   onHoverChange,
   onSelectSeries,
@@ -36,6 +38,7 @@ const Legend = ({
           index={index}
           color={colors[index % colors.length]}
           isMuted={hovered && hovered.index != null && index !== hovered.index}
+          isNarrow={isNarrow}
           isVertical={isVertical}
           onHoverChange={onHoverChange}
           onSelectSeries={onSelectSeries}

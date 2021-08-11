@@ -6,21 +6,13 @@ import { space } from "metabase/styled-components/theme";
 export const LegendItemRoot = styled.div`
   display: flex;
   align-items: center;
+  min-width: 0;
   overflow: hidden;
 
   &:not(:first-child) {
     margin-top: ${({ isVertical }) => (isVertical ? space(1) : "")};
-    margin-left: ${({ isVertical }) => (isVertical ? "" : space(2))};
+    margin-left: ${({ isVertical }) => (isVertical ? "" : space(1))};
   }
-`;
-
-export const LegendItemDot = styled.div`
-  flex-shrink: 0;
-  width: 0.75rem;
-  height: 0.75rem;
-  margin-right: ${space(1)};
-  border-radius: 50%;
-  background-color: ${({ color }) => color};
 `;
 
 export const LegendItemLabel = styled.div`
@@ -35,9 +27,18 @@ export const LegendItemLabel = styled.div`
   }
 `;
 
+export const LegendItemDot = styled.div`
+  flex: 0 0 auto;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: ${({ color }) => color};
+`;
+
 export const LegendItemTitle = styled.div`
   color: ${colors["text-dark"]};
   font-weight: bold;
+  margin-left: ${space(1)};
 `;
 
 export const LegendItemRemoveIcon = styled(Icon).attrs({
