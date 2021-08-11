@@ -274,18 +274,18 @@ export default class LineAreaBarChart extends Component {
     const description = series["card.description"];
     const data = series._raw || series;
     const cardIds = new Set(data.map(s => s.card.id));
-    const hasTitle = showTitle && settings["card.title"];
-    const canClickTitle = cardIds.size === 1 && onChangeCardAndRun;
+    const hasTitle = showTitle && title;
+    const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
 
     return {
       title,
       description,
       hasTitle,
-      canClickTitle,
+      canSelectTitle,
     };
   }
 
-  onTitleClick = () => {
+  onSelectTitle = () => {
     const { card, onChangeCardAndRun } = this.props;
 
     if (onChangeCardAndRun) {
@@ -314,7 +314,7 @@ export default class LineAreaBarChart extends Component {
       title,
       description,
       hasTitle,
-      canClickTitle,
+      canSelectTitle,
     } = this.getLegendSettings();
 
     const settings = this.getSettings();
@@ -349,7 +349,7 @@ export default class LineAreaBarChart extends Component {
             description={description}
             icon={headerIcon}
             actionButtons={actionButtons}
-            onTitleClick={canClickTitle ? this.onTitleClick : undefined}
+            onSelectTitle={canSelectTitle ? this.onSelectTitle : undefined}
           />
         )}
         {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
