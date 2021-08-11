@@ -1,5 +1,4 @@
 (ns metabase.pulse.render.js-engine
-  (:refer-clojure :exclude [eval])
   (:require [clojure.java.io :as io])
   (:import [org.graalvm.polyglot Context HostAccess Source Value]))
 
