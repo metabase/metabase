@@ -129,6 +129,12 @@ export const onOpenQuestionDetails = createAction(
 export const onCloseQuestionDetails = createAction(
   "metabase/qb/CLOSE_QUESTION_DETAILS",
 );
+export const onOpenQuestionHistory = createAction(
+  "metabase/qb/OPEN_QUESTION_HISTORY",
+);
+export const onCloseQuestionHistory = createAction(
+  "metabase/qb/CLOSE_QUESTION_HISTORY",
+);
 
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");

@@ -1,7 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import QuestionActionButtons from "metabase/query_builder/components/QuestionActionButtons";
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
 import {
