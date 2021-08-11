@@ -29,6 +29,9 @@ export default function StaticVizPage() {
                   x: row => new Date(row[0]).valueOf(),
                   y: row => row[1],
                 },
+                labels: {
+                  bottom: "Created At",
+                },
               }),
             }}
           ></Box>
@@ -46,6 +49,9 @@ export default function StaticVizPage() {
                 accessors: {
                   x: row => new Date(row[0]).valueOf(),
                   y: row => row[1],
+                },
+                labels: {
+                  left: "Count",
                 },
               }),
             }}

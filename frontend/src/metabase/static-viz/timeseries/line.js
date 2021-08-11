@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 import { LinePath } from "@visx/shape";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { scaleLinear, scaleOrdinal, scaleTime } from "@visx/scale";
@@ -7,7 +8,7 @@ import { bottomAxisTickStyles, leftAxisTickStyles } from "../utils";
 import { GridRows } from "@visx/grid";
 
 export default function TimeseriesLine(
-  { data, yScaleType = scaleLinear, accessors },
+  { data, yScaleType = scaleLinear, accessors, labels },
   layout,
 ) {
   let multiScale, categories;
@@ -67,7 +68,7 @@ export default function TimeseriesLine(
         />
       )}
       <AxisLeft
-        label={"Count"}
+        label={labels.left || t`Metric`}
         hideTicks
         hideAxisLine
         tickFormat={d => String(d)}
@@ -76,7 +77,7 @@ export default function TimeseriesLine(
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom
-        label={"Time"}
+        label={labels.bottom || t`Dimension`}
         hideTicks={false}
         numTicks={5}
         top={layout.yMax}
