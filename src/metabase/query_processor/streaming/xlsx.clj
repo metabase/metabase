@@ -13,8 +13,9 @@
             [metabase.util.i18n :refer [tru]])
   (:import java.io.OutputStream
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Sheet Workbook]
-           org.apache.poi.xssf.streaming.SXSSFWorkbook))
+           [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook]
+           org.apache.poi.ss.util.CellRangeAddress
+           [org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
@@ -366,7 +367,7 @@
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
   This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
-  [^Sheet sheet values cols col-settings]
+  [^SXSSFSheet sheet values cols col-settings]
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
@@ -378,7 +379,7 @@
             scaled-val (if (and value (::mb.viz/scale settings))
                          (* value (::mb.viz/scale settings))
                          value)]
-        (set-cell! (.createCell row index) scaled-val id-or-name)))
+        (set-cell! (.createCell ^SXSSFRow row ^Integer index) scaled-val id-or-name)))
     row))
 
 (defn- column-titles
@@ -400,15 +401,44 @@
         (str column-title " (" (currency-identifier merged-settings) ")")
         column-title))))
 
+(def ^:dynamic *auto-sizing-threshold*
+  "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
+  of large datasets will be prohibitively slow."
+  100)
+
+(def ^:private extra-column-width
+  "The extra width applied to columns after they have been auto-sized, in units of 1/256 of a character width.
+  This ensures the cells in the header row have enough room for the filter dropdown icon."
+  (* 4 256))
+
+(defn- autosize-columns!
+  "Adjusts each column to fit its largest value, plus a constant amount of extra padding."
+  [sheet]
+  (doseq [i (.getTrackedColumnsForAutoSizing ^SXSSFSheet sheet)]
+    (.autoSizeColumn ^SXSSFSheet sheet i)
+    (.setColumnWidth ^SXSSFSheet sheet i (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width))
+    (.untrackColumnForAutoSizing ^SXSSFSheet sheet i)))
+
+(defn- setup-header-row!
+  "Turns on auto-filter for the header row, which adds a button to each header cell that allows columns to be
+  filtered and sorted. Also freezes the header row so that it floats above the data."
+  [sheet col-count]
+  (when (> col-count 0)
+    (.setAutoFilter ^SXSSFSheet sheet (new CellRangeAddress 0 0 0 (dec col-count)))
+    (.createFreezePane ^SXSSFSheet sheet 0 1)))
+
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
   (let [workbook            (SXSSFWorkbook.)
         sheet               (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings}]
+        (doseq [i (range (count ordered-cols))]
+          (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
+        (setup-header-row! sheet (count ordered-cols))
         (spreadsheet/add-row! sheet (column-titles ordered-cols col-settings)))
 
-      (write-row! [_ row _ ordered-cols {:keys [output-order] :as viz-settings}]
+      (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row  (if output-order
                              (let [row-v (into [] row)]
                                (for [i output-order] (row-v i)))
@@ -416,9 +446,14 @@
               col-settings (::mb.viz/column-settings viz-settings)
               cell-styles  (cell-style-delays workbook ordered-cols col-settings)]
           (binding [*cell-styles* cell-styles]
-            (add-row! sheet ordered-row ordered-cols col-settings))))
+            (add-row! sheet ordered-row ordered-cols col-settings))
+          (when (= (inc row-num) *auto-sizing-threshold*)
+            (autosize-columns! sheet))))
 
-      (finish! [_ _]
+      (finish! [_ {:keys [row_count]}]
+        (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
+          ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
+          (autosize-columns! sheet))
         (spreadsheet/save-workbook-into-stream! os workbook)
         (.dispose workbook)
         (.close os)))))
