@@ -37,21 +37,12 @@
   Unclear if this can be sourced from the `com.google.cloud.bigquery` package directly."
   "https://www.googleapis.com/auth/bigquery")
 
-(defn- database->service-account-credential
-  "Returns a `ServiceAccountCredentials` (not scoped) for the given DB, from its service account JSON. Also updates
-  the :project-id in the DB details with the project-id from the credentials."
-  ^ServiceAccountCredentials [{{:keys [^String service-account-json]
-                                :as   details} :details
-                               id              :id
+(defn- ^ServiceAccountCredentials database->service-account-credential
+  "Returns a `ServiceAccountCredentials` (not scoped) for the given DB, from its service account JSON."
+  ^ServiceAccountCredentials [{{:keys [^String service-account-json]} :details
                                :as             db}]
   {:pre [(map? db) (seq service-account-json)]}
-  (if (seq service-account-json)
-    (let [creds   (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json)))
-          details (-> (merge details {:project-id (.getProjectId creds)})
-                    (dissoc :auth-code))]
-      (when id
-        (db/update! Database id, :details details))
-      creds)))
+  (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
 
 (defn- ^BigQuery database->client
   [{{:keys [project-id]} :details, :as database}]
