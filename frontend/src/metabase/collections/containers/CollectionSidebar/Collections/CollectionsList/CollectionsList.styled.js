@@ -44,5 +44,6 @@ export const ExpandCollectionButton = styled(IconButtonWrapper)`
 
 export const LabelContainer = styled.div`
   display: flex;
+  align-items: center;
   position: relative;
 `;
