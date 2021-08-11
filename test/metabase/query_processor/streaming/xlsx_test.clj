@@ -439,9 +439,9 @@
                                              {}
                                              [["abcdef"] ["abcedf"]]
                                              parse-column-width))]
-        (is (<= 2800 col-width 2850)))
+        (is (<= 2800 col-width 2900)))
       (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
                                              {}
                                              [["abcdef"] ["abcedf"] ["abcdef"]]
                                              parse-column-width))]
-        (is (<= 2800 col-width 2850))))))
+        (is (<= 2800 col-width 2900))))))
