@@ -324,7 +324,7 @@ export default class LineAreaBarChart extends Component {
     }
   };
 
-  onSelectSeries = (event, index) => {
+  handleSelectSeries = (event, index) => {
     const {
       card,
       series,
@@ -400,7 +400,7 @@ export default class LineAreaBarChart extends Component {
           onHoverChange={onHoverChange}
           onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
-          onSelectSeries={this.onSelectSeries}
+          onSelectSeries={this.handleSelectSeries}
         >
           <CardRenderer
             {...this.props}
