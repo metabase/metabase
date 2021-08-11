@@ -1,7 +1,6 @@
 import styled from "styled-components";
 import colors from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import { space } from "metabase/styled-components/theme";
 
 export const LegendItemRoot = styled.div`
   display: flex;
@@ -10,8 +9,8 @@ export const LegendItemRoot = styled.div`
   overflow: hidden;
 
   &:not(:first-child) {
-    margin-top: ${({ isVertical }) => (isVertical ? space(1) : "")};
-    margin-left: ${({ isVertical }) => (isVertical ? "" : space(1))};
+    margin-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
+    margin-left: ${({ isVertical }) => (isVertical ? "" : "0.75rem")};
   }
 `;
 
@@ -38,7 +37,7 @@ export const LegendItemDot = styled.div`
 export const LegendItemTitle = styled.div`
   color: ${colors["text-dark"]};
   font-weight: bold;
-  margin-left: ${space(1)};
+  margin-left: 0.5rem;
 `;
 
 export const LegendItemRemoveIcon = styled(Icon).attrs({
@@ -47,7 +46,7 @@ export const LegendItemRemoveIcon = styled(Icon).attrs({
 })`
   color: ${colors["text-light"]};
   cursor: pointer;
-  margin-left: ${space(1)};
+  margin-left: 0.5rem;
 
   &:hover {
     color: ${colors["text-medium"]};
