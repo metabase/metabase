@@ -6,8 +6,7 @@ import { t } from "ttag";
 import { iconPropTypes } from "metabase/components/Icon";
 
 import CardRenderer from "./CardRenderer";
-import LegendHeader from "./LegendHeader";
-import LegendCaption from "./legend/LegendCaption";
+import LegendLayout from "./legend/LegendLayout";
 
 import "./LineAreaBarChart.css";
 
@@ -72,6 +71,7 @@ for (let i = 0; i < MAX_SERIES; i++) {
 }
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
+import { normal } from "metabase/lib/colors";
 
 export default class LineAreaBarChart extends Component {
   props: VisualizationProps;
@@ -267,20 +267,43 @@ export default class LineAreaBarChart extends Component {
       series,
       settings,
       showTitle,
+      actionButtons,
+      onAddSeries,
+      onEditSeries,
+      onRemoveSeries,
       onChangeCardAndRun,
     } = this.props;
 
     const title = settings["card.title"] || card.name;
     const description = series["card.description"];
-    const data = series._raw || series;
-    const cardIds = new Set(data.map(s => s.card.id));
+
+    const rawSeries = series._raw || series;
+    const cardIds = new Set(rawSeries.map(s => s.card.id));
     const hasTitle = showTitle && title;
+    const hasBreakout = card._breakoutColumn != null;
     const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
+    const hasMultipleSeries = series.length > 1;
+    const canChangeSeries = onAddSeries || onEditSeries || onRemoveSeries;
+    const hasLegendButtons = !hasTitle && actionButtons;
+    const hasLegend = hasMultipleSeries || canChangeSeries || hasLegendButtons;
+
+    const seriesSettings =
+      settings.series && series.map(single => settings.series(single));
+    const labels = seriesSettings
+      ? seriesSettings.map(s => s.title)
+      : series.map(single => single.card.name);
+    const colors = seriesSettings
+      ? seriesSettings.map(s => s.color)
+      : Object.values(normal);
 
     return {
       title,
       description,
+      labels,
+      colors,
       hasTitle,
+      hasLegend,
+      hasBreakout,
       canSelectTitle,
     };
   }
@@ -296,87 +319,87 @@ export default class LineAreaBarChart extends Component {
     }
   };
 
+  onSelectSeries = (event, index) => {
+    const {
+      card,
+      series,
+      visualizationIsClickable,
+      onEditSeries,
+      onVisualizationClick,
+      onChangeCardAndRun,
+    } = this.props;
+
+    const single = series[index];
+    const hasBreakout = card._breakoutColumn != null;
+
+    if (onEditSeries && !hasBreakout) {
+      onEditSeries(event, index);
+    } else if (single.clicked && visualizationIsClickable(single.clicked)) {
+      onVisualizationClick({
+        ...single.clicked,
+        element: event.currentTarget,
+      });
+    } else if (onChangeCardAndRun) {
+      onChangeCardAndRun({
+        nextCard: single.card,
+        seriesIndex: index,
+      });
+    }
+  };
+
   render() {
     const {
       series,
       hovered,
       headerIcon,
       actionButtons,
-      onChangeCardAndRun,
-      onVisualizationClick,
-      visualizationIsClickable,
+      onHoverChange,
       onAddSeries,
-      onEditSeries,
       onRemoveSeries,
     } = this.props;
 
     const {
       title,
       description,
+      labels,
+      colors,
       hasTitle,
+      hasLegend,
+      hasBreakout,
       canSelectTitle,
     } = this.getLegendSettings();
 
-    const settings = this.getSettings();
-
-    const hasMultiSeriesHeaderSeries = !!(
-      series.length > 1 ||
-      onAddSeries ||
-      onEditSeries ||
-      onRemoveSeries
-    );
-
-    const defaultSeries = [
-      {
-        card: {
-          name: " ",
-        },
-      },
-    ];
-
     return (
-      <div
+      <LegendLayout
         className={cx(
-          "LineAreaBarChart flex flex-column p1",
+          "LineAreaBarChart",
           this.getHoverClasses(),
           this.props.className,
         )}
+        title={title}
+        description={description}
+        labels={labels}
+        colors={colors}
+        hovered={hovered}
+        hasTitle={hasTitle}
+        hasLegend={hasLegend}
+        icon={headerIcon}
+        actionButtons={actionButtons}
+        onSelectTitle={canSelectTitle ? this.onSelectTitle : undefined}
+        onHoverChange={onHoverChange}
+        onAddSeries={!hasBreakout ? onAddSeries : undefined}
+        onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
+        onSelectSeries={this.onSelectSeries}
       >
-        {hasTitle && (
-          <LegendCaption
-            className="mx1 flex-no-shrink"
-            title={title}
-            description={description}
-            icon={headerIcon}
-            actionButtons={actionButtons}
-            onSelectTitle={canSelectTitle ? this.onSelectTitle : undefined}
-          />
-        )}
-        {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
-          <LegendHeader
-            className="flex-no-shrink"
-            series={hasMultiSeriesHeaderSeries ? series : defaultSeries}
-            settings={settings}
-            hovered={hovered}
-            onHoverChange={this.props.onHoverChange}
-            actionButtons={!hasTitle ? actionButtons : null}
-            onChangeCardAndRun={onChangeCardAndRun}
-            onVisualizationClick={onVisualizationClick}
-            visualizationIsClickable={visualizationIsClickable}
-            onAddSeries={onAddSeries}
-            onEditSeries={onEditSeries}
-            onRemoveSeries={onRemoveSeries}
-          />
-        ) : null}
         <CardRenderer
           {...this.props}
           series={series}
-          settings={settings}
+          settings={this.getSettings()}
           className="renderer flex-full"
           maxSeries={MAX_SERIES}
           renderer={this.constructor.renderer}
         />
-      </div>
+      </LegendLayout>
     );
   }
 }
