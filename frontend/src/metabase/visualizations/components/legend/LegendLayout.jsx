@@ -46,7 +46,7 @@ const LegendLayout = ({
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
       {hasLegend && (
-        <LegendContainer>
+        <LegendContainer isVertical={isVertical}>
           <Legend
             labels={labels}
             colors={colors}
