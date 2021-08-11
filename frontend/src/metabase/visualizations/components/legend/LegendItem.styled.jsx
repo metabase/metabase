@@ -5,8 +5,8 @@ import { space } from "metabase/styled-components/theme";
 
 export const LegendItemRoot = styled.div`
   display: flex;
-  flex-shrink: 0;
   align-items: center;
+  overflow: hidden;
 
   &:not(:first-child) {
     margin-top: ${({ isVertical }) => (isVertical ? space(1) : "")};

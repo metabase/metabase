@@ -7,6 +7,7 @@ import {
   LegendItemRoot,
   LegendItemTitle,
 } from "./LegendItem.styled";
+import Ellipsified from "metabase/components/Ellipsified";
 import Tooltip from "metabase/components/Tooltip";
 
 const propTypes = {
@@ -65,7 +66,9 @@ const LegendItem = ({
           onMouseLeave={onHoverChange && handleItemMouseLeave}
         >
           <LegendItemDot color={color} />
-          <LegendItemTitle>{label}</LegendItemTitle>
+          <LegendItemTitle>
+            <Ellipsified>{label}</Ellipsified>
+          </LegendItemTitle>
         </LegendItemLabel>
       </Tooltip>
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
