@@ -19,6 +19,7 @@ export const LegendItemLabel = styled.div`
   align-items: baseline;
   opacity: ${({ isMuted }) => (isMuted ? "0.4" : "1")};
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
+  overflow: hidden;
   transition: opacity 0.25s linear;
 
   &:hover {
@@ -38,6 +39,7 @@ export const LegendItemTitle = styled.div`
   color: ${colors["text-dark"]};
   font-weight: bold;
   margin-left: 0.5rem;
+  overflow: hidden;
 `;
 
 export const LegendItemRemoveIcon = styled(Icon).attrs({
