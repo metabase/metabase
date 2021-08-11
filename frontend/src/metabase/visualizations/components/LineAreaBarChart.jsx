@@ -286,7 +286,6 @@ export default class LineAreaBarChart extends Component {
     const hasTitle = showTitle && settings["card.title"];
     const hasBreakout = card._breakoutColumn != null;
     const canSelectTitle = cardIds.size === 1 && onChangeCardAndRun;
-    const onSelectTitle = canSelectTitle ? this.onSelectTitle : undefined;
 
     const hasMultipleSeries = series.length > 1;
     const canChangeSeries = onAddSeries || onEditSeries || onRemoveSeries;
@@ -310,11 +309,11 @@ export default class LineAreaBarChart extends Component {
       hasTitle,
       hasLegend,
       hasBreakout,
-      onSelectTitle,
+      canSelectTitle,
     };
   }
 
-  onSelectTitle = () => {
+  handleSelectTitle = () => {
     const { card, onChangeCardAndRun } = this.props;
 
     if (onChangeCardAndRun) {
@@ -372,7 +371,7 @@ export default class LineAreaBarChart extends Component {
       hasTitle,
       hasLegend,
       hasBreakout,
-      onSelectTitle,
+      canSelectTitle,
     } = this.getLegendSettings();
 
     return (
@@ -389,7 +388,7 @@ export default class LineAreaBarChart extends Component {
             description={description}
             icon={headerIcon}
             actionButtons={actionButtons}
-            onSelectTitle={onSelectTitle}
+            onSelectTitle={canSelectTitle ? this.handleSelectTitle : undefined}
           />
         )}
         <LegendLayout
