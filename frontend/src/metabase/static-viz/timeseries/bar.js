@@ -11,10 +11,11 @@ export default function TimeseriesBar(
   { data, yScaleType = scaleLinear, accessors, labels },
   layout,
 ) {
+  const leftMargin = 55;
   let multiScale, categories;
   const xAxisScale = scaleBand({
     domain: data.map(accessors.x),
-    range: [40, layout.xMax],
+    range: [leftMargin, layout.xMax],
     round: true,
     padding: 0.2,
   });
@@ -38,8 +39,8 @@ export default function TimeseriesBar(
     <svg width={layout.width} height={layout.height}>
       <GridRows
         scale={yAxisScale}
-        width={layout.width}
-        left={40}
+        width={layout.xMax - leftMargin}
+        left={leftMargin}
         strokeDasharray="4"
       />
       {data.map(d => {
@@ -66,7 +67,7 @@ export default function TimeseriesBar(
         }}
         scale={yAxisScale}
         label={labels.left || t`Count`}
-        left={40}
+        left={leftMargin}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom

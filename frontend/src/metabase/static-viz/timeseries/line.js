@@ -11,6 +11,7 @@ export default function TimeseriesLine(
   { data, yScaleType = scaleLinear, accessors, labels },
   layout,
 ) {
+  const leftMargin = 55;
   let multiScale, categories;
 
   const xAxisScale = scaleTime({
@@ -18,7 +19,7 @@ export default function TimeseriesLine(
       Math.min(...data.map(accessors.x)),
       Math.max(...data.map(accessors.x)),
     ],
-    range: [40, layout.xMax],
+    range: [leftMargin, layout.xMax],
   });
 
   // Y scale
@@ -40,8 +41,8 @@ export default function TimeseriesLine(
     <svg width={layout.width} height={layout.height}>
       <GridRows
         scale={yAxisScale}
-        width={layout.width}
-        left={40}
+        width={layout.xMax - leftMargin}
+        left={leftMargin}
         strokeDasharray="4"
       />
       {multiScale ? (
@@ -73,7 +74,7 @@ export default function TimeseriesLine(
         hideAxisLine
         tickFormat={d => String(d)}
         scale={yAxisScale}
-        left={40}
+        left={leftMargin}
         tickLabelProps={() => leftAxisTickStyles(layout)}
       />
       <AxisBottom
