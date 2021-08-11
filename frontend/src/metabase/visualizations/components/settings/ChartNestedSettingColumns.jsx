@@ -56,6 +56,27 @@ class ColumnWidgets extends React.Component {
     }
   }
 
+  componentDidUpdate(prevProps) {
+    const {
+      setSidebarPropsOverride,
+      object,
+      onEndShowWidget,
+      currentSectionHasColumnSettings,
+    } = this.props;
+
+    if (
+      displayNameForColumn(object) !== displayNameForColumn(prevProps.object) ||
+      onEndShowWidget !== prevProps.onEndShowWidget
+    ) {
+      if (setSidebarPropsOverride && !currentSectionHasColumnSettings) {
+        setSidebarPropsOverride({
+          title: displayNameForColumn(object),
+          onBack: onEndShowWidget,
+        });
+      }
+    }
+  }
+
   componentWillUnmount() {
     const { setSidebarPropsOverride } = this.props;
     if (setSidebarPropsOverride) {

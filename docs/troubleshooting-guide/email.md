@@ -1,8 +1,10 @@
-# Email
+# Setting up email
 
-Metabase can be configured to send email notifications to get people's attention if and when something requires it.
+<div class='doc-toc' markdown=1>
+- [Metabase can't send email via Office365](#cant-send-office365)
+</div>
 
-## Troubleshooting Process
+Metabase can be configured to send email notifications to get people's attention if and when something requires it. If you are having problems with this, try going through the troubleshooting process below:
 
 1. Are the email account credentials correct?
     a. In the Admin Panel, select "Email Settings", click "Send test email", and verify that the email is delivered to the test account.
@@ -22,9 +24,7 @@ Metabase can be configured to send email notifications to get people's attention
 
 5. Make sure that the HOSTNAME is being set correctly. EC2 instances in particular have those set to the local IP address, and some email delivery services such as GMail will report errors in this situation.
 
-## Specific Problems
-
-### Metabase can't send email via Office365
+<h2 id="cant-send-office365">Metabase can't send email via Office365</h2>
 
 Some people have [reported problems sending email via Office365][office-365-bug]. We recommend using a different email delivery service if you can. 
 

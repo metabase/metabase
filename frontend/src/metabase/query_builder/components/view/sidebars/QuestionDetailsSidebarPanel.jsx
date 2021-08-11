@@ -17,14 +17,12 @@ export default QuestionDetailsSidebarPanel;
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
-  moderatorVerifyCard: PropTypes.func.isRequired,
   removeModerationReview: PropTypes.func.isRequired,
 };
 
 function QuestionDetailsSidebarPanel({
   question,
   onOpenModal,
-  moderatorVerifyCard,
   removeModerationReview,
 }) {
   const canWrite = question.canWrite();

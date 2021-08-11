@@ -4,7 +4,6 @@ import {
   PIN_MESSAGE_STORAGE_KEY,
 } from "metabase/containers/Overworld";
 
-import "@testing-library/jest-dom/extend-expect";
 import { fireEvent, render, screen } from "@testing-library/react";
 import "mutationobserver-shim";
 

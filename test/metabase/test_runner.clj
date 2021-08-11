@@ -11,12 +11,12 @@
             eftest.runner
             [environ.core :as env]
             [metabase.config :as config]
+            [metabase.test-runner.effects :as effects]
             [metabase.test-runner.init :as init]
             [metabase.test-runner.junit :as junit]
             [metabase.test-runner.parallel :as parallel]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs
-            [metabase.util :as u]
             [pjstadig.humane-test-output :as humane-test-output]))
 
 ;; initialize Humane Test Output if it's not already initialized.
@@ -24,7 +24,8 @@
 
 ;; Load redefinitions of stuff like `tt/with-temp` and `with-redefs` that throw an Exception when they are used inside
 ;; parallel tests.
-(comment metabase.test.redefs/keep-me)
+(comment metabase.test.redefs/keep-me
+         effects/keep-me)
 
 ;;;; Finding tests
 
@@ -70,13 +71,18 @@
 ;; a test namespace or individual test
 (defmethod find-tests clojure.lang.Symbol
   [symb]
-  (if (namespace symb)
-    ;; a actual test var e.g. `metabase.whatever-test/my-test`
-    [symb]
-    ;; a namespace e.g. `metabase.whatever-test`
-    (binding [init/*test-namespace-being-loaded* symb]
-      (require symb)
-      (eftest.runner/find-tests symb))))
+  (letfn [(load-test-namespace [ns-symb]
+            (binding [init/*test-namespace-being-loaded* ns-symb]
+              (require ns-symb)))]
+    (if-let [symbol-namespace (some-> (namespace symb) symbol)]
+      ;; a actual test var e.g. `metabase.whatever-test/my-test`
+      (do
+        (load-test-namespace symbol-namespace)
+        [(resolve symb)])
+      ;; a namespace e.g. `metabase.whatever-test`
+      (do
+        (load-test-namespace symb)
+        (eftest.runner/find-tests symb)))))
 
 ;; default -- look in all dirs on the classpath
 (defmethod find-tests nil
@@ -86,7 +92,7 @@
 (defn tests [{:keys [only]}]
   (when only
     (println "Running tests in" (pr-str only)))
-  (let [tests (u/profile "Find tests" (find-tests only))]
+  (let [tests (find-tests only)]
     (println "Running" (count tests) "tests")
     tests))
 
@@ -117,22 +123,25 @@
   "Run `test-vars` with `options`, which are passed directly to [[eftest.runner/run-tests]].
 
     ;; run tests in a single namespace
-    (run (find-tests 'metabase.bad-test) nil)
+    (run (find-tests 'metabase.bad-test))
 
     ;; run tests in a directory
-    (run (find-tests \"test/metabase/query_processor_test\") nil)"
-  [test-vars options]
-  ;; don't randomize test order for now please, thanks anyway
-  (with-redefs [eftest.runner/deterministic-shuffle (fn [_ test-vars] test-vars)]
-    (eftest.runner/run-tests
-     test-vars
-     (merge
-      {:capture-output? false
-       ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
-       ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
-       :multithread?    false #_:vars
-       :report          (reporter)}
-      options))))
+    (run (find-tests \"test/metabase/query_processor_test\"))"
+  ([test-vars]
+   (run test-vars nil))
+
+  ([test-vars options]
+   ;; don't randomize test order for now please, thanks anyway
+   (with-redefs [eftest.runner/deterministic-shuffle (fn [_ test-vars] test-vars)]
+     (eftest.runner/run-tests
+      test-vars
+      (merge
+       {:capture-output? false
+        ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
+        ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
+        :multithread?    false #_:vars
+        :report          (reporter)}
+       options)))))
 
 ;;;; `clojure -X` entrypoint
 

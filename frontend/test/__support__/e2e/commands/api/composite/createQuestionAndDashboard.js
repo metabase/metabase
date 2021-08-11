@@ -6,6 +6,9 @@ Cypress.Commands.add(
         ({ body: { id: dashboardId } }) => {
           cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
             cardId: questionId,
+            // Add sane defaults for the dashboard card size
+            sizeX: 8,
+            sizeY: 6,
           });
         },
       );

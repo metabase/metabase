@@ -1,4 +1,4 @@
-(ns metabase.api.moderation-review
+(ns metabase-enterprise.moderation.api.review
   (:require [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.models.moderation-review :as moderation-review]

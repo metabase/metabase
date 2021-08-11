@@ -1,8 +1,14 @@
 # Trouble with the Metabase Application Database
 
+<div class='doc-toc' markdown=1>
+- [Metabase fails to start due to database locks](#database-locks)
+- [Metabase H2 application database gets corrupted](#h2-app-db-corrupted)
+- [Metabase fails to connect to H2 Database on Windows 10](#h2-connect-windows-10)
+</div>
+
 Metabase stores information about users, questions, and so on in a database of its own that we call the "application database". The default application database that ships with Metabase is an [H2 database][what-is-h2], which is not recommended for production. To use a production-ready database for you Metabase application database, see [Migrating from H2][migrating]. 
 
-### Metabase fails to start due to database locks
+<h2 id="database-locks">Metabase fails to start due to database locks</h2>
 
 Sometimes Metabase will fail to start up because a database lock did not clear properly. 
 
@@ -20,7 +26,7 @@ java -jar metabase.jar migrate release-locks
 
 This command will manually clear the locks. When it's done, restart your Metabase instance.
 
-### Metabase H2 application database gets corrupted
+<h2 id="h2-app-db-corrupted">Metabase H2 application database gets corrupted</h2>
 
 By default, Metabase uses [H2][what-is-h2] for its application database. Because H2 is an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly. In these situations, you'll see errors on startup. 
 
@@ -53,7 +59,7 @@ java -cp target/uberjar/metabase.jar org.h2.tools.RunScript -script metabase.db.
 
 Not all H2 errors are recoverable (which is why if you're using H2, _please_ have a backup strategy for the application database file).
 
-### Metabase fails to connect to H2 Database on Windows 10
+<h2 id="h2-connect-windows-10">Metabase fails to connect to H2 Database on Windows 10</h2>
 
 In some situations on Windows 10, the Metabase JAR needs to have permissions to create local files for the application database. 
 

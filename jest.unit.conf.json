@@ -17,6 +17,7 @@
     "<rootDir>/frontend/test/metabase-bootstrap.js",
     "<rootDir>/frontend/test/register-visualizations.js"
   ],
+  "setupFilesAfterEnv": ["@testing-library/jest-dom/extend-expect"],
   "globals": {
     "ace": {},
     "ga": {},

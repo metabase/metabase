@@ -54,14 +54,13 @@ jobs:
           java-version: 8
       - name: Install Clojure CLI
         run: |
-          curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
-          sudo bash ./linux-install-1.10.1.708.sh
+          curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+          sudo bash ./linux-install-1.10.3.933.sh
       - name: Check versions
         run: |
           echo "Node.js `node --version`"
           echo "yarn `yarn --version`"
           java -version
-          echo "Clojure `clojure -e "(println (clojure-version))"`"
 
       - name: Get yarn cache
         uses: actions/cache@v2
@@ -72,7 +71,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}-${{ hashFiles('**/deps.edn') }}
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/deps.edn') }}
 
       - run: yarn install --frozen-lockfile --prefer-offline
       - run: ./bin/build
@@ -113,26 +112,27 @@ jobs:
           java-version: 8
       - name: Install Clojure CLI
         run: |
-          curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
-          sudo bash ./linux-install-1.10.1.708.sh
+          curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+          sudo bash ./linux-install-1.10.3.933.sh
       - name: Check versions
         run: |
           echo "Node.js `node --version`"
           echo "yarn `yarn --version`"
           java -version
-          echo "Clojure `clojure -e "(println (clojure-version))"`"
       - name: Get yarn cache
         uses: actions/cache@v2
         with:
           path: ~/.cache/yarn
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
 
-      - run: ./bin/build version
-
       - uses: actions/download-artifact@v2
         name: Retrieve uberjar artifact
         with:
           name: metabase-oss-uberjar
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
 
       - name: Percy Test
         uses: percy/exec-action@v0.3.1

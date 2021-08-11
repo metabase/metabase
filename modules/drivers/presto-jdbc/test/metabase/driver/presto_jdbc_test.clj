@@ -194,5 +194,9 @@
 
 (deftest test-database-connection-test
   (mt/test-driver :presto-jdbc
-    (testing "can-test-database-connection works"
-      (is (nil? (database-api/test-database-connection :presto-jdbc (:details (mt/db))))))))
+    (testing "can-test-database-connection works properly"
+      ;; for whatever reason, :let-user-control-scheduling is the only "always available" option that goes into details
+      ;; the others (ex: :auto_run_queries and :refingerprint) are one level up (fields in the model, not in the details
+      ;; JSON blob)
+      (let [db-details (assoc (:details (mt/db)) :let-user-control-scheduling false)]
+        (is (nil? (database-api/test-database-connection :presto-jdbc db-details)))))))

@@ -42,9 +42,9 @@
 (defn- print-result-description [{:keys [file line message testing-contexts], :as result}]
   (println (format "%s:%d" file line))
   (doseq [s (reverse testing-contexts)]
-    (println (str/trim (escape-unprintable-characters s))))
+    (println (str/trim (decolorize-and-escape s))))
   (when message
-    (println (escape-unprintable-characters message))))
+    (println (decolorize-and-escape message))))
 
 (defn- print-expected [expected actual]
   (p/rprint "expected: ")

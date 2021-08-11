@@ -1,8 +1,12 @@
 # Logging in
 
-People can log in to Metabase in several different ways, each of which may require different background knowledge or a different line of investigation to fix if there are problems.
+<div class='doc-toc' markdown=1>
+- [Forgotten password](#forgotten-password)
+- [Invalid Google Auth token](#invalid-google-auth-token)
+</div>
 
-## Troubleshooting Process
+
+People can log in to Metabase in several different ways, each of which may require different background knowledge or a different line of investigation to fix if there are problems. If you are having problems, try going through the troubleshooting process below:
 
 1. Try to log in with a local account.
 2. Try to log in with a Google Auth SSO account.
@@ -10,13 +14,11 @@ People can log in to Metabase in several different ways, each of which may requi
 
 You may also want to check [our troubleshooting guide for LDAP](./ldap.html).
 
-## Specific Problems
-
-### Forgotten Password
+<h2 id="forgotten-password">Forgotten password</h2>
 
 [This FAQ][reset-password] will tell you what to do if someone has forgotten their password.
 
-### Invalid Google Auth Token
+<h2 id="invalid-google-auth-token">Invalid Google Auth token</h2>
 
 When you sign in with Google Auth, it creates a token to prove that you have authenticated. If this token becomes invalid for any reason (such as a change in configuration or a timeout) then you won't be able to log in with it.
 
