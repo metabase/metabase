@@ -11,8 +11,9 @@ const propTypes = {
 
 const LegendTree = ({ className, labels, visibleCount, ...otherProps }) => {
   const [target, setTarget] = useState();
+
   const visibleLabels = labels.slice(0, visibleCount);
-  const overflowLabels = labels.slice(visibleCount);
+  const overflowLabels = labels.slice(visibleLabels.length);
   const overflowCount = overflowLabels.length;
 
   const handleOpen = useCallback(event => {
