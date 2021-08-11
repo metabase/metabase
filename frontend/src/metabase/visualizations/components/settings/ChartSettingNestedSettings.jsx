@@ -83,11 +83,9 @@ const chartSettingNestedSettings = ({
     };
 
     handleChangeSettingsForEditingObject = (newSettings: Settings) => {
-      if (this.getEditingObjectKey()) {
-        this.handleChangeSettingsForObjectKey(
-          this.props.initialKey,
-          newSettings,
-        );
+      const editingObjectKey = this.getEditingObjectKey();
+      if (editingObjectKey) {
+        this.handleChangeSettingsForObjectKey(editingObjectKey, newSettings);
       }
     };
 
